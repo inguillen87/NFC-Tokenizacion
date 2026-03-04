@@ -173,3 +173,37 @@ Tomar la linea del demo actual:
 - reseller portal
 - tokenization module
 
+
+
+## Vercel deployment (important)
+
+This repository is a **monorepo**. Do **not** deploy the whole repo as one generic Next app.
+Create a separate Vercel project for each app and set the **Root Directory** accordingly:
+
+- `apps/api` → API project
+- `apps/web` → public landing
+- `apps/dashboard` → internal dashboard
+
+If you only want to start with the backend, create **one Vercel project** and set:
+
+- **Framework Preset**: Next.js
+- **Root Directory**: `apps/api`
+
+Then add environment variables to that project:
+
+- `DATABASE_URL`
+- `ADMIN_API_KEY`
+- `KMS_MASTER_KEY_HEX`
+
+For the custom domain, attach `api.inmov.ar` to the **apps/api** project only.
+
+
+## Required env vars before deploying `apps/api`
+
+Set these in Vercel **before** the first build of the API project:
+
+- `DATABASE_URL`
+- `ADMIN_API_KEY`
+- `KMS_MASTER_KEY_HEX`
+
+If `DATABASE_URL` is missing, runtime requests will fail.
