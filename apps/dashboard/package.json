@@ -16,9 +16,9 @@
     "lucide-react": "^0.468.0",
     "framer-motion": "^11.11.17",
     "clsx": "^2.1.1",
-    "@product/ui": "*",
-    "@product/config": "*",
-    "@product/core": "*"
+    "@product/ui": "workspace:*",
+    "@product/config": "workspace:*",
+    "@product/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
@@ -28,5 +28,8 @@
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1"
+  },
+  "engines": {
+    "node": ">=20.11.1"
   }
 }

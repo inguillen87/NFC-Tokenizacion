@@ -14,13 +14,15 @@
     "react-dom": "^18.2.0",
     "@neondatabase/serverless": "^0.10.4",
     "zod": "^3.24.1",
-    "csv-parse": "^5.6.0",
-    "@product/core": "*"
+    "csv-parse": "^5.6.0"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1"
+  },
+  "engines": {
+    "node": ">=20.11.1"
   }
 }

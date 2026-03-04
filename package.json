@@ -12,6 +12,12 @@
     "dev:api": "npm run dev -w apps/api",
     "build:web": "npm run build -w apps/web",
     "build:dashboard": "npm run build -w apps/dashboard",
-    "build:api": "npm run build -w apps/api"
+    "build:api": "npm run build -w apps/api",
+    "build": "pnpm -r build",
+    "dev": "pnpm --parallel --filter web --filter dashboard --filter api dev"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.11.1"
   }
 }

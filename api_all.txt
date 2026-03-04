@@ -1,0 +1,493 @@
+==== apps/api/src/app/admin/batches/[bid]/import-manifest/route.ts
+import { parse } from "csv-parse/sync";
+import { sql } from "../../../../../lib/db";
+import { checkAdmin } from "../../../../../lib/auth";
+import { json } from "../../../../../lib/http";
+
+export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
+  const auth = checkAdmin(req);
+  if (auth) return auth;
+
+  const { bid } = await params;
+  const batchRows = await sql/*sql*/`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
+  const batch = batchRows[0];
+  if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
+
+  const raw = await req.text();
+  if (!raw.trim()) return json({ ok: false, reason: "empty csv body" }, 400);
+
+  const rows = parse(raw, { columns: true, skip_empty_lines: true }) as Array<Record<string, string>>;
+  let inserted = 0;
+
+  for (const row of rows) {
+    const uid = String(row.uid_hex || row.UID || "").toUpperCase();
+    if (!uid) continue;
+    await sql/*sql*/`
+      INSERT INTO tags (batch_id, uid_hex)
+      VALUES (${batch.id}, ${uid})
+      ON CONFLICT (batch_id, uid_hex) DO NOTHING
+    `;
+    inserted += 1;
+  }
+
+  return json({ ok: true, inserted, batch: bid });
+}
+==== apps/api/src/app/admin/batches/[bid]/revoke/route.ts
+import { sql } from "../../../../../lib/db";
+import { checkAdmin } from "../../../../../lib/auth";
+import { json } from "../../../../../lib/http";
+
+export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
+  const auth = checkAdmin(req);
+  if (auth) return auth;
+
+  const { bid } = await params;
+  const rows = await sql/*sql*/`
+    UPDATE batches
+    SET status = 'revoked'
+    WHERE bid = ${bid}
+    RETURNING id, bid, status
+  `;
+
+  if (!rows[0]) return json({ ok: false, reason: "batch not found" }, 404);
+  return json({ ok: true, batch: rows[0] });
+}
+==== apps/api/src/app/admin/batches/route.ts
+import { randomBytes } from "crypto";
+import { sql } from "../../../lib/db";
+import { checkAdmin } from "../../../lib/auth";
+import { encryptKey16 } from "../../../lib/keys";
+import { json } from "../../../lib/http";
+
+export async function POST(req: Request) {
+  const auth = checkAdmin(req);
+  if (auth) return auth;
+
+  const body: Record<string, unknown> = await req.json().catch(() => ({}));
+  const tenantSlug = String(body.tenant_slug || "").toLowerCase();
+  const bid = String(body.bid || "");
+  if (!tenantSlug || !bid) return json({ ok: false, reason: "tenant_slug and bid required" }, 400);
+
+  const tenants = await sql/*sql*/`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`;
+  const tenant = tenants[0];
+  if (!tenant) return json({ ok: false, reason: "tenant not found" }, 404);
+
+  const kMetaHex = body.k_meta_hex ? String(body.k_meta_hex).toUpperCase() : randomBytes(16).toString("hex").toUpperCase();
+  const kFileHex = body.k_file_hex ? String(body.k_file_hex).toUpperCase() : randomBytes(16).toString("hex").toUpperCase();
+  const metaCt = encryptKey16(Buffer.from(kMetaHex, "hex"));
+  const fileCt = encryptKey16(Buffer.from(kFileHex, "hex"));
+
+  const sdmConfig = body.sdm_config || {
+    mac_input: "enc_plus_cmac_literal",
+    url_template: `https://api.inmov.ar/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`
+  };
+
+  const rows = await sql/*sql*/`
+    INSERT INTO batches (tenant_id, bid, meta_key_ct, file_key_ct, sdm_config)
+    VALUES (${tenant.id}, ${bid}, ${metaCt}, ${fileCt}, ${JSON.stringify(sdmConfig)}::jsonb)
+    RETURNING id, bid, status, created_at
+  `;
+
+  return json({
+    batch: rows[0],
+    keys: { k_meta_hex: kMetaHex, k_file_hex: kFileHex },
+    ndef_url_template: `https://api.inmov.ar/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`
+  }, 201);
+}
+==== apps/api/src/app/admin/tags/activate/route.ts
+import { sql } from "../../../../lib/db";
+import { checkAdmin } from "../../../../lib/auth";
+import { json } from "../../../../lib/http";
+
+export async function POST(req: Request) {
+  const auth = checkAdmin(req);
+  if (auth) return auth;
+
+  const body: Record<string, unknown> = await req.json().catch(() => ({}));
+  const bid = String(body.bid || "");
+  const uids = Array.isArray(body.uids)
+    ? body.uids.map((x: unknown) => String(x).toUpperCase())
+    : [];
+
+  if (!bid || uids.length === 0) return json({ ok: false, reason: "bid and uids required" }, 400);
+
+  const batchRows = await sql/*sql*/`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
+  const batch = batchRows[0];
+  if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
+
+  await sql/*sql*/`
+    UPDATE tags
+    SET status = 'active'
+    WHERE batch_id = ${batch.id} AND uid_hex = ANY(${uids})
+  `;
+
+  return json({ ok: true, activated: uids.length, batch: bid });
+}
+==== apps/api/src/app/admin/tenants/route.ts
+import { randomBytes } from "crypto";
+import { sql } from "../../../lib/db";
+import { checkAdmin } from "../../../lib/auth";
+import { encryptKey16 } from "../../../lib/keys";
+import { json } from "../../../lib/http";
+
+export async function POST(req: Request) {
+  const auth = checkAdmin(req);
+  if (auth) return auth;
+
+  const body: Record<string, unknown> = await req.json().catch(() => ({}));
+  const slug = String(body.slug || "").toLowerCase();
+  const name = String(body.name || "");
+  if (!slug || !name) return json({ ok: false, reason: "slug and name required" }, 400);
+
+  const root = randomBytes(16);
+  const rootKeyCt = encryptKey16(root);
+
+  const rows = await sql/*sql*/`
+    INSERT INTO tenants (slug, name, root_key_ct)
+    VALUES (${slug}, ${name}, ${rootKeyCt})
+    RETURNING id, slug, name, created_at
+  `;
+
+  return json(rows[0], 201);
+}
+==== apps/api/src/app/health/route.ts
+export async function GET() {
+  return Response.json({ ok: true, service: "api", now: new Date().toISOString() });
+}
+==== apps/api/src/app/layout.tsx
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+
+export const metadata: Metadata = {
+  title: "Identity Gateway API",
+  description: "NFC SUN validation and admin operations API",
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+==== apps/api/src/app/page.tsx
+export default function Home() {
+  return (
+    <main style={{ fontFamily: "system-ui", padding: 24 }}>
+      <h1>API app</h1>
+      <p>Use /health/ and /sun/</p>
+    </main>
+  );
+}
+==== apps/api/src/app/sun/route.ts
+import { sql } from "../../lib/db";
+import { decryptKey16 } from "../../lib/keys";
+import { verifySun } from "../../lib/crypto/sdm";
+import { json } from "../../lib/http";
+
+export async function GET(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const bid = url.searchParams.get("bid") || "";
+  const picc_data = url.searchParams.get("picc_data") || "";
+  const enc = url.searchParams.get("enc") || "";
+  const cmac = url.searchParams.get("cmac") || "";
+  const ua = req.headers.get("user-agent") || "";
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+
+  if (!bid || !picc_data || !enc || !cmac) {
+    return json({ ok: false, reason: "missing params", need: ["bid", "picc_data", "enc", "cmac"] }, 400);
+  }
+
+  const batchRows = await sql/*sql*/`
+    SELECT b.id, b.tenant_id, b.status, b.meta_key_ct, b.file_key_ct
+    FROM batches b
+    WHERE b.bid = ${bid}
+    LIMIT 1
+  `;
+  const batch = batchRows[0];
+  if (!batch) return json({ ok: false, reason: "unknown batch" }, 404);
+  if (batch.status === "revoked") return json({ ok: false, reason: "batch revoked" }, 403);
+
+  const kMeta = decryptKey16(batch.meta_key_ct).toString("hex").toUpperCase();
+  const kFile = decryptKey16(batch.file_key_ct).toString("hex").toUpperCase();
+
+  const res = verifySun({ piccDataHex: picc_data, encHex: enc, cmacHex: cmac, kMetaHex: kMeta, kFileHex: kFile });
+
+  let allowlisted = false;
+  let tagStatus: string | null = null;
+  let replaySuspect = false;
+
+  if (res.ok) {
+    const tagRows = await sql/*sql*/`
+      SELECT id, status, last_seen_ctr
+      FROM tags
+      WHERE batch_id = ${batch.id} AND uid_hex = ${res.uidHex}
+      LIMIT 1
+    `;
+    const tag = tagRows[0];
+    if (tag) {
+      allowlisted = true;
+      tagStatus = tag.status;
+      if (typeof tag.last_seen_ctr === "number" && res.ctr <= tag.last_seen_ctr) replaySuspect = true;
+      await sql/*sql*/`
+        UPDATE tags
+        SET scan_count = scan_count + 1,
+            first_seen_at = COALESCE(first_seen_at, now()),
+            last_seen_at = now(),
+            last_seen_ctr = GREATEST(COALESCE(last_seen_ctr, -1), ${res.ctr})
+        WHERE id = ${tag.id}
+      `;
+    }
+  }
+
+  const result = !res.ok
+    ? "INVALID"
+    : !allowlisted
+      ? "NOT_REGISTERED"
+      : tagStatus !== "active"
+        ? "NOT_ACTIVE"
+        : replaySuspect
+          ? "REPLAY_SUSPECT"
+          : "VALID";
+
+  await sql/*sql*/`
+    INSERT INTO events (tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason, ip, user_agent, raw_query)
+    VALUES (
+      ${batch.tenant_id},
+      ${batch.id},
+      ${res.ok ? res.uidHex : null},
+      ${res.ok ? res.ctr : null},
+      ${res.ok},
+      ${allowlisted},
+      ${tagStatus},
+      ${result},
+      ${res.ok ? null : res.reason},
+      ${ip},
+      ${ua},
+      ${JSON.stringify(Object.fromEntries(url.searchParams.entries()))}::jsonb
+    )
+  `;
+
+  return json({
+    ok: result === "VALID",
+    result,
+    bid,
+    uid: res.ok ? res.uidHex : undefined,
+    ctr: res.ok ? res.ctr : undefined,
+    enc_plain_hex: res.ok ? res.encPlainHex : undefined,
+    allowlisted,
+    tag_status: tagStatus,
+    reason: res.ok ? undefined : res.reason,
+  }, result === "VALID" ? 200 : 403);
+}
+==== apps/api/src/lib/auth.ts
+export function checkAdmin(req: Request): Response | null {
+  const header = req.headers.get("authorization") || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const expected = process.env.ADMIN_API_KEY || "";
+  if (!expected || token !== expected) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  return null;
+}
+==== apps/api/src/lib/crypto/aes.ts
+import { createCipheriv, createDecipheriv } from "crypto";
+
+export function hexToBuf(hex: string): Buffer {
+  if (hex.length % 2 !== 0) throw new Error("hex length must be even");
+  return Buffer.from(hex, "hex");
+}
+
+export function bufToHex(buf: Buffer): string {
+  return buf.toString("hex").toUpperCase();
+}
+
+export function aes128CbcDecrypt(key: Buffer, iv: Buffer, ciphertext: Buffer): Buffer {
+  const decipher = createDecipheriv("aes-128-cbc", key, iv);
+  decipher.setAutoPadding(false);
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+}
+
+export function aes128CbcEncrypt(key: Buffer, iv: Buffer, plaintext: Buffer): Buffer {
+  const cipher = createCipheriv("aes-128-cbc", key, iv);
+  cipher.setAutoPadding(false);
+  return Buffer.concat([cipher.update(plaintext), cipher.final()]);
+}
+
+export function aes128EcbEncrypt(key: Buffer, block16: Buffer): Buffer {
+  const cipher = createCipheriv("aes-128-ecb", key, null);
+  cipher.setAutoPadding(false);
+  return Buffer.concat([cipher.update(block16), cipher.final()]);
+}
+
+export function aesCmac(key: Buffer, message: Buffer): Buffer {
+  if (key.length !== 16) throw new Error("CMAC key must be 16 bytes");
+  const blockSize = 16;
+  const zero = Buffer.alloc(blockSize, 0x00);
+  const L = aes128EcbEncrypt(key, zero);
+  const K1 = generateSubkey(L);
+  const K2 = generateSubkey(K1);
+
+  const n = Math.max(1, Math.ceil(message.length / blockSize));
+  const lastBlockComplete = message.length !== 0 && message.length % blockSize === 0;
+
+  const blocks: Buffer[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    blocks.push(message.subarray(i * blockSize, (i + 1) * blockSize));
+  }
+
+  let last = message.subarray((n - 1) * blockSize);
+  last = lastBlockComplete ? xor(last, K1) : xor(pad(last, blockSize), K2);
+
+  let X = Buffer.alloc(blockSize, 0x00);
+  for (const b of blocks) {
+    X = aes128EcbEncrypt(key, xor(X, b));
+  }
+  return aes128EcbEncrypt(key, xor(X, last));
+}
+
+export function truncateMac8(fullCmac16: Buffer): Buffer {
+  const out = Buffer.alloc(8);
+  let j = 0;
+  for (let i = 1; i < 16; i += 2) out[j++] = fullCmac16[i];
+  return out;
+}
+
+function pad(m: Buffer, blockSize: number): Buffer {
+  const out = Buffer.alloc(blockSize, 0x00);
+  m.copy(out, 0);
+  out[m.length] = 0x80;
+  return out;
+}
+
+function xor(a: Buffer, b: Buffer): Buffer {
+  if (a.length !== b.length) throw new Error("xor length mismatch");
+  const out = Buffer.alloc(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = a[i] ^ b[i];
+  return out;
+}
+
+function leftShiftOneBit(input: Buffer): Buffer {
+  const out = Buffer.alloc(input.length);
+  let carry = 0;
+  for (let i = input.length - 1; i >= 0; i--) {
+    const v = input[i];
+    out[i] = ((v << 1) & 0xff) | carry;
+    carry = (v & 0x80) ? 1 : 0;
+  }
+  return out;
+}
+
+function generateSubkey(L: Buffer): Buffer {
+  const Rb = Buffer.from("00000000000000000000000000000087", "hex");
+  const msbSet = (L[0] & 0x80) !== 0;
+  let K = leftShiftOneBit(L);
+  if (msbSet) K = xor(K, Rb);
+  return K;
+}
+==== apps/api/src/lib/crypto/sdm.ts
+import { aes128CbcDecrypt, aes128CbcEncrypt, aesCmac, bufToHex, hexToBuf, truncateMac8 } from "./aes";
+
+export type SunVerifyResult =
+  | { ok: true; uidHex: string; ctr: number; encPlainHex?: string }
+  | { ok: false; reason: string };
+
+export function verifySun(params: {
+  piccDataHex: string;
+  encHex: string;
+  cmacHex: string;
+  kMetaHex: string;
+  kFileHex: string;
+}): SunVerifyResult {
+  const zeroIV = Buffer.alloc(16, 0x00);
+  const piccEnc = hexToBuf(params.piccDataHex);
+  const enc = hexToBuf(params.encHex);
+
+  const kMeta = Buffer.from(params.kMetaHex, "hex");
+  const kFile = Buffer.from(params.kFileHex, "hex");
+
+  if (piccEnc.length % 16 !== 0) return { ok: false, reason: "picc_data bad length" };
+  const picc = aes128CbcDecrypt(kMeta, zeroIV, piccEnc);
+
+  const tag = picc[0];
+  const uidLen = tag & 0x0f;
+  if (uidLen < 4 || uidLen > 10) return { ok: false, reason: "uid length invalid" };
+
+  const uid = picc.subarray(1, 1 + uidLen);
+  const ctrBytes = picc.subarray(1 + uidLen, 1 + uidLen + 3);
+  const ctr = ctrBytes[0] + (ctrBytes[1] << 8) + (ctrBytes[2] << 16);
+
+  const sv1 = Buffer.concat([Buffer.from("C33C00010080", "hex"), uid, ctrBytes]);
+  const sv2 = Buffer.concat([Buffer.from("3CC300010080", "hex"), uid, ctrBytes]);
+  const kSesEnc = aesCmac(kFile, sv1);
+  const kSesMac = aesCmac(kFile, sv2);
+
+  const msg = Buffer.from(params.encHex.toUpperCase() + "&cmac=", "ascii");
+  const full = aesCmac(kSesMac, msg);
+  const expected = truncateMac8(full);
+
+  if (expected.toString("hex").toUpperCase() !== params.cmacHex.toUpperCase()) {
+    return { ok: false, reason: "cmac mismatch" };
+  }
+
+  let encPlainHex: string | undefined;
+  if (enc.length % 16 === 0) {
+    const iveInput = Buffer.concat([ctrBytes, Buffer.alloc(13, 0x00)]);
+    const ive = aes128CbcEncrypt(kSesEnc, zeroIV, iveInput);
+    const encPlain = aes128CbcDecrypt(kSesEnc, ive, enc);
+    encPlainHex = bufToHex(encPlain);
+  }
+
+  return { ok: true, uidHex: bufToHex(uid), ctr, encPlainHex };
+}
+==== apps/api/src/lib/db.ts
+import { neon } from "@neondatabase/serverless";
+
+function getSql() {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("DATABASE_URL is not set");
+  }
+  return neon(url);
+}
+
+export function sql(strings: TemplateStringsArray, ...values: unknown[]) {
+  return getSql()(strings, ...values);
+}
+==== apps/api/src/lib/http.ts
+export function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+==== apps/api/src/lib/keys.ts
+import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+
+function kmsKey(): Buffer {
+  const hex = process.env.KMS_MASTER_KEY_HEX;
+  if (!hex) throw new Error("KMS_MASTER_KEY_HEX is not set");
+  const key = Buffer.from(hex, "hex");
+  if (key.length !== 32) throw new Error("KMS_MASTER_KEY_HEX must be 32 bytes hex (64 chars)");
+  return key;
+}
+
+export function encryptKey16(key16: Buffer): string {
+  if (key16.length !== 16) throw new Error("key must be 16 bytes");
+  const key = kmsKey();
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const ct = Buffer.concat([cipher.update(key16), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, ct]).toString("base64");
+}
+
+export function decryptKey16(b64: string): Buffer {
+  const raw = Buffer.from(b64, "base64");
+  const iv = raw.subarray(0, 12);
+  const tag = raw.subarray(12, 28);
+  const ct = raw.subarray(28);
+  const decipher = createDecipheriv("aes-256-gcm", kmsKey(), iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(ct), decipher.final()]);
+}

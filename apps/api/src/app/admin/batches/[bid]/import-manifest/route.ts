@@ -1,3 +1,6 @@
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 import { parse } from "csv-parse/sync";
 import { sql } from "../../../../../lib/db";
 import { checkAdmin } from "../../../../../lib/auth";

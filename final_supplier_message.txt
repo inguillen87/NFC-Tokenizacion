@@ -1,0 +1,31 @@
+Hello Echo,
+
+Please proceed with the first sample order as follows:
+- 300 encoded samples only
+- no blank tags in this first shipment
+
+Use case:
+- wine bottle seals / closures
+- pilot for a winery in Mendoza, Argentina
+- curved glass / neck / capsule application
+- humidity and cellar conditions
+
+Please use the same sample keys already shared and this exact NDEF URL format:
+https://api.inmov.ar/sun/?v=1&bid=DEMO-2026-02&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000
+
+Please keep:
+- bid fixed as DEMO-2026-02
+- picc_data = dynamic PICC data
+- enc = dynamic encrypted SDM file data
+- cmac = dynamic SUN/SDM MAC
+
+Please include the CSV manifest before shipment with:
+batch_id, uid_hex, ic_type, roll_id, qc_status, timestamp
+
+Please confirm:
+- lead time
+- freight cost to Argentina
+- adhesive/material suitable for wine bottle neck/capsule application
+
+Best regards,
+Marcelo

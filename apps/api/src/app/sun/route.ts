@@ -1,3 +1,6 @@
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 import { sql } from "../../lib/db";
 import { decryptKey16 } from "../../lib/keys";
 import { verifySun } from "../../lib/crypto/sdm";
