@@ -12,9 +12,7 @@ export async function POST(req: Request) {
     ? body.uids.map((x: unknown) => String(x).toUpperCase())
     : [];
 
-  if (!bid || uids.length === 0) {
-    return json({ ok: false, reason: "bid and uids required" }, 400);
-  }
+  if (!bid || uids.length === 0) return json({ ok: false, reason: "bid and uids required" }, 400);
 
   const batchRows = await sql/*sql*/`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
   const batch = batchRows[0];

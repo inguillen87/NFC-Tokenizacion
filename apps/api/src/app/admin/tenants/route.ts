@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
-  const body = await req.json().catch(() => ({}));
+  const body: Record<string, unknown> = await req.json().catch(() => ({}));
   const slug = String(body.slug || "").toLowerCase();
   const name = String(body.name || "");
   if (!slug || !name) return json({ ok: false, reason: "slug and name required" }, 400);

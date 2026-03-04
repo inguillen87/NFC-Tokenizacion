@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
-  const body = await req.json().catch(() => ({}));
+  const body: Record<string, unknown> = await req.json().catch(() => ({}));
   const tenantSlug = String(body.tenant_slug || "").toLowerCase();
   const bid = String(body.bid || "");
   if (!tenantSlug || !bid) return json({ ok: false, reason: "tenant_slug and bid required" }, 400);

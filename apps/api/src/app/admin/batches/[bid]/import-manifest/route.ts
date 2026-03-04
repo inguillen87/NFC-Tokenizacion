@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const raw = await req.text();
   if (!raw.trim()) return json({ ok: false, reason: "empty csv body" }, 400);
 
-  const rows = parse(raw, { columns: true, skip_empty_lines: true });
+  const rows = parse(raw, { columns: true, skip_empty_lines: true }) as Array<Record<string, string>>;
   let inserted = 0;
 
   for (const row of rows) {
