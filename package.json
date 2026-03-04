@@ -1,0 +1,17 @@
+{
+  "name": "product-identity-platform",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w apps/web",
+    "dev:dashboard": "npm run dev -w apps/dashboard",
+    "dev:api": "npm run dev -w apps/api",
+    "build:web": "npm run build -w apps/web",
+    "build:dashboard": "npm run build -w apps/dashboard",
+    "build:api": "npm run build -w apps/api"
+  }
+}

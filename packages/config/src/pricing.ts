@@ -1,0 +1,47 @@
+export const pricingPlans = [
+  {
+    slug: "basic",
+    name: "Basic",
+    badge: "NTAG215",
+    description: "Marketing tags, events, loyalty and basic product follow-up.",
+    monthlyLabel: "Desde USD 99 / mes",
+    unitExample: "10k unidades a USD 0.01 - 0.015 por unidad",
+    features: [
+      "Scan logs",
+      "Dashboard basico",
+      "Experiencias tap to web",
+      "Sin antifraude criptografico",
+    ],
+  },
+  {
+    slug: "secure",
+    name: "Secure",
+    badge: "NTAG 424 DNA TT",
+    description: "SUN verification, anti-clone, tamper awareness and secure batches.",
+    monthlyLabel: "Desde USD 200 / 10k activos",
+    unitExample: "Ejemplo: 10.000 botellas x USD 0.02 = USD 200",
+    features: [
+      "SUN validation",
+      "Manifest allowlist",
+      "Duplicate alerts",
+      "Batch keys",
+      "Tamper workflows",
+    ],
+  },
+  {
+    slug: "enterprise",
+    name: "Enterprise",
+    badge: "White label",
+    description: "Reseller, branding, APIs, SLA and digital identity layer.",
+    monthlyLabel: "Custom",
+    unitExample: "Pricing segun SLA, volumen y modulo reseller",
+    features: [
+      "Reseller panel",
+      "White label",
+      "API keys",
+      "Webhooks",
+      "Tokenization layer",
+      "SLA y soporte",
+    ],
+  },
+];
