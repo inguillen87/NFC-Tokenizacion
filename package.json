@@ -7,16 +7,15 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:web": "npm run dev -w apps/web",
-    "dev:dashboard": "npm run dev -w apps/dashboard",
-    "dev:api": "npm run dev -w apps/api",
-    "build:web": "npm run build -w apps/web",
-    "build:dashboard": "npm run build -w apps/dashboard",
-    "build:api": "npm run build -w apps/api",
-    "build": "pnpm -r build",
-    "dev": "pnpm --parallel --filter web --filter dashboard --filter api dev"
+    "dev:web": "npm run dev --workspace=web",
+    "dev:dashboard": "npm run dev --workspace=dashboard",
+    "dev:api": "npm run dev --workspace=api",
+    "build:web": "npm run build --workspace=web",
+    "build:dashboard": "npm run build --workspace=dashboard",
+    "build:api": "npm run build --workspace=api",
+    "build": "npm run build --workspaces --if-present"
   },
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "npm@10.9.0",
   "engines": {
     "node": ">=20.11.1"
   }

@@ -15,8 +15,8 @@
     "framer-motion": "^11.11.17",
     "lucide-react": "^0.468.0",
     "clsx": "^2.1.1",
-    "@product/ui": "workspace:*",
-    "@product/config": "workspace:*"
+    "@product/ui": "file:../../packages/ui",
+    "@product/config": "file:../../packages/config"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
