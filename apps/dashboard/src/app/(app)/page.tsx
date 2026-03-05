@@ -28,13 +28,14 @@ export default async function DashboardHome() {
       <AnalyticsPanels kpis={t.dashboard.kpis} />
 
       <ModuleGrid
+        actionLabel={copy.shell.openModule}
         modules={[
-          { title: copy.pages.tenants.title, description: copy.pages.tenants.description, href: "/tenants", status: "active" },
-          { title: copy.pages.batches.title, description: copy.pages.batches.description, href: "/batches", status: "active" },
-          { title: copy.pages.tags.title, description: copy.pages.tags.description, href: "/tags", status: "active" },
-          { title: copy.pages.events.title, description: copy.pages.events.description, href: "/events", status: "active" },
-          { title: copy.pages.resellers.title, description: copy.pages.resellers.description, href: "/resellers", status: "active" },
-          { title: copy.pages.apiKeys.title, description: copy.pages.apiKeys.description, href: "/api-keys", status: "pending" },
+          { title: copy.pages.tenants.title, description: copy.pages.tenants.description, href: "/tenants", status: copy.statuses.active },
+          { title: copy.pages.batches.title, description: copy.pages.batches.description, href: "/batches", status: copy.statuses.active },
+          { title: copy.pages.tags.title, description: copy.pages.tags.description, href: "/tags", status: copy.statuses.active },
+          { title: copy.pages.events.title, description: copy.pages.events.description, href: "/events", status: copy.statuses.active },
+          { title: copy.pages.resellers.title, description: copy.pages.resellers.description, href: "/resellers", status: copy.statuses.active },
+          { title: copy.pages.apiKeys.title, description: copy.pages.apiKeys.description, href: "/api-keys", status: copy.statuses.pending },
         ]}
       />
 
@@ -52,6 +53,8 @@ export default async function DashboardHome() {
         loadingLabel={copy.shell.loading}
         emptyLabel={copy.shell.empty}
         searchPlaceholder={copy.shell.search}
+        allFilterLabel={copy.shell.all}
+        refreshLabel={copy.shell.refresh}
       />
 
       <Card className="p-6">
@@ -59,7 +62,7 @@ export default async function DashboardHome() {
         <p className="mt-2 text-sm text-slate-400">Forms stay wired to deployed admin API routes for import manifest, activation flow and revoke batch operations.</p>
       </Card>
 
-      <AdminActionForms copy={t.dashboard.forms} />
+      <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} />
     </main>
   );
 }

@@ -3,7 +3,7 @@ import type { AppLocale } from "@product/config";
 export type UserRole = "super-admin" | "tenant-admin" | "reseller" | "viewer";
 
 type DashboardContent = {
-  shell: { subtitle: string; search: string; role: string; logout: string; apiConnected: string; loading: string; empty: string };
+  shell: { subtitle: string; search: string; role: string; logout: string; apiConnected: string; loading: string; empty: string; all: string; refresh: string; openModule: string; ready: string };
   nav: { overview: string; tenants: string; batches: string; tags: string; analytics: string; events: string; resellers: string; subscriptions: string; apiKeys: string };
   pages: {
     overview: { title: string; description: string };
@@ -29,7 +29,7 @@ export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> 
 
 export const dashboardContent: Record<AppLocale, DashboardContent> = {
   "es-AR": {
-    shell: { subtitle: "Control multi-tenant enterprise", search: "Buscar...", role: "Rol", logout: "Salir", apiConnected: "API conectada", loading: "Cargando...", empty: "Sin resultados" },
+    shell: { subtitle: "Control multi-tenant enterprise", search: "Buscar...", role: "Rol", logout: "Salir", apiConnected: "API conectada", loading: "Cargando...", empty: "Sin resultados", all: "Todos", refresh: "Actualizar", openModule: "Abrir módulo", ready: "Listo." },
     nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", subscriptions: "Suscripciones", apiKeys: "API Keys" },
     pages: {
       overview: { title: "Overview operativo", description: "KPIs críticos de autenticación, fraude y operación de lotes." },
@@ -46,7 +46,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
     statuses: { active: "Activo", pending: "Pendiente", revoked: "Revocado", healthy: "Sano", risk: "Riesgo", draft: "Borrador" },
   },
   "pt-BR": {
-    shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "API conectada", loading: "Carregando...", empty: "Sem resultados" },
+    shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "API conectada", loading: "Carregando...", empty: "Sem resultados", all: "Todos", refresh: "Atualizar", openModule: "Abrir módulo", ready: "Pronto." },
     nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", subscriptions: "Assinaturas", apiKeys: "API Keys" },
     pages: {
       overview: { title: "Overview operacional", description: "KPIs críticos de autenticação, fraude e lotes." },
@@ -63,7 +63,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
     statuses: { active: "Ativo", pending: "Pendente", revoked: "Revogado", healthy: "Saudável", risk: "Risco", draft: "Rascunho" },
   },
   en: {
-    shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "API connected", loading: "Loading...", empty: "No results" },
+    shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "API connected", loading: "Loading...", empty: "No results", all: "All", refresh: "Refresh", openModule: "Open module", ready: "Ready." },
     nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", subscriptions: "Subscriptions", apiKeys: "API Keys" },
     pages: {
       overview: { title: "Operational overview", description: "Critical authentication, fraud and batch KPIs." },

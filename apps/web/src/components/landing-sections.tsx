@@ -4,8 +4,16 @@ import Link from "next/link";
 import type { LandingContent } from "../lib/landing-content";
 
 type Content = LandingContent;
+type StatsCopy = {
+  latency: string;
+  unitEconomics: string;
+  businessModel: string;
+  latencyDelta: string;
+  economicsDelta: string;
+  businessDelta: string;
+};
 
-export function HeroSection({ content }: { content: Content }) {
+export function HeroSection({ content, stats }: { content: Content; stats: StatsCopy }) {
   return (
     <section className="container-shell py-20 md:py-28">
       <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
@@ -23,10 +31,9 @@ export function HeroSection({ content }: { content: Content }) {
 
         <Card className="hero-glow animate-card-shift p-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard label="API latency target" value="<150ms" delta="P95" tone="good" />
-            <StatCard label="Secure cost example" value="USD 0.02" delta="10k units" />
-            <StatCard label="Scan intelligence" value="22.4k" delta="weekly sample" />
-            <StatCard label="Business rail" value="HW + SaaS" delta="Identity premium" tone="good" />
+            <StatCard label={stats.latency} value="<150ms" delta={stats.latencyDelta} tone="good" />
+            <StatCard label={stats.unitEconomics} value="USD 0.02" delta={stats.economicsDelta} />
+            <StatCard label={stats.businessModel} value="HW + SaaS" delta={stats.businessDelta} tone="good" />
           </div>
         </Card>
       </div>

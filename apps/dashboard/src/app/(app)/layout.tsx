@@ -3,12 +3,12 @@ import { dashboardContent } from "../../lib/dashboard-content";
 import { DashboardShell } from "../../components/dashboard-shell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { locale, locales } = await getDashboardI18n();
+  const { locale, locales, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
 
   return (
     <DashboardShell
-      title="NFC Identity Cloud"
+      title={t.dashboard.title}
       subtitle={copy.shell.subtitle}
       nav={copy.nav}
       roles={copy.roles}

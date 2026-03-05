@@ -7,6 +7,8 @@ import { postAdmin } from "../lib/api";
 type Role = "super-admin" | "tenant-admin" | "reseller" | "viewer";
 
 type AdminActionFormsProps = {
+  roles: Record<Role, string>;
+  readyLabel: string;
   copy: {
     roleHeading: string;
     roleHint: Record<Role, string>;
@@ -38,16 +40,9 @@ type AdminActionFormsProps = {
   };
 };
 
-const roles: Array<{ value: Role; label: string }> = [
-  { value: "super-admin", label: "Super Admin" },
-  { value: "tenant-admin", label: "Tenant Admin" },
-  { value: "reseller", label: "Reseller" },
-  { value: "viewer", label: "Viewer" },
-];
-
-export function AdminActionForms({ copy }: AdminActionFormsProps) {
+export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
   const [role, setRole] = useState<Role>("super-admin");
-  const [status, setStatus] = useState<string>("Ready.");
+  const [status, setStatus] = useState<string>(readyLabel);
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
   const [batch, setBatch] = useState({ tenantId: "", batchId: "", sku: "", quantity: "" });
@@ -80,9 +75,9 @@ export function AdminActionForms({ copy }: AdminActionFormsProps) {
           value={role}
           onChange={(event) => setRole(event.target.value as Role)}
         >
-          {roles.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
+          {Object.entries(roles).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
             </option>
           ))}
         </select>

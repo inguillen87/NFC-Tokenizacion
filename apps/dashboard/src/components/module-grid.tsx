@@ -3,8 +3,10 @@ import { Card, Badge } from "@product/ui";
 
 export function ModuleGrid({
   modules,
+  actionLabel,
 }: {
   modules: Array<{ title: string; description: string; href: string; status: string }>;
+  actionLabel: string;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -16,7 +18,7 @@ export function ModuleGrid({
           </div>
           <p className="mt-2 text-sm text-slate-400">{module.description}</p>
           <Link href={module.href} className="mt-4 inline-flex text-xs font-semibold uppercase tracking-wide text-cyan-300">
-            Open module
+            {actionLabel}
           </Link>
         </Card>
       ))}
