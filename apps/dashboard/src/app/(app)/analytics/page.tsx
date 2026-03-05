@@ -4,5 +4,17 @@ import { getDashboardI18n } from "../../../lib/locale";
 
 export default async function AnalyticsPage() {
   const { t } = await getDashboardI18n();
-  return <main><SectionHeading eyebrow={t.dashboard.analytics} title="Scan intelligence" description="Valid/invalid, duplicate and tamper trends with geo footprint." /><div className="mt-8"><AnalyticsPanels title="Security telemetry" /></div></main>;
+
+  return (
+    <main>
+      <SectionHeading
+        eyebrow={t.dashboard.analytics}
+        title={t.dashboard.analyticsTitle}
+        description={t.dashboard.analyticsDescription}
+      />
+      <div className="mt-8">
+        <AnalyticsPanels kpis={t.dashboard.kpis} />
+      </div>
+    </main>
+  );
 }

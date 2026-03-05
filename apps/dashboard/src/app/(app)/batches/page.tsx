@@ -1,6 +1,20 @@
 import { SectionHeading } from "@product/ui";
 import { AdminActionForms } from "../../../components/admin-action-forms";
+import { getDashboardI18n } from "../../../lib/locale";
 
-export default function BatchesPage() {
-  return <main><SectionHeading eyebrow="Batches" title="Batch lifecycle" description="Create, import CSV manifest, activate tags and revoke compromised lots." /><div className="mt-8"><AdminActionForms title="Batch operations" /></div></main>;
+export default async function BatchesPage() {
+  const { t } = await getDashboardI18n();
+
+  return (
+    <main>
+      <SectionHeading
+        eyebrow={t.dashboard.batches}
+        title={t.dashboard.batchLifecycleTitle}
+        description={t.dashboard.batchLifecycleDescription}
+      />
+      <div className="mt-8">
+        <AdminActionForms copy={t.dashboard.forms} />
+      </div>
+    </main>
+  );
 }
