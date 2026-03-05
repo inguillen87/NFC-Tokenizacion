@@ -1,22 +1,17 @@
 import { Card, SectionHeading } from "@product/ui";
+import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
 
 export default async function DocsPage() {
-  const { t } = await getWebI18n();
+  const { locale } = await getWebI18n();
+  const content = landingContent[locale];
 
   return (
     <main className="container-shell py-16">
-      <SectionHeading
-        eyebrow={t.web.sections.docsEyebrow}
-        title={t.web.sections.docsTitle}
-        description={t.web.sections.docsDescription}
-      />
-
+      <SectionHeading eyebrow={content.api.eyebrow} title={content.api.title} description={content.api.description} />
       <Card className="mt-8 p-6">
         <ul className="space-y-2 text-sm text-slate-300">
-          {t.web.docsList.map((entry) => (
-            <li key={entry}>• {entry}</li>
-          ))}
+          {content.docsList.map((entry) => <li key={entry}>• {entry}</li>)}
         </ul>
       </Card>
     </main>
