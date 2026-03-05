@@ -13,14 +13,13 @@ export default function Home() {
         <p style={{ fontSize: 12, letterSpacing: ".2em", textTransform: "uppercase", color: "#22d3ee" }}>Inmovar Identity Rail · API Gateway</p>
         <h1 style={{ marginTop: 8, fontSize: 32, color: "#fff" }}>Authentication backend online</h1>
         <p style={{ marginTop: 8, color: "#94a3b8" }}>
-          This deployment is the backend gateway for SUN validation, batch lifecycle and admin operations.
+          This deployment is the backend gateway for SUN validation and secure product authentication services.
         </p>
 
         <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <a href="/health/" style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 10, padding: "10px 14px", color: "#fff", textDecoration: "none" }}>/health/</a>
           <a href="/sun/" style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 10, padding: "10px 14px", color: "#fff", textDecoration: "none" }}>/sun/</a>
-          <a href="/admin/tenants/" style={{ border: "1px solid rgba(34,211,238,.4)", borderRadius: 10, padding: "10px 14px", color: "#22d3ee", textDecoration: "none" }}>/admin/tenants/</a>
-          <a href="/admin/batches/" style={{ border: "1px solid rgba(34,211,238,.4)", borderRadius: 10, padding: "10px 14px", color: "#22d3ee", textDecoration: "none" }}>/admin/batches/</a>
+          <a href={webUrl || "https://www.tudominio.com"} style={{ border: "1px solid rgba(34,211,238,.4)", borderRadius: 10, padding: "10px 14px", color: "#22d3ee", textDecoration: "none" }}>Open platform</a>
         </div>
 
         <p style={{ marginTop: 16, fontSize: 13, color: "#94a3b8" }}>
