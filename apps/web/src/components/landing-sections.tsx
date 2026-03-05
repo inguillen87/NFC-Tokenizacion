@@ -1,4 +1,4 @@
-import { Badge, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
+import { Badge, BrandDot, BrandLockup, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
 import Link from "next/link";
 
 import type { LandingContent } from "../lib/landing-content";
@@ -18,7 +18,11 @@ export function HeroSection({ content, stats }: { content: Content; stats: Stats
     <section className="container-shell py-20 md:py-28">
       <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
         <div>
-          <Badge tone="cyan">{content.hero.badge}</Badge>
+          <div className="flex items-center gap-3">
+            <BrandLockup size={34} variant="pulse" theme="dark" />
+            <BrandDot size={10} variant="ripple" theme="dark" />
+          </div>
+          <div className="mt-4"><Badge tone="cyan">{content.hero.badge}</Badge></div>
           <h1 className="mt-6 max-w-4xl text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">{content.hero.body}</p>
 
