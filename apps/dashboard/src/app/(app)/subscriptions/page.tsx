@@ -16,7 +16,7 @@ export default async function SubscriptionsPage() {
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.subscriptions} title={copy.pages.subscriptions.title} description={copy.pages.subscriptions.description} />
-      <DataTable title="Subscriptions" columns={[{ key: "tenant", label: "Tenant" }, { key: "plan", label: "Plan" }, { key: "status", label: "Status" }, { key: "renewal", label: "Renewal" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} />
+      <DataTable title={copy.tables.subscriptions.title} columns={[{ key: "tenant", label: copy.tables.subscriptions.tenant }, { key: "plan", label: copy.tables.subscriptions.plan }, { key: "status", label: copy.tables.subscriptions.status }, { key: "renewal", label: copy.tables.subscriptions.renewal }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
     </main>
   );
 }

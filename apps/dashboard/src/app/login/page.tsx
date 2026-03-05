@@ -28,13 +28,14 @@ export default async function LoginPage() {
                 ))}
               </select>
               <Link href="/">
-                <Button className="w-full">{t.common.login}</Button>
+                <Button className="w-full">{copy.auth.loginAction}</Button>
               </Link>
             </div>
 
             <div className="mt-4 flex justify-between text-xs">
               <Link href="/register" className="text-cyan-300">{t.common.register}</Link>
               <Link href="/forgot-password" className="text-cyan-300">{t.dashboard.forgotPassword}</Link>
+              <Link href="/invite-user" className="text-cyan-300">{copy.auth.inviteTitle}</Link>
             </div>
           </div>
         </div>
