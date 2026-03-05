@@ -1,4 +1,4 @@
-import { Card, SectionHeading } from "@product/ui";
+import { Button, Card, SectionHeading } from "@product/ui";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
 
@@ -7,16 +7,24 @@ export default async function ResellersPage() {
   const content = landingContent[locale];
 
   return (
-    <main className="container-shell py-16">
+    <main className="container-shell py-16 space-y-8">
       <SectionHeading eyebrow={content.reseller.eyebrow} title={content.reseller.title} description={content.reseller.description} />
-      <div className="mt-10 grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {content.reseller.cards.map((item) => (
           <Card key={item.title} className="p-6">
-            <h3 className="text-white">{item.title}</h3>
+            <h3 className="text-white text-lg font-semibold">{item.title}</h3>
             <p className="mt-2 text-sm text-slate-400">{item.body}</p>
           </Card>
         ))}
       </div>
+      <Card className="p-6">
+        <SectionHeading eyebrow={content.credibility.eyebrow} title={content.credibility.title} description={content.credibility.description} />
+        <ul className="mt-4 space-y-2 text-sm text-slate-300">{content.credibility.items.map((i) => <li key={i}>• {i}</li>)}</ul>
+        <div className="mt-6 flex gap-3">
+          <Button>{content.cta.primary}</Button>
+          <Button variant="secondary">{content.cta.secondary}</Button>
+        </div>
+      </Card>
     </main>
   );
 }

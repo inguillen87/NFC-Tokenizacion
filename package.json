@@ -13,7 +13,11 @@
     "build:web": "npm run build --workspace=web",
     "build:dashboard": "npm run build --workspace=dashboard",
     "build:api": "npm run build --workspace=api",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "db:new": "npm run db:new --workspace=api --",
+    "db:migrate": "npm run db:migrate --workspace=api",
+    "db:seed": "npm run db:seed --workspace=api",
+    "db:reset:local": "npm run db:reset:local --workspace=api"
   },
   "packageManager": "npm@10.9.0",
   "engines": {
