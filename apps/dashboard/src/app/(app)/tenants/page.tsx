@@ -17,7 +17,7 @@ export default async function TenantsPage() {
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.tenants} title={copy.pages.tenants.title} description={copy.pages.tenants.description} />
-      <DataTable title="Tenants" columns={[{ key: "name", label: "Name" }, { key: "plan", label: "Plan" }, { key: "status", label: "Status" }, { key: "country", label: "Country" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} />
+      <DataTable title="Tenants" columns={[{ key: "name", label: "Name" }, { key: "plan", label: "Plan" }, { key: "status", label: "Status" }, { key: "country", label: "Country" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} />
     </main>
   );
 }

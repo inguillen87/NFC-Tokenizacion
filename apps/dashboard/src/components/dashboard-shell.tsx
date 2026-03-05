@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Badge } from "@product/ui";
+import { Badge, LocaleSwitcher } from "@product/ui";
+import type { AppLocale } from "@product/config";
 import type { UserRole } from "../lib/dashboard-content";
 import { roleAccess } from "../lib/dashboard-content";
 
@@ -15,6 +16,8 @@ export function DashboardShell({
   nav,
   roles,
   shell,
+  locale,
+  locales,
   children,
 }: {
   title: string;
@@ -22,6 +25,8 @@ export function DashboardShell({
   nav: Record<NavKey, string>;
   roles: Record<UserRole, string>;
   shell: { search: string; role: string; logout: string; apiConnected: string };
+  locale: AppLocale;
+  locales: readonly AppLocale[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -42,7 +47,7 @@ export function DashboardShell({
 
   return (
     <div className="min-h-screen bg-slate-950 text-white lg:flex">
-      <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-slate-950/80 p-5 lg:block">
+      <aside className="w-full border-b border-white/10 bg-slate-950/90 p-4 lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r lg:p-5">
         <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-white">
           <div className="text-sm font-semibold">{title}</div>
           <div className="mt-1 text-xs text-slate-400">{subtitle}</div>
@@ -58,7 +63,7 @@ export function DashboardShell({
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={shell.search} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" />
         </div>
 
-        <nav className="mt-6 space-y-1">
+        <nav className="mt-6 grid grid-cols-2 gap-1 lg:block lg:space-y-1">
           {items.map((item) => (
             <Link key={item.href} href={item.href} className={`block rounded-xl px-3 py-2 text-sm transition ${pathname === item.href ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
               {item.label}
@@ -76,6 +81,7 @@ export function DashboardShell({
             </div>
             <div className="flex items-center gap-2">
               <Badge tone="green">{shell.apiConnected}</Badge>
+              <LocaleSwitcher value={locale} options={[...locales]} />
               <Link href="/login" className="rounded-lg border border-white/10 px-3 py-2 text-xs">{shell.logout}</Link>
             </div>
           </div>

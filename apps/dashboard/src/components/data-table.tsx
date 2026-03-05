@@ -12,6 +12,9 @@ export function DataTable({
   filterKey,
   loadingLabel,
   emptyLabel,
+  searchPlaceholder = "Search",
+  allFilterLabel = "All",
+  refreshLabel = "Refresh",
 }: {
   title: string;
   columns: Array<{ key: string; label: string }>;
@@ -19,6 +22,9 @@ export function DataTable({
   filterKey: string;
   loadingLabel: string;
   emptyLabel: string;
+  searchPlaceholder?: string;
+  allFilterLabel?: string;
+  refreshLabel?: string;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -41,12 +47,12 @@ export function DataTable({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-white">{title}</h3>
         <div className="flex items-center gap-2">
-          <input placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm" />
+          <input placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm" />
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
-            <option value="all">All</option>
+            <option value="all">{allFilterLabel}</option>
             {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
-          <Button variant="secondary" onClick={async () => { setLoading(true); await new Promise((r) => setTimeout(r, 500)); setLoading(false); }}>Refresh</Button>
+          <Button variant="secondary" onClick={async () => { setLoading(true); await new Promise((r) => setTimeout(r, 500)); setLoading(false); }}>{refreshLabel}</Button>
         </div>
       </div>
 
@@ -65,7 +71,7 @@ export function DataTable({
                 <tr key={`${idx}-${row[columns[0].key]}`} className="border-b border-white/5">
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3 text-slate-200">
-                      {col.key === filterKey ? <Badge tone={row[col.key] === "active" || row[col.key] === "healthy" ? "green" : row[col.key] === "pending" || row[col.key] === "draft" ? "amber" : "default"}>{row[col.key]}</Badge> : row[col.key]}
+                      {col.key === filterKey ? <Badge tone={row[col.key] === "active" || row[col.key] === "healthy" || row[col.key] === "valid" ? "green" : row[col.key] === "pending" || row[col.key] === "draft" ? "amber" : "default"}>{row[col.key]}</Badge> : row[col.key]}
                     </td>
                   ))}
                 </tr>
