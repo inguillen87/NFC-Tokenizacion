@@ -1,12 +1,22 @@
-import { Card, SectionHeading } from "@product/ui";
+import { SectionHeading } from "@product/ui";
+import { DataTable } from "../../../components/data-table";
+import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 
+const rows = [
+  { profile: "NTAG215", status: "active", inventory: "54,200", activation: "92%" },
+  { profile: "NTAG 424 DNA TT", status: "active", inventory: "21,400", activation: "87%" },
+  { profile: "TagTamper Seal", status: "pending", inventory: "8,000", activation: "0%" },
+];
+
 export default async function TagsPage() {
-  const { t } = await getDashboardI18n();
+  const { locale } = await getDashboardI18n();
+  const copy = dashboardContent[locale];
+
   return (
-    <main>
-      <SectionHeading eyebrow={t.dashboard.tags} title={t.dashboard.tagsTitle} description={t.dashboard.tagsDescription} />
-      <Card className="mt-8 p-6"><p className="text-sm text-slate-300">Activation queue, secure profile mix and throughput monitoring.</p></Card>
+    <main className="space-y-8">
+      <SectionHeading eyebrow={copy.nav.tags} title={copy.pages.tags.title} description={copy.pages.tags.description} />
+      <DataTable title="Tag profiles" columns={[{ key: "profile", label: "Profile" }, { key: "status", label: "Status" }, { key: "inventory", label: "Inventory" }, { key: "activation", label: "Activation" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} />
     </main>
   );
 }

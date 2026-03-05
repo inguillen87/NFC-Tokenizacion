@@ -1,21 +1,22 @@
-import { Card, SectionHeading } from "@product/ui";
+import { SectionHeading } from "@product/ui";
+import { DataTable } from "../../../components/data-table";
+import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 
+const rows = [
+  { reseller: "Agency South", status: "active", clients: "14", revenue: "USD 18,200" },
+  { reseller: "Pack Converter One", status: "active", clients: "8", revenue: "USD 12,900" },
+  { reseller: "Regional Dist LATAM", status: "pending", clients: "5", revenue: "USD 9,100" },
+];
+
 export default async function ResellersPage() {
-  const { t } = await getDashboardI18n();
+  const { locale } = await getDashboardI18n();
+  const copy = dashboardContent[locale];
 
   return (
-    <main>
-      <SectionHeading
-        eyebrow={t.common.resellers}
-        title={t.dashboard.resellersTitle}
-        description={t.dashboard.resellersDescription}
-      />
-      <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        <Card className="p-6"><h3 className="text-white">Agency channel</h3><p className="mt-2 text-sm text-slate-400">Campaign-focused premium onboarding.</p></Card>
-        <Card className="p-6"><h3 className="text-white">Packaging converter</h3><p className="mt-2 text-sm text-slate-400">Secure-tag manufacturing integration.</p></Card>
-        <Card className="p-6"><h3 className="text-white">Regional distributor</h3><p className="mt-2 text-sm text-slate-400">Enterprise anti-fraud rollouts by geography.</p></Card>
-      </div>
+    <main className="space-y-8">
+      <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description={copy.pages.resellers.description} />
+      <DataTable title="Reseller performance" columns={[{ key: "reseller", label: "Reseller" }, { key: "status", label: "Status" }, { key: "clients", label: "Clients" }, { key: "revenue", label: "Revenue" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} />
     </main>
   );
 }
