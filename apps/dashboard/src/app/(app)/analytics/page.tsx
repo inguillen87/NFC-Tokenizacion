@@ -1,11 +1,8 @@
 import { SectionHeading } from "@product/ui";
 import { AnalyticsPanels } from "../../../components/analytics-panels";
+import { getDashboardI18n } from "../../../lib/locale";
 
-export default function AnalyticsPage() {
-  return (
-    <main>
-      <SectionHeading eyebrow="Analytics" title="Scans, duplicates, tamper and geo" description="Monitoring UX for security teams and operations leadership." />
-      <div className="mt-8"><AnalyticsPanels /></div>
-    </main>
-  );
+export default async function AnalyticsPage() {
+  const { t } = await getDashboardI18n();
+  return <main><SectionHeading eyebrow={t.dashboard.analytics} title="Scan intelligence" description="Valid/invalid, duplicate and tamper trends with geo footprint." /><div className="mt-8"><AnalyticsPanels title="Security telemetry" /></div></main>;
 }

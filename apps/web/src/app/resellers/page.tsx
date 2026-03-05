@@ -1,15 +1,12 @@
-import Link from "next/link";
-import { Button, Card, SectionHeading } from "@product/ui";
+import { Card, SectionHeading } from "@product/ui";
+import { getWebI18n } from "../../lib/locale";
 
-export default function ResellersPage() {
+export default async function ResellersPage() {
+  const { t } = await getWebI18n();
   return (
     <main className="container-shell py-16">
-      <SectionHeading eyebrow="Channel" title="White-label reseller program" description="Enable agencies, converters and distributors with secure NFC infrastructure." />
-      <div className="mt-10 grid gap-6 md:grid-cols-2">
-        <Card className="p-6"><h3 className="text-white">Co-branded console</h3><p className="mt-2 text-slate-400 text-sm">Shared product identity operations under partner branding.</p></Card>
-        <Card className="p-6"><h3 className="text-white">Private-label mode</h3><p className="mt-2 text-slate-400 text-sm">Resellers can operate isolated tenant fleets with API controls.</p></Card>
-      </div>
-      <div className="mt-10"><Link href="/"><Button variant="secondary">Back</Button></Link></div>
+      <SectionHeading eyebrow={t.web.sections.reseller} title="White-label channel program" description="Agency, converter and distributor enablement with enterprise controls and SLA-ready operations." />
+      <div className="mt-10 grid gap-6 md:grid-cols-2"><Card className="p-6"><h3 className="text-white">Co-branded SaaS</h3><p className="mt-2 text-sm text-slate-400">Operate shared dashboards and analytics with controlled tenant boundaries.</p></Card><Card className="p-6"><h3 className="text-white">Private-label operations</h3><p className="mt-2 text-sm text-slate-400">Reseller-owned client lifecycle with your brand and our secure infrastructure.</p></Card></div>
     </main>
   );
 }

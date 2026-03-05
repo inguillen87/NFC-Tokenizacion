@@ -1,21 +1,9 @@
 import { Card, SectionHeading } from "@product/ui";
-import { AnalyticsPanels } from "../../components/analytics-panels";
 import { AdminActionForms } from "../../components/admin-action-forms";
+import { AnalyticsPanels } from "../../components/analytics-panels";
+import { getDashboardI18n } from "../../lib/locale";
 
-export default function DashboardHome() {
-  return (
-    <main className="space-y-8">
-      <SectionHeading
-        eyebrow="Control tower"
-        title="Enterprise NFC authentication operations"
-        description="Multi-tenant SaaS UX for onboarding, secure batch lifecycle and anti-fraud observability."
-      />
-      <AnalyticsPanels />
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold text-white">Operational forms</h2>
-        <p className="mt-2 text-sm text-slate-400">All write actions target existing admin API contracts without changing SUN backend behavior.</p>
-      </Card>
-      <AdminActionForms />
-    </main>
-  );
+export default async function DashboardHome() {
+  const { t } = await getDashboardI18n();
+  return <main className="space-y-8"><SectionHeading eyebrow={t.dashboard.overview} title={t.dashboard.title} description="Enterprise KPI and anti-fraud telemetry for secure NFC operations." /><AnalyticsPanels title="Scan, duplicate and tamper trend" /><Card className="p-6"><h2 className="text-lg font-semibold text-white">Admin actions</h2><p className="mt-2 text-sm text-slate-400">Wired to current API contracts.</p></Card><AdminActionForms title="Role-based operations" /></main>;
 }
