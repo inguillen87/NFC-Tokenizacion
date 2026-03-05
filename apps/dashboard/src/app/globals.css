@@ -2,7 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
   background: #020617;
   color: #f8fafc;
 }
@@ -10,4 +15,24 @@ html, body {
 body {
   min-height: 100vh;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
+  background-image:
+    radial-gradient(circle at 15% -5%, rgba(59, 130, 246, 0.2), transparent 25%),
+    radial-gradient(circle at 85% 0%, rgba(6, 182, 212, 0.16), transparent 30%),
+    linear-gradient(to right, rgba(30, 41, 59, 0.45) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 41, 59, 0.45) 1px, transparent 1px);
+  background-size: auto, auto, 28px 28px, 28px 28px;
+}
+
+input,
+textarea,
+select {
+  @apply outline-none;
+}
+
+.container-shell {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+.glass {
+  @apply border border-white/10 bg-slate-900/65 backdrop-blur-xl;
 }

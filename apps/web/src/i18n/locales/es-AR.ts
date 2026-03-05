@@ -1,0 +1,31 @@
+import type { WebCopy } from "../types";
+
+export const esAR: WebCopy = {
+  nav: { product: "Producto", pricing: "Planes", reseller: "Resellers", docs: "Docs", cta: "Dashboard", requestDemo: "Solicitar demo", by: "by" },
+  hero: {
+    badge: "NFC Authentication + Digital Product Identity",
+    title: "No vendemos solo tags NFC: operamos la plataforma de autenticación y trazabilidad.",
+    body: "Desde NTAG215 para campañas hasta NTAG 424 DNA TagTamper para antifraude de alto riesgo, con gateway API, analítica de escaneos y capa premium de identidad/tokenización.",
+    primary: "Solicitar demo enterprise",
+    secondary: "Ver arquitectura",
+    tertiary: "Ver pricing",
+    stats: [
+      { label: "API latency target", value: "<150ms", delta: "P95", tone: "good" },
+      { label: "Secure cost example", value: "USD 0.02", delta: "10k units" },
+      { label: "Scan intelligence", value: "22.4k", delta: "weekly sample" },
+      { label: "Business rail", value: "HW + SaaS", delta: "Identity premium", tone: "good" },
+    ],
+  },
+  what: { eyebrow: "Qué hace la plataforma", title: "Encoded tags + API gateway + antifraude + SaaS multi-tenant", description: "Infraestructura lista para marcas, resellers y operaciones internacionales con control extremo de lote y validación.", cards: [{ title: "Encoded secure tags", body: "Perfiles basic y secure, encodeo por lote y políticas de activación." }, { title: "Authentication gateway", body: "Validación, deduplicación, eventos y detección de comportamiento sospechoso." }, { title: "Traceability intelligence", body: "Taps geolocalizados, estados de lote y señales de riesgo en tiempo real." }] },
+  plans: { eyebrow: "Basic vs Secure vs Enterprise", title: "Packaging comercial para cada etapa", description: "Desde activaciones de marketing hasta autenticación crítica en exportación y pharma.", cards: [{ name: "BASIC", badge: "NTAG215", price: "Desde USD 99 / mes", body: "Eventos, marketing, loyalty y tracking simple.", bullets: ["Tap-to-web", "Scan analytics", "Sin criptografía SUN"], tone: "cyan" }, { name: "SECURE", badge: "NTAG 424 DNA TT", price: "Desde USD 200 / 10k", body: "Autenticación robusta para anti-counterfeit.", bullets: ["SUN validation", "Duplicate alerts", "Tamper intelligence"], tone: "cyan" }, { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Canal partner, SLA y operación multi-tenant avanzada.", bullets: ["Branding white-label", "API keys y webhooks", "Digital identity premium"], tone: "amber" }] },
+  secure: { eyebrow: "Por qué 424 TagTamper", title: "Capa secure para vino, cosmética y pharma", description: "NTAG 424 DNA TagTamper habilita autenticación dinámica, sensibilidad de manipulación y mejor resiliencia frente a clonación.", bullets: ["Challenge dinámico por tap", "Tamper signal para cierres y sellos", "Workflows de revocación por lote", "Trazabilidad anti-replay"] },
+  useCases: { eyebrow: "Verticales", title: "Casos de uso con ROI directo", description: "Diseñado para operaciones donde el fraude impacta margen, reputación y cumplimiento.", cards: [{ title: "Wine", body: "Autenticación de botella, export compliance y experiencia premium posventa." }, { title: "Cosmetics", body: "Protección de marca, serialización inteligente y activación de consumidor." }, { title: "Pharma", body: "Trazabilidad de producto y reducción de riesgo de falsificación." }, { title: "Events", body: "Credenciales seguras, engagement y analítica de asistencia." }] },
+  reseller: { eyebrow: "Canal", title: "Modelo reseller / white-label desde día uno", description: "Agencias, convertidores y distribuidores pueden operar su cartera sobre la infraestructura central.", cards: [{ title: "Co-branded operations", body: "Marca compartida, despliegue rápido y control centralizado." }, { title: "Private-label workspace", body: "Experiencia con marca partner y aislamiento por tenant." }] },
+  api: { eyebrow: "Developer-friendly", title: "Gateway API listo para integrar", description: "Contratos previsibles, endpoints administrativos y flujo de validación robusto para escalar sin fricción.", bullets: ["/health y /sun en producción", "/admin/tenants, /admin/batches y activación", "Logs/eventos para observabilidad", "Base para SDK y webhooks"] },
+  identity: { eyebrow: "Capa premium", title: "Digital identity / tokenization layer", description: "Cada producto puede evolucionar de autenticación a identidad digital persistente.", bullets: ["Ownership passport", "Warranty y lifecycle events", "Asset-grade records", "Tokenization-ready roadmap"] },
+  roi: { eyebrow: "ROI", title: "Lógica económica clara para dirección y ventas", description: "Combinamos revenue por hardware, SaaS y módulos premium para crecimiento sostenible.", metrics: [{ label: "Fraud loss reduction", value: "-30% a -70%", detail: "Según industria y nivel de adopción secure." }, { label: "Scan visibility", value: "+10x", detail: "Mayor granularidad de trazabilidad y operación." }, { label: "Margin expansion", value: "+8% a +18%", detail: "Por mezcla de secure + identidad digital." }] },
+  credibility: { eyebrow: "Investor-grade", title: "Credibilidad para enterprise buyers e inversores", description: "Narrativa respaldada por arquitectura, unit economics y estrategia de canal.", items: ["Monorepo productizado: web + dashboard + API", "Modelo multi-tenant escalable", "Canal white-label para expansión regional", "Roadmap premium de identidad/tokenización"] },
+  cta: { title: "Listo para un piloto enterprise", body: "Co-diseñamos el despliegue para vino, cosmética, pharma o ecosistemas de resellers.", primary: "Agendar demo", secondary: "Hablar con ventas" },
+  auth: { loginTitle: "Acceso dashboard", loginBody: "Ingresá al portal enterprise para gestionar tenants, lotes y analítica.", registerTitle: "Solicitar demo", registerBody: "Completá tus datos para iniciar un piloto enterprise.", company: "Empresa", email: "Email laboral", password: "Contraseña" },
+  docs: { title: "Quickstart API", list: ["Health check: /health/", "SUN validation: /sun/", "Create tenant: /admin/tenants/", "Batch lifecycle: /admin/batches/", "Manifest import: /admin/batches/:bid/import-manifest/"] },
+};

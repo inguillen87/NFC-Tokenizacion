@@ -1,12 +1,13 @@
-import { Card } from "@product/ui";
+import { SectionHeading } from "@product/ui";
+import { DataTable } from "../../../components/data-table";
+import { getDashboardI18n } from "../../../lib/locale";
 
-export default function ResellersPage() {
+export default async function ResellersPage() {
+  const { copy } = await getDashboardI18n();
   return (
-    <main>
-      <Card className="p-8">
-        <div className="text-2xl font-bold text-white">Resellers</div>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400">Subclientes, lotes asignados y control white label.</p>
-      </Card>
+    <main className="space-y-8">
+      <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description={copy.pages.resellers.description} />
+      <DataTable title={copy.table.titles.resellers} columns={[{ key: "reseller", label: copy.table.columns.reseller }, { key: "status", label: copy.table.columns.status }, { key: "clients", label: copy.table.columns.clients }, { key: "revenue", label: copy.table.columns.revenue }]} rows={copy.data.resellers} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} labels={copy.table} />
     </main>
   );
 }

@@ -1,22 +1,20 @@
-import { Sidebar } from "@product/ui";
-import { Topbar } from "../_components/topbar";
+import { DashboardShell } from "../../components/dashboard-shell";
+import { getDashboardI18n } from "../../lib/locale";
 
-const items = [
-  { href: "/", label: "Overview" },
-  { href: "/batches", label: "Batches" },
-  { href: "/events", label: "Events" },
-  { href: "/resellers", label: "Resellers" },
-  { href: "/billing", label: "Billing" },
-];
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const { copy, locale, locales } = await getDashboardI18n();
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-slate-950 text-white lg:flex">
-      <Sidebar title="Platform ops" items={items} />
-      <div className="min-w-0 flex-1">
-        <Topbar />
-        <div className="p-4 lg:p-8">{children}</div>
-      </div>
-    </div>
+    <DashboardShell
+      title={copy.appName}
+      subtitle={copy.shell.subtitle}
+      nav={copy.nav}
+      roles={copy.roles}
+      shell={copy.shell}
+      locale={locale}
+      locales={[...locales]}
+    >
+      {children}
+    </DashboardShell>
   );
 }
