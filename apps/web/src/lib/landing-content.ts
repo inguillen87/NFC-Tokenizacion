@@ -12,6 +12,7 @@ export type LandingContent = {
   secure: { eyebrow: string; title: string; description: string; bullets: string[] };
   authenticity: { eyebrow: string; title: string; description: string; badges: { good: string; warn: string; risk: string }; cards: Array<{ state: string; detail: string; tone: "good" | "warn" | "risk" }> };
   useCases: { eyebrow: string; title: string; description: string; cards: CopyCard[] };
+  radar: { eyebrow: string; title: string; description: string; liveLabel: string; revenueLabel: string; mapCaption: string; logsTitle: string; waitingLabel: string; signalTitle: string; products: string[]; signals: Array<{ label: string; value: string }> };
   intelligence: { eyebrow: string; title: string; description: string; bullets: string[] };
   reseller: { eyebrow: string; title: string; description: string; cards: CopyCard[] };
   api: { eyebrow: string; title: string; description: string; bullets: string[] };
@@ -122,6 +123,29 @@ export const landingContent: Record<AppLocale, LandingContent> = {
       description: "Placeholder visual para distribución de escaneos, hotspots y anomalías por región.",
       bullets: ["Top mercados por volumen", "Alertas por geografía inesperada", "Análisis por batch y tenant", "Vista para operaciones reseller"],
     },
+    radar: {
+      eyebrow: "Global auth radar",
+      title: "Visualización en vivo de escaneos y revenue SaaS",
+      description: "Inspirado en la demo de inversores, adaptado para demostrar capacidad operativa real a clientes y partners.",
+      liveLabel: "Network live",
+      revenueLabel: "SaaS Revenue",
+      mapCaption: "Escaneos autenticados en tiempo real (placeholder visual).",
+      logsTitle: "Cloud identity logs",
+      waitingLabel: "Esperando eventos...",
+      signalTitle: "Señales de red",
+      products: ["Wine premium", "Cosmetics", "Pharma", "VIP event"],
+      signals: [
+        { label: "Auth success rate", value: "99.3%" },
+        { label: "Duplicate detection", value: "0.8%" },
+        { label: "Tamper alerts", value: "12 / day" },
+      ],
+    },
+    intelligence: {
+      eyebrow: "Inteligencia global",
+      title: "Mapa de escaneos y trazabilidad internacional",
+      description: "Placeholder visual para distribución de escaneos, hotspots y anomalías por región.",
+      bullets: ["Top mercados por volumen", "Alertas por geografía inesperada", "Análisis por batch y tenant", "Vista para operaciones reseller"],
+    },
     reseller: {
       eyebrow: "Canal",
       title: "Programa reseller / white-label desde día uno",
@@ -194,6 +218,23 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     authenticity: { eyebrow: "Estados", title: "Sinalização de autenticidade", description: "Leitura clara para consumidor e operações.", badges: { good: "VÁLIDO", warn: "SINALIZADO", risk: "BLOQUEADO" }, cards: [{ state: "Autêntico", detail: "Lote ativo e validação íntegra.", tone: "good" }, { state: "Tampered", detail: "Manipulação detectada em selo/tampa.", tone: "warn" }, { state: "Consumido / invalidado", detail: "Tag revogada ou uso inválido.", tone: "risk" }] },
     useCases: { eyebrow: "Casos de uso", title: "Wine, cosmetics, pharma e events", description: "Setores onde confiança e compliance importam.", cards: [{ title: "Wine", body: "Autenticação de garrafa e export compliance." }, { title: "Cosmetics", body: "Proteção de marca e embalagem inteligente." }, { title: "Pharma", body: "Rastreabilidade e mitigação de falsificação." }, { title: "Events", body: "Credenciais seguras e analytics." }] },
     intelligence: { eyebrow: "Inteligência global", title: "Mapa mundial de escaneos", description: "Placeholder para hotspots e anomalias por região.", bullets: ["Top mercados", "Alertas por geografia", "Análise por batch/tenant", "Visão revendedor"] },
+    radar: {
+      eyebrow: "Global auth radar",
+      title: "Visualização ao vivo de escaneos e receita SaaS",
+      description: "Inspirado no demo para investidores, adaptado para demonstrar capacidade operacional real para clientes e parceiros.",
+      liveLabel: "Network live",
+      revenueLabel: "SaaS Revenue",
+      mapCaption: "Escaneos autenticados em tempo real (placeholder visual).",
+      logsTitle: "Cloud identity logs",
+      waitingLabel: "Aguardando eventos...",
+      signalTitle: "Sinais da rede",
+      products: ["Wine premium", "Cosmetics", "Pharma", "VIP event"],
+      signals: [
+        { label: "Auth success rate", value: "99.3%" },
+        { label: "Duplicate detection", value: "0.8%" },
+        { label: "Tamper alerts", value: "12 / day" },
+      ],
+    },
     reseller: { eyebrow: "Canal", title: "Modelo revendedor / white-label", description: "Parceiros operam sobre infraestrutura central.", cards: [{ title: "Co-branded operations", body: "Go-to-market rápido com controle central." }, { title: "Private-label workspace", body: "Experiência de parceiro com isolamento." }] },
     api: { eyebrow: "Developer-friendly", title: "API gateway para integração", description: "Contratos previsíveis para ativação e autenticação.", bullets: ["/health e /sun", "Admin para tenants e batches", "Eventos de segurança", "Base para SDK/webhooks"] },
     identity: { eyebrow: "Camada premium", title: "Digital identity / tokenization layer", description: "Produto físico evolui para identidade digital persistente.", bullets: ["Ownership passport", "Warranty events", "Registro de proveniência", "Roadmap tokenization-ready"] },
@@ -214,6 +255,23 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     authenticity: { eyebrow: "Authenticity states", title: "Clear outcomes for consumers and ops teams", description: "Status UX mirrors real product security flows.", badges: { good: "VALID", warn: "FLAGGED", risk: "BLOCKED" }, cards: [{ state: "Authentic", detail: "Integrity check passed, active batch and valid origin.", tone: "good" }, { state: "Tampered", detail: "Seal/closure manipulation signal detected.", tone: "warn" }, { state: "Consumed / invalidated", detail: "Tag revoked or outside allowed consumption window.", tone: "risk" }] },
     useCases: { eyebrow: "Use cases", title: "Wine, cosmetics, pharma and events", description: "Built for sectors where trust impacts margin and compliance.", cards: [{ title: "Wine", body: "Bottle authentication and export traceability." }, { title: "Cosmetics", body: "Brand protection and smart packaging." }, { title: "Pharma", body: "Product intelligence and anti-counterfeit workflows." }, { title: "Events", body: "Secure credentials and attendance analytics." }] },
     intelligence: { eyebrow: "Global intelligence", title: "World scan map and traceability hotspots", description: "Visual placeholder for geography-driven risk monitoring.", bullets: ["Top scan markets", "Unexpected geography alerts", "Batch and tenant overlays", "Reseller performance view"] },
+    radar: {
+      eyebrow: "Global auth radar",
+      title: "Live visualization of scans and SaaS revenue",
+      description: "Inspired by the investor demo and adapted to showcase real operational capability to buyers and partners.",
+      liveLabel: "Network live",
+      revenueLabel: "SaaS Revenue",
+      mapCaption: "Authenticated scans in real time (visual placeholder).",
+      logsTitle: "Cloud identity logs",
+      waitingLabel: "Waiting for events...",
+      signalTitle: "Network signals",
+      products: ["Wine premium", "Cosmetics", "Pharma", "VIP event"],
+      signals: [
+        { label: "Auth success rate", value: "99.3%" },
+        { label: "Duplicate detection", value: "0.8%" },
+        { label: "Tamper alerts", value: "12 / day" },
+      ],
+    },
     reseller: { eyebrow: "Distribution", title: "Reseller / white-label operating model", description: "Agencies and converters can run downstream portfolios.", cards: [{ title: "Co-branded operations", body: "Fast launch with centralized governance." }, { title: "Private-label workspace", body: "Partner-branded tenant isolation." }] },
     api: { eyebrow: "Developer-friendly", title: "API gateway designed for enterprise integration", description: "Predictable contracts for activation, validation and observability.", bullets: ["Production /health and /sun", "Admin endpoints for tenants and batches", "Security event stream", "SDK/webhook-ready foundation"] },
     identity: { eyebrow: "Premium layer", title: "Digital identity / tokenization layer", description: "Each physical product can become a persistent digital identity asset.", bullets: ["Ownership passport", "Warranty lifecycle", "Provenance records", "Tokenization-ready roadmap"] },
