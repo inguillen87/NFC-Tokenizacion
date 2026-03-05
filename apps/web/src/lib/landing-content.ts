@@ -140,6 +140,12 @@ export const landingContent: Record<AppLocale, LandingContent> = {
         { label: "Tamper alerts", value: "12 / day" },
       ],
     },
+    intelligence: {
+      eyebrow: "Inteligencia global",
+      title: "Mapa de escaneos y trazabilidad internacional",
+      description: "Placeholder visual para distribución de escaneos, hotspots y anomalías por región.",
+      bullets: ["Top mercados por volumen", "Alertas por geografía inesperada", "Análisis por batch y tenant", "Vista para operaciones reseller"],
+    },
     reseller: {
       eyebrow: "Canal",
       title: "Programa reseller / white-label desde día uno",
