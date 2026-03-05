@@ -1,22 +1,20 @@
-import { Sidebar } from "@product/ui";
-import { Topbar } from "../_components/topbar";
+import { getDashboardI18n } from "../../lib/locale";
+import { dashboardContent } from "../../lib/dashboard-content";
+import { DashboardShell } from "../../components/dashboard-shell";
 
-const items = [
-  { href: "/", label: "Overview" },
-  { href: "/batches", label: "Batches" },
-  { href: "/events", label: "Events" },
-  { href: "/resellers", label: "Resellers" },
-  { href: "/billing", label: "Billing" },
-];
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const { locale } = await getDashboardI18n();
+  const copy = dashboardContent[locale];
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-slate-950 text-white lg:flex">
-      <Sidebar title="Platform ops" items={items} />
-      <div className="min-w-0 flex-1">
-        <Topbar />
-        <div className="p-4 lg:p-8">{children}</div>
-      </div>
-    </div>
+    <DashboardShell
+      title="NFC Identity Cloud"
+      subtitle={copy.shell.subtitle}
+      nav={copy.nav}
+      roles={copy.roles}
+      shell={copy.shell}
+    >
+      {children}
+    </DashboardShell>
   );
 }

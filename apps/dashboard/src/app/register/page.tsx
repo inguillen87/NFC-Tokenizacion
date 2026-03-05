@@ -1,19 +1,27 @@
 import Link from "next/link";
 import { Button, Card } from "@product/ui";
+import { getDashboardI18n } from "../../lib/locale";
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const { t } = await getDashboardI18n();
+
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 px-4">
-      <Card className="w-full max-w-md p-8">
-        <div className="text-2xl font-bold text-white">Register</div>
-        <p className="mt-2 text-sm text-slate-400">Alta visual para tenant o partner. Conectar auth real despues.</p>
-        <form className="mt-8 space-y-4">
-          <input className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none" placeholder="Company" />
-          <input className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none" placeholder="Email" />
-          <input className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none" placeholder="Password" type="password" />
-          <Button className="w-full">Crear cuenta</Button>
-        </form>
-        <div className="mt-4 text-sm text-slate-500">Ya tenes cuenta? <Link href="/login" className="text-cyan-300">Entrar</Link></div>
+    <main className="container-shell grid min-h-screen place-items-center py-10">
+      <Card className="w-full max-w-lg p-8">
+        <h1 className="text-3xl font-bold text-white">{t.common.register}</h1>
+        <p className="mt-2 text-sm text-slate-400">{t.dashboard.auth.registerBody}</p>
+
+        <div className="mt-6 grid gap-3">
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.companyPlaceholder} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.emailPlaceholder} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.dashboard.forms.fields.tenantSlug} />
+          <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.passwordPlaceholder} />
+          <Button className="w-full">{t.common.register}</Button>
+        </div>
+
+        <p className="mt-4 text-xs text-slate-400">
+          <Link href="/login" className="text-cyan-300">{t.common.login}</Link>
+        </p>
       </Card>
     </main>
   );

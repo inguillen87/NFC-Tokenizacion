@@ -1,17 +1,19 @@
-import Link from "next/link";
-import { Card } from "@product/ui";
+import { Card, SectionHeading } from "@product/ui";
+import { landingContent } from "../../lib/landing-content";
+import { getWebI18n } from "../../lib/locale";
 
-export default function DocsPage() {
+export default async function DocsPage() {
+  const { locale } = await getWebI18n();
+  const content = landingContent[locale];
+
   return (
     <main className="container-shell py-16">
-      <Link href="/" className="text-sm text-cyan-300">← Volver</Link>
-      <h1 className="mt-6 text-4xl font-black text-white">Docs overview</h1>
-      <p className="mt-4 max-w-3xl text-slate-400">Esto es una pagina placeholder. En v2 puede moverse a una app docs separada o a MDX. Para arrancar, alcanza con overview + endpoints clave.</p>
-      <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        <Card className="p-6"><div className="text-white font-semibold">/sun</div><p className="mt-2 text-sm text-slate-400">Valida taps SDM/SUN y devuelve resultado.</p></Card>
-        <Card className="p-6"><div className="text-white font-semibold">/admin/tenants</div><p className="mt-2 text-sm text-slate-400">Alta de tenants.</p></Card>
-        <Card className="p-6"><div className="text-white font-semibold">/admin/batches</div><p className="mt-2 text-sm text-slate-400">Crea lote y keys batch.</p></Card>
-      </div>
+      <SectionHeading eyebrow={content.api.eyebrow} title={content.api.title} description={content.api.description} />
+      <Card className="mt-8 p-6">
+        <ul className="space-y-2 text-sm text-slate-300">
+          {content.docsList.map((entry) => <li key={entry}>• {entry}</li>)}
+        </ul>
+      </Card>
     </main>
   );
 }

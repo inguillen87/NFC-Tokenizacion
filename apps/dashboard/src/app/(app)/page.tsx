@@ -1,25 +1,52 @@
-import { StatCard, WorldMapPlaceholder } from "@product/ui";
-import { OverviewChart } from "../_components/overview-chart";
-import { EventTable } from "../_components/event-table";
+import { Card, SectionHeading } from "@product/ui";
+import { AdminActionForms } from "../../components/admin-action-forms";
+import { AnalyticsPanels } from "../../components/analytics-panels";
+import { DataTable } from "../../components/data-table";
+import { dashboardContent } from "../../lib/dashboard-content";
+import { getDashboardI18n } from "../../lib/locale";
 
-export default function DashboardHome() {
+const overviewRows = [
+  { tenant: "Bodega Andes", status: "healthy", scans: "8,402", duplicates: "26", tamper: "3" },
+  { tenant: "Cosmetica Norte", status: "active", scans: "5,910", duplicates: "18", tamper: "1" },
+  { tenant: "Pharma Delta", status: "risk", scans: "3,221", duplicates: "42", tamper: "7" },
+  { tenant: "Event Ops AR", status: "pending", scans: "1,040", duplicates: "2", tamper: "0" },
+];
+
+export default async function DashboardHome() {
+  const { locale, t } = await getDashboardI18n();
+  const copy = dashboardContent[locale];
+
   return (
-    <main className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Active tags" value="1.2M" delta="+8.4% vs mes anterior" />
-        <StatCard label="Valid scans" value="92.4%" delta="ultimo periodo" tone="good" />
-        <StatCard label="Fraud alerts" value="842" delta="duplicate + replay + tamper" tone="danger" />
-        <StatCard label="Resellers" value="14" delta="3 nuevos en pipeline" tone="warn" />
-      </div>
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-          <div className="text-lg font-semibold text-white">Scan throughput</div>
-          <p className="mt-1 text-sm text-slate-400">Placeholder chart para v1 dashboard.</p>
-          <div className="mt-6"><OverviewChart /></div>
-        </div>
-        <WorldMapPlaceholder />
-      </div>
-      <EventTable />
+    <main className="space-y-8">
+      <SectionHeading
+        eyebrow={copy.nav.overview}
+        title={copy.pages.overview.title}
+        description={copy.pages.overview.description}
+      />
+
+      <AnalyticsPanels kpis={t.dashboard.kpis} />
+
+      <DataTable
+        title="Tenant health snapshot"
+        columns={[
+          { key: "tenant", label: "Tenant" },
+          { key: "status", label: "Status" },
+          { key: "scans", label: "Scans" },
+          { key: "duplicates", label: "Duplicates" },
+          { key: "tamper", label: "Tamper" },
+        ]}
+        rows={overviewRows}
+        filterKey="status"
+        loadingLabel={copy.shell.loading}
+        emptyLabel={copy.shell.empty}
+      />
+
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold text-white">{t.dashboard.roleBasedOps}</h2>
+        <p className="mt-2 text-sm text-slate-400">Forms stay wired to deployed admin API routes.</p>
+      </Card>
+
+      <AdminActionForms copy={t.dashboard.forms} />
     </main>
   );
 }

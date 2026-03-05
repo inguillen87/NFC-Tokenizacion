@@ -1,12 +1,23 @@
-import { Card } from "@product/ui";
+import { SectionHeading } from "@product/ui";
+import { DataTable } from "../../../components/data-table";
+import { dashboardContent } from "../../../lib/dashboard-content";
+import { getDashboardI18n } from "../../../lib/locale";
 
-export default function EventsPage() {
+const rows = [
+  { tenant: "Bodega Andes", result: "valid", status: "active", geo: "AR-MDZ", time: "14:21" },
+  { tenant: "Bodega Andes", result: "duplicate", status: "risk", geo: "AR-MDZ", time: "14:22" },
+  { tenant: "Pharma Delta", result: "tamper", status: "risk", geo: "CL-SCL", time: "14:25" },
+  { tenant: "Event Ops AR", result: "valid", status: "active", geo: "AR-CBA", time: "14:29" },
+];
+
+export default async function EventsPage() {
+  const { locale } = await getDashboardI18n();
+  const copy = dashboardContent[locale];
+
   return (
-    <main>
-      <Card className="p-8">
-        <div className="text-2xl font-bold text-white">Events</div>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400">Logs, deteccion de duplicados, replays y fraud scoring.</p>
-      </Card>
+    <main className="space-y-8">
+      <SectionHeading eyebrow={copy.nav.events} title={copy.pages.events.title} description={copy.pages.events.description} />
+      <DataTable title="Event stream" columns={[{ key: "tenant", label: "Tenant" }, { key: "result", label: "Result" }, { key: "status", label: "Status" }, { key: "geo", label: "Geo" }, { key: "time", label: "Time" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} />
     </main>
   );
 }
