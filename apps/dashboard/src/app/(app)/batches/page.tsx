@@ -1,12 +1,20 @@
-import { Card } from "@product/ui";
+import { SectionHeading } from "@product/ui";
+import { AdminActionForms } from "../../../components/admin-action-forms";
+import { getDashboardI18n } from "../../../lib/locale";
 
-export default function BatchesPage() {
+export default async function BatchesPage() {
+  const { t } = await getDashboardI18n();
+
   return (
     <main>
-      <Card className="p-8">
-        <div className="text-2xl font-bold text-white">Batches</div>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400">Create batches, import manifest and activar etiquetas.</p>
-      </Card>
+      <SectionHeading
+        eyebrow={t.dashboard.batches}
+        title={t.dashboard.batchLifecycleTitle}
+        description={t.dashboard.batchLifecycleDescription}
+      />
+      <div className="mt-8">
+        <AdminActionForms copy={t.dashboard.forms} />
+      </div>
     </main>
   );
 }
