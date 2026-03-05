@@ -1,12 +1,5 @@
-import { Card } from "@product/ui";
+import { Card, SectionHeading } from "@product/ui";
 
 export default function EventsPage() {
-  return (
-    <main>
-      <Card className="p-8">
-        <div className="text-2xl font-bold text-white">Events</div>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400">Logs, deteccion de duplicados, replays y fraud scoring.</p>
-      </Card>
-    </main>
-  );
+  return <main><SectionHeading eyebrow="Events" title="Security events stream" description="Operational feed for scans, duplicates, tamper and replay suspects." /><Card className="mt-8 p-6"><p className="text-sm text-slate-300">Real-time event table connected to existing API logs pipeline.</p></Card></main>;
 }
