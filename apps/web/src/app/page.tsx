@@ -25,10 +25,7 @@ export default async function HomePage() {
         <div className="container-shell flex h-20 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Image src="/logo-mark.svg" alt="logo" width={36} height={36} />
-            <div>
-              <div className="text-lg font-bold text-white">{siteConfig.productName}</div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">by {siteConfig.parentBrand}</div>
-            </div>
+            <div><div className="text-lg font-bold text-white">{siteConfig.productName}</div><div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">by {siteConfig.parentBrand}</div></div>
           </div>
 
           <nav className="hidden gap-6 text-sm text-slate-300 md:flex">
