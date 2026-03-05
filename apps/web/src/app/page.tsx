@@ -1,7 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@product/config";
-import { Button, LocaleSwitcher } from "@product/ui";
+import { BrandLockup, Button, LocaleSwitcher } from "@product/ui";
 import {
   AuthenticityStatesSection,
   BulletSection,
@@ -29,8 +28,7 @@ export default async function HomePage() {
       <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/70 backdrop-blur-xl">
         <div className="container-shell flex h-20 items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Image src="/logo-mark.svg" alt={siteConfig.productName} width={36} height={36} />
-            <div><div className="text-lg font-bold text-white">{siteConfig.productName}</div><div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">by {siteConfig.parentBrand}</div></div>
+            <BrandLockup size={36} variant="ripple" theme="dark" />
           </div>
 
           <nav className="hidden gap-6 text-sm text-slate-300 md:flex">
@@ -64,6 +62,13 @@ export default async function HomePage() {
       <BulletSection {...content.identity} />
       <RoiCredibilitySection content={content} />
       <CtaSection content={content} />
+
+      <footer className="border-t border-white/10 bg-slate-950/80">
+        <div className="container-shell flex flex-wrap items-center justify-between gap-4 py-8">
+          <BrandLockup size={30} variant="pulse" theme="dark" />
+          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{siteConfig.productName} · Identity Product Platform</p>
+        </div>
+      </footer>
     </main>
   );
 }

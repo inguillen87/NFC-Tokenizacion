@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 
-const webUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_WEB_APP_URL;
+const webUrl = process.env.WEB_APP_URL || process.env.NEXT_PUBLIC_WEB_APP_URL || "https://nexid.lat";
 
 export default function Home() {
-  if (webUrl) {
-    redirect(webUrl);
-  }
+  redirect(webUrl);
 
   return (
     <main style={{ fontFamily: "Inter, system-ui, sans-serif", minHeight: "100vh", background: "#020617", color: "#e2e8f0", padding: 24 }}>
