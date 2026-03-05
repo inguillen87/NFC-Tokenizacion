@@ -18,7 +18,7 @@ export default async function BatchesPage() {
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.batches} title={copy.pages.batches.title} description={copy.pages.batches.description} />
-      <DataTable title="Batches" columns={[{ key: "batch", label: "Batch" }, { key: "type", label: "Type" }, { key: "status", label: "Status" }, { key: "qty", label: "Quantity" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} />
+      <DataTable title="Batches" columns={[{ key: "batch", label: "Batch" }, { key: "type", label: "Type" }, { key: "status", label: "Status" }, { key: "qty", label: "Quantity" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} />
       <AdminActionForms copy={t.dashboard.forms} />
     </main>
   );

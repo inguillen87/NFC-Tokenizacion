@@ -3,7 +3,7 @@ import { dashboardContent } from "../../lib/dashboard-content";
 import { DashboardShell } from "../../components/dashboard-shell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { locale } = await getDashboardI18n();
+  const { locale, locales } = await getDashboardI18n();
   const copy = dashboardContent[locale];
 
   return (
@@ -13,6 +13,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       nav={copy.nav}
       roles={copy.roles}
       shell={copy.shell}
+      locale={locale}
+      locales={locales}
     >
       {children}
     </DashboardShell>
