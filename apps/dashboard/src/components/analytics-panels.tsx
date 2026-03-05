@@ -16,6 +16,16 @@ type AnalyticsPanelsProps = {
     trendTitle: string;
     statusTitle: string;
   };
+  extra: {
+    activeBatches: string;
+    activeBatchesDelta: string;
+    activeTenants: string;
+    activeTenantsDelta: string;
+    resellerPerformance: string;
+    resellerPerformanceDelta: string;
+    geoDistribution: string;
+    geoDistributionDelta: string;
+  };
 };
 
 const scans = [
@@ -34,7 +44,7 @@ const batchStatus = [
   { name: "Revoked", value: 10 },
 ];
 
-export function AnalyticsPanels({ kpis }: AnalyticsPanelsProps) {
+export function AnalyticsPanels({ kpis, extra }: AnalyticsPanelsProps) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -42,10 +52,10 @@ export function AnalyticsPanels({ kpis }: AnalyticsPanelsProps) {
         <StatCard label={kpis.validInvalid} value="98.8 / 1.2" delta={kpis.validInvalidDelta} tone="good" />
         <StatCard label={kpis.duplicates} value="202" delta={kpis.duplicatesDelta} tone="warn" />
         <StatCard label={kpis.tamper} value="32" delta={kpis.tamperDelta} tone="warn" />
-        <StatCard label="Active batches" value="68" delta="+4 this week" tone="good" />
-        <StatCard label="Active tenants" value="27" delta="+2 onboarding" tone="good" />
-        <StatCard label="Reseller performance" value="USD 40.2k" delta="MRR channel" tone="good" />
-        <StatCard label="Geo distribution" value="8 regions" delta="placeholder heatmap" />
+        <StatCard label={extra.activeBatches} value="68" delta={extra.activeBatchesDelta} tone="good" />
+        <StatCard label={extra.activeTenants} value="27" delta={extra.activeTenantsDelta} tone="good" />
+        <StatCard label={extra.resellerPerformance} value="USD 40.2k" delta={extra.resellerPerformanceDelta} tone="good" />
+        <StatCard label={extra.geoDistribution} value="8 regions" delta={extra.geoDistributionDelta} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">

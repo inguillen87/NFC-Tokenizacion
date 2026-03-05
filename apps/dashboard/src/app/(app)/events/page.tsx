@@ -17,7 +17,24 @@ export default async function EventsPage() {
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.events} title={copy.pages.events.title} description={copy.pages.events.description} />
-      <DataTable title="Event stream" columns={[{ key: "tenant", label: "Tenant" }, { key: "result", label: "Result" }, { key: "status", label: "Status" }, { key: "geo", label: "Geo" }, { key: "time", label: "Time" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} />
+      <DataTable
+        title={copy.tables.events.title}
+        columns={[
+          { key: "tenant", label: copy.tables.events.tenant },
+          { key: "result", label: copy.tables.events.result },
+          { key: "status", label: copy.tables.events.status },
+          { key: "geo", label: copy.tables.events.geo },
+          { key: "time", label: copy.tables.events.time },
+        ]}
+        rows={rows}
+        filterKey="status"
+        loadingLabel={copy.shell.loading}
+        emptyLabel={copy.shell.empty}
+        searchPlaceholder={copy.shell.search}
+        allFilterLabel={copy.shell.all}
+        refreshLabel={copy.shell.refresh}
+        statusMap={copy.statuses}
+      />
     </main>
   );
 }
