@@ -26,6 +26,9 @@ psql "$DATABASE_URL" -f apps/api/db/schema.sql
 - `/health/`
 - `/sun/`
 
+## Root redirect for API deployment
+If your Vercel project root is `apps/api`, set `WEB_APP_URL` so `/` redirects to the public platform (`apps/web`) instead of showing an API placeholder page.
+
 ## Orden correcto
 1. Deploy `apps/api`
 2. Crear tenant demo
