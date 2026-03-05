@@ -1,5 +1,25 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "POSTGRES_URL",
+    "POSTGRES_URL_NO_SSL",
+    "PGHOST_UNPOOLED",
+    "PGHOST",
+    "POSTGRES_PRISMA_URL",
+    "PGPASSWORD",
+    "DATABASE_URL",
+    "POSTGRES_URL_NON_POOLING",
+    "NEON_PROJECT_ID",
+    "POSTGRES_USER",
+    "PGDATABASE",
+    "POSTGRES_HOST",
+    "POSTGRES_DATABASE",
+    "DATABASE_URL_UNPOOLED",
+    "POSTGRES_PASSWORD",
+    "PGUSER",
+    "KMS_MASTER_KEY_HEX",
+    "ADMIN_API_KEY"
+  ],
   "tasks": {
     "build": {
       "dependsOn": [

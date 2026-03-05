@@ -16,7 +16,7 @@ export default async function TagsPage() {
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.tags} title={copy.pages.tags.title} description={copy.pages.tags.description} />
-      <DataTable title="Tag profiles" columns={[{ key: "profile", label: "Profile" }, { key: "status", label: "Status" }, { key: "inventory", label: "Inventory" }, { key: "activation", label: "Activation" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} />
+      <DataTable title="Tag profiles" columns={[{ key: "profile", label: "Profile" }, { key: "status", label: "Status" }, { key: "inventory", label: "Inventory" }, { key: "activation", label: "Activation" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} />
     </main>
   );
 }
