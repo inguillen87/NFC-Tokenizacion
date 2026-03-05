@@ -41,6 +41,36 @@ export function HeroSection({ content, stats }: { content: Content; stats: Stats
   );
 }
 
+export function TrustBarSection({ content }: { content: Content }) {
+  return (
+    <section className="container-shell pb-8">
+      <div className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-5">
+        {content.trustBar.map((item) => (
+          <div key={item} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-center text-xs uppercase tracking-[0.14em] text-cyan-200">
+            {item}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function HowItWorksSection({ content }: { content: Content }) {
+  return (
+    <section className="container-shell py-16">
+      <SectionHeading eyebrow={content.howItWorks.eyebrow} title={content.howItWorks.title} description={content.howItWorks.description} />
+      <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {content.howItWorks.steps.map((step) => (
+          <Card key={step.title} className="p-5">
+            <p className="text-sm font-semibold text-white">{step.title}</p>
+            <p className="mt-2 text-sm leading-7 text-slate-400">{step.body}</p>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function CardsSection({ content }: { content: Content }) {
   return (
     <section id="platform" className="container-shell py-16">
@@ -71,6 +101,25 @@ export function PlansSection({ content }: { content: Content }) {
             <ul className="mt-4 space-y-2 text-sm text-slate-300">
               {plan.bullets.map((bullet) => <li key={bullet}>• {bullet}</li>)}
             </ul>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function AuthenticityStatesSection({ content }: { content: Content }) {
+  return (
+    <section className="container-shell py-16">
+      <SectionHeading eyebrow={content.authenticity.eyebrow} title={content.authenticity.title} description={content.authenticity.description} />
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        {content.authenticity.cards.map((item) => (
+          <Card key={item.state} className="p-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{item.state}</p>
+            <p className={`mt-3 text-lg font-semibold ${item.tone === "good" ? "text-emerald-300" : item.tone === "warn" ? "text-amber-300" : "text-rose-300"}`}>
+              {item.tone === "good" ? "VALID" : item.tone === "warn" ? "FLAGGED" : "BLOCKED"}
+            </p>
+            <p className="mt-2 text-sm leading-7 text-slate-400">{item.detail}</p>
           </Card>
         ))}
       </div>
