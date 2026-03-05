@@ -16,7 +16,7 @@ export default async function ResellersPage() {
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description={copy.pages.resellers.description} />
-      <DataTable title="Reseller performance" columns={[{ key: "reseller", label: "Reseller" }, { key: "status", label: "Status" }, { key: "clients", label: "Clients" }, { key: "revenue", label: "Revenue" }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} />
+      <DataTable title={copy.tables.resellers.title} columns={[{ key: "reseller", label: copy.tables.resellers.reseller }, { key: "status", label: copy.tables.resellers.status }, { key: "clients", label: copy.tables.resellers.clients }, { key: "revenue", label: copy.tables.resellers.revenue }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
     </main>
   );
 }

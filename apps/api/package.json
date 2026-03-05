@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "next dev -p 3003",
     "build": "next build",
-    "start": "next start -p 3003"
+    "start": "next start -p 3003",
+    "db:new": "node scripts/db-new-migration.mjs",
+    "db:migrate": "node scripts/db-apply.mjs",
+    "db:seed": "node scripts/db-seed-dev.mjs",
+    "db:reset:local": "node scripts/db-reset-local.mjs"
   },
   "dependencies": {
     "next": "^15.0.0",
