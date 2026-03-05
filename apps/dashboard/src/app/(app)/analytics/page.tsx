@@ -11,7 +11,7 @@ export default async function AnalyticsPage() {
     <main>
       <SectionHeading eyebrow={copy.nav.analytics} title={copy.pages.analytics.title} description={copy.pages.analytics.description} />
       <div className="mt-8">
-        <AnalyticsPanels kpis={t.dashboard.kpis} />
+        <AnalyticsPanels kpis={t.dashboard.kpis} extra={copy.analytics} />
       </div>
     </main>
   );

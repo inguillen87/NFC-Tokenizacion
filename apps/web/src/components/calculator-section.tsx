@@ -20,10 +20,10 @@ const productMultiplier: Record<ProductType, number> = {
   pharma: 1.4,
 };
 
-const securityCosts: Record<SecurityLevel, { hardware: number; saas: number; scope: string; plan: string }> = {
-  basic: { hardware: 0.18, saas: 199, scope: "Base", plan: "BASIC" },
-  secure: { hardware: 0.42, saas: 690, scope: "Extended", plan: "SECURE" },
-  enterprise: { hardware: 0.55, saas: 1400, scope: "Advanced", plan: "ENTERPRISE / RESELLER" },
+const securityCosts: Record<SecurityLevel, { hardware: number; saas: number; scope: "base" | "extended" | "advanced"; plan: string }> = {
+  basic: { hardware: 0.18, saas: 199, scope: "base", plan: "BASIC" },
+  secure: { hardware: 0.42, saas: 690, scope: "extended", plan: "SECURE" },
+  enterprise: { hardware: 0.55, saas: 1400, scope: "advanced", plan: "ENTERPRISE / RESELLER" },
 };
 
 export function CalculatorSection({ calculator }: { calculator: CalculatorCopy }) {
@@ -55,13 +55,13 @@ export function CalculatorSection({ calculator }: { calculator: CalculatorCopy }
 
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Metric label={calculator.hardwareSpendLabel} value={`USD ${estimate.hardware.toLocaleString()}`} />
-          <Metric label={calculator.saasFeeLabel} value={`USD ${estimate.saas.toLocaleString()}/year`} />
-          <Metric label={calculator.activationScopeLabel} value={`${estimate.activation.toLocaleString()} tags`} />
+          <Metric label={calculator.saasFeeLabel} value={`USD ${estimate.saas.toLocaleString()}${calculator.perYearLabel}`} />
+          <Metric label={calculator.activationScopeLabel} value={`${estimate.activation.toLocaleString()} ${calculator.tagsUnitLabel}`} />
           <Metric label={calculator.recommendationLabel} value={estimate.plan} />
         </div>
 
         <div className="mt-6 flex items-center justify-between rounded-2xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-200">
-          <span>Analytics scope: {estimate.scope}</span>
+          <span>{calculator.analyticsScopeLabel}: {calculator.scopeLabels[estimate.scope]}</span>
           <Button variant="secondary">{calculator.cta}</Button>
         </div>
       </Card>

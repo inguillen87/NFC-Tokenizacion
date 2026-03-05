@@ -1,44 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Card, Button } from "@product/ui";
+import { Badge, Button, Card } from "@product/ui";
 
 type Row = Record<string, string>;
 
-export function DataTable({
-  title,
-  columns,
-  rows,
-  filterKey,
-  loadingLabel,
-  emptyLabel,
-  searchPlaceholder = "Search",
-  allFilterLabel = "All",
-  refreshLabel = "Refresh",
-}: {
-  title: string;
-  columns: Array<{ key: string; label: string }>;
-  rows: Row[];
-  filterKey: string;
-  loadingLabel: string;
-  emptyLabel: string;
-  searchPlaceholder?: string;
-  allFilterLabel?: string;
-  refreshLabel?: string;
-}) {
+export function DataTable({ title, columns, rows, filterKey, loadingLabel, emptyLabel, searchPlaceholder = "Search", allFilterLabel = "All", refreshLabel = "Refresh", statusMap }: { title: string; columns: Array<{ key: string; label: string }>; rows: Row[]; filterKey: string; loadingLabel: string; emptyLabel: string; searchPlaceholder?: string; allFilterLabel?: string; refreshLabel?: string; statusMap?: Record<string, string> }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [loading, setLoading] = useState(false);
 
-  const filtered = useMemo(
-    () =>
-      rows.filter((row) => {
-        const matchesQ = Object.values(row).join(" ").toLowerCase().includes(query.toLowerCase());
-        const matchesS = status === "all" || row[filterKey] === status;
-        return matchesQ && matchesS;
-      }),
-    [filterKey, query, rows, status],
-  );
+  const filtered = useMemo(() => rows.filter((row) => {
+    const matchesQ = Object.values(row).join(" ").toLowerCase().includes(query.toLowerCase());
+    const matchesS = status === "all" || row[filterKey] === status;
+    return matchesQ && matchesS;
+  }), [filterKey, query, rows, status]);
 
   const statuses = Array.from(new Set(rows.map((row) => row[filterKey])));
 
@@ -50,14 +26,13 @@ export function DataTable({
           <input placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm" />
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
             <option value="all">{allFilterLabel}</option>
-            {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
+            {statuses.map((item) => <option key={item} value={item}>{statusMap?.[item] ?? item}</option>)}
           </select>
           <Button variant="secondary" onClick={async () => { setLoading(true); await new Promise((r) => setTimeout(r, 500)); setLoading(false); }}>{refreshLabel}</Button>
         </div>
       </div>
 
       {loading ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400">{loadingLabel}</div> : null}
-
       {!loading && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400">{emptyLabel}</div> : null}
 
       {!loading && filtered.length > 0 ? (
@@ -71,7 +46,11 @@ export function DataTable({
                 <tr key={`${idx}-${row[columns[0].key]}`} className="border-b border-white/5">
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3 text-slate-200">
-                      {col.key === filterKey ? <Badge tone={row[col.key] === "active" || row[col.key] === "healthy" || row[col.key] === "valid" ? "green" : row[col.key] === "pending" || row[col.key] === "draft" ? "amber" : "default"}>{row[col.key]}</Badge> : row[col.key]}
+                      {col.key === filterKey ? (
+                        <Badge tone={row[col.key] === "active" || row[col.key] === "healthy" || row[col.key] === "valid" ? "green" : row[col.key] === "pending" || row[col.key] === "draft" ? "amber" : "default"}>
+                          {statusMap?.[row[col.key]] ?? row[col.key]}
+                        </Badge>
+                      ) : (statusMap?.[row[col.key]] ?? row[col.key])}
                     </td>
                   ))}
                 </tr>

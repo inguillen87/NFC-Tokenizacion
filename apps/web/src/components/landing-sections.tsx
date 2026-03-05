@@ -117,7 +117,7 @@ export function AuthenticityStatesSection({ content }: { content: Content }) {
           <Card key={item.state} className="p-5">
             <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{item.state}</p>
             <p className={`mt-3 text-lg font-semibold ${item.tone === "good" ? "text-emerald-300" : item.tone === "warn" ? "text-amber-300" : "text-rose-300"}`}>
-              {item.tone === "good" ? "VALID" : item.tone === "warn" ? "FLAGGED" : "BLOCKED"}
+              {item.tone === "good" ? content.authenticity.badges.good : item.tone === "warn" ? content.authenticity.badges.warn : content.authenticity.badges.risk}
             </p>
             <p className="mt-2 text-sm leading-7 text-slate-400">{item.detail}</p>
           </Card>
