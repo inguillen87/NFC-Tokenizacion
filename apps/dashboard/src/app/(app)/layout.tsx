@@ -4,9 +4,10 @@ import { Topbar } from "../_components/topbar";
 const items = [
   { href: "/", label: "Overview" },
   { href: "/batches", label: "Batches" },
+  { href: "/analytics", label: "Analytics" },
   { href: "/events", label: "Events" },
   { href: "/resellers", label: "Resellers" },
-  { href: "/billing", label: "Billing" },
+  { href: "/billing", label: "Plans" },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
