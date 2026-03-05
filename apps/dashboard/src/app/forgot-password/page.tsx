@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button, Card } from "@product/ui";
+import { BrandLockup, Button, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
 import { dashboardContent } from "../../lib/dashboard-content";
 
@@ -10,7 +10,8 @@ export default async function ForgotPasswordPage() {
   return (
     <main className="container-shell grid min-h-screen place-items-center py-10">
       <Card className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold text-white">{t.dashboard.forgotPassword}</h1>
+        <BrandLockup size={30} variant="pulse" theme="dark" />
+        <h1 className="mt-4 text-2xl font-bold text-white">{t.dashboard.forgotPassword}</h1>
         <p className="mt-2 text-sm text-slate-400">{t.dashboard.auth.forgotBody}</p>
 
         <div className="mt-6 grid gap-3">
