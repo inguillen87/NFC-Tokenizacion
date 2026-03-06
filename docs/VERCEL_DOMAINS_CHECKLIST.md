@@ -96,3 +96,106 @@ Respuesta corta: **no lo conviertas a web todavía** si querés cero riesgo.
 - Si querés “reciclar” este mismo proyecto para web, primero sacale `api.nexid.lat`, creá otro proyecto para `apps/api`, copiá env vars y recién ahí cambiá Root Directory.
 
 Esto evita perder APIs, DB o secretos por mover todo de golpe.
+
+
+## 10) Guía completa (click-by-click): pasar de 1 proyecto a 3 proyectos sin romper nada
+
+> Objetivo: mantener vivo el proyecto actual (API), crear `web` y `dashboard` en paralelo, y recién al final mover dominios.
+
+### 10.1 Antes de tocar dominios (pre-check)
+1. En el proyecto actual (`apps/api`), confirmar que `https://<tu-proyecto>.vercel.app/health` responde 200.
+2. En **Settings -> Environment Variables**, exportar/copy de variables actuales (al menos `DATABASE_URL`, `ADMIN_API_KEY`, `WEB_APP_URL`).
+3. No borrar nada todavía (ni variables ni dominios).
+
+### 10.2 Crear proyecto `nexid-web` (landing)
+1. Vercel -> **Add New... -> Project**.
+2. Seleccionar el mismo repo `NFC-Tokenizacion`.
+3. En configuración del proyecto:
+   - **Project Name:** `nexid-web`
+   - **Root Directory:** `apps/web`
+4. Deploy.
+5. En `nexid-web` -> **Settings -> Environment Variables**:
+   - `NEXT_PUBLIC_API_BASE_URL=https://api.nexid.lat`
+6. Redeploy para tomar env vars.
+
+### 10.3 Crear proyecto `nexid-dashboard`
+1. Vercel -> **Add New... -> Project**.
+2. Mismo repo.
+3. Configuración:
+   - **Project Name:** `nexid-dashboard`
+   - **Root Directory:** `apps/dashboard`
+4. Deploy.
+5. En `nexid-dashboard` -> **Settings -> Environment Variables**:
+   - `NEXT_PUBLIC_API_BASE_URL=https://api.nexid.lat`
+   - `ADMIN_API_KEY=<mismo secret del api>`
+6. Redeploy.
+
+### 10.4 Dejar proyecto actual como API (`apps/api`)
+En el proyecto original (el que ya existe):
+1. **NO** cambiar Root Directory (dejar `apps/api`).
+2. Mantener env vars de API (`DATABASE_URL`, `ADMIN_API_KEY`, `WEB_APP_URL=https://nexid.lat`).
+3. Dominio final de este proyecto: `api.nexid.lat`.
+
+### 10.5 Mover dominios en Vercel (orden exacto)
+Hacerlo en este orden para evitar choques de ownership:
+1. Proyecto viejo (`apps/api`): quitar `nexid.lat` y `www.nexid.lat`.
+2. Proyecto `nexid-web`: agregar `nexid.lat` y `www.nexid.lat`.
+3. Proyecto `nexid-dashboard`: agregar `app.nexid.lat`.
+4. Proyecto API (viejo): agregar/dejar `api.nexid.lat`.
+5. Redeploy de los 3 proyectos.
+
+### 10.6 Qué tocar en Namecheap
+En Namecheap solo administrás DNS de `nexid.lat`:
+1. Ir a **Domain List -> Manage (nexid.lat) -> Advanced DNS**.
+2. Asegurar estos records:
+   - `@` (apex) -> según lo que pida Vercel al validar `nexid.lat` (A/ALIAS/CNAME flattening según plan/proveedor).
+   - `www` -> CNAME al target que indica Vercel.
+   - `app` -> CNAME al target que indica Vercel para dashboard.
+   - `api` -> CNAME al target que indica Vercel para api.
+3. No inventar targets manuales: usar exactamente el valor que Vercel muestra en cada dominio pendiente.
+4. TTL: automático o 5 min (si está disponible).
+
+### 10.7 Validación final
+Probar en incógnito:
+1. `https://nexid.lat` -> landing (web).
+2. `https://www.nexid.lat` -> redirección única a `https://nexid.lat`.
+3. `https://app.nexid.lat` -> dashboard.
+4. `https://api.nexid.lat/health` -> JSON/200.
+
+### 10.8 Proyecto de docs (opcional después)
+Cuando todo esté estable:
+1. Crear proyecto `nexid-docs` con Root Directory donde viva docs (por ejemplo `apps/docs` si existe en el repo).
+2. Dominio recomendado: `docs.nexid.lat`.
+3. Agregar `docs` en Namecheap como CNAME al target que indique Vercel.
+
+### 10.9 Regla de oro
+- Nunca mover Root Directory + dominios + env vars todo junto en un solo paso.
+- Primero crear paralelo, después swap de dominios.
+
+
+## 11) Emergencia: funciona `app.nexid.lat` pero `nexid.lat` y/o `api.nexid.lat` no
+
+Checklist rápido (en este orden):
+
+1. **Vercel web (`nexid-web`)**
+   - `nexid.lat` debe estar en **Connect to environment (Production)**.
+   - `nexid.lat` **NO** debe redirigir a `www.nexid.lat`.
+   - Si querés canonicalizar, hacelo al revés: `www.nexid.lat` -> `nexid.lat`.
+
+2. **Vercel api (`nexid-api`)**
+   - `api.nexid.lat` en **Connect to environment (Production)**.
+   - `api.nexid.lat` en **No Redirect**.
+
+3. **Namecheap DNS**
+   - Verificar que `@` (apex) apunta exactamente al target que pide Vercel para `nexid.lat`.
+   - Si usás A record para apex, no dejar IP heredada/vieja de otro hosting.
+   - `www`, `app`, `api` como CNAME a los targets que Vercel muestra.
+
+4. **Nunca usar URL Redirect record en Namecheap** para `@`, `www`, `api`, `app`.
+
+5. **Redeploy + caché**
+   - Redeploy en `nexid-web` y `nexid-api`.
+   - Probar en incógnito y, si sigue mal, limpiar DNS local (`ipconfig /flushdns` en Windows).
+
+### Síntoma típico y causa
+- Si `app.nexid.lat` funciona pero `nexid.lat` no, casi siempre el problema está en el apex (`@`) o en redirect invertido dentro de Vercel web.
