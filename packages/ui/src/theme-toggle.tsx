@@ -29,8 +29,7 @@ export function ThemeToggle() {
       // ignore
     }
 
-    const prefersLight = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
-    const initial: Theme = prefersLight ? "light" : "dark";
+    const initial: Theme = "dark";
     setTheme(initial);
     applyTheme(initial);
   }, []);
@@ -43,7 +42,7 @@ export function ThemeToggle() {
         setTheme(next);
         applyTheme(next);
       }}
-      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200 transition hover:bg-white/10"
+      className="theme-toggle inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200 transition hover:bg-white/10"
       aria-label="Toggle theme"
       title="Toggle theme"
     >

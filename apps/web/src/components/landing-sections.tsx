@@ -15,15 +15,15 @@ type StatsCopy = {
 };
 
 const proofByLocale: Record<AppLocale, string[]> = {
-  "es-AR": ["Arquitectura SOC-ready", "Canal reseller white-label", "Stack API-first"],
-  "pt-BR": ["Arquitetura SOC-ready", "Canal revendedor white-label", "Stack API-first"],
-  en: ["SOC-ready architecture", "Reseller white-label", "API-first stack"],
+  "es-AR": ["SaaS trazable", "SaaS tokenizable", "SaaS para vender con chips NFC"],
+  "pt-BR": ["SaaS rastreável", "SaaS tokenizável", "SaaS para vender com chips NFC"],
+  en: ["Traceable SaaS", "Tokenizable SaaS", "SaaS that sells with NFC chips"],
 };
 
 export function HeroSection({ content, stats, locale }: { content: Content; stats: StatsCopy; locale: AppLocale }) {
   const proofItems = [...new Set(proofByLocale[locale] || proofByLocale["es-AR"])]
-  const pipelineTitle = locale === "en" ? "Pipeline momentum" : locale === "pt-BR" ? "Pulso comercial" : "Pulso comercial";
-  const pipelineBody = locale === "en" ? "Live signal demo for enterprise buyers." : locale === "pt-BR" ? "Demo ao vivo para clientes enterprise." : "Demo en vivo para clientes enterprise.";
+  const pipelineTitle = locale === "en" ? "What happens after each tap" : locale === "pt-BR" ? "O que acontece após cada tap" : "Qué pasa después de cada tap";
+  const pipelineBody = locale === "en" ? "We verify, show value, and suggest the next sale action." : locale === "pt-BR" ? "Validamos, mostramos valor e sugerimos a próxima ação comercial." : "Validamos, mostramos valor y sugerimos la próxima acción comercial.";
   return (
     <section className="container-shell py-16 md:py-24">
       <div className="hero-shell grid gap-10 rounded-[2rem] p-6 md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
@@ -37,9 +37,8 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
 
           <div className="mt-7 flex flex-wrap gap-3">
             <a href="https://wa.me/5492613168608?text=Hola%20quiero%20una%20demo%20enterprise%20de%20nexID" target="_blank" rel="noreferrer"><Button>{content.hero.primary}</Button></a>
-            <Link href="/docs"><Button variant="secondary">{content.hero.secondary}</Button></Link>
-            <Link href="/pricing"><Button variant="secondary">{content.hero.tertiary}</Button></Link>
-            <a href="#demo"><Button variant="secondary">Ver demo</Button></a>
+            <a href="#demo"><Button variant="secondary">{content.hero.secondary}</Button></a>
+            <Link href="/resellers"><Button variant="secondary">{content.hero.tertiary}</Button></Link>
           </div>
 
           <div className="mt-7 flex flex-wrap gap-2">

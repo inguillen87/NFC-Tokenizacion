@@ -10,6 +10,7 @@ import {
 import { CalculatorSection } from "../components/calculator-section";
 import { RadarSection } from "../components/radar-section";
 import { InteractiveDemoSection } from "../components/interactive-demo-section";
+import { SalesChatWidget } from "../components/sales-chat-widget";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 
@@ -47,6 +48,8 @@ export default async function HomePage() {
       <PlansSection content={content} />
       <CalculatorSection calculator={content.calculator} locale={locale} />
       <CtaSection content={content} />
+
+      <SalesChatWidget locale={locale} />
 
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
