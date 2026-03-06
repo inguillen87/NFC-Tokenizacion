@@ -53,9 +53,65 @@ CREATE TABLE IF NOT EXISTS events (
   reason text,
   ip inet,
   user_agent text,
+  geo_city text,
+  geo_country text,
+  geo_lat double precision,
+  geo_lng double precision,
   raw_query jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_tags_batch_uid ON tags(batch_id, uid_hex);
+CREATE INDEX IF NOT EXISTS idx_tags_scan_count ON tags(scan_count DESC);
 CREATE INDEX IF NOT EXISTS idx_events_batch_created ON events(batch_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_geo_lat_lng ON events(geo_lat, geo_lng) WHERE geo_lat IS NOT NULL AND geo_lng IS NOT NULL;
+CREATE TABLE IF NOT EXISTS knowledge_articles (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  locale text NOT NULL,
+  slug text NOT NULL,
+  title text NOT NULL,
+  body text NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(locale, slug)
+);
+
+CREATE TABLE IF NOT EXISTS leads (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  locale text NOT NULL DEFAULT 'es-AR',
+  contact text NOT NULL,
+  company text,
+  country text,
+  vertical text,
+  tag_type text,
+  volume integer,
+  source text NOT NULL DEFAULT 'assistant',
+  status text NOT NULL DEFAULT 'new',
+  notes text,
+  assigned_to text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS tickets (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  locale text NOT NULL DEFAULT 'es-AR',
+  contact text NOT NULL,
+  title text NOT NULL,
+  detail text,
+  status text NOT NULL DEFAULT 'open',
+  assigned_to text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS order_requests (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  locale text NOT NULL DEFAULT 'es-AR',
+  contact text NOT NULL,
+  company text,
+  tag_type text,
+  volume integer,
+  notes text,
+  status text NOT NULL DEFAULT 'new',
+  assigned_to text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
