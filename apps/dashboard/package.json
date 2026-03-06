@@ -18,7 +18,8 @@
     "clsx": "^2.1.1",
     "@product/ui": "file:../../packages/ui",
     "@product/config": "file:../../packages/config",
-    "@product/core": "file:../../packages/core"
+    "@product/core": "file:../../packages/core",
+    "@product/api-client": "file:../../packages/api-client"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

@@ -26,4 +26,27 @@ await sql`
   ON CONFLICT (bid) DO NOTHING
 `;
 
+const articles = [
+  ["es-AR", "getting-started", "Qué es nexID", "nexID es una plataforma de autenticación NFC + identidad digital de producto."],
+  ["es-AR", "pricing-roi", "Pricing y ROI", "Para cotizar usamos volumen, tipo de tag y plan SaaS."],
+  ["pt-BR", "getting-started", "O que é nexID", "nexID é uma plataforma de autenticação NFC + identidade digital."],
+  ["pt-BR", "pricing-roi", "Preço e ROI", "A cotação usa volume, tipo de tag e plano SaaS."],
+  ["en", "getting-started", "What is nexID", "nexID is an NFC authentication and product identity platform."],
+  ["en", "pricing-roi", "Pricing and ROI", "Quotes depend on volume, tag type, and SaaS plan."],
+];
+
+for (const [locale, slug, title, body] of articles) {
+  await sql`
+    INSERT INTO knowledge_articles (locale, slug, title, body)
+    VALUES (${locale}, ${slug}, ${title}, ${body})
+    ON CONFLICT (locale, slug) DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body, updated_at = now()
+  `;
+}
+
+await sql`
+  INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
+  VALUES ('es-AR', 'demo@nexid.lat', 'Bodega Demo', 'AR', 'wine', 'secure', 10000, 'seed', 'qualified', 'Lead de ejemplo')
+  ON CONFLICT DO NOTHING
+`;
+
 console.log("Seed applied.");
