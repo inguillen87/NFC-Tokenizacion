@@ -74,6 +74,7 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     listOrders: () => request(opts, "/admin/orders"),
 
     adminSeedDemoBodega: () => request(opts, "/internal/demo/seed", { method: "POST" }),
+    demoLabPacks: () => request(opts, "/internal/demo/packs"),
     demoLabSummary: () => request(opts, "/internal/demo/summary"),
     demoLabUsePack: () => request(opts, "/internal/demo/use-pack", { method: "POST" }),
     demoLabReset: () => request(opts, "/internal/demo/reset", { method: "POST" }),
