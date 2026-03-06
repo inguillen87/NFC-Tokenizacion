@@ -14,7 +14,14 @@ En Vercel:
    - `DATABASE_URL`
    - `ADMIN_API_KEY`
    - `KMS_MASTER_KEY_HEX`
+   - `OPENAI_API_KEY` *(solo si querés habilitar `/assistant/chat`)*
 5. Deploy
+
+
+## OPENAI_API_KEY: dónde configurarla
+- **Obligatoria en `apps/api`** (ahí se llama a OpenAI desde `apps/api/src/app/assistant/chat/route.ts`).
+- **No hace falta en `apps/web` ni `apps/dashboard`** en la implementación actual: esas apps solo hacen proxy al endpoint de API.
+- En `web`/`dashboard` configurá `API_BASE_URL` (o `NEXT_PUBLIC_API_BASE_URL`) para apuntar al deployment de `apps/api`.
 
 ## DB
 Ejecuta:
