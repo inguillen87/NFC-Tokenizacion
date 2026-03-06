@@ -1,4 +1,4 @@
-import { Badge, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
+import { Badge, BrandDot, BrandLockup, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
 import Link from "next/link";
 
 import type { LandingContent } from "../lib/landing-content";
@@ -32,6 +32,14 @@ export function HeroSection({ content, stats }: { content: Content; stats: Stats
             <Link href="/docs"><Button variant="secondary">{content.hero.secondary}</Button></Link>
             <Link href="/pricing"><Button variant="secondary">{content.hero.tertiary}</Button></Link>
             <a href="#demo"><Button variant="secondary">Ver demo</Button></a>
+          </div>
+
+          <div className="mt-7 flex flex-wrap gap-2">
+            {proofItems.map((item) => (
+              <span key={item} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {item}
+              </span>
+            ))}
           </div>
 
           <div className="mt-7 flex flex-wrap gap-2">
