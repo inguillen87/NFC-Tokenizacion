@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, SectionHeading } from "@product/ui";
+import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
 
 type RadarCopy = LandingContent["radar"];
 
 type Ping = { id: number; x: number; y: number; city: string; product: string };
-type LogItem = { id: number; city: string; product: string; amount: string; status: "ok" | "warn" };
+type LogItem = { id: number; city: string; product: string; amount: string; status: "ok" | "warn"; detail: string };
 
 const points = [
   { city: "Mendoza", x: 28, y: 74 },
@@ -20,11 +21,32 @@ const points = [
   { city: "Tokyo", x: 85, y: 36 },
 ];
 
+const narratives: Record<AppLocale, Record<string, string[]>> = {
+  "es-AR": {
+    "Wine premium": ["Autenticación + trazabilidad de bodega", "Certificado digital + historia de cosecha"],
+    Cosmetics: ["Lote verificado + fecha de fabricación", "Tutorial y uso seguro post-compra"],
+    Pharma: ["Validación anti-falsificación en punto de venta", "Cadena de custodia y compliance"],
+    "VIP event": ["Entrada anti-clon + control de acceso", "Upgrade VIP y beneficios in-app"],
+  },
+  "pt-BR": {
+    "Wine premium": ["Autenticação + rastreabilidade da vinícola", "Certificado digital + história da safra"],
+    Cosmetics: ["Lote validado + data de fabricação", "Tutorial e uso seguro pós-compra"],
+    Pharma: ["Validação antifalsificação no ponto de venda", "Cadeia de custódia e compliance"],
+    "VIP event": ["Entrada anti-clone + controle de acesso", "Upgrade VIP e benefícios no app"],
+  },
+  en: {
+    "Wine premium": ["Winery-level authenticity + traceability", "Digital certificate + vintage provenance"],
+    Cosmetics: ["Batch verified + production date", "Post-purchase guidance and safe usage"],
+    Pharma: ["Anti-counterfeit verification at POS", "Chain-of-custody and compliance signals"],
+    "VIP event": ["Anti-clone ticketing + access control", "In-app VIP upgrade and perks"],
+  },
+};
+
 function toPolyline(values: number[]) {
   return values.map((v, i) => `${i * (100 / (values.length - 1))},${100 - v}`).join(" ");
 }
 
-export function RadarSection({ radar }: { radar: RadarCopy }) {
+export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppLocale }) {
   const [revenue, setRevenue] = useState(14250);
   const [tick, setTick] = useState(0);
   const [pings, setPings] = useState<Ping[]>([]);
@@ -39,16 +61,18 @@ export function RadarSection({ radar }: { radar: RadarCopy }) {
       const product = productList[Math.floor(Math.random() * productList.length)];
       const id = Date.now() + Math.floor(Math.random() * 1000);
       const warn = Math.random() > 0.78;
+      const detailOptions = narratives[locale]?.[product] || narratives.en[product] || ["Authenticated event captured"];
+      const detail = detailOptions[Math.floor(Math.random() * detailOptions.length)];
 
       setTick((prev) => prev + 1);
       setRevenue((prev) => Number((prev + (warn ? 0.01 : 0.02)).toFixed(2)));
       setPings((prev) => [...prev.slice(-11), { id, x: location.x, y: location.y, city: location.city, product }]);
-      setLogs((prev) => [{ id, city: location.city, product, amount: warn ? "+$0.01" : "+$0.02", status: warn ? "warn" : "ok" }, ...prev.slice(0, 6)]);
+      setLogs((prev) => [{ id, city: location.city, product, detail, amount: warn ? "+$0.01" : "+$0.02", status: warn ? "warn" : "ok" }, ...prev.slice(0, 6)]);
       setSeries((prev) => [...prev.slice(1), Math.max(16, Math.min(90, prev[prev.length - 1] + (Math.random() * 16 - 8)))]);
     }, 1400);
 
     return () => window.clearInterval(int);
-  }, [productList]);
+  }, [locale, productList]);
 
   return (
     <section className="container-shell py-20">
@@ -59,6 +83,14 @@ export function RadarSection({ radar }: { radar: RadarCopy }) {
           <div className="relative z-10 flex items-center justify-between">
             <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300">{radar.liveLabel}</p>
             <p className="font-mono text-lg text-white">{radar.revenueLabel}: USD {revenue.toLocaleString()}</p>
+          </div>
+
+          <div className="relative z-10 mt-2 rounded-xl border border-cyan-300/20 bg-cyan-400/5 p-3 text-xs text-cyan-100">
+            {locale === "es-AR"
+              ? "Cada evento muestra autenticación + valor comercial: origen, lote, estado de sello y acción sugerida."
+              : locale === "pt-BR"
+              ? "Cada evento combina autenticação + valor comercial: origem, lote, estado do lacre e ação sugerida."
+              : "Each event combines authentication + business value: origin, batch, seal status, and next action."}
           </div>
 
           <div className="relative z-10 mt-5 grid gap-4 lg:grid-cols-[1fr_0.72fr]">
@@ -72,9 +104,6 @@ export function RadarSection({ radar }: { radar: RadarCopy }) {
                   <path d="M547 294l59-15 49 14 44 32-18 59-66 16-49-24-28-48z" />
                   <path d="M728 287l69-10 67 14 39 27 2 43-51 24-72-9-56-30z" />
                   <path d="M846 128l42-22 54 9 27 22-12 27-46 13-37-9-23-22z" />
-                </g>
-                <g stroke="rgba(148,163,184,0.22)" strokeWidth="0.8" fill="none">
-                  <path d="M150 165l72 31M140 205l80 10M300 330l45 26M453 149l49 19M518 121l13 44M627 141l-8 54M793 300l58 27M870 141l37 19" />
                 </g>
               </svg>
               {pings.map((ping) => (
@@ -117,10 +146,13 @@ export function RadarSection({ radar }: { radar: RadarCopy }) {
             <div className="mt-4 space-y-2 font-mono text-xs">
               {logs.length === 0 ? <p className="text-slate-500">{radar.waitingLabel}</p> : null}
               {logs.map((log) => (
-                <div key={log.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200">
-                  <span>{log.city}</span>
-                  <span className="text-cyan-300">{log.product}</span>
-                  <span className={log.status === "warn" ? "text-amber-300" : "text-emerald-300"}>{log.amount}</span>
+                <div key={log.id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200">
+                  <div className="flex items-center justify-between">
+                    <span>{log.city}</span>
+                    <span className="text-cyan-300">{log.product}</span>
+                    <span className={log.status === "warn" ? "text-amber-300" : "text-emerald-300"}>{log.amount}</span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">{log.detail}</p>
                 </div>
               ))}
             </div>

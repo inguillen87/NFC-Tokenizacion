@@ -37,6 +37,8 @@ const copy: Record<
     quick: string[];
     ctaSchedule: string;
     ctaWhatsApp: string;
+    ctaInvestor25: string;
+    ctaInvestor50: string;
     contactRequired: string;
     sendLead: string;
     leadSuccess: string;
@@ -58,7 +60,9 @@ const copy: Record<
     unavailable: "No pude conectar con API. Probá de nuevo en unos segundos.",
     quick: ["¿Qué es un batch?", "Quiero cotizar 10k", "Quiero ser reseller"],
     ctaSchedule: "Agendar demo",
-    ctaWhatsApp: "Enviar mensaje",
+    ctaWhatsApp: "WhatsApp CEO",
+    ctaInvestor25: "ROI USD 25k",
+    ctaInvestor50: "ROI USD 50k",
     contactRequired: "Para enviar cotización necesitamos nombre completo y al menos email o WhatsApp.",
     sendLead: "Enviar lead",
     leadSuccess: "Perfecto. Lead enviado. El equipo comercial te contacta hoy / 24h.",
@@ -79,7 +83,9 @@ const copy: Record<
     unavailable: "Não consegui conectar com a API. Tente novamente em alguns segundos.",
     quick: ["O que é um batch?", "Quero cotar 10k", "Quero ser reseller"],
     ctaSchedule: "Agendar demo",
-    ctaWhatsApp: "Enviar mensagem",
+    ctaWhatsApp: "WhatsApp CEO",
+    ctaInvestor25: "ROI USD 25k",
+    ctaInvestor50: "ROI USD 50k",
     contactRequired: "Para enviar proposta precisamos nome completo e pelo menos email ou WhatsApp.",
     sendLead: "Enviar lead",
     leadSuccess: "Perfeito. Lead enviado. Nosso time comercial responde hoje / em 24h.",
@@ -100,7 +106,9 @@ const copy: Record<
     unavailable: "Could not reach the API right now. Please try again in a few seconds.",
     quick: ["What is a batch?", "I need a 10k quote", "I want to be a reseller"],
     ctaSchedule: "Book demo",
-    ctaWhatsApp: "Send message",
+    ctaWhatsApp: "WhatsApp CEO",
+    ctaInvestor25: "ROI USD 25k",
+    ctaInvestor50: "ROI USD 50k",
     contactRequired: "To request a quote we need full name and at least email or WhatsApp.",
     sendLead: "Send lead",
     leadSuccess: "Great. Lead sent. Sales team will contact you today / within 24h.",
@@ -211,6 +219,8 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
             <div className="mt-2 grid grid-cols-2 gap-2">
               <a href="/pricing" className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-center text-xs text-cyan-200">{t.ctaSchedule}</a>
               <a href="https://wa.me/5492613168608" target="_blank" rel="noreferrer" className="rounded-lg border border-white/20 px-3 py-2 text-center text-xs text-slate-200">{t.ctaWhatsApp}</a>
+              <a href="https://wa.me/5492613168608?text=Hola%20quiero%20modelar%20ROI%20con%20inversion%20de%20USD%2025k" target="_blank" rel="noreferrer" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">{t.ctaInvestor25}</a>
+              <a href="https://wa.me/5492613168608?text=Hola%20quiero%20modelar%20ROI%20con%20inversion%20de%20USD%2050k" target="_blank" rel="noreferrer" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">{t.ctaInvestor50}</a>
             </div>
           ) : null}
 

@@ -41,10 +41,10 @@ export default async function HomePage() {
 
       <HeroSection content={content} stats={t.web.stats} />
       <TrustBarSection content={content} />
-      <RadarSection radar={content.radar} />
+      <RadarSection radar={content.radar} locale={locale} />
       <InteractiveDemoSection locale={locale} />
       <PlansSection content={content} />
-      <CalculatorSection calculator={content.calculator} />
+      <CalculatorSection calculator={content.calculator} locale={locale} />
       <CtaSection content={content} />
 
       <footer className="site-footer border-t">

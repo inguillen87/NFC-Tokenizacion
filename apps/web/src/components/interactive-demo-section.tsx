@@ -5,9 +5,18 @@ import { Badge, Card, SectionHeading } from "@product/ui";
 import type { AppLocale } from "@product/config";
 
 type POV = "consumer" | "enterprise";
-type Vertical = "wine" | "agro" | "fashion";
-
+type Vertical = "wine" | "cosmetics" | "events";
 type Stage = "idle" | "scan" | "result";
+
+type VerticalInfo = {
+  icon: string;
+  title: string;
+  subtitle: string;
+  consumerValue: string;
+  enterpriseValue: string;
+  why: string;
+  economy: string;
+};
 
 const copy: Record<AppLocale, {
   eyebrow: string;
@@ -22,11 +31,15 @@ const copy: Record<AppLocale, {
   scanning: string;
   authentic: string;
   tampered: string;
+  physicalLabel: string;
+  consumerLabel: string;
+  enterpriseLabel: string;
+  traceability: string;
 }> = {
   "es-AR": {
     eyebrow: "Ecosistema interactivo",
-    title: "Un sello, dos perspectivas",
-    description: "Simulá lectura NFC y ruptura de precinto para ver la UX de cliente final y la consola B2B en paralelo.",
+    title: "Un sello, dos perspectivas con valor real",
+    description: "Mostrá en vivo cómo la misma lectura NFC impacta al consumidor final, operaciones, reseller e inversores.",
     consumer: "Cliente final (B2C)",
     enterprise: "Empresa / Inversor (B2B)",
     scan: "Simular escaneo",
@@ -36,11 +49,15 @@ const copy: Record<AppLocale, {
     scanning: "Autenticando AES-CMAC...",
     authentic: "Producto auténtico",
     tampered: "Alerta: precinto roto",
+    physicalLabel: "1. Producto físico",
+    consumerLabel: "Qué ve el cliente final",
+    enterpriseLabel: "Qué ve la operación / inversor",
+    traceability: "La trazabilidad convierte cada tap en data accionable: origen, lote, estado de sello y margen potencial.",
   },
   "pt-BR": {
     eyebrow: "Ecossistema interativo",
-    title: "Um selo, duas perspectivas",
-    description: "Simule leitura NFC e violação do lacre para ver UX B2C e console B2B em paralelo.",
+    title: "Um selo, duas perspectivas com valor real",
+    description: "Mostre ao vivo como a mesma leitura NFC impacta consumidor final, operações, reseller e investidores.",
     consumer: "Cliente final (B2C)",
     enterprise: "Empresa / Investidor (B2B)",
     scan: "Simular leitura",
@@ -50,11 +67,15 @@ const copy: Record<AppLocale, {
     scanning: "Autenticando AES-CMAC...",
     authentic: "Produto autêntico",
     tampered: "Alerta: lacre rompido",
+    physicalLabel: "1. Produto físico",
+    consumerLabel: "O que vê o cliente final",
+    enterpriseLabel: "O que vê operação / investidor",
+    traceability: "Rastreabilidade transforma cada tap em dados acionáveis: origem, lote, status do lacre e margem potencial.",
   },
   en: {
     eyebrow: "Interactive ecosystem",
-    title: "One seal, two perspectives",
-    description: "Simulate NFC reads and seal break to preview both B2C experience and B2B control console.",
+    title: "One seal, two perspectives with real business value",
+    description: "Show live how the same NFC read impacts end-customer UX, operations, resellers, and investors.",
     consumer: "End customer (B2C)",
     enterprise: "Enterprise / Investor (B2B)",
     scan: "Simulate scan",
@@ -64,13 +85,101 @@ const copy: Record<AppLocale, {
     scanning: "Authenticating AES-CMAC...",
     authentic: "Authentic product",
     tampered: "Alert: seal broken",
+    physicalLabel: "1. Physical product",
+    consumerLabel: "What end customer sees",
+    enterpriseLabel: "What operations / investors see",
+    traceability: "Traceability converts each tap into actionable data: origin, batch, seal status, and margin potential.",
   },
 };
 
-const verticalData: Record<Vertical, { icon: string; title: string; subtitle: string; cta: string }> = {
-  wine: { icon: "🍷", title: "Gran Reserva Malbec", subtitle: "Bottle #142 / 2000", cta: "Notas de cata VIP" },
-  agro: { icon: "🧪", title: "AgroTech Max", subtitle: "Lote #98234-A", cta: "Manual de aplicación" },
-  fashion: { icon: "👜", title: "Signature Bag", subtitle: "Edition 2026", cta: "NFT authenticity certificate" },
+const verticalData: Record<AppLocale, Record<Vertical, VerticalInfo>> = {
+  "es-AR": {
+    wine: {
+      icon: "🍷",
+      title: "Gran Reserva Malbec",
+      subtitle: "Lote MZA-2026 / Bottle #142",
+      consumerValue: "Verifica autenticidad, origen de bodega y notas de cata premium.",
+      enterpriseValue: "Detecta desvíos geográficos, duplicados y activa campañas post-compra.",
+      why: "Ideal para vinos premium con riesgo de falsificación y foco en exportación.",
+      economy: "Mix sugerido: NTAG424 TagTamper + capa de identidad digital.",
+    },
+    cosmetics: {
+      icon: "🧴",
+      title: "Derma C+ Repair",
+      subtitle: "Batch COS-77 / Control dermatológico",
+      consumerValue: "Confirma lote, fecha y recomendaciones de uso seguro.",
+      enterpriseValue: "Trazabilidad por canal y alertas de producto fuera de mercado.",
+      why: "Protege marca, evita gray market y mejora experiencia post-venta.",
+      economy: "Mix sugerido: secure para línea premium + basic para sampling.",
+    },
+    events: {
+      icon: "🎟️",
+      title: "VIP Sunset Festival",
+      subtitle: "Ticket NFC / Access zone A",
+      consumerValue: "Entrada rápida, antifraude y beneficios en tiempo real.",
+      enterpriseValue: "Control de aforo, anti-clon y monetización de upsells en vivo.",
+      why: "Para eventos y fiestas, NTAG215 suele ser la opción más económica y efectiva.",
+      economy: "Costo bajo por tag + activaciones web + analytics de attendance.",
+    },
+  },
+  "pt-BR": {
+    wine: {
+      icon: "🍷",
+      title: "Gran Reserva Malbec",
+      subtitle: "Lote MZA-2026 / Garrafa #142",
+      consumerValue: "Valida autenticidade, origem da vinícola e notas premium.",
+      enterpriseValue: "Detecta desvios geográficos, duplicatas e ativa campanhas pós-compra.",
+      why: "Ideal para vinhos premium com risco de falsificação e foco em exportação.",
+      economy: "Mix sugerido: NTAG424 TagTamper + camada de identidade digital.",
+    },
+    cosmetics: {
+      icon: "🧴",
+      title: "Derma C+ Repair",
+      subtitle: "Batch COS-77 / Controle dermatológico",
+      consumerValue: "Confirma lote, validade e recomendação de uso seguro.",
+      enterpriseValue: "Rastreabilidade por canal e alertas de produto fora do mercado.",
+      why: "Protege marca, reduz gray market e melhora pós-venda.",
+      economy: "Mix sugerido: secure para premium + basic para sampling.",
+    },
+    events: {
+      icon: "🎟️",
+      title: "VIP Sunset Festival",
+      subtitle: "Ticket NFC / Access zone A",
+      consumerValue: "Entrada rápida, antifraude e benefícios em tempo real.",
+      enterpriseValue: "Controle de lotação, anti-clone e monetização de upsell.",
+      why: "Para eventos e festas, NTAG215 costuma ser a opção mais barata e eficiente.",
+      economy: "Custo baixo por tag + ativações web + analytics de presença.",
+    },
+  },
+  en: {
+    wine: {
+      icon: "🍷",
+      title: "Gran Reserva Malbec",
+      subtitle: "Batch MZA-2026 / Bottle #142",
+      consumerValue: "Verifies authenticity, winery origin, and premium tasting narrative.",
+      enterpriseValue: "Flags geo anomalies, duplicates, and triggers post-purchase campaigns.",
+      why: "Best fit for premium wine with counterfeit risk and export exposure.",
+      economy: "Recommended mix: NTAG424 TagTamper + digital identity layer.",
+    },
+    cosmetics: {
+      icon: "🧴",
+      title: "Derma C+ Repair",
+      subtitle: "Batch COS-77 / Dermatology line",
+      consumerValue: "Confirms batch, expiration, and safe-use guidance.",
+      enterpriseValue: "Channel traceability plus out-of-market alerts.",
+      why: "Protects brand equity, reduces gray market, improves CX.",
+      economy: "Suggested mix: secure for premium SKUs + basic for samples.",
+    },
+    events: {
+      icon: "🎟️",
+      title: "VIP Sunset Festival",
+      subtitle: "NFC ticket / Access zone A",
+      consumerValue: "Fast access, anti-fraud checks, and real-time perks.",
+      enterpriseValue: "Crowd control, anti-clone ticketing, live upsell monetization.",
+      why: "For events and parties, NTAG215 is usually the lowest-cost, high-ROI option.",
+      economy: "Low tag cost + web activations + attendance analytics.",
+    },
+  },
 };
 
 export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
@@ -92,7 +201,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
     setStage("result");
   };
 
-  const activeProduct = verticalData[vertical];
+  const activeProduct = verticalData[locale]?.[vertical] || verticalData.en[vertical];
 
   return (
     <section className="container-shell py-20">
@@ -108,17 +217,17 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
             </div>
 
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              {(["wine", "agro", "fashion"] as Vertical[]).map((item) => (
+              {(["wine", "cosmetics", "events"] as Vertical[]).map((item) => (
                 <button key={item} onClick={() => setVertical(item)} className={`rounded-xl border px-3 py-2 text-left text-xs ${vertical === item ? "border-cyan-300 bg-cyan-400/10" : "border-white/10 bg-white/5"}`}>
-                  <p className="text-lg">{verticalData[item].icon}</p>
-                  <p className="text-slate-200">{verticalData[item].title}</p>
+                  <p className="text-lg">{verticalData[locale]?.[item]?.icon || verticalData.en[item].icon}</p>
+                  <p className="text-slate-200">{verticalData[locale]?.[item]?.title || verticalData.en[item].title}</p>
                 </button>
               ))}
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">1. Producto físico</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{t.physicalLabel}</p>
                 <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-gradient-to-b from-white to-slate-200 text-slate-800 shadow-inner">
                   <div className="text-center">
                     <div className="mx-auto mb-2 grid h-11 w-11 place-items-center rounded-full border-2 border-cyan-400 bg-white">
@@ -146,7 +255,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
 
                   <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
                     <p className="text-xs text-slate-200">{activeProduct.title}</p>
-                    <p className="text-[11px] text-slate-400">{pov === "consumer" ? activeProduct.cta : "SYS_AUTH_OK · LOOP_CERRADO"}</p>
+                    <p className="mt-1 text-[11px] text-slate-400">{pov === "consumer" ? activeProduct.consumerValue : activeProduct.enterpriseValue}</p>
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
@@ -160,25 +269,11 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
         </Card>
 
         <Card className="p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Live operator pulse</p>
-          <div className="mt-4 space-y-3">
-            {["API Throughput", "Fraud signals", "Geo risk", "Revenue stream"].map((label, index) => {
-              const value = [74, 22, 41, 67][index];
-              return (
-                <div key={label}>
-                  <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
-                    <span>{label}</span>
-                    <span>{value}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-800">
-                    <div className="h-2 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500" style={{ width: `${value}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-5 rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-xs text-violet-100">
-            White-label, reseller-ready y multi-tenant desde el día 1.
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{pov === "consumer" ? t.consumerLabel : t.enterpriseLabel}</p>
+          <div className="mt-4 space-y-4 text-sm text-slate-300">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">{activeProduct.why}</div>
+            <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-3">{activeProduct.economy}</div>
+            <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-violet-100">{t.traceability}</div>
           </div>
         </Card>
       </div>
