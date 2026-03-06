@@ -13,27 +13,50 @@ type StatsCopy = {
   businessDelta: string;
 };
 
+const proofItems = ["SOC-ready architecture", "Reseller white-label", "API-first stack"];
+
 export function HeroSection({ content, stats }: { content: Content; stats: StatsCopy }) {
   return (
-    <section className="container-shell py-20 md:py-28">
-      <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+    <section className="container-shell py-16 md:py-24">
+      <div className="hero-shell grid gap-10 rounded-[2rem] p-6 md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
-          <Badge tone="cyan">{content.hero.badge}</Badge>
-          <h1 className="mt-6 max-w-4xl text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">{content.hero.body}</p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
+            {content.hero.badge}
+          </div>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button>{content.hero.primary}</Button>
-            <a href="#platform"><Button variant="secondary">{content.hero.secondary}</Button></a>
+          <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
+          <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{content.hero.body}</p>
+
+          <div className="mt-7 flex flex-wrap gap-3">
+            <a href="https://wa.me/5492613168608?text=Hola%20quiero%20una%20demo%20enterprise%20de%20nexID" target="_blank" rel="noreferrer"><Button>{content.hero.primary}</Button></a>
+            <Link href="/docs"><Button variant="secondary">{content.hero.secondary}</Button></Link>
             <Link href="/pricing"><Button variant="secondary">{content.hero.tertiary}</Button></Link>
+            <a href="#demo"><Button variant="secondary">Ver demo</Button></a>
+          </div>
+
+          <div className="mt-7 flex flex-wrap gap-2">
+            {proofItems.map((item) => (
+              <span key={item} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {item}
+              </span>
+            ))}
           </div>
         </div>
 
-        <Card className="hero-glow animate-card-shift p-6">
+        <Card className="hero-panel hero-glow p-5 md:p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <StatCard label={stats.latency} value="<150ms" delta={stats.latencyDelta} tone="good" />
             <StatCard label={stats.unitEconomics} value="USD 0.02" delta={stats.economicsDelta} />
             <StatCard label={stats.businessModel} value="HW + SaaS" delta={stats.businessDelta} tone="good" />
+            <div className="hero-spark rounded-2xl border border-white/10 bg-slate-900/80 p-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">Pipeline momentum</p>
+              <div className="mt-3 space-y-2">
+                <div className="hero-meter"><span style={{ width: "82%" }} /></div>
+                <div className="hero-meter"><span style={{ width: "68%" }} /></div>
+                <div className="hero-meter"><span style={{ width: "91%" }} /></div>
+              </div>
+              <p className="mt-3 text-xs text-slate-400">Live signal demo for enterprise buyers.</p>
+            </div>
           </div>
         </Card>
       </div>
@@ -43,7 +66,7 @@ export function HeroSection({ content, stats }: { content: Content; stats: Stats
 
 export function TrustBarSection({ content }: { content: Content }) {
   return (
-    <section className="container-shell pb-8">
+    <section className="container-shell pb-10">
       <div className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-5">
         {content.trustBar.map((item) => (
           <div key={item} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-center text-xs uppercase tracking-[0.14em] text-cyan-200">
