@@ -52,6 +52,7 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
   const [pings, setPings] = useState<Ping[]>([]);
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [series, setSeries] = useState<number[]>([42, 46, 55, 51, 62, 58, 66, 61, 69, 64, 71, 67]);
+  const [mode, setMode] = useState<"basic" | "secure">("secure");
 
   const productList = useMemo(() => radar.products, [radar.products]);
 
@@ -105,6 +106,11 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
                   <path d="M728 287l69-10 67 14 39 27 2 43-51 24-72-9-56-30z" />
                   <path d="M846 128l42-22 54 9 27 22-12 27-46 13-37-9-23-22z" />
                 </g>
+                <g fill="none" stroke={mode === "secure" ? "rgba(96,165,250,.55)" : "rgba(47,225,195,.45)"} strokeWidth="2">
+                  <path d="M260 360 C 310 280, 430 230, 500 220" />
+                  <path d="M500 220 C 600 190, 700 180, 860 198" />
+                  <path d="M240 214 C 360 208, 470 165, 560 156" />
+                </g>
               </svg>
               {pings.map((ping) => (
                 <div key={ping.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${ping.x}%`, top: `${ping.y}%` }}>
@@ -116,6 +122,10 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
                 </div>
               ))}
               <div className="absolute bottom-3 left-3 text-[10px] text-slate-400">{radar.mapCaption}</div>
+              <div className="absolute right-3 top-3 flex rounded-lg border border-white/10 bg-slate-950/80 p-1 text-[10px]">
+                <button onClick={() => setMode("basic")} className={`rounded px-2 py-1 ${mode === "basic" ? "bg-cyan-400/20 text-cyan-200" : "text-slate-400"}`}>Basic tags</button>
+                <button onClick={() => setMode("secure")} className={`rounded px-2 py-1 ${mode === "secure" ? "bg-blue-400/20 text-blue-200" : "text-slate-400"}`}>Secure tags</button>
+              </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-3">
