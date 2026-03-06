@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_PRISMA_URL")
+}
+
+enum Role {
+  super_admin
+  tenant_admin
+  reseller
+  viewer
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  fullName     String?
+  passwordHash String?
+  createdAt    DateTime      @default(now())
+  memberships  Membership[]
+  chatSessions ChatSession[]
+}
+
+model Tenant {
+  id          String       @id @default(uuid())
+  slug        String       @unique
+  name        String
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+  batches     Batch[]
+}
+
+model Membership {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String
+  role      Role
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+}
+
+model Batch {
+  id        String   @id @default(uuid())
+  bid       String   @unique
+  tenantId  String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tags      Tag[]
+  events    Event[]
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  batchId   String
+  uidHex    String
+  status    String   @default("inactive")
+  createdAt DateTime @default(now())
+  batch     Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id        String   @id @default(uuid())
+  batchId   String
+  result    String
+  reason    String?
+  createdAt DateTime @default(now())
+  batch     Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeArticle {
+  id        String   @id @default(uuid())
+  locale    String
+  slug      String
+  title     String
+  body      String
+  updatedAt DateTime @updatedAt
+
+  @@unique([locale, slug])
+}
+
+model ChatSession {
+  id        String        @id @default(uuid())
+  userId    String?
+  locale    String
+  createdAt DateTime      @default(now())
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id         String      @id @default(uuid())
+  sessionId  String
+  role       String
+  content    String
+  createdAt  DateTime    @default(now())
+  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
