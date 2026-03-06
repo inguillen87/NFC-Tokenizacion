@@ -4,7 +4,17 @@ export const dynamic = "force-dynamic";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 
-type Body = { locale?: string; role?: string; tenant?: string; question?: string; contact?: string; mode?: string };
+type Body = {
+  locale?: string;
+  role?: string;
+  tenant?: string;
+  question?: string;
+  contact?: string;
+  fullName?: string;
+  email?: string;
+  whatsapp?: string;
+  mode?: string;
+};
 
 type ExtractedLead = {
   company: string | null;
@@ -17,17 +27,17 @@ type ExtractedLead = {
 const fallbackByLocale: Record<string, string[]> = {
   "es-AR": [
     "nexID protege productos con NFC (NTAG215 y NTAG424 DNA TagTamper) y validación SUN/SDM.",
-    "Para cotizar, indicame volumen (10k/50k/100k), tipo de tag (basic/secure) y contacto (email o WhatsApp).",
+    "Para cotizar, indicame volumen (10k/50k/100k), tipo de tag (basic/secure) y contacto.",
     "Puedo crear un lead, ticket o pedido para que ventas te contacte hoy.",
   ],
   "pt-BR": [
     "nexID protege produtos com NFC (NTAG215 e NTAG424 DNA TagTamper) e validação SUN/SDM.",
-    "Para cotação, informe volume (10k/50k/100k), tipo de tag (basic/secure) e contato (email ou WhatsApp).",
+    "Para cotação, informe volume (10k/50k/100k), tipo de tag (basic/secure) e contato.",
     "Posso criar lead, ticket ou pedido para o time comercial.",
   ],
   en: [
     "nexID secures products with NFC (NTAG215 and NTAG424 DNA TagTamper) and SUN/SDM validation.",
-    "For a quote, share volume (10k/50k/100k), tag type (basic/secure), and your contact info.",
+    "For a quote, share volume (10k/50k/100k), tag type (basic/secure), and contact details.",
     "I can create a lead, ticket, or order request so the sales team contacts you today.",
   ],
 };
@@ -76,26 +86,23 @@ function extractLeadData(question: string): ExtractedLead {
   };
 }
 
-function buildAnswer(locale: string, intent: string, extracted: ExtractedLead) {
+function buildFallbackAnswer(locale: string, intent: string, extracted: ExtractedLead) {
   const base = fallbackByLocale[locale] || fallbackByLocale["es-AR"];
   const extraByLocale = {
     "es-AR": {
-      pricing: `¿Querés cotizar ${extracted.volume ? extracted.volume.toLocaleString() : "10.000"} o 50.000 unidades?` +
-        ` ¿Preferís tags ${extracted.tagType === "secure" ? "seguros (NTAG 424 DNA TagTamper)" : "básicos (NTAG215)"} o secure anti-fraude?`,
-      reseller: "Si querés canal reseller, dejame WhatsApp o email y te pasamos onboarding hoy.",
-      ticket: "Ya registro un ticket de soporte y te contactamos dentro de 24h.",
+      pricing: `¿Querés cotizar ${extracted.volume ? extracted.volume.toLocaleString() : "10.000"} o 50.000 unidades? ¿Tags básicos (NTAG215) o anti-fraude (NTAG 424 DNA TagTamper)?`,
+      reseller: "Si querés canal reseller, pasame nombre completo + email/WhatsApp y te enviamos onboarding hoy.",
+      ticket: "Registro tu ticket de soporte para que te contacte el equipo dentro de 24h.",
     },
     "pt-BR": {
-      pricing: `Quer cotar ${extracted.volume ? extracted.volume.toLocaleString() : "10.000"} ou 50.000 unidades?` +
-        ` Você prefere tags ${extracted.tagType === "secure" ? "seguros (NTAG 424 DNA TagTamper)" : "básicos (NTAG215)"}?`,
-      reseller: "Se você quer o canal reseller, deixe WhatsApp ou e-mail para onboarding ainda hoje.",
-      ticket: "Vou registrar um ticket de suporte e nosso time responde em até 24h.",
+      pricing: `Quer cotar ${extracted.volume ? extracted.volume.toLocaleString() : "10.000"} ou 50.000 unidades? Tags básicos (NTAG215) ou anti-fraude (NTAG 424 DNA TagTamper)?`,
+      reseller: "Se você quer canal reseller, envie nome completo + email/WhatsApp para onboarding hoje.",
+      ticket: "Vou registrar seu ticket de suporte para resposta em até 24h.",
     },
     en: {
-      pricing: `Do you want a quote for ${extracted.volume ? extracted.volume.toLocaleString() : "10k"} or 50k units?` +
-        ` Do you need ${extracted.tagType === "secure" ? "secure tags (NTAG 424 DNA TagTamper)" : "basic tags (NTAG215)"}?`,
-      reseller: "If you want the reseller channel, leave WhatsApp or email and we’ll send onboarding today.",
-      ticket: "I’ll log a support ticket and the team will follow up within 24h.",
+      pricing: `Do you want a quote for ${extracted.volume ? extracted.volume.toLocaleString() : "10k"} or 50k units? Basic tags (NTAG215) or anti-fraud (NTAG 424 DNA TagTamper)?`,
+      reseller: "If you want reseller channel, send full name + email/WhatsApp and we’ll share onboarding today.",
+      ticket: "I will register your support ticket for a response within 24h.",
     },
   } as const;
 
@@ -104,12 +111,58 @@ function buildAnswer(locale: string, intent: string, extracted: ExtractedLead) {
   return `${base[0]} ${base[1]} ${base[2]} ${intentLine}`.trim();
 }
 
+async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: string; question: string; intent: string; kb: Array<Record<string, string>> }) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return null;
+
+  const context = kb.map((x) => `- [${x.locale}/${x.slug}] ${x.title}: ${x.body.slice(0, 500)}`).join("\n");
+  const system =
+    "You are nexID sales/support assistant. Be concise, high-converting, and practical. " +
+    "Always guide to next step for lead capture: full name + email or WhatsApp. " +
+    "When intent is pricing/reseller/order ask for volume/tag type/contact and propose demo call. " +
+    `Reply in locale ${locale}.`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.35,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: `Intent: ${intent}\nQuestion: ${question}\n\nKnowledge base:\n${context}` },
+        ],
+      }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json().catch(() => null);
+    const text = data?.choices?.[0]?.message?.content;
+    return typeof text === "string" && text.trim() ? text.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   const body: Body = await req.json().catch(() => ({}));
   const locale = body.locale || "es-AR";
   const question = String(body.question || "");
   const intent = detectIntent(question);
   const extracted = extractLeadData(question);
+
+  const fullName = String(body.fullName || "").trim();
+  const email = String(body.email || "").trim();
+  const whatsapp = String(body.whatsapp || "").trim();
+  const contact = String(body.contact || [email, whatsapp].filter(Boolean).join(" | ")).trim();
+  const hasContact = Boolean(email || whatsapp || contact);
+  const hasQualifiedLeadData = fullName.length > 3 && hasContact;
+  const requiresContact = !hasQualifiedLeadData && (intent === "pricing" || intent === "reseller" || intent === "order");
 
   const kbRows = await sql/*sql*/`
     SELECT locale, slug, title, body
@@ -129,28 +182,45 @@ export async function POST(req: Request) {
     })
     .slice(0, 3);
 
-  const answer = buildAnswer(locale, intent, extracted);
-  const contact = String(body.contact || "").trim();
-  const requiresContact = !contact && (intent === "pricing" || intent === "reseller" || intent === "order");
+  const openAiAnswer = await buildOpenAiAnswer({ locale, question, intent, kb: selected });
+  const answer = openAiAnswer || buildFallbackAnswer(locale, intent, extracted);
 
-  if (contact && (intent === "pricing" || intent === "reseller" || intent === "general" || intent === "order")) {
+  if (hasQualifiedLeadData && (intent === "pricing" || intent === "reseller" || intent === "general" || intent === "order")) {
     await sql/*sql*/`
       INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
-      VALUES (${locale}, ${contact}, ${extracted.company || ""}, ${extracted.country || ""}, ${extracted.vertical || "other"}, ${extracted.tagType || "unknown"}, ${extracted.volume || 0}, ${String(body.mode || "assistant")}, 'new', ${question.slice(0, 500)})
+      VALUES (
+        ${locale},
+        ${contact},
+        ${extracted.company || ""},
+        ${extracted.country || ""},
+        ${extracted.vertical || "other"},
+        ${extracted.tagType || "unknown"},
+        ${extracted.volume || 0},
+        ${String(body.mode || "assistant")},
+        ${`${fullName ? `name=${fullName}; ` : ""}${question}`.slice(0, 700)}
+      )
     `.catch(() => null);
   }
 
-  if (contact && intent === "ticket") {
+  if (hasContact && intent === "ticket") {
     await sql/*sql*/`
       INSERT INTO tickets (locale, contact, title, detail, status)
       VALUES (${locale}, ${contact}, 'Assistant support request', ${question.slice(0, 500)}, 'open')
     `.catch(() => null);
   }
 
-  if (contact && intent === "order") {
+  if (hasQualifiedLeadData && intent === "order") {
     await sql/*sql*/`
       INSERT INTO order_requests (locale, contact, company, tag_type, volume, notes, status)
-      VALUES (${locale}, ${contact}, ${extracted.company || ""}, ${extracted.tagType || "basic"}, ${extracted.volume || 0}, ${question.slice(0, 500)}, 'new')
+      VALUES (
+        ${locale},
+        ${contact},
+        ${extracted.company || ""},
+        ${extracted.tagType || "basic"},
+        ${extracted.volume || 0},
+        ${`${fullName ? `name=${fullName}; ` : ""}${question}`.slice(0, 700)},
+        'new'
+      )
     `.catch(() => null);
   }
 

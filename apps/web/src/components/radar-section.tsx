@@ -64,6 +64,19 @@ export function RadarSection({ radar }: { radar: RadarCopy }) {
           <div className="relative z-10 mt-5 grid gap-4 lg:grid-cols-[1fr_0.72fr]">
             <div className="relative h-[320px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/70">
               <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(30,41,59,.5)_1px,transparent_1px),linear-gradient(to_bottom,rgba(30,41,59,.5)_1px,transparent_1px)] bg-[size:32px_32px] opacity-40" />
+              <svg viewBox="0 0 1000 500" className="absolute inset-0 h-full w-full opacity-70" aria-hidden>
+                <g fill="rgba(148,163,184,0.18)" stroke="rgba(148,163,184,0.28)" strokeWidth="1.2">
+                  <path d="M103 147l36-26 52 8 24 28 40 12 22 46-22 44-61 23-34-17-28-36-40-8-32-39z" />
+                  <path d="M274 299l44 11 20 24 24 14 16 52-28 56-44 12-27-23-8-53 9-45z" />
+                  <path d="M402 132l65-26 109 10 82 21 70-6 58 31-8 34-66 17-33 37-81-4-58 26-45 12-88-28-33-32z" />
+                  <path d="M547 294l59-15 49 14 44 32-18 59-66 16-49-24-28-48z" />
+                  <path d="M728 287l69-10 67 14 39 27 2 43-51 24-72-9-56-30z" />
+                  <path d="M846 128l42-22 54 9 27 22-12 27-46 13-37-9-23-22z" />
+                </g>
+                <g stroke="rgba(148,163,184,0.22)" strokeWidth="0.8" fill="none">
+                  <path d="M150 165l72 31M140 205l80 10M300 330l45 26M453 149l49 19M518 121l13 44M627 141l-8 54M793 300l58 27M870 141l37 19" />
+                </g>
+              </svg>
               {pings.map((ping) => (
                 <div key={ping.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${ping.x}%`, top: `${ping.y}%` }}>
                   <span className="relative flex h-3 w-3">

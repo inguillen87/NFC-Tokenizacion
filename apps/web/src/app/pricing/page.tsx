@@ -1,3 +1,4 @@
+import { BackLink } from "../../components/back-link";
 import { Badge, Button, Card, SectionHeading } from "@product/ui";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
@@ -8,7 +9,7 @@ export default async function PricingPage() {
   const content = landingContent[locale];
 
   return (
-    <main className="container-shell py-16">
+    <main className="container-shell py-16"><BackLink />
       <SectionHeading eyebrow={content.plans.eyebrow} title={content.plans.title} description={content.plans.description} />
       <div className="mt-10 grid gap-6 xl:grid-cols-3">
         {content.plans.cards.map((plan) => (

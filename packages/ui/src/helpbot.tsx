@@ -27,7 +27,9 @@ const copy: Record<
     close: string;
     send: string;
     leadPrompt: string;
-    contactPlaceholder: string;
+    fullNameLabel: string;
+    emailLabel: string;
+    whatsappLabel: string;
     roleUser: string;
     roleAi: string;
     typing: string;
@@ -37,6 +39,7 @@ const copy: Record<
     ctaWhatsApp: string;
     contactRequired: string;
     sendLead: string;
+    leadSuccess: string;
   }
 > = {
   "es-AR": {
@@ -45,8 +48,10 @@ const copy: Record<
     open: "Abrir asistente",
     close: "Cerrar",
     send: "Enviar",
-    leadPrompt: "¿Querés cotizar? Dejá email o WhatsApp y te contactamos hoy.",
-    contactPlaceholder: "email / whatsapp",
+    leadPrompt: "Te ayudo a cotizar y elegir plan. Si querés propuesta hoy, dejá tus datos.",
+    fullNameLabel: "Nombre completo",
+    emailLabel: "Email",
+    whatsappLabel: "WhatsApp",
     roleUser: "Vos",
     roleAi: "AI",
     typing: "Escribiendo…",
@@ -54,8 +59,9 @@ const copy: Record<
     quick: ["¿Qué es un batch?", "Quiero cotizar 10k", "Quiero ser reseller"],
     ctaSchedule: "Agendar demo",
     ctaWhatsApp: "Enviar mensaje",
-    contactRequired: "Para enviar cotización, dejá email o WhatsApp y presioná Enviar lead.",
+    contactRequired: "Para enviar cotización necesitamos nombre completo y al menos email o WhatsApp.",
     sendLead: "Enviar lead",
+    leadSuccess: "Perfecto. Lead enviado. El equipo comercial te contacta hoy / 24h.",
   },
   "pt-BR": {
     title: "nexID Assistant",
@@ -63,8 +69,10 @@ const copy: Record<
     open: "Abrir assistente",
     close: "Fechar",
     send: "Enviar",
-    leadPrompt: "Quer cotação? Deixe email ou WhatsApp e falamos com você hoje.",
-    contactPlaceholder: "email / whatsapp",
+    leadPrompt: "Posso ajudar com cotação e plano ideal. Para proposta hoje, deixe seus dados.",
+    fullNameLabel: "Nome completo",
+    emailLabel: "Email",
+    whatsappLabel: "WhatsApp",
     roleUser: "Você",
     roleAi: "AI",
     typing: "Escrevendo…",
@@ -72,8 +80,9 @@ const copy: Record<
     quick: ["O que é um batch?", "Quero cotar 10k", "Quero ser reseller"],
     ctaSchedule: "Agendar demo",
     ctaWhatsApp: "Enviar mensagem",
-    contactRequired: "Para enviar proposta, deixe email/WhatsApp e clique em Enviar lead.",
+    contactRequired: "Para enviar proposta precisamos nome completo e pelo menos email ou WhatsApp.",
     sendLead: "Enviar lead",
+    leadSuccess: "Perfeito. Lead enviado. Nosso time comercial responde hoje / em 24h.",
   },
   en: {
     title: "nexID Assistant",
@@ -81,8 +90,10 @@ const copy: Record<
     open: "Open assistant",
     close: "Close",
     send: "Send",
-    leadPrompt: "Want a quote? Leave email or WhatsApp and we’ll contact you today.",
-    contactPlaceholder: "email / whatsapp",
+    leadPrompt: "I can guide plans and pricing. Leave your details to get a proposal today.",
+    fullNameLabel: "Full name",
+    emailLabel: "Email",
+    whatsappLabel: "WhatsApp",
     roleUser: "You",
     roleAi: "AI",
     typing: "Typing…",
@@ -90,8 +101,9 @@ const copy: Record<
     quick: ["What is a batch?", "I need a 10k quote", "I want to be a reseller"],
     ctaSchedule: "Book demo",
     ctaWhatsApp: "Send message",
-    contactRequired: "To receive a quote, leave email/WhatsApp and click Send lead.",
+    contactRequired: "To request a quote we need full name and at least email or WhatsApp.",
     sendLead: "Send lead",
+    leadSuccess: "Great. Lead sent. Sales team will contact you today / within 24h.",
   },
 };
 
@@ -103,8 +115,13 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; text: string }>>([
     { role: "assistant", text: t.leadPrompt },
   ]);
-  const [contact, setContact] = useState("");
   const [requiresContact, setRequiresContact] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+
+  const hasContact = email.trim().length > 3 || whatsapp.trim().length > 5;
+  const leadReady = fullName.trim().length > 3 && hasContact;
 
   const shouldShowSalesCta = useMemo(() => {
     const latest = [...messages].reverse().find((item) => item.role === "assistant")?.text || "";
@@ -114,16 +131,19 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
   async function send(raw?: string) {
     const content = (raw ?? question).trim();
     if (!content || busy) return;
+
     setQuestion("");
+    setRequiresContact(false);
     setMessages((prev) => [...prev, { role: "user", text: content }]);
     setBusy(true);
-    setRequiresContact(false);
+
+    const contact = [email.trim(), whatsapp.trim()].filter(Boolean).join(" | ");
 
     try {
       const res = await fetch("/api/assistant/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale, question: content, mode, contact }),
+        body: JSON.stringify({ locale, question: content, mode, fullName, email, whatsapp, contact }),
       });
 
       const data: AssistantReply = await res.json().catch(() => ({}));
@@ -144,6 +164,22 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
     }
   }
 
+  async function sendLead() {
+    if (!leadReady || busy) {
+      setRequiresContact(true);
+      return;
+    }
+
+    const prompt = locale === "pt-BR"
+      ? `Quero proposta comercial. Nome: ${fullName}. Email: ${email}. WhatsApp: ${whatsapp}.`
+      : locale === "en"
+      ? `I want a commercial proposal. Full name: ${fullName}. Email: ${email}. WhatsApp: ${whatsapp}.`
+      : `Quiero propuesta comercial. Nombre completo: ${fullName}. Email: ${email}. WhatsApp: ${whatsapp}.`;
+
+    await send(prompt);
+    setMessages((prev) => [...prev, { role: "assistant", text: t.leadSuccess }]);
+  }
+
   return (
     <div className={className}>
       <button className="fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200" onClick={() => setOpen((v) => !v)}>
@@ -161,6 +197,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
               </button>
             ))}
           </div>
+
           <div className="mt-3 max-h-72 space-y-2 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-xs">
             {messages.map((m, idx) => (
               <div key={idx} className={m.role === "user" ? "text-cyan-300" : "text-slate-200"}>
@@ -169,6 +206,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
             ))}
             {busy ? <div className="text-slate-400">{t.typing}</div> : null}
           </div>
+
           {shouldShowSalesCta ? (
             <div className="mt-2 grid grid-cols-2 gap-2">
               <a href="/pricing" className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-center text-xs text-cyan-200">{t.ctaSchedule}</a>
@@ -181,8 +219,17 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
               {t.contactRequired}
             </div>
           ) : null}
-          <input value={contact} onChange={(e) => setContact(e.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.contactPlaceholder} />
-          <button onClick={() => send("lead capture request") } disabled={busy || !contact.trim()} className="mt-2 w-full rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50">{t.sendLead}</button>
+
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.fullNameLabel} />
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.emailLabel} />
+            <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.whatsappLabel} />
+          </div>
+
+          <button onClick={sendLead} disabled={busy || !leadReady} className="mt-2 w-full rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50">
+            {t.sendLead}
+          </button>
+
           <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
           <button onClick={() => send()} disabled={busy} className="mt-2 w-full rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
             {t.send}

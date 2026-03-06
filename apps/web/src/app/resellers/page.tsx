@@ -1,3 +1,4 @@
+import { BackLink } from "../../components/back-link";
 import { Button, Card, SectionHeading } from "@product/ui";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
@@ -7,7 +8,7 @@ export default async function ResellersPage() {
   const content = landingContent[locale];
 
   return (
-    <main className="container-shell py-16 space-y-8">
+    <main className="container-shell py-16 space-y-8"><BackLink />
       <SectionHeading eyebrow={content.reseller.eyebrow} title={content.reseller.title} description={content.reseller.description} />
       <div className="grid gap-6 md:grid-cols-2">
         {content.reseller.cards.map((item) => (
