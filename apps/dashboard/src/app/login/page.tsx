@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { siteConfig } from "@product/config";
-import { Badge, Button, Card } from "@product/ui";
+import { BrandLockup, Button, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
 import { dashboardContent } from "../../lib/dashboard-content";
 
@@ -13,7 +12,7 @@ export default async function LoginPage() {
       <Card className="w-full max-w-5xl p-3 md:p-10">
         <div className="grid gap-10 md:grid-cols-[1.1fr_1fr]">
           <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-6">
-            <Badge tone="green">{siteConfig.productName}</Badge>
+            <BrandLockup size={34} variant="ripple" theme="dark" />
             <h1 className="mt-5 text-3xl font-bold text-white">{t.common.login}</h1>
             <p className="mt-2 text-sm text-slate-400">{t.dashboard.auth.loginBody}</p>
           </div>
