@@ -28,9 +28,18 @@ export function HeroSection({ content, stats }: { content: Content; stats: Stats
           <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{content.hero.body}</p>
 
           <div className="mt-7 flex flex-wrap gap-3">
-            <Button>{content.hero.primary}</Button>
-            <a href="#platform"><Button variant="secondary">{content.hero.secondary}</Button></a>
+            <a href="https://wa.me/5492613168608?text=Hola%20quiero%20una%20demo%20enterprise%20de%20nexID" target="_blank" rel="noreferrer"><Button>{content.hero.primary}</Button></a>
+            <Link href="/docs"><Button variant="secondary">{content.hero.secondary}</Button></Link>
             <Link href="/pricing"><Button variant="secondary">{content.hero.tertiary}</Button></Link>
+            <a href="#demo"><Button variant="secondary">Ver demo</Button></a>
+          </div>
+
+          <div className="mt-7 flex flex-wrap gap-2">
+            {proofItems.map((item) => (
+              <span key={item} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {item}
+              </span>
+            ))}
           </div>
 
           <div className="mt-7 flex flex-wrap gap-2">

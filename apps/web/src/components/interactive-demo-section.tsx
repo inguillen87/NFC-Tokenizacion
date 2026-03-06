@@ -204,7 +204,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
   const activeProduct = verticalData[locale]?.[vertical] || verticalData.en[vertical];
 
   return (
-    <section className="container-shell py-20">
+    <section id="demo" className="container-shell py-20">
       <SectionHeading eyebrow={t.eyebrow} title={t.title} description={t.description} />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -229,14 +229,28 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{t.physicalLabel}</p>
                 <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-gradient-to-b from-white to-slate-200 text-slate-800 shadow-inner">
-                  <div className="text-center">
-                    <div className="mx-auto mb-2 grid h-11 w-11 place-items-center rounded-full border-2 border-cyan-400 bg-white">
-                      <span className="text-lg">📡</span>
+                  {vertical === "wine" ? (
+                    <div className="relative flex h-44 w-24 items-end justify-center">
+                      <div className={`absolute top-2 h-10 w-8 rounded-t-xl border border-amber-900/50 bg-amber-900/80 transition-all ${sealBroken ? "-translate-y-4 rotate-12 opacity-70" : ""}`} />
+                      <div className="absolute top-8 h-7 w-10 rounded-xl bg-emerald-900/90" />
+                      <div className="absolute top-[58px] h-[90px] w-16 rounded-[30px] border border-emerald-950/40 bg-gradient-to-b from-emerald-700 via-emerald-800 to-emerald-950" />
+                      <div className="absolute top-[94px] w-14 rounded-md bg-amber-100/90 px-1 py-0.5 text-center text-[9px] font-semibold text-amber-900">{activeProduct.title}</div>
+                      <div className="absolute left-[62px] top-[50px] grid h-9 w-9 place-items-center rounded-full border-2 border-cyan-400 bg-white text-sm shadow-[0_0_18px_rgba(34,211,238,.4)]">📡</div>
                     </div>
-                    <div className={`mx-auto mt-1 h-14 w-1 rounded-full transition-all ${sealBroken ? "translate-x-2 rotate-45 bg-rose-500" : "bg-cyan-400"}`} />
-                    <p className="mt-3 text-sm font-semibold">{activeProduct.title}</p>
-                    <p className="text-xs text-slate-600">{activeProduct.subtitle}</p>
-                  </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="mx-auto mb-2 grid h-11 w-11 place-items-center rounded-full border-2 border-cyan-400 bg-white">
+                        <span className="text-lg">📡</span>
+                      </div>
+                      <div className={`mx-auto mt-1 h-14 w-1 rounded-full transition-all ${sealBroken ? "translate-x-2 rotate-45 bg-rose-500" : "bg-cyan-400"}`} />
+                      <p className="mt-3 text-sm font-semibold">{activeProduct.title}</p>
+                      <p className="text-xs text-slate-600">{activeProduct.subtitle}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-2 text-[11px] text-cyan-200">
+                  {vertical === "wine" ? (sealBroken ? "Precinto alterado: la app marca riesgo y bloquea beneficios premium." : "Tap + descorche validado: origen, lote y certificación de botella en tiempo real.") : activeProduct.consumerValue}
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -255,7 +269,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
 
                   <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
                     <p className="text-xs text-slate-200">{activeProduct.title}</p>
-                    <p className="mt-1 text-[11px] text-slate-400">{pov === "consumer" ? activeProduct.consumerValue : activeProduct.enterpriseValue}</p>
+                    <p className="mt-1 text-[11px] text-slate-400">{pov === "consumer" ? `${activeProduct.consumerValue} ${sealBroken ? "· Riesgo detectado" : "· Certificado OK"}` : activeProduct.enterpriseValue}</p>
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">

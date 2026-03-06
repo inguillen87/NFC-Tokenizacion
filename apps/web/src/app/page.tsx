@@ -48,10 +48,14 @@ export default async function HomePage() {
       <CtaSection content={content} />
 
       <footer className="site-footer border-t">
-        <div className="container-shell flex flex-wrap items-center justify-between gap-4 py-8">
-          <BrandLockup size={30} variant="pulse" theme="dark" />
-          <p className="text-xs uppercase tracking-[0.18em] site-muted">{siteConfig.productName} · Identity Product Platform</p>
-          <p className="text-[11px] site-muted">Powered by Inmovar Latam SAS</p>
+        <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
+          <BrandLockup size={32} variant="pulse" theme="dark" />
+          <p className="text-sm site-muted">Inmovar Identity Rail combina tags codificados, API de autenticación, antifraude, trazabilidad y capa premium de identidad digital para vino, cosmética, pharma, eventos y redes reseller.</p>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
+            <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
+            <a href="https://wa.me/5492613168608" target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</a>
+          </div>
         </div>
       </footer>
     </main>

@@ -52,7 +52,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     hero: {
       badge: "Autenticación NFC + Identidad Digital de Producto",
       title: "Autenticá productos. Activá inteligencia. Escalá confianza.",
-      body: "Inmovar Identity Rail combina tags codificados, API de autenticación, antifraude, trazabilidad y capa premium de identidad digital para vino, cosmética, pharma, eventos y redes reseller.",
+      body: "Inmovar Identity Rail integra chip NFC + API de autenticación + inteligencia antifraude para convertir cada producto físico en un activo digital trazable y monetizable.",
       primary: "Solicitar demo enterprise",
       secondary: "Ver arquitectura",
       tertiary: "Ver pricing",
@@ -209,7 +209,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   "pt-BR": {
     nav: { product: "Produto", pricing: "Planos", reseller: "Revendedores", docs: "Docs", cta: "Dashboard", requestDemo: "Solicitar demo" },
-    hero: { badge: "Autenticação NFC + Identidade Digital de Produto", title: "Autentique produtos. Ative inteligência. Escale confiança.", body: "Inmovar Identity Rail une tags codificadas, gateway de autenticação, anti-fraude, rastreabilidade e camada premium de identidade digital para vinho, cosméticos, pharma, eventos e redes revendedoras.", primary: "Solicitar demo enterprise", secondary: "Ver arquitetura", tertiary: "Ver pricing" },
+    hero: { badge: "Autenticação NFC + Identidade Digital de Produto", title: "Autentique produtos. Ative inteligência. Escale confiança.", body: "Inmovar Identity Rail integra chip NFC + API de autenticação + inteligência antifraude para transformar cada produto físico em ativo digital rastreável e monetizável.", primary: "Solicitar demo enterprise", secondary: "Ver arquitetura", tertiary: "Ver pricing" },
     trustBar: ["Programas NTAG215", "NTAG 424 DNA TagTamper", "API de autenticação", "SaaS multi-tenant", "Canal white-label"],
     howItWorks: { eyebrow: "Como funciona", title: "Tag → Tap → Validação API → Inteligência", description: "Fluxo que conecta hardware e software para decisões em tempo real.", steps: [{ title: "1. Encode por lote", body: "Configure perfil, SKU, tenant e política de ativação/revogação." }, { title: "2. Tap em campo", body: "Cada leitura gera sinais de duplicidade, geografia e tamper." }, { title: "3. API Authentication", body: "Gateway central com contratos estáveis para SUN e administração." }, { title: "4. Dashboard intelligence", body: "KPIs e alertas por marca, mercado e revendedor." }] },
     what: { eyebrow: "Plataforma", title: "Infraestrutura de identidade de produto", description: "Separação clara entre valor basic e secure.", cards: [{ title: "Encoded secure tags", body: "Perfis NTAG215 e NTAG424 com governança por lote." }, { title: "Authentication gateway", body: "Validação criptográfica, deduplicação e anti-fraude." }, { title: "Traceability intelligence", body: "Estados de autenticidade e distribuição geográfica." }] },
@@ -246,7 +246,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   en: {
     nav: { product: "Product", pricing: "Pricing", reseller: "Resellers", docs: "Docs", cta: "Dashboard", requestDemo: "Request demo" },
-    hero: { badge: "Autenticación NFC + Identidad Digital de Producto", title: "Autenticá productos. Activá inteligencia. Escalá confianza.", body: "Inmovar Identity Rail combines encoded tags, authentication API, anti-fraud, traceability and a premium digital identity layer for wine, cosmetics, pharma, events and reseller ecosystems.", primary: "Request enterprise demo", secondary: "View architecture", tertiary: "View pricing" },
+    hero: { badge: "Autenticación NFC + Identidad Digital de Producto", title: "Autenticá productos. Activá inteligencia. Escalá confianza.", body: "Inmovar Identity Rail combines NFC chips, authentication APIs and anti-fraud intelligence to turn each physical product into a traceable, monetizable digital asset.", primary: "Request enterprise demo", secondary: "View architecture", tertiary: "View pricing" },
     trustBar: ["NTAG215 programs", "NTAG 424 DNA TagTamper", "Authentication API", "Multi-tenant SaaS", "White-label distribution"],
     howItWorks: { eyebrow: "How the rail works", title: "Tag → Tap → API Validation → Dashboard Intelligence", description: "A hardware + software loop built for risk-aware operations.", steps: [{ title: "1. Batch encoding", body: "Configure basic/secure profile, SKU, tenant and activation rules." }, { title: "2. Field tap", body: "Each tap runs duplicate, geo and tamper-adjacent checks." }, { title: "3. Authentication gateway", body: "Stable contracts for SUN validation and admin operations." }, { title: "4. Business intelligence", body: "KPIs and alerts per brand, market and reseller partner." }] },
     what: { eyebrow: "Platform value", title: "Beyond NFC tags: product identity infrastructure", description: "Clear separation between basic and secure value layers.", cards: [{ title: "Encoded secure tags", body: "NTAG215 and NTAG424 profiles with batch-level governance." }, { title: "Authentication gateway", body: "Cryptographic validation, deduplication and anti-fraud controls." }, { title: "Traceability intelligence", body: "Authenticity states and geo-distributed scan visibility." }] },

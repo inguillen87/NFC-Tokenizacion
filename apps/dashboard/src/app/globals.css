@@ -37,6 +37,35 @@ select {
   @apply border border-white/10 bg-slate-900/65 backdrop-blur-xl;
 }
 
+.brand-lockup {
+  color: #e2e8f0;
+  --brand-accent: #2fe1c3;
+}
+
+.brand-mark {
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
+}
+
+.brand-i-head {
+  z-index: 2;
+}
+
+.brand-i-head-orbit {
+  position: absolute;
+  right: 11%;
+  top: 17%;
+  width: 32%;
+  height: 32%;
+  border: 1px dashed rgba(47, 225, 195, 0.45);
+  border-radius: 999px;
+  animation: brandOrbit 6s linear infinite;
+}
+
+@keyframes brandOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .brand-dot {
   position: relative;
   display: inline-grid;
@@ -74,7 +103,8 @@ select {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .brand-dot__core {
+  .brand-dot__core,
+  .brand-i-head-orbit {
     animation: none;
   }
 }
@@ -123,4 +153,14 @@ html.theme-light .border-white\/20 {
 html.theme-light .bg-white\/5,
 html.theme-light .bg-white\/10 {
   background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+
+html.theme-light .brand-lockup {
+  color: #0f172a;
+  --brand-accent: #06b6d4;
+}
+
+html.theme-light .brand-mark {
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
 }

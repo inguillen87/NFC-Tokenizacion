@@ -36,6 +36,35 @@ a {
   @apply border border-white/10 bg-slate-900/65 backdrop-blur-xl;
 }
 
+.brand-lockup {
+  color: #e2e8f0;
+  --brand-accent: #2fe1c3;
+}
+
+.brand-mark {
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
+}
+
+.brand-i-head {
+  z-index: 2;
+}
+
+.brand-i-head-orbit {
+  position: absolute;
+  right: 11%;
+  top: 17%;
+  width: 32%;
+  height: 32%;
+  border: 1px dashed rgba(47, 225, 195, 0.45);
+  border-radius: 999px;
+  animation: brandOrbit 6s linear infinite;
+}
+
+@keyframes brandOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .site-header {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(2, 6, 23, 0.72);
@@ -196,6 +225,7 @@ a {
 
 @media (prefers-reduced-motion: reduce) {
   .brand-dot__core,
+  .brand-i-head-orbit,
   .animate-card-shift,
   .laser-scan,
   .hero-meter span {
@@ -314,4 +344,14 @@ html.theme-light .helpbot-input {
   border-color: rgba(15, 23, 42, 0.12) !important;
   background: rgba(248, 250, 252, 0.92) !important;
   color: #0f172a !important;
+}
+
+
+html.theme-light .brand-lockup {
+  color: #0f172a;
+  --brand-accent: #06b6d4;
+}
+
+html.theme-light .brand-mark {
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
 }
