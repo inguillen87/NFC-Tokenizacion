@@ -26,9 +26,25 @@ type AnalyticsPanelsProps = {
     geoDistribution: string;
     geoDistributionDelta: string;
   };
+  data?: {
+    kpis?: {
+      scans?: number;
+      validRate?: number;
+      invalidRate?: number;
+      duplicates?: number;
+      tamper?: number;
+      activeBatches?: number;
+      activeTenants?: number;
+      geoRegions?: number;
+      resellerPerformance?: number;
+    };
+    trend?: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
+    batchStatus?: Array<{ name: string; value: number }>;
+    geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }>;
+  };
 };
 
-const scans = [
+const fallbackScans = [
   { day: "Mon", scans: 2400, duplicates: 20, tamper: 3 },
   { day: "Tue", scans: 2210, duplicates: 28, tamper: 4 },
   { day: "Wed", scans: 2890, duplicates: 19, tamper: 2 },
@@ -38,24 +54,28 @@ const scans = [
   { day: "Sun", scans: 3670, duplicates: 26, tamper: 4 },
 ];
 
-const batchStatus = [
+const fallbackBatchStatus = [
   { name: "Active", value: 68 },
   { name: "Pending", value: 22 },
   { name: "Revoked", value: 10 },
 ];
 
-export function AnalyticsPanels({ kpis, extra }: AnalyticsPanelsProps) {
+export function AnalyticsPanels({ kpis, extra, data }: AnalyticsPanelsProps) {
+  const api = data?.kpis || {};
+  const trend = data?.trend?.length ? data.trend : fallbackScans;
+  const batchStatus = data?.batchStatus?.length ? data.batchStatus : fallbackBatchStatus;
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label={kpis.scans} value="22.4k" delta={kpis.scansDelta} tone="good" />
-        <StatCard label={kpis.validInvalid} value="98.8 / 1.2" delta={kpis.validInvalidDelta} tone="good" />
-        <StatCard label={kpis.duplicates} value="202" delta={kpis.duplicatesDelta} tone="warn" />
-        <StatCard label={kpis.tamper} value="32" delta={kpis.tamperDelta} tone="warn" />
-        <StatCard label={extra.activeBatches} value="68" delta={extra.activeBatchesDelta} tone="good" />
-        <StatCard label={extra.activeTenants} value="27" delta={extra.activeTenantsDelta} tone="good" />
-        <StatCard label={extra.resellerPerformance} value="USD 40.2k" delta={extra.resellerPerformanceDelta} tone="good" />
-        <StatCard label={extra.geoDistribution} value="8 regions" delta={extra.geoDistributionDelta} />
+        <StatCard label={kpis.scans} value={`${((api.scans || 22400) / 1000).toFixed(1)}k`} delta={kpis.scansDelta} tone="good" />
+        <StatCard label={kpis.validInvalid} value={`${api.validRate ?? 98.8} / ${api.invalidRate ?? 1.2}`} delta={kpis.validInvalidDelta} tone="good" />
+        <StatCard label={kpis.duplicates} value={String(api.duplicates ?? 202)} delta={kpis.duplicatesDelta} tone="warn" />
+        <StatCard label={kpis.tamper} value={String(api.tamper ?? 32)} delta={kpis.tamperDelta} tone="warn" />
+        <StatCard label={extra.activeBatches} value={String(api.activeBatches ?? 68)} delta={extra.activeBatchesDelta} tone="good" />
+        <StatCard label={extra.activeTenants} value={String(api.activeTenants ?? 27)} delta={extra.activeTenantsDelta} tone="good" />
+        <StatCard label={extra.resellerPerformance} value={`USD ${(api.resellerPerformance ?? 40200).toLocaleString()}`} delta={extra.resellerPerformanceDelta} tone="good" />
+        <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 8} regions`} delta={extra.geoDistributionDelta} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -63,7 +83,7 @@ export function AnalyticsPanels({ kpis, extra }: AnalyticsPanelsProps) {
           <h3 className="text-sm font-semibold text-white">{kpis.trendTitle}</h3>
           <div className="mt-4 h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={scans}>
+              <AreaChart data={trend}>
                 <CartesianGrid stroke="rgba(148,163,184,.2)" strokeDasharray="3 3" />
                 <XAxis dataKey="day" stroke="#94a3b8" />
                 <YAxis stroke="#94a3b8" />
@@ -92,7 +112,11 @@ export function AnalyticsPanels({ kpis, extra }: AnalyticsPanelsProps) {
         </Card>
       </div>
 
-      <WorldMapPlaceholder />
+      <WorldMapPlaceholder
+        title="Global scan footprint"
+        subtitle="Mapa real por tenant/eventos. Lecturas de autenticación, cobertura y focos de riesgo." 
+        points={data?.geoPoints}
+      />
     </div>
   );
 }

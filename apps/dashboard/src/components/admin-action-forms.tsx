@@ -126,7 +126,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
             <Button disabled={!canEdit} onClick={() => submit("/admin/tags/activate/", { ...activation, count: Number(activation.count || 0) })}>{copy.actions.activateTags}</Button>
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
-            <Button disabled={!canEdit} variant="secondary" onClick={() => submit(`/admin/batches/${revoke.batchId}/revoke/`, { reason: revoke.reason })}>{copy.actions.revokeBatch}</Button>
+            <Button disabled={!canEdit} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke?")) submit(`/admin/batches/${revoke.batchId}/revoke/`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>
           </div>
         </Card>
       </div>

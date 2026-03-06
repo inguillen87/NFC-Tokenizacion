@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Button, Card } from "@product/ui";
+import { Badge, BrandDot, BrandLockup, Button, Card } from "@product/ui";
 
 type Row = Record<string, string>;
 
@@ -32,8 +32,8 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
         </div>
       </div>
 
-      {loading ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400">{loadingLabel}</div> : null}
-      {!loading && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400">{emptyLabel}</div> : null}
+      {loading ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-3"><BrandDot size={10} variant="pulse" theme="dark" />{loadingLabel}</div></div> : null}
+      {!loading && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
 
       {!loading && filtered.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-white/10">

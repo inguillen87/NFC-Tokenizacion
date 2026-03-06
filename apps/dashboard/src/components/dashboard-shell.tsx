@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Badge, LocaleSwitcher } from "@product/ui";
+import { Badge, BrandDot, BrandLockup, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import type { AppLocale } from "@product/config";
 import type { UserRole } from "../lib/dashboard-content";
 import { roleAccess } from "../lib/dashboard-content";
@@ -49,7 +49,8 @@ export function DashboardShell({
     <div className="min-h-screen bg-slate-950 text-white lg:flex">
       <aside className="w-full border-b border-white/10 bg-slate-950/90 p-4 lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r lg:p-5">
         <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-white">
-          <div className="text-sm font-semibold">{title}</div>
+          <BrandLockup size={30} variant="ripple" theme="dark" />
+          <div className="mt-3 text-sm font-semibold">{title}</div>
           <div className="mt-1 text-xs text-slate-400">{subtitle}</div>
         </div>
 
@@ -76,12 +77,13 @@ export function DashboardShell({
         <header className="border-b border-white/10 bg-slate-950/70 px-4 py-4 backdrop-blur-xl lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-xs uppercase tracking-[0.18em] text-cyan-300">{subtitle}</div>
-              <div className="mt-1 text-xl font-bold text-white">{title}</div>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-cyan-300"><BrandDot size={8} variant="pulse" theme="dark" />{subtitle}</div>
+              <div className="mt-2 text-xl font-bold text-white">{title}</div>
             </div>
             <div className="flex items-center gap-2">
               <Badge tone="green">{shell.apiConnected}</Badge>
               <LocaleSwitcher value={locale} options={[...locales]} />
+              <ThemeToggle />
               <Link href="/login" className="rounded-lg border border-white/10 px-3 py-2 text-xs">{shell.logout}</Link>
             </div>
           </div>
