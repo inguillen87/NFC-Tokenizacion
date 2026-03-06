@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { resolveLocale, siteConfig } from "@product/config";
-import { HelpBot, ThemeToggle } from "@product/ui";
+import { HelpBot } from "@product/ui";
 
 export const metadata: Metadata = {
   title: `${siteConfig.productName} | Dashboard`,
@@ -16,7 +16,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang={locale}>
-      <body>{children}<div className="fixed right-5 top-5 z-[120]"><ThemeToggle /></div><HelpBot locale={locale} mode="support" /></body>
+      <body>{children}<HelpBot locale={locale} mode="support" /></body>
     </html>
   );
 }

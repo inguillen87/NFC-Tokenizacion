@@ -63,6 +63,7 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     adminActivateTags: (payload: { batchId: string; count: number }) => request(opts, "/admin/tags/activate", { method: "POST", body: JSON.stringify(payload) }),
     adminRevokeBatch: (bid: string, reason: string) => request(opts, `/admin/batches/${bid}/revoke`, { method: "POST", body: JSON.stringify({ reason }) }),
     adminGetOverview: (tenant_slug?: string) => request(opts, withQuery("/admin/overview", { tenant: tenant_slug })),
+    adminGetAnalytics: (tenant_slug?: string) => request(opts, withQuery("/admin/analytics", { tenant: tenant_slug })),
     adminListEvents: (filters?: Record<string, string | number | undefined>) => request(opts, withQuery("/admin/events", filters), undefined, z.array(eventSchema)),
     createLead: (payload: Record<string, unknown>) => request(opts, "/admin/leads", { method: "POST", body: JSON.stringify(payload) }),
     createTicket: (payload: Record<string, unknown>) => request(opts, "/admin/tickets", { method: "POST", body: JSON.stringify(payload) }),
