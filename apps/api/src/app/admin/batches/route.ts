@@ -7,6 +7,33 @@ import { checkAdmin } from "../../../lib/auth";
 import { encryptKey16 } from "../../../lib/keys";
 import { json } from "../../../lib/http";
 
+export async function GET(req: Request) {
+  const auth = checkAdmin(req);
+  if (auth) return auth;
+
+  const { searchParams } = new URL(req.url);
+  const tenantSlug = searchParams.get("tenant") || "";
+
+  const rows = tenantSlug
+    ? await sql/*sql*/`
+      SELECT b.id, b.bid, b.status, b.created_at, t.slug AS tenant_slug
+      FROM batches b
+      JOIN tenants t ON t.id = b.tenant_id
+      WHERE t.slug = ${tenantSlug}
+      ORDER BY b.created_at DESC
+      LIMIT 300
+    `
+    : await sql/*sql*/`
+      SELECT b.id, b.bid, b.status, b.created_at, t.slug AS tenant_slug
+      FROM batches b
+      JOIN tenants t ON t.id = b.tenant_id
+      ORDER BY b.created_at DESC
+      LIMIT 300
+    `;
+
+  return json(rows);
+}
+
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
@@ -27,7 +54,7 @@ export async function POST(req: Request) {
 
   const sdmConfig = body.sdm_config || {
     mac_input: "enc_plus_cmac_literal",
-    url_template: `https://api.inmov.ar/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`
+    url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`
   };
 
   const rows = await sql/*sql*/`
@@ -39,6 +66,6 @@ export async function POST(req: Request) {
   return json({
     batch: rows[0],
     keys: { k_meta_hex: kMetaHex, k_file_hex: kFileHex },
-    ndef_url_template: `https://api.inmov.ar/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`
+    ndef_url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`
   }, 201);
 }
