@@ -12,6 +12,7 @@ import { RadarSection } from "../components/radar-section";
 import { InteractiveDemoSection } from "../components/interactive-demo-section";
 import { SalesChatWidget } from "../components/sales-chat-widget";
 import { LiveDemoSurfaces } from "../components/live-demo-surfaces";
+import { VerticalDemoLibrary } from "../components/vertical-demo-library";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 
@@ -54,6 +55,7 @@ export default async function HomePage() {
       <TrustBarSection content={content} />
       <RadarSection radar={content.radar} locale={locale} />
       <InteractiveDemoSection locale={locale} />
+      <VerticalDemoLibrary locale={locale} />
       <LiveDemoSurfaces />
       <PlansSection content={content} />
       <CalculatorSection calculator={content.calculator} locale={locale} />

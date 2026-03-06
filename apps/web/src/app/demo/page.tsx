@@ -1,7 +1,10 @@
 import { Button } from "@product/ui";
 import { LiveDemoSurfaces } from "../../components/live-demo-surfaces";
+import { VerticalDemoLibrary } from "../../components/vertical-demo-library";
+import { getWebI18n } from "../../lib/locale";
 
-export default function PublicDemoPage() {
+export default async function PublicDemoPage() {
+  const { locale } = await getWebI18n();
   return (
     <main className="py-10">
       <section className="container-shell space-y-4">
@@ -14,6 +17,7 @@ export default function PublicDemoPage() {
           <a href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002"}/demo-lab`}><Button variant="secondary">Open full Demo Lab</Button></a>
         </div>
       </section>
+      <VerticalDemoLibrary locale={locale} />
       <LiveDemoSurfaces />
     </main>
   );

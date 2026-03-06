@@ -12,6 +12,14 @@ export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
-  const { stdout, stderr } = await execFileAsync('node', ['scripts/demo-demobodega.mjs'], { cwd: process.cwd(), env: process.env, maxBuffer: 1024 * 1024 });
-  return json({ ok: true, stdout, stderr });
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const pack = String(body.pack || 'wine-secure');
+
+  const { stdout, stderr } = await execFileAsync('node', ['scripts/demo-demobodega.mjs', `--pack=${pack}`], {
+    cwd: process.cwd(),
+    env: process.env,
+    maxBuffer: 1024 * 1024,
+  });
+
+  return json({ ok: true, pack, stdout, stderr });
 }
