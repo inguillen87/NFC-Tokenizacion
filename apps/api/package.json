@@ -13,7 +13,8 @@
     "db:reset:local": "node scripts/db-reset-local.mjs",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
     "prisma:migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
-    "prisma:seed": "node prisma/seed.mjs"
+    "prisma:seed": "node prisma/seed.mjs",
+    "demo:demobodega": "node scripts/demo-demobodega.mjs"
   },
   "dependencies": {
     "next": "^15.0.0",

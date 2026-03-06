@@ -71,6 +71,9 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     listLeads: () => request(opts, "/admin/leads"),
     listTickets: () => request(opts, "/admin/tickets"),
     listOrders: () => request(opts, "/admin/orders"),
+
+    adminSeedDemoBodega: () => request(opts, "/internal/demo/seed", { method: "POST" }),
+    internalDemoScan: (payload: { bid: string; uidHex: string; deviceLabel?: string; city?: string; countryCode?: string; lat?: number; lng?: number; action?: "uncork" | "verify" | "retail_scan" }) => request(opts, "/internal/demo/scan", { method: "POST", body: JSON.stringify(payload) }),
     assistantChat: (payload: Record<string, unknown>) => request(opts, "/assistant/chat", { method: "POST", body: JSON.stringify(payload) }),
   };
 }
