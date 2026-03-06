@@ -7,6 +7,7 @@ import type { AppLocale } from "@product/config";
 type POV = "consumer" | "enterprise";
 type Vertical = "wine" | "cosmetics" | "events";
 type Stage = "idle" | "scan" | "result";
+type ScanOutcome = "authentic" | "tampered" | "not_registered" | "replay";
 
 type VerticalInfo = {
   icon: string;
@@ -31,6 +32,9 @@ const copy: Record<AppLocale, {
   scanning: string;
   authentic: string;
   tampered: string;
+  notRegistered: string;
+  replay: string;
+  latestLabel: string;
   physicalLabel: string;
   consumerLabel: string;
   enterpriseLabel: string;
@@ -49,6 +53,9 @@ const copy: Record<AppLocale, {
     scanning: "Autenticando AES-CMAC...",
     authentic: "Producto auténtico",
     tampered: "Alerta: precinto roto",
+    notRegistered: "No registrado",
+    replay: "Sospecha de clonación",
+    latestLabel: "Últimos escaneos",
     physicalLabel: "1. Producto físico",
     consumerLabel: "Qué ve el cliente final",
     enterpriseLabel: "Qué ve la operación / inversor",
@@ -67,6 +74,9 @@ const copy: Record<AppLocale, {
     scanning: "Autenticando AES-CMAC...",
     authentic: "Produto autêntico",
     tampered: "Alerta: lacre rompido",
+    notRegistered: "Não registrado",
+    replay: "Suspeita de clonagem",
+    latestLabel: "Últimas leituras",
     physicalLabel: "1. Produto físico",
     consumerLabel: "O que vê o cliente final",
     enterpriseLabel: "O que vê operação / investidor",
@@ -85,6 +95,9 @@ const copy: Record<AppLocale, {
     scanning: "Authenticating AES-CMAC...",
     authentic: "Authentic product",
     tampered: "Alert: seal broken",
+    notRegistered: "Not registered",
+    replay: "Replay suspect",
+    latestLabel: "Latest scans",
     physicalLabel: "1. Physical product",
     consumerLabel: "What end customer sees",
     enterpriseLabel: "What operations / investors see",
@@ -188,16 +201,25 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
   const [vertical, setVertical] = useState<Vertical>("wine");
   const [sealBroken, setSealBroken] = useState(false);
   const [stage, setStage] = useState<Stage>("idle");
+  const [outcome, setOutcome] = useState<ScanOutcome>("authentic");
+  const [scanLog, setScanLog] = useState<Array<{ id: number; status: ScanOutcome; at: string }>>([]);
 
   const stateLabel = useMemo(() => {
     if (stage === "scan") return t.scanning;
     if (stage === "idle") return t.idle;
-    return sealBroken ? t.tampered : t.authentic;
-  }, [sealBroken, stage, t]);
+    if (outcome === "not_registered") return t.notRegistered;
+    if (outcome === "replay") return t.replay;
+    if (outcome === "tampered") return t.tampered;
+    return t.authentic;
+  }, [stage, t, outcome]);
 
   const runScan = async () => {
     setStage("scan");
     await new Promise((resolve) => setTimeout(resolve, 1700));
+    const random = Math.random();
+    const next: ScanOutcome = sealBroken ? "tampered" : random > 0.86 ? "replay" : random > 0.72 ? "not_registered" : "authentic";
+    setOutcome(next);
+    setScanLog((prev) => [{ id: Date.now(), status: next, at: new Date().toLocaleTimeString() }, ...prev].slice(0, 4));
     setStage("result");
   };
 
@@ -268,7 +290,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
                     <span>{pov === "consumer" ? "B2C Verify App" : "B2B Ops Console"}</span>
                     <span className="font-mono">{vertical.toUpperCase()}-A1</span>
                   </div>
-                  <p className={`mt-3 text-sm font-semibold ${stage === "scan" ? "text-cyan-300" : sealBroken ? "text-rose-300" : "text-emerald-300"}`}>{stateLabel}</p>
+                  <p className={`mt-3 text-sm font-semibold ${stage === "scan" ? "text-cyan-300" : outcome === "tampered" ? "text-rose-300" : outcome === "not_registered" ? "text-amber-300" : outcome === "replay" ? "text-violet-300" : "text-emerald-300"}`}>{stateLabel}</p>
 
                   <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
                     <p className="text-xs font-semibold text-slate-100">{activeProduct.title}</p>
@@ -285,9 +307,9 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
                   </div>
 
                   <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-[11px] text-slate-200">{pov === "consumer" ? `${activeProduct.consumerValue} ${sealBroken ? "· Riesgo detectado" : "· Certificado OK"}` : activeProduct.enterpriseValue}</p>
+                    <p className="text-[11px] text-slate-200">{pov === "consumer" ? `${activeProduct.consumerValue} ${outcome === "authentic" ? "· Certificado OK" : "· Revisión sugerida"}` : activeProduct.enterpriseValue}</p>
                     <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-                      <Badge tone={sealBroken ? "amber" : "green"}>{sealBroken ? "SEC_BREACH" : "AUTH_OK"}</Badge>
+                      <Badge tone={outcome === "authentic" ? "green" : outcome === "replay" ? "cyan" : "amber"}>{outcome === "authentic" ? "AUTH_OK" : outcome === "tampered" ? "SEC_BREACH" : outcome === "not_registered" ? "NOT_REGISTERED" : "REPLAY_SUSPECT"}</Badge>
                       <Badge tone="cyan">{pov === "consumer" ? "UX_PASS" : "API_EVENT"}</Badge>
                     </div>
                   </div>
@@ -303,6 +325,18 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
             <div className="rounded-xl border border-white/10 bg-white/5 p-3">{activeProduct.why}</div>
             <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-3">{activeProduct.economy}</div>
             <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-violet-100">{t.traceability}</div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <p className="text-xs uppercase tracking-[0.14em] text-cyan-300">{t.latestLabel}</p>
+              <div className="mt-2 space-y-1 text-xs text-slate-300">
+                {scanLog.length === 0 ? <p className="text-slate-400">—</p> : null}
+                {scanLog.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1">
+                    <span>{item.status === "authentic" ? "Authentic" : item.status === "tampered" ? "Tampered" : item.status === "not_registered" ? "Not registered" : "Replay suspect"}</span>
+                    <span className="font-mono text-[11px] text-slate-400">{item.at}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </Card>
       </div>
