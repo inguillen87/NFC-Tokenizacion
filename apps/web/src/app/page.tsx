@@ -16,6 +16,7 @@ import {
 } from "../components/landing-sections";
 import { CalculatorSection } from "../components/calculator-section";
 import { RadarSection } from "../components/radar-section";
+import { InteractiveDemoSection } from "../components/interactive-demo-section";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 
@@ -52,6 +53,7 @@ export default async function HomePage() {
       <CardsSection content={content} />
       <PlansSection content={content} />
       <AuthenticityStatesSection content={content} />
+      <InteractiveDemoSection locale={locale} />
       <BulletSection {...content.secure} />
       <UseCasesSection content={content} />
       <RadarSection radar={content.radar} />
