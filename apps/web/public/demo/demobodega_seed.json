@@ -1,0 +1,187 @@
+{
+  "tenant": {
+    "slug": "demobodega",
+    "name": "Demo Bodega"
+  },
+  "users": {
+    "superAdmin": {
+      "email": "admin@nexid.lat",
+      "role": "super_admin"
+    },
+    "tenantAdmin": {
+      "email": "admin@demobodega.test",
+      "role": "tenant_admin"
+    },
+    "reseller": {
+      "email": "reseller@partner.test",
+      "role": "reseller"
+    }
+  },
+  "batch": {
+    "bid": "DEMO-2026-02",
+    "label": "Lanzamiento Reserva 2021",
+    "icType": "NTAG424DNA_TT"
+  },
+  "tags": [
+    {
+      "uidHex": "04B7723410E2AD",
+      "sku": "DB-RES-2021-001",
+      "productName": "Reserva Malbec Single Vineyard",
+      "varietal": "Malbec",
+      "vintage": 2021,
+      "barrelMonths": 18,
+      "alcoholPct": 14.2,
+      "harvestYear": 2021,
+      "vineyardHumidity": 42,
+      "soilHumidity": 31,
+      "region": "Luján de Cuyo, Mendoza",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "14°C",
+      "notes": "Uvas seleccionadas del cuartel 4. Crianza en barrica francesa."
+    },
+    {
+      "uidHex": "04CB16083D7F86",
+      "sku": "DB-RES-2021-002",
+      "productName": "Reserva Malbec Single Vineyard",
+      "varietal": "Malbec",
+      "vintage": 2021,
+      "barrelMonths": 18,
+      "alcoholPct": 14.2,
+      "harvestYear": 2021,
+      "vineyardHumidity": 44,
+      "soilHumidity": 30,
+      "region": "Luján de Cuyo, Mendoza",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "14°C",
+      "notes": "Microvinificación de parcela alta."
+    },
+    {
+      "uidHex": "04ED2F00169AB3",
+      "sku": "DB-CAB-2020-003",
+      "productName": "Gran Reserva Cabernet Franc",
+      "varietal": "Cabernet Franc",
+      "vintage": 2020,
+      "barrelMonths": 14,
+      "alcoholPct": 13.8,
+      "harvestYear": 2020,
+      "vineyardHumidity": 39,
+      "soilHumidity": 28,
+      "region": "Valle de Uco, Mendoza",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "15°C",
+      "notes": "Lote experimental de altura."
+    },
+    {
+      "uidHex": "04EEDDCA5A31C5",
+      "sku": "DB-CAB-2020-004",
+      "productName": "Gran Reserva Cabernet Franc",
+      "varietal": "Cabernet Franc",
+      "vintage": 2020,
+      "barrelMonths": 14,
+      "alcoholPct": 13.8,
+      "harvestYear": 2020,
+      "vineyardHumidity": 40,
+      "soilHumidity": 29,
+      "region": "Valle de Uco, Mendoza",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "15°C",
+      "notes": "Selección de barricas para exportación."
+    },
+    {
+      "uidHex": "045B1C39780A0F",
+      "sku": "DB-PN-2022-005",
+      "productName": "Pinot Noir Parcela Norte",
+      "varietal": "Pinot Noir",
+      "vintage": 2022,
+      "barrelMonths": 10,
+      "alcoholPct": 13.2,
+      "harvestYear": 2022,
+      "vineyardHumidity": 47,
+      "soilHumidity": 33,
+      "region": "San Pablo, Valle de Uco",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "13°C",
+      "notes": "Vinificación delicada y extracción suave."
+    },
+    {
+      "uidHex": "04982787A3880B",
+      "sku": "DB-PN-2022-006",
+      "productName": "Pinot Noir Parcela Norte",
+      "varietal": "Pinot Noir",
+      "vintage": 2022,
+      "barrelMonths": 10,
+      "alcoholPct": 13.2,
+      "harvestYear": 2022,
+      "vineyardHumidity": 46,
+      "soilHumidity": 34,
+      "region": "San Pablo, Valle de Uco",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "13°C",
+      "notes": "Serie limitada para club privado."
+    },
+    {
+      "uidHex": "04CE9D4111DCD1",
+      "sku": "DB-ICON-2019-007",
+      "productName": "Ícono Blend de Altura",
+      "varietal": "Malbec / Cabernet Sauvignon",
+      "vintage": 2019,
+      "barrelMonths": 20,
+      "alcoholPct": 14.6,
+      "harvestYear": 2019,
+      "vineyardHumidity": 38,
+      "soilHumidity": 27,
+      "region": "Gualtallary, Mendoza",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "14°C",
+      "notes": "Etiqueta premium para exportación y coleccionismo."
+    },
+    {
+      "uidHex": "04318F17E1A6E7",
+      "sku": "DB-ICON-2019-008",
+      "productName": "Ícono Blend de Altura",
+      "varietal": "Malbec / Cabernet Sauvignon",
+      "vintage": 2019,
+      "barrelMonths": 20,
+      "alcoholPct": 14.6,
+      "harvestYear": 2019,
+      "vineyardHumidity": 37,
+      "soilHumidity": 26,
+      "region": "Gualtallary, Mendoza",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "14°C",
+      "notes": "Botella para storytelling premium y anti-fraude."
+    },
+    {
+      "uidHex": "04CB31AB803599",
+      "sku": "DB-ORG-2023-009",
+      "productName": "Orgánico Valle Vivo",
+      "varietal": "Malbec",
+      "vintage": 2023,
+      "barrelMonths": 6,
+      "alcoholPct": 13.4,
+      "harvestYear": 2023,
+      "vineyardHumidity": 49,
+      "soilHumidity": 36,
+      "region": "Maipú, Mendoza",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "13°C",
+      "notes": "Línea orgánica orientada a retail moderno."
+    },
+    {
+      "uidHex": "044E5F94CE3E11",
+      "sku": "DB-ORG-2023-010",
+      "productName": "Orgánico Valle Vivo",
+      "varietal": "Malbec",
+      "vintage": 2023,
+      "barrelMonths": 6,
+      "alcoholPct": 13.4,
+      "harvestYear": 2023,
+      "vineyardHumidity": 50,
+      "soilHumidity": 35,
+      "region": "Maipú, Mendoza",
+      "winery": "Demo Bodega",
+      "temperatureStorage": "13°C",
+      "notes": "Línea joven con foco en trazabilidad de terroir."
+    }
+  ]
+}
