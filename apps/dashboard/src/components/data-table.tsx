@@ -1,9 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Button, Card } from "@product/ui";
+import { Badge, BrandDot, BrandLockup, Button, Card } from "@product/ui";
 
 type Row = Record<string, string>;
+
+function resolveTone(value: string) {
+  const v = String(value || "").toUpperCase();
+  if (["VALID", "ACTIVE", "HEALTHY"].includes(v)) return "green" as const;
+  if (["REPLAY_SUSPECT", "PENDING", "DRAFT", "QUALIFIED"].includes(v)) return "amber" as const;
+  if (["INVALID", "NOT_ACTIVE", "NOT_REGISTERED", "REVOKED", "RISK", "HOT", "BLOCKED", "TAMPER"].includes(v)) return "red" as const;
+  if (["DUPLICATE", "OPEN", "NEW"].includes(v)) return "violet" as const;
+  return "default" as const;
+}
 
 export function DataTable({ title, columns, rows, filterKey, loadingLabel, emptyLabel, searchPlaceholder = "Search", allFilterLabel = "All", refreshLabel = "Refresh", statusMap }: { title: string; columns: Array<{ key: string; label: string }>; rows: Row[]; filterKey: string; loadingLabel: string; emptyLabel: string; searchPlaceholder?: string; allFilterLabel?: string; refreshLabel?: string; statusMap?: Record<string, string> }) {
   const [query, setQuery] = useState("");
@@ -32,8 +41,8 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
         </div>
       </div>
 
-      {loading ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400">{loadingLabel}</div> : null}
-      {!loading && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400">{emptyLabel}</div> : null}
+      {loading ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-3"><BrandDot size={10} variant="pulse" theme="dark" />{loadingLabel}</div></div> : null}
+      {!loading && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
 
       {!loading && filtered.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-white/10">
@@ -47,7 +56,7 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3 text-slate-200">
                       {col.key === filterKey ? (
-                        <Badge tone={row[col.key] === "active" || row[col.key] === "healthy" || row[col.key] === "valid" ? "green" : row[col.key] === "pending" || row[col.key] === "draft" ? "amber" : "default"}>
+                        <Badge tone={resolveTone(row[col.key])}>
                           {statusMap?.[row[col.key]] ?? row[col.key]}
                         </Badge>
                       ) : (statusMap?.[row[col.key]] ?? row[col.key])}
