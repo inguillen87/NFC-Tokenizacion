@@ -97,16 +97,17 @@ for (const row of manifestRows) {
   ON CONFLICT (batch_id, uid_hex) DO UPDATE SET status = 'active'`;
   const tag = (await sql`SELECT id FROM tags WHERE batch_id = ${batch.id} AND uid_hex = ${row.uid_hex} LIMIT 1`)[0];
   const p = productByUid.get(row.uid_hex) || {};
+  const vertical = p.vertical || (Number(row.sku?.replace(/\D/g, "") || 1) % 4 === 1 ? "wine" : Number(row.sku?.replace(/\D/g, "") || 1) % 4 === 2 ? "cosmetics" : Number(row.sku?.replace(/\D/g, "") || 1) % 4 === 3 ? "pharma" : "events");
 
   await sql`INSERT INTO tag_profiles (
     tag_id, sku, product_name, vintage, grape_varietal, alcohol_pct, barrel_months, harvest_year,
     vineyard_humidity, soil_humidity, region, winery, temperature_storage, notes, image_url, locale_data
   ) VALUES (
-    ${tag.id}, ${p.sku || row.sku || null}, ${p.productName || row.product_name}, ${p.vintage || null}, ${p.grapeVarietal || null},
+    ${tag.id}, ${p.sku || row.sku || null}, ${p.productName || `${vertical.toUpperCase()} Demo Item ${row.sku || ''}`}, ${p.vintage || null}, ${p.grapeVarietal || null},
     ${p.alcoholPct || null}, ${p.barrelMonths || null}, ${p.harvestYear || null}, ${p.vineyardHumidity || null}, ${p.soilHumidity || null},
     ${p.region || 'Mendoza'}, 'Demo Bodega', ${p.temperatureStorage || null}, ${p.notes || 'Demo premium traceability story.'},
     'https://images.unsplash.com/photo-1516594915697-87eb3b1c14ea',
-    ${JSON.stringify({ 'es-AR': p, 'pt-BR': p, en: p })}::jsonb
+    ${JSON.stringify({ vertical, 'es-AR': p, 'pt-BR': p, en: p })}::jsonb
   )
   ON CONFLICT (tag_id) DO UPDATE SET sku=EXCLUDED.sku, product_name=EXCLUDED.product_name, locale_data=EXCLUDED.locale_data, updated_at=now()`;
 }

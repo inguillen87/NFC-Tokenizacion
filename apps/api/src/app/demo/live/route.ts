@@ -26,7 +26,14 @@ export async function GET(req: Request) {
       tp.sku,
       tp.product_name,
       tp.region,
-      tp.winery
+      tp.winery,
+      tp.grape_varietal,
+      tp.alcohol_pct,
+      tp.harvest_year,
+      tp.temperature_storage,
+      tp.vintage,
+      tp.barrel_months,
+      COALESCE(tp.locale_data->>'vertical', 'wine') AS vertical
     FROM events e
     JOIN batches b ON b.id = e.batch_id
     JOIN tenants tn ON tn.id = b.tenant_id

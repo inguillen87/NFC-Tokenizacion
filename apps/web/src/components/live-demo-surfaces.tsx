@@ -17,6 +17,12 @@ type LiveEvent = {
   sku?: string;
   winery?: string;
   region?: string;
+  vertical?: string;
+  grape_varietal?: string;
+  alcohol_pct?: number;
+  harvest_year?: number;
+  temperature_storage?: string;
+  barrel_months?: number;
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3003";
@@ -26,6 +32,13 @@ function stateLabel(result: string) {
   if (result === "REPLAY_SUSPECT") return "Replay suspect";
   if (result === "TAMPER") return "Tamper / opened";
   return "Verification required";
+}
+
+function verticalLabel(v?: string) {
+  if (v === "cosmetics") return "Cosmetics";
+  if (v === "pharma") return "Pharma";
+  if (v === "events") return "Events";
+  return "Wine";
 }
 
 export function LiveDemoSurfaces() {
@@ -70,11 +83,7 @@ export function LiveDemoSurfaces() {
         <h2 className="text-2xl font-semibold text-white">Live map + mobile preview</h2>
       </div>
 
-      <WorldMapPlaceholder
-        title="Global live scans"
-        subtitle="Demo + production-format events streaming from Demo Bodega."
-        points={points}
-      />
+      <WorldMapPlaceholder title="Global live scans" subtitle="Real demo events from seeded tenant and simulated taps." points={points} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-5">
@@ -82,7 +91,8 @@ export function LiveDemoSurfaces() {
           <div className="mt-4 space-y-2 text-sm text-slate-300">
             {items.slice(0, 8).map((event) => (
               <div key={event.id} className="rounded-lg border border-white/10 bg-slate-900/70 p-3">
-                {event.result} · {event.city || "--"}, {event.country_code || "--"} · {event.product_name || event.uid_hex || "Bottle"}
+                <div className="font-medium text-white">{event.result} · {event.product_name || event.uid_hex || "Item"}</div>
+                <div className="text-xs text-slate-400">{verticalLabel(event.vertical)} · {event.city || "--"}, {event.country_code || "--"}</div>
               </div>
             ))}
           </div>
@@ -90,19 +100,20 @@ export function LiveDemoSurfaces() {
 
         <Card className="p-5">
           <h3 className="text-sm font-semibold text-white">Mobile preview</h3>
-          <div className="mx-auto mt-4 max-w-[280px] rounded-[2rem] border-[10px] border-slate-800 bg-slate-950 p-4">
+          <div className="mx-auto mt-4 max-w-[300px] rounded-[2rem] border-[10px] border-slate-800 bg-slate-950 p-4">
             <div className="rounded-2xl border border-white/10 bg-slate-900 p-4 text-sm text-slate-200">
               <p className="text-xs uppercase tracking-wide text-cyan-300">{stateLabel(latest?.result || "")}</p>
-              <p className="mt-2 text-lg font-semibold text-white">{latest?.product_name || "Demo Bodega Reserva"}</p>
-              <p className="text-xs text-slate-400">{latest?.sku || "DB-001"} · {latest?.winery || "Demo Bodega"}</p>
+              <p className="mt-2 text-lg font-semibold text-white">{latest?.product_name || "Demo Product"}</p>
+              <p className="text-xs text-slate-400">{latest?.sku || "-"} · {verticalLabel(latest?.vertical)}</p>
               <div className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-400/10 p-2 text-xs">
                 {latest?.city || "Mendoza"}, {latest?.country_code || "AR"}
               </div>
               <ul className="mt-3 space-y-1 text-xs text-slate-300">
-                <li>Varietal: Malbec</li>
-                <li>Barrel: 14 months</li>
-                <li>Alcohol: 14.2%</li>
-                <li>Harvest: 2022</li>
+                <li>Varietal: {latest?.grape_varietal || "N/A"}</li>
+                <li>Barrel: {latest?.barrel_months ?? "N/A"} months</li>
+                <li>Alcohol: {latest?.alcohol_pct ?? "N/A"}%</li>
+                <li>Harvest: {latest?.harvest_year ?? "N/A"}</li>
+                <li>Storage: {latest?.temperature_storage || "N/A"}</li>
               </ul>
             </div>
           </div>

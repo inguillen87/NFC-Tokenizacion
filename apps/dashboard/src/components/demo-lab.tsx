@@ -9,7 +9,7 @@ type Summary = {
   batch?: { bid: string; status: string };
   tagCount?: number;
   crm?: { leads: number; tickets: number; orders: number };
-  events?: Array<{ id: number; result: string; uid_hex?: string; created_at?: string }>;
+  events?: Array<{ id: number; result: string; uid_hex?: string; created_at?: string; city?: string; country_code?: string; lat?: number; lng?: number; product_name?: string; vertical?: string }>;
 };
 
 async function call(path: string, method = "GET", payload?: unknown) {
@@ -29,11 +29,11 @@ export function DemoLab() {
 
   const points = useMemo(
     () =>
-      (summary.events || []).map((e, i) => ({
-        city: i % 2 ? "São Paulo" : "Mendoza",
-        country: i % 2 ? "BR" : "AR",
-        lat: i % 2 ? -23.55 : -32.8895,
-        lng: i % 2 ? -46.63 : -68.8458,
+      (summary.events || []).filter((e)=> typeof e.lat === "number" && typeof e.lng === "number").map((e) => ({
+        city: e.city || "Unknown",
+        country: e.country_code || "--",
+        lat: Number(e.lat),
+        lng: Number(e.lng),
         scans: 1,
         risk: e.result === "VALID" ? 0 : 1,
       })),
@@ -101,7 +101,7 @@ export function DemoLab() {
       <Card className="p-4">
         <h3 className="text-sm font-semibold text-white">Recent events</h3>
         <div className="mt-2 space-y-2 text-sm text-slate-300">
-          {(summary.events || []).slice(0, 8).map((e) => <div key={e.id}>{e.result} · {e.uid_hex || "-"}</div>)}
+          {(summary.events || []).slice(0, 8).map((e) => <div key={e.id}>{e.result} · {e.product_name || e.uid_hex || "-"} · {e.vertical || "wine"}</div>)}
         </div>
       </Card>
 
