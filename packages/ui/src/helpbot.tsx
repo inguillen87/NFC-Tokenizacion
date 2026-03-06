@@ -14,6 +14,7 @@ type Props = {
 type AssistantReply = {
   answer?: string;
   intent?: string;
+  requiresContact?: boolean;
   citations?: Array<{ title?: string; slug?: string; locale?: string }>;
 };
 
@@ -34,6 +35,8 @@ const copy: Record<
     quick: string[];
     ctaSchedule: string;
     ctaWhatsApp: string;
+    contactRequired: string;
+    sendLead: string;
   }
 > = {
   "es-AR": {
@@ -51,6 +54,8 @@ const copy: Record<
     quick: ["¿Qué es un batch?", "Quiero cotizar 10k", "Quiero ser reseller"],
     ctaSchedule: "Agendar demo",
     ctaWhatsApp: "Enviar mensaje",
+    contactRequired: "Para enviar cotización, dejá email o WhatsApp y presioná Enviar lead.",
+    sendLead: "Enviar lead",
   },
   "pt-BR": {
     title: "nexID Assistant",
@@ -67,6 +72,8 @@ const copy: Record<
     quick: ["O que é um batch?", "Quero cotar 10k", "Quero ser reseller"],
     ctaSchedule: "Agendar demo",
     ctaWhatsApp: "Enviar mensagem",
+    contactRequired: "Para enviar proposta, deixe email/WhatsApp e clique em Enviar lead.",
+    sendLead: "Enviar lead",
   },
   en: {
     title: "nexID Assistant",
@@ -83,6 +90,8 @@ const copy: Record<
     quick: ["What is a batch?", "I need a 10k quote", "I want to be a reseller"],
     ctaSchedule: "Book demo",
     ctaWhatsApp: "Send message",
+    contactRequired: "To receive a quote, leave email/WhatsApp and click Send lead.",
+    sendLead: "Send lead",
   },
 };
 
@@ -95,6 +104,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
     { role: "assistant", text: t.leadPrompt },
   ]);
   const [contact, setContact] = useState("");
+  const [requiresContact, setRequiresContact] = useState(false);
 
   const shouldShowSalesCta = useMemo(() => {
     const latest = [...messages].reverse().find((item) => item.role === "assistant")?.text || "";
@@ -107,6 +117,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
     setQuestion("");
     setMessages((prev) => [...prev, { role: "user", text: content }]);
     setBusy(true);
+    setRequiresContact(false);
 
     try {
       const res = await fetch("/api/assistant/chat", {
@@ -124,6 +135,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
         .join(" · ");
       const withCitations = citations ? `${baseText}\n\nKB: ${citations}` : baseText;
       const withPrompt = data.intent === "pricing" || data.intent === "reseller" ? `${withCitations}\n\n${t.leadPrompt}` : withCitations;
+      setRequiresContact(Boolean(data.requiresContact));
       setMessages((prev) => [...prev, { role: "assistant", text: withPrompt }]);
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: t.unavailable }]);
@@ -163,7 +175,14 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
               <a href="https://wa.me/5492613168608" target="_blank" rel="noreferrer" className="rounded-lg border border-white/20 px-3 py-2 text-center text-xs text-slate-200">{t.ctaWhatsApp}</a>
             </div>
           ) : null}
+
+          {requiresContact ? (
+            <div className="mt-2 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+              {t.contactRequired}
+            </div>
+          ) : null}
           <input value={contact} onChange={(e) => setContact(e.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.contactPlaceholder} />
+          <button onClick={() => send("lead capture request") } disabled={busy || !contact.trim()} className="mt-2 w-full rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50">{t.sendLead}</button>
           <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
           <button onClick={() => send()} disabled={busy} className="mt-2 w-full rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
             {t.send}

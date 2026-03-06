@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { siteConfig } from "@product/config";
-import { BrandLockup, Button, LocaleSwitcher } from "@product/ui";
+import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   CtaSection,
   HeroSection,
@@ -33,6 +33,7 @@ export default async function HomePage() {
 
           <div className="flex items-center gap-2">
             <LocaleSwitcher value={locale} options={[...locales]} />
+            <ThemeToggle />
             <a href="https://app.nexid.lat/login">
               <Button>{content.nav.cta}</Button>
             </a>

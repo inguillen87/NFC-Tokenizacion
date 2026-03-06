@@ -131,8 +131,9 @@ export async function POST(req: Request) {
 
   const answer = buildAnswer(locale, intent, extracted);
   const contact = String(body.contact || "").trim();
+  const requiresContact = !contact && (intent === "pricing" || intent === "reseller" || intent === "order");
 
-  if (contact && (intent === "pricing" || intent === "reseller" || intent === "general")) {
+  if (contact && (intent === "pricing" || intent === "reseller" || intent === "general" || intent === "order")) {
     await sql/*sql*/`
       INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
       VALUES (${locale}, ${contact}, ${extracted.company || ""}, ${extracted.country || ""}, ${extracted.vertical || "other"}, ${extracted.tagType || "unknown"}, ${extracted.volume || 0}, ${String(body.mode || "assistant")}, 'new', ${question.slice(0, 500)})
@@ -156,6 +157,7 @@ export async function POST(req: Request) {
   return json({
     answer,
     intent,
+    requiresContact,
     extracted,
     citations: selected.map((item) => ({ title: item.title, slug: item.slug, locale: item.locale })),
     suggested:
