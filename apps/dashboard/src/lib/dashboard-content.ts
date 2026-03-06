@@ -24,6 +24,7 @@ type DashboardContent = {
     analytics: string;
     events: string;
     resellers: string;
+    leadsTickets: string;
     subscriptions: string;
     apiKeys: string;
   };
@@ -35,6 +36,7 @@ type DashboardContent = {
     analytics: { title: string; description: string };
     events: { title: string; description: string };
     resellers: { title: string; description: string };
+    leadsTickets: { title: string; description: string };
     subscriptions: { title: string; description: string };
     apiKeys: { title: string; description: string };
   };
@@ -75,8 +77,8 @@ type DashboardContent = {
 };
 
 export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> = {
-  "super-admin": ["overview", "tenants", "batches", "tags", "analytics", "events", "resellers", "subscriptions", "apiKeys"],
-  "tenant-admin": ["overview", "batches", "tags", "analytics", "events", "subscriptions", "apiKeys"],
+  "super-admin": ["overview", "tenants", "batches", "tags", "analytics", "events", "resellers", "leadsTickets", "subscriptions", "apiKeys"],
+  "tenant-admin": ["overview", "batches", "tags", "analytics", "events", "leadsTickets", "subscriptions", "apiKeys"],
   reseller: ["overview", "batches", "analytics", "events", "resellers", "subscriptions"],
   viewer: ["overview", "analytics", "events"],
 };
@@ -84,15 +86,16 @@ export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> 
 export const dashboardContent: Record<AppLocale, DashboardContent> = {
   "es-AR": {
     shell: { subtitle: "Control multi-tenant enterprise", search: "Buscar...", role: "Rol", logout: "Salir", apiConnected: "API conectada", loading: "Cargando...", empty: "Sin resultados", all: "Todos", refresh: "Actualizar", openModule: "Abrir módulo", ready: "Listo." },
-    nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", subscriptions: "Suscripciones", apiKeys: "API Keys" },
+    nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", leadsTickets: "Leads & Tickets", subscriptions: "Suscripciones", apiKeys: "API Keys" },
     pages: {
       overview: { title: "Overview operativo", description: "KPIs críticos de autenticación, fraude y operación de lotes." },
       tenants: { title: "Gestión de tenants", description: "Clientes, planes y estado operativo por tenant." },
       batches: { title: "Gestión de lotes", description: "Crear, importar manifest, activar y revocar lotes." },
       tags: { title: "Gestión de tags", description: "Activación, perfil secure/basic y control de inventario." },
-      analytics: { title: "Analítica antifraude", description: "Total scans, valid/invalid, duplicates, tamper y geo placeholder." },
+      analytics: { title: "Analítica antifraude", description: "Total scans, valid/invalid, duplicates, tamper y mapa global en tiempo real por tenant." },
       events: { title: "Eventos", description: "Tabla de eventos con búsqueda, filtros y estados." },
       resellers: { title: "Canal reseller", description: "Rendimiento por partner, pipeline y subclientes." },
+      leadsTickets: { title: "Leads & Tickets", description: "Inbox comercial y soporte capturado desde asistente + formularios." },
       subscriptions: { title: "Suscripciones", description: "Planes activos, renovación y expansión de ingresos." },
       apiKeys: { title: "Developer settings", description: "Gestión de API keys y políticas de rotación." },
     },
@@ -133,7 +136,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
   },
   "pt-BR": {
     shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "API conectada", loading: "Carregando...", empty: "Sem resultados", all: "Todos", refresh: "Atualizar", openModule: "Abrir módulo", ready: "Pronto." },
-    nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", subscriptions: "Assinaturas", apiKeys: "API Keys" },
+    nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", leadsTickets: "Leads & Tickets", subscriptions: "Assinaturas", apiKeys: "API Keys" },
     pages: {
       overview: { title: "Overview operacional", description: "KPIs críticos de autenticação, fraude e lotes." },
       tenants: { title: "Gestão de tenants", description: "Clientes, planos e estado operacional por tenant." },
@@ -142,6 +145,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       analytics: { title: "Analytics antifraude", description: "Total scans, valid/invalid, duplicates, tamper e geo placeholder." },
       events: { title: "Eventos", description: "Tabela com busca, filtros e estados." },
       resellers: { title: "Canal revendedor", description: "Performance de parceiros e subclientes." },
+      leadsTickets: { title: "Leads & Tickets", description: "Inbox comercial e suporte vindo do assistente e formulários." },
       subscriptions: { title: "Assinaturas", description: "Planos ativos, renovação e expansão." },
       apiKeys: { title: "Developer settings", description: "Gestão de API keys e rotação." },
     },
@@ -182,15 +186,16 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
   },
   en: {
     shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "API connected", loading: "Loading...", empty: "No results", all: "All", refresh: "Refresh", openModule: "Open module", ready: "Ready." },
-    nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", subscriptions: "Subscriptions", apiKeys: "API Keys" },
+    nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", leadsTickets: "Leads & Tickets", subscriptions: "Subscriptions", apiKeys: "API Keys" },
     pages: {
       overview: { title: "Operational overview", description: "Critical authentication, fraud and batch KPIs." },
       tenants: { title: "Tenant management", description: "Customers, plans and operating health by tenant." },
       batches: { title: "Batch management", description: "Create, import manifest, activate and revoke batches." },
       tags: { title: "Tag management", description: "Activation, secure/basic profile mix and inventory control." },
-      analytics: { title: "Anti-fraud analytics", description: "Total scans, valid/invalid, duplicates, tamper and geo placeholder." },
+      analytics: { title: "Anti-fraud analytics", description: "Total scans, valid/invalid, duplicates, tamper and live global map by tenant." },
       events: { title: "Events", description: "Searchable event table with filters and status badges." },
       resellers: { title: "Reseller channel", description: "Partner performance, pipeline and sub-clients." },
+      leadsTickets: { title: "Leads & Tickets", description: "Commercial + support inbox captured from assistant and forms." },
       subscriptions: { title: "Subscriptions", description: "Active plans, renewal and revenue expansion." },
       apiKeys: { title: "Developer settings", description: "API key management and rotation policies." },
     },

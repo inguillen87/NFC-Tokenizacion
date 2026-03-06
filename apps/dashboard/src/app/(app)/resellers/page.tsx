@@ -3,20 +3,88 @@ import { DataTable } from "../../../components/data-table";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 
-const rows = [
-  { reseller: "Agency South", status: "active", clients: "14", revenue: "USD 18,200" },
-  { reseller: "Pack Converter One", status: "active", clients: "8", revenue: "USD 12,900" },
-  { reseller: "Regional Dist LATAM", status: "pending", clients: "5", revenue: "USD 9,100" },
-];
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3003";
+
+async function adminGet(path: string) {
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+      cache: "no-store",
+    });
+
+    if (!response.ok) return [];
+    return response.json();
+  } catch {
+    return [];
+  }
+}
 
 export default async function ResellersPage() {
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
 
+  const [leads, tickets, orders] = await Promise.all([
+    adminGet("/admin/leads"),
+    adminGet("/admin/tickets"),
+    adminGet("/admin/orders"),
+  ]);
+
   return (
     <main className="space-y-8">
-      <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description={copy.pages.resellers.description} />
-      <DataTable title={copy.tables.resellers.title} columns={[{ key: "reseller", label: copy.tables.resellers.reseller }, { key: "status", label: copy.tables.resellers.status }, { key: "clients", label: copy.tables.resellers.clients }, { key: "revenue", label: copy.tables.resellers.revenue }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
+      <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description="CRM lite: leads, tickets y pedidos para super admin." />
+
+      <DataTable
+        title="Leads inbox"
+        columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "volume", label: "Volume" }]}
+        rows={leads.map((item: Record<string, unknown>) => ({
+          contact: String(item.contact || "-"),
+          company: String(item.company || "-"),
+          status: String(item.status || "new"),
+          volume: String(item.volume || "0"),
+        }))}
+        filterKey="status"
+        loadingLabel={copy.shell.loading}
+        emptyLabel={copy.shell.empty}
+        searchPlaceholder={copy.shell.search}
+        allFilterLabel={copy.shell.all}
+        refreshLabel={copy.shell.refresh}
+        statusMap={copy.statuses}
+      />
+
+      <DataTable
+        title="Tickets"
+        columns={[{ key: "contact", label: "Contact" }, { key: "title", label: "Title" }, { key: "status", label: "Status" }]}
+        rows={tickets.map((item: Record<string, unknown>) => ({
+          contact: String(item.contact || "-"),
+          title: String(item.title || "-"),
+          status: String(item.status || "open"),
+        }))}
+        filterKey="status"
+        loadingLabel={copy.shell.loading}
+        emptyLabel={copy.shell.empty}
+        searchPlaceholder={copy.shell.search}
+        allFilterLabel={copy.shell.all}
+        refreshLabel={copy.shell.refresh}
+        statusMap={copy.statuses}
+      />
+
+      <DataTable
+        title="Orders / Chip requests"
+        columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "volume", label: "Volume" }]}
+        rows={orders.map((item: Record<string, unknown>) => ({
+          contact: String(item.contact || "-"),
+          company: String(item.company || "-"),
+          status: String(item.status || "new"),
+          volume: String(item.volume || "0"),
+        }))}
+        filterKey="status"
+        loadingLabel={copy.shell.loading}
+        emptyLabel={copy.shell.empty}
+        searchPlaceholder={copy.shell.search}
+        allFilterLabel={copy.shell.all}
+        refreshLabel={copy.shell.refresh}
+        statusMap={copy.statuses}
+      />
     </main>
   );
 }
