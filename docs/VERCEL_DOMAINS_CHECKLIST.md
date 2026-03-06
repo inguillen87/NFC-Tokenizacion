@@ -77,3 +77,22 @@ No hace falta romper nada: podés migrar en pasos seguros.
 Si querés, después creás un proyecto nuevo `nexid-api` con Root Directory `apps/api`, pasás `api.nexid.lat` ahí y archivás el proyecto inicial.
 
 > Importante: en Vercel no se puede “sacar el redirect root del inicio” como toggle global del repo. El Root Directory es una configuración por proyecto/deployment, por eso la forma segura es crear proyectos separados y mover dominios.
+
+
+## 9) ¿Qué hacer en *este* proyecto que hoy tiene `Root Directory = apps/api`?
+
+Respuesta corta: **no lo conviertas a web todavía** si querés cero riesgo.
+
+1. Dejá `Root Directory` en `apps/api` en este proyecto actual.
+2. Dejá el switch **Include files outside the root directory in the Build Step** en `Enabled` (así no rompés builds del monorepo).
+3. No borres variables de entorno ni DB de este proyecto.
+4. Usá este proyecto como API temporal y mové dominios de forma controlada:
+   - este proyecto: `api.nexid.lat`
+   - proyecto nuevo `nexid-web` (`apps/web`): `nexid.lat` + `www.nexid.lat`
+   - proyecto nuevo `nexid-dashboard` (`apps/dashboard`): `app.nexid.lat`
+
+### ¿Cuándo sí cambiar ese Root Directory?
+- Solo cuando ya tengas proyectos separados funcionando.
+- Si querés “reciclar” este mismo proyecto para web, primero sacale `api.nexid.lat`, creá otro proyecto para `apps/api`, copiá env vars y recién ahí cambiá Root Directory.
+
+Esto evita perder APIs, DB o secretos por mover todo de golpe.
