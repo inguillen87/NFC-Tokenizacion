@@ -17,7 +17,9 @@
     "db:new": "npm run db:new --workspace=api --",
     "db:migrate": "npm run db:migrate --workspace=api",
     "db:seed": "npm run db:seed --workspace=api",
-    "db:reset:local": "npm run db:reset:local --workspace=api"
+    "db:reset:local": "npm run db:reset:local --workspace=api",
+    "demo:demobodega": "npm run demo:demobodega --workspace=api",
+    "demo:seed": "npm run demo:seed --workspace=api"
   },
   "packageManager": "npm@10.9.0",
   "engines": {

@@ -54,6 +54,7 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     getJson: <T = unknown>(path: string) => request<T>(opts, path),
     postJson: <T = unknown>(path: string, payload: unknown) => request<T>(opts, path, { method: "POST", body: JSON.stringify(payload) }),
     health: () => request(opts, "/health"),
+    demoLiveFeed: (tenant = "demobodega", limit = 25) => request(opts, withQuery("/demo/live", { tenant, limit })),
     sunValidate: (query: Record<string, string | number>) => request(opts, withQuery("/sun", query)),
     adminCreateTenant: (payload: { slug: string; name: string }) => request(opts, "/admin/tenants", { method: "POST", body: JSON.stringify(payload) }, tenantSchema),
     adminListTenants: () => request(opts, "/admin/tenants", undefined, z.array(tenantSchema)),
@@ -71,6 +72,15 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     listLeads: () => request(opts, "/admin/leads"),
     listTickets: () => request(opts, "/admin/tickets"),
     listOrders: () => request(opts, "/admin/orders"),
+
+    adminSeedDemoBodega: () => request(opts, "/internal/demo/seed", { method: "POST" }),
+    demoLabPacks: () => request(opts, "/internal/demo/packs"),
+    demoLabSummary: () => request(opts, "/internal/demo/summary"),
+    demoLabUsePack: () => request(opts, "/internal/demo/use-pack", { method: "POST" }),
+    demoLabReset: () => request(opts, "/internal/demo/reset", { method: "POST" }),
+    demoLabGenerateScans: (payload: { bid?: string; count?: number; mode?: "valid" | "replay" | "tamper" }) => request(opts, "/internal/demo/generate-live-scans", { method: "POST", body: JSON.stringify(payload) }),
+    demoLabSimulateTap: (payload?: { uidHex?: string; mode?: "valid" | "replay" | "tamper" }) => request(opts, "/internal/demo/simulate-tap", { method: "POST", body: JSON.stringify(payload || {}) }),
+    internalDemoScan: (payload: { bid: string; uidHex: string; deviceLabel?: string; city?: string; countryCode?: string; lat?: number; lng?: number; action?: "uncork" | "verify" | "retail_scan" }) => request(opts, "/internal/demo/scan", { method: "POST", body: JSON.stringify(payload) }),
     assistantChat: (payload: Record<string, unknown>) => request(opts, "/assistant/chat", { method: "POST", body: JSON.stringify(payload) }),
   };
 }
