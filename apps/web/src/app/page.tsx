@@ -43,6 +43,14 @@ export default async function HomePage() {
       </header>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
+
+      <section className="container-shell py-8">
+        <div className="grid gap-3 md:grid-cols-3">
+          <a className="rounded-xl border border-white/10 bg-slate-900 p-4 text-sm text-white" href="/demo/demobodega_seed.json" download>Download demo JSON</a>
+          <a className="rounded-xl border border-white/10 bg-slate-900 p-4 text-sm text-white" href="/demo/demobodega_manifest.csv" download>Download demo CSV</a>
+          <a className="rounded-xl border border-white/10 bg-slate-900 p-4 text-sm text-white" href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002"}/demo-lab`}>Launch Demo Lab</a>
+        </div>
+      </section>
       <TrustBarSection content={content} />
       <RadarSection radar={content.radar} locale={locale} />
       <InteractiveDemoSection locale={locale} />

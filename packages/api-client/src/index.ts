@@ -74,6 +74,11 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     listOrders: () => request(opts, "/admin/orders"),
 
     adminSeedDemoBodega: () => request(opts, "/internal/demo/seed", { method: "POST" }),
+    demoLabSummary: () => request(opts, "/internal/demo/summary"),
+    demoLabUsePack: () => request(opts, "/internal/demo/use-pack", { method: "POST" }),
+    demoLabReset: () => request(opts, "/internal/demo/reset", { method: "POST" }),
+    demoLabGenerateScans: (payload: { bid?: string; count?: number; mode?: "valid" | "replay" | "tamper" }) => request(opts, "/internal/demo/generate-live-scans", { method: "POST", body: JSON.stringify(payload) }),
+    demoLabSimulateTap: (payload?: { uidHex?: string; mode?: "valid" | "replay" | "tamper" }) => request(opts, "/internal/demo/simulate-tap", { method: "POST", body: JSON.stringify(payload || {}) }),
     internalDemoScan: (payload: { bid: string; uidHex: string; deviceLabel?: string; city?: string; countryCode?: string; lat?: number; lng?: number; action?: "uncork" | "verify" | "retail_scan" }) => request(opts, "/internal/demo/scan", { method: "POST", body: JSON.stringify(payload) }),
     assistantChat: (payload: Record<string, unknown>) => request(opts, "/assistant/chat", { method: "POST", body: JSON.stringify(payload) }),
   };

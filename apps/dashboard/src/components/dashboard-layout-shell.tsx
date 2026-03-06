@@ -9,6 +9,7 @@ const navItems = [
   { href: "/resellers", label: "White-label" },
   { href: "/billing", label: "Plans" },
   { href: "/demo", label: "Demo Control" },
+  { href: "/demo-lab", label: "Demo Lab" },
 ];
 
 export function DashboardLayoutShell({ children }: { children: ReactNode }) {
