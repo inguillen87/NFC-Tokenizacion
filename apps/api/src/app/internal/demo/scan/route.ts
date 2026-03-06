@@ -2,14 +2,17 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { z } from 'zod';
-import { sql } from '../../../../lib/db';
 import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
+import { sql } from '../../../../lib/db';
+import { decryptKey16 } from '../../../../lib/keys';
+import { generateSunParams } from '../../../../lib/crypto/sdm';
+import { processSunScan } from '../../../../lib/sun-service';
 
 const bodySchema = z.object({
   bid: z.string().min(1),
   uidHex: z.string().min(1).transform((v) => v.toUpperCase()),
-  deviceLabel: z.string().default('Demo Device'),
+  deviceLabel: z.string().default('iPhone 15 Pro - Mendoza'),
   city: z.string().default('Mendoza'),
   countryCode: z.string().default('AR'),
   lat: z.number().optional(),
@@ -23,58 +26,51 @@ export async function POST(req: Request) {
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ ok: false, reason: 'invalid payload' }, 400);
-
   const body = parsed.data;
 
-  const batchRows = await sql/*sql*/`SELECT id, tenant_id FROM batches WHERE bid = ${body.bid} LIMIT 1`;
+  const batchRows = await sql/*sql*/`
+    SELECT b.id, b.meta_key_ct, b.file_key_ct, t.last_seen_ctr
+    FROM batches b
+    LEFT JOIN tags t ON t.batch_id = b.id AND t.uid_hex = ${body.uidHex}
+    WHERE b.bid = ${body.bid}
+    LIMIT 1
+  `;
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: 'batch not found' }, 404);
 
-  const tagRows = await sql/*sql*/`
-    SELECT id, status, COALESCE(last_seen_ctr, 0) AS last_seen_ctr
-    FROM tags
-    WHERE batch_id = ${batch.id} AND uid_hex = ${body.uidHex}
-    LIMIT 1
-  `;
-  const tag = tagRows[0];
-  if (!tag) return json({ ok: false, reason: 'tag not found' }, 404);
+  const currentCtr = Number(batch.last_seen_ctr ?? 0);
+  const nextCtr = body.action === 'retail_scan' ? currentCtr : currentCtr + 1;
 
-  const replaySuspect = body.action === 'retail_scan';
-  const tamper = body.action === 'uncork';
-  const nextCtr = replaySuspect ? Math.max(0, Number(tag.last_seen_ctr) - 1) : Number(tag.last_seen_ctr) + 1;
+  const generated = generateSunParams({
+    uidHex: body.uidHex,
+    ctr: Math.max(0, nextCtr),
+    kMetaHex: decryptKey16(batch.meta_key_ct).toString('hex').toUpperCase(),
+    kFileHex: decryptKey16(batch.file_key_ct).toString('hex').toUpperCase(),
+  });
 
-  const result = tag.status !== 'active'
-    ? 'NOT_ACTIVE'
-    : replaySuspect
-      ? 'REPLAY_SUSPECT'
-      : tamper
-        ? 'TAMPER_ALERT'
-        : 'VALID';
+  const result = await processSunScan({
+    bid: body.bid,
+    piccDataHex: generated.piccDataHex,
+    encHex: generated.encHex,
+    cmacHex: generated.cmacHex,
+    rawQuery: {
+      bid: body.bid,
+      picc_data: generated.piccDataHex,
+      enc: generated.encHex,
+      cmac: generated.cmacHex,
+    },
+    context: {
+      city: body.city,
+      countryCode: body.countryCode,
+      lat: body.lat ?? null,
+      lng: body.lng ?? null,
+      userAgent: 'demo-scanner',
+      deviceLabel: body.deviceLabel,
+      source: 'demo',
+      meta: { action: body.action },
+      forceResult: body.action === 'uncork' ? 'TAMPER' : undefined,
+    },
+  });
 
-  if (!replaySuspect) {
-    await sql/*sql*/`
-      UPDATE tags
-      SET scan_count = scan_count + 1,
-          first_seen_at = COALESCE(first_seen_at, now()),
-          last_seen_at = now(),
-          last_seen_ctr = GREATEST(COALESCE(last_seen_ctr, -1), ${nextCtr})
-      WHERE id = ${tag.id}
-    `;
-  }
-
-  const eventRows = await sql/*sql*/`
-    INSERT INTO events (
-      tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status,
-      result, reason, ip, user_agent, geo_city, geo_country, geo_lat, geo_lng,
-      city, country_code, lat, lng, device_label, source, meta
-    ) VALUES (
-      ${batch.tenant_id}, ${batch.id}, ${body.uidHex}, ${nextCtr}, ${nextCtr}, true, true, ${tag.status},
-      ${result}, ${result === 'VALID' ? null : body.action}, null, 'demo-scanner', ${body.city}, ${body.countryCode}, ${body.lat ?? null}, ${body.lng ?? null},
-      ${body.city}, ${body.countryCode}, ${body.lat ?? null}, ${body.lng ?? null}, ${body.deviceLabel}, 'demo',
-      ${JSON.stringify({ action: body.action, mode: 'simulator' })}::jsonb
-    )
-    RETURNING id, created_at, result
-  `;
-
-  return json({ ok: true, event: eventRows[0], bid: body.bid, uidHex: body.uidHex, action: body.action, source: 'demo' });
+  return json({ ...result.body, source: 'demo', action: body.action }, result.status);
 }

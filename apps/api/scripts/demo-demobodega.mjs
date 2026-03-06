@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { neon } from "@neondatabase/serverless";
 
 const url = process.env.DATABASE_URL;
@@ -13,6 +15,15 @@ if (!metaHex || !fileHex) {
   console.error("DEMO_BODEGA_META_KEY_HEX and DEMO_BODEGA_FILE_KEY_HEX are required");
   process.exit(1);
 }
+
+const rootDir = path.resolve(process.cwd(), "..", "..");
+const manifestCsv = fs.readFileSync(path.join(rootDir, "demobodega_manifest.csv"), "utf8");
+const seedJson = JSON.parse(fs.readFileSync(path.join(rootDir, "demobodega_seed.json"), "utf8"));
+const manifestRows = manifestCsv.trim().split("\n").slice(1).map((line) => {
+  const [uid_hex, sku, product_name] = line.split(",");
+  return { uid_hex, sku, product_name };
+});
+const profileByUid = new Map(seedJson.bottles.map((b) => [b.uidHex, b]));
 
 const sql = neon(url);
 
@@ -41,10 +52,7 @@ const accounts = [
   { email: "reseller@partner.test", fullName: "Partner Reseller", role: "reseller", tenantScoped: true },
 ];
 
-const generatedPasswords = {};
-for (const account of accounts) {
-  generatedPasswords[account.email] = `Demo-${crypto.randomBytes(6).toString("hex")}`;
-}
+const generatedPasswords = Object.fromEntries(accounts.map((a) => [a.email, `Demo-${crypto.randomBytes(6).toString("hex")}`]));
 
 await sql`INSERT INTO tenants (slug, name, root_key_ct)
 VALUES ('demobodega', 'Demo Bodega', 'demo-root-key')
@@ -73,28 +81,24 @@ ON CONFLICT (bid) DO NOTHING`;
 
 const batch = (await sql`SELECT id, bid FROM batches WHERE bid='DEMO-2026-02' LIMIT 1`)[0];
 
-const demoUids = [
-  '04B7723410E2AD', '04B7723410E2AE', '04B7723410E2AF', '04B7723410E2B0', '04B7723410E2B1',
-  '04B7723410E2B2', '04B7723410E2B3', '04B7723410E2B4', '04B7723410E2B5', '04B7723410E2B6'
-];
-
-for (let i = 0; i < demoUids.length; i += 1) {
-  const uid = demoUids[i];
+for (const row of manifestRows) {
+  const uid = String(row.uid_hex).toUpperCase();
   await sql`INSERT INTO tags (batch_id, uid_hex, status)
   VALUES (${batch.id}, ${uid}, 'active')
   ON CONFLICT (batch_id, uid_hex) DO UPDATE SET status = 'active'`;
 
   const tag = (await sql`SELECT id FROM tags WHERE batch_id = ${batch.id} AND uid_hex = ${uid} LIMIT 1`)[0];
+  const p = profileByUid.get(uid) || {};
 
   await sql`INSERT INTO tag_profiles (
     tag_id, sku, product_name, vintage, grape_varietal, alcohol_pct, barrel_months,
     harvest_year, vineyard_humidity, soil_humidity, region, winery, temperature_storage,
     notes, image_url, locale_data
   ) VALUES (
-    ${tag.id}, ${`DB-${String(i + 1).padStart(3, "0")}`}, ${`Demo Bodega Reserva ${2020 + (i % 4)}`}, ${String(2020 + (i % 4))},
-    ${i % 2 === 0 ? 'Malbec' : 'Cabernet Sauvignon'}, ${14.2 + (i * 0.1)}, ${12 + (i % 6)}, ${2019 + (i % 5)},
-    ${55 + i}, ${37 + i}, 'Mendoza', 'Demo Bodega', '14°C',
-    'Lote premium con trazabilidad completa.',
+    ${tag.id}, ${row.sku}, ${row.product_name}, ${p.vintage || '2022'},
+    ${p.grapeVarietal || 'Malbec'}, ${p.alcoholPct || 14.2}, ${p.barrelMonths || 14}, ${p.harvestYear || 2022},
+    ${p.vineyardHumidity || 56}, ${p.soilHumidity || 39}, ${p.region || 'Mendoza'}, 'Demo Bodega', ${p.temperatureStorage || '14°C'},
+    ${p.notes || 'Lote premium con trazabilidad completa.'},
     'https://images.unsplash.com/photo-1516594915697-87eb3b1c14ea',
     ${JSON.stringify({
       "es-AR": { headline: "Edición limitada", story: "Botella autenticada para demo comercial." },
@@ -127,7 +131,6 @@ ON CONFLICT (tenant_id, url) DO UPDATE SET enabled = false, events = EXCLUDED.ev
 
 const activeTags = await sql`SELECT COUNT(*)::int AS count FROM tags WHERE batch_id = ${batch.id} AND status='active'`;
 
-const isProd = process.env.NODE_ENV === 'production';
 console.log("\n=== Demo Bodega seeded ===");
 console.log(`Tenant: ${tenant.name} (${tenant.slug})`);
 console.log(`Batch: ${batch.bid}`);
@@ -135,9 +138,10 @@ console.log(`Active tags: ${activeTags[0].count}`);
 console.log("Routes:");
 console.log("- Dashboard Demo Control: /demo");
 console.log("- Internal scan simulator: POST /internal/demo/scan");
+console.log("- Live feed endpoint: /demo/live?tenant=demobodega");
 console.log("- Landing: /");
 
-if (!isProd) {
+if (process.env.NODE_ENV !== "production") {
   console.log("\nLogins (dev/demo only):");
   for (const account of accounts) {
     console.log(`- ${account.role}: ${account.email} / ${generatedPasswords[account.email]}`);
