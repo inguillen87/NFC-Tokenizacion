@@ -1,6 +1,7 @@
 import { Badge, BrandDot, BrandLockup, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
 import Link from "next/link";
 
+import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
 
 type Content = LandingContent;
@@ -13,9 +14,16 @@ type StatsCopy = {
   businessDelta: string;
 };
 
-const proofItems = ["SOC-ready architecture", "Reseller white-label", "API-first stack"];
+const proofByLocale: Record<AppLocale, string[]> = {
+  "es-AR": ["Arquitectura SOC-ready", "Canal reseller white-label", "Stack API-first"],
+  "pt-BR": ["Arquitetura SOC-ready", "Canal revendedor white-label", "Stack API-first"],
+  en: ["SOC-ready architecture", "Reseller white-label", "API-first stack"],
+};
 
-export function HeroSection({ content, stats }: { content: Content; stats: StatsCopy }) {
+export function HeroSection({ content, stats, locale }: { content: Content; stats: StatsCopy; locale: AppLocale }) {
+  const proofItems = [...new Set(proofByLocale[locale] || proofByLocale["es-AR"])]
+  const pipelineTitle = locale === "en" ? "Pipeline momentum" : locale === "pt-BR" ? "Pulso comercial" : "Pulso comercial";
+  const pipelineBody = locale === "en" ? "Live signal demo for enterprise buyers." : locale === "pt-BR" ? "Demo ao vivo para clientes enterprise." : "Demo en vivo para clientes enterprise.";
   return (
     <section className="container-shell py-16 md:py-24">
       <div className="hero-shell grid gap-10 rounded-[2rem] p-6 md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
@@ -41,14 +49,6 @@ export function HeroSection({ content, stats }: { content: Content; stats: Stats
               </span>
             ))}
           </div>
-
-          <div className="mt-7 flex flex-wrap gap-2">
-            {proofItems.map((item) => (
-              <span key={item} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {item}
-              </span>
-            ))}
-          </div>
         </div>
 
         <Card className="hero-panel hero-glow p-5 md:p-6">
@@ -57,13 +57,13 @@ export function HeroSection({ content, stats }: { content: Content; stats: Stats
             <StatCard label={stats.unitEconomics} value="USD 0.02" delta={stats.economicsDelta} />
             <StatCard label={stats.businessModel} value="HW + SaaS" delta={stats.businessDelta} tone="good" />
             <div className="hero-spark rounded-2xl border border-white/10 bg-slate-900/80 p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">Pipeline momentum</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">{pipelineTitle}</p>
               <div className="mt-3 space-y-2">
                 <div className="hero-meter"><span style={{ width: "82%" }} /></div>
                 <div className="hero-meter"><span style={{ width: "68%" }} /></div>
                 <div className="hero-meter"><span style={{ width: "91%" }} /></div>
               </div>
-              <p className="mt-3 text-xs text-slate-400">Live signal demo for enterprise buyers.</p>
+              <p className="mt-3 text-xs text-slate-400">{pipelineBody}</p>
             </div>
           </div>
         </Card>

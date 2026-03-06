@@ -15,6 +15,15 @@ export default async function LoginPage() {
             <BrandLockup size={34} variant="ripple" theme="dark" />
             <h1 className="mt-5 text-3xl font-bold text-white">{t.common.login}</h1>
             <p className="mt-2 text-sm text-slate-400">{t.dashboard.auth.loginBody}</p>
+            <div className="mt-5 grid gap-2 text-xs">
+              {Object.entries(copy.roles).map(([key, label]) => (
+                <div key={key} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-300">
+                  <span className="font-semibold text-cyan-300">{label}</span>
+                  <span className="ml-2">{key === "super-admin" ? "Control total de tenants y seguridad." : key === "tenant-admin" ? "Gestiona lotes, tags y operación del tenant." : key === "reseller" ? "Gestiona canal, clientes y revenue." : "Solo lectura para auditoría/cliente."}</span>
+                </div>
+              ))}
+            </div>
+
           </div>
 
           <div>

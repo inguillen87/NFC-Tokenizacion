@@ -27,6 +27,7 @@ export default async function HomePage() {
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
+            <Link href="/docs">{content.nav.docs}</Link>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -39,7 +40,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <HeroSection content={content} stats={t.web.stats} />
+      <HeroSection content={content} stats={t.web.stats} locale={locale} />
       <TrustBarSection content={content} />
       <RadarSection radar={content.radar} locale={locale} />
       <InteractiveDemoSection locale={locale} />
