@@ -49,4 +49,30 @@ await sql`
   ON CONFLICT DO NOTHING
 `;
 
+
+
+await sql`
+  INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes, assigned_to)
+  VALUES
+    ('es-AR', 'superadmin@nexid.lat', 'nexID HQ', 'AR', 'wine', 'secure', 50000, 'seed', 'qualified', 'Lead asignado a super admin', 'super_admin'),
+    ('en', 'tenantadmin@nexid.lat', 'Demo Tenant Ops', 'US', 'events', 'basic', 10000, 'seed', 'contacted', 'Tenant admin follow-up', 'tenant_admin')
+  ON CONFLICT DO NOTHING
+`;
+
+await sql`
+  INSERT INTO tickets (locale, contact, title, detail, status, assigned_to)
+  VALUES
+    ('es-AR', 'tenantadmin@nexid.lat', 'Demo ticket', 'Soporte inicial del tenant', 'open', 'tenant_admin'),
+    ('en', 'viewer@nexid.lat', 'Read-only dashboard question', 'Viewer cannot mutate resources', 'pending', 'super_admin')
+  ON CONFLICT DO NOTHING
+`;
+
+await sql`
+  INSERT INTO order_requests (locale, contact, company, tag_type, volume, notes, status, assigned_to)
+  VALUES
+    ('es-AR', 'reseller@nexid.lat', 'Reseller Demo', 'secure', 25000, 'Pedido inicial reseller', 'quoting', 'reseller'),
+    ('pt-BR', 'demo@nexid.lat', 'Canal BR', 'basic', 10000, 'Primeiro pedido', 'new', 'super_admin')
+  ON CONFLICT DO NOTHING
+`;
+
 console.log("Seed applied.");

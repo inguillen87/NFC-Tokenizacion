@@ -6,16 +6,46 @@ import { ModuleGrid } from "../../components/module-grid";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { getDashboardI18n } from "../../lib/locale";
 
-const overviewRows = [
-  { tenant: "Bodega Andes", status: "healthy", scans: "8,402", duplicates: "26", tamper: "3" },
-  { tenant: "Cosmetica Norte", status: "active", scans: "5,910", duplicates: "18", tamper: "1" },
-  { tenant: "Pharma Delta", status: "risk", scans: "3,221", duplicates: "42", tamper: "7" },
-  { tenant: "Event Ops AR", status: "pending", scans: "1,040", duplicates: "2", tamper: "0" },
-];
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3003";
+
+async function getOverviewRows() {
+  try {
+    const response = await fetch(`${API_BASE}/admin/tenants?withStats=1`, {
+      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return [] as Array<Record<string, unknown>>;
+    return response.json();
+  } catch {
+    return [] as Array<Record<string, unknown>>;
+  }
+}
+
+function resolveTenantStatus(scans: number, duplicates: number, tamper: number) {
+  if (scans === 0) return "pending";
+  const riskRatio = scans > 0 ? (duplicates + tamper) / scans : 0;
+  if (tamper > 5 || riskRatio > 0.06) return "risk";
+  if (duplicates > 0 || tamper > 0) return "healthy";
+  return "active";
+}
 
 export default async function DashboardHome() {
   const { locale, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
+  const overviewRaw = await getOverviewRows();
+
+  const overviewRows = overviewRaw.map((row) => {
+    const scans = Number(row.scans || 0);
+    const duplicates = Number(row.duplicates || 0);
+    const tamper = Number(row.tamper || 0);
+    return {
+      tenant: String(row.name || row.slug || "-"),
+      status: resolveTenantStatus(scans, duplicates, tamper),
+      scans: scans.toLocaleString(),
+      duplicates: duplicates.toLocaleString(),
+      tamper: tamper.toLocaleString(),
+    };
+  });
 
   return (
     <main className="space-y-8">

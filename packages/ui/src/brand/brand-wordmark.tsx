@@ -2,8 +2,9 @@ import { cx, type BrandProps } from "./types";
 
 export function BrandWordmark({ size = 120, variant = "static", theme = "dark", className }: BrandProps) {
   void variant;
-  const base = theme === "dark" ? "#E2E8F0" : "#0F172A";
-  const accent = theme === "dark" ? "#2FE1C3" : "#0891B2";
+  void theme;
+  const base = "currentColor";
+  const accent = "var(--brand-accent, #2FE1C3)";
   const height = size * 0.26;
 
   return (

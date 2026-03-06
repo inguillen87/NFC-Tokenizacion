@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Badge, BrandDot, BrandLockup, LocaleSwitcher } from "@product/ui";
+import { Badge, BrandDot, BrandLockup, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import type { AppLocale } from "@product/config";
 import type { UserRole } from "../lib/dashboard-content";
 import { roleAccess } from "../lib/dashboard-content";
 
-type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "events" | "resellers" | "subscriptions" | "apiKeys";
+type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "events" | "resellers" | "leadsTickets" | "subscriptions" | "apiKeys";
 
 export function DashboardShell({
   title,
@@ -38,7 +38,7 @@ export function DashboardShell({
       roleAccess[role]
         .map((key) => ({
           key,
-          href: key === "overview" ? "/" : `/${key === "apiKeys" ? "api-keys" : key}`,
+          href: key === "overview" ? "/" : `/${key === "apiKeys" ? "api-keys" : key === "leadsTickets" ? "leads-tickets" : key}`,
           label: nav[key as NavKey],
         }))
         .filter((item) => item.label.toLowerCase().includes(query.toLowerCase())),
@@ -83,6 +83,7 @@ export function DashboardShell({
             <div className="flex items-center gap-2">
               <Badge tone="green">{shell.apiConnected}</Badge>
               <LocaleSwitcher value={locale} options={[...locales]} />
+              <ThemeToggle />
               <Link href="/login" className="rounded-lg border border-white/10 px-3 py-2 text-xs">{shell.logout}</Link>
             </div>
           </div>

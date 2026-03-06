@@ -6,13 +6,17 @@ import { getDashboardI18n } from "../../../lib/locale";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3003";
 
 async function adminGet(path: string) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-    cache: "no-store",
-  });
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+      cache: "no-store",
+    });
 
-  if (!response.ok) return [];
-  return response.json();
+    if (!response.ok) return [];
+    return response.json();
+  } catch {
+    return [];
+  }
 }
 
 export default async function ResellersPage() {

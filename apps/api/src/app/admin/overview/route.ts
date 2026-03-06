@@ -18,8 +18,8 @@ export async function GET(req: Request) {
         COUNT(DISTINCT b.id)::int AS batches,
         COUNT(DISTINCT t.id)::int AS tags,
         COUNT(e.id)::int AS scans,
-        COUNT(*) FILTER (WHERE e.result = 'duplicate')::int AS duplicates,
-        COUNT(*) FILTER (WHERE e.result = 'tamper')::int AS tamper
+        COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+        COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE','INVALID'))::int AS tamper
       FROM tenants tn
       LEFT JOIN batches b ON b.tenant_id = tn.id
       LEFT JOIN tags t ON t.batch_id = b.id
@@ -31,8 +31,8 @@ export async function GET(req: Request) {
         COUNT(DISTINCT b.id)::int AS batches,
         COUNT(DISTINCT t.id)::int AS tags,
         COUNT(e.id)::int AS scans,
-        COUNT(*) FILTER (WHERE e.result = 'duplicate')::int AS duplicates,
-        COUNT(*) FILTER (WHERE e.result = 'tamper')::int AS tamper
+        COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+        COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE','INVALID'))::int AS tamper
       FROM batches b
       LEFT JOIN tags t ON t.batch_id = b.id
       LEFT JOIN events e ON e.batch_id = b.id
