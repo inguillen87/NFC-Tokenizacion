@@ -24,6 +24,17 @@ type ExtractedLead = {
   volume: number | null;
 };
 
+type OpenAILeadPayload = {
+  answer?: string;
+  company?: string | null;
+  country?: string | null;
+  vertical?: string | null;
+  tagType?: string | null;
+  volume?: number | null;
+  buyingIntent?: "low" | "medium" | "high";
+  nextStep?: string;
+};
+
 const fallbackByLocale: Record<string, string[]> = {
   "es-AR": [
     "nexID protege productos con NFC (NTAG215 y NTAG424 DNA TagTamper) y validación SUN/SDM.",
@@ -58,6 +69,16 @@ function parseVolume(question: string) {
   if (compact?.[1]) return Number(compact[1]) * 1000;
   const exact = normalized.match(/\b(\d{4,7})\b/);
   return exact ? Number(exact[1]) : null;
+}
+
+function extractEmail(text: string) {
+  const match = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match?.[0]?.trim() || "";
+}
+
+function extractWhatsApp(text: string) {
+  const match = text.match(/(?:\+?\d[\d\s().-]{7,}\d)/);
+  return match?.[0]?.replace(/\s+/g, " ").trim() || "";
 }
 
 function extractLeadData(question: string): ExtractedLead {
@@ -116,11 +137,14 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
   if (!key) return null;
 
   const context = kb.map((x) => `- [${x.locale}/${x.slug}] ${x.title}: ${x.body.slice(0, 500)}`).join("\n");
-  const system =
-    "You are nexID sales/support assistant. Be concise, high-converting, and practical. " +
-    "Always guide to next step for lead capture: full name + email or WhatsApp. " +
-    "When intent is pricing/reseller/order ask for volume/tag type/contact and propose demo call. " +
-    `Reply in locale ${locale}.`;
+  const system = [
+    "You are nexID enterprise sales/support assistant.",
+    "Primary goal: convert user into a qualified lead while genuinely helping.",
+    "When intent is pricing/reseller/order, ask for volume, tag profile (NTAG215 vs NTAG 424 DNA TagTamper), country and contact.",
+    "Use persuasive but trustworthy language. Do not invent facts.",
+    `Reply in locale ${locale}.`,
+    "Return ONLY valid JSON with keys: answer, company, country, vertical, tagType, volume, buyingIntent, nextStep.",
+  ].join(" ");
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -136,6 +160,7 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
           { role: "system", content: system },
           { role: "user", content: `Intent: ${intent}\nQuestion: ${question}\n\nKnowledge base:\n${context}` },
         ],
+        response_format: { type: "json_object" },
       }),
       cache: "no-store",
     });
@@ -143,7 +168,10 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
     if (!response.ok) return null;
     const data = await response.json().catch(() => null);
     const text = data?.choices?.[0]?.message?.content;
-    return typeof text === "string" && text.trim() ? text.trim() : null;
+    if (typeof text !== "string" || !text.trim()) return null;
+    const parsed: OpenAILeadPayload = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
   } catch {
     return null;
   }
@@ -154,11 +182,11 @@ export async function POST(req: Request) {
   const locale = body.locale || "es-AR";
   const question = String(body.question || "");
   const intent = detectIntent(question);
-  const extracted = extractLeadData(question);
+  const extractedFromQuestion = extractLeadData(question);
 
   const fullName = String(body.fullName || "").trim();
-  const email = String(body.email || "").trim();
-  const whatsapp = String(body.whatsapp || "").trim();
+  const email = String(body.email || extractEmail(question)).trim();
+  const whatsapp = String(body.whatsapp || extractWhatsApp(question)).trim();
   const contact = String(body.contact || [email, whatsapp].filter(Boolean).join(" | ")).trim();
   const hasContact = Boolean(email || whatsapp || contact);
   const hasQualifiedLeadData = fullName.length > 3 && hasContact;
@@ -182,24 +210,62 @@ export async function POST(req: Request) {
     })
     .slice(0, 3);
 
-  const openAiAnswer = await buildOpenAiAnswer({ locale, question, intent, kb: selected });
-  const answer = openAiAnswer || buildFallbackAnswer(locale, intent, extracted);
+  const openAiPayload = await buildOpenAiAnswer({ locale, question, intent, kb: selected });
+  const extracted: ExtractedLead = {
+    company: openAiPayload?.company || extractedFromQuestion.company,
+    country: openAiPayload?.country || extractedFromQuestion.country,
+    vertical: openAiPayload?.vertical || extractedFromQuestion.vertical,
+    tagType: openAiPayload?.tagType || extractedFromQuestion.tagType,
+    volume: typeof openAiPayload?.volume === "number" ? openAiPayload.volume : extractedFromQuestion.volume,
+  };
+  const answer = openAiPayload?.answer || buildFallbackAnswer(locale, intent, extracted);
+  const persuasionNextStep = openAiPayload?.nextStep || "";
+
+  const leadStatus = openAiPayload?.buyingIntent === "high" ? "hot" : openAiPayload?.buyingIntent === "medium" ? "qualified" : "new";
 
   if (hasQualifiedLeadData && (intent === "pricing" || intent === "reseller" || intent === "general" || intent === "order")) {
-    await sql/*sql*/`
-      INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
-      VALUES (
-        ${locale},
-        ${contact},
-        ${extracted.company || ""},
-        ${extracted.country || ""},
-        ${extracted.vertical || "other"},
-        ${extracted.tagType || "unknown"},
-        ${extracted.volume || 0},
-        ${String(body.mode || "assistant")},
-        ${`${fullName ? `name=${fullName}; ` : ""}${question}`.slice(0, 700)}
-      )
-    `.catch(() => null);
+    const recent = await sql/*sql*/`
+      SELECT id
+      FROM leads
+      WHERE contact = ${contact}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `.catch(() => [] as Array<{ id: string }>);
+
+    const notes = `${fullName ? `name=${fullName}; ` : ""}${question}${persuasionNextStep ? `\nnext_step=${persuasionNextStep}` : ""}`.slice(0, 900);
+
+    if (recent[0]?.id) {
+      await sql/*sql*/`
+        UPDATE leads
+        SET
+          locale = ${locale},
+          company = ${extracted.company || ""},
+          country = ${extracted.country || ""},
+          vertical = ${extracted.vertical || "other"},
+          tag_type = ${extracted.tagType || "unknown"},
+          volume = ${extracted.volume || 0},
+          source = ${String(body.mode || "assistant")},
+          status = ${leadStatus},
+          notes = ${notes}
+        WHERE id = ${recent[0].id}
+      `.catch(() => null);
+    } else {
+      await sql/*sql*/`
+        INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
+        VALUES (
+          ${locale},
+          ${contact},
+          ${extracted.company || ""},
+          ${extracted.country || ""},
+          ${extracted.vertical || "other"},
+          ${extracted.tagType || "unknown"},
+          ${extracted.volume || 0},
+          ${String(body.mode || "assistant")},
+          ${leadStatus},
+          ${notes}
+        )
+      `.catch(() => null);
+    }
   }
 
   if (hasContact && intent === "ticket") {
@@ -225,7 +291,7 @@ export async function POST(req: Request) {
   }
 
   return json({
-    answer,
+    answer: persuasionNextStep ? `${answer}\n\n${persuasionNextStep}` : answer,
     intent,
     requiresContact,
     extracted,

@@ -19,7 +19,7 @@ async function adminGet(path: string) {
   }
 }
 
-export default async function ResellersPage() {
+export default async function LeadsTicketsPage() {
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
 
@@ -31,7 +31,7 @@ export default async function ResellersPage() {
 
   return (
     <main className="space-y-8">
-      <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description="CRM lite: leads, tickets y pedidos para super admin." />
+      <SectionHeading eyebrow={copy.nav.leadsTickets} title={copy.pages.leadsTickets.title} description={copy.pages.leadsTickets.description} />
 
       <DataTable
         title="Leads inbox"

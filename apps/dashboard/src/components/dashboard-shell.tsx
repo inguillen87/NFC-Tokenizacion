@@ -8,7 +8,7 @@ import type { AppLocale } from "@product/config";
 import type { UserRole } from "../lib/dashboard-content";
 import { roleAccess } from "../lib/dashboard-content";
 
-type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "events" | "resellers" | "subscriptions" | "apiKeys";
+type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "events" | "resellers" | "leadsTickets" | "subscriptions" | "apiKeys";
 
 export function DashboardShell({
   title,
@@ -38,7 +38,7 @@ export function DashboardShell({
       roleAccess[role]
         .map((key) => ({
           key,
-          href: key === "overview" ? "/" : `/${key === "apiKeys" ? "api-keys" : key}`,
+          href: key === "overview" ? "/" : `/${key === "apiKeys" ? "api-keys" : key === "leadsTickets" ? "leads-tickets" : key}`,
           label: nav[key as NavKey],
         }))
         .filter((item) => item.label.toLowerCase().includes(query.toLowerCase())),
