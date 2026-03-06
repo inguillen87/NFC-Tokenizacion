@@ -29,6 +29,8 @@ function detectIntent(question: string) {
   if (q.includes("batch") || q.includes("manifest")) return "ops";
   if (q.includes("precio") || q.includes("cost") || q.includes("quote") || q.includes("cot")) return "pricing";
   if (q.includes("reseller") || q.includes("white-label")) return "reseller";
+  if (q.includes("ticket") || q.includes("soporte") || q.includes("support")) return "ticket";
+  if (q.includes("pedido") || q.includes("order") || q.includes("chips") || q.includes("comprar")) return "order";
   return "general";
 }
 
@@ -64,6 +66,19 @@ export async function POST(req: Request) {
     `.catch(() => null);
   }
 
+  if (contact && intent === "ticket") {
+    await sql/*sql*/`
+      INSERT INTO tickets (locale, contact, title, detail, status)
+      VALUES (${locale}, ${contact}, 'Assistant support request', ${question.slice(0, 500)}, 'open')
+    `.catch(() => null);
+  }
+
+  if (contact && intent === "order") {
+    await sql/*sql*/`
+      INSERT INTO order_requests (locale, contact, company, tag_type, volume, notes, status)
+      VALUES (${locale}, ${contact}, '', 'basic', 0, ${question.slice(0, 500)}, 'new')
+    `.catch(() => null);
+  }
 
   return json({
     answer,

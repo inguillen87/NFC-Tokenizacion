@@ -50,6 +50,9 @@ async function request<T>(opts: ApiClientOptions, path: string, init?: RequestIn
 
 export function createApiClient(opts: ApiClientOptions = {}) {
   return {
+
+    getJson: <T = unknown>(path: string) => request<T>(opts, path),
+    postJson: <T = unknown>(path: string, payload: unknown) => request<T>(opts, path, { method: "POST", body: JSON.stringify(payload) }),
     health: () => request(opts, "/health"),
     sunValidate: (query: Record<string, string | number>) => request(opts, withQuery("/sun", query)),
     adminCreateTenant: (payload: { slug: string; name: string }) => request(opts, "/admin/tenants", { method: "POST", body: JSON.stringify(payload) }, tenantSchema),

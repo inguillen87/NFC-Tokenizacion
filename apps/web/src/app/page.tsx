@@ -67,6 +67,7 @@ export default async function HomePage() {
         <div className="container-shell flex flex-wrap items-center justify-between gap-4 py-8">
           <BrandLockup size={30} variant="pulse" theme="dark" />
           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{siteConfig.productName} · Identity Product Platform</p>
+          <p className="text-[11px] text-slate-500">Powered by Inmovar Latam SAS</p>
         </div>
       </footer>
     </main>
