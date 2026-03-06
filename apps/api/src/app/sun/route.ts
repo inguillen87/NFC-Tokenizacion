@@ -6,6 +6,38 @@ import { decryptKey16 } from "../../lib/keys";
 import { verifySun } from "../../lib/crypto/sdm";
 import { json } from "../../lib/http";
 
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
+const rateMap = new Map<string, { count: number; start: number }>();
+
+function isRateLimited(ip: string | null) {
+  if (!ip) return false;
+  const now = Date.now();
+  const current = rateMap.get(ip);
+  if (!current || now - current.start > RATE_LIMIT_WINDOW_MS) {
+    rateMap.set(ip, { count: 1, start: now });
+    return false;
+  }
+  current.count += 1;
+  rateMap.set(ip, current);
+  return current.count > RATE_LIMIT_MAX;
+}
+
+async function dispatchValidScanWebhook(payload: Record<string, unknown>) {
+  const url = process.env.SCAN_WEBHOOK_URL;
+  if (!url) return;
+  const secret = process.env.SCAN_WEBHOOK_SECRET || "";
+  await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(secret ? { "x-nexid-signature": secret } : {}),
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  }).catch(() => null);
+}
+
 export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const bid = url.searchParams.get("bid") || "";
@@ -14,6 +46,15 @@ export async function GET(req: Request): Promise<Response> {
   const cmac = url.searchParams.get("cmac") || "";
   const ua = req.headers.get("user-agent") || "";
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+  const geoCity = req.headers.get("x-vercel-ip-city") || null;
+  const geoCountry = req.headers.get("x-vercel-ip-country") || null;
+  const geoLat = Number(req.headers.get("x-vercel-ip-latitude") || "");
+  const geoLng = Number(req.headers.get("x-vercel-ip-longitude") || "");
+  const hasGeo = Number.isFinite(geoLat) && Number.isFinite(geoLng);
+
+  if (isRateLimited(ip)) {
+    return json({ ok: false, reason: "rate_limited", limitPerMinute: RATE_LIMIT_MAX }, 429);
+  }
 
   if (!bid || !picc_data || !enc || !cmac) {
     return json({ ok: false, reason: "missing params", need: ["bid", "picc_data", "enc", "cmac"] }, 400);
@@ -72,7 +113,7 @@ export async function GET(req: Request): Promise<Response> {
           : "VALID";
 
   await sql/*sql*/`
-    INSERT INTO events (tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason, ip, user_agent, raw_query)
+    INSERT INTO events (tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason, ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, raw_query)
     VALUES (
       ${batch.tenant_id},
       ${batch.id},
@@ -85,9 +126,31 @@ export async function GET(req: Request): Promise<Response> {
       ${res.ok ? null : res.reason},
       ${ip},
       ${ua},
+      ${geoCity},
+      ${geoCountry},
+      ${hasGeo ? geoLat : null},
+      ${hasGeo ? geoLng : null},
       ${JSON.stringify(Object.fromEntries(url.searchParams.entries()))}::jsonb
     )
   `;
+
+  if (result === "VALID" && res.ok) {
+    void dispatchValidScanWebhook({
+      event: "tag.scan.valid",
+      tenantId: batch.tenant_id,
+      batchId: batch.id,
+      bid,
+      uid: res.uidHex,
+      counter: res.ctr,
+      ip,
+      userAgent: ua,
+      geoCity,
+      geoCountry,
+      geoLat: hasGeo ? geoLat : null,
+      geoLng: hasGeo ? geoLng : null,
+      ts: new Date().toISOString(),
+    });
+  }
 
   return json({
     ok: result === "VALID",

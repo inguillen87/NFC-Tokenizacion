@@ -8,25 +8,13 @@ import { json } from "../../../lib/http";
 type TrendRow = { day: string; scans: number; duplicates: number; tamper: number };
 
 type GeoRow = {
-  tenant_slug: string;
-  events: number;
-  duplicates: number;
-  tamper: number;
+  city: string | null;
+  country: string | null;
+  lat: number | null;
+  lng: number | null;
+  scans: number;
+  risk: number;
 };
-
-const geoBySlug: Array<{ match: RegExp; city: string; country: string; lat: number; lng: number }> = [
-  { match: /andes|vino|mza|malbec/i, city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458 },
-  { match: /sao|br|brazil/i, city: "São Paulo", country: "BR", lat: -23.5558, lng: -46.6396 },
-  { match: /pharma|scl|chile/i, city: "Santiago", country: "CL", lat: -33.4489, lng: -70.6693 },
-  { match: /event|vip|festival/i, city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
-  { match: /eu|london|uk/i, city: "London", country: "UK", lat: 51.5072, lng: -0.1276 },
-  { match: /us|ny|miami/i, city: "New York", country: "US", lat: 40.7128, lng: -74.006 },
-];
-
-function resolveGeo(slug: string) {
-  const found = geoBySlug.find((item) => item.match.test(slug));
-  return found || { city: "Global", country: "--", lat: 0, lng: 0 };
-}
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
@@ -40,10 +28,10 @@ export async function GET(req: Request) {
       ? sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result = 'valid')::int AS valid,
-          COUNT(*) FILTER (WHERE e.result = 'invalid')::int AS invalid,
-          COUNT(*) FILTER (WHERE e.result = 'duplicate')::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result = 'tamper')::int AS tamper,
+          COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'INVALID')::int AS invalid,
+          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+          COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
           COUNT(DISTINCT b.id)::int AS active_batches,
           COUNT(DISTINCT tn.id)::int AS active_tenants
         FROM tenants tn
@@ -54,10 +42,10 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result = 'valid')::int AS valid,
-          COUNT(*) FILTER (WHERE e.result = 'invalid')::int AS invalid,
-          COUNT(*) FILTER (WHERE e.result = 'duplicate')::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result = 'tamper')::int AS tamper,
+          COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.result = 'INVALID')::int AS invalid,
+          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+          COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
           COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'active')::int AS active_batches,
           COUNT(DISTINCT tn.id)::int AS active_tenants
         FROM batches b
@@ -68,8 +56,8 @@ export async function GET(req: Request) {
       ? sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result = 'duplicate')::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result = 'tamper')::int AS tamper
+          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+          COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper
         FROM events e
         JOIN batches b ON b.id = e.batch_id
         JOIN tenants tn ON tn.id = b.tenant_id
@@ -80,8 +68,8 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result = 'duplicate')::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result = 'tamper')::int AS tamper
+          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+          COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper
         FROM events e
         WHERE e.created_at >= now() - interval '6 days'
         GROUP BY 1
@@ -102,27 +90,31 @@ export async function GET(req: Request) {
       `,
     tenant
       ? sql/*sql*/`
-        SELECT tn.slug AS tenant_slug,
-          COUNT(e.id)::int AS events,
-          COUNT(*) FILTER (WHERE e.result = 'duplicate')::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result = 'tamper')::int AS tamper
+        SELECT e.geo_city AS city,
+          e.geo_country AS country,
+          AVG(e.geo_lat)::float8 AS lat,
+          AVG(e.geo_lng)::float8 AS lng,
+          COUNT(e.id)::int AS scans,
+          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
-        WHERE tn.slug = ${tenant}
-        GROUP BY tn.slug
-        ORDER BY events DESC
-        LIMIT 8
+        WHERE tn.slug = ${tenant} AND e.geo_lat IS NOT NULL AND e.geo_lng IS NOT NULL
+        GROUP BY e.geo_city, e.geo_country
+        ORDER BY scans DESC
+        LIMIT 20
       `
       : sql/*sql*/`
-        SELECT tn.slug AS tenant_slug,
-          COUNT(e.id)::int AS events,
-          COUNT(*) FILTER (WHERE e.result = 'duplicate')::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result = 'tamper')::int AS tamper
+        SELECT e.geo_city AS city,
+          e.geo_country AS country,
+          AVG(e.geo_lat)::float8 AS lat,
+          AVG(e.geo_lng)::float8 AS lng,
+          COUNT(e.id)::int AS scans,
+          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
         FROM events e
-        JOIN tenants tn ON tn.id = e.tenant_id
-        GROUP BY tn.slug
-        ORDER BY events DESC
-        LIMIT 8
+        WHERE e.geo_lat IS NOT NULL AND e.geo_lng IS NOT NULL
+        GROUP BY e.geo_city, e.geo_country
+        ORDER BY scans DESC
+        LIMIT 20
       `,
   ]);
 
@@ -153,18 +145,16 @@ export async function GET(req: Request) {
     { name: "Revoked", value: batchMap.get("revoked") || 0 },
   ];
 
-  const geoPoints = (geoRows as GeoRow[]).map((row) => {
-    const g = resolveGeo(row.tenant_slug);
-    return {
-      tenant: row.tenant_slug,
-      city: g.city,
-      country: g.country,
-      lat: g.lat,
-      lng: g.lng,
-      scans: Number(row.events || 0),
-      risk: Number((row.duplicates || 0) + (row.tamper || 0)),
-    };
-  });
+  const geoPoints = (geoRows as GeoRow[])
+    .filter((row) => typeof row.lat === "number" && typeof row.lng === "number")
+    .map((row) => ({
+      city: row.city || "Unknown",
+      country: row.country || "--",
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      scans: Number(row.scans || 0),
+      risk: Number(row.risk || 0),
+    }));
 
   return json({
     kpis: {

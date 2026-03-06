@@ -132,7 +132,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       geoDistributionDelta: "heatmap placeholder",
     },
     roles: { "super-admin": "Super Admin", "tenant-admin": "Tenant Admin", reseller: "Reseller", viewer: "Viewer" },
-    statuses: { active: "Activo", pending: "Pendiente", revoked: "Revocado", healthy: "Sano", risk: "Riesgo", draft: "Borrador", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper" },
+    statuses: { active: "Activo", pending: "Pendiente", revoked: "Revocado", healthy: "Sano", risk: "Riesgo", draft: "Borrador", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "No registrado", NOT_ACTIVE: "No activo", REPLAY_SUSPECT: "Replay sospechoso", VALID: "Válido" },
   },
   "pt-BR": {
     shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "API conectada", loading: "Carregando...", empty: "Sem resultados", all: "Todos", refresh: "Atualizar", openModule: "Abrir módulo", ready: "Pronto." },
@@ -182,7 +182,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       geoDistributionDelta: "heatmap placeholder",
     },
     roles: { "super-admin": "Super Admin", "tenant-admin": "Tenant Admin", reseller: "Reseller", viewer: "Viewer" },
-    statuses: { active: "Ativo", pending: "Pendente", revoked: "Revogado", healthy: "Saudável", risk: "Risco", draft: "Rascunho", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper" },
+    statuses: { active: "Ativo", pending: "Pendente", revoked: "Revogado", healthy: "Saudável", risk: "Risco", draft: "Rascunho", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "Não registrado", NOT_ACTIVE: "Não ativo", REPLAY_SUSPECT: "Replay suspeito", VALID: "Válido" },
   },
   en: {
     shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "API connected", loading: "Loading...", empty: "No results", all: "All", refresh: "Refresh", openModule: "Open module", ready: "Ready." },
@@ -232,6 +232,6 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       geoDistributionDelta: "placeholder heatmap",
     },
     roles: { "super-admin": "Super Admin", "tenant-admin": "Tenant Admin", reseller: "Reseller", viewer: "Viewer" },
-    statuses: { active: "Active", pending: "Pending", revoked: "Revoked", healthy: "Healthy", risk: "Risk", draft: "Draft", valid: "Valid", duplicate: "Duplicate", tamper: "Tamper" },
+    statuses: { active: "Active", pending: "Pending", revoked: "Revoked", healthy: "Healthy", risk: "Risk", draft: "Draft", valid: "Valid", duplicate: "Duplicate", tamper: "Tamper", INVALID: "Invalid", NOT_REGISTERED: "Not registered", NOT_ACTIVE: "Not active", REPLAY_SUSPECT: "Replay suspect", VALID: "Valid" },
   },
 };

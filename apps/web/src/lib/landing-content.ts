@@ -51,7 +51,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Dashboard", requestDemo: "Solicitar demo" },
     hero: {
       badge: "Autenticación NFC + Identidad Digital de Producto",
-      title: "Autenticá productos. Activá inteligencia. Escalá confianza.",
+      title: "Identidad digital inviolable para productos físicos.",
       body: "Inmovar Identity Rail integra chip NFC + API de autenticación + inteligencia antifraude para convertir cada producto físico en un activo digital trazable y monetizable.",
       primary: "Solicitar demo enterprise",
       secondary: "Ver arquitectura",
@@ -111,7 +111,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
       title: "Casos de uso con impacto directo",
       description: "Diseñado para operación internacional y control de fraude.",
       cards: [
-        { title: "Wine", body: "Autenticación de botella, export compliance y experiencia premium." },
+        { title: "Wine / Mendoza", body: "Autenticación en botella real (vidrio curvo, humedad y logística de bodega) con foco en anti-falsificación y ROI exportador." },
         { title: "Cosmetics", body: "Protección de marca y trazabilidad de packaging." },
         { title: "Pharma", body: "Seguimiento de producto y mitigación de falsificación." },
         { title: "Events", body: "Acceso, engagement y control operativo de credenciales." },

@@ -51,7 +51,7 @@ export default async function HomePage() {
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
           <BrandLockup size={32} variant="pulse" theme="dark" />
-          <p className="text-sm site-muted">Inmovar Identity Rail combina tags codificados, API de autenticación, antifraude, trazabilidad y capa premium de identidad digital para vino, cosmética, pharma, eventos y redes reseller.</p>
+          <p className="text-sm site-muted">nexID Product Identity Cloud combina tags codificados, API de autenticación, antifraude, trazabilidad y capa premium de identidad digital para vino, cosmética, pharma, eventos y redes reseller.</p>
           <div className="flex flex-wrap gap-2">
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>

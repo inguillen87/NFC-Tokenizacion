@@ -82,3 +82,10 @@ Enviarles este paquete técnico mínimo:
 6. **Prueba de smoke**: compartir captura de `GET /health` en producción + validación real en `/sun` con un tag de test.
 
 Con eso el proveedor puede cerrar fabricación + encoding + logística inicial sin fricción.
+
+
+## Seguridad perimetral y automatización
+- Base preparada para alta escala: migración `0003_events_partition_geo_perf.sql` agrega particionamiento mensual de `events` + índices de performance para analítica.
+- `GET /sun` aplica rate limit básico por IP en runtime (`SUN_RATE_LIMIT_PER_MIN`, default 120 rpm).
+- Para protección DDoS enterprise, complementar con reglas de Vercel Edge/WAF por ruta `/sun`.
+- Webhooks de escaneo válido: configurá `SCAN_WEBHOOK_URL` (y opcional `SCAN_WEBHOOK_SECRET`) para recibir eventos `tag.scan.valid` en tu ERP/CRM.
