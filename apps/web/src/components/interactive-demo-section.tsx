@@ -228,21 +228,21 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{t.physicalLabel}</p>
-                <div className="mt-4 flex h-52 items-center justify-center rounded-2xl bg-gradient-to-b from-white to-slate-200 text-slate-800 shadow-inner">
+                <div className="mt-4 flex h-56 items-center justify-center rounded-2xl bg-gradient-to-b from-white via-slate-100 to-slate-200 text-slate-800 shadow-inner">
                   {vertical === "wine" ? (
-                    <div className="relative flex h-44 w-24 items-end justify-center">
-                      <div className={`absolute top-2 h-10 w-8 rounded-t-xl border border-amber-900/50 bg-amber-900/80 transition-all ${sealBroken ? "-translate-y-4 rotate-12 opacity-70" : ""}`} />
-                      <div className="absolute top-8 h-7 w-10 rounded-xl bg-emerald-900/90" />
-                      <div className="absolute top-[58px] h-[90px] w-16 rounded-[30px] border border-emerald-950/40 bg-gradient-to-b from-emerald-700 via-emerald-800 to-emerald-950" />
-                      <div className="absolute top-[94px] w-14 rounded-md bg-amber-100/90 px-1 py-0.5 text-center text-[9px] font-semibold text-amber-900">{activeProduct.title}</div>
-                      <div className="absolute left-[62px] top-[50px] grid h-9 w-9 place-items-center rounded-full border-2 border-cyan-400 bg-white text-sm shadow-[0_0_18px_rgba(34,211,238,.4)]">📡</div>
+                    <div className="demo-bottle relative h-48 w-28">
+                      <div className={`absolute left-[41px] top-2 h-11 w-10 rounded-t-xl border border-amber-950/40 bg-gradient-to-b from-amber-500 to-amber-800 transition-all ${sealBroken ? "-translate-y-4 rotate-12 opacity-75" : ""}`} />
+                      <div className="absolute left-[37px] top-10 h-8 w-[48px] rounded-xl border border-emerald-950/35 bg-gradient-to-b from-emerald-700 to-emerald-900" />
+                      <div className="absolute left-[24px] top-[62px] h-[118px] w-[78px] rounded-[38px_38px_24px_24px] border border-emerald-950/50 bg-gradient-to-b from-emerald-600 via-emerald-800 to-emerald-950" />
+                      <div className="absolute left-[30px] top-[104px] w-[66px] rounded-md border border-amber-900/40 bg-amber-50/90 px-1 py-0.5 text-center text-[9px] font-semibold text-amber-900">{activeProduct.title}</div>
+                      <div className="absolute left-[88px] top-[64px] grid h-10 w-10 place-items-center rounded-full border-2 border-cyan-400 bg-white text-sm shadow-[0_0_22px_rgba(34,211,238,.45)]">NFC</div>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <div className="mx-auto mb-2 grid h-11 w-11 place-items-center rounded-full border-2 border-cyan-400 bg-white">
-                        <span className="text-lg">📡</span>
+                      <div className="mx-auto mb-2 grid h-11 w-11 place-items-center rounded-full border-2 border-cyan-400 bg-white shadow-[0_0_20px_rgba(34,211,238,.25)]">
+                        <span className="text-sm font-semibold text-cyan-700">NFC</span>
                       </div>
-                      <div className={`mx-auto mt-1 h-14 w-1 rounded-full transition-all ${sealBroken ? "translate-x-2 rotate-45 bg-rose-500" : "bg-cyan-400"}`} />
+                      <div className={`mx-auto mt-1 h-16 w-1.5 rounded-full transition-all ${sealBroken ? "translate-x-2 rotate-45 bg-rose-500" : "bg-cyan-400"}`} />
                       <p className="mt-3 text-sm font-semibold">{activeProduct.title}</p>
                       <p className="text-xs text-slate-600">{activeProduct.subtitle}</p>
                     </div>
@@ -260,21 +260,36 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
                 </div>
               </div>
 
-              <div className="rounded-[2rem] border-[10px] border-slate-800 bg-slate-900 p-4 shadow-[0_0_50px_rgba(2,6,23,.8)]">
-                <div className="mx-auto mb-3 h-6 w-24 rounded-b-2xl bg-black" />
-                <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950 p-4">
+              <div className="demo-phone rounded-[2rem] border-[10px] p-4 shadow-[0_0_50px_rgba(2,6,23,.55)]">
+                <div className="mx-auto mb-3 h-6 w-24 rounded-b-2xl bg-black/90" />
+                <div className="demo-screen relative overflow-hidden rounded-2xl border border-white/10 p-4">
                   {stage === "scan" ? <div className="laser-scan absolute left-0 right-0" /> : null}
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-300">{pov === "consumer" ? "B2C App" : "B2B Console"}</p>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>{pov === "consumer" ? "B2C Verify App" : "B2B Ops Console"}</span>
+                    <span className="font-mono">{vertical.toUpperCase()}-A1</span>
+                  </div>
                   <p className={`mt-3 text-sm font-semibold ${stage === "scan" ? "text-cyan-300" : sealBroken ? "text-rose-300" : "text-emerald-300"}`}>{stateLabel}</p>
 
-                  <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-xs text-slate-200">{activeProduct.title}</p>
-                    <p className="mt-1 text-[11px] text-slate-400">{pov === "consumer" ? `${activeProduct.consumerValue} ${sealBroken ? "· Riesgo detectado" : "· Certificado OK"}` : activeProduct.enterpriseValue}</p>
+                  <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-xs font-semibold text-slate-100">{activeProduct.title}</p>
+                    <p className="mt-1 text-[11px] text-slate-300">{activeProduct.subtitle}</p>
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                    <Badge tone={sealBroken ? "amber" : "green"}>{sealBroken ? "SEC_BREACH" : "AUTH_OK"}</Badge>
-                    <Badge tone="cyan">{pov === "consumer" ? "UX_PASS" : "API_EVENT"}</Badge>
+                    <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">
+                      UID: <span className="font-mono text-cyan-300">04:A9:7F:2C:91</span>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">
+                      Batch: <span className="font-mono text-blue-300">MZA-2026</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[11px] text-slate-200">{pov === "consumer" ? `${activeProduct.consumerValue} ${sealBroken ? "· Riesgo detectado" : "· Certificado OK"}` : activeProduct.enterpriseValue}</p>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+                      <Badge tone={sealBroken ? "amber" : "green"}>{sealBroken ? "SEC_BREACH" : "AUTH_OK"}</Badge>
+                      <Badge tone="cyan">{pov === "consumer" ? "UX_PASS" : "API_EVENT"}</Badge>
+                    </div>
                   </div>
                 </div>
               </div>

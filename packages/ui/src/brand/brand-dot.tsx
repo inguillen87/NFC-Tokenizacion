@@ -7,8 +7,8 @@ const ringOffsets = [0, 0.24, 0.48];
 
 export function BrandDot({ size = 12, variant = "pulse", theme = "dark", className }: BrandProps) {
   const reducedMotion = useReducedMotion();
-  const dotColor = theme === "dark" ? "#2FE1C3" : "#0891B2";
-  const glowColor = theme === "dark" ? "rgba(47,225,195,0.58)" : "rgba(8,145,178,0.45)";
+  const dotColor = `var(--brand-dot-color, ${theme === "dark" ? "#2FE1C3" : "#0891B2"})`;
+  const glowColor = `var(--brand-dot-glow, ${theme === "dark" ? "rgba(47,225,195,0.58)" : "rgba(8,145,178,0.45)"})`;
   const shouldAnimate = !reducedMotion && variant !== "static";
 
   return (
