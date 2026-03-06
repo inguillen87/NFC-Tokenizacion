@@ -16,7 +16,8 @@
     "lucide-react": "^0.468.0",
     "clsx": "^2.1.1",
     "@product/ui": "file:../../packages/ui",
-    "@product/config": "file:../../packages/config"
+    "@product/config": "file:../../packages/config",
+    "@product/api-client": "file:../../packages/api-client"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

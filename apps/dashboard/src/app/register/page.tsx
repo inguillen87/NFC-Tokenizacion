@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button, Card } from "@product/ui";
+import { BrandLockup, Button, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
 
 export default async function RegisterPage() {
@@ -8,7 +8,8 @@ export default async function RegisterPage() {
   return (
     <main className="container-shell grid min-h-screen place-items-center py-10">
       <Card className="w-full max-w-lg p-8">
-        <h1 className="text-3xl font-bold text-white">{t.common.register}</h1>
+        <BrandLockup size={34} variant="pulse" theme="dark" />
+        <h1 className="mt-4 text-3xl font-bold text-white">{t.common.register}</h1>
         <p className="mt-2 text-sm text-slate-400">{t.dashboard.auth.registerBody}</p>
 
         <div className="mt-6 grid gap-3">

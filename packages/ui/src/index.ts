@@ -7,3 +7,8 @@ export * from "./sidebar";
 export * from "./world-map-placeholder";
 
 export * from "./locale-switcher";
+
+export * from "./brand";
+export * from "./helpbot";
+
+export * from "./theme-toggle";

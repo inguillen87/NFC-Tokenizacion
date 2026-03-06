@@ -7,6 +7,14 @@ import { checkAdmin } from "../../../lib/auth";
 import { encryptKey16 } from "../../../lib/keys";
 import { json } from "../../../lib/http";
 
+export async function GET(req: Request) {
+  const auth = checkAdmin(req);
+  if (auth) return auth;
+
+  const rows = await sql/*sql*/`SELECT id, slug, name, created_at FROM tenants ORDER BY created_at DESC LIMIT 200`;
+  return json(rows);
+}
+
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
