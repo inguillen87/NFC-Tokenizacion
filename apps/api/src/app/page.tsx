@@ -11,6 +11,12 @@ function normalizeOrigin(value: string) {
   }
 }
 
+function shouldAutoRedirect(hostname: string | null) {
+  if (!hostname) return false;
+  const host = hostname.toLowerCase();
+  return host.startsWith("api.") || host.endsWith(".vercel.app");
+}
+
 export default async function Home() {
   const headerStore = await headers();
   const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
@@ -18,8 +24,9 @@ export default async function Home() {
   const currentOrigin = host ? `${protocol}://${host}` : null;
 
   const targetOrigin = normalizeOrigin(configuredWebUrl);
+  const currentHostOnly = host?.split(":")[0] || null;
 
-  if (targetOrigin && currentOrigin && targetOrigin !== currentOrigin) {
+  if (shouldAutoRedirect(currentHostOnly) && targetOrigin && currentOrigin && targetOrigin !== currentOrigin) {
     redirect(configuredWebUrl);
   }
 
@@ -39,7 +46,7 @@ export default async function Home() {
         </div>
 
         <p style={{ marginTop: 16, fontSize: 13, color: "#94a3b8" }}>
-          Set <strong>WEB_APP_URL</strong> in Vercel to the public landing (for example <code>https://nexid.lat</code>) and this root will redirect there when the current host is different.
+          Set <strong>WEB_APP_URL</strong> in Vercel to the public landing (for example <code>https://nexid.lat</code>). Auto-redirect runs only from API hosts (such as <code>api.*</code>) to avoid redirect loops on public domains.
         </p>
       </div>
     </main>
