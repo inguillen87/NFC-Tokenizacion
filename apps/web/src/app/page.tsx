@@ -19,13 +19,11 @@ export default async function HomePage() {
 
   return (
     <main>
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/70 backdrop-blur-xl">
+      <header className="site-header sticky top-0 z-50 border-b backdrop-blur-xl">
         <div className="container-shell flex h-20 items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <BrandLockup size={36} variant="ripple" theme="dark" />
-          </div>
+          <BrandLockup size={36} variant="ripple" theme="dark" />
 
-          <nav className="hidden gap-6 text-sm text-slate-300 md:flex">
+          <nav className="hidden gap-6 text-sm md:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
@@ -49,11 +47,11 @@ export default async function HomePage() {
       <CalculatorSection calculator={content.calculator} />
       <CtaSection content={content} />
 
-      <footer className="border-t border-white/10 bg-slate-950/80">
+      <footer className="site-footer border-t">
         <div className="container-shell flex flex-wrap items-center justify-between gap-4 py-8">
           <BrandLockup size={30} variant="pulse" theme="dark" />
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{siteConfig.productName} · Identity Product Platform</p>
-          <p className="text-[11px] text-slate-500">Powered by Inmovar Latam SAS</p>
+          <p className="text-xs uppercase tracking-[0.18em] site-muted">{siteConfig.productName} · Identity Product Platform</p>
+          <p className="text-[11px] site-muted">Powered by Inmovar Latam SAS</p>
         </div>
       </footer>
     </main>

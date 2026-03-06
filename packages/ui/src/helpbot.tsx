@@ -182,14 +182,14 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
 
   return (
     <div className={className}>
-      <button className="fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200" onClick={() => setOpen((v) => !v)}>
+      <button className="helpbot-surface fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200" onClick={() => setOpen((v) => !v)}>
         <BrandDot size={10} variant="ripple" theme="dark" />
         {open ? t.close : t.open}
       </button>
 
       {open ? (
-        <div className="fixed bottom-20 right-5 z-[95] w-[360px] rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur">
-          <p className="text-sm font-semibold text-white">{t.title}</p>
+        <div className="helpbot-surface fixed bottom-20 right-5 z-[95] w-[360px] rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur">
+          <p className="helpbot-text text-sm font-semibold text-white">{t.title}</p>
           <div className="mt-2 flex flex-wrap gap-1">
             {t.quick.map((q) => (
               <button key={q} onClick={() => send(q)} className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-1 text-[10px] text-cyan-100">
@@ -198,13 +198,13 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
             ))}
           </div>
 
-          <div className="mt-3 max-h-72 space-y-2 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-xs">
+          <div className="helpbot-input mt-3 max-h-72 space-y-2 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-xs">
             {messages.map((m, idx) => (
-              <div key={idx} className={m.role === "user" ? "text-cyan-300" : "text-slate-200"}>
+              <div key={idx} className={m.role === "user" ? "helpbot-user text-cyan-300" : "helpbot-text text-slate-200"}>
                 {m.role === "user" ? t.roleUser : t.roleAi}: {m.text}
               </div>
             ))}
-            {busy ? <div className="text-slate-400">{t.typing}</div> : null}
+            {busy ? <div className="helpbot-muted text-slate-400">{t.typing}</div> : null}
           </div>
 
           {shouldShowSalesCta ? (
@@ -220,17 +220,17 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
             </div>
           ) : null}
 
-          <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.fullNameLabel} />
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="helpbot-input mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.fullNameLabel} />
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.emailLabel} />
-            <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.whatsappLabel} />
+            <input value={email} onChange={(e) => setEmail(e.target.value)} className="helpbot-input w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.emailLabel} />
+            <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="helpbot-input w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.whatsappLabel} />
           </div>
 
           <button onClick={sendLead} disabled={busy || !leadReady} className="mt-2 w-full rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50">
             {t.sendLead}
           </button>
 
-          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
+          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="helpbot-input mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
           <button onClick={() => send()} disabled={busy} className="mt-2 w-full rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
             {t.send}
           </button>
