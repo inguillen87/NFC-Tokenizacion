@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, SectionHeading } from "@product/ui";
 
 import type { LandingContent } from "../lib/landing-content";
@@ -9,10 +10,12 @@ import type { AppLocale } from "@product/config";
 type CalculatorCopy = LandingContent["calculator"];
 
 const volumeOptions = [10000, 25000, 50000, 100000] as const;
+const currencies = ["USD", "ARS", "BRL"] as const;
 
 type ProductType = "wine" | "cosmetics" | "events" | "pharma";
 type SecurityLevel = "basic" | "secure" | "enterprise";
 type ChannelType = "direct" | "reseller";
+type Currency = (typeof currencies)[number];
 
 const productMultiplier: Record<ProductType, number> = {
   wine: 1.2,
@@ -27,6 +30,19 @@ const securityCosts: Record<SecurityLevel, { hardware: number; saas: number; sco
   enterprise: { hardware: 0.55, saas: 1400, scope: "advanced", plan: "ENTERPRISE / RESELLER" },
 };
 
+const currencyRate: Record<Currency, number> = {
+  USD: 1,
+  ARS: 1050,
+  BRL: 5,
+};
+
+const presets: Record<ProductType, { volume: (typeof volumeOptions)[number]; security: SecurityLevel; channel: ChannelType }> = {
+  wine: { volume: 50000, security: "secure", channel: "reseller" },
+  cosmetics: { volume: 25000, security: "secure", channel: "direct" },
+  pharma: { volume: 100000, security: "enterprise", channel: "direct" },
+  events: { volume: 10000, security: "basic", channel: "direct" },
+};
+
 const investmentCopy: Record<AppLocale, {
   unitCost: string;
   grossLabel: string;
@@ -37,6 +53,11 @@ const investmentCopy: Record<AppLocale, {
   askBot: string;
   askCeo: string;
   scenarios: string;
+  preset: string;
+  currency: string;
+  share: string;
+  copied: string;
+  disclaimer: string;
 }> = {
   "es-AR": {
     unitCost: "Costo estimado por unidad",
@@ -48,6 +69,11 @@ const investmentCopy: Record<AppLocale, {
     askBot: "Hablar con IA",
     askCeo: "WhatsApp CEO",
     scenarios: "Escenarios rápidos",
+    preset: "Preset industria",
+    currency: "Moneda",
+    share: "Copiar link",
+    copied: "Link copiado",
+    disclaimer: "Disclaimer: valores estimados para ventas, no reemplazan cotización formal.",
   },
   "pt-BR": {
     unitCost: "Custo estimado por unidade",
@@ -59,6 +85,11 @@ const investmentCopy: Record<AppLocale, {
     askBot: "Falar com IA",
     askCeo: "WhatsApp CEO",
     scenarios: "Cenários rápidos",
+    preset: "Preset da indústria",
+    currency: "Moeda",
+    share: "Copiar link",
+    copied: "Link copiado",
+    disclaimer: "Aviso: valores estimados para vendas e planejamento comercial.",
   },
   en: {
     unitCost: "Estimated unit cost",
@@ -70,15 +101,39 @@ const investmentCopy: Record<AppLocale, {
     askBot: "Talk to AI",
     askCeo: "WhatsApp CEO",
     scenarios: "Quick scenarios",
+    preset: "Industry preset",
+    currency: "Currency",
+    share: "Copy link",
+    copied: "Link copied",
+    disclaimer: "Disclaimer: estimates for planning only, final quotes can vary.",
   },
 };
 
 export function CalculatorSection({ calculator, locale }: { calculator: CalculatorCopy; locale: AppLocale }) {
+  const search = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [volume, setVolume] = useState<(typeof volumeOptions)[number]>(10000);
   const [product, setProduct] = useState<ProductType>("wine");
   const [security, setSecurity] = useState<SecurityLevel>("secure");
   const [channel, setChannel] = useState<ChannelType>("direct");
+  const [currency, setCurrency] = useState<Currency>("USD");
+  const [copied, setCopied] = useState(false);
   const txt = investmentCopy[locale] || investmentCopy["es-AR"];
+
+  useEffect(() => {
+    const p = search.get("p") as ProductType | null;
+    const v = Number(search.get("v") || "");
+    const s = search.get("s") as SecurityLevel | null;
+    const ch = search.get("ch") as ChannelType | null;
+    const c = search.get("cur") as Currency | null;
+
+    if (p && ["wine", "cosmetics", "events", "pharma"].includes(p)) setProduct(p);
+    if (volumeOptions.includes(v as (typeof volumeOptions)[number])) setVolume(v as (typeof volumeOptions)[number]);
+    if (s && ["basic", "secure", "enterprise"].includes(s)) setSecurity(s);
+    if (ch && ["direct", "reseller"].includes(ch)) setChannel(ch);
+    if (c && ["USD", "ARS", "BRL"].includes(c)) setCurrency(c);
+  }, [search]);
 
   const estimate = useMemo(() => {
     const base = securityCosts[security];
@@ -90,37 +145,76 @@ export function CalculatorSection({ calculator, locale }: { calculator: Calculat
     const suggestedPrice = Number((base.hardware * multiplier * 2.2).toFixed(2));
     const potentialRevenue = Math.round(activation * suggestedPrice + saas * 1.4);
     const grossMarginPct = Math.round(((potentialRevenue - totalCost) / Math.max(1, potentialRevenue)) * 100);
-    return { hardware, saas, activation, plan: base.plan, scope: base.scope, totalCost, suggestedPrice, potentialRevenue, grossMarginPct };
-  }, [volume, product, security, channel]);
+    const rate = currencyRate[currency];
+    const symbol = currency;
+    return {
+      hardware,
+      saas,
+      activation,
+      plan: base.plan,
+      scope: base.scope,
+      suggestedPrice,
+      potentialRevenue,
+      grossMarginPct,
+      money: (amount: number) => `${symbol} ${(amount * rate).toLocaleString()}`,
+    };
+  }, [volume, product, security, channel, currency]);
+
+  const shareHref = `${pathname}?p=${product}&v=${volume}&s=${security}&ch=${channel}&cur=${currency}#calculator`;
+
+  const applyPreset = (next: ProductType) => {
+    const preset = presets[next];
+    setProduct(next);
+    setVolume(preset.volume);
+    setSecurity(preset.security);
+    setChannel(preset.channel);
+  };
+
+  const copyShare = async () => {
+    const baseUrl = window.location.origin;
+    const full = `${baseUrl}${shareHref}`;
+    await navigator.clipboard.writeText(full).catch(() => null);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1300);
+    router.replace(shareHref, { scroll: false });
+  };
 
   const waBase = "https://wa.me/5492613168608?text=";
   const scenario25 = encodeURIComponent("Hola! Quiero analizar inversión de USD 25k en chips + encoding + SaaS. ¿Revenue esperado?");
   const scenario50 = encodeURIComponent("Hola! Quiero analizar inversión de USD 50k y modelo reseller. ¿Revenue, margen y payback?");
 
   return (
-    <section className="container-shell py-16">
+    <section id="calculator" className="container-shell py-16">
       <Card className="p-8">
         <SectionHeading eyebrow={calculator.eyebrow} title={calculator.title} description={calculator.description} />
 
         <p className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300">{txt.explain}</p>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Selector label={txt.preset} value={product} onChange={(next) => applyPreset(next as ProductType)} options={calculator.options.product.map((item) => ({ label: item.label, value: item.value }))} />
           <Selector label={calculator.volumeLabel} value={String(volume)} onChange={(next) => setVolume(Number(next) as (typeof volumeOptions)[number])} options={volumeOptions.map((item) => ({ label: `${item / 1000}k`, value: String(item) }))} />
-          <Selector label={calculator.productLabel} value={product} onChange={(next) => setProduct(next as ProductType)} options={calculator.options.product.map((item) => ({ label: item.label, value: item.value }))} />
           <Selector label={calculator.securityLabel} value={security} onChange={(next) => setSecurity(next as SecurityLevel)} options={calculator.options.security.map((item) => ({ label: item.label, value: item.value }))} />
           <Selector label={calculator.channelLabel} value={channel} onChange={(next) => setChannel(next as ChannelType)} options={calculator.options.channel.map((item) => ({ label: item.label, value: item.value }))} />
         </div>
 
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Selector label={txt.currency} value={currency} onChange={(next) => setCurrency(next as Currency)} options={currencies.map((item) => ({ label: item, value: item }))} />
+          <div className="md:col-span-1 xl:col-span-3 rounded-xl border border-cyan-400/25 bg-cyan-500/10 p-3 text-sm text-cyan-100 flex items-center justify-between gap-2">
+            <span>{txt.disclaimer}</span>
+            <button onClick={copyShare} className="rounded-lg border border-cyan-300/30 px-3 py-1 text-xs hover:bg-cyan-300/10">{copied ? txt.copied : txt.share}</button>
+          </div>
+        </div>
+
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label={calculator.hardwareSpendLabel} value={`USD ${estimate.hardware.toLocaleString()}`} />
-          <Metric label={calculator.saasFeeLabel} value={`USD ${estimate.saas.toLocaleString()}${calculator.perYearLabel}`} />
+          <Metric label={calculator.hardwareSpendLabel} value={estimate.money(estimate.hardware)} />
+          <Metric label={calculator.saasFeeLabel} value={`${estimate.money(estimate.saas)}${calculator.perYearLabel}`} />
           <Metric label={calculator.activationScopeLabel} value={`${estimate.activation.toLocaleString()} ${calculator.tagsUnitLabel}`} />
           <Metric label={calculator.recommendationLabel} value={estimate.plan} />
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <Metric label={txt.unitCost} value={`USD ${estimate.suggestedPrice}`} />
-          <Metric label={txt.grossLabel} value={`USD ${estimate.potentialRevenue.toLocaleString()}`} />
+          <Metric label={txt.unitCost} value={estimate.money(estimate.suggestedPrice)} />
+          <Metric label={txt.grossLabel} value={estimate.money(estimate.potentialRevenue)} />
           <Metric label={txt.marginLabel} value={`${estimate.grossMarginPct}%`} />
         </div>
 
