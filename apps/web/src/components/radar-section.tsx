@@ -6,82 +6,165 @@ import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
 
 type RadarCopy = LandingContent["radar"];
+type Vertical = "wine" | "events" | "cosmetics" | "agro" | "pharma";
+type MapKey = "mendoza" | "lujan" | "miami" | "cordoba" | "saopaulo" | "santiago" | "cdmx" | "rosario" | "matogrosso" | "bogota" | "lima";
+type Point = { city: string; province: string; country: string; x: number; y: number; tz: string; key: MapKey };
+type FeedEvent = { id: number; point: Point; vertical: Vertical; title: string; status: "valid" | "tamper" | "duplicate" | "opened"; at: string };
 
-type Point = { city: string; province: string; country: string; x: number; y: number; tz: string };
-type MapKey = "mendoza" | "saopaulo" | "santiago" | "cdmx" | "miami" | "santafe";
-type Ping = { id: number; point: Point; vertical: string; detail: string; status: "ok" | "warn"; at: string };
+type Copy = {
+  kpiTags: string;
+  kpiValidations: string;
+  kpiTamper: string;
+  kpiRegions: string;
+  legendValid: string;
+  legendTamper: string;
+  legendDuplicate: string;
+  legendOpened: string;
+  geoTitle: string;
+  iconLabel: Record<Vertical, string>;
+  examples: Array<{ vertical: Vertical; point: MapKey; title: string; status: FeedEvent["status"] }>;
+};
 
-const points: Point[] = [
-  { city: "Mendoza", province: "Mendoza", country: "Argentina", x: 28, y: 74, tz: "GMT-3" },
-  { city: "São Paulo", province: "SP", country: "Brazil", x: 35, y: 70, tz: "GMT-3" },
-  { city: "Santiago", province: "RM", country: "Chile", x: 30, y: 65, tz: "GMT-4" },
-  { city: "Mexico City", province: "CDMX", country: "Mexico", x: 16, y: 48, tz: "GMT-6" },
-  { city: "Miami", province: "Florida", country: "USA", x: 22, y: 42, tz: "GMT-5" },
+const points: Record<MapKey, Point> = {
+  mendoza: { key: "mendoza", city: "Mendoza", province: "Mendoza", country: "Argentina", x: 28, y: 74, tz: "GMT-3" },
+  lujan: { key: "lujan", city: "Luján de Cuyo", province: "Mendoza", country: "Argentina", x: 29, y: 73, tz: "GMT-3" },
+  miami: { key: "miami", city: "Miami", province: "Miami-Dade", country: "USA", x: 22, y: 42, tz: "GMT-5" },
+  cordoba: { key: "cordoba", city: "Córdoba", province: "Córdoba", country: "Argentina", x: 25, y: 70, tz: "GMT-3" },
+  saopaulo: { key: "saopaulo", city: "São Paulo", province: "São Paulo", country: "Brazil", x: 35, y: 70, tz: "GMT-3" },
+  santiago: { key: "santiago", city: "Santiago", province: "Santiago Metropolitan Region", country: "Chile", x: 30, y: 65, tz: "GMT-4" },
+  cdmx: { key: "cdmx", city: "Mexico City", province: "CDMX", country: "Mexico", x: 16, y: 48, tz: "GMT-6" },
+  rosario: { key: "rosario", city: "Rosario", province: "Santa Fe", country: "Argentina", x: 26, y: 72, tz: "GMT-3" },
+  matogrosso: { key: "matogrosso", city: "Cuiabá", province: "Mato Grosso", country: "Brazil", x: 34, y: 76, tz: "GMT-4" },
+  bogota: { key: "bogota", city: "Bogotá", province: "Bogotá", country: "Colombia", x: 21, y: 56, tz: "GMT-5" },
+  lima: { key: "lima", city: "Lima", province: "Lima", country: "Peru", x: 21, y: 62, tz: "GMT-5" },
+};
+
+const routeArcs: Array<[MapKey, MapKey]> = [
+  ["mendoza", "miami"],
+  ["cordoba", "saopaulo"],
+  ["santiago", "cdmx"],
+  ["rosario", "matogrosso"],
+  ["bogota", "lima"],
 ];
 
-const pointByKey: Record<MapKey, Point> = {
-  mendoza: points[0],
-  saopaulo: points[1],
-  santiago: points[2],
-  cdmx: points[3],
-  miami: points[4],
-  santafe: { city: "Rosario", province: "Santa Fe", country: "Argentina", x: 26, y: 72, tz: "GMT-3" },
+const i18n: Record<AppLocale, Copy> = {
+  "es-AR": {
+    kpiTags: "Tags activos",
+    kpiValidations: "Validaciones hoy",
+    kpiTamper: "Alertas tamper",
+    kpiRegions: "Regiones activas",
+    legendValid: "valid",
+    legendTamper: "tamper",
+    legendDuplicate: "duplicate",
+    legendOpened: "opened",
+    geoTitle: "Geo intelligence live feed",
+    iconLabel: { wine: "🍷 Wine", events: "🎟️ Events", cosmetics: "🧴 Cosmetics", agro: "🌾 Agro", pharma: "💊 Pharma" },
+    examples: [
+      { vertical: "wine", point: "mendoza", title: "Bottle uncorked — Mendoza, Argentina", status: "opened" },
+      { vertical: "wine", point: "lujan", title: "Authenticity verified — Luján de Cuyo", status: "valid" },
+      { vertical: "wine", point: "miami", title: "Export bottle scanned — Miami, USA", status: "valid" },
+      { vertical: "events", point: "cordoba", title: "VIP wristband check-in — Córdoba, Argentina", status: "valid" },
+      { vertical: "events", point: "saopaulo", title: "Duplicate access blocked — São Paulo, Brazil", status: "duplicate" },
+      { vertical: "cosmetics", point: "santiago", title: "Seal opened — Santiago, Chile", status: "opened" },
+      { vertical: "cosmetics", point: "cdmx", title: "Product passport viewed — Mexico City, Mexico", status: "valid" },
+      { vertical: "agro", point: "rosario", title: "Bag opened — Rosario, Argentina", status: "opened" },
+      { vertical: "agro", point: "matogrosso", title: "Lot verified — Mato Grosso, Brazil", status: "valid" },
+      { vertical: "pharma", point: "bogota", title: "Package verified — Bogotá, Colombia", status: "valid" },
+      { vertical: "pharma", point: "lima", title: "Chain-of-custody event — Lima, Peru", status: "tamper" },
+    ],
+  },
+  "pt-BR": {
+    kpiTags: "Tags ativos", kpiValidations: "Validações hoje", kpiTamper: "Alertas tamper", kpiRegions: "Regiões ativas",
+    legendValid: "valid", legendTamper: "tamper", legendDuplicate: "duplicate", legendOpened: "opened",
+    geoTitle: "Geo intelligence live feed",
+    iconLabel: { wine: "🍷 Wine", events: "🎟️ Events", cosmetics: "🧴 Cosmetics", agro: "🌾 Agro", pharma: "💊 Pharma" },
+    examples: [
+      { vertical: "wine", point: "mendoza", title: "Bottle uncorked — Mendoza, Argentina", status: "opened" },
+      { vertical: "wine", point: "lujan", title: "Authenticity verified — Luján de Cuyo", status: "valid" },
+      { vertical: "wine", point: "miami", title: "Export bottle scanned — Miami, USA", status: "valid" },
+      { vertical: "events", point: "cordoba", title: "VIP wristband check-in — Córdoba, Argentina", status: "valid" },
+      { vertical: "events", point: "saopaulo", title: "Duplicate access blocked — São Paulo, Brazil", status: "duplicate" },
+      { vertical: "cosmetics", point: "santiago", title: "Seal opened — Santiago, Chile", status: "opened" },
+      { vertical: "cosmetics", point: "cdmx", title: "Product passport viewed — Mexico City, Mexico", status: "valid" },
+      { vertical: "agro", point: "rosario", title: "Bag opened — Rosario, Argentina", status: "opened" },
+      { vertical: "agro", point: "matogrosso", title: "Lot verified — Mato Grosso, Brazil", status: "valid" },
+      { vertical: "pharma", point: "bogota", title: "Package verified — Bogotá, Colombia", status: "valid" },
+      { vertical: "pharma", point: "lima", title: "Chain-of-custody event — Lima, Peru", status: "tamper" },
+    ],
+  },
+  en: {
+    kpiTags: "Active tags", kpiValidations: "Validations today", kpiTamper: "Tamper alerts", kpiRegions: "Regions active",
+    legendValid: "valid", legendTamper: "tamper", legendDuplicate: "duplicate", legendOpened: "opened",
+    geoTitle: "Geo intelligence live feed",
+    iconLabel: { wine: "🍷 Wine", events: "🎟️ Events", cosmetics: "🧴 Cosmetics", agro: "🌾 Agro", pharma: "💊 Pharma" },
+    examples: [
+      { vertical: "wine", point: "mendoza", title: "Bottle uncorked — Mendoza, Argentina", status: "opened" },
+      { vertical: "wine", point: "lujan", title: "Authenticity verified — Luján de Cuyo", status: "valid" },
+      { vertical: "wine", point: "miami", title: "Export bottle scanned — Miami, USA", status: "valid" },
+      { vertical: "events", point: "cordoba", title: "VIP wristband check-in — Córdoba, Argentina", status: "valid" },
+      { vertical: "events", point: "saopaulo", title: "Duplicate access blocked — São Paulo, Brazil", status: "duplicate" },
+      { vertical: "cosmetics", point: "santiago", title: "Seal opened — Santiago, Chile", status: "opened" },
+      { vertical: "cosmetics", point: "cdmx", title: "Product passport viewed — Mexico City, Mexico", status: "valid" },
+      { vertical: "agro", point: "rosario", title: "Bag opened — Rosario, Argentina", status: "opened" },
+      { vertical: "agro", point: "matogrosso", title: "Lot verified — Mato Grosso, Brazil", status: "valid" },
+      { vertical: "pharma", point: "bogota", title: "Package verified — Bogotá, Colombia", status: "valid" },
+      { vertical: "pharma", point: "lima", title: "Chain-of-custody event — Lima, Peru", status: "tamper" },
+    ],
+  },
 };
 
-const verticals = ["wine", "events", "cosmetics", "agro", "pharma"];
-
-const details: Record<AppLocale, string[]> = {
-  "es-AR": ["Bottle uncorked", "Wristband tap", "Cap opened", "Bag opened", "Batch verified"],
-  "pt-BR": ["Bottle uncorked", "Wristband tap", "Cap opened", "Bag opened", "Batch verified"],
-  en: ["Bottle uncorked", "Wristband tap", "Cap opened", "Bag opened", "Batch verified"],
-};
+function statusTone(status: FeedEvent["status"]) {
+  if (status === "valid") return "text-emerald-300";
+  if (status === "duplicate") return "text-amber-300";
+  if (status === "tamper") return "text-rose-300";
+  return "text-violet-300";
+}
 
 export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppLocale }) {
-  const [events, setEvents] = useState<Ping[]>([]);
+  const txt = i18n[locale] || i18n["es-AR"];
+  const [events, setEvents] = useState<FeedEvent[]>([]);
   const [scans, setScans] = useState(124580);
+  const [cursor, setCursor] = useState(0);
+
+  useEffect(() => {
+    const seed = txt.examples.slice(0, 6).map((item, i) => ({
+      id: Date.now() + i,
+      point: points[item.point],
+      vertical: item.vertical,
+      title: item.title,
+      status: item.status,
+      at: new Date().toLocaleTimeString("en-GB"),
+    }));
+    setEvents(seed);
+  }, [txt]);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const point = points[Math.floor(Math.random() * points.length)];
-      const vertical = verticals[Math.floor(Math.random() * verticals.length)];
-      const warn = Math.random() > 0.84;
-      const detail = details[locale][Math.floor(Math.random() * details[locale].length)];
-      const now = new Date();
-      const at = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
-
+      const ex = txt.examples[cursor % txt.examples.length];
+      const at = new Date().toLocaleTimeString("en-GB");
       setScans((v) => v + 1);
-      setEvents((prev) => [{ id: Date.now() + Math.floor(Math.random() * 1000), point, vertical, detail, status: warn ? "warn" : "ok", at }, ...prev.slice(0, 8)]);
-    }, 1300);
+      setEvents((prev) => [{ id: Date.now(), point: points[ex.point], vertical: ex.vertical, title: ex.title, status: ex.status, at }, ...prev.slice(0, 9)]);
+      setCursor((v) => v + 1);
+    }, 1400);
     return () => clearInterval(timer);
-  }, [locale]);
-
+  }, [cursor, txt]);
 
   useEffect(() => {
     const onScenario = (event: Event) => {
-      const custom = event as CustomEvent<{ mapKey?: MapKey; vertical?: string; label?: string; result?: string }>;
+      const custom = event as CustomEvent<{ mapKey?: MapKey; vertical?: Vertical; label?: string; result?: string }>;
       const key = custom.detail?.mapKey || "mendoza";
-      const point = pointByKey[key] || pointByKey.mendoza;
-      const now = new Date();
-      const at = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+      const point = points[key];
       const result = custom.detail?.result || "valid";
-      setEvents((prev) => [{
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        point,
-        vertical: custom.detail?.vertical || "wine",
-        detail: custom.detail?.label || "Scenario tap",
-        status: result === "tampered" || result === "duplicate" ? "warn" : "ok",
-        at,
-      }, ...prev.slice(0, 8)]);
+      const status: FeedEvent["status"] = result === "tampered" ? "tamper" : result === "duplicate" ? "duplicate" : "valid";
+      const at = new Date().toLocaleTimeString("en-GB");
+      setEvents((prev) => [{ id: Date.now() + 7, point, vertical: custom.detail?.vertical || "wine", title: custom.detail?.label || "Scenario action", status, at }, ...prev.slice(0, 9)]);
       setScans((v) => v + 1);
     };
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("nexid-scan-event", onScenario as EventListener);
-      return () => window.removeEventListener("nexid-scan-event", onScenario as EventListener);
-    }
+    window.addEventListener("nexid-scan-event", onScenario as EventListener);
+    return () => window.removeEventListener("nexid-scan-event", onScenario as EventListener);
   }, []);
 
-  const pulses = useMemo(() => events.slice(0, 6), [events]);
+  const pulses = useMemo(() => events.slice(0, 7), [events]);
 
   return (
     <section className="container-shell py-16">
@@ -91,73 +174,68 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,.18),transparent_35%),radial-gradient(circle_at_90%_90%,rgba(99,102,241,.18),transparent_35%)]" />
           <div className="relative z-10 flex items-center justify-between">
             <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.liveLabel}</p>
-            <p className="text-sm text-slate-200">{radar.revenueLabel}: <span className="font-mono text-cyan-200">USD {(scans * 0.02).toFixed(2)}</span></p>
+            <p className="text-sm text-slate-200">{txt.geoTitle}</p>
           </div>
 
-          <div className="relative z-10 mt-4 rounded-2xl border border-white/10 bg-slate-950/70 p-3">
-            <div className="grid gap-2 md:grid-cols-4 text-xs">
-              <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300">Scans: <b className="text-white">{scans.toLocaleString()}</b></div>
-              <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300">Countries: <b className="text-white">5</b></div>
-              <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 p-2 text-emerald-200">Valid: <b>99.1%</b></div>
-              <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 p-2 text-rose-200">Alerts/day: <b>12</b></div>
-            </div>
+          <div className="relative z-10 mt-4 grid gap-2 md:grid-cols-4 text-xs">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300">{txt.kpiTags}: <b className="text-white">2.4M</b></div>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300">{txt.kpiValidations}: <b className="text-white">{scans.toLocaleString()}</b></div>
+            <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 p-2 text-rose-200">{txt.kpiTamper}: <b>12</b></div>
+            <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 p-2 text-emerald-200">{txt.kpiRegions}: <b>11</b></div>
           </div>
 
-          <div className="relative z-10 mt-4 h-[330px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80">
+          <div className="relative z-10 mt-4 h-[340px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/85">
             <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(30,41,59,.45)_1px,transparent_1px),linear-gradient(to_bottom,rgba(30,41,59,.45)_1px,transparent_1px)] bg-[size:34px_34px]" />
-            {pulses.map((item) => (
-              <div key={item.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${item.point.x}%`, top: `${item.point.y}%` }}>
+
+            <svg viewBox="0 0 1000 500" className="absolute inset-0 h-full w-full opacity-55" aria-hidden>
+              {routeArcs.map(([from, to], i) => (
+                <path
+                  key={`${from}-${to}`}
+                  d={`M ${points[from].x * 10} ${points[from].y * 5} Q ${(points[from].x * 10 + points[to].x * 10) / 2} ${(points[from].y * 5 + points[to].y * 5) / 2 - 80} ${points[to].x * 10} ${points[to].y * 5}`}
+                  fill="none"
+                  stroke="rgba(34,211,238,0.35)"
+                  strokeWidth="1.8"
+                  strokeDasharray="6 7"
+                  style={{ animation: `arcFlow 3.2s linear ${i * 0.15}s infinite` }}
+                />
+              ))}
+            </svg>
+
+            {pulses.map((ev) => (
+              <div key={ev.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${ev.point.x}%`, top: `${ev.point.y}%` }}>
                 <span className="relative flex h-3 w-3">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-70" />
                   <span className="relative inline-flex h-3 w-3 rounded-full bg-cyan-200 shadow-[0_0_15px_rgba(34,211,238,.9)]" />
                 </span>
-                <div className="mt-1 rounded-md border border-cyan-300/30 bg-slate-900/90 px-2 py-1 text-[10px] text-slate-100">
-                  {item.point.city} · {item.point.province}
-                </div>
+                <div className="mt-1 rounded-md border border-cyan-300/30 bg-slate-900/90 px-2 py-1 text-[10px] text-slate-100">{ev.point.city} · {ev.point.province}</div>
               </div>
             ))}
             <div className="absolute bottom-3 left-3 text-[11px] text-slate-400">{radar.mapCaption}</div>
           </div>
 
           <div className="relative z-10 mt-3 flex flex-wrap gap-2 text-[11px]">
-            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-200">valid</span>
-            <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-1 text-amber-200">tamper</span>
-            <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-200">duplicate</span>
-            <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2 py-1 text-violet-200">opened</span>
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-200">{txt.legendValid}</span>
+            <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-1 text-amber-200">{txt.legendTamper}</span>
+            <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-200">{txt.legendDuplicate}</span>
+            <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2 py-1 text-violet-200">{txt.legendOpened}</span>
           </div>
         </Card>
 
-        <div className="space-y-5">
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.logsTitle}</p>
-            <div className="mt-3 space-y-2">
-              {events.map((ev) => (
-                <div key={ev.id} className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs">
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span>{ev.point.city}, {ev.point.country}</span>
-                    <span className="font-mono text-slate-400">{ev.at} · {ev.point.tz}</span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between">
-                    <span className="text-cyan-300">{ev.vertical.toUpperCase()}</span>
-                    <span className={ev.status === "warn" ? "text-amber-300" : "text-emerald-300"}>{ev.detail}</span>
-                  </div>
+        <Card className="p-5">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.logsTitle}</p>
+          <div className="mt-3 space-y-2">
+            {events.map((ev) => (
+              <div key={ev.id} className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs">
+                <div className="flex items-center justify-between text-slate-300">
+                  <span>{txt.iconLabel[ev.vertical]}</span>
+                  <span className="font-mono text-slate-400">{ev.at} · {ev.point.tz}</span>
                 </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.signalTitle}</p>
-            <div className="mt-3 space-y-3">
-              {radar.signals.map((signal, i) => (
-                <div key={signal.label}>
-                  <div className="mb-1 flex items-center justify-between text-xs text-slate-300"><span>{signal.label}</span><span>{signal.value}</span></div>
-                  <div className="h-2 rounded-full bg-slate-800"><div className="h-2 rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" style={{ width: `${44 + ((events.length + i * 9) % 46)}%` }} /></div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+                <p className={`mt-1 font-medium ${statusTone(ev.status)}`}>{ev.title}</p>
+                <p className="mt-1 text-slate-400">{ev.point.city}, {ev.point.province}, {ev.point.country}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </section>
   );

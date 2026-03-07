@@ -565,3 +565,16 @@ html.theme-light .locale-switcher select {
     animation: none;
   }
 }
+
+
+@keyframes arcFlow {
+  0% { stroke-dashoffset: 0; opacity: .35; }
+  50% { opacity: .7; }
+  100% { stroke-dashoffset: -26; opacity: .35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  path[style*="arcFlow"] {
+    animation: none !important;
+  }
+}
