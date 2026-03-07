@@ -45,24 +45,53 @@ a {
   box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
 }
 
+
 .brand-i-head {
   z-index: 2;
 }
 
-.brand-i-head-orbit {
+.brand-i-stem-origin {
   position: absolute;
-  right: 11%;
-  top: 17%;
-  width: 32%;
-  height: 32%;
-  border: 1px dashed rgba(47, 225, 195, 0.45);
+  right: 24.5%;
+  top: 38%;
+  width: 7%;
+  height: 7%;
   border-radius: 999px;
-  animation: brandOrbit 6s linear infinite;
+  background: rgba(47, 225, 195, 0.35);
+  box-shadow: 0 0 10px rgba(47, 225, 195, 0.65);
 }
 
-@keyframes brandOrbit {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.brand-i-head-orbit {
+  position: absolute;
+  right: 12%;
+  top: 16%;
+  width: 36%;
+  height: 36%;
+  border: 1px dashed rgba(47, 225, 195, 0.5);
+  border-radius: 28%;
+  animation: brandOrbitPulse 3.6s ease-in-out infinite;
+}
+
+.brand-i-head--travel {
+  position: absolute;
+  right: 24.5%;
+  top: 38%;
+  animation: brandDotTraverse 4.2s cubic-bezier(.48,.03,.49,.96) infinite;
+}
+
+@keyframes brandOrbitPulse {
+  0%, 100% { opacity: .75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+@keyframes brandDotTraverse {
+  0% { transform: translate(0, 0) scale(1); }
+  12% { transform: translate(10px, -8px) scale(1.08); }
+  28% { transform: translate(17px, 4px) scale(1.02); }
+  45% { transform: translate(3px, 13px) scale(1.12); }
+  62% { transform: translate(-9px, 3px) scale(1.03); }
+  78% { transform: translate(-2px, -10px) scale(1.08); }
+  100% { transform: translate(0, 0) scale(1); }
 }
 
 .site-header {
@@ -226,6 +255,7 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .brand-dot__core,
   .brand-i-head-orbit,
+  .brand-i-head--travel,
   .animate-card-shift,
   .laser-scan,
   .hero-meter span {
@@ -835,8 +865,13 @@ html.theme-light .hero-scene-phone {
 }
 
 .site-main-brand .brand-i-head-orbit {
-  border-color: rgba(47, 225, 195, 0.75);
-  opacity: 0.95;
+  border-color: rgba(52, 211, 153, 0.78);
+  opacity: 0.96;
+}
+
+.site-main-brand .brand-i-stem-origin {
+  background: rgba(52, 211, 153, 0.42);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.65);
 }
 
 .hero-product-stage {
@@ -878,7 +913,12 @@ html.theme-light .site-main-brand .brand-i-head {
 }
 
 html.theme-light .site-main-brand .brand-i-head-orbit {
-  border-color: rgba(8, 145, 178, 0.65);
+  border-color: rgba(14, 165, 233, 0.72);
+}
+
+html.theme-light .site-main-brand .brand-i-stem-origin {
+  background: rgba(14, 165, 233, 0.35);
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.55);
 }
 
 html.theme-light .radar-map-shell {
@@ -891,12 +931,12 @@ html.theme-light .radar-map-shell .bg-\[linear-gradient\(to_right\,rgba\(30\,41\
 }
 
 .site-main-brand .brand-dot__core {
-  box-shadow: 0 0 18px rgba(47, 225, 195, 0.85), 0 0 32px rgba(47, 225, 195, 0.35);
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.9), 0 0 34px rgba(52, 211, 153, 0.4);
 }
 
 html.theme-light .site-main-brand .brand-dot__core {
-  box-shadow: 0 0 14px rgba(8, 145, 178, 0.7), 0 0 26px rgba(8, 145, 178, 0.25);
-  background: #0891b2;
+  box-shadow: 0 0 16px rgba(14, 165, 233, 0.72), 0 0 28px rgba(14, 165, 233, 0.3);
+  background: #0ea5e9;
 }
 
 .cosmetic-demo.scanning::after,

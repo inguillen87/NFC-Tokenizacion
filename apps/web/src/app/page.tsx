@@ -15,6 +15,8 @@ import { SalesChatWidget } from "../components/sales-chat-widget";
 import { DemoRequestSection } from "../components/demo-request-section";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
+import { CommercialContactModal } from "../components/commercial-contact-modal";
+import { productUrls } from "@product/config";
 
 export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
@@ -24,32 +26,35 @@ export default async function HomePage() {
       demoJson: "Download seed JSON",
       demoCsv: "Download manifest CSV",
       launchLab: "Open Demo Lab",
-      assetTitle: "Demo assets by vertical",
+      assetTitle: "Demo Pack Library",
       assetBody: "Use these files for technical pilots: JSON seeds simulate events and CSV manifests map UID/tag metadata per vertical.",
       whyJson: "Seed JSON: scenario events (tap/open/tamper) to preload demos",
       whyCsv: "Manifest CSV: UID/tag mapping for batch import and operational traceability",
       whyLab: "Demo Lab: controlled test console to simulate scans and verify end-to-end flow",
+      forWho: "For agencies, investors, resellers, enterprise buyers and internal sales teams.",
     }
     : locale === "pt-BR"
     ? {
       demoJson: "Baixar seed JSON",
       demoCsv: "Baixar manifest CSV",
       launchLab: "Abrir Demo Lab",
-      assetTitle: "Assets de demo por vertical",
+      assetTitle: "Biblioteca de Demo Packs",
       assetBody: "Use estes arquivos em pilotos técnicos: JSON simula eventos e CSV mapeia UID/tag por vertical.",
       whyJson: "Seed JSON: eventos de cenário (tap/open/tamper) para pré-carregar demos",
       whyCsv: "Manifest CSV: mapeamento UID/tag para import de lote e rastreabilidade",
       whyLab: "Demo Lab: console controlado para simular scans e validar o fluxo completo",
+      forWho: "Para agências, investidores, revendedores, compradores enterprise e times de vendas.",
     }
     : {
       demoJson: "Descargar seed JSON",
       demoCsv: "Descargar manifest CSV",
       launchLab: "Abrir Demo Lab",
-      assetTitle: "Assets de demo por vertical",
+      assetTitle: "Biblioteca de Demo Packs",
       assetBody: "Usá estos archivos para pilotos técnicos: JSON simula eventos y CSV mapea UID/tag por vertical.",
       whyJson: "Seed JSON: eventos de escenario (tap/open/tamper) para precargar demos",
       whyCsv: "Manifest CSV: mapeo UID/tag para importar lotes y trazabilidad operativa",
       whyLab: "Demo Lab: consola controlada para simular lecturas y validar el flujo end-to-end",
+      forWho: "Para agencias, inversores, resellers, compradores enterprise y equipos comerciales.",
     };
 
   const demoPacks = [
@@ -76,7 +81,7 @@ export default async function HomePage() {
           <div className="flex items-center gap-2">
             <LocaleSwitcher value={locale} options={[...locales]} />
             <ThemeToggle />
-            <a href="https://app.nexid.lat/login">
+            <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`}>
               <Button variant="secondary">{content.nav.cta}</Button>
             </a>
           </div>
@@ -105,15 +110,16 @@ export default async function HomePage() {
                 <div className="mt-3 grid gap-2 md:grid-cols-3">
                   <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/seed.json`} download>{labels.demoJson}</a>
                   <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/manifest.csv`} download>{labels.demoCsv}</a>
-                  <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200" href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}>{labels.launchLab}</a>
+                  <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200" href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`}>{labels.launchLab}</a>
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-4 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
+          <div className="mt-4 grid gap-2 text-xs text-slate-300 md:grid-cols-4">
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyJson}</div>
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyCsv}</div>
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyLab}</div>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.forWho}</div>
           </div>
         </div>
       </section>
@@ -121,15 +127,16 @@ export default async function HomePage() {
       <CtaSection content={content} />
       <DemoRequestSection locale={locale} />
       <SalesChatWidget locale={locale} />
+      <CommercialContactModal />
 
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
           <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
-          <p className="text-sm site-muted">nexID Product Identity Cloud combina tags codificados, API de autenticación, antifraude, trazabilidad y capa premium de identidad digital para vino, cosmética, pharma, eventos y redes reseller.</p>
+          <p className="text-sm site-muted">nexID combina tags NFC, autenticación criptográfica, antifraude, trazabilidad y CRM comercial para vino, cosmética, pharma, eventos y canales reseller.</p>
           <div className="flex flex-wrap gap-2">
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
-            <a href="https://wa.me/5492613168608" target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</a>
+            <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</Link>
           </div>
         </div>
       </footer>

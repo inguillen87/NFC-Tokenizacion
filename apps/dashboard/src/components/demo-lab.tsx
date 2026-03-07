@@ -32,7 +32,9 @@ async function call(path: string, method = "GET", payload?: unknown) {
     headers: { "Content-Type": "application/json" },
     body: payload ? JSON.stringify(payload) : undefined,
   });
-  return res.json();
+  const data = await res.json().catch(() => ({ ok: false, reason: "Invalid JSON" }));
+  if (!res.ok) throw new Error((data && (data.reason || data.error)) || `Request failed ${res.status}`);
+  return data;
 }
 
 export function DemoLab() {
@@ -40,7 +42,21 @@ export function DemoLab() {
   const [summary, setSummary] = useState<Summary>({});
   const [packs, setPacks] = useState<Pack[]>([]);
   const [pack, setPack] = useState("wine-secure");
+  const [pending, setPending] = useState(false);
   const locale = detectLocale();
+
+  async function runAction(action: () => Promise<unknown>) {
+    setPending(true);
+    try {
+      const r = await action();
+      setOut(JSON.stringify(r, null, 2));
+      await refreshSummary();
+    } catch (error) {
+      setOut(error instanceof Error ? error.message : "Action failed");
+    } finally {
+      setPending(false);
+    }
+  }
 
   useEffect(() => {
     void (async () => {
@@ -80,12 +96,19 @@ export function DemoLab() {
       </Card>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={async () => { const r = await call("use-pack", "POST", { pack }); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }}>Use Built-in Demo Pack</button>
-        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={async () => { const r = await call("generate-live-scans", "POST", { count: 10, mode: "valid" }); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }}>Generate Demo</button>
-        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={async () => { const r = await call("reset", "POST"); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }}>Reset Demo</button>
-        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={async () => { const r = await call("simulate-tap", "POST", { mode: "valid" }); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }}>Simulate NFC Tap</button>
+        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("use-pack", "POST", { pack }))} disabled={pending}>Use Built-in Demo Pack</button>
+        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("generate-live-scans", "POST", { count: 10, mode: "valid" }))} disabled={pending}>Generate Demo</button>
+        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("reset", "POST"))} disabled={pending}>Reset Demo</button>
+        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("simulate-tap", "POST", { mode: "valid" }))} disabled={pending}>Simulate NFC Tap</button>
         <a className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" href={`/demo/${pack}/manifest.csv`} download>Download CSV</a>
         <a className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" href={`/demo/${pack}/seed.json`} download>Download JSON</a>
+      </div>
+      <p className="text-xs text-slate-400">{pending ? "Running action..." : "Ready for action."}</p>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <button className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm text-violet-100" onClick={() => runAction(() => call("generate-live-scans", "POST", { count: 30, mode: "mixed" }))} disabled={pending}>Generate live scans stream</button>
+        <a className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100" href="https://nexid.lat/demo" target="_blank" rel="noreferrer">Open mobile preview</a>
+        <a className="rounded-xl border border-white/15 bg-slate-900 p-3 text-sm text-white" href="/" target="_blank" rel="noreferrer">Open tenant dashboard view</a>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -96,12 +119,13 @@ export function DemoLab() {
 
       <div className="grid gap-3 md:grid-cols-2">
         <label className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">CSV manifest uploader
-          <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const csv = await readFile(file); const r = await call("upload-manifest", "POST", { bid: "DEMO-2026-02", csv }); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }} />
+          <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const csv = await readFile(file); await runAction(() => call("upload-manifest", "POST", { bid: "DEMO-2026-02", csv })); }} />
         </label>
         <label className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">JSON metadata uploader
-          <input type="file" accept=".json,application/json" className="mt-2 block w-full" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const data = JSON.parse(await readFile(file)); const r = await call("upload-products", "POST", { bid: "DEMO-2026-02", products: data.products || data.bottles || data }); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }} />
+          <input type="file" accept=".json,application/json" className="mt-2 block w-full" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const data = JSON.parse(await readFile(file)); await runAction(() => call("upload-products", "POST", { bid: "DEMO-2026-02", products: data.products || data.bottles || data })); }} />
         </label>
       </div>
+      <p className="text-xs text-slate-400">{pending ? "Running action..." : "Ready for action."}</p>
 
       <div className="grid gap-3 md:grid-cols-3">
         <Card className="p-4 text-sm text-slate-200">Tenant: <b>{summary.tenant?.name || "-"}</b><br />Slug: {summary.tenant?.slug || "-"}</Card>

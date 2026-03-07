@@ -25,7 +25,7 @@ type LiveEvent = {
   barrel_months?: number;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.VERCEL_ENV ? "https://api.nexid.lat" : "http://localhost:3003");
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
 function stateLabel(result: string) {
   if (result === "VALID") return "Authentic";
@@ -128,7 +128,7 @@ export function LiveDemoSurfaces() {
               </ul>
               <div className="mt-4 flex flex-wrap gap-2">
                 <a href="/demo" className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-200">Open mobile preview</a>
-                <a href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/`} className="rounded-lg border border-white/20 px-2 py-1 text-[11px] text-slate-300">Open tenant dashboard</a>
+                <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/`} className="rounded-lg border border-white/20 px-2 py-1 text-[11px] text-slate-300">Open tenant dashboard</a>
               </div>
 
             </div>

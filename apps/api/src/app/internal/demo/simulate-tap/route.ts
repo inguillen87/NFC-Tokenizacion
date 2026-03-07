@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3003';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.nexid.lat';
 const UIDS = ['04B7723410E2AD','04B7723410E2AE','04B7723410E2AF','04B7723410E2B0','04B7723410E2B1','04B7723410E2B2','04B7723410E2B3','04B7723410E2B4','04B7723410E2B5','04B7723410E2B6'];
 
 export async function POST(req: Request) {

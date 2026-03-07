@@ -95,7 +95,7 @@ export function DemoRequestSection({ locale }: { locale: AppLocale }) {
       vertical: form.vertical,
       volume: Number(form.volume || 0),
       tag_type: form.vertical === "events" ? "basic" : "secure",
-      source: "web_demo_form",
+      source: "demo_request",
       notes: [form.name ? `Name: ${form.name}` : "", form.notes].filter(Boolean).join(" | "),
     };
 

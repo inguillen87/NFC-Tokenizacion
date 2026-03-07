@@ -29,8 +29,8 @@ const labels: Record<AppLocale, {
     items: {
       wine: { label: "Vino", action: "Bottle uncorked", result: "Authentic", details: ["Malbec", "18 months oak", "Mendoza, Argentina", "14.5% alc"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
       events: { label: "Eventos", action: "VIP wristband scanned", result: "VIP access granted", details: ["Backstage pass", "Single-use ticket", "Córdoba, Argentina", "Gate A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTS · ENTRY_OK" },
-      cosmetics: { label: "Cosmética", action: "Cap opened", result: "Original packaging", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo", phoneTag: "COSMETICS · VERIFIED" },
-      agro: { label: "Agro", action: "Bag opened", result: "Lot verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo", phoneTag: "AGRO · LOT_OK" },
+      cosmetics: { label: "Cosmética", action: "Cap seal opened", result: "Seal event detected", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMETICS · VERIFIED" },
+      agro: { label: "Agro", action: "Bag tear detected", result: "Lot + origin verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
     },
   },
   "pt-BR": {
@@ -41,8 +41,8 @@ const labels: Record<AppLocale, {
     items: {
       wine: { label: "Vinho", action: "Bottle uncorked", result: "Authentic", details: ["Malbec", "18 months oak", "Mendoza, Argentina", "14.5% alc"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
       events: { label: "Eventos", action: "VIP wristband scanned", result: "VIP access granted", details: ["Backstage pass", "Single-use ticket", "Córdoba, Argentina", "Gate A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTS · ENTRY_OK" },
-      cosmetics: { label: "Cosméticos", action: "Cap opened", result: "Original packaging", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo", phoneTag: "COSMETICS · VERIFIED" },
-      agro: { label: "Agro", action: "Bag opened", result: "Lot verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo", phoneTag: "AGRO · LOT_OK" },
+      cosmetics: { label: "Cosméticos", action: "Cap seal opened", result: "Seal event detected", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMETICS · VERIFIED" },
+      agro: { label: "Agro", action: "Bag tear detected", result: "Lot + origin verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
     },
   },
   en: {
@@ -53,8 +53,8 @@ const labels: Record<AppLocale, {
     items: {
       wine: { label: "Wine", action: "Bottle uncorked", result: "Authentic", details: ["Malbec", "18 months oak", "Mendoza, Argentina", "14.5% alc"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
       events: { label: "Events", action: "VIP wristband scanned", result: "VIP access granted", details: ["Backstage pass", "Single-use ticket", "Córdoba, Argentina", "Gate A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTS · ENTRY_OK" },
-      cosmetics: { label: "Cosmetics", action: "Cap opened", result: "Original packaging", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo", phoneTag: "COSMETICS · VERIFIED" },
-      agro: { label: "Agro", action: "Bag opened", result: "Lot verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo", phoneTag: "AGRO · LOT_OK" },
+      cosmetics: { label: "Cosmetics", action: "Cap seal opened", result: "Seal event detected", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMETICS · VERIFIED" },
+      agro: { label: "Agro", action: "Bag tear detected", result: "Lot + origin verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
     },
   },
 };
