@@ -6,182 +6,243 @@ import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
 
 type RadarCopy = LandingContent["radar"];
+type Vertical = "wine" | "events" | "cosmetics" | "agro" | "pharma";
+type MapKey = "mendoza" | "lujan" | "miami" | "cordoba" | "saopaulo" | "santiago" | "cdmx" | "rosario" | "matogrosso" | "bogota" | "lima";
+type Point = { city: string; province: string; country: string; x: number; y: number; tz: string; key: MapKey };
+type FeedEvent = { id: number; point: Point; vertical: Vertical; title: string; status: "valid" | "tamper" | "duplicate" | "opened"; at: string };
 
-type Ping = { id: number; x: number; y: number; city: string; product: string };
-type LogItem = { id: number; city: string; product: string; amount: string; status: "ok" | "warn"; detail: string };
+type Copy = {
+  kpiTags: string;
+  kpiValidations: string;
+  kpiTamper: string;
+  kpiRegions: string;
+  legendValid: string;
+  legendTamper: string;
+  legendDuplicate: string;
+  legendOpened: string;
+  geoTitle: string;
+  iconLabel: Record<Vertical, string>;
+  examples: Array<{ vertical: Vertical; point: MapKey; title: string; status: FeedEvent["status"] }>;
+};
 
-const points = [
-  { city: "Mendoza", x: 28, y: 74 },
-  { city: "São Paulo", x: 35, y: 70 },
-  { city: "Miami", x: 22, y: 42 },
-  { city: "New York", x: 24, y: 35 },
-  { city: "London", x: 47, y: 28 },
-  { city: "Paris", x: 49, y: 31 },
-  { city: "Dubai", x: 64, y: 44 },
-  { city: "Tokyo", x: 85, y: 36 },
+const points: Record<MapKey, Point> = {
+  mendoza: { key: "mendoza", city: "Mendoza", province: "Mendoza", country: "Argentina", x: 28, y: 74, tz: "GMT-3" },
+  lujan: { key: "lujan", city: "Luján de Cuyo", province: "Mendoza", country: "Argentina", x: 29, y: 73, tz: "GMT-3" },
+  miami: { key: "miami", city: "Miami", province: "Miami-Dade", country: "USA", x: 22, y: 42, tz: "GMT-5" },
+  cordoba: { key: "cordoba", city: "Córdoba", province: "Córdoba", country: "Argentina", x: 25, y: 70, tz: "GMT-3" },
+  saopaulo: { key: "saopaulo", city: "São Paulo", province: "São Paulo", country: "Brazil", x: 35, y: 70, tz: "GMT-3" },
+  santiago: { key: "santiago", city: "Santiago", province: "Santiago Metropolitan Region", country: "Chile", x: 30, y: 65, tz: "GMT-4" },
+  cdmx: { key: "cdmx", city: "Mexico City", province: "CDMX", country: "Mexico", x: 16, y: 48, tz: "GMT-6" },
+  rosario: { key: "rosario", city: "Rosario", province: "Santa Fe", country: "Argentina", x: 26, y: 72, tz: "GMT-3" },
+  matogrosso: { key: "matogrosso", city: "Cuiabá", province: "Mato Grosso", country: "Brazil", x: 34, y: 76, tz: "GMT-4" },
+  bogota: { key: "bogota", city: "Bogotá", province: "Bogotá", country: "Colombia", x: 21, y: 56, tz: "GMT-5" },
+  lima: { key: "lima", city: "Lima", province: "Lima", country: "Peru", x: 21, y: 62, tz: "GMT-5" },
+};
+
+const routeArcs: Array<[MapKey, MapKey]> = [
+  ["mendoza", "miami"],
+  ["cordoba", "saopaulo"],
+  ["santiago", "cdmx"],
+  ["rosario", "matogrosso"],
+  ["bogota", "lima"],
 ];
 
-const narratives: Record<AppLocale, Record<string, string[]>> = {
+const i18n: Record<AppLocale, Copy> = {
   "es-AR": {
-    "Wine premium": ["Autenticación + trazabilidad de bodega", "Certificado digital + historia de cosecha"],
-    Cosmetics: ["Lote verificado + fecha de fabricación", "Tutorial y uso seguro post-compra"],
-    Pharma: ["Validación anti-falsificación en punto de venta", "Cadena de custodia y compliance"],
-    "VIP event": ["Entrada anti-clon + control de acceso", "Upgrade VIP y beneficios in-app"],
+    kpiTags: "Tags activos",
+    kpiValidations: "Validaciones hoy",
+    kpiTamper: "Alertas tamper",
+    kpiRegions: "Regiones activas",
+    legendValid: "valid",
+    legendTamper: "tamper",
+    legendDuplicate: "duplicate",
+    legendOpened: "opened",
+    geoTitle: "Geo intelligence live feed",
+    iconLabel: { wine: "🍷 Wine", events: "🎟️ Events", cosmetics: "🧴 Cosmetics", agro: "🌾 Agro", pharma: "💊 Pharma" },
+    examples: [
+      { vertical: "wine", point: "mendoza", title: "Bottle uncorked — Mendoza, Argentina", status: "opened" },
+      { vertical: "wine", point: "lujan", title: "Authenticity verified — Luján de Cuyo", status: "valid" },
+      { vertical: "wine", point: "miami", title: "Export bottle scanned — Miami, USA", status: "valid" },
+      { vertical: "events", point: "cordoba", title: "VIP wristband check-in — Córdoba, Argentina", status: "valid" },
+      { vertical: "events", point: "saopaulo", title: "Duplicate access blocked — São Paulo, Brazil", status: "duplicate" },
+      { vertical: "cosmetics", point: "santiago", title: "Seal opened — Santiago, Chile", status: "opened" },
+      { vertical: "cosmetics", point: "cdmx", title: "Product passport viewed — Mexico City, Mexico", status: "valid" },
+      { vertical: "agro", point: "rosario", title: "Bag opened — Rosario, Argentina", status: "opened" },
+      { vertical: "agro", point: "matogrosso", title: "Lot verified — Mato Grosso, Brazil", status: "valid" },
+      { vertical: "pharma", point: "bogota", title: "Package verified — Bogotá, Colombia", status: "valid" },
+      { vertical: "pharma", point: "lima", title: "Chain-of-custody event — Lima, Peru", status: "tamper" },
+    ],
   },
   "pt-BR": {
-    "Wine premium": ["Autenticação + rastreabilidade da vinícola", "Certificado digital + história da safra"],
-    Cosmetics: ["Lote validado + data de fabricação", "Tutorial e uso seguro pós-compra"],
-    Pharma: ["Validação antifalsificação no ponto de venda", "Cadeia de custódia e compliance"],
-    "VIP event": ["Entrada anti-clone + controle de acesso", "Upgrade VIP e benefícios no app"],
+    kpiTags: "Tags ativos", kpiValidations: "Validações hoje", kpiTamper: "Alertas tamper", kpiRegions: "Regiões ativas",
+    legendValid: "valid", legendTamper: "tamper", legendDuplicate: "duplicate", legendOpened: "opened",
+    geoTitle: "Geo intelligence live feed",
+    iconLabel: { wine: "🍷 Wine", events: "🎟️ Events", cosmetics: "🧴 Cosmetics", agro: "🌾 Agro", pharma: "💊 Pharma" },
+    examples: [
+      { vertical: "wine", point: "mendoza", title: "Bottle uncorked — Mendoza, Argentina", status: "opened" },
+      { vertical: "wine", point: "lujan", title: "Authenticity verified — Luján de Cuyo", status: "valid" },
+      { vertical: "wine", point: "miami", title: "Export bottle scanned — Miami, USA", status: "valid" },
+      { vertical: "events", point: "cordoba", title: "VIP wristband check-in — Córdoba, Argentina", status: "valid" },
+      { vertical: "events", point: "saopaulo", title: "Duplicate access blocked — São Paulo, Brazil", status: "duplicate" },
+      { vertical: "cosmetics", point: "santiago", title: "Seal opened — Santiago, Chile", status: "opened" },
+      { vertical: "cosmetics", point: "cdmx", title: "Product passport viewed — Mexico City, Mexico", status: "valid" },
+      { vertical: "agro", point: "rosario", title: "Bag opened — Rosario, Argentina", status: "opened" },
+      { vertical: "agro", point: "matogrosso", title: "Lot verified — Mato Grosso, Brazil", status: "valid" },
+      { vertical: "pharma", point: "bogota", title: "Package verified — Bogotá, Colombia", status: "valid" },
+      { vertical: "pharma", point: "lima", title: "Chain-of-custody event — Lima, Peru", status: "tamper" },
+    ],
   },
   en: {
-    "Wine premium": ["Winery-level authenticity + traceability", "Digital certificate + vintage provenance"],
-    Cosmetics: ["Batch verified + production date", "Post-purchase guidance and safe usage"],
-    Pharma: ["Anti-counterfeit verification at POS", "Chain-of-custody and compliance signals"],
-    "VIP event": ["Anti-clone ticketing + access control", "In-app VIP upgrade and perks"],
+    kpiTags: "Active tags", kpiValidations: "Validations today", kpiTamper: "Tamper alerts", kpiRegions: "Regions active",
+    legendValid: "valid", legendTamper: "tamper", legendDuplicate: "duplicate", legendOpened: "opened",
+    geoTitle: "Geo intelligence live feed",
+    iconLabel: { wine: "🍷 Wine", events: "🎟️ Events", cosmetics: "🧴 Cosmetics", agro: "🌾 Agro", pharma: "💊 Pharma" },
+    examples: [
+      { vertical: "wine", point: "mendoza", title: "Bottle uncorked — Mendoza, Argentina", status: "opened" },
+      { vertical: "wine", point: "lujan", title: "Authenticity verified — Luján de Cuyo", status: "valid" },
+      { vertical: "wine", point: "miami", title: "Export bottle scanned — Miami, USA", status: "valid" },
+      { vertical: "events", point: "cordoba", title: "VIP wristband check-in — Córdoba, Argentina", status: "valid" },
+      { vertical: "events", point: "saopaulo", title: "Duplicate access blocked — São Paulo, Brazil", status: "duplicate" },
+      { vertical: "cosmetics", point: "santiago", title: "Seal opened — Santiago, Chile", status: "opened" },
+      { vertical: "cosmetics", point: "cdmx", title: "Product passport viewed — Mexico City, Mexico", status: "valid" },
+      { vertical: "agro", point: "rosario", title: "Bag opened — Rosario, Argentina", status: "opened" },
+      { vertical: "agro", point: "matogrosso", title: "Lot verified — Mato Grosso, Brazil", status: "valid" },
+      { vertical: "pharma", point: "bogota", title: "Package verified — Bogotá, Colombia", status: "valid" },
+      { vertical: "pharma", point: "lima", title: "Chain-of-custody event — Lima, Peru", status: "tamper" },
+    ],
   },
 };
 
-function toPolyline(values: number[]) {
-  return values.map((v, i) => `${i * (100 / (values.length - 1))},${100 - v}`).join(" ");
+function statusTone(status: FeedEvent["status"]) {
+  if (status === "valid") return "text-emerald-300";
+  if (status === "duplicate") return "text-amber-300";
+  if (status === "tamper") return "text-rose-300";
+  return "text-violet-300";
 }
 
 export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppLocale }) {
-  const [revenue, setRevenue] = useState(14250);
-  const [tick, setTick] = useState(0);
-  const [pings, setPings] = useState<Ping[]>([]);
-  const [logs, setLogs] = useState<LogItem[]>([]);
-  const [series, setSeries] = useState<number[]>([42, 46, 55, 51, 62, 58, 66, 61, 69, 64, 71, 67]);
-  const [mode, setMode] = useState<"basic" | "secure">("secure");
-
-  const productList = useMemo(() => radar.products, [radar.products]);
+  const txt = i18n[locale] || i18n["es-AR"];
+  const [events, setEvents] = useState<FeedEvent[]>([]);
+  const [scans, setScans] = useState(124580);
+  const [cursor, setCursor] = useState(0);
 
   useEffect(() => {
-    const int = window.setInterval(() => {
-      const location = points[Math.floor(Math.random() * points.length)];
-      const product = productList[Math.floor(Math.random() * productList.length)];
-      const id = Date.now() + Math.floor(Math.random() * 1000);
-      const warn = Math.random() > 0.78;
-      const detailOptions = narratives[locale]?.[product] || narratives.en[product] || ["Authenticated event captured"];
-      const detail = detailOptions[Math.floor(Math.random() * detailOptions.length)];
+    const seed = txt.examples.slice(0, 6).map((item, i) => ({
+      id: Date.now() + i,
+      point: points[item.point],
+      vertical: item.vertical,
+      title: item.title,
+      status: item.status,
+      at: new Date().toLocaleTimeString("en-GB"),
+    }));
+    setEvents(seed);
+  }, [txt]);
 
-      setTick((prev) => prev + 1);
-      setRevenue((prev) => Number((prev + (warn ? 0.01 : 0.02)).toFixed(2)));
-      setPings((prev) => [...prev.slice(-11), { id, x: location.x, y: location.y, city: location.city, product }]);
-      setLogs((prev) => [{ id, city: location.city, product, detail, amount: warn ? "+$0.01" : "+$0.02", status: warn ? "warn" : "ok" }, ...prev.slice(0, 6)]);
-      setSeries((prev) => [...prev.slice(1), Math.max(16, Math.min(90, prev[prev.length - 1] + (Math.random() * 16 - 8)))]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const ex = txt.examples[cursor % txt.examples.length];
+      const at = new Date().toLocaleTimeString("en-GB");
+      setScans((v) => v + 1);
+      setEvents((prev) => [{ id: Date.now(), point: points[ex.point], vertical: ex.vertical, title: ex.title, status: ex.status, at }, ...prev.slice(0, 9)]);
+      setCursor((v) => v + 1);
     }, 1400);
+    return () => clearInterval(timer);
+  }, [cursor, txt]);
 
-    return () => window.clearInterval(int);
-  }, [locale, productList]);
+  useEffect(() => {
+    const onScenario = (event: Event) => {
+      const custom = event as CustomEvent<{ mapKey?: MapKey; vertical?: Vertical; label?: string; result?: string }>;
+      const key = custom.detail?.mapKey || "mendoza";
+      const point = points[key];
+      const result = custom.detail?.result || "valid";
+      const status: FeedEvent["status"] = result === "tampered" ? "tamper" : result === "duplicate" ? "duplicate" : "valid";
+      const at = new Date().toLocaleTimeString("en-GB");
+      setEvents((prev) => [{ id: Date.now() + 7, point, vertical: custom.detail?.vertical || "wine", title: custom.detail?.label || "Scenario action", status, at }, ...prev.slice(0, 9)]);
+      setScans((v) => v + 1);
+    };
+    window.addEventListener("nexid-scan-event", onScenario as EventListener);
+    return () => window.removeEventListener("nexid-scan-event", onScenario as EventListener);
+  }, []);
+
+  const pulses = useMemo(() => events.slice(0, 7), [events]);
 
   return (
-    <section className="container-shell py-20">
+    <section className="container-shell py-16">
       <SectionHeading eyebrow={radar.eyebrow} title={radar.title} description={radar.description} />
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
-        <Card className="relative overflow-hidden p-4 md:p-6">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(14,165,233,.2),transparent_38%),radial-gradient(circle_at_85%_90%,rgba(124,58,237,.18),transparent_40%)]" />
+      <div className="mt-8 grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+        <Card className="relative overflow-hidden p-5">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,.18),transparent_35%),radial-gradient(circle_at_90%_90%,rgba(99,102,241,.18),transparent_35%)]" />
           <div className="relative z-10 flex items-center justify-between">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300">{radar.liveLabel}</p>
-            <p className="font-mono text-lg text-white">{radar.revenueLabel}: USD {revenue.toLocaleString()}</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.liveLabel}</p>
+            <p className="text-sm text-slate-200">{txt.geoTitle}</p>
           </div>
 
-          <div className="relative z-10 mt-2 rounded-xl border border-cyan-300/20 bg-cyan-400/5 p-3 text-xs text-cyan-100">
-            {locale === "es-AR"
-              ? "Cada evento muestra autenticación + valor comercial: origen, lote, estado de sello y acción sugerida."
-              : locale === "pt-BR"
-              ? "Cada evento combina autenticação + valor comercial: origem, lote, estado do lacre e ação sugerida."
-              : "Each event combines authentication + business value: origin, batch, seal status, and next action."}
+          <div className="relative z-10 mt-4 grid gap-2 md:grid-cols-4 text-xs">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300">{txt.kpiTags}: <b className="text-white">2.4M</b></div>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300">{txt.kpiValidations}: <b className="text-white">{scans.toLocaleString()}</b></div>
+            <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 p-2 text-rose-200">{txt.kpiTamper}: <b>12</b></div>
+            <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 p-2 text-emerald-200">{txt.kpiRegions}: <b>11</b></div>
           </div>
 
-          <div className="relative z-10 mt-5 grid gap-4 lg:grid-cols-[1fr_0.72fr]">
-            <div className="relative h-[320px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/70">
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(30,41,59,.5)_1px,transparent_1px),linear-gradient(to_bottom,rgba(30,41,59,.5)_1px,transparent_1px)] bg-[size:32px_32px] opacity-40" />
-              <svg viewBox="0 0 1000 500" className="absolute inset-0 h-full w-full opacity-70" aria-hidden>
-                <g fill="rgba(148,163,184,0.18)" stroke="rgba(148,163,184,0.28)" strokeWidth="1.2">
-                  <path d="M103 147l36-26 52 8 24 28 40 12 22 46-22 44-61 23-34-17-28-36-40-8-32-39z" />
-                  <path d="M274 299l44 11 20 24 24 14 16 52-28 56-44 12-27-23-8-53 9-45z" />
-                  <path d="M402 132l65-26 109 10 82 21 70-6 58 31-8 34-66 17-33 37-81-4-58 26-45 12-88-28-33-32z" />
-                  <path d="M547 294l59-15 49 14 44 32-18 59-66 16-49-24-28-48z" />
-                  <path d="M728 287l69-10 67 14 39 27 2 43-51 24-72-9-56-30z" />
-                  <path d="M846 128l42-22 54 9 27 22-12 27-46 13-37-9-23-22z" />
-                </g>
-                <g fill="none" stroke={mode === "secure" ? "rgba(96,165,250,.55)" : "rgba(47,225,195,.45)"} strokeWidth="2">
-                  <path d="M260 360 C 310 280, 430 230, 500 220" />
-                  <path d="M500 220 C 600 190, 700 180, 860 198" />
-                  <path d="M240 214 C 360 208, 470 165, 560 156" />
-                </g>
-              </svg>
-              {pings.map((ping) => (
-                <div key={ping.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${ping.x}%`, top: `${ping.y}%` }}>
-                  <span className="relative flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-70" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(34,211,238,.9)]" />
-                  </span>
-                  <div className="mt-1 rounded-lg border border-cyan-400/30 bg-slate-900/90 px-2 py-1 text-[10px] text-slate-100">{ping.city}</div>
-                </div>
+          <div className="relative z-10 mt-4 h-[360px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/85">
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(30,41,59,.38)_1px,transparent_1px),linear-gradient(to_bottom,rgba(30,41,59,.38)_1px,transparent_1px)] bg-[size:34px_34px]" />
+
+            <svg viewBox="0 0 1000 500" className="absolute inset-0 h-full w-full opacity-95" aria-hidden>
+              <g fill="rgba(56,189,248,0.14)" stroke="rgba(56,189,248,0.42)" strokeWidth="1.2">
+                <path d="M88 162l74-32 95 18 46 34 42 34-13 45-67 42-95 9-52-26-38-44z" />
+                <path d="M228 316l69 16 39 42 26 81-43 22-58-12-31-61z" />
+                <path d="M356 148l86-30 128 10 111 22 95-8 74 40-9 43-79 21-43 37-98-5-72 33-56 14-84-19-49-46z" />
+                <path d="M532 309l73-17 72 20 48 41-12 56-79 23-64-28-42-49z" />
+                <path d="M760 130l58-22 86 10 52 31-13 39-77 20-67-18-38-29z" />
+              </g>
+              {routeArcs.map(([from, to], i) => (
+                <path
+                  key={`${from}-${to}`}
+                  d={`M ${points[from].x * 10} ${points[from].y * 5} Q ${(points[from].x * 10 + points[to].x * 10) / 2} ${(points[from].y * 5 + points[to].y * 5) / 2 - 80} ${points[to].x * 10} ${points[to].y * 5}`}
+                  fill="none"
+                  stroke="rgba(34,211,238,0.45)"
+                  strokeWidth="2"
+                  strokeDasharray="6 7"
+                  style={{ animation: `arcFlow 3.2s linear ${i * 0.15}s infinite` }}
+                />
               ))}
-              <div className="absolute bottom-3 left-3 text-[10px] text-slate-400">{radar.mapCaption}</div>
-              <div className="absolute right-3 top-3 flex rounded-lg border border-white/10 bg-slate-950/80 p-1 text-[10px]">
-                <button onClick={() => setMode("basic")} className={`rounded px-2 py-1 ${mode === "basic" ? "bg-cyan-400/20 text-cyan-200" : "text-slate-400"}`}>Basic tags</button>
-                <button onClick={() => setMode("secure")} className={`rounded px-2 py-1 ${mode === "secure" ? "bg-blue-400/20 text-blue-200" : "text-slate-400"}`}>Secure tags</button>
-              </div>
-            </div>
+            </svg>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-3">
-              <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Realtime API load</p>
-              <div className="mt-3 h-[164px] rounded-xl border border-white/10 bg-slate-900/70 p-2">
-                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
-                  <polyline points={toPolyline(series)} fill="none" stroke="url(#lineGradient)" strokeWidth="2.2" strokeLinecap="round" />
-                  <defs>
-                    <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#22d3ee" />
-                      <stop offset="55%" stopColor="#3b82f6" />
-                      <stop offset="100%" stopColor="#8b5cf6" />
-                    </linearGradient>
-                  </defs>
-                </svg>
+            {pulses.map((ev) => (
+              <div key={ev.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${ev.point.x}%`, top: `${ev.point.y}%` }}>
+                <span className="relative flex h-3.5 w-3.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-70" />
+                  <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.95)]" />
+                </span>
+                <div className="mt-1 rounded-md border border-cyan-300/40 bg-slate-900/95 px-2 py-1 text-[10px] text-slate-100">{ev.point.city} · {ev.point.province}</div>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-300">p95: 142ms</div>
-                <div className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 text-emerald-300">uptime: 99.98%</div>
-              </div>
-            </div>
+            ))}
+            <div className="absolute bottom-3 left-3 text-[11px] text-slate-300">{radar.mapCaption}</div>
+          </div>
+
+          <div className="relative z-10 mt-3 flex flex-wrap gap-2 text-[11px]">
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-200">{txt.legendValid}</span>
+            <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-1 text-amber-200">{txt.legendTamper}</span>
+            <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-200">{txt.legendDuplicate}</span>
+            <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2 py-1 text-violet-200">{txt.legendOpened}</span>
           </div>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.logsTitle}</p>
-            <div className="mt-4 space-y-2 font-mono text-xs">
-              {logs.length === 0 ? <p className="text-slate-500">{radar.waitingLabel}</p> : null}
-              {logs.map((log) => (
-                <div key={log.id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200">
-                  <div className="flex items-center justify-between">
-                    <span>{log.city}</span>
-                    <span className="text-cyan-300">{log.product}</span>
-                    <span className={log.status === "warn" ? "text-amber-300" : "text-emerald-300"}>{log.amount}</span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-slate-400">{log.detail}</p>
+        <Card className="p-5">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.logsTitle}</p>
+          <div className="mt-3 space-y-2">
+            {events.map((ev) => (
+              <div key={ev.id} className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs">
+                <div className="flex items-center justify-between text-slate-300">
+                  <span>{txt.iconLabel[ev.vertical]}</span>
+                  <span className="font-mono text-slate-400">{ev.at} · {ev.point.tz}</span>
                 </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="p-5">
-            <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.signalTitle}</p>
-            <div className="mt-3 space-y-3">
-              {radar.signals.map((signal, index) => (
-                <div key={signal.label}>
-                  <div className="mb-1 flex items-center justify-between text-xs text-slate-300"><span>{signal.label}</span><span>{signal.value}</span></div>
-                  <div className="h-2 rounded-full bg-slate-800">
-                    <div className="h-2 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500" style={{ width: `${Math.min(100, 28 + ((tick + index * 7) % 68))}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+                <p className={`mt-1 font-medium ${statusTone(ev.status)}`}>{ev.title}</p>
+                <p className="mt-1 text-slate-400">{ev.point.city}, {ev.point.province}, {ev.point.country}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </section>
   );

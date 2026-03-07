@@ -6,7 +6,7 @@ import { resolveLocale, siteConfig } from "@product/config";
 import { HelpBot } from "@product/ui";
 
 export const metadata: Metadata = {
-  title: `${siteConfig.productName} | Product landing`,
+  title: `${siteConfig.productName} | NFC Authentication & Product Intelligence Cloud`,
   description: siteConfig.description,
 };
 

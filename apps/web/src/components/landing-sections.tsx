@@ -1,4 +1,4 @@
-import { Badge, BrandDot, BrandLockup, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
+import { Badge, BrandDot, Button, Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
 import Link from "next/link";
 
 import type { AppLocale } from "@product/config";
@@ -24,12 +24,18 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
   const proofItems = [...new Set(proofByLocale[locale] || proofByLocale["es-AR"])]
   const pipelineTitle = locale === "en" ? "What happens after each tap" : locale === "pt-BR" ? "O que acontece após cada tap" : "Qué pasa después de cada tap";
   const pipelineBody = locale === "en" ? "We verify, show value, and suggest the next sale action." : locale === "pt-BR" ? "Validamos, mostramos valor e sugerimos a próxima ação comercial." : "Validamos, mostramos valor y sugerimos la próxima acción comercial.";
+  const badgeText = locale === "en" ? "nexID authentication operating cloud" : locale === "pt-BR" ? "nexID cloud operacional de autenticação" : "nexID cloud operativo de autenticación";
   return (
     <section className="container-shell py-16 md:py-24">
       <div className="hero-shell grid gap-10 rounded-[2rem] p-6 md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            {content.hero.badge}
+            {badgeText}
+          </div>
+
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+            <BrandDot size={10} variant="ripple" theme="dark" />
+            <span>{locale === "en" ? "Live product OS" : locale === "pt-BR" ? "Sistema vivo de produto" : "Sistema vivo de producto"}</span>
           </div>
 
           <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
@@ -51,18 +57,39 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
         </div>
 
         <Card className="hero-panel hero-glow p-5 md:p-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard label={stats.latency} value="<150ms" delta={stats.latencyDelta} tone="good" />
-            <StatCard label={stats.unitEconomics} value="USD 0.02" delta={stats.economicsDelta} />
-            <StatCard label={stats.businessModel} value="HW + SaaS" delta={stats.businessDelta} tone="good" />
-            <div className="hero-spark rounded-2xl border border-white/10 bg-slate-900/80 p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">{pipelineTitle}</p>
-              <div className="mt-3 space-y-2">
-                <div className="hero-meter"><span style={{ width: "82%" }} /></div>
-                <div className="hero-meter"><span style={{ width: "68%" }} /></div>
-                <div className="hero-meter"><span style={{ width: "91%" }} /></div>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-200">{stats.latency}</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-100">&lt;150ms</p>
               </div>
-              <p className="mt-3 text-xs text-slate-400">{pipelineBody}</p>
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">{stats.unitEconomics}</p>
+                <p className="mt-1 text-2xl font-bold text-cyan-100">2.4M</p>
+                <p className="text-[11px] text-cyan-200/80">{locale === "en" ? "Active tags" : locale === "pt-BR" ? "Tags ativos" : "Tags activos"}</p>
+              </div>
+              <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-violet-200">{stats.businessModel}</p>
+                <p className="mt-1 text-xl font-bold text-violet-100">5 countries / 9 provinces</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/75 p-3">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">{pipelineTitle}</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="hero-meter"><span style={{ width: "82%" }} /></div>
+                  <div className="hero-meter"><span style={{ width: "68%" }} /></div>
+                  <div className="hero-meter"><span style={{ width: "91%" }} /></div>
+                  <p className="text-xs text-slate-400">{pipelineBody}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-slate-950/70 p-2 text-xs">
+                  <p className="text-slate-300">Mendoza, Argentina · 21:14 · AUTH_OK</p>
+                  <p className="mt-1 text-slate-300">São Paulo, Brazil · 18:40 · DUPLICATE_BLOCKED</p>
+                  <p className="mt-1 text-slate-300">Miami-Dade, USA · 17:29 · EXPORT_SCAN</p>
+                  <p className="mt-1 text-rose-300">Fraud alerts: 12/day</p>
+                </div>
+              </div>
             </div>
           </div>
         </Card>
