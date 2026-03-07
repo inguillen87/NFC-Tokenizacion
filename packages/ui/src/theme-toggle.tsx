@@ -42,11 +42,11 @@ export function ThemeToggle() {
         setTheme(next);
         applyTheme(next);
       }}
-      className="theme-toggle inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200 transition hover:bg-white/10"
+      className="theme-toggle inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
       aria-label="Toggle theme"
       title="Toggle theme"
     >
-      <span aria-hidden>{theme === "dark" ? "🌙" : "☀️"}</span>
+      <span aria-hidden className="theme-toggle__icon">{theme === "dark" ? "☾" : "☼"}</span>
       <span>{theme === "dark" ? "Dark" : "Light"}</span>
     </button>
   );
