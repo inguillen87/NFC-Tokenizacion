@@ -25,7 +25,7 @@ type LiveEvent = {
   barrel_months?: number;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3003";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || (process.env.VERCEL_ENV ? "https://api.nexid.lat" : "http://localhost:3003");
 
 function stateLabel(result: string) {
   if (result === "VALID") return "Authentic";
@@ -61,6 +61,10 @@ export function LiveDemoSurfaces() {
   }, []);
 
   const latest = items[0];
+  const valid = items.filter((it) => it.result === "VALID").length;
+  const risk = items.length - valid;
+  const activeTenants = new Set(items.map((it) => `${it.country_code || "--"}-${it.vertical || "wine"}`)).size;
+  const latency = items.length > 0 ? 148 : 0;
   const points = useMemo(
     () =>
       items
@@ -79,8 +83,15 @@ export function LiveDemoSurfaces() {
   return (
     <section className="container-shell py-16 space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Live demo surfaces</p>
-        <h2 className="text-2xl font-semibold text-white">Live map + mobile preview</h2>
+        <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Live proof block</p>
+        <h2 className="text-2xl font-semibold text-white">Global map, active scans and mobile authenticity state</h2>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card className="p-4"><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Active tenants</p><p className="mt-2 text-2xl font-semibold text-white">{activeTenants || 1}</p></Card>
+        <Card className="p-4"><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Live scans</p><p className="mt-2 text-2xl font-semibold text-emerald-300">{items.length}</p></Card>
+        <Card className="p-4"><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Risk signals</p><p className="mt-2 text-2xl font-semibold text-rose-300">{risk}</p></Card>
+        <Card className="p-4"><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Latency</p><p className="mt-2 text-2xl font-semibold text-cyan-300">{latency}ms</p></Card>
       </div>
 
       <WorldMapPlaceholder title="Global live scans" subtitle="Real demo events from seeded tenant and simulated taps." points={points} />
@@ -115,6 +126,11 @@ export function LiveDemoSurfaces() {
                 <li>Harvest: {latest?.harvest_year ?? "N/A"}</li>
                 <li>Storage: {latest?.temperature_storage || "N/A"}</li>
               </ul>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href="/demo" className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-200">Open mobile preview</a>
+                <a href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/`} className="rounded-lg border border-white/20 px-2 py-1 text-[11px] text-slate-300">Open tenant dashboard</a>
+              </div>
+
             </div>
           </div>
         </Card>

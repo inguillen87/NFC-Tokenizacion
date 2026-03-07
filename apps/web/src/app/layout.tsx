@@ -5,9 +5,11 @@ import "./globals.css";
 import { resolveLocale, siteConfig } from "@product/config";
 import { HelpBot } from "@product/ui";
 
+
 export const metadata: Metadata = {
-  title: `${siteConfig.productName} | Product landing`,
+  title: `${siteConfig.productName} — Authenticity, Traceability & Digital Product Identity`,
   description: siteConfig.description,
+  manifest: "/manifest.webmanifest",
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

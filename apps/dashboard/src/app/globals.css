@@ -176,3 +176,23 @@ html.theme-light .locale-switcher {
   background: rgba(255,255,255,0.88);
   color: #0f172a;
 }
+
+html.theme-light .worldmap-card {
+  background: linear-gradient(150deg, rgba(255,255,255,.96), rgba(235,244,255,.94)) !important;
+  border-color: rgba(30, 41, 59, .14) !important;
+}
+
+html.theme-light .worldmap-shell {
+  border-color: rgba(30, 41, 59, .12) !important;
+  background: radial-gradient(circle at center, rgba(8,145,178,.16), transparent 58%) !important;
+}
+
+html.theme-light .worldmap-canvas {
+  background: linear-gradient(145deg, #f8fbff, #e7f2ff) !important;
+  border-color: rgba(8,145,178,.25) !important;
+}
+
+html.theme-light .worldmap-canvas div[class*="bg-slate-900"] {
+  background: rgba(255,255,255,.95) !important;
+  color: #0f172a !important;
+}
