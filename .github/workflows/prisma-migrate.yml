@@ -7,13 +7,23 @@ on:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.POSTGRES_PRISMA_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - run: npm install
-      - run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.POSTGRES_PRISMA_URL }}
-          POSTGRES_PRISMA_URL: ${{ secrets.POSTGRES_PRISMA_URL || secrets.DATABASE_URL }}
+      - name: Check DATABASE_URL availability
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DB_URL_PRESENT=false" >> "$GITHUB_ENV"
+            echo "DATABASE_URL secret is not configured; skipping Prisma migrations."
+          else
+            echo "DB_URL_PRESENT=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run Prisma migrate deploy
+        if: env.DB_URL_PRESENT == 'true'
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
