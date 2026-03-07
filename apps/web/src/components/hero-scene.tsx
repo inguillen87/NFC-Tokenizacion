@@ -27,7 +27,7 @@ const labels: Record<AppLocale, {
     ctaBands: ["Para bodegas", "Para eventos", "Para cosmética", "Para agro", "Para pharma"],
     phoneLabel: "Resultado mobile",
     items: {
-      wine: { label: "Vino", action: "Bottle uncorked", result: "Authentic", details: ["Malbec", "18 months oak", "Mendoza, Argentina", "14.5% alc"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
+      wine: { label: "Vino", action: "Bottle uncorked", result: "Authentic", details: ["Varietal: Malbec", "Alcohol: 14.5%", "Barrel aging: 18 months oak", "Region: Mendoza · State: Opened authentic"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
       events: { label: "Eventos", action: "VIP wristband scanned", result: "VIP access granted", details: ["Backstage pass", "Single-use ticket", "Córdoba, Argentina", "Gate A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTS · ENTRY_OK" },
       cosmetics: { label: "Cosmética", action: "Cap seal opened", result: "Seal event detected", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMETICS · VERIFIED" },
       agro: { label: "Agro", action: "Bag tear detected", result: "Lot + origin verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
@@ -39,7 +39,7 @@ const labels: Record<AppLocale, {
     ctaBands: ["Para vinícolas", "Para eventos", "Para cosméticos", "Para agro", "Para pharma"],
     phoneLabel: "Resultado mobile",
     items: {
-      wine: { label: "Vinho", action: "Bottle uncorked", result: "Authentic", details: ["Malbec", "18 months oak", "Mendoza, Argentina", "14.5% alc"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
+      wine: { label: "Vinho", action: "Bottle uncorked", result: "Authentic", details: ["Varietal: Malbec", "Alcohol: 14.5%", "Barrel aging: 18 months oak", "Region: Mendoza · State: Opened authentic"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
       events: { label: "Eventos", action: "VIP wristband scanned", result: "VIP access granted", details: ["Backstage pass", "Single-use ticket", "Córdoba, Argentina", "Gate A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTS · ENTRY_OK" },
       cosmetics: { label: "Cosméticos", action: "Cap seal opened", result: "Seal event detected", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMETICS · VERIFIED" },
       agro: { label: "Agro", action: "Bag tear detected", result: "Lot + origin verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
@@ -51,7 +51,7 @@ const labels: Record<AppLocale, {
     ctaBands: ["For wineries", "For events", "For cosmetics", "For agro", "For pharma"],
     phoneLabel: "Mobile output",
     items: {
-      wine: { label: "Wine", action: "Bottle uncorked", result: "Authentic", details: ["Malbec", "18 months oak", "Mendoza, Argentina", "14.5% alc"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
+      wine: { label: "Wine", action: "Bottle uncorked", result: "Authentic", details: ["Varietal: Malbec", "Alcohol: 14.5%", "Barrel aging: 18 months oak", "Region: Mendoza · State: Opened authentic"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
       events: { label: "Events", action: "VIP wristband scanned", result: "VIP access granted", details: ["Backstage pass", "Single-use ticket", "Córdoba, Argentina", "Gate A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTS · ENTRY_OK" },
       cosmetics: { label: "Cosmetics", action: "Cap seal opened", result: "Seal event detected", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMETICS · VERIFIED" },
       agro: { label: "Agro", action: "Bag tear detected", result: "Lot + origin verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
