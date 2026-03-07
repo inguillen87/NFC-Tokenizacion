@@ -34,6 +34,30 @@ export default async function LeadsTicketsPage() {
   const orderCount = Array.isArray(orders) ? orders.length : 0;
   const hotPipeline = leadCount + orderCount;
 
+  const labels = locale === "en"
+    ? {
+        leads: "Leads",
+        tickets: "Tickets",
+        orders: "Orders",
+        hot: "Hot pipeline",
+        feed: "Commercial control room feed",
+      }
+    : locale === "pt-BR"
+    ? {
+        leads: "Leads",
+        tickets: "Tickets",
+        orders: "Pedidos",
+        hot: "Pipeline quente",
+        feed: "Feed comercial de controle",
+      }
+    : {
+        leads: "Leads",
+        tickets: "Tickets",
+        orders: "Órdenes",
+        hot: "Pipeline caliente",
+        feed: "Feed comercial de control",
+      };
+
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.leadsTickets} title={copy.pages.leadsTickets.title} description={copy.pages.leadsTickets.description} />
@@ -42,25 +66,25 @@ export default async function LeadsTicketsPage() {
 
       <section className="grid gap-4 md:grid-cols-4">
         <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Leads</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{labels.leads}</p>
           <p className="mt-2 text-2xl font-semibold text-white">{leadCount}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Tickets</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{labels.tickets}</p>
           <p className="mt-2 text-2xl font-semibold text-white">{ticketCount}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Orders</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{labels.orders}</p>
           <p className="mt-2 text-2xl font-semibold text-white">{orderCount}</p>
         </div>
         <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/10 p-4">
-          <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Hot pipeline</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">{labels.hot}</p>
           <p className="mt-2 text-2xl font-semibold text-cyan-100">{hotPipeline}</p>
         </div>
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-cyan-200">Commercial control room feed</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-cyan-200">{labels.feed}</h2>
         <div className="mt-3 grid gap-2">
           {[...leads.slice(0, 3), ...tickets.slice(0, 2), ...orders.slice(0, 2)].map((item: Record<string, unknown>, idx: number) => (
             <div key={`${String(item.contact || item.title || "entry")}-${idx}`} className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-300">

@@ -47,6 +47,30 @@ export default async function DashboardHome() {
   const copy = dashboardContent[locale];
   const [overviewRaw, liveEvents] = await Promise.all([getOverviewRows(), getLiveEvents()]);
 
+  const labels = locale === "en"
+    ? {
+        liveFeed: "Live operations feed",
+        mission: "Mission control",
+        mapTitle: "Live scan map",
+        mapSubtitle: "Geolocated scans from tenants, demo packs and reseller simulations",
+        roleNote: "Contextual permissions visible across tenants, CRM and demo orchestration.",
+      }
+    : locale === "pt-BR"
+    ? {
+        liveFeed: "Feed de operações ao vivo",
+        mission: "Mission control",
+        mapTitle: "Mapa de scans ao vivo",
+        mapSubtitle: "Scans geolocalizados de tenants, packs demo e simulações reseller",
+        roleNote: "Permissões contextuais visíveis em tenants, CRM e orquestração demo.",
+      }
+    : {
+        liveFeed: "Feed operativo en vivo",
+        mission: "Mission control",
+        mapTitle: "Mapa de escaneos en vivo",
+        mapSubtitle: "Escaneos geolocalizados de tenants, packs demo y simulaciones reseller",
+        roleNote: "Permisos contextuales visibles en tenants, CRM y orquestación demo.",
+      };
+
   const overviewRows = overviewRaw.map((row) => {
     const scans = Number(row.scans || 0);
     const duplicates = Number(row.duplicates || 0);
@@ -81,8 +105,8 @@ export default async function DashboardHome() {
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Live operations feed</h2>
-            <Badge tone="cyan">Mission control</Badge>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.liveFeed}</h2>
+            <Badge tone="cyan">{labels.mission}</Badge>
           </div>
           <div className="mt-4 space-y-2">
             {liveEvents.slice(0, 8).map((event) => {
@@ -101,8 +125,8 @@ export default async function DashboardHome() {
         </Card>
 
         <WorldMapPlaceholder
-          title="Live scan map"
-          subtitle="Geolocated scans from tenants, demo packs and reseller simulations"
+          title={labels.mapTitle}
+          subtitle={labels.mapSubtitle}
           points={mapPoints}
         />
       </div>
@@ -145,7 +169,7 @@ export default async function DashboardHome() {
           {Object.entries(copy.roles).map(([roleKey, roleLabel]) => (
             <div key={roleKey} className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-xs text-slate-300">
               <p className="font-semibold uppercase tracking-[0.12em] text-cyan-200">{roleLabel}</p>
-              <p className="mt-2">Contextual permissions visible across tenants, CRM and demo orchestration.</p>
+              <p className="mt-2">{labels.roleNote}</p>
             </div>
           ))}
         </div>
