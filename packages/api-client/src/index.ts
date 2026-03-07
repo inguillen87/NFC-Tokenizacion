@@ -20,7 +20,7 @@ function withQuery(path: string, query?: Record<string, string | number | undefi
 }
 
 async function request<T>(opts: ApiClientOptions, path: string, init?: RequestInit, parser?: z.ZodType<T>): Promise<T> {
-  const baseURL = opts.baseURL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3003";
+  const baseURL = opts.baseURL || process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
   const response = await fetch(`${baseURL}${path}`, {
     ...init,
     headers: {

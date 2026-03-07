@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
 
 type Message = { role: "user" | "assistant"; text: string };
@@ -66,6 +66,12 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("assistant") === "open") setOpen(true);
+  }, []);
 
   const readyContact = useMemo(() => fullName.trim().length > 2 && (email.trim().length > 4 || whatsapp.trim().length > 6), [fullName, email, whatsapp]);
 
@@ -149,7 +155,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
         </div>
       ) : null}
 
-      <button onClick={() => setOpen((prev) => !prev)} className="ml-auto flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/40 bg-cyan-500/20 text-2xl shadow-[0_0_30px_rgba(47,225,195,.35)]">
+      <button onClick={() => setOpen((prev) => !prev)} className="helpbot-toggle ml-auto flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/40 bg-cyan-500/20 text-2xl shadow-[0_0_30px_rgba(47,225,195,.35)]">
         💬
       </button>
     </div>

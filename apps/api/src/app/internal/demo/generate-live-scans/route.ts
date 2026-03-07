@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3003';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.nexid.lat';
 
 export async function POST(req: Request) {
   const auth = checkAdmin(req);

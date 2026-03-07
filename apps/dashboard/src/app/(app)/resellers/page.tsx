@@ -3,7 +3,7 @@ import { DataTable } from "../../../components/data-table";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3003";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
 async function adminGet(path: string) {
   try {
@@ -34,12 +34,13 @@ export default async function ResellersPage() {
       <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description="CRM lite: leads, tickets y pedidos para super admin." />
 
       <DataTable
-        title="Leads inbox"
-        columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "volume", label: "Volume" }]}
+        title="Leads inbox ⓘ"
+        columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "volume", label: "Volume" }]}
         rows={leads.map((item: Record<string, unknown>) => ({
           contact: String(item.contact || "-"),
           company: String(item.company || "-"),
           status: String(item.status || "new"),
+          source: String(item.source || "-"),
           volume: String(item.volume || "0"),
         }))}
         filterKey="status"
@@ -52,7 +53,7 @@ export default async function ResellersPage() {
       />
 
       <DataTable
-        title="Tickets"
+        title="Tickets ⓘ"
         columns={[{ key: "contact", label: "Contact" }, { key: "title", label: "Title" }, { key: "status", label: "Status" }]}
         rows={tickets.map((item: Record<string, unknown>) => ({
           contact: String(item.contact || "-"),
@@ -69,12 +70,13 @@ export default async function ResellersPage() {
       />
 
       <DataTable
-        title="Orders / Chip requests"
-        columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "volume", label: "Volume" }]}
+        title="Orders / Chip requests ⓘ"
+        columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "volume", label: "Volume" }]}
         rows={orders.map((item: Record<string, unknown>) => ({
           contact: String(item.contact || "-"),
           company: String(item.company || "-"),
           status: String(item.status || "new"),
+          source: String(item.source || "-"),
           volume: String(item.volume || "0"),
         }))}
         filterKey="status"
