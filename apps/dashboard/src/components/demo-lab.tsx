@@ -88,6 +88,12 @@ export function DemoLab() {
         <a className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" href={`/demo/${pack}/seed.json`} download>Download JSON</a>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <button className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm text-violet-100" onClick={async () => { const r = await call("generate-live-scans", "POST", { count: 30, mode: "mixed" }); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }}>Generate live scans stream</button>
+        <a className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100" href="http://localhost:3000/demo" target="_blank" rel="noreferrer">Open mobile preview</a>
+        <a className="rounded-xl border border-white/15 bg-slate-900 p-3 text-sm text-white" href="/" target="_blank" rel="noreferrer">Open tenant dashboard view</a>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2">
         <label className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">CSV manifest uploader
           <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const csv = await readFile(file); const r = await call("upload-manifest", "POST", { bid: "DEMO-2026-02", csv }); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }} />
@@ -105,7 +111,7 @@ export function DemoLab() {
 
       <WorldMapPlaceholder title="Live map updates" subtitle="Mapped from real event geo fields" points={points} />
 
-      <Card className="p-4"><h3 className="text-sm font-semibold text-white">Mobile preview updates</h3><p className="mt-2 text-sm text-slate-300">Last event state: {(summary.events || [])[0]?.result || "N/A"} · {(summary.events || [])[0]?.product_name || "-"}</p></Card>
+      <Card className="p-4"><h3 className="text-sm font-semibold text-white">Mobile preview updates</h3><p className="mt-2 text-sm text-slate-300">Last event state: {(summary.events || [])[0]?.result || "N/A"} · {(summary.events || [])[0]?.product_name || "-"}</p><p className="mt-2 text-xs text-cyan-200">Idle · Scanning · Valid · Tampered · Enterprise backend view</p></Card>
 
       <Card className="p-4"><h3 className="text-sm font-semibold text-white">Recent events</h3><div className="mt-2 space-y-2 text-sm text-slate-300">{(summary.events || []).slice(0, 8).map((e) => <div key={e.id}>{e.result} · {e.product_name || e.uid_hex || "-"} · {e.vertical || "-"}</div>)}</div></Card>
 

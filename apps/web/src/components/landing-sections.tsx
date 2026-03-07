@@ -1,4 +1,4 @@
-import { Badge, BrandDot, BrandLockup, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
+import { Badge, BrandDot, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
 import Link from "next/link";
 
 import type { AppLocale } from "@product/config";
@@ -32,6 +32,11 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
             {content.hero.badge}
           </div>
 
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+            <BrandDot size={10} variant="ripple" theme="dark" />
+            <span>{locale === "en" ? "Live product OS" : locale === "pt-BR" ? "Sistema vivo de produto" : "Sistema vivo de producto"}</span>
+          </div>
+
           <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
           <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{content.hero.body}</p>
 
@@ -53,8 +58,8 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
         <Card className="hero-panel hero-glow p-5 md:p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <StatCard label={stats.latency} value="<150ms" delta={stats.latencyDelta} tone="good" />
-            <StatCard label={stats.unitEconomics} value="USD 0.02" delta={stats.economicsDelta} />
-            <StatCard label={stats.businessModel} value="HW + SaaS" delta={stats.businessDelta} tone="good" />
+            <StatCard label={stats.unitEconomics} value="2.4M" delta={locale === "en" ? "Active tags" : locale === "pt-BR" ? "Tags ativos" : "Tags activos"} />
+            <StatCard label={stats.businessModel} value="5 countries / 9 provinces" delta={locale === "en" ? "Fraud alerts: 12/day" : locale === "pt-BR" ? "Alertas fraude: 12/dia" : "Alertas fraude: 12/día"} tone="good" />
             <div className="hero-spark rounded-2xl border border-white/10 bg-slate-900/80 p-4">
               <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">{pipelineTitle}</p>
               <div className="mt-3 space-y-2">
