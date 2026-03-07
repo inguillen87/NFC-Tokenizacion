@@ -43,6 +43,7 @@ type AdminActionFormsProps = {
 export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
   const [role, setRole] = useState<Role>("super-admin");
   const [status, setStatus] = useState<string>(readyLabel);
+  const [pending, setPending] = useState(false);
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
   const [batch, setBatch] = useState({ tenantId: "", batchId: "", sku: "", quantity: "" });
@@ -62,12 +63,15 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
   };
 
   async function submit(path: string, payload: unknown) {
+    setPending(true);
     setStatus(`POST ${path}`);
     try {
       const data = await postAdmin<unknown>(path, payload);
       setStatus(`OK ${JSON.stringify(data).slice(0, 180)}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Request failed");
+    } finally {
+      setPending(false);
     }
   }
 
@@ -103,7 +107,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
               <option value="secure">SECURE</option>
               <option value="enterprise">ENTERPRISE / RESELLER</option>
             </select>
-            <Button disabled={!canEdit || !tenant.name || !tenant.slug} onClick={() => submit("/admin/tenants", tenant)}>{copy.actions.createTenant}</Button>
+            <Button disabled={pending || !canEdit || !tenant.name || !tenant.slug} onClick={() => submit("/admin/tenants", tenant)}>{copy.actions.createTenant}</Button>
           </div>
         </Card>
 
@@ -115,7 +119,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
-            <Button disabled={!canEdit || !batch.tenantId || !batch.batchId} onClick={() => submit("/admin/batches", { ...batch, quantity: Number(batch.quantity || 0) })}>{copy.actions.createBatch}</Button>
+            <Button disabled={pending || !canEdit || !batch.tenantId || !batch.batchId} onClick={() => submit("/admin/batches", { ...batch, quantity: Number(batch.quantity || 0) })}>{copy.actions.createBatch}</Button>
           </div>
         </Card>
 
@@ -125,7 +129,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
             <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
-            <Button disabled={!canEdit || !manifest.batchId} onClick={() => submit(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv })}>{copy.actions.importManifest}</Button>
+            <Button disabled={pending || !canEdit || !manifest.batchId} onClick={() => submit(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv })}>{copy.actions.importManifest}</Button>
           </div>
         </Card>
 
@@ -135,17 +139,17 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={activation.batchId} onChange={(event) => setActivation({ ...activation, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.count} value={activation.count} onChange={(event) => setActivation({ ...activation, count: event.target.value })} />
-            <Button disabled={!canEdit || !activation.batchId || !activation.count} onClick={() => submit("/admin/tags/activate", { ...activation, count: Number(activation.count || 0) })}>{copy.actions.activateTags}</Button>
+            <Button disabled={pending || !canEdit || !activation.batchId || !activation.count} onClick={() => submit("/admin/tags/activate", { ...activation, count: Number(activation.count || 0) })}>{copy.actions.activateTags}</Button>
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
-            <Button disabled={!canEdit || !revoke.batchId} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke?")) submit(`/admin/batches/${revoke.batchId}/revoke`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>
+            <Button disabled={pending || !canEdit || !revoke.batchId} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke? This can impact live validations.")) submit(`/admin/batches/${revoke.batchId}/revoke`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>
           </div>
         </Card>
       </div>
 
       <Card className="p-4">
         <p className="text-xs text-cyan-300">{copy.apiStatus}</p>
-        <p className="mt-1 break-all text-xs text-slate-300">{status}</p>
+        <p className="mt-1 break-all text-xs text-slate-300">{pending ? "Running action..." : status}</p>
       </Card>
     </div>
   );

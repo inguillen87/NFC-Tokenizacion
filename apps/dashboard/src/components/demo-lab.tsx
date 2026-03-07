@@ -119,6 +119,7 @@ export function DemoLab() {
         <a className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100" href="https://nexid.lat/demo" target="_blank" rel="noreferrer">Open mobile preview</a>
         <a className="rounded-xl border border-white/15 bg-slate-900 p-3 text-sm text-white" href="/" target="_blank" rel="noreferrer">Open tenant dashboard view</a>
       </div>
+      <p className="text-xs text-slate-400">Mobile preview = vista consumidor; tenant dashboard view = vista operativa interna con métricas y CRM.</p>
 
       <div className="grid gap-3 md:grid-cols-2">
         <label className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">CSV manifest uploader

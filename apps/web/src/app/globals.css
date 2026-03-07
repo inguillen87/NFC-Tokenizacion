@@ -996,3 +996,29 @@ html.theme-light .worldmap-canvas div[class*="bg-slate-900"] {
   background: rgba(255,255,255,.95) !important;
   color: #0f172a !important;
 }
+
+
+html.theme-light .pricing-page .pricing-page-card {
+  background: linear-gradient(150deg, rgba(255,255,255,0.98), rgba(239,246,255,0.95)) !important;
+  border-color: rgba(30,41,59,0.16) !important;
+}
+
+html.theme-light #contact-modal > div {
+  background: rgba(248, 252, 255, 0.98) !important;
+  border-color: rgba(30,41,59,0.18) !important;
+}
+
+html.theme-light #contact-modal input,
+html.theme-light #contact-modal textarea {
+  background: rgba(241,245,249,0.95) !important;
+  border-color: rgba(30,41,59,0.16) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light #contact-modal .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light #contact-modal .text-slate-300 {
+  color: #334155 !important;
+}

@@ -45,11 +45,11 @@ export default async function PricingPage() {
         };
 
   return (
-    <main className="container-shell py-16">
+    <main className="container-shell py-16 pricing-page">
       <BackLink />
       <SectionHeading eyebrow={content.plans.eyebrow} title={content.plans.title} description={content.plans.description} />
 
-      <Card className="mt-6 p-5">
+      <Card className="mt-6 p-5 pricing-page-card">
         <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.includeTitle}</h3>
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {labels.includes.map((item) => (
@@ -60,7 +60,7 @@ export default async function PricingPage() {
 
       <div className="mt-10 grid gap-6 xl:grid-cols-3">
         {content.plans.cards.map((plan) => (
-          <Card key={plan.name} className="p-6">
+          <Card key={plan.name} className="p-6 pricing-page-card">
             <Badge tone={plan.name.includes("ENTERPRISE") ? "amber" : "cyan"}>{plan.badge}</Badge>
             <h3 className="mt-4 text-2xl font-semibold text-white">{plan.name}<Info text={labels.cardInfo} /></h3>
             <p className="mt-3 text-sm text-slate-400">{plan.body}</p>
@@ -76,7 +76,7 @@ export default async function PricingPage() {
 
       <CalculatorSection calculator={content.calculator} locale={locale} />
 
-      <Card className="mt-8 p-6">
+      <Card className="mt-8 p-6 pricing-page-card">
         <SectionHeading eyebrow={content.roi.eyebrow} title={content.roi.title} description={content.roi.description} />
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {content.roi.metrics.map((m) => (

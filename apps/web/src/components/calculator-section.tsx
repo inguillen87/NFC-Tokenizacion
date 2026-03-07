@@ -224,7 +224,7 @@ export function CalculatorSection({ calculator, locale }: { calculator: Calculat
           <p className="text-xs uppercase tracking-[0.16em] text-violet-200">{txt.investorTitle}</p>
           <p className="mt-2 text-sm text-violet-100">{txt.investorBody}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <a href="#" onClick={(e)=>{e.preventDefault(); const btn=document.querySelector('.helpbot-toggle') as HTMLButtonElement | null; btn?.click();}} className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200">{txt.askBot}</a>
+            <a href="/?assistant=open" className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200">{txt.askBot}</a>
             <a href="/?contact=quote&intent=investor25#contact-modal" className="rounded-lg border border-white/20 px-3 py-2 text-xs text-slate-200">{txt.scenarios}: USD 25k</a>
             <a href="/?contact=quote&intent=investor50#contact-modal" className="rounded-lg border border-white/20 px-3 py-2 text-xs text-slate-200">{txt.scenarios}: USD 50k</a>
             <a href="https://wa.me/5492613168608?text=Hola%20quiero%20presupuesto%20nexID" target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">{txt.askCeo}</a>
@@ -238,7 +238,7 @@ export function CalculatorSection({ calculator, locale }: { calculator: Calculat
 function Selector({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<{ label: string; value: string }> }) {
   return (
     <label className="flex flex-col gap-2 text-xs uppercase tracking-[0.14em] text-slate-400">
-      {label} <span className="ml-1 text-cyan-300" title="Ajusta este parámetro para modelar setup, hardware y SaaS por volumen y riesgo.">ⓘ</span>
+      {label} <span className="ml-1 text-cyan-300" title="Métrica comercial estimada. Se valida en propuesta final según vertical, seguridad y volumen.">ⓘ</span>
       <select value={value} onChange={(event) => onChange(event.target.value)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
         {options.map((option) => (
           <option key={option.value} value={option.value}>

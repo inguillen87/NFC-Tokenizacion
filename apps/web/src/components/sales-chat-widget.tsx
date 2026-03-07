@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
 
 type Message = { role: "user" | "assistant"; text: string };
@@ -66,6 +66,12 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("assistant") === "open") setOpen(true);
+  }, []);
 
   const readyContact = useMemo(() => fullName.trim().length > 2 && (email.trim().length > 4 || whatsapp.trim().length > 6), [fullName, email, whatsapp]);
 
