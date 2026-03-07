@@ -35,11 +35,11 @@ export function WorldMapPlaceholder({
   const safePoints = points.length > 0 ? points : defaultPoints;
 
   return (
-    <Card className="relative overflow-hidden p-6">
+    <Card className="worldmap-card relative overflow-hidden p-6">
       <div className="text-sm font-semibold text-white">{title}</div>
       <div className="mt-1 text-xs text-slate-400">{subtitle}</div>
-      <div className="mt-6 grid h-64 place-items-center rounded-2xl border border-white/5 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12),transparent_55%)]">
-        <div className="relative h-48 w-full max-w-4xl overflow-hidden rounded-[2rem] border border-cyan-400/10 bg-slate-950">
+      <div className="worldmap-shell mt-6 grid h-64 place-items-center rounded-2xl border border-white/5 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12),transparent_55%)]">
+        <div className="worldmap-canvas relative h-48 w-full max-w-4xl overflow-hidden rounded-[2rem] border border-cyan-400/10 bg-slate-950">
           <div className="absolute inset-0 opacity-25" style={{ backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
           <svg viewBox="0 0 1000 420" className="absolute inset-0 h-full w-full opacity-50" aria-hidden>
             <g fill="rgba(148,163,184,0.18)" stroke="rgba(148,163,184,0.22)" strokeWidth="1.2">
@@ -67,6 +67,12 @@ export function WorldMapPlaceholder({
             );
           })}
         </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 text-[11px] md:grid-cols-3">
+        <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-200">valid · normal traffic</div>
+        <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-200">duplicate · repeat scans</div>
+        <div className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-rose-200">tamper · risk event</div>
       </div>
     </Card>
   );
