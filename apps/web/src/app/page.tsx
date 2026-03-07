@@ -12,6 +12,7 @@ import { CalculatorSection } from "../components/calculator-section";
 import { RadarSection } from "../components/radar-section";
 import { InteractiveDemoSection } from "../components/interactive-demo-section";
 import { SalesChatWidget } from "../components/sales-chat-widget";
+import { DemoRequestSection } from "../components/demo-request-section";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 
@@ -19,10 +20,45 @@ export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
   const labels = locale === "en"
-    ? { demoJson: "Download demo JSON", demoCsv: "Download demo CSV", launchLab: "Launch Demo Lab" }
+    ? {
+      demoJson: "Download seed JSON",
+      demoCsv: "Download manifest CSV",
+      launchLab: "Open Demo Lab",
+      assetTitle: "Demo assets by vertical",
+      assetBody: "Use these files for technical pilots: JSON seeds simulate events and CSV manifests map UID/tag metadata per vertical.",
+      whyJson: "Seed JSON: scenario events (tap/open/tamper) to preload demos",
+      whyCsv: "Manifest CSV: UID/tag mapping for batch import and operational traceability",
+      whyLab: "Demo Lab: controlled test console to simulate scans and verify end-to-end flow",
+    }
     : locale === "pt-BR"
-    ? { demoJson: "Baixar demo JSON", demoCsv: "Baixar demo CSV", launchLab: "Abrir Demo Lab" }
-    : { demoJson: "Descargar demo JSON", demoCsv: "Descargar demo CSV", launchLab: "Abrir Demo Lab" };
+    ? {
+      demoJson: "Baixar seed JSON",
+      demoCsv: "Baixar manifest CSV",
+      launchLab: "Abrir Demo Lab",
+      assetTitle: "Assets de demo por vertical",
+      assetBody: "Use estes arquivos em pilotos técnicos: JSON simula eventos e CSV mapeia UID/tag por vertical.",
+      whyJson: "Seed JSON: eventos de cenário (tap/open/tamper) para pré-carregar demos",
+      whyCsv: "Manifest CSV: mapeamento UID/tag para import de lote e rastreabilidade",
+      whyLab: "Demo Lab: console controlado para simular scans e validar o fluxo completo",
+    }
+    : {
+      demoJson: "Descargar seed JSON",
+      demoCsv: "Descargar manifest CSV",
+      launchLab: "Abrir Demo Lab",
+      assetTitle: "Assets de demo por vertical",
+      assetBody: "Usá estos archivos para pilotos técnicos: JSON simula eventos y CSV mapea UID/tag por vertical.",
+      whyJson: "Seed JSON: eventos de escenario (tap/open/tamper) para precargar demos",
+      whyCsv: "Manifest CSV: mapeo UID/tag para importar lotes y trazabilidad operativa",
+      whyLab: "Demo Lab: consola controlada para simular lecturas y validar el flujo end-to-end",
+    };
+
+  const demoPacks = [
+    { key: "wine-secure", label: "Wine secure" },
+    { key: "events-basic", label: "Events basic" },
+    { key: "cosmetics-secure", label: "Cosmetics secure" },
+    { key: "agro-secure", label: "Agro secure" },
+    { key: "pharma-secure", label: "Pharma secure" },
+  ];
 
   return (
     <main>
@@ -58,15 +94,32 @@ export default async function HomePage() {
       <ResellerSection content={content} />
       <BulletSection eyebrow={content.identity.eyebrow} title={content.identity.title} description={content.identity.description} bullets={content.identity.bullets} />
 
-      <section className="container-shell py-6">
-        <div className="grid gap-3 md:grid-cols-3">
-          <a className="rounded-xl border border-white/10 bg-slate-900 p-4 text-sm text-white" href="/demo/demobodega_seed.json" download>{labels.demoJson}</a>
-          <a className="rounded-xl border border-white/10 bg-slate-900 p-4 text-sm text-white" href="/demo/demobodega_manifest.csv" download>{labels.demoCsv}</a>
-          <a className="rounded-xl border border-white/10 bg-slate-900 p-4 text-sm text-white" href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002"}/demo-lab`}>{labels.launchLab}</a>
+      <section className="container-shell py-8">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{labels.assetTitle}</p>
+          <p className="mt-2 text-sm text-slate-300">{labels.assetBody}</p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {demoPacks.map((pack) => (
+              <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+                <p className="text-sm font-semibold text-white">{pack.label}</p>
+                <div className="mt-3 grid gap-2 md:grid-cols-3">
+                  <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/seed.json`} download>{labels.demoJson}</a>
+                  <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/manifest.csv`} download>{labels.demoCsv}</a>
+                  <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200" href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}>{labels.launchLab}</a>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyJson}</div>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyCsv}</div>
+            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyLab}</div>
+          </div>
         </div>
       </section>
 
       <CtaSection content={content} />
+      <DemoRequestSection locale={locale} />
       <SalesChatWidget locale={locale} />
 
       <footer className="site-footer border-t">

@@ -221,8 +221,8 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
               <div className="mt-4 grid h-64 place-items-center rounded-2xl border border-white/10 bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 text-slate-900">
                 {vertical === "wine" ? <div className={`uncork-demo ${stage === "scan" ? "scanning" : ""} ${result === "tampered" ? "tampered" : ""}`} /> : null}
                 {vertical === "events" ? <div className={`wristband-demo ${stage === "scan" ? "scanning" : ""}`} /> : null}
-                {vertical === "cosmetics" ? <div className={`cosmetic-demo ${result === "tampered" ? "tampered" : ""}`} /> : null}
-                {vertical === "agro" ? <div className={`agro-demo ${result === "tampered" ? "tampered" : ""}`} /> : null}
+                {vertical === "cosmetics" ? <div className={`cosmetic-demo ${stage === "scan" ? "scanning" : ""} ${result === "tampered" ? "tampered" : ""}`} /> : null}
+                {vertical === "agro" ? <div className={`agro-demo ${stage === "scan" ? "scanning" : ""} ${result === "tampered" ? "tampered" : ""}`} /> : null}
               </div>
               <p className="mt-3 text-xs text-slate-300">{active.summary}</p>
               <div className="mt-3 flex gap-2">

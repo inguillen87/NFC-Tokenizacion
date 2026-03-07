@@ -321,8 +321,8 @@ export function CtaSection({ content }: { content: Content }) {
         <h2 className="text-3xl font-bold text-white">{content.cta.title}</h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">{content.cta.body}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Button>{content.cta.primary}</Button>
-          <Button variant="secondary">{content.cta.secondary}</Button>
+          <a href="#agendar-demo"><Button>{content.cta.primary}</Button></a>
+          <a href="https://wa.me/5492613168608?text=Hola%20equipo%20nexID%2C%20quiero%20hablar%20con%20ventas" target="_blank" rel="noreferrer"><Button variant="secondary">{content.cta.secondary}</Button></a>
         </div>
       </Card>
     </section>
