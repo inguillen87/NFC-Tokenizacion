@@ -1,4 +1,4 @@
-import { Badge, BrandDot, BrandLockup, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
+import { Badge, BrandDot, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
 import Link from "next/link";
 
 import type { AppLocale } from "@product/config";
@@ -32,8 +32,12 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
             {content.hero.badge}
           </div>
 
-          <div className="mt-5"><BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand" /></div>
-          <h1 className="mt-5 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+            <BrandDot size={10} variant="ripple" theme="dark" />
+            <span>{locale === "en" ? "Live product OS" : locale === "pt-BR" ? "Sistema vivo de produto" : "Sistema vivo de producto"}</span>
+          </div>
+
+          <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
           <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{content.hero.body}</p>
 
           <div className="mt-7 flex flex-wrap gap-3">

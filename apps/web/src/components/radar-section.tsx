@@ -8,6 +8,7 @@ import type { LandingContent } from "../lib/landing-content";
 type RadarCopy = LandingContent["radar"];
 
 type Point = { city: string; province: string; country: string; x: number; y: number; tz: string };
+type MapKey = "mendoza" | "saopaulo" | "santiago" | "cdmx" | "miami" | "santafe";
 type Ping = { id: number; point: Point; vertical: string; detail: string; status: "ok" | "warn"; at: string };
 
 const points: Point[] = [
@@ -17,6 +18,15 @@ const points: Point[] = [
   { city: "Mexico City", province: "CDMX", country: "Mexico", x: 16, y: 48, tz: "GMT-6" },
   { city: "Miami", province: "Florida", country: "USA", x: 22, y: 42, tz: "GMT-5" },
 ];
+
+const pointByKey: Record<MapKey, Point> = {
+  mendoza: points[0],
+  saopaulo: points[1],
+  santiago: points[2],
+  cdmx: points[3],
+  miami: points[4],
+  santafe: { city: "Rosario", province: "Santa Fe", country: "Argentina", x: 26, y: 72, tz: "GMT-3" },
+};
 
 const verticals = ["wine", "events", "cosmetics", "agro", "pharma"];
 
@@ -44,6 +54,32 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
     }, 1300);
     return () => clearInterval(timer);
   }, [locale]);
+
+
+  useEffect(() => {
+    const onScenario = (event: Event) => {
+      const custom = event as CustomEvent<{ mapKey?: MapKey; vertical?: string; label?: string; result?: string }>;
+      const key = custom.detail?.mapKey || "mendoza";
+      const point = pointByKey[key] || pointByKey.mendoza;
+      const now = new Date();
+      const at = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+      const result = custom.detail?.result || "valid";
+      setEvents((prev) => [{
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        point,
+        vertical: custom.detail?.vertical || "wine",
+        detail: custom.detail?.label || "Scenario tap",
+        status: result === "tampered" || result === "duplicate" ? "warn" : "ok",
+        at,
+      }, ...prev.slice(0, 8)]);
+      setScans((v) => v + 1);
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("nexid-scan-event", onScenario as EventListener);
+      return () => window.removeEventListener("nexid-scan-event", onScenario as EventListener);
+    }
+  }, []);
 
   const pulses = useMemo(() => events.slice(0, 6), [events]);
 
@@ -81,6 +117,13 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
               </div>
             ))}
             <div className="absolute bottom-3 left-3 text-[11px] text-slate-400">{radar.mapCaption}</div>
+          </div>
+
+          <div className="relative z-10 mt-3 flex flex-wrap gap-2 text-[11px]">
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-200">valid</span>
+            <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-1 text-amber-200">tamper</span>
+            <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-200">duplicate</span>
+            <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2 py-1 text-violet-200">opened</span>
           </div>
         </Card>
 

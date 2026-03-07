@@ -16,6 +16,7 @@ type Scenario = {
   secureHint: string;
   ntagHint: string;
   eventLabel: string;
+  mapKey: "mendoza" | "cdmx" | "saopaulo" | "santafe";
   passport: string[];
 };
 
@@ -99,6 +100,7 @@ const scenarios: Record<AppLocale, Record<Vertical, Scenario>> = {
       secureHint: "Bottle uncorked — Mendoza",
       ntagHint: "NTAG 424 DNA TT recomendado",
       eventLabel: "Mendoza · AR · 21:14",
+      mapKey: "mendoza",
       passport: ["Varietal: Malbec", "Alcohol: 14.1%", "Barrica: 12 meses", "Servicio: 16°C"],
     },
     events: {
@@ -109,6 +111,7 @@ const scenarios: Record<AppLocale, Record<Vertical, Scenario>> = {
       secureHint: "Wristband verified — VIP",
       ntagHint: "NTAG215 ideal para access low-friction",
       eventLabel: "CDMX · MX · 22:03",
+      mapKey: "cdmx",
       passport: ["Zone: VIP A", "Session: Main Stage", "Status: First entry", "Upsell: Backstage pass"],
     },
     cosmetics: {
@@ -119,6 +122,7 @@ const scenarios: Record<AppLocale, Record<Vertical, Scenario>> = {
       secureHint: "Cap opened — authenticity ok",
       ntagHint: "Secure profile para anti-grey market",
       eventLabel: "São Paulo · BR · 18:40",
+      mapKey: "saopaulo",
       passport: ["Batch: COS-77", "Shelf-life: 11 meses", "Use: Noche", "Skin-safe lot: Verified"],
     },
     agro: {
@@ -129,20 +133,21 @@ const scenarios: Record<AppLocale, Record<Vertical, Scenario>> = {
       secureHint: "Bag opened — chain-of-custody",
       ntagHint: "NTAG 424 TT para tamper sensible",
       eventLabel: "Santa Fe · AR · 07:26",
+      mapKey: "santafe",
       passport: ["Lote: AGR-332", "Origen: Córdoba", "Dosis: 180 ml/ha", "Ficha seguridad: Disponible"],
     },
   },
   "pt-BR": {
-    wine: { title: "Gran Reserva Malbec", subtitle: "Desarrolhamento com circuito", summary: "A rolha sai, o circuito muda estado e o app confirma autenticidade + garrafa aberta.", productHint: "Vinícola / Mendoza", secureHint: "Bottle uncorked — Mendoza", ntagHint: "NTAG 424 DNA TT recomendado", eventLabel: "Mendoza · AR · 21:14", passport: ["Varietal: Malbec", "Álcool: 14.1%", "Barrica: 12 meses", "Serviço: 16°C"] },
-    events: { title: "Pulseira de evento", subtitle: "Tap de pulseira para check-in", summary: "Tap instantâneo na entrada, zona VIP e detecção de tentativa duplicada.", productHint: "Venue / Cidade do México", secureHint: "Wristband verified — VIP", ntagHint: "NTAG215 ideal para access low-friction", eventLabel: "CDMX · MX · 22:03", passport: ["Zona: VIP A", "Sessão: Main Stage", "Status: Primeiro acesso", "Upsell: Backstage"] },
-    cosmetics: { title: "Derm Repair C+", subtitle: "Tampa aberta e selo rompido", summary: "Anel de segurança abre, autenticidade validada e passaporte do produto exibido.", productHint: "Retail / São Paulo", secureHint: "Cap opened — authenticity ok", ntagHint: "Perfil secure para anti-grey market", eventLabel: "São Paulo · BR · 18:40", passport: ["Batch: COS-77", "Shelf-life: 11 meses", "Uso: Noturno", "Lote seguro: Verified"] },
-    agro: { title: "Pacote agro", subtitle: "Bolsa aberta com rastreabilidade", summary: "Fecho rasgado, chip informa lote, origem, cadeia de custódia e guia técnica.", productHint: "Campo / Santa Fe", secureHint: "Bag opened — chain-of-custody", ntagHint: "NTAG 424 TT para tamper sensível", eventLabel: "Santa Fe · AR · 07:26", passport: ["Lote: AGR-332", "Origem: Córdoba", "Dose: 180 ml/ha", "Safety sheet: Disponível"] },
+    wine: { title: "Gran Reserva Malbec", subtitle: "Desarrolhamento com circuito", summary: "A rolha sai, o circuito muda estado e o app confirma autenticidade + garrafa aberta.", productHint: "Vinícola / Mendoza", secureHint: "Bottle uncorked — Mendoza", ntagHint: "NTAG 424 DNA TT recomendado", eventLabel: "Mendoza · AR · 21:14", mapKey: "mendoza", passport: ["Varietal: Malbec", "Álcool: 14.1%", "Barrica: 12 meses", "Serviço: 16°C"] },
+    events: { title: "Pulseira de evento", subtitle: "Tap de pulseira para check-in", summary: "Tap instantâneo na entrada, zona VIP e detecção de tentativa duplicada.", productHint: "Venue / Cidade do México", secureHint: "Wristband verified — VIP", ntagHint: "NTAG215 ideal para access low-friction", eventLabel: "CDMX · MX · 22:03", mapKey: "cdmx", passport: ["Zona: VIP A", "Sessão: Main Stage", "Status: Primeiro acesso", "Upsell: Backstage"] },
+    cosmetics: { title: "Derm Repair C+", subtitle: "Tampa aberta e selo rompido", summary: "Anel de segurança abre, autenticidade validada e passaporte do produto exibido.", productHint: "Retail / São Paulo", secureHint: "Cap opened — authenticity ok", ntagHint: "Perfil secure para anti-grey market", eventLabel: "São Paulo · BR · 18:40", mapKey: "saopaulo", passport: ["Batch: COS-77", "Shelf-life: 11 meses", "Uso: Noturno", "Lote seguro: Verified"] },
+    agro: { title: "Pacote agro", subtitle: "Bolsa aberta com rastreabilidade", summary: "Fecho rasgado, chip informa lote, origem, cadeia de custódia e guia técnica.", productHint: "Campo / Santa Fe", secureHint: "Bag opened — chain-of-custody", ntagHint: "NTAG 424 TT para tamper sensível", eventLabel: "Santa Fe · AR · 07:26", mapKey: "santafe", passport: ["Lote: AGR-332", "Origem: Córdoba", "Dose: 180 ml/ha", "Safety sheet: Disponível"] },
   },
   en: {
-    wine: { title: "Gran Reserva Malbec", subtitle: "Uncork action with tamper circuit", summary: "The cork pops, circuit state changes, and the app confirms authenticity + opened bottle.", productHint: "Winery / Mendoza", secureHint: "Bottle uncorked — Mendoza", ntagHint: "NTAG 424 DNA TT recommended", eventLabel: "Mendoza · AR · 21:14", passport: ["Varietal: Malbec", "Alcohol: 14.1%", "Barrel: 12 months", "Serve: 16°C"] },
-    events: { title: "Festival access wristband", subtitle: "Wristband tap for entry", summary: "Instant entry check, VIP zone info, and duplicate attempt detection.", productHint: "Venue / Mexico City", secureHint: "Wristband verified — VIP", ntagHint: "NTAG215 is ideal for low-friction access", eventLabel: "CDMX · MX · 22:03", passport: ["Zone: VIP A", "Session: Main Stage", "Status: First entry", "Upsell: Backstage pass"] },
-    cosmetics: { title: "Derm Repair C+", subtitle: "Cap unscrewed and seal opened", summary: "Tamper ring opens, authenticity is validated, and batch/shelf-life is shown.", productHint: "Retail / São Paulo", secureHint: "Cap opened — authenticity ok", ntagHint: "Secure profile for anti-grey market", eventLabel: "São Paulo · BR · 18:40", passport: ["Batch: COS-77", "Shelf-life: 11 months", "Usage: Night", "Skin-safe lot: Verified"] },
-    agro: { title: "Agro seed pack", subtitle: "Bag opened with traceability", summary: "Bag is opened, chip reveals lot, origin, custody chain, and safety guidance.", productHint: "Field / Santa Fe", secureHint: "Bag opened — chain-of-custody", ntagHint: "NTAG 424 TT for tamper-sensitive sectors", eventLabel: "Santa Fe · AR · 07:26", passport: ["Lot: AGR-332", "Origin: Córdoba", "Dose: 180 ml/ha", "Safety sheet: Available"] },
+    wine: { title: "Gran Reserva Malbec", subtitle: "Uncork action with tamper circuit", summary: "The cork pops, circuit state changes, and the app confirms authenticity + opened bottle.", productHint: "Winery / Mendoza", secureHint: "Bottle uncorked — Mendoza", ntagHint: "NTAG 424 DNA TT recommended", eventLabel: "Mendoza · AR · 21:14", mapKey: "mendoza", passport: ["Varietal: Malbec", "Alcohol: 14.1%", "Barrel: 12 months", "Serve: 16°C"] },
+    events: { title: "Festival access wristband", subtitle: "Wristband tap for entry", summary: "Instant entry check, VIP zone info, and duplicate attempt detection.", productHint: "Venue / Mexico City", secureHint: "Wristband verified — VIP", ntagHint: "NTAG215 is ideal for low-friction access", eventLabel: "CDMX · MX · 22:03", mapKey: "cdmx", passport: ["Zone: VIP A", "Session: Main Stage", "Status: First entry", "Upsell: Backstage pass"] },
+    cosmetics: { title: "Derm Repair C+", subtitle: "Cap unscrewed and seal opened", summary: "Tamper ring opens, authenticity is validated, and batch/shelf-life is shown.", productHint: "Retail / São Paulo", secureHint: "Cap opened — authenticity ok", ntagHint: "Secure profile for anti-grey market", eventLabel: "São Paulo · BR · 18:40", mapKey: "saopaulo", passport: ["Batch: COS-77", "Shelf-life: 11 months", "Usage: Night", "Skin-safe lot: Verified"] },
+    agro: { title: "Agro seed pack", subtitle: "Bag opened with traceability", summary: "Bag is opened, chip reveals lot, origin, custody chain, and safety guidance.", productHint: "Field / Santa Fe", secureHint: "Bag opened — chain-of-custody", ntagHint: "NTAG 424 TT for tamper-sensitive sectors", eventLabel: "Santa Fe · AR · 07:26", mapKey: "santafe", passport: ["Lot: AGR-332", "Origin: Córdoba", "Dose: 180 ml/ha", "Safety sheet: Available"] },
   },
 };
 
@@ -163,6 +168,16 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
       setResult(next);
       setStage("result");
       setTimeline((prev) => [{ id: Date.now(), label: `${active.eventLabel} · ${next.toUpperCase()}` }, ...prev.slice(0, 5)]);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("nexid-scan-event", {
+          detail: {
+            mapKey: active.mapKey,
+            vertical,
+            label: active.eventLabel,
+            result: next,
+          },
+        }));
+      }
     }, 850);
   };
 
@@ -229,6 +244,11 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
           <div className="mt-3 space-y-3 text-sm text-slate-300">
             <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">{active.secureHint}</div>
             <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-violet-100">{active.ntagHint}</div>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+              <p>Buyer: {locale === "en" ? "I can verify instantly before buying." : locale === "pt-BR" ? "Posso verificar instantaneamente antes de comprar." : "Puedo verificar instantáneamente antes de comprar."}</p>
+              <p className="mt-1">Owner: {locale === "en" ? "I monitor openings, duplicates and regions in real time." : locale === "pt-BR" ? "Monitoro aberturas, duplicados e regiões em tempo real." : "Monitoreo aperturas, duplicados y regiones en tiempo real."}</p>
+              <p className="mt-1">Reseller: {locale === "en" ? "I sell encoded tags + recurring SaaS with clear ROI." : locale === "pt-BR" ? "Vendo tags codificadas + SaaS recorrente com ROI claro." : "Vendo tags codificados + SaaS recurrente con ROI claro."}</p>
+            </div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
               <p className="text-xs uppercase tracking-[0.14em] text-cyan-300">{t.timeline}</p>
               <div className="mt-2 space-y-2">
