@@ -59,16 +59,21 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
         <Card className="hero-panel hero-glow p-5 md:p-6">
           <div className="hero-proof-scene rounded-2xl border border-white/10 bg-slate-950/75 p-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-300">
-              {locale === "en" ? "Live industry proof" : locale === "pt-BR" ? "Prova viva por indústria" : "Prueba viva por industria"}
+              {locale === "en" ? "Live product verification narratives" : locale === "pt-BR" ? "Narrativas vivas de verificação" : "Narrativas vivas de verificación"}
             </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-[0.95fr_1.05fr]">
+            <div className="mt-3 grid gap-3 lg:grid-cols-[1.05fr_0.95fr]">
               <div className="rounded-xl border border-white/10 bg-slate-900/80 p-3">
-                <p className="text-xs text-slate-300">{locale === "en" ? "Physical product + NFC action" : locale === "pt-BR" ? "Produto físico + ação NFC" : "Producto físico + acción NFC"}</p>
+                <p className="text-xs text-slate-300">{locale === "en" ? "Physical action → mobile result" : locale === "pt-BR" ? "Ação física → resultado mobile" : "Acción física → resultado mobile"}</p>
                 <div className="mt-3 flex items-end gap-3">
                   <div className="hero-bottle" />
                   <div className="hero-device" />
                 </div>
-                <p className="mt-2 text-[11px] text-emerald-300">Bottle uncorked · Mendoza · AUTH_OK</p>
+                <div className="mt-2 space-y-1 text-[11px]">
+                  <p className="text-emerald-300">Wine · Bottle uncorked · Mendoza · AUTH_OK</p>
+                  <p className="text-cyan-300">Events · Wristband VIP granted · Córdoba</p>
+                  <p className="text-violet-300">Cosmetics · Seal opened · Santiago</p>
+                  <p className="text-amber-300">Agro · Bag opened · Rosario</p>
+                </div>
               </div>
               <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
                 <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">{pipelineTitle}</p>
@@ -78,13 +83,13 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
                   <div className="hero-meter"><span style={{ width: "91%" }} /></div>
                 </div>
                 <p className="mt-2 text-xs text-slate-300">{pipelineBody}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 px-2 py-2 text-emerald-200">{stats.latency}: <b>&lt;150ms</b></div>
+                  <div className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2 py-2 text-cyan-200">{stats.unitEconomics}: <b>2.4M</b></div>
+                  <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2 py-2 text-violet-200">{stats.businessModel}: <b>5/9</b></div>
+                  <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 px-2 py-2 text-rose-200">Alerts/day: <b>12</b></div>
+                </div>
               </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-              <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 px-2 py-2 text-emerald-200">{stats.latency}: <b>&lt;150ms</b></div>
-              <div className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2 py-2 text-cyan-200">{stats.unitEconomics}: <b>2.4M</b></div>
-              <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2 py-2 text-violet-200">{stats.businessModel}: <b>5/9</b></div>
-              <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 px-2 py-2 text-rose-200">Alerts/day: <b>12</b></div>
             </div>
           </div>
         </Card>
