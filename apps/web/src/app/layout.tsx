@@ -7,7 +7,7 @@ import { HelpBot } from "@product/ui";
 
 
 export const metadata: Metadata = {
-  title: `${siteConfig.productName} | NFC Authentication & Product Intelligence Cloud`,
+  title: `${siteConfig.productName} — Authenticity, Traceability & Digital Product Identity`,
   description: siteConfig.description,
   manifest: "/manifest.webmanifest",
 };

@@ -3,6 +3,7 @@ import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   BulletSection,
   CtaSection,
+  EventsTagPositioningSection,
   HeroSection,
   PlansSection,
   ResellerSection,
@@ -26,8 +27,8 @@ export default async function HomePage() {
   return (
     <main>
       <header className="site-header sticky top-0 z-50 border-b backdrop-blur-xl">
-        <div className="container-shell flex h-24 items-center justify-between gap-4">
-          <BrandLockup size={52} variant="ripple" theme="dark" className="hero-brand" />
+        <div className="container-shell flex h-24 items-center justify-between gap-6 lg:h-28">
+          <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand" />
 
           <nav className="hidden gap-6 text-sm md:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
@@ -40,7 +41,7 @@ export default async function HomePage() {
             <LocaleSwitcher value={locale} options={[...locales]} />
             <ThemeToggle />
             <a href="https://app.nexid.lat/login">
-              <Button>{content.nav.cta}</Button>
+              <Button variant="secondary">{content.nav.cta}</Button>
             </a>
           </div>
         </div>
@@ -51,6 +52,7 @@ export default async function HomePage() {
       <InteractiveDemoSection locale={locale} />
 
       <PlansSection content={content} />
+      <EventsTagPositioningSection locale={locale} />
       <CalculatorSection calculator={content.calculator} locale={locale} />
 
       <ResellerSection content={content} />
