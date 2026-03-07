@@ -111,6 +111,12 @@ export function DemoLab() {
         <a className="rounded-xl border border-white/15 bg-slate-900 p-3 text-sm text-white" href="/" target="_blank" rel="noreferrer">Open tenant dashboard view</a>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <button className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm text-violet-100" onClick={async () => { const r = await call("generate-live-scans", "POST", { count: 30, mode: "mixed" }); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }}>Generate live scans stream</button>
+        <a className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100" href="http://localhost:3000/demo" target="_blank" rel="noreferrer">Open mobile preview</a>
+        <a className="rounded-xl border border-white/15 bg-slate-900 p-3 text-sm text-white" href="/" target="_blank" rel="noreferrer">Open tenant dashboard view</a>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2">
         <label className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">CSV manifest uploader
           <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const csv = await readFile(file); await runAction(() => call("upload-manifest", "POST", { bid: "DEMO-2026-02", csv })); }} />
