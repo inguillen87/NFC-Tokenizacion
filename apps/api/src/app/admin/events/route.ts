@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   const rows = tenant
     ? await sql/*sql*/`
-      SELECT e.id, e.result, e.reason, e.uid_hex, e.created_at, b.bid, tn.slug AS tenant_slug
+      SELECT e.id, e.result, e.reason, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng, b.bid, tn.slug AS tenant_slug
       FROM events e
       JOIN batches b ON b.id = e.batch_id
       JOIN tenants tn ON tn.id = b.tenant_id
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       LIMIT ${Math.min(Math.max(limit, 1), 500)}
     `
     : await sql/*sql*/`
-      SELECT e.id, e.result, e.reason, e.uid_hex, e.created_at, b.bid, tn.slug AS tenant_slug
+      SELECT e.id, e.result, e.reason, e.uid_hex, e.created_at, e.city, e.country_code, e.lat, e.lng, b.bid, tn.slug AS tenant_slug
       FROM events e
       JOIN batches b ON b.id = e.batch_id
       JOIN tenants tn ON tn.id = b.tenant_id
