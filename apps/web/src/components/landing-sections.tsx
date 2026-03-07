@@ -32,7 +32,8 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
             {content.hero.badge}
           </div>
 
-          <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
+          <div className="mt-5"><BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand" /></div>
+          <h1 className="mt-5 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
           <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{content.hero.body}</p>
 
           <div className="mt-7 flex flex-wrap gap-3">
@@ -53,8 +54,8 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
         <Card className="hero-panel hero-glow p-5 md:p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <StatCard label={stats.latency} value="<150ms" delta={stats.latencyDelta} tone="good" />
-            <StatCard label={stats.unitEconomics} value="USD 0.02" delta={stats.economicsDelta} />
-            <StatCard label={stats.businessModel} value="HW + SaaS" delta={stats.businessDelta} tone="good" />
+            <StatCard label={stats.unitEconomics} value="2.4M" delta={locale === "en" ? "Active tags" : locale === "pt-BR" ? "Tags ativos" : "Tags activos"} />
+            <StatCard label={stats.businessModel} value="5 countries / 9 provinces" delta={locale === "en" ? "Fraud alerts: 12/day" : locale === "pt-BR" ? "Alertas fraude: 12/dia" : "Alertas fraude: 12/día"} tone="good" />
             <div className="hero-spark rounded-2xl border border-white/10 bg-slate-900/80 p-4">
               <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">{pipelineTitle}</p>
               <div className="mt-3 space-y-2">
