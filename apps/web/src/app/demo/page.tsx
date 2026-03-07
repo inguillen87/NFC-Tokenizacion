@@ -12,9 +12,9 @@ export default async function PublicDemoPage() {
         <h1 className="text-3xl font-semibold text-white">Winery demo mode</h1>
         <p className="text-slate-300">Bottle simulation, live map/feed, and mobile authenticity states for investor/winery demos.</p>
         <div className="flex flex-wrap gap-3">
-          <a href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}><Button>Use built-in winery demo</Button></a>
+          <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}><Button>Use built-in winery demo</Button></a>
           <a href="/demo/demobodega_seed.json" download><Button variant="secondary">Download demo files</Button></a>
-          <a href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}><Button variant="secondary">Open full Demo Lab</Button></a>
+          <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}><Button variant="secondary">Open full Demo Lab</Button></a>
         </div>
       </section>
       <VerticalDemoLibrary locale={locale} />

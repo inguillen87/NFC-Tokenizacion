@@ -30,7 +30,7 @@ export function DemoControlCenter() {
         <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-left text-sm text-white" onClick={async () => setOutput(JSON.stringify(await post('/scan', { bid: 'DEMO-2026-02', uidHex: '04B7723410E2AD', action: 'retail_scan', city: 'São Paulo', countryCode: 'BR' }), null, 2))}>Simulate replay attack</button>
         <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-left text-sm text-white" onClick={async () => setOutput(JSON.stringify(await post('/scan', { bid: 'DEMO-2026-02', uidHex: '04B7723410E2AE', action: 'uncork', city: 'Mendoza', countryCode: 'AR' }), null, 2))}>Simulate tamper alert</button>
         <a href="/analytics" className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">Open live map</a>
-        <a href={`${process.env.NEXT_PUBLIC_WEB_BASE_URL || 'https://nexid.lat'}`} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">Open mobile preview</a>
+        <a href={`${process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || 'https://nexid.lat'}`} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">Open mobile preview</a>
       </div>
       <pre className="overflow-auto rounded-xl border border-white/10 bg-slate-950 p-4 text-xs text-cyan-200">{output}</pre>
     </div>

@@ -46,24 +46,53 @@ select {
   box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
 }
 
+
 .brand-i-head {
   z-index: 2;
 }
 
-.brand-i-head-orbit {
+.brand-i-stem-origin {
   position: absolute;
-  right: 11%;
-  top: 17%;
-  width: 32%;
-  height: 32%;
-  border: 1px dashed rgba(47, 225, 195, 0.45);
+  right: 24.5%;
+  top: 38%;
+  width: 7%;
+  height: 7%;
   border-radius: 999px;
-  animation: brandOrbit 6s linear infinite;
+  background: rgba(47, 225, 195, 0.35);
+  box-shadow: 0 0 10px rgba(47, 225, 195, 0.65);
 }
 
-@keyframes brandOrbit {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.brand-i-head-orbit {
+  position: absolute;
+  right: 12%;
+  top: 16%;
+  width: 36%;
+  height: 36%;
+  border: 1px dashed rgba(47, 225, 195, 0.5);
+  border-radius: 28%;
+  animation: brandOrbitPulse 3.6s ease-in-out infinite;
+}
+
+.brand-i-head--travel {
+  position: absolute;
+  right: 24.5%;
+  top: 38%;
+  animation: brandDotTraverse 4.2s cubic-bezier(.48,.03,.49,.96) infinite;
+}
+
+@keyframes brandOrbitPulse {
+  0%, 100% { opacity: .75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+@keyframes brandDotTraverse {
+  0% { transform: translate(0, 0) scale(1); }
+  12% { transform: translate(10px, -8px) scale(1.08); }
+  28% { transform: translate(17px, 4px) scale(1.02); }
+  45% { transform: translate(3px, 13px) scale(1.12); }
+  62% { transform: translate(-9px, 3px) scale(1.03); }
+  78% { transform: translate(-2px, -10px) scale(1.08); }
+  100% { transform: translate(0, 0) scale(1); }
 }
 
 .brand-dot {

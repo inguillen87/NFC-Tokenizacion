@@ -28,8 +28,9 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
   const heroTitle = locale === "en" ? "Every physical product can prove it is original." : locale === "pt-BR" ? "Cada produto físico pode provar que é original." : "Cada producto físico puede probar que es original.";
   const heroBody = locale === "en" ? "nexID combines hardware, software and API to verify, trace and monetize physical products in real time—from a VIP wristband to a premium wine bottle." : locale === "pt-BR" ? "nexID une hardware, software e API para verificar, rastrear e monetizar produtos físicos em tempo real — de uma pulseira VIP a uma garrafa premium." : "nexID une hardware, software y API para verificar, trazar y monetizar productos físicos en tiempo real: desde una pulsera VIP hasta una botella premium.";
   const demoCta = locale === "en" ? "View interactive demo" : locale === "pt-BR" ? "Ver demo interativa" : "Ver demo interactiva";
-  const samplesCta = locale === "en" ? "Request samples" : locale === "pt-BR" ? "Pedir amostras" : "Pedir muestras";
+  const samplesCta = locale === "en" ? "Request demo" : locale === "pt-BR" ? "Solicitar demo" : "Pedir demo";
   const resellerCta = locale === "en" ? "Become a reseller" : locale === "pt-BR" ? "Quero ser reseller" : "Quiero ser reseller";
+  const salesCta = locale === "en" ? "Talk to sales" : locale === "pt-BR" ? "Falar com vendas" : "Hablar con ventas";
   return (
     <section className="container-shell py-16 md:py-24">
       <div className="hero-shell grid gap-10 rounded-[2rem] p-6 md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
@@ -48,8 +49,9 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
 
           <div className="mt-7 flex flex-wrap gap-3">
             <a href="#demo"><Button>{demoCta}</Button></a>
-            <a href="https://wa.me/5492613168608?text=Hola%20quiero%20muestras%20nexID" target="_blank" rel="noreferrer"><Button variant="secondary">{samplesCta}</Button></a>
-            <Link href="/resellers"><Button variant="secondary">{resellerCta}</Button></Link>
+            <Link href="/?contact=demo#contact-modal"><Button variant="secondary">{samplesCta}</Button></Link>
+            <Link href="/?contact=reseller#contact-modal"><Button variant="secondary">{resellerCta}</Button></Link>
+            <Link href="/?contact=sales#contact-modal"><Button variant="secondary">{salesCta}</Button></Link>
           </div>
 
           <div className="mt-7 flex flex-wrap gap-2">
@@ -321,8 +323,8 @@ export function CtaSection({ content }: { content: Content }) {
         <h2 className="text-3xl font-bold text-white">{content.cta.title}</h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">{content.cta.body}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <a href="#agendar-demo"><Button>{content.cta.primary}</Button></a>
-          <a href="https://wa.me/5492613168608?text=Hola%20equipo%20nexID%2C%20quiero%20hablar%20con%20ventas" target="_blank" rel="noreferrer"><Button variant="secondary">{content.cta.secondary}</Button></a>
+          <Link href="/?contact=demo#contact-modal"><Button>{content.cta.primary}</Button></Link>
+          <Link href="/?contact=sales#contact-modal"><Button variant="secondary">{content.cta.secondary}</Button></Link>
         </div>
       </Card>
     </section>
