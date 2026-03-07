@@ -40,11 +40,20 @@ export async function POST(req: Request) {
 
   if (!contact) return json({ ok: false, reason: "contact required" }, 400);
 
-  const rows = await sql/*sql*/`
-    INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes)
-    VALUES (${locale}, ${contact}, ${name}, ${email}, ${phone}, ${company}, ${country}, ${vertical}, ${roleInterest}, ${estimatedVolume}, ${tagType}, ${volume}, ${source}, 'new', ${message}, ${notes})
-    RETURNING *
-  `;
+  try {
+    const rows = await sql/*sql*/`
+      INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes)
+      VALUES (${locale}, ${contact}, ${name}, ${email}, ${phone}, ${company}, ${country}, ${vertical}, ${roleInterest}, ${estimatedVolume}, ${tagType}, ${volume}, ${source}, 'new', ${message}, ${notes})
+      RETURNING *
+    `;
 
-  return json(rows[0], 201);
+    return json(rows[0], 201);
+  } catch {
+    const rows = await sql/*sql*/`
+      INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
+      VALUES (${locale}, ${contact}, ${company}, ${country}, ${vertical}, ${tagType}, ${volume}, ${source}, 'new', ${notes})
+      RETURNING *
+    `;
+    return json(rows[0], 201);
+  }
 }
