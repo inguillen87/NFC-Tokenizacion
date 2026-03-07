@@ -38,6 +38,11 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
             <span>{locale === "en" ? "Live product OS" : locale === "pt-BR" ? "Sistema vivo de produto" : "Sistema vivo de producto"}</span>
           </div>
 
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+            <BrandDot size={10} variant="ripple" theme="dark" />
+            <span>{locale === "en" ? "Live product OS" : locale === "pt-BR" ? "Sistema vivo de produto" : "Sistema vivo de producto"}</span>
+          </div>
+
           <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
           <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{content.hero.body}</p>
 
