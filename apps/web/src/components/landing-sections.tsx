@@ -57,39 +57,34 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
         </div>
 
         <Card className="hero-panel hero-glow p-5 md:p-6">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-emerald-200">{stats.latency}</p>
-                <p className="mt-1 text-2xl font-bold text-emerald-100">&lt;150ms</p>
+          <div className="hero-proof-scene rounded-2xl border border-white/10 bg-slate-950/75 p-4">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-300">
+              {locale === "en" ? "Live industry proof" : locale === "pt-BR" ? "Prova viva por indústria" : "Prueba viva por industria"}
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[0.95fr_1.05fr]">
+              <div className="rounded-xl border border-white/10 bg-slate-900/80 p-3">
+                <p className="text-xs text-slate-300">{locale === "en" ? "Physical product + NFC action" : locale === "pt-BR" ? "Produto físico + ação NFC" : "Producto físico + acción NFC"}</p>
+                <div className="mt-3 flex items-end gap-3">
+                  <div className="hero-bottle" />
+                  <div className="hero-device" />
+                </div>
+                <p className="mt-2 text-[11px] text-emerald-300">Bottle uncorked · Mendoza · AUTH_OK</p>
               </div>
               <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">{stats.unitEconomics}</p>
-                <p className="mt-1 text-2xl font-bold text-cyan-100">2.4M</p>
-                <p className="text-[11px] text-cyan-200/80">{locale === "en" ? "Active tags" : locale === "pt-BR" ? "Tags ativos" : "Tags activos"}</p>
-              </div>
-              <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-violet-200">{stats.businessModel}</p>
-                <p className="mt-1 text-xl font-bold text-violet-100">5 countries / 9 provinces</p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/75 p-3">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">{pipelineTitle}</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">{pipelineTitle}</p>
+                <div className="mt-2 space-y-2">
                   <div className="hero-meter"><span style={{ width: "82%" }} /></div>
                   <div className="hero-meter"><span style={{ width: "68%" }} /></div>
                   <div className="hero-meter"><span style={{ width: "91%" }} /></div>
-                  <p className="text-xs text-slate-400">{pipelineBody}</p>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-slate-950/70 p-2 text-xs">
-                  <p className="text-slate-300">Mendoza, Argentina · 21:14 · AUTH_OK</p>
-                  <p className="mt-1 text-slate-300">São Paulo, Brazil · 18:40 · DUPLICATE_BLOCKED</p>
-                  <p className="mt-1 text-slate-300">Miami-Dade, USA · 17:29 · EXPORT_SCAN</p>
-                  <p className="mt-1 text-rose-300">Fraud alerts: 12/day</p>
-                </div>
+                <p className="mt-2 text-xs text-slate-300">{pipelineBody}</p>
               </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+              <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 px-2 py-2 text-emerald-200">{stats.latency}: <b>&lt;150ms</b></div>
+              <div className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2 py-2 text-cyan-200">{stats.unitEconomics}: <b>2.4M</b></div>
+              <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2 py-2 text-violet-200">{stats.businessModel}: <b>5/9</b></div>
+              <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 px-2 py-2 text-rose-200">Alerts/day: <b>12</b></div>
             </div>
           </div>
         </Card>

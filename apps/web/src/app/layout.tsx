@@ -5,9 +5,11 @@ import "./globals.css";
 import { resolveLocale, siteConfig } from "@product/config";
 import { HelpBot } from "@product/ui";
 
+
 export const metadata: Metadata = {
   title: `${siteConfig.productName} | NFC Authentication & Product Intelligence Cloud`,
   description: siteConfig.description,
+  manifest: "/manifest.webmanifest",
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

@@ -208,6 +208,13 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
               ))}
             </svg>
 
+            <div className="absolute left-[14%] top-[28%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">USA</div>
+            <div className="absolute left-[12%] top-[40%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Mexico</div>
+            <div className="absolute left-[18%] top-[52%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Colombia</div>
+            <div className="absolute left-[23%] top-[62%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Peru</div>
+            <div className="absolute left-[24%] top-[74%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Argentina</div>
+            <div className="absolute left-[34%] top-[70%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Brazil</div>
+            <div className="absolute left-[30%] top-[64%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Chile</div>
             {pulses.map((ev) => (
               <div key={ev.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${ev.point.x}%`, top: `${ev.point.y}%` }}>
                 <span className="relative flex h-3.5 w-3.5">
@@ -232,7 +239,7 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.logsTitle}</p>
           <div className="mt-3 space-y-2">
             {events.map((ev) => (
-              <div key={ev.id} className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs">
+              <div key={ev.id} className="rounded-lg border border-white/15 bg-slate-900/75 p-2 text-xs shadow-[0_6px_20px_rgba(2,6,23,.35)]">
                 <div className="flex items-center justify-between text-slate-300">
                   <span>{txt.iconLabel[ev.vertical]}</span>
                   <span className="font-mono text-slate-400">{ev.at} · {ev.point.tz}</span>
