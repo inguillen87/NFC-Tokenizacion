@@ -1,4 +1,4 @@
-import { Badge, BrandDot, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
+import { Badge, BrandDot, Button, Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
 import Link from "next/link";
 
 import type { AppLocale } from "@product/config";
@@ -24,12 +24,18 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
   const proofItems = [...new Set(proofByLocale[locale] || proofByLocale["es-AR"])]
   const pipelineTitle = locale === "en" ? "What happens after each tap" : locale === "pt-BR" ? "O que acontece após cada tap" : "Qué pasa después de cada tap";
   const pipelineBody = locale === "en" ? "We verify, show value, and suggest the next sale action." : locale === "pt-BR" ? "Validamos, mostramos valor e sugerimos a próxima ação comercial." : "Validamos, mostramos valor y sugerimos la próxima acción comercial.";
+  const badgeText = locale === "en" ? "nexID authentication operating cloud" : locale === "pt-BR" ? "nexID cloud operacional de autenticação" : "nexID cloud operativo de autenticación";
   return (
     <section className="container-shell py-16 md:py-24">
       <div className="hero-shell grid gap-10 rounded-[2rem] p-6 md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            {content.hero.badge}
+            {badgeText}
+          </div>
+
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+            <BrandDot size={10} variant="ripple" theme="dark" />
+            <span>{locale === "en" ? "Live product OS" : locale === "pt-BR" ? "Sistema vivo de produto" : "Sistema vivo de producto"}</span>
           </div>
 
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
@@ -56,18 +62,39 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
         </div>
 
         <Card className="hero-panel hero-glow p-5 md:p-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard label={stats.latency} value="<150ms" delta={stats.latencyDelta} tone="good" />
-            <StatCard label={stats.unitEconomics} value="2.4M" delta={locale === "en" ? "Active tags" : locale === "pt-BR" ? "Tags ativos" : "Tags activos"} />
-            <StatCard label={stats.businessModel} value="5 countries / 9 provinces" delta={locale === "en" ? "Fraud alerts: 12/day" : locale === "pt-BR" ? "Alertas fraude: 12/dia" : "Alertas fraude: 12/día"} tone="good" />
-            <div className="hero-spark rounded-2xl border border-white/10 bg-slate-900/80 p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">{pipelineTitle}</p>
-              <div className="mt-3 space-y-2">
-                <div className="hero-meter"><span style={{ width: "82%" }} /></div>
-                <div className="hero-meter"><span style={{ width: "68%" }} /></div>
-                <div className="hero-meter"><span style={{ width: "91%" }} /></div>
+          <div className="hero-proof-scene rounded-2xl border border-white/10 bg-slate-950/75 p-4">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-300">
+              {locale === "en" ? "Live product verification narratives" : locale === "pt-BR" ? "Narrativas vivas de verificação" : "Narrativas vivas de verificación"}
+            </p>
+            <div className="mt-3 grid gap-3 lg:grid-cols-[1.05fr_0.95fr]">
+              <div className="rounded-xl border border-white/10 bg-slate-900/80 p-3">
+                <p className="text-xs text-slate-300">{locale === "en" ? "Physical action → mobile result" : locale === "pt-BR" ? "Ação física → resultado mobile" : "Acción física → resultado mobile"}</p>
+                <div className="mt-3 flex items-end gap-3">
+                  <div className="hero-bottle" />
+                  <div className="hero-device" />
+                </div>
+                <div className="mt-2 space-y-1 text-[11px]">
+                  <p className="text-emerald-300">Wine · Bottle uncorked · Mendoza · AUTH_OK</p>
+                  <p className="text-cyan-300">Events · Wristband VIP granted · Córdoba</p>
+                  <p className="text-violet-300">Cosmetics · Seal opened · Santiago</p>
+                  <p className="text-amber-300">Agro · Bag opened · Rosario</p>
+                </div>
               </div>
-              <p className="mt-3 text-xs text-slate-400">{pipelineBody}</p>
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">{pipelineTitle}</p>
+                <div className="mt-2 space-y-2">
+                  <div className="hero-meter"><span style={{ width: "82%" }} /></div>
+                  <div className="hero-meter"><span style={{ width: "68%" }} /></div>
+                  <div className="hero-meter"><span style={{ width: "91%" }} /></div>
+                </div>
+                <p className="mt-2 text-xs text-slate-300">{pipelineBody}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 px-2 py-2 text-emerald-200">{stats.latency}: <b>&lt;150ms</b></div>
+                  <div className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2 py-2 text-cyan-200">{stats.unitEconomics}: <b>2.4M</b></div>
+                  <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2 py-2 text-violet-200">{stats.businessModel}: <b>5/9</b></div>
+                  <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 px-2 py-2 text-rose-200">Alerts/day: <b>12</b></div>
+                </div>
+              </div>
             </div>
           </div>
         </Card>

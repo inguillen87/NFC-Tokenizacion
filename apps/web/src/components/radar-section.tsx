@@ -184,33 +184,47 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
             <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 p-2 text-emerald-200">{txt.kpiRegions}: <b>11</b></div>
           </div>
 
-          <div className="relative z-10 mt-4 h-[340px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/85">
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(30,41,59,.45)_1px,transparent_1px),linear-gradient(to_bottom,rgba(30,41,59,.45)_1px,transparent_1px)] bg-[size:34px_34px]" />
+          <div className="relative z-10 mt-4 h-[360px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/85">
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(30,41,59,.38)_1px,transparent_1px),linear-gradient(to_bottom,rgba(30,41,59,.38)_1px,transparent_1px)] bg-[size:34px_34px]" />
 
-            <svg viewBox="0 0 1000 500" className="absolute inset-0 h-full w-full opacity-55" aria-hidden>
+            <svg viewBox="0 0 1000 500" className="absolute inset-0 h-full w-full opacity-95" aria-hidden>
+              <g fill="rgba(56,189,248,0.14)" stroke="rgba(56,189,248,0.42)" strokeWidth="1.2">
+                <path d="M88 162l74-32 95 18 46 34 42 34-13 45-67 42-95 9-52-26-38-44z" />
+                <path d="M228 316l69 16 39 42 26 81-43 22-58-12-31-61z" />
+                <path d="M356 148l86-30 128 10 111 22 95-8 74 40-9 43-79 21-43 37-98-5-72 33-56 14-84-19-49-46z" />
+                <path d="M532 309l73-17 72 20 48 41-12 56-79 23-64-28-42-49z" />
+                <path d="M760 130l58-22 86 10 52 31-13 39-77 20-67-18-38-29z" />
+              </g>
               {routeArcs.map(([from, to], i) => (
                 <path
                   key={`${from}-${to}`}
                   d={`M ${points[from].x * 10} ${points[from].y * 5} Q ${(points[from].x * 10 + points[to].x * 10) / 2} ${(points[from].y * 5 + points[to].y * 5) / 2 - 80} ${points[to].x * 10} ${points[to].y * 5}`}
                   fill="none"
-                  stroke="rgba(34,211,238,0.35)"
-                  strokeWidth="1.8"
+                  stroke="rgba(34,211,238,0.45)"
+                  strokeWidth="2"
                   strokeDasharray="6 7"
                   style={{ animation: `arcFlow 3.2s linear ${i * 0.15}s infinite` }}
                 />
               ))}
             </svg>
 
+            <div className="absolute left-[14%] top-[28%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">USA</div>
+            <div className="absolute left-[12%] top-[40%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Mexico</div>
+            <div className="absolute left-[18%] top-[52%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Colombia</div>
+            <div className="absolute left-[23%] top-[62%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Peru</div>
+            <div className="absolute left-[24%] top-[74%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Argentina</div>
+            <div className="absolute left-[34%] top-[70%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Brazil</div>
+            <div className="absolute left-[30%] top-[64%] rounded bg-slate-900/85 px-2 py-0.5 text-[10px] text-slate-100">Chile</div>
             {pulses.map((ev) => (
               <div key={ev.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${ev.point.x}%`, top: `${ev.point.y}%` }}>
-                <span className="relative flex h-3 w-3">
+                <span className="relative flex h-3.5 w-3.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-70" />
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-cyan-200 shadow-[0_0_15px_rgba(34,211,238,.9)]" />
+                  <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.95)]" />
                 </span>
-                <div className="mt-1 rounded-md border border-cyan-300/30 bg-slate-900/90 px-2 py-1 text-[10px] text-slate-100">{ev.point.city} · {ev.point.province}</div>
+                <div className="mt-1 rounded-md border border-cyan-300/40 bg-slate-900/95 px-2 py-1 text-[10px] text-slate-100">{ev.point.city} · {ev.point.province}</div>
               </div>
             ))}
-            <div className="absolute bottom-3 left-3 text-[11px] text-slate-400">{radar.mapCaption}</div>
+            <div className="absolute bottom-3 left-3 text-[11px] text-slate-300">{radar.mapCaption}</div>
           </div>
 
           <div className="relative z-10 mt-3 flex flex-wrap gap-2 text-[11px]">
@@ -225,7 +239,7 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{radar.logsTitle}</p>
           <div className="mt-3 space-y-2">
             {events.map((ev) => (
-              <div key={ev.id} className="rounded-lg border border-white/10 bg-white/5 p-2 text-xs">
+              <div key={ev.id} className="rounded-lg border border-white/15 bg-slate-900/75 p-2 text-xs shadow-[0_6px_20px_rgba(2,6,23,.35)]">
                 <div className="flex items-center justify-between text-slate-300">
                   <span>{txt.iconLabel[ev.vertical]}</span>
                   <span className="font-mono text-slate-400">{ev.at} · {ev.point.tz}</span>

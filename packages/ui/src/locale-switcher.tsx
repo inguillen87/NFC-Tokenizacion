@@ -14,11 +14,11 @@ export function LocaleSwitcher({ value, options }: { value: string; options: str
   const searchParams = useSearchParams();
 
   return (
-    <label className="locale-switcher inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-2 py-1 text-xs text-slate-200">
-      <span aria-hidden>🌐</span>
+    <label className="locale-switcher inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">
+      <span aria-hidden className="locale-switcher__icon">◎</span>
       <select
         value={value}
-        className="bg-transparent text-xs"
+        className="bg-transparent pr-1 text-xs font-semibold"
         aria-label="Seleccionar idioma"
         onChange={(event) => {
           const next = event.target.value;

@@ -26,8 +26,8 @@ export default async function HomePage() {
   return (
     <main>
       <header className="site-header sticky top-0 z-50 border-b backdrop-blur-xl">
-        <div className="container-shell flex h-20 items-center justify-between gap-4">
-          <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand" />
+        <div className="container-shell flex h-24 items-center justify-between gap-4">
+          <BrandLockup size={52} variant="ripple" theme="dark" className="hero-brand" />
 
           <nav className="hidden gap-6 text-sm md:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
