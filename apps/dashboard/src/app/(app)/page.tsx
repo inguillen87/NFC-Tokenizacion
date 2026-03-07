@@ -1,4 +1,4 @@
-import { Card, SectionHeading } from "@product/ui";
+import { Badge, Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
 import { AdminActionForms } from "../../components/admin-action-forms";
 import { AnalyticsPanels } from "../../components/analytics-panels";
 import { DataTable } from "../../components/data-table";
@@ -21,6 +21,19 @@ async function getOverviewRows() {
   }
 }
 
+async function getLiveEvents() {
+  try {
+    const response = await fetch(`${API_BASE}/admin/events?limit=18`, {
+      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return [] as Array<Record<string, unknown>>;
+    return response.json();
+  } catch {
+    return [] as Array<Record<string, unknown>>;
+  }
+}
+
 function resolveTenantStatus(scans: number, duplicates: number, tamper: number) {
   if (scans === 0) return "pending";
   const riskRatio = scans > 0 ? (duplicates + tamper) / scans : 0;
@@ -32,7 +45,7 @@ function resolveTenantStatus(scans: number, duplicates: number, tamper: number) 
 export default async function DashboardHome() {
   const { locale, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
-  const overviewRaw = await getOverviewRows();
+  const [overviewRaw, liveEvents] = await Promise.all([getOverviewRows(), getLiveEvents()]);
 
   const overviewRows = overviewRaw.map((row) => {
     const scans = Number(row.scans || 0);
@@ -47,11 +60,52 @@ export default async function DashboardHome() {
     };
   });
 
+  const mapPoints = liveEvents
+    .filter((row) => typeof row.lat === "number" && typeof row.lng === "number")
+    .slice(0, 10)
+    .map((row) => ({
+      city: String(row.city || row.reason || "Unknown"),
+      country: String(row.country_code || "--"),
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      scans: 1,
+      risk: String(row.result || "VALID") === "VALID" ? 0 : 1,
+    }));
+
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.overview} title={copy.pages.overview.title} description={copy.pages.overview.description} />
 
       <AnalyticsPanels kpis={t.dashboard.kpis} extra={copy.analytics} />
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Live operations feed</h2>
+            <Badge tone="cyan">Mission control</Badge>
+          </div>
+          <div className="mt-4 space-y-2">
+            {liveEvents.slice(0, 8).map((event) => {
+              const result = String(event.result || "VALID");
+              const tone = result === "VALID" ? "text-emerald-300" : "text-rose-300";
+              return (
+                <div key={String(event.id)} className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm">
+                  <p className={`font-semibold ${tone}`}>{result}</p>
+                  <p className="mt-1 text-slate-300">
+                    {String(event.tenant_slug || "-")} · {String(event.bid || "-")} · {String(event.uid_hex || "-")}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <WorldMapPlaceholder
+          title="Live scan map"
+          subtitle="Geolocated scans from tenants, demo packs and reseller simulations"
+          points={mapPoints}
+        />
+      </div>
 
       <ModuleGrid
         actionLabel={copy.shell.openModule}
@@ -87,6 +141,14 @@ export default async function DashboardHome() {
       <Card className="p-6">
         <h2 className="text-lg font-semibold text-white">{t.dashboard.roleBasedOps}</h2>
         <p className="mt-2 text-sm text-slate-400">{copy.pages.batches.description}</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          {Object.entries(copy.roles).map(([roleKey, roleLabel]) => (
+            <div key={roleKey} className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-xs text-slate-300">
+              <p className="font-semibold uppercase tracking-[0.12em] text-cyan-200">{roleLabel}</p>
+              <p className="mt-2">Contextual permissions visible across tenants, CRM and demo orchestration.</p>
+            </div>
+          ))}
+        </div>
       </Card>
 
       <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} />
