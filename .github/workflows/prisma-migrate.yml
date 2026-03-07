@@ -15,4 +15,5 @@ jobs:
       - run: npm install
       - run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
         env:
-          POSTGRES_PRISMA_URL: ${{ secrets.POSTGRES_PRISMA_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.POSTGRES_PRISMA_URL }}
+          POSTGRES_PRISMA_URL: ${{ secrets.POSTGRES_PRISMA_URL || secrets.DATABASE_URL }}
