@@ -149,7 +149,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
         </div>
       ) : null}
 
-      <button onClick={() => setOpen((prev) => !prev)} className="ml-auto flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/40 bg-cyan-500/20 text-2xl shadow-[0_0_30px_rgba(47,225,195,.35)]">
+      <button onClick={() => setOpen((prev) => !prev)} className="helpbot-toggle ml-auto flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/40 bg-cyan-500/20 text-2xl shadow-[0_0_30px_rgba(47,225,195,.35)]">
         💬
       </button>
     </div>

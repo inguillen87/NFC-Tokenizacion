@@ -34,7 +34,7 @@ export default async function ResellersPage() {
       <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description="CRM lite: leads, tickets y pedidos para super admin." />
 
       <DataTable
-        title="Leads inbox"
+        title="Leads inbox ⓘ"
         columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "volume", label: "Volume" }]}
         rows={leads.map((item: Record<string, unknown>) => ({
           contact: String(item.contact || "-"),
@@ -53,7 +53,7 @@ export default async function ResellersPage() {
       />
 
       <DataTable
-        title="Tickets"
+        title="Tickets ⓘ"
         columns={[{ key: "contact", label: "Contact" }, { key: "title", label: "Title" }, { key: "status", label: "Status" }]}
         rows={tickets.map((item: Record<string, unknown>) => ({
           contact: String(item.contact || "-"),
@@ -70,7 +70,7 @@ export default async function ResellersPage() {
       />
 
       <DataTable
-        title="Orders / Chip requests"
+        title="Orders / Chip requests ⓘ"
         columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "volume", label: "Volume" }]}
         rows={orders.map((item: Record<string, unknown>) => ({
           contact: String(item.contact || "-"),

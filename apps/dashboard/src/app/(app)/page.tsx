@@ -131,6 +131,12 @@ export default async function DashboardHome() {
         />
       </div>
 
+
+      <Card className="p-4 text-xs text-slate-300">
+        <p className="font-semibold text-cyan-200">ⓘ Mission control help</p>
+        <p className="mt-2">Tenants: organización comercial. Batches: lotes de tags. Tags: unidades emitidas. Events: taps/alertas en vivo. Leads/Tickets/Orders: pipeline CRM-lite para seguimiento de negocio.</p>
+      </Card>
+
       <ModuleGrid
         actionLabel={copy.shell.openModule}
         modules={[

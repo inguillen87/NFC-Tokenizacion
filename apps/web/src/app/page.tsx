@@ -58,11 +58,12 @@ export default async function HomePage() {
     };
 
   const demoPacks = [
-    { key: "wine-secure", label: "Wine secure" },
-    { key: "events-basic", label: "Events basic" },
-    { key: "cosmetics-secure", label: "Cosmetics secure" },
-    { key: "agro-secure", label: "Agro secure" },
-    { key: "pharma-secure", label: "Pharma secure" },
+    { key: "wine-secure", label: "Wine secure", tag: "NTAG 424 DNA TT", sim: "Bottle passport + uncork/tamper flow" },
+    { key: "events-basic", label: "Events basic", tag: "NTAG215", sim: "Wristband access + duplicate gate control" },
+    { key: "cosmetics-secure", label: "Cosmetics secure", tag: "NTAG 424 DNA TT", sim: "Cap opening + authenticity state" },
+    { key: "agro-secure", label: "Agro secure", tag: "NTAG 424 DNA TT", sim: "Bag tear + lot/origin validation" },
+    { key: "pharma-secure", label: "Pharma secure", tag: "NTAG 424 DNA TT", sim: "Cold-chain and anti-counterfeit checks" },
+    { key: "luxury-basic", label: "Luxury basic", tag: "NTAG215", sim: "Brand story + ownership activation" },
   ];
 
   return (
@@ -106,7 +107,8 @@ export default async function HomePage() {
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {demoPacks.map((pack) => (
               <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
-                <p className="text-sm font-semibold text-white">{pack.label}</p>
+                <p className="text-sm font-semibold text-white">{pack.label} <span className="text-cyan-300">· {pack.tag}</span></p>
+                <p className="mt-1 text-xs text-slate-300">{pack.sim}</p>
                 <div className="mt-3 grid gap-2 md:grid-cols-3">
                   <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/seed.json`} download>{labels.demoJson}</a>
                   <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/manifest.csv`} download>{labels.demoCsv}</a>

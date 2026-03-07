@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type AppLocale = "es-AR" | "pt-BR" | "en";
 
-type Intent = "demo" | "sales" | "reseller";
+type Intent = "demo" | "sales" | "reseller" | "quote";
 
 type LeadForm = {
   name: string;
@@ -24,6 +24,7 @@ const copy: Record<AppLocale, Record<string, string>> = {
     demo: "Pedir demo",
     sales: "Hablar con ventas",
     reseller: "Quiero ser reseller",
+    quote: "Solicitar presupuesto",
     subtitle: "Completá tus datos y guardamos tu lead en el CRM super-admin.",
     submit: "Enviar",
     close: "Cerrar",
@@ -34,6 +35,7 @@ const copy: Record<AppLocale, Record<string, string>> = {
     demo: "Solicitar demo",
     sales: "Falar com vendas",
     reseller: "Quero ser reseller",
+    quote: "Solicitar orçamento",
     subtitle: "Preencha os dados para registrar o lead no CRM super-admin.",
     submit: "Enviar",
     close: "Fechar",
@@ -44,6 +46,7 @@ const copy: Record<AppLocale, Record<string, string>> = {
     demo: "Request demo",
     sales: "Talk to sales",
     reseller: "Become reseller",
+    quote: "Request quote",
     subtitle: "Share your details and we store your lead in super-admin CRM.",
     submit: "Submit",
     close: "Close",
@@ -62,7 +65,7 @@ export function CommercialContactModal() {
   const router = useRouter();
   const pathname = usePathname();
   const intent = search.get("contact") as Intent | null;
-  const open = intent === "demo" || intent === "sales" || intent === "reseller";
+  const open = intent === "demo" || intent === "sales" || intent === "reseller" || intent === "quote";
   const locale = getLocale();
   const t = copy[locale];
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
@@ -75,6 +78,7 @@ export function CommercialContactModal() {
   const source = useMemo(() => {
     if (intent === "reseller") return "reseller_cta";
     if (intent === "sales") return "hero_cta";
+    if (intent === "quote") return "pricing_cta";
     return "demo_request";
   }, [intent]);
 

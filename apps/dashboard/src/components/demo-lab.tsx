@@ -95,6 +95,15 @@ export function DemoLab() {
         </select>
       </Card>
 
+
+      <Card className="p-4 text-xs text-slate-300">
+        <p>ⓘ <b>CSV</b>: manifiesto UID/tag para importar lotes.</p>
+        <p className="mt-1">ⓘ <b>JSON</b>: metadata rica de producto para pasaporte digital.</p>
+        <p className="mt-1">ⓘ <b>Built-in demo pack</b>: carga un escenario prearmado (vertical + batch).</p>
+        <p className="mt-1">ⓘ <b>Generate Demo</b>: genera eventos simulados para feed/mapa.</p>
+        <p className="mt-1">ⓘ <b>Simulate NFC Tap</b>: ejecuta un tap puntual para test de estados.</p>
+      </Card>
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("use-pack", "POST", { pack }))} disabled={pending}>Use Built-in Demo Pack</button>
         <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("generate-live-scans", "POST", { count: 10, mode: "valid" }))} disabled={pending}>Generate Demo</button>
@@ -108,12 +117,6 @@ export function DemoLab() {
       <div className="grid gap-3 md:grid-cols-3">
         <button className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm text-violet-100" onClick={() => runAction(() => call("generate-live-scans", "POST", { count: 30, mode: "mixed" }))} disabled={pending}>Generate live scans stream</button>
         <a className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100" href="https://nexid.lat/demo" target="_blank" rel="noreferrer">Open mobile preview</a>
-        <a className="rounded-xl border border-white/15 bg-slate-900 p-3 text-sm text-white" href="/" target="_blank" rel="noreferrer">Open tenant dashboard view</a>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        <button className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm text-violet-100" onClick={async () => { const r = await call("generate-live-scans", "POST", { count: 30, mode: "mixed" }); setOut(JSON.stringify(r, null, 2)); await refreshSummary(); }}>Generate live scans stream</button>
-        <a className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100" href="http://localhost:3000/demo" target="_blank" rel="noreferrer">Open mobile preview</a>
         <a className="rounded-xl border border-white/15 bg-slate-900 p-3 text-sm text-white" href="/" target="_blank" rel="noreferrer">Open tenant dashboard view</a>
       </div>
 
