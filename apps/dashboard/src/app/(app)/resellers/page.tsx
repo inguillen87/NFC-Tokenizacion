@@ -3,7 +3,7 @@ import { DataTable } from "../../../components/data-table";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3003";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
 async function adminGet(path: string) {
   try {

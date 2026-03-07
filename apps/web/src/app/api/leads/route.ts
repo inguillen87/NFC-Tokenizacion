@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const body = await req.text();
 
   try {
-    const response = await fetch(`${API_BASE}/assistant/chat`, {
+    const response = await fetch(`${API_BASE}/admin/leads`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
@@ -24,13 +24,6 @@ export async function POST(req: Request) {
       headers: { "Content-Type": response.headers.get("content-type") || "application/json" },
     });
   } catch {
-    return NextResponse.json(
-      {
-        answer: "Assistant backend unavailable. Please retry in a few seconds.",
-        intent: "error",
-        citations: [],
-      },
-      { status: 503 },
-    );
+    return NextResponse.json({ ok: false, reason: "lead backend unavailable" }, { status: 503 });
   }
 }

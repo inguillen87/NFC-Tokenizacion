@@ -1,5 +1,6 @@
-import { Badge, BrandDot, BrandLockup, Button, Card, SectionHeading, StatCard, WorldMapPlaceholder } from "@product/ui";
+import { Badge, BrandDot, Button, Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
 import Link from "next/link";
+import { HeroScene } from "./hero-scene";
 
 import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
@@ -21,24 +22,34 @@ const proofByLocale: Record<AppLocale, string[]> = {
 };
 
 export function HeroSection({ content, stats, locale }: { content: Content; stats: StatsCopy; locale: AppLocale }) {
+  void stats;
   const proofItems = [...new Set(proofByLocale[locale] || proofByLocale["es-AR"])]
-  const pipelineTitle = locale === "en" ? "What happens after each tap" : locale === "pt-BR" ? "O que acontece após cada tap" : "Qué pasa después de cada tap";
-  const pipelineBody = locale === "en" ? "We verify, show value, and suggest the next sale action." : locale === "pt-BR" ? "Validamos, mostramos valor e sugerimos a próxima ação comercial." : "Validamos, mostramos valor y sugerimos la próxima acción comercial.";
+  const badgeText = locale === "en" ? "NFC authentication + physical product identity" : locale === "pt-BR" ? "Autenticação NFC + identidade de produto físico" : "Autenticación NFC + identidad de producto físico";
+  const heroTitle = locale === "en" ? "Every physical product can prove it is original." : locale === "pt-BR" ? "Cada produto físico pode provar que é original." : "Cada producto físico puede probar que es original.";
+  const heroBody = locale === "en" ? "nexID combines hardware, software and API to verify, trace and monetize physical products in real time—from a VIP wristband to a premium wine bottle." : locale === "pt-BR" ? "nexID une hardware, software e API para verificar, rastrear e monetizar produtos físicos em tempo real — de uma pulseira VIP a uma garrafa premium." : "nexID une hardware, software y API para verificar, trazar y monetizar productos físicos en tiempo real: desde una pulsera VIP hasta una botella premium.";
+  const demoCta = locale === "en" ? "View interactive demo" : locale === "pt-BR" ? "Ver demo interativa" : "Ver demo interactiva";
+  const samplesCta = locale === "en" ? "Request samples" : locale === "pt-BR" ? "Pedir amostras" : "Pedir muestras";
+  const resellerCta = locale === "en" ? "Become a reseller" : locale === "pt-BR" ? "Quero ser reseller" : "Quiero ser reseller";
   return (
     <section className="container-shell py-16 md:py-24">
       <div className="hero-shell grid gap-10 rounded-[2rem] p-6 md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            {content.hero.badge}
+            {badgeText}
           </div>
 
-          <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{content.hero.title}</h1>
-          <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{content.hero.body}</p>
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+            <BrandDot size={10} variant="ripple" theme="dark" />
+            <span>{locale === "en" ? "Live product OS" : locale === "pt-BR" ? "Sistema vivo de produto" : "Sistema vivo de producto"}</span>
+          </div>
+
+          <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{heroTitle}</h1>
+          <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{heroBody}</p>
 
           <div className="mt-7 flex flex-wrap gap-3">
-            <a href="https://wa.me/5492613168608?text=Hola%20quiero%20una%20demo%20enterprise%20de%20nexID" target="_blank" rel="noreferrer"><Button>{content.hero.primary}</Button></a>
-            <a href="#demo"><Button variant="secondary">{content.hero.secondary}</Button></a>
-            <Link href="/resellers"><Button variant="secondary">{content.hero.tertiary}</Button></Link>
+            <a href="#demo"><Button>{demoCta}</Button></a>
+            <a href="https://wa.me/5492613168608?text=Hola%20quiero%20muestras%20nexID" target="_blank" rel="noreferrer"><Button variant="secondary">{samplesCta}</Button></a>
+            <Link href="/resellers"><Button variant="secondary">{resellerCta}</Button></Link>
           </div>
 
           <div className="mt-7 flex flex-wrap gap-2">
@@ -51,20 +62,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
         </div>
 
         <Card className="hero-panel hero-glow p-5 md:p-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard label={stats.latency} value="<150ms" delta={stats.latencyDelta} tone="good" />
-            <StatCard label={stats.unitEconomics} value="USD 0.02" delta={stats.economicsDelta} />
-            <StatCard label={stats.businessModel} value="HW + SaaS" delta={stats.businessDelta} tone="good" />
-            <div className="hero-spark rounded-2xl border border-white/10 bg-slate-900/80 p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300">{pipelineTitle}</p>
-              <div className="mt-3 space-y-2">
-                <div className="hero-meter"><span style={{ width: "82%" }} /></div>
-                <div className="hero-meter"><span style={{ width: "68%" }} /></div>
-                <div className="hero-meter"><span style={{ width: "91%" }} /></div>
-              </div>
-              <p className="mt-3 text-xs text-slate-400">{pipelineBody}</p>
-            </div>
-          </div>
+          <HeroScene locale={locale} />
         </Card>
       </div>
     </section>
@@ -117,6 +115,89 @@ export function CardsSection({ content }: { content: Content }) {
   );
 }
 
+
+
+export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
+  const copy = locale === "en"
+    ? {
+      eyebrow: "Events / NTAG215 positioning",
+      title: "Why NTAG215 wins against QR in many event flows",
+      intro: "NTAG215 is built for tap UX, serialisation and operational control in wristbands, tickets and credentials. It is not premium anti-fraud.",
+      basicTitle: "NTAG215 Basic (events and activations)",
+      basicBullets: [
+        "Faster check-in than QR/email/photo in crowded access points.",
+        "Each physical piece can be serialised with UID and rules server-side.",
+        "Harder to share casually than a screenshot-based QR flow.",
+        "Ideal for event wristbands, credentials, tickets and brand activations.",
+      ],
+      secureTitle: "NTAG 424 DNA TagTamper (premium anti-fraud)",
+      secureBullets: [
+        "Use this profile when anti-clone and tamper resistance are business critical.",
+        "Recommended for wine, cosmetics, pharma and high-risk supply chains.",
+      ],
+      footer: "Message to buyers: NTAG215 = UX + control + serialisation. NTAG 424 DNA TT = strong anti-fraud.",
+    }
+    : locale === "pt-BR"
+    ? {
+      eyebrow: "Posicionamento Eventos / NTAG215",
+      title: "Por que NTAG215 supera QR em muitos fluxos de evento",
+      intro: "NTAG215 é para UX por toque, serialização e controle operacional em pulseiras, tickets e credenciais. Não é anti-fraude premium.",
+      basicTitle: "NTAG215 Basic (eventos e ativações)",
+      basicBullets: [
+        "Check-in mais rápido que QR/email/foto em acessos com fila.",
+        "Cada peça física pode ser serializada com UID e regras no backend.",
+        "Mais difícil de compartilhar casualmente do que um QR por screenshot.",
+        "Ideal para pulseiras, credenciais, tickets e ativações de marca.",
+      ],
+      secureTitle: "NTAG 424 DNA TagTamper (anti-fraude premium)",
+      secureBullets: [
+        "Use este perfil quando anti-clone e tamper são críticos.",
+        "Recomendado para vinho, cosméticos, pharma e cadeias de risco.",
+      ],
+      footer: "Mensagem comercial: NTAG215 = UX + controle + serialização. NTAG 424 DNA TT = anti-fraude forte.",
+    }
+    : {
+      eyebrow: "Posicionamiento Eventos / NTAG215",
+      title: "Por qué NTAG215 supera al QR en muchos flujos de eventos",
+      intro: "NTAG215 está pensado para UX por tap, serialización y control operativo en pulseras, tickets y credenciales. No es anti-fraude premium.",
+      basicTitle: "NTAG215 Basic (eventos y activaciones)",
+      basicBullets: [
+        "Check-in más rápido que QR/email/foto en accesos con filas.",
+        "Cada pieza física puede serializarse con UID y reglas server-side.",
+        "Más difícil de compartir casualmente que un QR por screenshot.",
+        "Ideal para pulseras, credenciales, tickets y activaciones de marca.",
+      ],
+      secureTitle: "NTAG 424 DNA TagTamper (anti-fraude premium)",
+      secureBullets: [
+        "Usá este perfil cuando anti-clonación y tamper sean críticos.",
+        "Recomendado para vino, cosmética, pharma y cadenas de alto riesgo.",
+      ],
+      footer: "Mensaje comercial: NTAG215 = UX + control + serialización. NTAG 424 DNA TT = anti-fraude fuerte.",
+    };
+
+  return (
+    <section className="container-shell py-16">
+      <Card className="p-6 md:p-8">
+        <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.intro} />
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4">
+            <p className="text-sm font-semibold text-cyan-200">{copy.basicTitle}</p>
+            <ul className="mt-3 space-y-2 text-sm text-slate-300">
+              {copy.basicBullets.map((bullet) => <li key={bullet}>• {bullet}</li>)}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-violet-300/25 bg-violet-500/10 p-4">
+            <p className="text-sm font-semibold text-violet-200">{copy.secureTitle}</p>
+            <ul className="mt-3 space-y-2 text-sm text-slate-300">
+              {copy.secureBullets.map((bullet) => <li key={bullet}>• {bullet}</li>)}
+            </ul>
+          </div>
+        </div>
+        <p className="mt-5 text-sm text-slate-300">{copy.footer}</p>
+      </Card>
+    </section>
+  );
+}
 export function PlansSection({ content }: { content: Content }) {
   return (
     <section className="container-shell py-16">
@@ -240,8 +321,8 @@ export function CtaSection({ content }: { content: Content }) {
         <h2 className="text-3xl font-bold text-white">{content.cta.title}</h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">{content.cta.body}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Button>{content.cta.primary}</Button>
-          <Button variant="secondary">{content.cta.secondary}</Button>
+          <a href="#agendar-demo"><Button>{content.cta.primary}</Button></a>
+          <a href="https://wa.me/5492613168608?text=Hola%20equipo%20nexID%2C%20quiero%20hablar%20con%20ventas" target="_blank" rel="noreferrer"><Button variant="secondary">{content.cta.secondary}</Button></a>
         </div>
       </Card>
     </section>

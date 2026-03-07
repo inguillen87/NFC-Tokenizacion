@@ -48,7 +48,7 @@ export function VerticalDemoLibrary({ locale }: { locale: Locale }) {
               <a className="rounded-md border border-white/10 p-2 text-slate-200" href={`/demo/${p.key}/manifest.csv`} download>{t.downloadCsv}</a>
               <a className="rounded-md border border-white/10 p-2 text-slate-200" href={`/demo/${p.key}/seed.json`} download>{t.downloadJson}</a>
             </div>
-            <a className="mt-3 inline-block rounded-md border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300" href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002"}/demo-lab`}>{t.openLab}</a>
+            <a className="mt-3 inline-block rounded-md border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300" href={`${process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}>{t.openLab}</a>
           </article>
         ))}
       </div>
