@@ -97,13 +97,15 @@ export default async function LeadsTicketsPage() {
 
       <DataTable
         title="Leads inbox ⓘ"
-        columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "volume", label: "Volume" }]}
+        columns={[{ key: "name", label: "Name" }, { key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "vertical", label: "Vertical" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "estimated", label: "Est. volume" }]}
         rows={leads.map((item: Record<string, unknown>) => ({
-          contact: String(item.contact || "-"),
+          name: String(item.name || "-"),
+          contact: String(item.contact || item.email || item.phone || "-"),
           company: String(item.company || "-"),
+          vertical: String(item.vertical || "-"),
           status: String(item.status || "new"),
           source: String(item.source || "-"),
-          volume: String(item.volume || "0"),
+          estimated: String(item.estimated_volume || item.volume || "0"),
         }))}
         filterKey="status"
         loadingLabel={copy.shell.loading}
@@ -133,13 +135,15 @@ export default async function LeadsTicketsPage() {
 
       <DataTable
         title="Orders / Chip requests ⓘ"
-        columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "volume", label: "Volume" }]}
+        columns={[{ key: "name", label: "Name" }, { key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "vertical", label: "Vertical" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "estimated", label: "Est. volume" }]}
         rows={orders.map((item: Record<string, unknown>) => ({
-          contact: String(item.contact || "-"),
+          name: String(item.name || "-"),
+          contact: String(item.contact || item.email || item.phone || "-"),
           company: String(item.company || "-"),
+          vertical: String(item.vertical || "-"),
           status: String(item.status || "new"),
           source: String(item.source || "-"),
-          volume: String(item.volume || "0"),
+          estimated: String(item.estimated_volume || item.volume || "0"),
         }))}
         filterKey="status"
         loadingLabel={copy.shell.loading}

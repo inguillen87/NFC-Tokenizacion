@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEventHandler } from "react";
 import { BrandDot } from "./brand";
 
 type Locale = "es-AR" | "pt-BR" | "en";
@@ -15,6 +15,7 @@ type AssistantReply = {
   answer?: string;
   intent?: string;
   requiresContact?: boolean;
+  leadSaved?: boolean;
   citations?: Array<{ title?: string; slug?: string; locale?: string }>;
 };
 
@@ -151,7 +152,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
       const res = await fetch("/api/assistant/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale, question: content, mode, fullName, email, whatsapp, contact }),
+        body: JSON.stringify({ locale, question: content, mode, fullName, email, whatsapp, contact, history: messages.slice(-8) }),
       });
 
       const data: AssistantReply = await res.json().catch(() => ({}));
@@ -165,6 +166,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
       const withPrompt = data.intent === "pricing" || data.intent === "reseller" ? `${withCitations}\n\n${t.leadPrompt}` : withCitations;
       setRequiresContact(Boolean(data.requiresContact));
       setMessages((prev) => [...prev, { role: "assistant", text: withPrompt }]);
+      if (data.leadSaved) setRequiresContact(false);
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: t.unavailable }]);
     } finally {
@@ -185,8 +187,15 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
       : `Quiero propuesta comercial. Nombre completo: ${fullName}. Email: ${email}. WhatsApp: ${whatsapp}.`;
 
     await send(prompt);
-    setMessages((prev) => [...prev, { role: "assistant", text: t.leadSuccess }]);
   }
+
+
+  const onQuestionKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void send();
+    }
+  };
 
   return (
     <div className={className}>
@@ -240,7 +249,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
             {t.sendLead}
           </button>
 
-          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="helpbot-input mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
+          <textarea value={question} onKeyDown={onQuestionKeyDown} onChange={(e) => setQuestion(e.target.value)} className="helpbot-input mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
           <button onClick={() => send()} disabled={busy} className="mt-2 w-full rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
             {t.send}
           </button>
