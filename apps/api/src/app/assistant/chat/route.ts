@@ -14,6 +14,7 @@ type Body = {
   email?: string;
   whatsapp?: string;
   mode?: string;
+  history?: Array<{ role?: string; text?: string }>;
 };
 
 type ExtractedLead = {
@@ -37,19 +38,19 @@ type OpenAILeadPayload = {
 
 const fallbackByLocale: Record<string, string[]> = {
   "es-AR": [
-    "nexID protege productos con NFC (NTAG215 y NTAG424 DNA TagTamper) y validación SUN/SDM.",
-    "Para cotizar, indicame volumen (10k/50k/100k), tipo de tag (basic/secure) y contacto.",
-    "Puedo crear un lead, ticket o pedido para que ventas te contacte hoy.",
+    "nexID diferencia dos líneas: BASIC (NTAG213/215 para eventos y activaciones) y SECURE (NTAG 424 DNA TagTamper para autenticidad y antifraude).",
+    "Con eso podés vender hardware + dashboard + API sin commodity pricing.",
+    "Si me pasás datos mínimos, te dejo el lead listo para ventas ahora mismo.",
   ],
   "pt-BR": [
-    "nexID protege produtos com NFC (NTAG215 e NTAG424 DNA TagTamper) e validação SUN/SDM.",
-    "Para cotação, informe volume (10k/50k/100k), tipo de tag (basic/secure) e contato.",
-    "Posso criar lead, ticket ou pedido para o time comercial.",
+    "nexID separa duas linhas: BASIC (NTAG213/215) e SECURE (NTAG 424 DNA TagTamper).",
+    "Isso permite vender hardware + dashboard + API sem comoditizar o produto.",
+    "Com dados mínimos eu já registro o lead para vendas.",
   ],
   en: [
-    "nexID secures products with NFC (NTAG215 and NTAG424 DNA TagTamper) and SUN/SDM validation.",
-    "For a quote, share volume (10k/50k/100k), tag type (basic/secure), and contact details.",
-    "I can create a lead, ticket, or order request so the sales team contacts you today.",
+    "nexID has two lines: BASIC (NTAG213/215) and SECURE (NTAG 424 DNA TagTamper).",
+    "That supports a hardware + dashboard + API model without commodity pricing.",
+    "Share minimum data and I can save your lead immediately.",
   ],
 };
 
@@ -57,14 +58,14 @@ function detectIntent(question: string) {
   const q = question.toLowerCase();
   if (q.includes("batch") || q.includes("manifest")) return "ops";
   if (q.includes("precio") || q.includes("cost") || q.includes("quote") || q.includes("cot")) return "pricing";
-  if (q.includes("reseller") || q.includes("white-label")) return "reseller";
+  if (q.includes("reseller") || q.includes("revendedor") || q.includes("revenda") || q.includes("white-label")) return "reseller";
   if (q.includes("ticket") || q.includes("soporte") || q.includes("support")) return "ticket";
   if (q.includes("pedido") || q.includes("order") || q.includes("chips") || q.includes("comprar")) return "order";
   return "general";
 }
 
-function parseVolume(question: string) {
-  const normalized = question.toLowerCase().replace(/\./g, "");
+function parseVolume(text: string) {
+  const normalized = text.toLowerCase().replace(/\./g, "");
   const compact = normalized.match(/(\d+)\s*k\b/);
   if (compact?.[1]) return Number(compact[1]) * 1000;
   const exact = normalized.match(/\b(\d{4,7})\b/);
@@ -84,113 +85,202 @@ function extractWhatsApp(text: string) {
 function extractLeadData(question: string): ExtractedLead {
   const q = question.toLowerCase();
   const volume = parseVolume(question);
-  const tagType = q.includes("424") || q.includes("secure") || q.includes("tagtamper") ? "secure" : q.includes("215") || q.includes("basic") ? "basic" : null;
+  const tagType = q.includes("424") || q.includes("secure") || q.includes("tagtamper") ? "secure" : q.includes("215") || q.includes("213") || q.includes("basic") ? "basic" : null;
   const vertical = q.includes("wine") || q.includes("vino") || q.includes("bodega")
     ? "wine"
     : q.includes("cosmetic") || q.includes("cosm")
       ? "cosmetics"
       : q.includes("pharma") || q.includes("farma")
         ? "pharma"
-        : q.includes("event")
+        : q.includes("event") || q.includes("fiesta")
           ? "events"
-          : null;
+          : q.includes("agro")
+            ? "agro"
+            : null;
 
   const companyMatch = question.match(/(?:empresa|company|compañ[ií]a)\s*[:\-]\s*([^,\n]+)/i);
-  const countryMatch = question.match(/(?:pa[ií]s|country)\s*[:\-]\s*([^,\n]+)/i);
+  const countryMatch = question.match(/(?:pa[ií]s|country|argentina|chile|uruguay|colombia|mexico|brazil|brasil|peru)\s*[:\-]?\s*([^,\n]+)?/i);
 
   return {
     company: companyMatch?.[1]?.trim() || null,
-    country: countryMatch?.[1]?.trim() || null,
+    country: countryMatch?.[0]?.trim() || null,
     vertical,
     tagType,
     volume,
   };
 }
 
-function buildFallbackAnswer(locale: string, intent: string, extracted: ExtractedLead) {
+function buildFallbackAnswer(locale: string, intent: string, extracted: ExtractedLead, missing: string[]) {
   const base = fallbackByLocale[locale] || fallbackByLocale["es-AR"];
   const extraByLocale = {
     "es-AR": {
-      pricing: `¿Querés cotizar ${extracted.volume ? extracted.volume.toLocaleString() : "10.000"} o 50.000 unidades? ¿Tags básicos (NTAG215) o anti-fraude (NTAG 424 DNA TagTamper)?`,
-      reseller: "Si querés canal reseller, pasame nombre completo + email/WhatsApp y te enviamos onboarding hoy.",
-      ticket: "Registro tu ticket de soporte para que te contacte el equipo dentro de 24h.",
+      pricing: "Para cotizar: volumen + tipo de tag + país + contacto.",
+      reseller: "Para activar reseller: nombre + email/WhatsApp + país + volumen estimado.",
+      ticket: "Te genero un ticket de soporte con prioridad comercial.",
+      done: "Perfecto: ya tengo datos para registrar tu lead comercial.",
+      missingPrefix: "Me falta:",
     },
     "pt-BR": {
-      pricing: `Quer cotar ${extracted.volume ? extracted.volume.toLocaleString() : "10.000"} ou 50.000 unidades? Tags básicos (NTAG215) ou anti-fraude (NTAG 424 DNA TagTamper)?`,
-      reseller: "Se você quer canal reseller, envie nome completo + email/WhatsApp para onboarding hoje.",
-      ticket: "Vou registrar seu ticket de suporte para resposta em até 24h.",
+      pricing: "Para cotar: volume + tipo de tag + país + contato.",
+      reseller: "Para canal revenda: nome + email/WhatsApp + país + volume estimado.",
+      ticket: "Posso abrir um ticket de suporte comercial.",
+      done: "Perfeito: já tenho dados para salvar seu lead.",
+      missingPrefix: "Ainda falta:",
     },
     en: {
-      pricing: `Do you want a quote for ${extracted.volume ? extracted.volume.toLocaleString() : "10k"} or 50k units? Basic tags (NTAG215) or anti-fraud (NTAG 424 DNA TagTamper)?`,
-      reseller: "If you want reseller channel, send full name + email/WhatsApp and we’ll share onboarding today.",
-      ticket: "I will register your support ticket for a response within 24h.",
+      pricing: "To quote: volume + tag type + country + contact.",
+      reseller: "For reseller onboarding: name + email/WhatsApp + country + estimated volume.",
+      ticket: "I can open a support ticket with commercial priority.",
+      done: "Great: I have enough data to save your lead.",
+      missingPrefix: "Still missing:",
     },
   } as const;
+  const localeExtra = extraByLocale[locale as keyof typeof extraByLocale] || extraByLocale["es-AR"];
 
-  const extra = extraByLocale[locale as keyof typeof extraByLocale] || extraByLocale["es-AR"];
-  const intentLine = intent === "pricing" ? extra.pricing : intent === "reseller" ? extra.reseller : intent === "ticket" ? extra.ticket : "";
-  return `${base[0]} ${base[1]} ${base[2]} ${intentLine}`.trim();
+  const intentLine = intent === "pricing" ? localeExtra.pricing : intent === "reseller" ? localeExtra.reseller : intent === "ticket" ? localeExtra.ticket : "";
+  const missingLine = missing.length > 0 ? `${localeExtra.missingPrefix} ${missing.join(", ")}.` : localeExtra.done;
+  const extractedLine = extracted.volume || extracted.tagType || extracted.vertical
+    ? `Contexto detectado: ${extracted.volume ? `volumen=${extracted.volume}` : ""} ${extracted.tagType ? `tag=${extracted.tagType}` : ""} ${extracted.vertical ? `vertical=${extracted.vertical}` : ""}`.trim()
+    : "";
+
+  return [base[0], intentLine, missingLine, extractedLine].filter(Boolean).join("\n");
 }
 
 async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: string; question: string; intent: string; kb: Array<Record<string, string>> }) {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
 
-  const context = kb.map((x) => `- [${x.locale}/${x.slug}] ${x.title}: ${x.body.slice(0, 500)}`).join("\n");
+  const context = kb.map((item) => `- ${item.title}: ${item.body.slice(0, 450)}`).join("\n");
   const system = [
-    "You are nexID enterprise sales/support assistant.",
-    "Primary goal: convert user into a qualified lead while genuinely helping.",
-    "When intent is pricing/reseller/order, ask for volume, tag profile (NTAG215 vs NTAG 424 DNA TagTamper), country and contact.",
-    "Use persuasive but trustworthy language. Do not invent facts.",
-    `Reply in locale ${locale}.`,
-    "Return ONLY valid JSON with keys: answer, company, country, vertical, tagType, volume, buyingIntent, nextStep.",
+    "You are nexID Sales AI.",
+    "Be concise, concrete, and never loop asking the same question if data is already present.",
+    "If user already shared name/email/phone/volume/tag/country, acknowledge it and ask only missing fields.",
+    "Return JSON with keys: answer, company, country, vertical, tagType, volume, buyingIntent, nextStep.",
   ].join(" ");
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.35,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: `Intent: ${intent}\nQuestion: ${question}\n\nKnowledge base:\n${context}` },
-        ],
-        response_format: { type: "json_object" },
-      }),
-      cache: "no-store",
-    });
+  const preferredModel = process.env.OPENAI_CHAT_MODEL || "gpt-5-mini";
+  const fallbacks = [preferredModel, "gpt-5-nano", "gpt-4o-mini"].filter((m, i, arr) => arr.indexOf(m) === i);
 
-    if (!response.ok) return null;
-    const data = await response.json().catch(() => null);
-    const text = data?.choices?.[0]?.message?.content;
-    if (typeof text !== "string" || !text.trim()) return null;
-    const parsed: OpenAILeadPayload = JSON.parse(text);
-    if (!parsed || typeof parsed !== "object") return null;
-    return parsed;
+  for (const model of fallbacks) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.25,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: `Locale: ${locale}\nIntent: ${intent}\nQuestion: ${question}\nKnowledge base:\n${context}` },
+          ],
+          response_format: { type: "json_object" },
+        }),
+        cache: "no-store",
+      });
+
+      if (!response.ok) continue;
+      const data = await response.json().catch(() => null);
+      const text = data?.choices?.[0]?.message?.content;
+      if (typeof text !== "string" || !text.trim()) continue;
+      return JSON.parse(text) as OpenAILeadPayload;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+async function upsertLeadCompat(params: {
+  locale: string;
+  contact: string;
+  fullName: string;
+  email: string;
+  whatsapp: string;
+  company: string;
+  country: string;
+  vertical: string;
+  tagType: string;
+  volume: number;
+  source: string;
+  status: string;
+  question: string;
+}) {
+  const recent = await sql/*sql*/`
+    SELECT id FROM leads WHERE contact = ${params.contact} ORDER BY created_at DESC LIMIT 1
+  `.catch(() => [] as Array<{ id: string }>);
+
+  const notes = `${params.fullName ? `name=${params.fullName}; ` : ""}${params.question}`.slice(0, 900);
+
+  const updateExtended = async (id: string) => sql/*sql*/`
+    UPDATE leads
+    SET locale = ${params.locale}, company = ${params.company}, country = ${params.country},
+      vertical = ${params.vertical}, tag_type = ${params.tagType}, volume = ${params.volume},
+      source = ${params.source}, status = ${params.status}, name = ${params.fullName}, email = ${params.email},
+      phone = ${params.whatsapp}, estimated_volume = ${String(params.volume || "")}, message = ${params.question}, notes = ${notes}
+    WHERE id = ${id}
+  `;
+
+  const updateBasic = async (id: string) => sql/*sql*/`
+    UPDATE leads
+    SET locale = ${params.locale}, company = ${params.company}, country = ${params.country},
+      vertical = ${params.vertical}, tag_type = ${params.tagType}, volume = ${params.volume},
+      source = ${params.source}, status = ${params.status}, notes = ${notes}
+    WHERE id = ${id}
+  `;
+
+  const insertExtended = async () => sql/*sql*/`
+    INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes)
+    VALUES (${params.locale}, ${params.contact}, ${params.fullName}, ${params.email}, ${params.whatsapp}, ${params.company}, ${params.country}, ${params.vertical}, '', ${String(params.volume || "")}, ${params.tagType}, ${params.volume}, ${params.source}, ${params.status}, ${params.question}, ${notes})
+  `;
+
+  const insertBasic = async () => sql/*sql*/`
+    INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
+    VALUES (${params.locale}, ${params.contact}, ${params.company}, ${params.country}, ${params.vertical}, ${params.tagType}, ${params.volume}, ${params.source}, ${params.status}, ${notes})
+  `;
+
+  if (recent[0]?.id) {
+    try {
+      await updateExtended(recent[0].id);
+    } catch {
+      await updateBasic(recent[0].id).catch(() => null);
+    }
+    return;
+  }
+
+  try {
+    await insertExtended();
   } catch {
-    return null;
+    await insertBasic().catch(() => null);
   }
 }
 
 export async function POST(req: Request) {
   const body: Body = await req.json().catch(() => ({}));
   const locale = body.locale || "es-AR";
-  const question = String(body.question || "");
-  const intent = detectIntent(question);
-  const extractedFromQuestion = extractLeadData(question);
+  const question = String(body.question || "").trim();
+  const historyText = Array.isArray(body.history) ? body.history.map((m) => String(m?.text || "")).join("\n") : "";
+  const intent = detectIntent(`${historyText}\n${question}`);
+  const extractedFromQuestion = extractLeadData(`${historyText}\n${question}`);
 
   const fullName = String(body.fullName || "").trim();
-  const email = String(body.email || extractEmail(question)).trim();
-  const whatsapp = String(body.whatsapp || extractWhatsApp(question)).trim();
-  const contact = String(body.contact || [email, whatsapp].filter(Boolean).join(" | ")).trim();
+  const email = String(body.email || extractEmail(`${question}\n${historyText}`)).trim();
+  const whatsapp = String(body.whatsapp || extractWhatsApp(`${question}\n${historyText}`)).trim();
+  const contact = String(body.contact || [email, whatsapp, fullName].filter(Boolean).join(" | ")).trim();
   const hasContact = Boolean(email || whatsapp || contact);
-  const hasQualifiedLeadData = fullName.length > 3 && hasContact;
-  const requiresContact = !hasQualifiedLeadData && (intent === "pricing" || intent === "reseller" || intent === "order");
+  const hasQualifiedLeadData = fullName.length > 2 && hasContact;
+
+  const missing: string[] = [];
+  if (!fullName) missing.push(locale === "en" ? "full name" : "nombre");
+  if (!hasContact) missing.push(locale === "en" ? "email or whatsapp" : "email o whatsapp");
+  if (!extractedFromQuestion.volume) missing.push(locale === "en" ? "volume" : "volumen");
+  if (!extractedFromQuestion.tagType) missing.push(locale === "en" ? "tag type (213/215 or 424)" : "tipo de tag (213/215 o 424)");
+  if (!extractedFromQuestion.country) missing.push(locale === "en" ? "country" : "país");
+
+  const requiresContact = missing.length > 0 && (intent === "pricing" || intent === "reseller" || intent === "order");
 
   const kbRows = await sql/*sql*/`
     SELECT locale, slug, title, body
@@ -200,15 +290,7 @@ export async function POST(req: Request) {
     LIMIT 12
   `.catch(() => [] as Array<Record<string, string>>);
 
-  const selected = kbRows
-    .filter((row) => {
-      const text = `${row.title} ${row.body}`.toLowerCase();
-      if (intent === "pricing") return text.includes("precio") || text.includes("pricing") || text.includes("roi");
-      if (intent === "ops") return text.includes("batch") || text.includes("manifest") || text.includes("sun");
-      if (intent === "reseller") return text.includes("reseller") || text.includes("white-label");
-      return true;
-    })
-    .slice(0, 3);
+  const selected = kbRows.slice(0, 3);
 
   const openAiPayload = await buildOpenAiAnswer({ locale, question, intent, kb: selected });
   const extracted: ExtractedLead = {
@@ -218,54 +300,29 @@ export async function POST(req: Request) {
     tagType: openAiPayload?.tagType || extractedFromQuestion.tagType,
     volume: typeof openAiPayload?.volume === "number" ? openAiPayload.volume : extractedFromQuestion.volume,
   };
-  const answer = openAiPayload?.answer || buildFallbackAnswer(locale, intent, extracted);
-  const persuasionNextStep = openAiPayload?.nextStep || "";
 
   const leadStatus = openAiPayload?.buyingIntent === "high" ? "hot" : openAiPayload?.buyingIntent === "medium" ? "qualified" : "new";
 
-  if (hasQualifiedLeadData && (intent === "pricing" || intent === "reseller" || intent === "general" || intent === "order")) {
-    const recent = await sql/*sql*/`
-      SELECT id
-      FROM leads
-      WHERE contact = ${contact}
-      ORDER BY created_at DESC
-      LIMIT 1
-    `.catch(() => [] as Array<{ id: string }>);
+  const shouldSaveLead = hasQualifiedLeadData && (
+    body.mode === "lead_capture" || intent === "pricing" || intent === "reseller" || intent === "order" || intent === "general"
+  );
 
-    const notes = `${fullName ? `name=${fullName}; ` : ""}${question}${persuasionNextStep ? `\nnext_step=${persuasionNextStep}` : ""}`.slice(0, 900);
-
-    if (recent[0]?.id) {
-      await sql/*sql*/`
-        UPDATE leads
-        SET
-          locale = ${locale},
-          company = ${extracted.company || ""},
-          country = ${extracted.country || ""},
-          vertical = ${extracted.vertical || "other"},
-          tag_type = ${extracted.tagType || "unknown"},
-          volume = ${extracted.volume || 0},
-          source = ${String(body.mode || "assistant")},
-          status = ${leadStatus},
-          notes = ${notes}
-        WHERE id = ${recent[0].id}
-      `.catch(() => null);
-    } else {
-      await sql/*sql*/`
-        INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
-        VALUES (
-          ${locale},
-          ${contact},
-          ${extracted.company || ""},
-          ${extracted.country || ""},
-          ${extracted.vertical || "other"},
-          ${extracted.tagType || "unknown"},
-          ${extracted.volume || 0},
-          ${String(body.mode || "assistant")},
-          ${leadStatus},
-          ${notes}
-        )
-      `.catch(() => null);
-    }
+  if (shouldSaveLead) {
+    await upsertLeadCompat({
+      locale,
+      contact,
+      fullName,
+      email,
+      whatsapp,
+      company: extracted.company || "",
+      country: extracted.country || "",
+      vertical: extracted.vertical || "other",
+      tagType: extracted.tagType || "unknown",
+      volume: extracted.volume || 0,
+      source: String(body.mode || "assistant"),
+      status: leadStatus,
+      question,
+    });
   }
 
   if (hasContact && intent === "ticket") {
@@ -278,29 +335,33 @@ export async function POST(req: Request) {
   if (hasQualifiedLeadData && intent === "order") {
     await sql/*sql*/`
       INSERT INTO order_requests (locale, contact, company, tag_type, volume, notes, status)
-      VALUES (
-        ${locale},
-        ${contact},
-        ${extracted.company || ""},
-        ${extracted.tagType || "basic"},
-        ${extracted.volume || 0},
-        ${`${fullName ? `name=${fullName}; ` : ""}${question}`.slice(0, 700)},
-        'new'
-      )
+      VALUES (${locale}, ${contact}, ${extracted.company || ""}, ${extracted.tagType || "basic"}, ${extracted.volume || 0}, ${`${fullName ? `name=${fullName}; ` : ""}${question}`.slice(0, 700)}, 'new')
     `.catch(() => null);
   }
 
+  const savedAck = shouldSaveLead
+    ? locale === "en"
+      ? "Lead saved in CRM. Sales team can now continue with quote/samples/reseller onboarding."
+      : locale === "pt-BR"
+        ? "Lead salvo no CRM. O time comercial já pode continuar com proposta/amostras/revenda."
+        : "Lead guardado en CRM. El equipo comercial ya puede continuar con cotización/muestras/revendedor."
+    : "";
+
+  const answer = openAiPayload?.answer || buildFallbackAnswer(locale, intent, extracted, missing);
+  const persuasionNextStep = openAiPayload?.nextStep || "";
+
   return json({
-    answer: persuasionNextStep ? `${answer}\n\n${persuasionNextStep}` : answer,
+    answer: [answer, savedAck, persuasionNextStep].filter(Boolean).join("\n\n"),
     intent,
     requiresContact,
+    leadSaved: shouldSaveLead,
     extracted,
     citations: selected.map((item) => ({ title: item.title, slug: item.slug, locale: item.locale })),
     suggested:
       locale === "pt-BR"
-        ? ["Como funciona o manifest?", "Qual plano para 50k unidades?", "Quero ser reseller"]
+        ? ["Quero cotação 10k", "Quero amostras", "Quero ser revendedor"]
         : locale === "en"
-          ? ["How does manifest import work?", "What plan fits 50k units?", "I want to become a reseller"]
-          : ["¿Cómo funciona el manifest?", "¿Qué plan conviene para 50k unidades?", "Quiero ser reseller"],
+          ? ["I want a quote for 10k", "I want samples", "I want to become a reseller"]
+          : ["Quiero cotización 10k", "Quiero muestras", "Quiero ser revendedor"],
   });
 }
