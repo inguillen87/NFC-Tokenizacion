@@ -16,9 +16,9 @@ type StatsCopy = {
 };
 
 const proofByLocale: Record<AppLocale, string[]> = {
-  "es-AR": ["SaaS trazable", "SaaS tokenizable", "SaaS para vender con chips NFC"],
-  "pt-BR": ["SaaS rastreável", "SaaS tokenizável", "SaaS para vender com chips NFC"],
-  en: ["Traceable SaaS", "Tokenizable SaaS", "SaaS that sells with NFC chips"],
+  "es-AR": ["SaaS trazable", "Ownership / Warranty / Provenance", "SaaS para vender con chips NFC"],
+  "pt-BR": ["SaaS rastreável", "Ownership / Warranty / Provenance", "SaaS para vender com chips NFC"],
+  en: ["Traceable SaaS", "Ownership / Warranty / Provenance", "SaaS that sells with NFC chips"],
 };
 
 export function HeroSection({ content, stats, locale }: { content: Content; stats: StatsCopy; locale: AppLocale }) {
@@ -45,7 +45,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
 
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
             <BrandDot size={10} variant="ripple" theme="dark" />
-            <span>{locale === "en" ? "Live product OS" : locale === "pt-BR" ? "Sistema vivo de produto" : "Sistema vivo de producto"}</span>
+            <span>{locale === "en" ? "Production-ready product OS" : locale === "pt-BR" ? "Product OS pronto para produção" : "Product OS listo para producción"}</span>
           </div>
 
           <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{heroTitle}</h1>
@@ -149,7 +149,7 @@ export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
       secureTitle: "NTAG 424 DNA TagTamper (premium anti-fraud)",
       secureBullets: [
         "Use this profile when anti-clone and tamper resistance are business critical.",
-        "Recommended for wine, cosmetics, pharma and high-risk supply chains.",
+        "Recommended for wine, cosmetics, docs/presence and high-risk supply chains.",
       ],
       footer: "Message to buyers: NTAG215 = UX + control + serialisation. NTAG 424 DNA TT = strong anti-fraud.",
     }
@@ -168,7 +168,7 @@ export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
       secureTitle: "NTAG 424 DNA TagTamper (anti-fraude premium)",
       secureBullets: [
         "Use este perfil quando anti-clone e tamper são críticos.",
-        "Recomendado para vinho, cosméticos, pharma e cadeias de risco.",
+        "Recomendado para vinho, cosméticos, docs/presence e cadeias de risco.",
       ],
       footer: "Mensagem comercial: NTAG215 = UX + controle + serialização. NTAG 424 DNA TT = anti-fraude forte.",
     }
@@ -186,7 +186,7 @@ export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
       secureTitle: "NTAG 424 DNA TagTamper (anti-fraude premium)",
       secureBullets: [
         "Usá este perfil cuando anti-clonación y tamper sean críticos.",
-        "Recomendado para vino, cosmética, pharma y cadenas de alto riesgo.",
+        "Recomendado para vino, cosmética, docs/presence y cadenas de alto riesgo.",
       ],
       footer: "Mensaje comercial: NTAG215 = UX + control + serialización. NTAG 424 DNA TT = anti-fraude fuerte.",
     };

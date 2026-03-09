@@ -62,7 +62,7 @@ export default async function HomePage() {
     { key: "events-basic", label: "Events basic", tag: "NTAG215", sim: "Wristband access + duplicate gate control" },
     { key: "cosmetics-secure", label: "Cosmetics secure", tag: "NTAG 424 DNA TT", sim: "Cap opening + authenticity state" },
     { key: "agro-secure", label: "Agro secure", tag: "NTAG 424 DNA TT", sim: "Bag tear + lot/origin validation" },
-    { key: "pharma-secure", label: "Pharma secure", tag: "NTAG 424 DNA TT", sim: "Cold-chain and anti-counterfeit checks" },
+    { key: "pharma-secure", label: "Docs & presence secure", tag: "NTAG 424 DNA", sim: "Certificates + contractor credential + proof-of-presence" },
     { key: "luxury-basic", label: "Luxury basic", tag: "NTAG215", sim: "Brand story + ownership activation" },
   ];
 
@@ -134,7 +134,7 @@ export default async function HomePage() {
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
           <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
-          <p className="text-sm site-muted">nexID combina tags NFC, autenticación criptográfica, antifraude, trazabilidad y CRM comercial para vino, cosmética, pharma, eventos y canales reseller.</p>
+          <p className="text-sm site-muted">nexID combina tags NFC, autenticación criptográfica, antifraude, trazabilidad y CRM comercial para vino, cosmética, credenciales/documentos, eventos y canal reseller.</p>
           <div className="flex flex-wrap gap-2">
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
