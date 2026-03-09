@@ -16,21 +16,25 @@ type StatsCopy = {
 };
 
 const proofByLocale: Record<AppLocale, string[]> = {
-  "es-AR": ["SaaS trazable", "SaaS tokenizable", "SaaS para vender con chips NFC"],
-  "pt-BR": ["SaaS rastreável", "SaaS tokenizável", "SaaS para vender com chips NFC"],
-  en: ["Traceable SaaS", "Tokenizable SaaS", "SaaS that sells with NFC chips"],
+  "es-AR": ["SaaS trazable", "Ownership / Warranty / Provenance", "SaaS para vender con chips NFC"],
+  "pt-BR": ["SaaS rastreável", "Ownership / Warranty / Provenance", "SaaS para vender com chips NFC"],
+  en: ["Traceable SaaS", "Ownership / Warranty / Provenance", "SaaS that sells with NFC chips"],
 };
 
 export function HeroSection({ content, stats, locale }: { content: Content; stats: StatsCopy; locale: AppLocale }) {
   void stats;
   const proofItems = [...new Set(proofByLocale[locale] || proofByLocale["es-AR"])]
   const badgeText = locale === "en" ? "NFC authentication + physical product identity" : locale === "pt-BR" ? "Autenticação NFC + identidade de produto físico" : "Autenticación NFC + identidad de producto físico";
-  const heroTitle = locale === "en" ? "Every physical product can prove it is original." : locale === "pt-BR" ? "Cada produto físico pode provar que é original." : "Cada producto físico puede probar que es original.";
-  const heroBody = locale === "en" ? "nexID combines hardware, software and API to verify, trace and monetize physical products in real time—from a VIP wristband to a premium wine bottle." : locale === "pt-BR" ? "nexID une hardware, software e API para verificar, rastrear e monetizar produtos físicos em tempo real — de uma pulseira VIP a uma garrafa premium." : "nexID une hardware, software y API para verificar, trazar y monetizar productos físicos en tiempo real: desde una pulsera VIP hasta una botella premium.";
+  const heroTitle = locale === "en" ? "Authenticate products, protect margins, and monetize every tap." : locale === "pt-BR" ? "Autentique produtos, proteja margem e monetize cada toque." : "Autenticá productos, protegé margen y monetizá cada toque.";
+  const heroBody = locale === "en" ? "Two commercial lines, one platform: NTAG213/215 for volume campaigns and NTAG 424 DNA TagTamper for anti-fraud, authenticity and premium traceability." : locale === "pt-BR" ? "Duas linhas comerciais, uma plataforma: NTAG213/215 para campanhas de volume e NTAG 424 DNA TagTamper para antifraude, autenticidade e rastreabilidade premium." : "Dos líneas comerciales en una sola plataforma: NTAG213/215 para campañas de volumen y NTAG 424 DNA TagTamper para antifraude, autenticidad y trazabilidad premium.";
   const demoCta = locale === "en" ? "View interactive demo" : locale === "pt-BR" ? "Ver demo interativa" : "Ver demo interactiva";
   const samplesCta = locale === "en" ? "Request demo" : locale === "pt-BR" ? "Solicitar demo" : "Pedir demo";
   const resellerCta = locale === "en" ? "Become a reseller" : locale === "pt-BR" ? "Quero ser reseller" : "Quiero ser reseller";
   const salesCta = locale === "en" ? "Talk to sales" : locale === "pt-BR" ? "Falar com vendas" : "Hablar con ventas";
+  const waSalesCta = locale === "en" ? "WhatsApp sales" : locale === "pt-BR" ? "WhatsApp vendas" : "WhatsApp ventas";
+  const waCeoCta = locale === "en" ? "WhatsApp CEO" : locale === "pt-BR" ? "WhatsApp CEO" : "WhatsApp CEO";
+  const demoLabCta = locale === "en" ? "Open Demo Lab" : locale === "pt-BR" ? "Abrir Demo Lab" : "Abrir Demo Lab";
+  const aiGuideCta = locale === "en" ? "AI guide · ask anything" : locale === "pt-BR" ? "BotIA · consultoria guiada" : "BotIA · asesoría guiada";
   return (
     <section className="container-shell py-16 md:py-24">
       <div className="hero-shell grid gap-10 rounded-[2rem] p-6 md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
@@ -41,17 +45,27 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
 
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
             <BrandDot size={10} variant="ripple" theme="dark" />
-            <span>{locale === "en" ? "Live product OS" : locale === "pt-BR" ? "Sistema vivo de produto" : "Sistema vivo de producto"}</span>
+            <span>{locale === "en" ? "Production-ready product OS" : locale === "pt-BR" ? "Product OS pronto para produção" : "Product OS listo para producción"}</span>
           </div>
 
           <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{heroTitle}</h1>
           <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{heroBody}</p>
 
-          <div className="mt-7 flex flex-wrap gap-3">
-            <a href="#demo"><Button>{demoCta}</Button></a>
-            <Link href="/?contact=demo#contact-modal"><Button variant="secondary">{samplesCta}</Button></Link>
-            <Link href="/?contact=reseller#contact-modal"><Button variant="secondary">{resellerCta}</Button></Link>
-            <Link href="/?contact=sales#contact-modal"><Button variant="secondary">{salesCta}</Button></Link>
+          <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <a href="#demo" className="rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-3 text-sm font-semibold text-cyan-100">{demoCta}</a>
+            <Link href="/?contact=demo#contact-modal" className="rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-100">{samplesCta}</Link>
+            <Link href="/?contact=reseller#contact-modal" className="rounded-xl border border-violet-300/35 bg-violet-500/15 px-4 py-3 text-sm font-semibold text-violet-100">{resellerCta}</Link>
+            <Link href="/?contact=sales#contact-modal" className="rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100">{salesCta}</Link>
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <a href="/?assistant=open" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">{aiGuideCta}</a>
+            <a href="https://wa.me/5492613168608?text=Hola%20quiero%20hablar%20con%20ventas%20nexID" target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">{waSalesCta}</a>
+            <a href="https://wa.me/5492613168608?text=Hola%20quiero%20hablar%20con%20el%20CEO%20de%20nexID" target="_blank" rel="noreferrer" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">{waCeoCta}</a>
+          </div>
+
+          <div className="mt-2">
+            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`} className="inline-flex rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">{demoLabCta}</a>
           </div>
 
           <div className="mt-7 flex flex-wrap gap-2">
@@ -135,7 +149,7 @@ export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
       secureTitle: "NTAG 424 DNA TagTamper (premium anti-fraud)",
       secureBullets: [
         "Use this profile when anti-clone and tamper resistance are business critical.",
-        "Recommended for wine, cosmetics, pharma and high-risk supply chains.",
+        "Recommended for wine, cosmetics, docs/presence and high-risk supply chains.",
       ],
       footer: "Message to buyers: NTAG215 = UX + control + serialisation. NTAG 424 DNA TT = strong anti-fraud.",
     }
@@ -154,7 +168,7 @@ export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
       secureTitle: "NTAG 424 DNA TagTamper (anti-fraude premium)",
       secureBullets: [
         "Use este perfil quando anti-clone e tamper são críticos.",
-        "Recomendado para vinho, cosméticos, pharma e cadeias de risco.",
+        "Recomendado para vinho, cosméticos, docs/presence e cadeias de risco.",
       ],
       footer: "Mensagem comercial: NTAG215 = UX + controle + serialização. NTAG 424 DNA TT = anti-fraude forte.",
     }
@@ -172,7 +186,7 @@ export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
       secureTitle: "NTAG 424 DNA TagTamper (anti-fraude premium)",
       secureBullets: [
         "Usá este perfil cuando anti-clonación y tamper sean críticos.",
-        "Recomendado para vino, cosmética, pharma y cadenas de alto riesgo.",
+        "Recomendado para vino, cosmética, docs/presence y cadenas de alto riesgo.",
       ],
       footer: "Mensaje comercial: NTAG215 = UX + control + serialización. NTAG 424 DNA TT = anti-fraude fuerte.",
     };

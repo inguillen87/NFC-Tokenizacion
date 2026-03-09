@@ -1,147 +1,102 @@
 import Link from "next/link";
-import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
-import {
-  BulletSection,
-  CtaSection,
-  EventsTagPositioningSection,
-  HeroSection,
-  PlansSection,
-  ResellerSection,
-} from "../components/landing-sections";
-import { CalculatorSection } from "../components/calculator-section";
-import { RadarSection } from "../components/radar-section";
-import { InteractiveDemoSection } from "../components/interactive-demo-section";
-import { SalesChatWidget } from "../components/sales-chat-widget";
-import { DemoRequestSection } from "../components/demo-request-section";
-import { landingContent } from "../lib/landing-content";
-import { getWebI18n } from "../lib/locale";
-import { CommercialContactModal } from "../components/commercial-contact-modal";
+import { BrandLockup, Button } from "@product/ui";
 import { productUrls } from "@product/config";
 
-export default async function HomePage() {
-  const { locale, locales, t } = await getWebI18n();
-  const content = landingContent[locale];
-  const labels = locale === "en"
-    ? {
-      demoJson: "Download seed JSON",
-      demoCsv: "Download manifest CSV",
-      launchLab: "Open Demo Lab",
-      assetTitle: "Demo Pack Library",
-      assetBody: "Use these files for technical pilots: JSON seeds simulate events and CSV manifests map UID/tag metadata per vertical.",
-      whyJson: "Seed JSON: scenario events (tap/open/tamper) to preload demos",
-      whyCsv: "Manifest CSV: UID/tag mapping for batch import and operational traceability",
-      whyLab: "Demo Lab: controlled test console to simulate scans and verify end-to-end flow",
-      forWho: "For agencies, investors, resellers, enterprise buyers and internal sales teams.",
-    }
-    : locale === "pt-BR"
-    ? {
-      demoJson: "Baixar seed JSON",
-      demoCsv: "Baixar manifest CSV",
-      launchLab: "Abrir Demo Lab",
-      assetTitle: "Biblioteca de Demo Packs",
-      assetBody: "Use estes arquivos em pilotos técnicos: JSON simula eventos e CSV mapeia UID/tag por vertical.",
-      whyJson: "Seed JSON: eventos de cenário (tap/open/tamper) para pré-carregar demos",
-      whyCsv: "Manifest CSV: mapeamento UID/tag para import de lote e rastreabilidade",
-      whyLab: "Demo Lab: console controlado para simular scans e validar o fluxo completo",
-      forWho: "Para agências, investidores, revendedores, compradores enterprise e times de vendas.",
-    }
-    : {
-      demoJson: "Descargar seed JSON",
-      demoCsv: "Descargar manifest CSV",
-      launchLab: "Abrir Demo Lab",
-      assetTitle: "Biblioteca de Demo Packs",
-      assetBody: "Usá estos archivos para pilotos técnicos: JSON simula eventos y CSV mapea UID/tag por vertical.",
-      whyJson: "Seed JSON: eventos de escenario (tap/open/tamper) para precargar demos",
-      whyCsv: "Manifest CSV: mapeo UID/tag para importar lotes y trazabilidad operativa",
-      whyLab: "Demo Lab: consola controlada para simular lecturas y validar el flujo end-to-end",
-      forWho: "Para agencias, inversores, resellers, compradores enterprise y equipos comerciales.",
-    };
-
-  const demoPacks = [
-    { key: "wine-secure", label: "Wine secure", tag: "NTAG 424 DNA TT", sim: "Bottle passport + uncork/tamper flow" },
-    { key: "events-basic", label: "Events basic", tag: "NTAG215", sim: "Wristband access + duplicate gate control" },
-    { key: "cosmetics-secure", label: "Cosmetics secure", tag: "NTAG 424 DNA TT", sim: "Cap opening + authenticity state" },
-    { key: "agro-secure", label: "Agro secure", tag: "NTAG 424 DNA TT", sim: "Bag tear + lot/origin validation" },
-    { key: "pharma-secure", label: "Pharma secure", tag: "NTAG 424 DNA TT", sim: "Cold-chain and anti-counterfeit checks" },
-    { key: "luxury-basic", label: "Luxury basic", tag: "NTAG215", sim: "Brand story + ownership activation" },
-  ];
-
+export default function HomePage() {
   return (
     <main>
       <header className="site-header sticky top-0 z-50 border-b backdrop-blur-xl">
         <div className="container-shell flex h-24 items-center justify-between gap-6 lg:h-28">
           <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand" />
-
           <nav className="hidden gap-6 text-sm md:flex site-nav">
-            <Link href="/">{content.nav.product}</Link>
-            <Link href="/pricing">{content.nav.pricing}</Link>
-            <Link href="/resellers">{content.nav.reseller}</Link>
-            <Link href="/docs">{content.nav.docs}</Link>
+            <Link href="/">Producto</Link>
+            <Link href="/pricing">Pricing</Link>
+            <Link href="/resellers">Canal</Link>
+            <Link href="/architecture">Arquitectura</Link>
           </nav>
-
-          <div className="flex items-center gap-2">
-            <LocaleSwitcher value={locale} options={[...locales]} />
-            <ThemeToggle />
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`}>
-              <Button variant="secondary">{content.nav.cta}</Button>
-            </a>
-          </div>
+          <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`}>
+            <Button variant="secondary">Dashboard</Button>
+          </a>
         </div>
       </header>
 
-      <HeroSection content={content} stats={t.web.stats} locale={locale} />
-      <RadarSection radar={content.radar} locale={locale} />
-      <InteractiveDemoSection locale={locale} />
-
-      <PlansSection content={content} />
-      <EventsTagPositioningSection locale={locale} />
-      <CalculatorSection calculator={content.calculator} locale={locale} />
-
-      <ResellerSection content={content} />
-      <BulletSection eyebrow={content.identity.eyebrow} title={content.identity.title} description={content.identity.description} bullets={content.identity.bullets} />
+      <section className="container-shell py-16 md:py-24">
+        <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Identidad física verificable</p>
+        <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight text-white md:text-6xl">
+          Autenticá productos, verificá accesos y activá experiencias con una sola plataforma.
+        </h1>
+        <p className="mt-5 max-w-3xl text-lg text-slate-300">
+          nexID conecta tags NFC, validación backend y reglas de negocio para convertir cada toque en autenticación, estado, ownership, redención o ingreso.
+        </p>
+        <div className="mt-7 flex flex-wrap gap-3">
+          <Link href="/?contact=demo#contact-modal" className="rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-3 text-sm font-semibold text-cyan-100">Solicitar demo</Link>
+          <a href="#casos" className="rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100">Ver casos</a>
+          <Link href="/resellers" className="rounded-xl border border-violet-300/35 bg-violet-500/15 px-4 py-3 text-sm font-semibold text-violet-100">Quiero ser reseller</Link>
+        </div>
+        <p className="mt-5 text-sm text-slate-300">Basic para volumen. Secure para confianza. API-first para escalar.</p>
+      </section>
 
       <section className="container-shell py-8">
-        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{labels.assetTitle}</p>
-          <p className="mt-2 text-sm text-slate-300">{labels.assetBody}</p>
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {demoPacks.map((pack) => (
-              <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
-                <p className="text-sm font-semibold text-white">{pack.label} <span className="text-cyan-300">· {pack.tag}</span></p>
-                <p className="mt-1 text-xs text-slate-300">{pack.sim}</p>
-                <div className="mt-3 grid gap-2 md:grid-cols-3">
-                  <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/seed.json`} download>{labels.demoJson}</a>
-                  <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/manifest.csv`} download>{labels.demoCsv}</a>
-                  <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200" href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`}>{labels.launchLab}</a>
-                </div>
-              </div>
-            ))}
+        <h2 className="text-2xl font-bold text-white">Dos niveles de confianza. Un solo sistema operativo.</h2>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h3 className="text-lg font-semibold text-cyan-200">Basic</h3>
+            <p className="mt-2 text-sm text-slate-300">NTAG215 para tap-to-web, serialización, acceso general, loyalty, warranty y analytics.</p>
+            <ul className="mt-3 space-y-1 text-sm text-slate-300"><li>• Rápido de desplegar</li><li>• Ideal para eventos y activaciones</li><li>• No usar para antifraude premium</li></ul>
           </div>
-          <div className="mt-4 grid gap-2 text-xs text-slate-300 md:grid-cols-4">
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyJson}</div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyCsv}</div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyLab}</div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.forWho}</div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h3 className="text-lg font-semibold text-violet-200">Secure</h3>
+            <p className="mt-2 text-sm text-slate-300">NTAG 424 DNA / TagTamper para autenticidad fuerte, duplicate alerts, tamper state y flujos sensibles.</p>
+            <ul className="mt-3 space-y-1 text-sm text-slate-300"><li>• Ideal para vino, cosmética, vouchers y documentos</li><li>• Validación por tap</li><li>• Más señal, menos fraude</li></ul>
           </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <h3 className="text-lg font-semibold text-emerald-200">nexID OS</h3>
+            <p className="mt-2 text-sm text-slate-300">Emisión, validación, ownership, dashboards, API, webhooks y workspace reseller.</p>
+            <ul className="mt-3 space-y-1 text-sm text-slate-300"><li>• Backend único</li><li>• Reglas por vertical</li><li>• Operación white-label</li></ul>
+          </div>
+        </div>
+        <p className="mt-4 text-sm text-slate-400">La separación técnica entre estas capas está respaldada por las capacidades nativas de NTAG215 y NTAG 424 DNA/TagTamper.</p>
+      </section>
+
+      <section id="casos" className="container-shell py-12">
+        <h2 className="text-2xl font-bold text-white">Casos con mejor wedge comercial hoy</h2>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <Link href="/wine-secure" className="rounded-2xl border border-white/10 bg-white/5 p-5 text-slate-200">Wine Secure · Autenticidad, apertura y ownership para botellas premium y canal selectivo.</Link>
+          <Link href="/events" className="rounded-2xl border border-white/10 bg-white/5 p-5 text-slate-200">Events · Acceso, activaciones y proof-of-presence con Basic y Secure.</Link>
+          <Link href="/docs-presence" className="rounded-2xl border border-white/10 bg-white/5 p-5 text-slate-200">Docs & Presence · Documentos verificables, contratistas, visitas y bitácoras.</Link>
+          <Link href="/cosmetics-secure" className="rounded-2xl border border-white/10 bg-white/5 p-5 text-slate-200">Cosmetics Secure · Autenticidad, estado de apertura y canal directo postventa.</Link>
         </div>
       </section>
 
-      <CtaSection content={content} />
-      <DemoRequestSection locale={locale} />
-      <SalesChatWidget locale={locale} />
-      <CommercialContactModal />
-
-      <footer className="site-footer border-t">
-        <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
-          <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
-          <p className="text-sm site-muted">nexID combina tags NFC, autenticación criptográfica, antifraude, trazabilidad y CRM comercial para vino, cosmética, pharma, eventos y canales reseller.</p>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
-            <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
-            <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</Link>
-          </div>
+      <section className="container-shell py-10">
+        <h2 className="text-2xl font-bold text-white">Del objeto al backend en cuatro pasos</h2>
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-slate-200">1) Emitís y codificás el lote.</div>
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-slate-200">2) El usuario toca el tag o escanea el fallback QR.</div>
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-slate-200">3) nexID valida autenticidad, estado y reglas de negocio.</div>
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-slate-200">4) Tu sistema recibe el evento y dispara contenido, bloqueo, redención o trazabilidad.</div>
         </div>
-      </footer>
+        <p className="mt-4 text-sm text-slate-400">Modelo carrier-agnostic: QR fallback + NFC premium interaction, GS1 Digital Link-ready.</p>
+      </section>
+
+      <section className="container-shell py-10">
+        <h2 className="text-2xl font-bold text-white">Vendé soluciones NFC sin construir infraestructura desde cero.</h2>
+        <p className="mt-2 text-slate-300">nexID permite a agencias, converters, imprentas e integradores operar sobre una capa central con branding, control y soporte.</p>
+        <ul className="mt-4 grid gap-2 md:grid-cols-2 text-sm text-slate-200">
+          <li className="rounded-xl border border-white/10 bg-white/5 p-3">• Workspace aislado por partner</li>
+          <li className="rounded-xl border border-white/10 bg-white/5 p-3">• Gestión de lotes y clientes</li>
+          <li className="rounded-xl border border-white/10 bg-white/5 p-3">• Pricing por canal</li>
+          <li className="rounded-xl border border-white/10 bg-white/5 p-3">• API y webhooks en tiers altos</li>
+        </ul>
+      </section>
+
+      <section className="container-shell py-16">
+        <div className="rounded-2xl border border-cyan-300/30 bg-cyan-500/10 p-6">
+          <h2 className="text-2xl font-bold text-white">Listo para piloto.</h2>
+          <p className="mt-2 text-slate-200">Definimos el caso, elegimos el formato físico y activamos el flujo de validación con tu equipo.</p>
+          <Link href="/?contact=demo#contact-modal" className="mt-4 inline-flex rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-3 text-sm font-semibold text-cyan-100">Agendar demo</Link>
+        </div>
+      </section>
     </main>
   );
 }
