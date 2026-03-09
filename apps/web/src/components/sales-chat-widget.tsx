@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEventHandler } from "react";
 import type { AppLocale } from "@product/config";
 
 type Message = { role: "user" | "assistant"; text: string };
@@ -16,6 +16,8 @@ type WidgetCopy = {
   contactEmail: string;
   contactWhats: string;
   submitLead: string;
+  leadError: string;
+  leadOk: string;
 };
 
 const copy: Record<AppLocale, WidgetCopy> = {
@@ -30,6 +32,8 @@ const copy: Record<AppLocale, WidgetCopy> = {
     contactEmail: "Email",
     contactWhats: "WhatsApp",
     submitLead: "Enviar contacto",
+    leadError: "Completá nombre y email o WhatsApp.",
+    leadOk: "Lead enviado al CRM.",
   },
   "pt-BR": {
     title: "NexID Sales AI",
@@ -42,6 +46,8 @@ const copy: Record<AppLocale, WidgetCopy> = {
     contactEmail: "Email",
     contactWhats: "WhatsApp",
     submitLead: "Enviar contato",
+    leadError: "Preencha nome e email ou WhatsApp.",
+    leadOk: "Lead enviado ao CRM.",
   },
   en: {
     title: "NexID Sales AI",
@@ -54,8 +60,20 @@ const copy: Record<AppLocale, WidgetCopy> = {
     contactEmail: "Email",
     contactWhats: "WhatsApp",
     submitLead: "Submit contact",
+    leadError: "Fill name and email or WhatsApp.",
+    leadOk: "Lead submitted to CRM.",
   },
 };
+
+function extractEmail(text: string) {
+  const match = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match?.[0]?.trim() || "";
+}
+
+function extractPhone(text: string) {
+  const match = text.match(/(?:\+?\d[\d\s().-]{7,}\d)/);
+  return match?.[0]?.replace(/\s+/g, " ").trim() || "";
+}
 
 export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   const t = copy[locale] || copy["es-AR"];
@@ -66,6 +84,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [leadState, setLeadState] = useState<"idle" | "ok" | "error">("idle");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -79,16 +98,25 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
     if (!text.trim()) return;
     const userText = text.trim();
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", text: userText }]);
+    setLeadState("idle");
+
+    const inferredEmail = email || extractEmail(userText);
+    const inferredPhone = whatsapp || extractPhone(userText);
+    if (!email && inferredEmail) setEmail(inferredEmail);
+    if (!whatsapp && inferredPhone) setWhatsapp(inferredPhone);
+
+    const nextMessages = [...messages, { role: "user" as const, text: userText }];
+    setMessages(nextMessages);
     setLoading(true);
 
     const payload = {
       locale,
       question: userText,
       fullName,
-      email,
-      whatsapp,
+      email: inferredEmail,
+      whatsapp: inferredPhone,
       mode: fromContactForm ? "lead_capture" : "web_widget",
+      history: messages.slice(-8),
     };
 
     try {
@@ -97,13 +125,34 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = (await res.json().catch(() => null)) as { answer?: string } | null;
+      const data = (await res.json().catch(() => null)) as { answer?: string; leadSaved?: boolean } | null;
       const answer = data?.answer || "NexID assistant unavailable. Please try again in a few seconds.";
       setMessages((prev) => [...prev, { role: "assistant", text: answer }]);
+      if (data?.leadSaved) setLeadState("ok");
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: "NexID assistant unavailable. Please try again in a few seconds." }]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendLead = () => {
+    if (!readyContact || loading) {
+      setLeadState("error");
+      return;
+    }
+    const scriptedMessage = locale === "en"
+      ? `I need quote and samples. Name: ${fullName}. Email: ${email}. WhatsApp: ${whatsapp}.`
+      : locale === "pt-BR"
+        ? `Quero proposta e amostras. Nome: ${fullName}. Email: ${email}. WhatsApp: ${whatsapp}.`
+        : `Quiero cotización y muestras. Nombre: ${fullName}. Email: ${email}. WhatsApp: ${whatsapp}.`;
+    void ask(scriptedMessage, true);
+  };
+
+  const onInputKeyDown: KeyboardEventHandler<HTMLInputElement> = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void ask(input);
     }
   };
 
@@ -130,7 +179,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
               </div>
             ) : null}
             {messages.map((message, idx) => (
-              <div key={`${message.role}-${idx}`} className={`rounded-xl px-3 py-2 text-xs ${message.role === "user" ? "ml-8 bg-blue-500/25 text-blue-100" : "mr-8 border border-white/10 bg-white/5 text-slate-100"}`}>
+              <div key={`${message.role}-${idx}`} className={`whitespace-pre-wrap rounded-xl px-3 py-2 text-xs ${message.role === "user" ? "ml-8 bg-blue-500/25 text-blue-100" : "mr-8 border border-white/10 bg-white/5 text-slate-100"}`}>
                 {message.text}
               </div>
             ))}
@@ -143,12 +192,14 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.contactEmail} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100" />
               <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder={t.contactWhats} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100" />
             </div>
-            <button disabled={!readyContact || loading} onClick={() => ask(locale === "en" ? "I want a quote and samples." : locale === "pt-BR" ? "Quero proposta e amostras." : "Quiero cotización y muestras.", true)} className="w-full rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-200 disabled:opacity-40">
+            <button disabled={loading} onClick={sendLead} className="w-full rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-200 disabled:opacity-40">
               {t.submitLead}
             </button>
+            {leadState === "error" ? <p className="text-[11px] text-rose-300">{t.leadError}</p> : null}
+            {leadState === "ok" ? <p className="text-[11px] text-emerald-300">{t.leadOk}</p> : null}
 
             <div className="flex gap-2">
-              <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} className="flex-1 rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-xs text-slate-100" />
+              <input value={input} onKeyDown={onInputKeyDown} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} className="flex-1 rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-xs text-slate-100" />
               <button onClick={() => ask(input)} disabled={loading || !input.trim()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs text-cyan-100 disabled:opacity-40">{t.send}</button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEventHandler } from "react";
 import { BrandDot } from "./brand";
 
 type Locale = "es-AR" | "pt-BR" | "en";
@@ -15,6 +15,7 @@ type AssistantReply = {
   answer?: string;
   intent?: string;
   requiresContact?: boolean;
+  leadSaved?: boolean;
   citations?: Array<{ title?: string; slug?: string; locale?: string }>;
 };
 
@@ -42,6 +43,7 @@ const copy: Record<
     contactRequired: string;
     sendLead: string;
     leadSuccess: string;
+    hints: string[];
   }
 > = {
   "es-AR": {
@@ -66,6 +68,7 @@ const copy: Record<
     contactRequired: "Para enviar cotización necesitamos nombre completo y al menos email o WhatsApp.",
     sendLead: "Enviar lead",
     leadSuccess: "Perfecto. Lead enviado. El equipo comercial te contacta hoy / 24h.",
+    hints: ["¿Necesitás asesoría?", "¿Querés entender Basic vs Secure?", "¿Cotizamos por volumen ahora?"],
   },
   "pt-BR": {
     title: "nexID Assistant",
@@ -89,6 +92,7 @@ const copy: Record<
     contactRequired: "Para enviar proposta precisamos nome completo e pelo menos email ou WhatsApp.",
     sendLead: "Enviar lead",
     leadSuccess: "Perfeito. Lead enviado. Nosso time comercial responde hoje / em 24h.",
+    hints: ["Precisa de consultoria?", "Quer entender Basic vs Secure?", "Quer cotar por volume agora?"],
   },
   en: {
     title: "nexID Assistant",
@@ -112,6 +116,7 @@ const copy: Record<
     contactRequired: "To request a quote we need full name and at least email or WhatsApp.",
     sendLead: "Send lead",
     leadSuccess: "Great. Lead sent. Sales team will contact you today / within 24h.",
+    hints: ["Need guidance?", "Want Basic vs Secure in 30 sec?", "Ready to request a quote now?"],
   },
 };
 
@@ -127,9 +132,17 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [hintIndex, setHintIndex] = useState(0);
 
   const hasContact = email.trim().length > 3 || whatsapp.trim().length > 5;
   const leadReady = fullName.trim().length > 3 && hasContact;
+
+
+  useEffect(() => {
+    if (open) return;
+    const timer = setInterval(() => setHintIndex((prev) => (prev + 1) % t.hints.length), 2600);
+    return () => clearInterval(timer);
+  }, [open, t.hints.length]);
 
   const shouldShowSalesCta = useMemo(() => {
     const latest = [...messages].reverse().find((item) => item.role === "assistant")?.text || "";
@@ -151,7 +164,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
       const res = await fetch("/api/assistant/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale, question: content, mode, fullName, email, whatsapp, contact }),
+        body: JSON.stringify({ locale, question: content, mode, fullName, email, whatsapp, contact, history: messages.slice(-8) }),
       });
 
       const data: AssistantReply = await res.json().catch(() => ({}));
@@ -165,6 +178,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
       const withPrompt = data.intent === "pricing" || data.intent === "reseller" ? `${withCitations}\n\n${t.leadPrompt}` : withCitations;
       setRequiresContact(Boolean(data.requiresContact));
       setMessages((prev) => [...prev, { role: "assistant", text: withPrompt }]);
+      if (data.leadSaved) setRequiresContact(false);
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", text: t.unavailable }]);
     } finally {
@@ -185,13 +199,28 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
       : `Quiero propuesta comercial. Nombre completo: ${fullName}. Email: ${email}. WhatsApp: ${whatsapp}.`;
 
     await send(prompt);
-    setMessages((prev) => [...prev, { role: "assistant", text: t.leadSuccess }]);
   }
+
+
+  const onQuestionKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void send();
+    }
+  };
 
   return (
     <div className={className}>
-      <button className="helpbot-surface fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200" onClick={() => setOpen((v) => !v)}>
-        <BrandDot size={10} variant="ripple" theme="dark" />
+      {!open ? (
+        <div className="fixed bottom-20 right-5 z-[91] max-w-[220px] rounded-lg border border-cyan-300/30 bg-slate-950/95 px-3 py-2 text-[11px] text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,.2)]">
+          {t.hints[hintIndex]}
+        </div>
+      ) : null}
+      <button className="helpbot-surface fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,.35)]" onClick={() => setOpen((v) => !v)}>
+        <span className="relative inline-flex">
+          <span className="absolute -inset-2 rounded-full border border-cyan-300/40 animate-ping" />
+          <BrandDot size={10} variant="ripple" theme="dark" />
+        </span>
         {open ? t.close : t.open}
       </button>
 
@@ -240,7 +269,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
             {t.sendLead}
           </button>
 
-          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="helpbot-input mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
+          <textarea value={question} onKeyDown={onQuestionKeyDown} onChange={(e) => setQuestion(e.target.value)} className="helpbot-input mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
           <button onClick={() => send()} disabled={busy} className="mt-2 w-full rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
             {t.send}
           </button>
