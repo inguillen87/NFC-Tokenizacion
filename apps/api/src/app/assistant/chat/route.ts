@@ -258,6 +258,70 @@ async function upsertLeadCompat(params: {
   }
 }
 
+async function upsertLeadCompat(params: {
+  locale: string;
+  contact: string;
+  fullName: string;
+  email: string;
+  whatsapp: string;
+  company: string;
+  country: string;
+  vertical: string;
+  tagType: string;
+  volume: number;
+  source: string;
+  status: string;
+  question: string;
+}) {
+  const recent = await sql/*sql*/`
+    SELECT id FROM leads WHERE contact = ${params.contact} ORDER BY created_at DESC LIMIT 1
+  `.catch(() => [] as Array<{ id: string }>);
+
+  const notes = `${params.fullName ? `name=${params.fullName}; ` : ""}${params.question}`.slice(0, 900);
+
+  const updateExtended = async (id: string) => sql/*sql*/`
+    UPDATE leads
+    SET locale = ${params.locale}, company = ${params.company}, country = ${params.country},
+      vertical = ${params.vertical}, tag_type = ${params.tagType}, volume = ${params.volume},
+      source = ${params.source}, status = ${params.status}, name = ${params.fullName}, email = ${params.email},
+      phone = ${params.whatsapp}, estimated_volume = ${String(params.volume || "")}, message = ${params.question}, notes = ${notes}
+    WHERE id = ${id}
+  `;
+
+  const updateBasic = async (id: string) => sql/*sql*/`
+    UPDATE leads
+    SET locale = ${params.locale}, company = ${params.company}, country = ${params.country},
+      vertical = ${params.vertical}, tag_type = ${params.tagType}, volume = ${params.volume},
+      source = ${params.source}, status = ${params.status}, notes = ${notes}
+    WHERE id = ${id}
+  `;
+
+  const insertExtended = async () => sql/*sql*/`
+    INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes)
+    VALUES (${params.locale}, ${params.contact}, ${params.fullName}, ${params.email}, ${params.whatsapp}, ${params.company}, ${params.country}, ${params.vertical}, '', ${String(params.volume || "")}, ${params.tagType}, ${params.volume}, ${params.source}, ${params.status}, ${params.question}, ${notes})
+  `;
+
+  const insertBasic = async () => sql/*sql*/`
+    INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
+    VALUES (${params.locale}, ${params.contact}, ${params.company}, ${params.country}, ${params.vertical}, ${params.tagType}, ${params.volume}, ${params.source}, ${params.status}, ${notes})
+  `;
+
+  if (recent[0]?.id) {
+    try {
+      await updateExtended(recent[0].id);
+    } catch {
+      await updateBasic(recent[0].id).catch(() => null);
+    }
+    return;
+  }
+
+  try {
+    await insertExtended();
+  } catch {
+    await insertBasic().catch(() => null);
+  }
+}
+
 export async function POST(req: Request) {
   const body: Body = await req.json().catch(() => ({}));
   const locale = body.locale || "es-AR";
