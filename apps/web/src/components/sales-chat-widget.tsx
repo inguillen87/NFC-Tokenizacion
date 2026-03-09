@@ -18,6 +18,9 @@ type WidgetCopy = {
   submitLead: string;
   leadError: string;
   leadOk: string;
+  voiceStart: string;
+  voiceStop: string;
+  voiceUnsupported: string;
 };
 
 const copy: Record<AppLocale, WidgetCopy> = {
@@ -34,6 +37,9 @@ const copy: Record<AppLocale, WidgetCopy> = {
     submitLead: "Enviar contacto",
     leadError: "Completá nombre y email o WhatsApp.",
     leadOk: "Lead enviado al CRM.",
+    voiceStart: "Hablar",
+    voiceStop: "Detener",
+    voiceUnsupported: "Tu navegador no soporta dictado por voz.",
   },
   "pt-BR": {
     title: "NexID Sales AI",
@@ -48,6 +54,9 @@ const copy: Record<AppLocale, WidgetCopy> = {
     submitLead: "Enviar contato",
     leadError: "Preencha nome e email ou WhatsApp.",
     leadOk: "Lead enviado ao CRM.",
+    voiceStart: "Falar",
+    voiceStop: "Parar",
+    voiceUnsupported: "Seu navegador não suporta ditado por voz.",
   },
   en: {
     title: "NexID Sales AI",
@@ -62,6 +71,9 @@ const copy: Record<AppLocale, WidgetCopy> = {
     submitLead: "Submit contact",
     leadError: "Fill name and email or WhatsApp.",
     leadOk: "Lead submitted to CRM.",
+    voiceStart: "Speak",
+    voiceStop: "Stop",
+    voiceUnsupported: "Your browser does not support voice dictation.",
   },
 };
 
@@ -85,6 +97,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   const [whatsapp, setWhatsapp] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [leadState, setLeadState] = useState<"idle" | "ok" | "error">("idle");
+  const [voiceState, setVoiceState] = useState<"idle" | "listening" | "unsupported">("idle");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -149,6 +162,30 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
     void ask(scriptedMessage, true);
   };
 
+  const startVoice = () => {
+    const w = window as unknown as { SpeechRecognition?: new () => { lang: string; interimResults: boolean; onresult: ((event: { results: Array<Array<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void }; webkitSpeechRecognition?: new () => { lang: string; interimResults: boolean; onresult: ((event: { results: Array<Array<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void } };
+    const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Recognition) {
+      setVoiceState("unsupported");
+      return;
+    }
+
+    const rec = new Recognition();
+    rec.lang = locale === "pt-BR" ? "pt-BR" : locale === "en" ? "en-US" : "es-AR";
+    rec.interimResults = false;
+    setVoiceState("listening");
+    rec.onresult = (event) => {
+      const transcript = event.results?.[0]?.[0]?.transcript || "";
+      if (transcript) setInput((prev) => `${prev} ${transcript}`.trim());
+    };
+    rec.onend = () => setVoiceState("idle");
+    rec.start();
+
+    setTimeout(() => {
+      try { rec.stop(); } catch {}
+    }, 7000);
+  };
+
   const onInputKeyDown: KeyboardEventHandler<HTMLInputElement> = (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -200,8 +237,10 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
 
             <div className="flex gap-2">
               <input value={input} onKeyDown={onInputKeyDown} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} className="flex-1 rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-xs text-slate-100" />
+              <button type="button" onClick={startVoice} className="rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-xs text-violet-100">{voiceState === "listening" ? t.voiceStop : t.voiceStart}</button>
               <button onClick={() => ask(input)} disabled={loading || !input.trim()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs text-cyan-100 disabled:opacity-40">{t.send}</button>
             </div>
+            {voiceState === "unsupported" ? <p className="text-[11px] text-amber-300">{t.voiceUnsupported}</p> : null}
           </div>
         </div>
       ) : null}

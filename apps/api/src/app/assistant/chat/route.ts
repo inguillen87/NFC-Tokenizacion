@@ -158,32 +158,103 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
     "Return JSON with keys: answer, company, country, vertical, tagType, volume, buyingIntent, nextStep.",
   ].join(" ");
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.25,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: `Locale: ${locale}\nIntent: ${intent}\nQuestion: ${question}\nKnowledge base:\n${context}` },
-        ],
-        response_format: { type: "json_object" },
-      }),
-      cache: "no-store",
-    });
+  const preferredModel = process.env.OPENAI_CHAT_MODEL || "gpt-5-mini";
+  const fallbacks = [preferredModel, "gpt-5-nano", "gpt-4o-mini"].filter((m, i, arr) => arr.indexOf(m) === i);
 
-    if (!response.ok) return null;
-    const data = await response.json().catch(() => null);
-    const text = data?.choices?.[0]?.message?.content;
-    if (typeof text !== "string" || !text.trim()) return null;
-    return JSON.parse(text) as OpenAILeadPayload;
+  for (const model of fallbacks) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.25,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: `Locale: ${locale}\nIntent: ${intent}\nQuestion: ${question}\nKnowledge base:\n${context}` },
+          ],
+          response_format: { type: "json_object" },
+        }),
+        cache: "no-store",
+      });
+
+      if (!response.ok) continue;
+      const data = await response.json().catch(() => null);
+      const text = data?.choices?.[0]?.message?.content;
+      if (typeof text !== "string" || !text.trim()) continue;
+      return JSON.parse(text) as OpenAILeadPayload;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+async function upsertLeadCompat(params: {
+  locale: string;
+  contact: string;
+  fullName: string;
+  email: string;
+  whatsapp: string;
+  company: string;
+  country: string;
+  vertical: string;
+  tagType: string;
+  volume: number;
+  source: string;
+  status: string;
+  question: string;
+}) {
+  const recent = await sql/*sql*/`
+    SELECT id FROM leads WHERE contact = ${params.contact} ORDER BY created_at DESC LIMIT 1
+  `.catch(() => [] as Array<{ id: string }>);
+
+  const notes = `${params.fullName ? `name=${params.fullName}; ` : ""}${params.question}`.slice(0, 900);
+
+  const updateExtended = async (id: string) => sql/*sql*/`
+    UPDATE leads
+    SET locale = ${params.locale}, company = ${params.company}, country = ${params.country},
+      vertical = ${params.vertical}, tag_type = ${params.tagType}, volume = ${params.volume},
+      source = ${params.source}, status = ${params.status}, name = ${params.fullName}, email = ${params.email},
+      phone = ${params.whatsapp}, estimated_volume = ${String(params.volume || "")}, message = ${params.question}, notes = ${notes}
+    WHERE id = ${id}
+  `;
+
+  const updateBasic = async (id: string) => sql/*sql*/`
+    UPDATE leads
+    SET locale = ${params.locale}, company = ${params.company}, country = ${params.country},
+      vertical = ${params.vertical}, tag_type = ${params.tagType}, volume = ${params.volume},
+      source = ${params.source}, status = ${params.status}, notes = ${notes}
+    WHERE id = ${id}
+  `;
+
+  const insertExtended = async () => sql/*sql*/`
+    INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes)
+    VALUES (${params.locale}, ${params.contact}, ${params.fullName}, ${params.email}, ${params.whatsapp}, ${params.company}, ${params.country}, ${params.vertical}, '', ${String(params.volume || "")}, ${params.tagType}, ${params.volume}, ${params.source}, ${params.status}, ${params.question}, ${notes})
+  `;
+
+  const insertBasic = async () => sql/*sql*/`
+    INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
+    VALUES (${params.locale}, ${params.contact}, ${params.company}, ${params.country}, ${params.vertical}, ${params.tagType}, ${params.volume}, ${params.source}, ${params.status}, ${notes})
+  `;
+
+  if (recent[0]?.id) {
+    try {
+      await updateExtended(recent[0].id);
+    } catch {
+      await updateBasic(recent[0].id).catch(() => null);
+    }
+    return;
+  }
+
+  try {
+    await insertExtended();
   } catch {
-    return null;
+    await insertBasic().catch(() => null);
   }
 }
 

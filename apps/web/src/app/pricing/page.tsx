@@ -30,6 +30,12 @@ export default async function PricingPage() {
             "Enterprise: integration, SLA, API, governance and advanced analytics.",
             "Reseller: white-label go-to-market with recurring margin and managed rollout.",
           ],
+          chooseTitle: "When to choose each line",
+          chooseBullets: [
+            "Choose Basic when margin/risk per unit is low and speed/volume is priority.",
+            "Choose Secure when authenticity, anti-clone, legal evidence or channel control are required.",
+            "Use hybrid strategy in events: Basic for attendees, Secure for VIP/staff critical access.",
+          ],
         }
       : locale === "pt-BR"
       ? {
@@ -47,6 +53,12 @@ export default async function PricingPage() {
             "Enterprise: integração, SLA, API, governança e analytics avançado.",
             "Revenda: go-to-market white-label com margem recorrente e rollout assistido.",
           ],
+          chooseTitle: "Quando escolher cada linha",
+          chooseBullets: [
+            "Escolha Basic quando margem/risco por unidade é baixo e velocidade/volume é prioridade.",
+            "Escolha Secure quando autenticidade, anti-clone, evidência legal ou controle de canal são críticos.",
+            "Estratégia híbrida em eventos: Basic para público geral e Secure para VIP/staff crítico.",
+          ],
         }
       : {
           includeTitle: "Qué incluye cada propuesta",
@@ -62,6 +74,12 @@ export default async function PricingPage() {
             "Línea Secure (NTAG 424 DNA TT): hardware codificado + autenticación antifraude + SaaS.",
             "Enterprise: integración, SLA, API, gobernanza y analítica avanzada.",
             "Reseller: go-to-market white-label con margen recurrente y rollout asistido.",
+          ],
+          chooseTitle: "Cuándo elegir cada línea",
+          chooseBullets: [
+            "Elegí Basic cuando el margen/riesgo por unidad es bajo y la prioridad es velocidad/volumen.",
+            "Elegí Secure cuando necesitás autenticidad, anti-clone, evidencia legal o control de canal.",
+            "Estrategia híbrida en eventos: Basic para asistentes y Secure para VIP/staff crítico.",
           ],
         };
 
@@ -102,6 +120,15 @@ export default async function PricingPage() {
         <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.modelTitle}</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {labels.modelCards.map((item) => (
+            <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="mt-8 p-6 pricing-page-card">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.chooseTitle}</h3>
+        <div className="mt-4 grid gap-3">
+          {labels.chooseBullets.map((item) => (
             <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
           ))}
         </div>

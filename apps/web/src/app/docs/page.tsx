@@ -16,6 +16,10 @@ type DocsCopy = {
   resellerBullets: string[];
   buyerTitle: string;
   buyerBullets: string[];
+  focusTitle: string;
+  focusBullets: string[];
+  caveatTitle: string;
+  caveatBody: string;
   actionsTitle: string;
   openAssistant: string;
   talkAgent: string;
@@ -58,6 +62,15 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Accedés a evidencia operativa: feed live, mapa y trazabilidad por eventos.",
       "Evaluás potencial recurrente SaaS sobre hardware autenticado.",
     ],
+    focusTitle: "Foco go-to-market recomendado",
+    focusBullets: [
+      "1) Wine Secure (NTAG 424 DNA TT).",
+      "2) Events Basic + Events Secure para agencias y canal reseller.",
+      "3) Docs & Presence Secure para evidencia verificable de personas y documentos.",
+      "Expansión inmediata: cosmética premium. Expansión regulatoria: exportadores DPP-ready.",
+    ],
+    caveatTitle: "Criterio técnico importante",
+    caveatBody: "TagTamper no reemplaza un sensor de temperatura ni corrige packaging deficiente: el valor real sale de chip + inlay + adhesivo + diseño físico + backend.",
     actionsTitle: "Siguientes pasos",
     openAssistant: "Abrir BotIA",
     talkAgent: "Hablar con agente (WhatsApp)",
@@ -98,6 +111,15 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Prova operacional com feed live, mapa e rastreabilidade.",
       "Potencial de receita recorrente SaaS com base em hardware autenticado.",
     ],
+    focusTitle: "Foco go-to-market recomendado",
+    focusBullets: [
+      "1) Wine Secure (NTAG 424 DNA TT).",
+      "2) Events Basic + Events Secure para agências e canal revenda.",
+      "3) Docs & Presence Secure para prova verificável de pessoas e documentos.",
+      "Expansão imediata: cosméticos premium. Expansão regulatória: exportadores DPP-ready.",
+    ],
+    caveatTitle: "Critério técnico importante",
+    caveatBody: "TagTamper não substitui sensor de temperatura nem corrige packaging ruim: o valor real vem de chip + inlay + adesivo + design físico + backend.",
     actionsTitle: "Próximos passos",
     openAssistant: "Abrir BotIA",
     talkAgent: "Falar com agente (WhatsApp)",
@@ -138,6 +160,15 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Operational proof via live feed, map, and event traceability.",
       "Recurring SaaS upside layered on authenticated hardware.",
     ],
+    focusTitle: "Recommended go-to-market focus",
+    focusBullets: [
+      "1) Wine Secure (NTAG 424 DNA TT).",
+      "2) Events Basic + Events Secure for agencies and reseller channel.",
+      "3) Docs & Presence Secure for verified people/document evidence.",
+      "Immediate expansion: premium cosmetics. Regulatory expansion: DPP-ready exporters.",
+    ],
+    caveatTitle: "Important technical caveat",
+    caveatBody: "TagTamper is not a temperature sensor and cannot fix weak packaging alone: real value is chip + inlay + adhesive + physical design + backend.",
     actionsTitle: "Next steps",
     openAssistant: "Open AI assistant",
     talkAgent: "Talk to agent (WhatsApp)",
@@ -186,6 +217,19 @@ export default async function DocsPage() {
           <ul className="mt-4 space-y-2 text-sm text-slate-300">
             {copy.buyerBullets.map((item) => <li key={item}>• {item}</li>)}
           </ul>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.focusTitle}</h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            {copy.focusBullets.map((item) => <li key={item}>• {item}</li>)}
+          </ul>
+        </Card>
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.caveatTitle}</h3>
+          <p className="mt-4 text-sm text-slate-300">{copy.caveatBody}</p>
         </Card>
       </div>
 
