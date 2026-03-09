@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEventHandler } from "react";
+import { useEffect, useMemo, useState, type KeyboardEventHandler } from "react";
 import { BrandDot } from "./brand";
 
 type Locale = "es-AR" | "pt-BR" | "en";
@@ -43,6 +43,7 @@ const copy: Record<
     contactRequired: string;
     sendLead: string;
     leadSuccess: string;
+    hints: string[];
   }
 > = {
   "es-AR": {
@@ -67,6 +68,7 @@ const copy: Record<
     contactRequired: "Para enviar cotización necesitamos nombre completo y al menos email o WhatsApp.",
     sendLead: "Enviar lead",
     leadSuccess: "Perfecto. Lead enviado. El equipo comercial te contacta hoy / 24h.",
+    hints: ["¿Necesitás asesoría?", "¿Querés entender Basic vs Secure?", "¿Cotizamos por volumen ahora?"],
   },
   "pt-BR": {
     title: "nexID Assistant",
@@ -90,6 +92,7 @@ const copy: Record<
     contactRequired: "Para enviar proposta precisamos nome completo e pelo menos email ou WhatsApp.",
     sendLead: "Enviar lead",
     leadSuccess: "Perfeito. Lead enviado. Nosso time comercial responde hoje / em 24h.",
+    hints: ["Precisa de consultoria?", "Quer entender Basic vs Secure?", "Quer cotar por volume agora?"],
   },
   en: {
     title: "nexID Assistant",
@@ -113,6 +116,7 @@ const copy: Record<
     contactRequired: "To request a quote we need full name and at least email or WhatsApp.",
     sendLead: "Send lead",
     leadSuccess: "Great. Lead sent. Sales team will contact you today / within 24h.",
+    hints: ["Need guidance?", "Want Basic vs Secure in 30 sec?", "Ready to request a quote now?"],
   },
 };
 
@@ -128,9 +132,17 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [hintIndex, setHintIndex] = useState(0);
 
   const hasContact = email.trim().length > 3 || whatsapp.trim().length > 5;
   const leadReady = fullName.trim().length > 3 && hasContact;
+
+
+  useEffect(() => {
+    if (open) return;
+    const timer = setInterval(() => setHintIndex((prev) => (prev + 1) % t.hints.length), 2600);
+    return () => clearInterval(timer);
+  }, [open, t.hints.length]);
 
   const shouldShowSalesCta = useMemo(() => {
     const latest = [...messages].reverse().find((item) => item.role === "assistant")?.text || "";
@@ -199,8 +211,16 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
 
   return (
     <div className={className}>
-      <button className="helpbot-surface fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200" onClick={() => setOpen((v) => !v)}>
-        <BrandDot size={10} variant="ripple" theme="dark" />
+      {!open ? (
+        <div className="fixed bottom-20 right-5 z-[91] max-w-[220px] rounded-lg border border-cyan-300/30 bg-slate-950/95 px-3 py-2 text-[11px] text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,.2)]">
+          {t.hints[hintIndex]}
+        </div>
+      ) : null}
+      <button className="helpbot-surface fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,.35)]" onClick={() => setOpen((v) => !v)}>
+        <span className="relative inline-flex">
+          <span className="absolute -inset-2 rounded-full border border-cyan-300/40 animate-ping" />
+          <BrandDot size={10} variant="ripple" theme="dark" />
+        </span>
         {open ? t.close : t.open}
       </button>
 

@@ -23,6 +23,13 @@ export default async function PricingPage() {
           reseller: "Become reseller",
           cardInfo: "Quote is tailored by vertical, volume, SLA, setup, dashboard and API depth.",
           roiCta: "Request pilot budget",
+          modelTitle: "Business model clarity",
+          modelCards: [
+            "Basic line (NTAG213/215): volume hardware + setup + dashboard operations.",
+            "Secure line (NTAG 424 DNA TT): encoded hardware + anti-fraud authentication + SaaS.",
+            "Enterprise: integration, SLA, API, governance and advanced analytics.",
+            "Reseller: white-label go-to-market with recurring margin and managed rollout.",
+          ],
         }
       : locale === "pt-BR"
       ? {
@@ -33,6 +40,13 @@ export default async function PricingPage() {
           reseller: "Quero ser reseller",
           cardInfo: "A proposta varia por vertical, volume, SLA, setup, dashboard e profundidade de API.",
           roiCta: "Solicitar orçamento de piloto",
+          modelTitle: "Clareza do modelo de negócio",
+          modelCards: [
+            "Linha Basic (NTAG213/215): hardware por volume + setup + operação no dashboard.",
+            "Linha Secure (NTAG 424 DNA TT): hardware codificado + autenticação antifraude + SaaS.",
+            "Enterprise: integração, SLA, API, governança e analytics avançado.",
+            "Revenda: go-to-market white-label com margem recorrente e rollout assistido.",
+          ],
         }
       : {
           includeTitle: "Qué incluye cada propuesta",
@@ -42,6 +56,13 @@ export default async function PricingPage() {
           reseller: "Quiero ser reseller",
           cardInfo: "La propuesta se ajusta por vertical, volumen, SLA, setup, dashboard y profundidad de API.",
           roiCta: "Solicitar presupuesto piloto",
+          modelTitle: "Claridad del modelo de negocio",
+          modelCards: [
+            "Línea Basic (NTAG213/215): hardware por volumen + setup + operación de dashboard.",
+            "Línea Secure (NTAG 424 DNA TT): hardware codificado + autenticación antifraude + SaaS.",
+            "Enterprise: integración, SLA, API, gobernanza y analítica avanzada.",
+            "Reseller: go-to-market white-label con margen recurrente y rollout asistido.",
+          ],
         };
 
   return (
@@ -75,6 +96,16 @@ export default async function PricingPage() {
       </div>
 
       <CalculatorSection calculator={content.calculator} locale={locale} />
+
+
+      <Card className="mt-8 p-6 pricing-page-card">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.modelTitle}</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {labels.modelCards.map((item) => (
+            <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
+          ))}
+        </div>
+      </Card>
 
       <Card className="mt-8 p-6 pricing-page-card">
         <SectionHeading eyebrow={content.roi.eyebrow} title={content.roi.title} description={content.roi.description} />
