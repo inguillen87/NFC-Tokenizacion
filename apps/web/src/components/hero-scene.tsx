@@ -28,7 +28,7 @@ const labels: Record<AppLocale, {
     phoneLabel: "Resultado mobile",
     items: {
       wine: { label: "Vino", action: "Botella descorchada", result: "Auténtico", details: ["Varietal: Malbec", "Alcohol: 14.5%", "Barrica: 18 meses", "Región: Mendoza · Estado: Abierta auténtica"], objectClass: "hero-bottle", phoneTag: "VINO · AUTENTICADO" },
-      events: { label: "Eventos", action: "Pulsera VIP escaneada", result: "Acceso VIP aprobado", details: ["Backstage pass", "Ticket un solo uso", "Córdoba, Argentina", "Puerta A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTOS · ACCESO_OK" },
+      events: { label: "Eventos", action: "Pulsera VIP escaneada", result: "Acceso VIP aprobado", details: ["Pase backstage", "Ticket de un solo uso", "Córdoba, Argentina", "Puerta A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTOS · ACCESO_OK" },
       cosmetics: { label: "Cosmética", action: "Sello de tapa abierto", result: "Evento de apertura detectado", details: ["Sérum facial", "Lote CS-442", "Santiago, Chile", "Tamper: limpio"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMÉTICA · VERIFICADO" },
       agro: { label: "Agro", action: "Apertura de bolsa detectada", result: "Lote y origen verificados", details: ["Semilla premium", "Lote AG-903", "Rosario, Argentina", "Almacenamiento: conforme"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOTE_OK" },
     },
@@ -40,7 +40,7 @@ const labels: Record<AppLocale, {
     phoneLabel: "Resultado mobile",
     items: {
       wine: { label: "Vinho", action: "Garrafa aberta", result: "Autêntico", details: ["Varietal: Malbec", "Álcool: 14,5%", "Barrica: 18 meses", "Região: Mendoza · Estado: Aberta autêntica"], objectClass: "hero-bottle", phoneTag: "VINHO · AUTENTICADO" },
-      events: { label: "Eventos", action: "Pulseira VIP escaneada", result: "Acesso VIP liberado", details: ["Backstage pass", "Ticket uso único", "Córdoba, Argentina", "Portão A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTOS · ACESSO_OK" },
+      events: { label: "Eventos", action: "Pulseira VIP escaneada", result: "Acesso VIP liberado", details: ["Passe backstage", "Ingresso de uso único", "Córdoba, Argentina", "Portão A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTOS · ACESSO_OK" },
       cosmetics: { label: "Cosméticos", action: "Lacre da tampa aberto", result: "Evento de abertura detectado", details: ["Sérum facial", "Lote CS-442", "Santiago, Chile", "Tamper: limpo"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMÉTICOS · VERIFICADO" },
       agro: { label: "Agro", action: "Rasgo de saco detectado", result: "Lote e origem verificados", details: ["Semente premium", "Lote AG-903", "Rosario, Argentina", "Armazenamento: conforme"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOTE_OK" },
     },

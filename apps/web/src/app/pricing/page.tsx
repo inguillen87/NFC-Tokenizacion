@@ -36,6 +36,26 @@ export default async function PricingPage() {
             "Choose Secure when authenticity, anti-clone, legal evidence or channel control are required.",
             "Use hybrid strategy in events: Basic for attendees, Secure for VIP/staff critical access.",
           ],
+          layersTitle: "How nexID pricing is built",
+          layers: [
+            "Layer 1 · Setup/Pilot: scope, onboarding, packaging adaptation, activation plan.",
+            "Layer 2 · Hardware: tags/inlays/cards/seals by volume and security profile.",
+            "Layer 3 · SaaS/Usage: verification events, analytics, alerts, ownership workflows.",
+            "Layer 4 · Channel: reseller/white-label governance, margin sharing and support.",
+          ],
+          pilotTitle: "Suggested pilot pricing by vertical (USD)",
+          pilotRows: [
+            "Wine Secure · Min 2,000 bottles · Setup 4k–8k + 2.8–5.0 / bottle + 500–1,200 / month SaaS",
+            "Events Basic · Min 1,500 attendees · Setup 1k–2.5k + 0.8–1.8 / attendee + 300–900 / event",
+            "Events Secure · Min 200 credentials · Setup 2k–5k + 3.5–7.0 / credential + 500–1,200 / event",
+            "Docs & Presence Secure · Min 500 units · Setup 2.5k–6k + 3.0–8.0 / unit + 300–1,000 / month SaaS",
+          ],
+          rulesTitle: "Hard pricing rules",
+          rules: [
+            "Secure always includes NRE/setup. Do not waive engineering work.",
+            "Pilot terms should include semi-annual or annual SaaS prepayment.",
+            "Sell avoided risk + enabled revenue + captured data, not raw chip cost.",
+          ],
         }
       : locale === "pt-BR"
       ? {
@@ -59,6 +79,26 @@ export default async function PricingPage() {
             "Escolha Secure quando autenticidade, anti-clone, evidência legal ou controle de canal são críticos.",
             "Estratégia híbrida em eventos: Basic para público geral e Secure para VIP/staff crítico.",
           ],
+          layersTitle: "Como o pricing da nexID é montado",
+          layers: [
+            "Camada 1 · Setup/Pilot: escopo, onboarding, adaptação de embalagem e plano de ativação.",
+            "Camada 2 · Hardware: tags/inlays/cards/seals por volume e perfil de segurança.",
+            "Camada 3 · SaaS/Usage: verificações, analytics, alertas e ownership workflows.",
+            "Camada 4 · Canal: governança reseller/white-label, margem e suporte.",
+          ],
+          pilotTitle: "Pricing sugerido de piloto por vertical (USD)",
+          pilotRows: [
+            "Wine Secure · Mín 2.000 garrafas · Setup 4k–8k + 2.8–5.0 / garrafa + 500–1.200 / mês SaaS",
+            "Events Basic · Mín 1.500 participantes · Setup 1k–2.5k + 0.8–1.8 / participante + 300–900 / evento",
+            "Events Secure · Mín 200 credenciais · Setup 2k–5k + 3.5–7.0 / credencial + 500–1.200 / evento",
+            "Docs & Presence Secure · Mín 500 unidades · Setup 2.5k–6k + 3.0–8.0 / unidade + 300–1.000 / mês SaaS",
+          ],
+          rulesTitle: "Regras duras de pricing",
+          rules: [
+            "Secure sempre inclui NRE/setup. Não remover engenharia.",
+            "Piloto com pré-pagamento SaaS semestral ou anual.",
+            "Venda risco evitado + receita habilitada + dados capturados, não custo de chip.",
+          ],
         }
       : {
           includeTitle: "Qué incluye cada propuesta",
@@ -80,6 +120,26 @@ export default async function PricingPage() {
             "Elegí Basic cuando el margen/riesgo por unidad es bajo y la prioridad es velocidad/volumen.",
             "Elegí Secure cuando necesitás autenticidad, anti-clone, evidencia legal o control de canal.",
             "Estrategia híbrida en eventos: Basic para asistentes y Secure para VIP/staff crítico.",
+          ],
+          layersTitle: "Cómo se construye el pricing en nexID",
+          layers: [
+            "Capa 1 · Setup/Pilot: alcance, onboarding, adaptación de packaging y plan de activación.",
+            "Capa 2 · Hardware: tags/inlays/cards/seals por volumen y perfil de seguridad.",
+            "Capa 3 · SaaS/Usage: verificaciones, analítica, alertas y ownership workflows.",
+            "Capa 4 · Canal: gobernanza reseller/white-label, margen compartido y soporte.",
+          ],
+          pilotTitle: "Pricing piloto sugerido por vertical (USD)",
+          pilotRows: [
+            "Wine Secure · Mín 2.000 botellas · Setup 4k–8k + 2.8–5.0 / botella + 500–1.200 / mes SaaS",
+            "Events Basic · Mín 1.500 asistentes · Setup 1k–2.5k + 0.8–1.8 / asistente + 300–900 / evento",
+            "Events Secure · Mín 200 credenciales · Setup 2k–5k + 3.5–7.0 / credencial + 500–1.200 / evento",
+            "Docs & Presence Secure · Mín 500 unidades · Setup 2.5k–6k + 3.0–8.0 / unidad + 300–1.000 / mes SaaS",
+          ],
+          rulesTitle: "Reglas duras de pricing",
+          rules: [
+            "Secure siempre lleva NRE/setup. No regalar ingeniería.",
+            "Piloto con prepago semestral o anual de SaaS.",
+            "Vendé riesgo evitado + revenue habilitado + datos capturados, no chip suelto.",
           ],
         };
 
@@ -130,6 +190,30 @@ export default async function PricingPage() {
         <div className="mt-4 grid gap-3">
           {labels.chooseBullets.map((item) => (
             <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="mt-8 p-6 pricing-page-card">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.layersTitle}</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {labels.layers.map((item) => (
+            <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="mt-8 p-6 pricing-page-card">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.pilotTitle}</h3>
+        <div className="mt-4 grid gap-3">
+          {labels.pilotRows.map((item) => (
+            <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
+          ))}
+        </div>
+        <h4 className="mt-6 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-300">{labels.rulesTitle}</h4>
+        <div className="mt-3 grid gap-3">
+          {labels.rules.map((item) => (
+            <div key={item} className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-3 text-sm text-cyan-100">• {item}</div>
           ))}
         </div>
       </Card>
