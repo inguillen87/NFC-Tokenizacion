@@ -158,8 +158,8 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
     "Return JSON with keys: answer, company, country, vertical, tagType, volume, buyingIntent, nextStep.",
   ].join(" ");
 
-  const preferredModel = process.env.OPENAI_CHAT_MODEL || "gpt-audio-1.5";
-  const fallbacks = [preferredModel, "gpt-4o-mini"].filter((m, i, arr) => arr.indexOf(m) === i);
+  const preferredModel = process.env.OPENAI_CHAT_MODEL || "gpt-5-mini";
+  const fallbacks = [preferredModel, "gpt-5-nano", "gpt-4o-mini"].filter((m, i, arr) => arr.indexOf(m) === i);
 
   for (const model of fallbacks) {
     try {
