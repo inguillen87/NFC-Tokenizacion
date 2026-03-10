@@ -51,8 +51,8 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Dashboard", requestDemo: "Solicitar demo" },
     hero: {
       badge: "Autenticación NFC + Identidad Digital de Producto",
-      title: "Identidad digital inviolable para productos físicos.",
-      body: "Autenticidad, trazabilidad y experiencias Tap-to-Verify con NFC básico (NTAG215) y NFC criptográfico (NTAG 424 DNA TagTamper).",
+      title: "De producto físico a activo verificable.",
+      body: "Unimos Verify + Passport + Rights: autenticás, trazás y activás derechos digitales sobre cada unidad con NFC básico y criptográfico.",
       primary: "Pedir muestras",
       secondary: "Ver demo",
       tertiary: "Quiero ser reseller",
