@@ -1072,3 +1072,42 @@ html.theme-light .bg-violet-500\/15 {
 html.theme-light .site-nav a {
   font-weight: 600;
 }
+
+.quick-links-wrap {
+  backdrop-filter: blur(10px);
+}
+
+.quick-link-chip {
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .site-header .container-shell {
+    gap: 0.5rem;
+  }
+
+  .site-main-brand {
+    transform: scale(0.86);
+    transform-origin: left center;
+  }
+
+  .helpbot-surface {
+    max-width: calc(100vw - 1.2rem);
+  }
+}
+
+html.theme-light .quick-links-wrap {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(15, 23, 42, 0.16) !important;
+}
+
+html.theme-light .quick-link-chip {
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.2) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+html.theme-light .helpbot-surface {
+  border-color: rgba(15, 23, 42, 0.18) !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.2) !important;
+}

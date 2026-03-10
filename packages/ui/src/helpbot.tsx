@@ -249,20 +249,19 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
   return (
     <div className={className}>
       {!open ? (
-        <div className="fixed bottom-20 right-5 z-[91] max-w-[220px] rounded-lg border border-cyan-300/30 bg-slate-950/95 px-3 py-2 text-[11px] text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,.2)]">
+        <div className="fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] right-4 z-[91] max-w-[220px] rounded-lg border border-cyan-300/30 bg-slate-950/95 px-3 py-2 text-[11px] text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,.2)] sm:right-5">
           {t.hints[hintIndex]}
         </div>
       ) : null}
-      <button className="helpbot-surface fixed bottom-5 right-5 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,.35)]" onClick={() => setOpen((v) => !v)}>
+      <button className="helpbot-surface fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,.35)] sm:bottom-5 sm:right-5" onClick={() => setOpen((v) => !v)}>
         <span className="relative inline-flex">
-          <span className="absolute -inset-2 rounded-full border border-cyan-300/40 animate-ping" />
           <BrandDot size={10} variant="ripple" theme="dark" />
         </span>
         {open ? t.close : t.open}
       </button>
 
       {open ? (
-        <div className="helpbot-surface fixed bottom-20 right-5 z-[95] w-[360px] rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur">
+        <div className="helpbot-surface fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] right-3 z-[95] w-[min(94vw,380px)] rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur sm:bottom-20 sm:right-5">
           <p className="helpbot-text text-sm font-semibold text-white">{t.title}</p>
           <div className="mt-2 flex flex-wrap gap-1">
             {t.quick.map((q) => (

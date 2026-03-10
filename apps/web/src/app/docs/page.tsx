@@ -289,7 +289,7 @@ export default async function DocsPage() {
       </div>
 
 
-      <Card className="p-6">
+      <Card id="faq" className="p-6 scroll-mt-28">
         <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.faqItems.map((item) => (
@@ -301,7 +301,7 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card id="strategy" className="p-6 scroll-mt-28">
         <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
         <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
         <div className="mt-4 flex flex-wrap gap-3">
