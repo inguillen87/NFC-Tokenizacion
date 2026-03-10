@@ -225,3 +225,34 @@ html.theme-light .worldmap-canvas div[class*="bg-slate-900"] {
   background: rgba(255,255,255,.95) !important;
   color: #0f172a !important;
 }
+
+/* Light mode contrast hardening for white-label UX */
+html.theme-light .ui-btn--primary {
+  color: #082f49 !important;
+  border-color: rgba(8, 145, 178, 0.45) !important;
+}
+
+html.theme-light .ui-btn--secondary,
+html.theme-light .ui-btn--ghost {
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.22) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+}
+
+html.theme-light .text-cyan-100,
+html.theme-light .text-cyan-200,
+html.theme-light .text-cyan-300 {
+  color: #0e7490 !important;
+}
+
+html.theme-light .text-emerald-100,
+html.theme-light .text-emerald-200,
+html.theme-light .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.theme-light .text-violet-100,
+html.theme-light .text-violet-200,
+html.theme-light .text-violet-300 {
+  color: #6d28d9 !important;
+}
