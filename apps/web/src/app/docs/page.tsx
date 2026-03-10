@@ -307,6 +307,15 @@ export default async function DocsPage() {
       </Card>
 
       <Card className="p-6">
+        <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
+        <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/stack">{copy.stackPage}</Link>
+          <Link className="rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100" href="/audiences">{copy.audiencesPage}</Link>
+        </div>
+      </Card>
+
+      <Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/?assistant=open">{copy.openAssistant}</Link>
