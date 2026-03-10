@@ -10,7 +10,7 @@ export default async function ResetPasswordPage() {
   return (
     <main className="container-shell grid min-h-screen place-items-center py-10">
       <Card className="w-full max-w-md p-8">
-        <BrandLockup size={30} variant="pulse" theme="dark" />
+        <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={30} variant="pulse" theme="dark" /></Link>
         <h1 className="mt-4 text-2xl font-bold text-white">{copy.auth.resetTitle}</h1>
         <p className="mt-2 text-sm text-slate-400">{copy.auth.resetBody}</p>
 

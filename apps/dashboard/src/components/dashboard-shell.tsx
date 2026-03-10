@@ -49,7 +49,7 @@ export function DashboardShell({
     <div className="min-h-screen bg-slate-950 text-white lg:flex">
       <aside className="w-full border-b border-white/10 bg-slate-950/90 p-4 lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r lg:p-5">
         <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-white">
-          <BrandLockup size={30} variant="ripple" theme="dark" />
+          <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={30} variant="ripple" theme="dark" /></Link>
           <div className="mt-3 text-sm font-semibold">{title}</div>
           <div className="mt-1 text-xs text-slate-400">{subtitle}</div>
         </div>

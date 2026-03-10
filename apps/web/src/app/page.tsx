@@ -32,6 +32,11 @@ export default async function HomePage() {
       whyCsv: "Manifest CSV: UID/tag mapping for batch import and operational traceability",
       whyLab: "Demo Lab: controlled test console to simulate scans and verify end-to-end flow",
       forWho: "For agencies, investors, resellers, enterprise buyers and internal sales teams.",
+      quickNavTitle: "Quick access",
+      quickFaq: "FAQ",
+      quickStack: "Stack",
+      quickGlossary: "Glossary",
+      quickAudiences: "Audience pitch",
     }
     : locale === "pt-BR"
     ? {
@@ -44,6 +49,11 @@ export default async function HomePage() {
       whyCsv: "Manifest CSV: mapeamento UID/tag para import de lote e rastreabilidade",
       whyLab: "Demo Lab: console controlado para simular scans e validar o fluxo completo",
       forWho: "Para agências, investidores, revendedores, compradores enterprise e times de vendas.",
+      quickNavTitle: "Acesso rápido",
+      quickFaq: "FAQ",
+      quickStack: "Stack",
+      quickGlossary: "Glossário",
+      quickAudiences: "Pitch por audiência",
     }
     : {
       demoJson: "Descargar seed JSON",
@@ -55,6 +65,11 @@ export default async function HomePage() {
       whyCsv: "Manifest CSV: mapeo UID/tag para importar lotes y trazabilidad operativa",
       whyLab: "Demo Lab: consola controlada para simular lecturas y validar el flujo end-to-end",
       forWho: "Para agencias, inversores, resellers, compradores enterprise y equipos comerciales.",
+      quickNavTitle: "Acceso rápido",
+      quickFaq: "FAQ",
+      quickStack: "Stack",
+      quickGlossary: "Glosario",
+      quickAudiences: "Pitch por audiencia",
     };
 
   const demoPacks = [
@@ -70,13 +85,17 @@ export default async function HomePage() {
     <main>
       <header className="site-header sticky top-0 z-50 border-b backdrop-blur-xl">
         <div className="container-shell flex h-24 items-center justify-between gap-6 lg:h-28">
-          <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand" />
+          <Link href="/" aria-label="nexID home" className="inline-flex items-center">
+            <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand" />
+          </Link>
 
           <nav className="hidden gap-6 text-sm md:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
             <Link href="/docs">{content.nav.docs}</Link>
+            <Link href="/stack">{labels.quickStack}</Link>
+            <Link href="/docs#faq">{labels.quickFaq}</Link>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -88,6 +107,20 @@ export default async function HomePage() {
           </div>
         </div>
       </header>
+
+
+
+      <section className="container-shell py-3">
+        <div className="quick-links-wrap rounded-xl border border-white/10 bg-slate-900/55 p-2">
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs">
+            <span className="px-2 py-1 font-semibold text-cyan-300">{labels.quickNavTitle}</span>
+            <Link href="/docs#faq" className="quick-link-chip rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-100">{labels.quickFaq}</Link>
+            <Link href="/stack" className="quick-link-chip rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-indigo-100">{labels.quickStack}</Link>
+            <Link href="/glossary" className="quick-link-chip rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-100">{labels.quickGlossary}</Link>
+            <Link href="/audiences" className="quick-link-chip rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-violet-100">{labels.quickAudiences}</Link>
+          </div>
+        </div>
+      </section>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
       <RadarSection radar={content.radar} locale={locale} />
@@ -133,8 +166,10 @@ export default async function HomePage() {
 
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
-          <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
-          <p className="text-sm site-muted">nexID combina tags NFC, autenticación criptográfica, antifraude, trazabilidad y CRM comercial para vino, cosmética, credenciales/documentos, eventos y canal reseller.</p>
+          <Link href="/" aria-label="nexID home" className="inline-flex items-center">
+            <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
+          </Link>
+          <p className="text-sm site-muted">nexID es una plataforma de identidad física verificable: une carriers como NFC/QR con verificación, estado y derechos digitales para empresas y gobiernos.</p>
           <div className="flex flex-wrap gap-2">
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
