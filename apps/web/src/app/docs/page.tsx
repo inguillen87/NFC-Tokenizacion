@@ -21,6 +21,10 @@ type DocsCopy = {
   roadmapTitle: string;
   roadmapBullets: string[];
   actionsTitle: string;
+  strategyTitle: string;
+  strategyBody: string;
+  stackPage: string;
+  audiencesPage: string;
   openAssistant: string;
   talkAgent: string;
   bookDemo: string;
@@ -75,6 +79,10 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Siempre: NFC + QR fallback + data model DPP-ready.",
     ],
     actionsTitle: "Siguientes pasos",
+    strategyTitle: "Guías estratégicas nuevas",
+    strategyBody: "Sumamos dos páginas para explicar la diferencia entre antifraude, passport y derechos programables, y para adaptar el pitch según cada comprador.",
+    stackPage: "Ver pila Verify → Passport → Rights",
+    audiencesPage: "Ver pitch por audiencia (inversor, reseller, cliente, gobierno)",
     openAssistant: "Abrir BotIA",
     talkAgent: "Hablar con agente (WhatsApp)",
     bookDemo: "Agendar demo",
@@ -127,6 +135,10 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
     actionsTitle: "Próximos passos",
+    strategyTitle: "Novos guias estratégicos",
+    strategyBody: "Adicionamos duas páginas para separar antifraude, passport e direitos programáveis e adaptar a narrativa por comprador.",
+    stackPage: "Ver pilha Verify → Passport → Rights",
+    audiencesPage: "Ver pitch por audiência (investidor, revendedor, cliente, governo)",
     openAssistant: "Abrir BotIA",
     talkAgent: "Falar com agente (WhatsApp)",
     bookDemo: "Agendar demo",
@@ -179,6 +191,10 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Always: NFC + QR fallback + DPP-ready data model.",
     ],
     actionsTitle: "Next steps",
+    strategyTitle: "New strategic guides",
+    strategyBody: "We added two pages to clearly separate anti-fraud, passport and programmable rights, and to tailor the pitch by buyer profile.",
+    stackPage: "View Verify → Passport → Rights stack",
+    audiencesPage: "View audience pitch (investor, reseller, client, government)",
     openAssistant: "Open BotIA",
     talkAgent: "Talk to agent (WhatsApp)",
     bookDemo: "Book demo",
@@ -241,6 +257,15 @@ export default async function DocsPage() {
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.roadmapBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
         </Card>
       </div>
+
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
+        <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/stack">{copy.stackPage}</Link>
+          <Link className="rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100" href="/audiences">{copy.audiencesPage}</Link>
+        </div>
+      </Card>
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
