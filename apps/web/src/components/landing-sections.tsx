@@ -16,9 +16,9 @@ type StatsCopy = {
 };
 
 const proofByLocale: Record<AppLocale, string[]> = {
-  "es-AR": ["SaaS trazable", "Ownership / Warranty / Provenance", "SaaS para vender con chips NFC"],
-  "pt-BR": ["SaaS rastreável", "Ownership / Warranty / Provenance", "SaaS para vender com chips NFC"],
-  en: ["Traceable SaaS", "Ownership / Warranty / Provenance", "SaaS that sells with NFC chips"],
+  "es-AR": ["SaaS trazable", "Titularidad / Garantía / Procedencia", "SaaS para identidad física verificable"],
+  "pt-BR": ["SaaS rastreável", "Titularidade / Garantia / Procedência", "SaaS para identidade física verificável"],
+  en: ["Traceable SaaS", "Ownership / Warranty / Provenance", "SaaS for verifiable physical identity"],
 };
 
 export function HeroSection({ content, stats, locale }: { content: Content; stats: StatsCopy; locale: AppLocale }) {

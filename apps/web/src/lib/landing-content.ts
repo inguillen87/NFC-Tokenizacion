@@ -57,7 +57,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
       secondary: "Ver demo",
       tertiary: "Quiero ser reseller",
     },
-    trustBar: ["Programas NTAG215", "NTAG 424 DNA TagTamper", "API de autenticación", "SaaS multi-tenant", "Canal white-label"],
+    trustBar: ["Programas NTAG215", "NTAG 424 DNA TagTamper", "API de autenticación", "SaaS de validación", "Canal white-label"],
     howItWorks: {
       eyebrow: "Cómo funciona la rail",
       title: "Pegás, validás y vendés mejor",
@@ -86,7 +86,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
       cards: [
         { name: "BASIC", badge: "NTAG215", price: "Cotización por volumen", body: "Eventos, accesos y tracking simple.", bullets: ["Tap-to-web", "Analítica de escaneos", "Sin criptografía SUN"] },
         { name: "SECURE", badge: "NTAG 424 DNA TT", price: "Piloto + hardware codificado + SaaS", body: "Autenticación robusta para riesgo real.", bullets: ["SUN validation", "Duplicate alerts", "Tamper intelligence"] },
-        { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Operación multi-tenant con SLA y canal.", bullets: ["Branding white-label", "API keys y webhooks", "Identidad digital premium"] },
+        { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Operación enterprise con SLA y canal.", bullets: ["Branding white-label", "API keys y webhooks", "Identidad digital premium"] },
       ],
     },
     secure: {
@@ -146,7 +146,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
       description: "Agencias, convertidores y distribuidores operan sobre rails compartidas.",
       cards: [
         { title: "Co-branded operations", body: "Lanzamiento rápido con gobierno central de autenticación." },
-        { title: "Private-label workspace", body: "Experiencia partner con aislamiento multi-tenant." },
+        { title: "Private-label workspace", body: "Experiencia partner con marca propia y operación guiada." },
       ],
     },
     api: {
@@ -197,14 +197,14 @@ export const landingContent: Record<AppLocale, LandingContent> = {
       },
     },
     roi: { eyebrow: "ROI", title: "Modelo de negocio defendible", description: "Hardware + SaaS + identidad digital para expandir margen.", metrics: [{ label: "Fraud loss reduction", value: "-30% a -70%", detail: "Depende de vertical y adopción secure." }, { label: "Scan visibility", value: "+10x", detail: "Granularidad operativa para compliance." }, { label: "Margin expansion", value: "+8% a +18%", detail: "Impulsado por secure + identidad digital." }] },
-    credibility: { eyebrow: "Investor-grade", title: "Credibilidad para buyers enterprise e inversores", description: "Arquitectura, economics y distribución alineados para escalar.", items: ["Monorepo productizado: web + dashboard + API", "Operación multi-tenant desde base", "Canal white-label para expansión regional", "Narrativa clara de valor basic vs secure"] },
+    credibility: { eyebrow: "Investor-grade", title: "Credibilidad para buyers enterprise e inversores", description: "Arquitectura, economics y distribución alineados para escalar.", items: ["Plataforma unificada: web + dashboard + API", "Operación enterprise escalable", "Canal white-label para expansión regional", "Narrativa clara de valor basic vs secure"] },
     cta: { title: "Listo para piloto enterprise", body: "Diseñamos el rollout para vino, cosmética, docs/presence, eventos o canal reseller.", primary: "Agendar demo", secondary: "Hablar con ventas" },
     docsList: ["Discovery workshop and technical scoping", "Tenant onboarding and access governance", "Batch setup and activation playbook", "Operational monitoring and fraud alerts", "Go-live support and success metrics"],
   },
   "pt-BR": {
     nav: { product: "Produto", pricing: "Planos", reseller: "Revendedores", docs: "Arquitetura", cta: "Dashboard", requestDemo: "Solicitar demo" },
     hero: { badge: "Plataforma de identidade física verificável", title: "Converta produtos, credenciais e documentos em identidades digitais verificáveis.", body: "A nexID conecta carriers físicos como NFC e QR com backend de validação para autenticar, registrar estado e ativar ownership, acesso, garantia, resgate e rastreabilidade.", primary: "Solicitar amostras", secondary: "Ver demo", tertiary: "Quero ser revendedor" },
-    trustBar: ["Programas NTAG215", "NTAG 424 DNA TagTamper", "API de autenticação", "SaaS multi-tenant", "Canal white-label"],
+    trustBar: ["Programas NTAG215", "NTAG 424 DNA TagTamper", "API de autenticação", "SaaS de validación", "Canal white-label"],
     howItWorks: { eyebrow: "Como funciona", title: "Encosta, valida e vende melhor", description: "Explicação simples: cada tap vira prova, alerta e oportunidade comercial.", steps: [{ title: "1. Você ativa o lote", body: "Escolhe chip, quantidade e campanha em poucos cliques." }, { title: "2. O cliente encosta o celular", body: "A tela mostra rápido se o produto é autêntico." }, { title: "3. O sistema registra tudo", body: "Fica salvo local, horário e resultado da leitura." }, { title: "4. Você vende com dados", body: "Dispara ação de marketing, suporte ou revenda." }] },
     what: { eyebrow: "Plataforma", title: "Uma infraestrutura para validar objetos e ativar negócio", description: "Emita uma identidade digital por unidade e opere com dashboard, API e webhooks.", cards: [{ title: "Verify", body: "Confirma autenticidade, estado e regras a cada toque." }, { title: "Passport", body: "Monta o gêmeo digital com lote, origem, eventos, canal e garantia." }, { title: "Rights", body: "Ativa ownership, acesso, vouchers, benefícios, transferências e garantias." }] },
     plans: { eyebrow: "Basic vs Secure vs Enterprise", title: "Pacotes por nível de risco", description: "De campanhas a anti-counterfeit crítico.", cards: [{ name: "BASIC", badge: "NTAG215", price: "Cotação por volume", body: "Eventos e tracking simples.", bullets: ["Tap-to-web", "Analytics de scans", "Sem criptografia SUN"] }, { name: "SECURE", badge: "NTAG 424 DNA TT", price: "Piloto + hardware codificado + SaaS", body: "Autenticação robusta.", bullets: ["SUN validation", "Duplicate alerts", "Tamper intelligence"] }, { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Operação avançada com SLA.", bullets: ["Branding white-label", "API keys + webhooks", "Camada premium"] }] },
@@ -234,7 +234,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     identity: { eyebrow: "Camada premium", title: "Digital identity layer", description: "Produto físico evolui para identidade digital persistente.", bullets: ["Ownership passport", "Warranty events", "Registro de proveniência", "Roadmap ready for ownership/warranty/provenance"] },
     calculator: { eyebrow: "Calculadora", title: "Simulador de investimento", description: "Estimativa de hardware, SaaS e escopo de ativação.", volumeLabel: "Volume", productLabel: "Tipo de produto", securityLabel: "Nível de segurança", channelLabel: "Canal", recommendationLabel: "Plano recomendado", hardwareSpendLabel: "Investimento hardware", saasFeeLabel: "Taxa SaaS", activationScopeLabel: "Escopo de ativação", analyticsScopeLabel: "Escopo analítico", perYearLabel: "/ano", tagsUnitLabel: "tags", scopeLabels: { base: "Base", extended: "Estendido", advanced: "Avançado" }, cta: "Solicitar proposta custom", options: { product: [{ value: "wine", label: "Wine" }, { value: "cosmetics", label: "Cosmetics" }, { value: "events", label: "Events" }, { value: "pharma", label: "Pharma" }], security: [{ value: "basic", label: "Basic" }, { value: "secure", label: "Secure" }, { value: "enterprise", label: "Enterprise" }], channel: [{ value: "direct", label: "Direto" }, { value: "reseller", label: "Revendedor" }] } },
     roi: { eyebrow: "ROI", title: "Economia clara para conselho e vendas", description: "Hardware + SaaS + identidade premium.", metrics: [{ label: "Fraud loss reduction", value: "-30% a -70%", detail: "Conforme vertical e adoção secure." }, { label: "Scan visibility", value: "+10x", detail: "Mais granularidade operacional." }, { label: "Margin expansion", value: "+8% a +18%", detail: "Mix secure + identidade." }] },
-    credibility: { eyebrow: "Investor-grade", title: "Credibilidade enterprise", description: "Arquitetura e canal alinhados para escalar.", items: ["Monorepo com web + dashboard + API", "Modelo multi-tenant", "Canal white-label regional", "Valor claro entre basic e secure"] },
+    credibility: { eyebrow: "Investor-grade", title: "Credibilidade enterprise", description: "Arquitetura e canal alinhados para escalar.", items: ["Plataforma unificada com web + dashboard + API", "Modelo enterprise escalável", "Canal white-label regional", "Valor claro entre basic e secure"] },
     cta: { title: "Pronto para piloto enterprise", body: "Co-desenhamos o rollout para setores críticos.", primary: "Agendar demo", secondary: "Falar com vendas" },
     docsList: ["Discovery workshop and technical scoping", "Tenant onboarding and access governance", "Batch setup and activation playbook", "Operational monitoring and fraud alerts", "Go-live support and success metrics"],
   },
@@ -271,7 +271,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     identity: { eyebrow: "Premium layer", title: "Digital identity layer", description: "Each physical product can become a persistent digital identity asset.", bullets: ["Ownership passport", "Warranty lifecycle", "Provenance records", "Roadmap ready for ownership/warranty/provenance"] },
     calculator: { eyebrow: "Calculator", title: "Interactive cost simulator", description: "Quick estimate for hardware spend, SaaS fee and activation scope.", volumeLabel: "Volume", productLabel: "Product type", securityLabel: "Security level", channelLabel: "Channel", recommendationLabel: "Recommended plan", hardwareSpendLabel: "Hardware spend", saasFeeLabel: "SaaS fee", activationScopeLabel: "Activation scope", analyticsScopeLabel: "Analytics scope", perYearLabel: "/year", tagsUnitLabel: "tags", scopeLabels: { base: "Base", extended: "Extended", advanced: "Advanced" }, cta: "Request custom quote", options: { product: [{ value: "wine", label: "Wine" }, { value: "cosmetics", label: "Cosmetics" }, { value: "events", label: "Events" }, { value: "pharma", label: "Pharma" }], security: [{ value: "basic", label: "Basic" }, { value: "secure", label: "Secure" }, { value: "enterprise", label: "Enterprise" }], channel: [{ value: "direct", label: "Direct" }, { value: "reseller", label: "Reseller" }] } },
     roi: { eyebrow: "ROI", title: "Economics for boards and operators", description: "Hardware + SaaS + premium identity supports margin growth.", metrics: [{ label: "Fraud loss reduction", value: "-30% to -70%", detail: "Depends on vertical and secure adoption." }, { label: "Scan visibility", value: "+10x", detail: "Higher granularity across operations." }, { label: "Margin expansion", value: "+8% to +18%", detail: "Driven by secure + identity mix." }] },
-    credibility: { eyebrow: "Investor-grade", title: "Built to pitch enterprise buyers and investors now", description: "Architecture and channel strategy aligned from day one.", items: ["Productized monorepo: web + dashboard + API", "Scalable multi-tenant architecture", "Regional white-label distribution engine", "Clear basic vs secure value proposition"] },
+    credibility: { eyebrow: "Investor-grade", title: "Built to pitch enterprise buyers and investors now", description: "Architecture and channel strategy aligned from day one.", items: ["Unified platform: web + dashboard + API", "Scalable enterprise architecture", "Regional white-label distribution engine", "Clear basic vs secure value proposition"] },
     cta: { title: "Ready for an enterprise pilot", body: "Co-design rollout for wine, cosmetics, docs/presence, events or reseller channels.", primary: "Book a demo", secondary: "Talk to sales" },
     docsList: ["Discovery workshop and technical scoping", "Tenant onboarding and access governance", "Batch setup and activation playbook", "Operational monitoring and fraud alerts", "Go-live support and success metrics"],
   },
