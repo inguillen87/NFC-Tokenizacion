@@ -25,7 +25,7 @@ export default async function PricingPage() {
           roiCta: "Request pilot budget",
           modelTitle: "Business model clarity",
           modelCards: [
-            "Basic line (NTAG213/215): volume hardware + setup + dashboard operations.",
+            "Basic line (NTAG215): volume hardware + setup + dashboard operations.",
             "Secure line (NTAG 424 DNA TT): encoded hardware + anti-fraud authentication + SaaS.",
             "Enterprise: integration, SLA, API, governance and advanced analytics.",
             "Reseller: white-label go-to-market with recurring margin and managed rollout.",
@@ -68,7 +68,7 @@ export default async function PricingPage() {
           roiCta: "Solicitar orçamento de piloto",
           modelTitle: "Clareza do modelo de negócio",
           modelCards: [
-            "Linha Basic (NTAG213/215): hardware por volume + setup + operação no dashboard.",
+            "Linha Basic (NTAG215): hardware por volume + setup + operação no dashboard.",
             "Linha Secure (NTAG 424 DNA TT): hardware codificado + autenticação antifraude + SaaS.",
             "Enterprise: integração, SLA, API, governança e analytics avançado.",
             "Revenda: go-to-market white-label com margem recorrente e rollout assistido.",
@@ -110,7 +110,7 @@ export default async function PricingPage() {
           roiCta: "Solicitar presupuesto piloto",
           modelTitle: "Claridad del modelo de negocio",
           modelCards: [
-            "Línea Basic (NTAG213/215): hardware por volumen + setup + operación de dashboard.",
+            "Línea Basic (NTAG215): hardware por volumen + setup + operación de dashboard.",
             "Línea Secure (NTAG 424 DNA TT): hardware codificado + autenticación antifraude + SaaS.",
             "Enterprise: integración, SLA, API, gobernanza y analítica avanzada.",
             "Reseller: go-to-market white-label con margen recurrente y rollout asistido.",

@@ -1022,3 +1022,92 @@ html.theme-light #contact-modal .text-white {
 html.theme-light #contact-modal .text-slate-300 {
   color: #334155 !important;
 }
+
+/* Light mode contrast hardening for white-label UX */
+html.theme-light .ui-btn--primary {
+  color: #082f49 !important;
+  border-color: rgba(8, 145, 178, 0.45) !important;
+  box-shadow: 0 8px 18px rgba(6, 182, 212, 0.22);
+}
+
+html.theme-light .ui-btn--secondary,
+html.theme-light .ui-btn--ghost {
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.22) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+html.theme-light .text-cyan-100,
+html.theme-light .text-cyan-200,
+html.theme-light .text-cyan-300 {
+  color: #0e7490 !important;
+}
+
+html.theme-light .text-emerald-100,
+html.theme-light .text-emerald-200,
+html.theme-light .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.theme-light .text-violet-100,
+html.theme-light .text-violet-200,
+html.theme-light .text-violet-300 {
+  color: #6d28d9 !important;
+}
+
+html.theme-light .text-rose-200,
+html.theme-light .text-rose-300 {
+  color: #be123c !important;
+}
+
+html.theme-light .bg-cyan-500\/10,
+html.theme-light .bg-cyan-500\/15,
+html.theme-light .bg-emerald-500\/10,
+html.theme-light .bg-emerald-500\/15,
+html.theme-light .bg-violet-500\/10,
+html.theme-light .bg-violet-500\/15 {
+  filter: saturate(1.15);
+}
+
+html.theme-light .site-nav a {
+  font-weight: 600;
+}
+
+.quick-links-wrap {
+  backdrop-filter: blur(10px);
+}
+
+.quick-link-chip {
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .site-header .container-shell {
+    gap: 0.5rem;
+  }
+
+  .site-main-brand {
+    transform: scale(0.86);
+    transform-origin: left center;
+  }
+
+  .helpbot-surface {
+    max-width: calc(100vw - 1.2rem);
+  }
+}
+
+html.theme-light .quick-links-wrap {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(15, 23, 42, 0.16) !important;
+}
+
+html.theme-light .quick-link-chip {
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.2) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+html.theme-light .helpbot-surface {
+  border-color: rgba(15, 23, 42, 0.18) !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.2) !important;
+}
