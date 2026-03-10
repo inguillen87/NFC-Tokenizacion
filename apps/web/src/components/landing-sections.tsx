@@ -24,9 +24,9 @@ const proofByLocale: Record<AppLocale, string[]> = {
 export function HeroSection({ content, stats, locale }: { content: Content; stats: StatsCopy; locale: AppLocale }) {
   void stats;
   const proofItems = [...new Set(proofByLocale[locale] || proofByLocale["es-AR"])]
-  const badgeText = locale === "en" ? "NFC authentication + physical product identity" : locale === "pt-BR" ? "Autenticação NFC + identidade de produto físico" : "Autenticación NFC + identidad de producto físico";
-  const heroTitle = locale === "en" ? "Authenticate products, protect margins, and monetize every tap." : locale === "pt-BR" ? "Autentique produtos, proteja margem e monetize cada toque." : "Autenticá productos, protegé margen y monetizá cada toque.";
-  const heroBody = locale === "en" ? "Two commercial lines, one platform: NTAG213/215 for volume campaigns and NTAG 424 DNA TagTamper for anti-fraud, authenticity and premium traceability." : locale === "pt-BR" ? "Duas linhas comerciais, uma plataforma: NTAG213/215 para campanhas de volume e NTAG 424 DNA TagTamper para antifraude, autenticidade e rastreabilidade premium." : "Dos líneas comerciales en una sola plataforma: NTAG213/215 para campañas de volumen y NTAG 424 DNA TagTamper para antifraude, autenticidad y trazabilidad premium.";
+  const badgeText = content.hero.badge;
+  const heroTitle = content.hero.title;
+  const heroBody = content.hero.body;
   const demoCta = locale === "en" ? "View interactive demo" : locale === "pt-BR" ? "Ver demo interativa" : "Ver demo interactiva";
   const samplesCta = locale === "en" ? "Request demo" : locale === "pt-BR" ? "Solicitar demo" : "Pedir demo";
   const resellerCta = locale === "en" ? "Become a reseller" : locale === "pt-BR" ? "Quero ser reseller" : "Quiero ser reseller";
