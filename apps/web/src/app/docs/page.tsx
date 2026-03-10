@@ -21,6 +21,13 @@ type DocsCopy = {
   roadmapTitle: string;
   roadmapBullets: string[];
   actionsTitle: string;
+  faqTitle: string;
+  faqItems: Array<{ q: string; a: string }>;
+  strategyTitle: string;
+  strategyBody: string;
+  stackPage: string;
+  audiencesPage: string;
+  glossaryPage: string;
   openAssistant: string;
   talkAgent: string;
   bookDemo: string;
@@ -33,14 +40,14 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     description: "No vendemos chips sueltos: vendemos emisión, verificación y analítica de eventos físicos para productos, accesos y documentos.",
     pillarsTitle: "Tesis de producto",
     pillars: [
-      "Línea BASIC (NTAG213/215): volumen, UX por toque, activaciones y control operativo.",
+      "Línea BASIC (NTAG215): volumen, UX por toque, activaciones y control operativo.",
       "Línea SECURE (NTAG 424 DNA / TagTamper): autenticidad fuerte, anti-clone, tamper y evidencia verificable.",
       "nexID OS: issuance + verification API + dashboard + webhooks + canal reseller/white-label.",
       "Arquitectura marker-agnostic: NFC + QR fallback desde el diseño para escalar adopción.",
     ],
     chipTitle: "Qué vender con cada chip (sin humo)",
     chipRows: [
-      { chip: "NTAG213/215", bestFor: "Eventos, activaciones, warranties, loyalty, lead capture, tap-to-web.", avoid: "No prometer antifraude premium ni voucher monetario sensible." },
+      { chip: "NTAG215", bestFor: "Eventos, activaciones, warranties, loyalty, lead capture, tap-to-web.", avoid: "No prometer antifraude premium ni voucher monetario sensible." },
       { chip: "NTAG 424 DNA", bestFor: "Autenticidad fuerte, SUN/SDM, documentos, vouchers seguros, control de canal.", avoid: "No venderlo como sensor de temperatura/cold-chain por sí solo." },
       { chip: "NTAG 424 DNA TagTamper", bestFor: "Integridad física de cierre/sello: wine, cosmética premium, pharma packaging.", avoid: "No usarlo donde no importa estado físico del empaque." },
     ],
@@ -75,6 +82,19 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Siempre: NFC + QR fallback + data model DPP-ready.",
     ],
     actionsTitle: "Siguientes pasos",
+    faqTitle: "FAQ corta para explicar bien el producto",
+    faqItems: [
+      { q: "¿nexID vende chips NFC?", a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR." },
+      { q: "¿Sirve solo para antifraude?", a: "No. También habilita ownership, acceso, garantías, vouchers, trazabilidad y analytics." },
+      { q: "¿Tokenización y autenticación son lo mismo?", a: "No. La autenticación prueba el objeto; la tokenización digitaliza derechos sobre ese objeto." },
+      { q: "¿Se puede usar con QR?", a: "Sí. Un backend único puede operar NFC y QR como fallback según cada contexto." },
+      { q: "¿Sirve solo para vino?", a: "No. También aplica a eventos, documentos, credenciales, cosmética, lujo y sector público." },
+    ],
+    strategyTitle: "Guías estratégicas nuevas",
+    strategyBody: "Sumamos dos páginas para explicar la diferencia entre antifraude, passport y derechos programables, y para adaptar el pitch según cada comprador.",
+    stackPage: "Ver pila Verify → Passport → Rights",
+    audiencesPage: "Ver pitch por audiencia (inversor, reseller, cliente, gobierno)",
+    glossaryPage: "Abrir glosario operativo de marca",
     openAssistant: "Abrir BotIA",
     talkAgent: "Hablar con agente (WhatsApp)",
     bookDemo: "Agendar demo",
@@ -85,14 +105,14 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     description: "Não vendemos chips isolados: vendemos emissão, verificação e analytics de eventos físicos.",
     pillarsTitle: "Tese de produto",
     pillars: [
-      "Linha BASIC (NTAG213/215): volume, UX por toque e operação.",
+      "Linha BASIC (NTAG215): volume, UX por toque e operação.",
       "Linha SECURE (NTAG 424 DNA / TagTamper): autenticidade forte e evidência verificável.",
       "nexID OS: issuance + verification API + dashboard + webhooks + canal revenda.",
       "Arquitetura marker-agnostic: NFC + fallback QR para escala.",
     ],
     chipTitle: "O que vender com cada chip",
     chipRows: [
-      { chip: "NTAG213/215", bestFor: "Eventos, ativações, warranty, loyalty e tap-to-web.", avoid: "Não prometer antifraude premium." },
+      { chip: "NTAG215", bestFor: "Eventos, ativações, warranty, loyalty e tap-to-web.", avoid: "Não prometer antifraude premium." },
       { chip: "NTAG 424 DNA", bestFor: "Autenticidade forte, SUN/SDM, documentos e vouchers sensíveis.", avoid: "Não vender como sensor de temperatura sozinho." },
       { chip: "NTAG 424 DNA TagTamper", bestFor: "Selo/fecho com integridade física: vinho, cosméticos premium e pharma.", avoid: "Não usar quando estado físico da embalagem não importa." },
     ],
@@ -127,6 +147,19 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
     actionsTitle: "Próximos passos",
+    faqTitle: "FAQ curta para explicar o produto",
+    faqItems: [
+      { q: "A nexID vende chips NFC?", a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR." },
+      { q: "Serve só para antifraude?", a: "Não. Também habilita ownership, acesso, garantia, vouchers, rastreabilidade e analytics." },
+      { q: "Tokenização e autenticação são iguais?", a: "Não. Autenticação valida o objeto; tokenização digitaliza direitos sobre ele." },
+      { q: "Pode usar com QR?", a: "Sim. Um backend único opera NFC e QR como fallback." },
+      { q: "Serve só para vinho?", a: "Não. Também aplica a eventos, documentos, credenciais, cosméticos, luxo e governo." },
+    ],
+    strategyTitle: "Novos guias estratégicos",
+    strategyBody: "Adicionamos duas páginas para separar antifraude, passport e direitos programáveis e adaptar a narrativa por comprador.",
+    stackPage: "Ver pilha Verify → Passport → Rights",
+    audiencesPage: "Ver pitch por audiência (investidor, revendedor, cliente, governo)",
+    glossaryPage: "Abrir glossário operacional de marca",
     openAssistant: "Abrir BotIA",
     talkAgent: "Falar com agente (WhatsApp)",
     bookDemo: "Agendar demo",
@@ -137,14 +170,14 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     description: "We do not sell raw NFC chips; we sell issuance, verification and analytics for physical events.",
     pillarsTitle: "Product thesis",
     pillars: [
-      "BASIC line (NTAG213/215): volume UX and operational control.",
+      "BASIC line (NTAG215): volume UX and operational control.",
       "SECURE line (NTAG 424 DNA / TagTamper): strong authenticity and tamper-aware trust.",
       "nexID OS: issuance + verification API + dashboard + webhooks + reseller channel.",
       "Marker-agnostic architecture: NFC + QR fallback from day one.",
     ],
     chipTitle: "What to sell with each chip",
     chipRows: [
-      { chip: "NTAG213/215", bestFor: "Events, activations, loyalty, warranties, tap-to-web.", avoid: "Do not position as premium anti-fraud." },
+      { chip: "NTAG215", bestFor: "Events, activations, loyalty, warranties, tap-to-web.", avoid: "Do not position as premium anti-fraud." },
       { chip: "NTAG 424 DNA", bestFor: "Strong authenticity, SUN/SDM, secure vouchers and docs.", avoid: "Do not claim native cold-chain sensing." },
       { chip: "NTAG 424 DNA TagTamper", bestFor: "Packaging integrity use cases where open/closed matters.", avoid: "Do not force into rigid credentials where tamper loop adds little value." },
     ],
@@ -179,6 +212,19 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Always: NFC + QR fallback + DPP-ready data model.",
     ],
     actionsTitle: "Next steps",
+    faqTitle: "Short FAQ to make the value clear",
+    faqItems: [
+      { q: "Does nexID sell NFC chips?", a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers." },
+      { q: "Is this only anti-fraud?", a: "No. It also enables ownership, access, warranty, vouchers, traceability and analytics." },
+      { q: "Are tokenization and authentication the same?", a: "No. Authentication proves the object; tokenization digitizes rights on top of that object." },
+      { q: "Can it work with QR?", a: "Yes. A single backend can run NFC plus QR fallback." },
+      { q: "Is this only for wine?", a: "No. It also fits events, documents, credentials, cosmetics, luxury and public sector workflows." },
+    ],
+    strategyTitle: "New strategic guides",
+    strategyBody: "We added two pages to clearly separate anti-fraud, passport and programmable rights, and to tailor the pitch by buyer profile.",
+    stackPage: "View Verify → Passport → Rights stack",
+    audiencesPage: "View audience pitch (investor, reseller, client, government)",
+    glossaryPage: "Open operational brand glossary",
     openAssistant: "Open BotIA",
     talkAgent: "Talk to agent (WhatsApp)",
     bookDemo: "Book demo",
@@ -241,6 +287,29 @@ export default async function DocsPage() {
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.roadmapBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
         </Card>
       </div>
+
+
+      <Card id="faq" className="p-6 scroll-mt-28">
+        <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
+        <div className="mt-4 grid gap-3">
+          {copy.faqItems.map((item) => (
+            <div key={item.q} className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <p className="text-sm font-semibold text-white">{item.q}</p>
+              <p className="mt-1 text-sm text-slate-300">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card id="strategy" className="p-6 scroll-mt-28">
+        <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
+        <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/stack">{copy.stackPage}</Link>
+          <Link className="rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100" href="/audiences">{copy.audiencesPage}</Link>
+          <Link className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100" href="/glossary">{copy.glossaryPage}</Link>
+        </div>
+      </Card>
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
