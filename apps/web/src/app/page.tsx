@@ -138,7 +138,7 @@ export default async function HomePage() {
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
             <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
           </Link>
-          <p className="text-sm site-muted">nexID combina tags NFC, autenticación criptográfica, antifraude, trazabilidad y CRM comercial para vino, cosmética, credenciales/documentos, eventos y canal reseller.</p>
+          <p className="text-sm site-muted">nexID es una plataforma de identidad física verificable: une carriers como NFC/QR con verificación, estado y derechos digitales para empresas y gobiernos.</p>
           <div className="flex flex-wrap gap-2">
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>

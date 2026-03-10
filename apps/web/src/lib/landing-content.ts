@@ -50,9 +50,9 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   "es-AR": {
     nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Dashboard", requestDemo: "Solicitar demo" },
     hero: {
-      badge: "Autenticación NFC + Identidad Digital de Producto",
-      title: "De producto físico a activo verificable.",
-      body: "Unimos Verify + Passport + Rights: autenticás, trazás y activás derechos digitales sobre cada unidad con NFC básico y criptográfico.",
+      badge: "Plataforma de identidad física verificable",
+      title: "Convertí productos, credenciales y documentos en identidades digitales verificables.",
+      body: "nexID conecta carriers físicos como NFC y QR con backend de validación para autenticar, registrar estado y activar ownership, acceso, garantía, redención y trazabilidad.",
       primary: "Pedir muestras",
       secondary: "Ver demo",
       tertiary: "Quiero ser reseller",
@@ -71,12 +71,12 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     },
     what: {
       eyebrow: "Qué hace la plataforma",
-      title: "No vendemos chips sueltos: vendemos un SaaS que te hace vender más",
-      description: "Una sola plataforma para trazabilidad, ownership/warranty/provenance y ventas con NFC.",
+      title: "Una sola infraestructura para validar objetos y activar negocio",
+      description: "Emitís una identidad digital por unidad, la validás en campo y la operás con dashboard, API y webhooks.",
       cards: [
-        { title: "SaaS de chips NFC", body: "Gestionás NTAG215 y NTAG424 en un mismo panel." },
-        { title: "SaaS de trazabilidad", body: "Ves cada toque con contexto real de negocio." },
-        { title: "Ownership / warranty / provenance", body: "Convertís cada producto en un registro verificable de ownership, garantía y procedencia." },
+        { title: "Verify", body: "Confirmás autenticidad, estado y reglas por cada toque o escaneo." },
+        { title: "Passport", body: "Construís el gemelo digital con lote, origen, eventos, canal y warranty." },
+        { title: "Rights", body: "Activás ownership, acceso, vouchers, beneficios, transferencias y garantías." },
       ],
     },
     plans: {
@@ -203,10 +203,10 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   "pt-BR": {
     nav: { product: "Produto", pricing: "Planos", reseller: "Revendedores", docs: "Arquitetura", cta: "Dashboard", requestDemo: "Solicitar demo" },
-    hero: { badge: "Autenticação NFC + Identidade Digital de Produto", title: "Identidade digital inviolável para produtos físicos.", body: "Autenticidade, rastreabilidade e experiências Tap-to-Verify com NFC básico (NTAG215) e NFC criptográfico (NTAG 424 DNA TagTamper).", primary: "Solicitar amostras", secondary: "Ver demo", tertiary: "Quero ser revendedor" },
+    hero: { badge: "Plataforma de identidade física verificável", title: "Converta produtos, credenciais e documentos em identidades digitais verificáveis.", body: "A nexID conecta carriers físicos como NFC e QR com backend de validação para autenticar, registrar estado e ativar ownership, acesso, garantia, resgate e rastreabilidade.", primary: "Solicitar amostras", secondary: "Ver demo", tertiary: "Quero ser revendedor" },
     trustBar: ["Programas NTAG215", "NTAG 424 DNA TagTamper", "API de autenticação", "SaaS multi-tenant", "Canal white-label"],
     howItWorks: { eyebrow: "Como funciona", title: "Encosta, valida e vende melhor", description: "Explicação simples: cada tap vira prova, alerta e oportunidade comercial.", steps: [{ title: "1. Você ativa o lote", body: "Escolhe chip, quantidade e campanha em poucos cliques." }, { title: "2. O cliente encosta o celular", body: "A tela mostra rápido se o produto é autêntico." }, { title: "3. O sistema registra tudo", body: "Fica salvo local, horário e resultado da leitura." }, { title: "4. Você vende com dados", body: "Dispara ação de marketing, suporte ou revenda." }] },
-    what: { eyebrow: "Plataforma", title: "Não vendemos chip solto: vendemos SaaS que gera confiança e venda", description: "Uma operação única para chips, rastreio e identidade digital do produto.", cards: [{ title: "SaaS para chips NFC", body: "Gerencia NTAG215 e NTAG424 no mesmo painel." }, { title: "SaaS de rastreabilidade", body: "Mostra cada leitura com contexto real de negócio." }, { title: "Ownership / warranty / provenance", body: "Transforma cada produto em registro verificável de ownership, garantia e procedência." }] },
+    what: { eyebrow: "Plataforma", title: "Uma infraestrutura para validar objetos e ativar negócio", description: "Emita uma identidade digital por unidade e opere com dashboard, API e webhooks.", cards: [{ title: "Verify", body: "Confirma autenticidade, estado e regras a cada toque." }, { title: "Passport", body: "Monta o gêmeo digital com lote, origem, eventos, canal e garantia." }, { title: "Rights", body: "Ativa ownership, acesso, vouchers, benefícios, transferências e garantias." }] },
     plans: { eyebrow: "Basic vs Secure vs Enterprise", title: "Pacotes por nível de risco", description: "De campanhas a anti-counterfeit crítico.", cards: [{ name: "BASIC", badge: "NTAG215", price: "Cotação por volume", body: "Eventos e tracking simples.", bullets: ["Tap-to-web", "Analytics de scans", "Sem criptografia SUN"] }, { name: "SECURE", badge: "NTAG 424 DNA TT", price: "Piloto + hardware codificado + SaaS", body: "Autenticação robusta.", bullets: ["SUN validation", "Duplicate alerts", "Tamper intelligence"] }, { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Operação avançada com SLA.", bullets: ["Branding white-label", "API keys + webhooks", "Camada premium"] }] },
     secure: { eyebrow: "Por que 424 TagTamper", title: "Camada secure para vinho, cosméticos e documentos", description: "NTAG 424 DNA TagTamper habilita autenticação dinâmica e melhor resiliência anti-clone.", bullets: ["Challenge dinâmico por tap", "Tamper signal para selos", "Revogação por lote", "Rastreabilidade anti-replay"] },
     authenticity: { eyebrow: "Estados", title: "Sinalização de autenticidade", description: "Leitura clara para consumidor e operações.", badges: { good: "VÁLIDO", warn: "SINALIZADO", risk: "BLOQUEADO" }, cards: [{ state: "Autêntico", detail: "Lote ativo e validação íntegra.", tone: "good" }, { state: "Tampered", detail: "Manipulação detectada em selo/tampa.", tone: "warn" }, { state: "Consumido / invalidado", detail: "Tag revogada ou uso inválido.", tone: "risk" }] },
@@ -240,10 +240,10 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   en: {
     nav: { product: "Product", pricing: "Pricing", reseller: "Resellers", docs: "Docs", cta: "Dashboard", requestDemo: "Request demo" },
-    hero: { badge: "NFC Authentication + Digital Product Identity", title: "Unforgeable digital identity for physical products.", body: "Authenticity, traceability, and tap-to-verify experiences with basic NFC (NTAG215) and cryptographic NFC (NTAG 424 DNA TagTamper).", primary: "Request samples", secondary: "View demo", tertiary: "Become a reseller" },
+    hero: { badge: "Verifiable physical identity platform", title: "Turn products, credentials and documents into verifiable digital identities.", body: "nexID connects physical carriers like NFC and QR to a validation backend so you can authenticate, track status and activate ownership, access, warranty, redemption and traceability.", primary: "Request samples", secondary: "View demo", tertiary: "Become a reseller" },
     trustBar: ["NTAG215 programs", "NTAG 424 DNA TagTamper", "Authentication API", "Multi-tenant SaaS", "White-label distribution"],
     howItWorks: { eyebrow: "How it works", title: "Tap, verify, and sell better", description: "Simple flow: each tap becomes proof, insight, and a sales action.", steps: [{ title: "1. Activate your batch", body: "Pick chip type, quantity, and campaign in minutes." }, { title: "2. Customer taps", body: "The phone shows authenticity instantly." }, { title: "3. Data is saved", body: "You keep place, time, and scan result." }, { title: "4. Teams take action", body: "Launch marketing, support, or reseller actions fast." }] },
-    what: { eyebrow: "Platform value", title: "We do more than tags: we deliver SaaS that helps you sell", description: "One platform for NFC chips, traceability, and ownership/warranty/provenance identity.", cards: [{ title: "SaaS for NFC chips", body: "Manage NTAG215 and NTAG424 in one place." }, { title: "Traceability SaaS", body: "See every scan with business context." }, { title: "Ownership / warranty / provenance", body: "Turn each physical product into a verifiable ownership, warranty and provenance record." }] },
+    what: { eyebrow: "Platform value", title: "One infrastructure to validate physical assets and activate business flows", description: "Issue one digital identity per unit and operate it through dashboard, API and webhooks.", cards: [{ title: "Verify", body: "Prove authenticity, state and policy outcome on every touchpoint." }, { title: "Passport", body: "Build a digital twin with batch, origin, events, channel and warranty." }, { title: "Rights", body: "Activate ownership, access, perks, vouchers, transfers and warranties." }] },
     plans: { eyebrow: "Basic vs Secure vs Enterprise", title: "Commercial packaging by risk profile", description: "From campaign activations to anti-counterfeit programs.", cards: [{ name: "BASIC", badge: "NTAG215", price: "Quote by volume", body: "Events, marketing and simple tracking.", bullets: ["Tap-to-web", "Scan analytics", "No SUN crypto"] }, { name: "SECURE", badge: "NTAG 424 DNA TT", price: "Pilot scope + encoded hardware + SaaS", body: "High-confidence authentication.", bullets: ["SUN validation", "Duplicate alerts", "Tamper intelligence"] }, { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Multi-tenant partner model with SLA.", bullets: ["White-label branding", "API keys + webhooks", "Premium identity layer"] }] },
     secure: { eyebrow: "Why 424 TagTamper", title: "Secure profile for wine, cosmetics and documents", description: "NTAG 424 DNA TagTamper supports dynamic authentication and stronger anti-clone resilience.", bullets: ["Dynamic challenge per tap", "Tamper signal for seals", "Batch-level revocation", "Replay-risk traceability"] },
     authenticity: { eyebrow: "Authenticity states", title: "Clear outcomes for consumers and ops teams", description: "Status UX mirrors real product security flows.", badges: { good: "VALID", warn: "FLAGGED", risk: "BLOCKED" }, cards: [{ state: "Authentic", detail: "Integrity check passed, active batch and valid origin.", tone: "good" }, { state: "Tampered", detail: "Seal/closure manipulation signal detected.", tone: "warn" }, { state: "Consumed / invalidated", detail: "Tag revoked or outside allowed consumption window.", tone: "risk" }] },
