@@ -33,6 +33,12 @@ export function DashboardShell({
   const [role, setRole] = useState<UserRole>("super-admin");
   const [query, setQuery] = useState("");
 
+  const quick = locale === "en"
+    ? { faq: "FAQ", stack: "Stack", glossary: "Glossary", docs: "Docs" }
+    : locale === "pt-BR"
+      ? { faq: "FAQ", stack: "Stack", glossary: "Glossário", docs: "Docs" }
+      : { faq: "FAQ", stack: "Stack", glossary: "Glosario", docs: "Docs" };
+
   const items = useMemo(
     () =>
       roleAccess[role]
@@ -49,7 +55,7 @@ export function DashboardShell({
     <div className="min-h-screen bg-slate-950 text-white lg:flex">
       <aside className="w-full border-b border-white/10 bg-slate-950/90 p-4 lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r lg:p-5">
         <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-white">
-          <BrandLockup size={30} variant="ripple" theme="dark" />
+          <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={30} variant="ripple" theme="dark" /></Link>
           <div className="mt-3 text-sm font-semibold">{title}</div>
           <div className="mt-1 text-xs text-slate-400">{subtitle}</div>
         </div>
@@ -86,6 +92,12 @@ export function DashboardShell({
               <ThemeToggle />
               <Link href="/login" className="rounded-lg border border-white/10 px-3 py-2 text-xs">{shell.logout}</Link>
             </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <a className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-200" href="/docs#faq" target="_blank" rel="noreferrer">{quick.faq}</a>
+            <a className="rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-indigo-200" href="/stack" target="_blank" rel="noreferrer">{quick.stack}</a>
+            <a className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-200" href="/glossary" target="_blank" rel="noreferrer">{quick.glossary}</a>
+            <a className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-slate-200" href="/docs" target="_blank" rel="noreferrer">{quick.docs}</a>
           </div>
         </header>
         <div className="p-4 lg:p-8">{children}</div>

@@ -21,6 +21,8 @@ type WidgetCopy = {
   voiceStart: string;
   voiceStop: string;
   voiceUnsupported: string;
+  toggleOpen: string;
+  toggleClose: string;
 };
 
 const copy: Record<AppLocale, WidgetCopy> = {
@@ -40,6 +42,8 @@ const copy: Record<AppLocale, WidgetCopy> = {
     voiceStart: "Hablar",
     voiceStop: "Detener",
     voiceUnsupported: "Tu navegador no soporta dictado por voz.",
+    toggleOpen: "Cotizar",
+    toggleClose: "Cerrar",
   },
   "pt-BR": {
     title: "NexID Sales AI",
@@ -57,6 +61,8 @@ const copy: Record<AppLocale, WidgetCopy> = {
     voiceStart: "Falar",
     voiceStop: "Parar",
     voiceUnsupported: "Seu navegador não suporta ditado por voz.",
+    toggleOpen: "Cotar",
+    toggleClose: "Fechar",
   },
   en: {
     title: "NexID Sales AI",
@@ -74,6 +80,8 @@ const copy: Record<AppLocale, WidgetCopy> = {
     voiceStart: "Speak",
     voiceStop: "Stop",
     voiceUnsupported: "Your browser does not support voice dictation.",
+    toggleOpen: "Quote",
+    toggleClose: "Close",
   },
 };
 
@@ -225,9 +233,9 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
 
           <div className="space-y-2 border-t border-white/10 p-3">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-              <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t.contactName} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100" />
-              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.contactEmail} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100" />
-              <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder={t.contactWhats} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100" />
+              <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t.contactName} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-400" />
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.contactEmail} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-400" />
+              <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder={t.contactWhats} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-400" />
             </div>
             <button disabled={loading} onClick={sendLead} className="w-full rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-200 disabled:opacity-40">
               {t.submitLead}
@@ -236,7 +244,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
             {leadState === "ok" ? <p className="text-[11px] text-emerald-300">{t.leadOk}</p> : null}
 
             <div className="flex gap-2">
-              <input value={input} onKeyDown={onInputKeyDown} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} className="flex-1 rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-xs text-slate-100" />
+              <input value={input} onKeyDown={onInputKeyDown} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} className="flex-1 rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400" />
               <button type="button" onClick={startVoice} className="rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-xs text-violet-100">{voiceState === "listening" ? t.voiceStop : t.voiceStart}</button>
               <button onClick={() => ask(input)} disabled={loading || !input.trim()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs text-cyan-100 disabled:opacity-40">{t.send}</button>
             </div>
@@ -245,8 +253,12 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
         </div>
       ) : null}
 
-      <button onClick={() => setOpen((prev) => !prev)} className="helpbot-toggle ml-auto flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/40 bg-cyan-500/20 text-2xl shadow-[0_0_30px_rgba(47,225,195,.35)]">
-        💬
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="helpbot-toggle sales-widget-toggle ml-auto inline-flex min-h-12 items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm font-semibold text-cyan-200 shadow-[0_0_24px_rgba(47,225,195,.24)]"
+      >
+        <span aria-hidden>💬</span>
+        <span>{open ? t.toggleClose : t.toggleOpen}</span>
       </button>
     </div>
   );
