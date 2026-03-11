@@ -256,3 +256,9 @@ html.theme-light .text-violet-200,
 html.theme-light .text-violet-300 {
   color: #6d28d9 !important;
 }
+
+html.theme-light header a.rounded-full {
+  background: rgba(255,255,255,0.95) !important;
+  border-color: rgba(15,23,42,0.2) !important;
+  box-shadow: 0 6px 14px rgba(15,23,42,0.08);
+}
