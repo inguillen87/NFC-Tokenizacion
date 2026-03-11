@@ -77,8 +77,8 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-            <p className="text-xs text-slate-300">{data.action}</p>
+          <div className="hero-scene-stage-card rounded-xl border border-white/10 bg-slate-950/70 p-3">
+            <p className="hero-scene-action text-xs text-slate-300">{data.action}</p>
             <div className="hero-product-stage mt-3">
               <div className={data.objectClass} />
               <div className="hero-scene-phone">
@@ -88,23 +88,23 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
             </div>
           </div>
 
-          <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-cyan-200">{txt.phoneLabel}</p>
-            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-300">{data.result}</p>
+          <div className="hero-scene-result-card rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+            <p className="hero-scene-result-label text-[11px] uppercase tracking-[0.14em] text-cyan-200">{txt.phoneLabel}</p>
+            <p className="hero-scene-result-state mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-300">{data.result}</p>
             <ul className="mt-2 space-y-2 text-xs text-slate-200">
               {data.details.map((item) => (
-                <li key={item} className="rounded-md border border-white/10 bg-slate-900/60 px-2 py-1.5">{item}</li>
+                <li key={item} className="hero-scene-detail rounded-md border border-white/10 bg-slate-900/60 px-2 py-1.5">{item}</li>
               ))}
             </ul>
           </div>
         </div>
 
-        <p className="mt-3 text-xs text-slate-300">{txt.microcopy}</p>
+        <p className="hero-scene-microcopy mt-3 text-xs text-slate-300">{txt.microcopy}</p>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {txt.ctaBands.map((item) => (
-          <span key={item} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">{item}</span>
+          <span key={item} className="hero-scene-band rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">{item}</span>
         ))}
       </div>
     </div>
