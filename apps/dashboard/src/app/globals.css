@@ -262,3 +262,36 @@ html.theme-light header a.rounded-full {
   border-color: rgba(15,23,42,0.2) !important;
   box-shadow: 0 6px 14px rgba(15,23,42,0.08);
 }
+
+/* Dashboard responsive polish for tablet/mobile */
+@media (max-width: 1024px) {
+  aside nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  aside nav a {
+    min-height: 2.75rem;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  header .rounded-full {
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 640px) {
+  aside {
+    padding: 0.8rem !important;
+  }
+
+  header {
+    padding-inline: 0.85rem !important;
+  }
+
+  header .text-xl {
+    font-size: 1.05rem !important;
+  }
+}

@@ -83,8 +83,8 @@ export default async function HomePage() {
 
   return (
     <main>
-      <header className="site-header sticky top-0 z-50 border-b backdrop-blur-xl">
-        <div className="container-shell flex h-24 items-center justify-between gap-6 lg:h-28">
+      <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl">
+        <div className="container-shell header-main-row flex h-24 items-center justify-between gap-6 lg:h-28">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
             <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand" />
           </Link>
@@ -98,7 +98,7 @@ export default async function HomePage() {
             <Link href="/docs#faq">{labels.quickFaq}</Link>
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="header-actions flex items-center gap-2">
             <LocaleSwitcher value={locale} options={[...locales]} />
             <ThemeToggle />
             <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`}>
@@ -110,9 +110,9 @@ export default async function HomePage() {
 
 
 
-      <section className="container-shell py-3">
+      <section className="container-shell quick-links-section py-3">
         <div className="quick-links-wrap rounded-xl border border-white/10 bg-slate-900/55 p-2">
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs">
+          <div className="quick-links-scroll flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs">
             <span className="px-2 py-1 font-semibold text-cyan-300">{labels.quickNavTitle}</span>
             <Link href="/docs#faq" className="quick-link-chip rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-100">{labels.quickFaq}</Link>
             <Link href="/stack" className="quick-link-chip rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-indigo-100">{labels.quickStack}</Link>

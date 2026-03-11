@@ -1,9 +1,19 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { resolveLocale, siteConfig } from "@product/config";
 import { HelpBot } from "@product/ui";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f8ff" },
+  ],
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();

@@ -1311,3 +1311,77 @@ html.theme-light .helpbot-panel .text-cyan-200,
 html.theme-light .helpbot-panel .text-cyan-300 {
   color: #0e7490 !important;
 }
+
+/* Mobile/tablet + PWA ergonomics */
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.quick-links-scroll {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quick-links-scroll > * {
+  scroll-snap-align: start;
+}
+
+@media (max-width: 1024px) {
+  .mobile-optimized-header {
+    position: sticky;
+    top: 0;
+  }
+
+  .header-main-row {
+    height: auto !important;
+    min-height: 4.25rem;
+    padding-block: 0.55rem;
+    gap: 0.75rem;
+  }
+
+  .header-actions {
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .header-dashboard-link .ui-btn--secondary,
+  .header-dashboard-link button {
+    padding: 0.5rem 0.7rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .quick-links-section {
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+  }
+
+  .hero-shell {
+    border-radius: 1.35rem !important;
+    padding: 1rem !important;
+  }
+
+  h1.text-5xl,
+  h1.md\:text-7xl {
+    font-size: clamp(2rem, 10vw, 3.1rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  .sales-widget-toggle,
+  .helpbot-trigger {
+    min-height: 2.95rem;
+  }
+
+  .sales-widget-panel,
+  .helpbot-panel {
+    max-height: min(72vh, 560px);
+    overflow: auto;
+  }
+}
+
+html.theme-light .header-dashboard-link .ui-btn--secondary,
+html.theme-light .header-dashboard-link button {
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.24) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+}
