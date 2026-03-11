@@ -271,9 +271,9 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
             ))}
           </div>
 
-          <div className="helpbot-input mt-3 max-h-72 space-y-2 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-xs">
+          <div className="helpbot-input helpbot-thread mt-3 max-h-72 space-y-2 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-xs">
             {messages.map((m, idx) => (
-              <div key={idx} className={m.role === "user" ? "helpbot-user text-cyan-300" : "helpbot-text text-slate-200"}>
+              <div key={idx} className={m.role === "user" ? "helpbot-message helpbot-user text-cyan-300" : "helpbot-message helpbot-text text-slate-200"}>
                 {m.role === "user" ? t.roleUser : t.roleAi}: {m.text}
               </div>
             ))}
@@ -282,10 +282,10 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
 
           {shouldShowSalesCta ? (
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <a href="/pricing" className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-center text-xs text-cyan-200">{t.ctaSchedule}</a>
-              <a href="https://wa.me/5492613168608" target="_blank" rel="noreferrer" className="rounded-lg border border-white/20 px-3 py-2 text-center text-xs text-slate-200">{t.ctaWhatsApp}</a>
-              <a href="https://wa.me/5492613168608?text=Hola%20quiero%20modelar%20ROI%20con%20inversion%20de%20USD%2025k" target="_blank" rel="noreferrer" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">{t.ctaInvestor25}</a>
-              <a href="https://wa.me/5492613168608?text=Hola%20quiero%20modelar%20ROI%20con%20inversion%20de%20USD%2050k" target="_blank" rel="noreferrer" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">{t.ctaInvestor50}</a>
+              <a href="/pricing" className="helpbot-cta rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-center text-xs text-cyan-200">{t.ctaSchedule}</a>
+              <a href="https://wa.me/5492613168608" target="_blank" rel="noreferrer" className="helpbot-cta rounded-lg border border-white/20 px-3 py-2 text-center text-xs text-slate-200">{t.ctaWhatsApp}</a>
+              <a href="https://wa.me/5492613168608?text=Hola%20quiero%20modelar%20ROI%20con%20inversion%20de%20USD%2025k" target="_blank" rel="noreferrer" className="helpbot-cta rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">{t.ctaInvestor25}</a>
+              <a href="https://wa.me/5492613168608?text=Hola%20quiero%20modelar%20ROI%20con%20inversion%20de%20USD%2050k" target="_blank" rel="noreferrer" className="helpbot-cta rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">{t.ctaInvestor50}</a>
             </div>
           ) : null}
 
@@ -307,10 +307,10 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
 
           <textarea value={question} onKeyDown={onQuestionKeyDown} onChange={(e) => setQuestion(e.target.value)} className="helpbot-input mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <button type="button" onClick={startVoice} className="w-full rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">
+          <button type="button" onClick={startVoice} className="helpbot-voice w-full rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">
               {voiceState === "listening" ? t.voiceStop : t.voiceStart}
             </button>
-            <button onClick={() => send()} disabled={busy} className="w-full rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
+            <button onClick={() => send()} disabled={busy} className="helpbot-send w-full rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
               {t.send}
             </button>
           </div>

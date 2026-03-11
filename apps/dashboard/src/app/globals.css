@@ -239,6 +239,45 @@ html.theme-light .ui-btn--ghost {
   background: rgba(255, 255, 255, 0.94) !important;
 }
 
+html.theme-light .demo-lab-card {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(240, 247, 255, 0.96)) !important;
+  border-color: rgba(30, 41, 59, 0.18) !important;
+}
+
+html.theme-light .demo-lab-input,
+html.theme-light .demo-lab-upload,
+html.theme-light .demo-lab-action,
+html.theme-light .demo-lab-log {
+  border-color: rgba(30, 41, 59, 0.2) !important;
+}
+
+html.theme-light .demo-lab-input,
+html.theme-light .demo-lab-upload,
+html.theme-light .demo-lab-action {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-log {
+  background: rgba(248, 252, 255, 0.98) !important;
+  color: #155e75 !important;
+}
+
+html.theme-light .helpbot-thread {
+  background: rgba(248, 250, 252, 0.98) !important;
+}
+
+html.theme-light .helpbot-message {
+  color: #0f172a !important;
+}
+
+html.theme-light .helpbot-cta,
+html.theme-light .helpbot-send,
+html.theme-light .helpbot-voice {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(15, 23, 42, 0.2) !important;
+}
+
 html.theme-light .text-cyan-100,
 html.theme-light .text-cyan-200,
 html.theme-light .text-cyan-300 {

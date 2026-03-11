@@ -81,22 +81,22 @@ export function DemoLab() {
   };
 
   return (
-    <div className="space-y-4">
-      <Card className="p-4 text-sm text-slate-300">
+    <div className="demo-lab space-y-4">
+      <Card className="demo-lab-card p-4 text-sm text-slate-300">
         <p>{COPY[locale].intro}</p>
         <p className="mt-2 text-cyan-300">{COPY[locale].why215}</p>
         <p className="text-cyan-300">{COPY[locale].why424}</p>
       </Card>
 
-      <Card className="p-4">
+      <Card className="demo-lab-card p-4">
         <label className="text-xs uppercase tracking-wide text-slate-400">{COPY[locale].pick}</label>
-        <select className="mt-2 w-full rounded-lg border border-white/10 bg-slate-900 p-2 text-sm text-white" value={pack} onChange={(e) => setPack(e.target.value)}>
+        <select className="demo-lab-input mt-2 w-full rounded-lg border border-white/10 bg-slate-900 p-2 text-sm text-white" value={pack} onChange={(e) => setPack(e.target.value)}>
           {(packs.length ? packs : [{ key: "wine-secure", icType: "NTAG424DNA_TT", batchId: "DEMO-2026-02" }]).map((p) => <option key={p.key} value={p.key}>{p.key} · {p.icType}</option>)}
         </select>
       </Card>
 
 
-      <Card className="p-4 text-xs text-slate-300">
+      <Card className="demo-lab-card p-4 text-xs text-slate-300">
         <p>ⓘ <b>CSV</b>: manifiesto UID/tag para importar lotes.</p>
         <p className="mt-1">ⓘ <b>JSON</b>: metadata rica de producto para pasaporte digital.</p>
         <p className="mt-1">ⓘ <b>Built-in demo pack</b>: carga un escenario prearmado (vertical + batch).</p>
@@ -105,45 +105,45 @@ export function DemoLab() {
       </Card>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("use-pack", "POST", { pack }))} disabled={pending}>Use Built-in Demo Pack</button>
-        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("generate-live-scans", "POST", { count: 10, mode: "valid" }))} disabled={pending}>Generate Demo</button>
-        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("reset", "POST"))} disabled={pending}>Reset Demo</button>
-        <button className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("simulate-tap", "POST", { mode: "valid" }))} disabled={pending}>Simulate NFC Tap</button>
-        <a className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" href={`/demo/${pack}/manifest.csv`} download>Download CSV</a>
-        <a className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" href={`/demo/${pack}/seed.json`} download>Download JSON</a>
+        <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("use-pack", "POST", { pack }))} disabled={pending}>Use Built-in Demo Pack</button>
+        <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("generate-live-scans", "POST", { count: 10, mode: "valid" }))} disabled={pending}>Generate Demo</button>
+        <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("reset", "POST"))} disabled={pending}>Reset Demo</button>
+        <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("simulate-tap", "POST", { mode: "valid" }))} disabled={pending}>Simulate NFC Tap</button>
+        <a className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" href={`/demo/${pack}/manifest.csv`} download>Download CSV</a>
+        <a className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" href={`/demo/${pack}/seed.json`} download>Download JSON</a>
       </div>
       <p className="text-xs text-slate-400">{pending ? "Running action..." : "Ready for action."}</p>
 
       <div className="grid gap-3 md:grid-cols-3">
         <button className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-sm text-violet-100" onClick={() => runAction(() => call("generate-live-scans", "POST", { count: 30, mode: "mixed" }))} disabled={pending}>Generate live scans stream</button>
-        <a className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100" href="https://nexid.lat/demo" target="_blank" rel="noreferrer">Open mobile preview</a>
-        <a className="rounded-xl border border-white/15 bg-slate-900 p-3 text-sm text-white" href="/" target="_blank" rel="noreferrer">Open tenant dashboard view</a>
+        <a className="demo-lab-action rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100" href="https://nexid.lat/demo" target="_blank" rel="noreferrer">Open mobile preview</a>
+        <a className="demo-lab-action rounded-xl border border-white/15 bg-slate-900 p-3 text-sm text-white" href="/" target="_blank" rel="noreferrer">Open tenant dashboard view</a>
       </div>
       <p className="text-xs text-slate-400">Mobile preview = vista consumidor; tenant dashboard view = vista operativa interna con métricas y CRM.</p>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">CSV manifest uploader
+        <label className="demo-lab-upload rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">CSV manifest uploader
           <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const csv = await readFile(file); await runAction(() => call("upload-manifest", "POST", { bid: "DEMO-2026-02", csv })); }} />
         </label>
-        <label className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">JSON metadata uploader
+        <label className="demo-lab-upload rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">JSON metadata uploader
           <input type="file" accept=".json,application/json" className="mt-2 block w-full" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const data = JSON.parse(await readFile(file)); await runAction(() => call("upload-products", "POST", { bid: "DEMO-2026-02", products: data.products || data.bottles || data })); }} />
         </label>
       </div>
       <p className="text-xs text-slate-400">{pending ? "Running action..." : "Ready for action."}</p>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Card className="p-4 text-sm text-slate-200">Tenant: <b>{summary.tenant?.name || "-"}</b><br />Slug: {summary.tenant?.slug || "-"}</Card>
-        <Card className="p-4 text-sm text-slate-200">Batch: <b>{summary.batch?.bid || "-"}</b><br />Tags: {summary.tagCount ?? 0}</Card>
-        <Card className="p-4 text-sm text-slate-200">CRM lite<br />Leads: {summary.crm?.leads ?? 0} · Tickets: {summary.crm?.tickets ?? 0} · Orders: {summary.crm?.orders ?? 0}</Card>
+        <Card className="demo-lab-card p-4 text-sm text-slate-200">Tenant: <b>{summary.tenant?.name || "-"}</b><br />Slug: {summary.tenant?.slug || "-"}</Card>
+        <Card className="demo-lab-card p-4 text-sm text-slate-200">Batch: <b>{summary.batch?.bid || "-"}</b><br />Tags: {summary.tagCount ?? 0}</Card>
+        <Card className="demo-lab-card p-4 text-sm text-slate-200">CRM lite<br />Leads: {summary.crm?.leads ?? 0} · Tickets: {summary.crm?.tickets ?? 0} · Orders: {summary.crm?.orders ?? 0}</Card>
       </div>
 
       <WorldMapPlaceholder title="Live map updates" subtitle="Mapped from real event geo fields" points={points} />
 
-      <Card className="p-4"><h3 className="text-sm font-semibold text-white">Mobile preview updates</h3><p className="mt-2 text-sm text-slate-300">Last event state: {(summary.events || [])[0]?.result || "N/A"} · {(summary.events || [])[0]?.product_name || "-"}</p><p className="mt-2 text-xs text-cyan-200">Idle · Scanning · Valid · Tampered · Enterprise backend view</p></Card>
+      <Card className="demo-lab-card p-4"><h3 className="text-sm font-semibold text-white">Mobile preview updates</h3><p className="mt-2 text-sm text-slate-300">Last event state: {(summary.events || [])[0]?.result || "N/A"} · {(summary.events || [])[0]?.product_name || "-"}</p><p className="mt-2 text-xs text-cyan-200">Idle · Scanning · Valid · Tampered · Enterprise backend view</p></Card>
 
-      <Card className="p-4"><h3 className="text-sm font-semibold text-white">Recent events</h3><div className="mt-2 space-y-2 text-sm text-slate-300">{(summary.events || []).slice(0, 8).map((e) => <div key={e.id}>{e.result} · {e.product_name || e.uid_hex || "-"} · {e.vertical || "-"}</div>)}</div></Card>
+      <Card className="demo-lab-card p-4"><h3 className="text-sm font-semibold text-white">Recent events</h3><div className="mt-2 space-y-2 text-sm text-slate-300">{(summary.events || []).slice(0, 8).map((e) => <div key={e.id}>{e.result} · {e.product_name || e.uid_hex || "-"} · {e.vertical || "-"}</div>)}</div></Card>
 
-      <pre className="overflow-auto rounded-xl border border-white/10 bg-slate-950 p-4 text-xs text-cyan-200">{out}</pre>
+      <pre className="demo-lab-log overflow-auto rounded-xl border border-white/10 bg-slate-950 p-4 text-xs text-cyan-200">{out}</pre>
     </div>
   );
 }

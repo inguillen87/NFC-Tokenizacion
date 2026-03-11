@@ -81,7 +81,7 @@ export function LiveDemoSurfaces() {
   );
 
   return (
-    <section className="container-shell py-16 space-y-6">
+    <section className="demo-live-surfaces container-shell space-y-6 py-16">
       <div>
         <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Live proof block</p>
         <h2 className="text-2xl font-semibold text-white">Global map, active scans and mobile authenticity state</h2>
@@ -97,11 +97,11 @@ export function LiveDemoSurfaces() {
       <WorldMapPlaceholder title="Global live scans" subtitle="Real demo events from seeded tenant and simulated taps." points={points} />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-5">
+        <Card className="demo-live-card p-5">
           <h3 className="text-sm font-semibold text-white">Live event feed</h3>
           <div className="mt-4 space-y-2 text-sm text-slate-300">
             {items.slice(0, 8).map((event) => (
-              <div key={event.id} className="rounded-lg border border-white/10 bg-slate-900/70 p-3">
+              <div key={event.id} className="demo-live-feed-item rounded-lg border border-white/10 bg-slate-900/70 p-3">
                 <div className="font-medium text-white">{event.result} · {event.product_name || event.uid_hex || "Item"}</div>
                 <div className="text-xs text-slate-400">{verticalLabel(event.vertical)} · {event.city || "--"}, {event.country_code || "--"}</div>
               </div>
@@ -109,10 +109,10 @@ export function LiveDemoSurfaces() {
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className="demo-live-card p-5">
           <h3 className="text-sm font-semibold text-white">Mobile preview</h3>
-          <div className="mx-auto mt-4 max-w-[300px] rounded-[2rem] border-[10px] border-slate-800 bg-slate-950 p-4">
-            <div className="rounded-2xl border border-white/10 bg-slate-900 p-4 text-sm text-slate-200">
+          <div className="demo-live-phone mx-auto mt-4 max-w-[300px] rounded-[2rem] border-[10px] border-slate-800 bg-slate-950 p-4">
+            <div className="demo-live-phone-screen rounded-2xl border border-white/10 bg-slate-900 p-4 text-sm text-slate-200">
               <p className="text-xs uppercase tracking-wide text-cyan-300">{stateLabel(latest?.result || "")}</p>
               <p className="mt-2 text-lg font-semibold text-white">{latest?.product_name || "Demo Product"}</p>
               <p className="text-xs text-slate-400">{latest?.sku || "-"} · {verticalLabel(latest?.vertical)}</p>
