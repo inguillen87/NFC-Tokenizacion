@@ -12,7 +12,7 @@ export default async function LoginPage() {
       <Card className="w-full max-w-5xl p-3 md:p-10">
         <div className="grid gap-10 md:grid-cols-[1.1fr_1fr]">
           <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-6">
-            <BrandLockup size={34} variant="ripple" theme="dark" />
+            <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={34} variant="ripple" theme="dark" /></Link>
             <h1 className="mt-5 text-3xl font-bold text-white">{t.common.login}</h1>
             <p className="mt-2 text-sm text-slate-400">{t.dashboard.auth.loginBody}</p>
             <div className="mt-5 grid gap-2 text-xs">
