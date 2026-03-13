@@ -1,4 +1,5 @@
-import { Badge, Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
+import { Badge, Card, SectionHeading } from "@product/ui";
+import { DemoOpsMap } from "../../components/demo-ops-map";
 import Link from "next/link";
 import { AdminActionForms } from "../../components/admin-action-forms";
 import { AnalyticsPanels } from "../../components/analytics-panels";
@@ -125,11 +126,10 @@ export default async function DashboardHome() {
           </div>
         </Card>
 
-        <WorldMapPlaceholder
-          title={labels.mapTitle}
-          subtitle={labels.mapSubtitle}
-          points={mapPoints}
-        />
+        <div>
+          <p className="mb-2 text-xs text-slate-400">{labels.mapTitle} · {labels.mapSubtitle}</p>
+          <DemoOpsMap points={mapPoints} />
+        </div>
       </div>
 
 

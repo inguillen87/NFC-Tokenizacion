@@ -99,4 +99,4 @@ For production-grade map hosting (enterprise hardening), define these env vars i
 - `NEXT_PUBLIC_MAPLIBRE_JS_URL`
 - `NEXT_PUBLIC_MAPLIBRE_CSS_URL`
 
-If omitted, the dashboard demo uses resilient public fallbacks.
+These are required for enterprise mode (no public CDN fallback).
