@@ -89,3 +89,14 @@ Con eso el proveedor puede cerrar fabricación + encoding + logística inicial s
 - `GET /sun` aplica rate limit básico por IP en runtime (`SUN_RATE_LIMIT_PER_MIN`, default 120 rpm).
 - Para protección DDoS enterprise, complementar con reglas de Vercel Edge/WAF por ruta `/sun`.
 - Webhooks de escaneo válido: configurá `SCAN_WEBHOOK_URL` (y opcional `SCAN_WEBHOOK_SECRET`) para recibir eventos `tag.scan.valid` en tu ERP/CRM.
+
+
+## Demo map configuration (dashboard)
+
+For production-grade map hosting (enterprise hardening), define these env vars in `apps/dashboard/.env`:
+
+- `NEXT_PUBLIC_MAPLIBRE_STYLE_URL`
+- `NEXT_PUBLIC_MAPLIBRE_JS_URL`
+- `NEXT_PUBLIC_MAPLIBRE_CSS_URL`
+
+These are required for enterprise mode (no public CDN fallback).
