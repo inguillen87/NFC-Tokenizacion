@@ -11,11 +11,17 @@ type MapPoint = {
   risk: number;
 };
 
+type EventFilter = "all" | "clean" | "risk";
+
 declare global {
   interface Window {
     maplibregl?: any;
   }
 }
+
+const STYLE_URL = process.env.NEXT_PUBLIC_MAPLIBRE_STYLE_URL || "https://demotiles.maplibre.org/style.json";
+const MAPLIBRE_CSS_URL = process.env.NEXT_PUBLIC_MAPLIBRE_CSS_URL || "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+const MAPLIBRE_JS_URL = process.env.NEXT_PUBLIC_MAPLIBRE_JS_URL || "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
 
 async function ensureMapLibre() {
   if (typeof window === "undefined") return null;
@@ -31,11 +37,12 @@ async function ensureMapLibre() {
 
     const css = document.createElement("link");
     css.rel = "stylesheet";
-    css.href = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+    css.href = MAPLIBRE_CSS_URL;
+    css.dataset.maplibre = "1";
     document.head.appendChild(css);
 
     const script = document.createElement("script");
-    script.src = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
+    script.src = MAPLIBRE_JS_URL;
     script.async = true;
     script.dataset.maplibre = "1";
     script.onload = () => resolve();
@@ -52,13 +59,25 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
   const [ready, setReady] = useState(false);
   const [playback, setPlayback] = useState(false);
   const [index, setIndex] = useState(100);
+  const [eventFilter, setEventFilter] = useState<EventFilter>("all");
+  const [country, setCountry] = useState("ALL");
+
+  const countries = useMemo(() => ["ALL", ...Array.from(new Set(points.map((point) => point.country))).sort()], [points]);
+
+  const filteredPoints = useMemo(() => {
+    return points.filter((point) => {
+      const countryMatch = country === "ALL" ? true : point.country === country;
+      const eventMatch = eventFilter === "all" ? true : eventFilter === "clean" ? point.risk === 0 : point.risk > 0;
+      return countryMatch && eventMatch;
+    });
+  }, [points, country, eventFilter]);
 
   const playablePoints = useMemo(() => {
-    const total = points.length;
+    const total = filteredPoints.length;
     if (total === 0) return [];
     const limit = Math.max(1, Math.round((index / 100) * total));
-    return points.slice(0, limit);
-  }, [points, index]);
+    return filteredPoints.slice(0, limit);
+  }, [filteredPoints, index]);
 
   useEffect(() => {
     let active = true;
@@ -69,7 +88,7 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
 
         const map = new maplibre.Map({
           container: containerRef.current,
-          style: "https://demotiles.maplibre.org/style.json",
+          style: STYLE_URL,
           center: [-70, -20],
           zoom: 2,
         });
@@ -131,6 +150,8 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
 
           setReady(true);
         });
+
+        map.on("error", () => setReady(false));
       } catch {
         setReady(false);
       }
@@ -138,9 +159,7 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
 
     return () => {
       active = false;
-      if (mapRef.current) {
-        mapRef.current.remove();
-      }
+      if (mapRef.current) mapRef.current.remove();
     };
   }, []);
 
@@ -175,27 +194,37 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-white">Ops Map Pro (MapLibre)</h3>
-          <p className="text-xs text-slate-400">Clusters + heatmap + playback slider para demos ejecutivas.</p>
+          <p className="text-xs text-slate-400">Clusters + heatmap + playback + filtros. Style configurable por env.</p>
         </div>
-        <button type="button" className="rounded-lg border border-white/20 px-3 py-1 text-xs text-white" onClick={() => setPlayback((v) => !v)}>
+        <button type="button" className="rounded-lg border border-white/20 px-3 py-1 text-xs text-white" onClick={() => setPlayback((value) => !value)}>
           {playback ? "Pause playback" : "Play playback"}
         </button>
       </div>
+
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={eventFilter} onChange={(event) => setEventFilter(event.target.value as EventFilter)}>
+          <option value="all">Todos los eventos</option>
+          <option value="clean">AUTH OK</option>
+          <option value="risk">Solo riesgo</option>
+        </select>
+        <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
+          {countries.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </div>
+
       <div className="mt-3 h-[340px] overflow-hidden rounded-lg border border-white/10 bg-slate-950">
         <div ref={containerRef} className="h-full w-full" />
       </div>
+
       <div className="mt-3">
-        <input
-          type="range"
-          min={10}
-          max={100}
-          step={10}
-          value={index}
-          onChange={(event) => setIndex(Number(event.target.value))}
-          className="w-full"
-        />
+        <input type="range" min={10} max={100} step={10} value={index} onChange={(event) => setIndex(Number(event.target.value))} className="w-full" />
       </div>
-      {!ready ? <p className="mt-2 text-xs text-amber-300">MapLibre cargando desde CDN. Si tu red bloquea CDN, se mantiene la demo sin mapa avanzado.</p> : null}
+
+      {!ready ? (
+        <p className="mt-2 text-xs text-amber-300">
+          Mapa no inicializado. Revisá conectividad CDN o definí `NEXT_PUBLIC_MAPLIBRE_STYLE_URL`, `NEXT_PUBLIC_MAPLIBRE_JS_URL` y `NEXT_PUBLIC_MAPLIBRE_CSS_URL`.
+        </p>
+      ) : null}
     </div>
   );
 }

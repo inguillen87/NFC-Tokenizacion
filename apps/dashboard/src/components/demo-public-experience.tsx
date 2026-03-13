@@ -65,6 +65,26 @@ export function DemoPublicExperience() {
     return base;
   }, [events]);
 
+
+  const verticalNarrative = useMemo(() => {
+    if (vertical === "wine") {
+      return {
+        title: "Demo vino secure",
+        text: "Mostrá autenticidad de botella, estado de apertura y trazabilidad por ciudad en una sola historia comercial.",
+      };
+    }
+    if (vertical === "events") {
+      return {
+        title: "Demo eventos / VIP",
+        text: "Mostrá check-in, control anti-duplicado y acceso en tiempo real para pulseras o credenciales.",
+      };
+    }
+    return {
+      title: "Demo documentos / presencia",
+      text: "Mostrá identidad documental, proof-of-presence y auditoría de visitas por sitio.",
+    };
+  }, [vertical]);
+
   async function refresh() {
     const summary = await call("summary");
     const list = Array.isArray(summary?.events) ? (summary.events as EventItem[]) : [];
@@ -91,6 +111,12 @@ export function DemoPublicExperience() {
         <Card className="p-3 text-xs text-slate-300">AUTH OK: <b>{metrics.authOk}</b> · Riesgo: <b>{metrics.risk}</b></Card>
         <Card className="p-3 text-xs text-slate-300">Vino: <b>{metrics.wine}</b> · Eventos: <b>{metrics.eventsVertical}</b> · Docs: <b>{metrics.docs}</b></Card>
       </div>
+
+
+      <Card className="p-4 text-sm text-slate-300">
+        <h3 className="font-semibold text-white">{verticalNarrative.title}</h3>
+        <p className="mt-1 text-xs text-slate-400">{verticalNarrative.text}</p>
+      </Card>
 
       <Card className="p-4">
         <h3 className="text-sm font-semibold text-white">1) Elegir vertical</h3>
