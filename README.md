@@ -96,7 +96,5 @@ Con eso el proveedor puede cerrar fabricación + encoding + logística inicial s
 For production-grade map hosting (enterprise hardening), define these env vars in `apps/dashboard/.env`:
 
 - `NEXT_PUBLIC_MAPLIBRE_STYLE_URL`
-- `NEXT_PUBLIC_MAPLIBRE_JS_URL`
-- `NEXT_PUBLIC_MAPLIBRE_CSS_URL`
 
 These are required for enterprise mode (no public CDN fallback).
