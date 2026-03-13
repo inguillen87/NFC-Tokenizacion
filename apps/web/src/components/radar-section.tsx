@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, SectionHeading } from "@product/ui";
+import { Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
 import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
 
@@ -44,8 +44,6 @@ const points: Record<MapKey, Point> = {
   lima: { key: "lima", city: "Lima", province: "Lima", country: "Peru", x: 21, y: 62, tz: "GMT-5" },
   santafe: { key: "santafe", city: "Santa Fe", province: "Santa Fe", country: "Argentina", x: 27, y: 71, tz: "GMT-3" },
 };
-
-const routeArcs: Array<[MapKey, MapKey]> = [["mendoza", "miami"], ["cordoba", "saopaulo"], ["santiago", "cdmx"], ["rosario", "matogrosso"], ["bogota", "lima"], ["santafe", "miami"]];
 
 const examples: Example[] = [
   { vertical: "wine", point: "mendoza", title: "Bottle uncorked — Mendoza, Argentina", status: "opened" },
@@ -116,13 +114,6 @@ function statusTone(status: Status) {
   if (status === "duplicate") return "text-amber-300";
   if (status === "tamper") return "text-rose-300";
   return "text-violet-300";
-}
-
-function pulseStyles(status: Status) {
-  if (status === "valid") return { ping: "bg-emerald-300", dot: "bg-emerald-100 shadow-[0_0_18px_rgba(16,185,129,.95)]", label: "border-emerald-300/40" };
-  if (status === "duplicate") return { ping: "bg-amber-300", dot: "bg-amber-100 shadow-[0_0_18px_rgba(251,191,36,.95)]", label: "border-amber-300/40" };
-  if (status === "tamper") return { ping: "bg-rose-300", dot: "bg-rose-100 shadow-[0_0_18px_rgba(244,63,94,.95)]", label: "border-rose-300/40" };
-  return { ping: "bg-violet-300", dot: "bg-violet-100 shadow-[0_0_18px_rgba(167,139,250,.95)]", label: "border-violet-300/40" };
 }
 
 export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppLocale }) {
@@ -198,47 +189,19 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
             ))}
           </div>
 
-          <div className="radar-map-shell relative z-10 mt-4 h-[390px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/85">
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(30,41,59,.28)_1px,transparent_1px),linear-gradient(to_bottom,rgba(30,41,59,.28)_1px,transparent_1px)] bg-[size:32px_32px]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_50%,rgba(34,211,238,.14),transparent_48%)]" />
-            <svg viewBox="0 0 1000 500" className="absolute inset-0 h-full w-full opacity-95" aria-hidden>
-              <g fill="rgba(56,189,248,0.16)" stroke="rgba(56,189,248,0.55)" strokeWidth="1.2">
-                <path d="M88 162l74-32 95 18 46 34 42 34-13 45-67 42-95 9-52-26-38-44z" />
-                <path d="M228 316l69 16 39 42 26 81-43 22-58-12-31-61z" />
-                <path d="M356 148l86-30 128 10 111 22 95-8 74 40-9 43-79 21-43 37-98-5-72 33-56 14-84-19-49-46z" />
-                <path d="M532 309l73-17 72 20 48 41-12 56-79 23-64-28-42-49z" />
-                <path d="M760 130l58-22 86 10 52 31-13 39-77 20-67-18-38-29z" />
-              </g>
-              {routeArcs.map(([from, to], i) => (
-                <path
-                  key={`${from}-${to}`}
-                  d={`M ${points[from].x * 10} ${points[from].y * 5} Q ${(points[from].x * 10 + points[to].x * 10) / 2} ${(points[from].y * 5 + points[to].y * 5) / 2 - 80} ${points[to].x * 10} ${points[to].y * 5}`}
-                  fill="none"
-                  stroke="rgba(34,211,238,0.55)"
-                  strokeWidth="2"
-                  strokeDasharray="6 7"
-                  style={{ animation: `arcFlow 3.2s linear ${i * 0.15}s infinite` }}
-                />
-              ))}
-            </svg>
-
-            {pulses.map((ev, index) => {
-              const style = pulseStyles(ev.status);
-              return (
-                <div key={ev.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${ev.point.x}%`, top: `${ev.point.y}%` }}>
-                  <span className="relative flex h-4 w-4">
-                    <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${style.ping} opacity-70`} />
-                    <span className={`relative inline-flex h-4 w-4 rounded-full ${style.dot}`} />
-                  </span>
-                  {index < 4 && (
-                    <div className={`mt-1 rounded-md border ${style.label} bg-slate-900/95 px-2 py-1 text-[10px] text-slate-100`}>
-                      {ev.point.city}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            <div className="absolute bottom-3 left-3 right-3 rounded-md border border-white/10 bg-slate-950/70 px-2 py-1 text-[11px] text-slate-300">{radar.mapCaption}</div>
+          <div className="relative z-10 mt-4">
+            <WorldMapPlaceholder
+              title={radar.mapCaption}
+              subtitle={txt.geoTitle}
+              points={pulses.map((ev) => ({
+                city: ev.point.city,
+                country: ev.point.country,
+                lat: ((50 - ev.point.y) / 50) * 45,
+                lng: ((ev.point.x - 50) / 50) * 120,
+                scans: 1,
+                risk: ev.status === "valid" ? 0 : 1,
+              }))}
+            />
           </div>
 
           <div className="relative z-10 mt-3 grid gap-2 text-[11px] md:grid-cols-2 xl:grid-cols-4">
