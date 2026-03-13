@@ -259,6 +259,29 @@ export function DemoLab() {
         <p className="mt-1">ⓘ <b>Veredicto secure/tamper</b>: siempre lo resuelve backend.</p>
       </Card>
 
+
+
+      <Card className="demo-lab-card p-4 text-xs text-slate-300">
+        <h3 className="text-sm font-semibold text-white">¿Qué emulamos exactamente cuando “acercás el celular”?</h3>
+        <div className="mt-2 grid gap-2 md:grid-cols-2">
+          <p><b>1) Lo que trae la etiqueta/tag:</b> UID/URL NDEF, tipo de chip y metadata inicial del pack (vino, evento, docs).</p>
+          <p><b>2) Lo que aporta el celular:</b> fecha/hora local, idioma, navegador, geolocalización (si el usuario da permiso).</p>
+          <p><b>3) Lo que resuelve backend:</b> autenticidad, riesgo de duplicado, estado (sealed/opened/tamper) e historial.</p>
+          <p><b>4) Lo que agrega la demo:</b> narrativa comercial y eventos simulados para enseñar casos reales.</p>
+        </div>
+      </Card>
+
+      <Card className="demo-lab-card p-4 text-xs text-slate-300">
+        <h3 className="text-sm font-semibold text-white">Guión de demo en vivo (3 minutos)</h3>
+        <ol className="mt-2 list-decimal space-y-1 pl-4">
+          <li>Cargar pack vertical con <b>Load demo pack</b>.</li>
+          <li>Elegir modo: <b>SIMULATED</b> o <b>PRODUCTION-LIKE PREVIEW</b>.</li>
+          <li>Disparar 2-3 escenarios: <b>AUTH OK</b>, <b>TAMPER</b>, <b>DUPLICATE</b>.</li>
+          <li>Mostrar <b>Mobile preview snapshot</b> + <b>Recent events</b> + mapa para evidenciar trazabilidad.</li>
+          <li>Opcional: pasar a <b>LIVE NFC</b> en Android Chrome compatible para lectura NDEF real.</li>
+        </ol>
+      </Card>
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white" onClick={() => runAction(() => call("use-pack", "POST", { pack }))} disabled={pending}>
           Paso 3 · Load demo pack
@@ -373,6 +396,17 @@ export function DemoLab() {
         <p className="mt-1 text-xs text-slate-400">
           Último tap: {latestEvent?.city || "-"}, {latestEvent?.country_code || "-"} · {latestEvent?.created_at || "sin eventos"}
         </p>
+      </Card>
+
+
+
+      <Card className="demo-lab-card p-4 text-xs text-slate-300">
+        <h3 className="text-sm font-semibold text-white">Entradas recomendadas por tipo de usuario</h3>
+        <div className="mt-2 grid gap-2 md:grid-cols-3">
+          <a className="rounded-lg border border-white/10 bg-slate-900 p-2" href="/demo-lab" target="_blank" rel="noreferrer"><b>Admin/Tenant</b><br />/demo-lab</a>
+          <a className="rounded-lg border border-white/10 bg-slate-900 p-2" href="/demo" target="_blank" rel="noreferrer"><b>Usuario final</b><br />/demo</a>
+          <a className="rounded-lg border border-white/10 bg-slate-900 p-2" href="/analytics" target="_blank" rel="noreferrer"><b>Operaciones</b><br />/analytics</a>
+        </div>
       </Card>
 
       <Card className="demo-lab-card p-4">
