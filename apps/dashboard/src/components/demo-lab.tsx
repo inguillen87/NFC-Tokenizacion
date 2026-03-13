@@ -17,19 +17,6 @@ type SummaryEvent = {
   vertical?: string;
 };
 
-type SummaryEvent = {
-  id: number;
-  result: string;
-  uid_hex?: string;
-  created_at?: string;
-  city?: string;
-  country_code?: string;
-  lat?: number;
-  lng?: number;
-  product_name?: string;
-  vertical?: string;
-};
-
 type Summary = {
   exists?: boolean;
   tenant?: { slug: string; name: string };
@@ -252,16 +239,6 @@ export function DemoLab() {
           <li>Paso 2: elegí modo (simulado, consumer tap, live NFC).</li>
           <li>Paso 3: cargá pack y ejecutá escenarios.</li>
           <li>Paso 4: abrí la vista mobile por item/tenant.</li>
-        </ol>
-      </Card>
-
-      <Card className="demo-lab-card p-4">
-        <h3 className="text-sm font-semibold text-white">Demo Wizard (para reuniones)</h3>
-        <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-slate-300">
-          <li>Paso 1: elegí un pack vertical (vino, eventos, documentos, etc).</li>
-          <li>Paso 2: elegí modo de demo (simulado, consumer tap, live NFC).</li>
-          <li>Paso 3: cargá el pack y ejecutá escenarios con un clic.</li>
-          <li>Paso 4: abrí la vista mobile para mostrar la experiencia final del usuario.</li>
         </ol>
       </Card>
 
