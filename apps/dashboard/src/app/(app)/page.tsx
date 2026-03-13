@@ -1,4 +1,5 @@
 import { Badge, Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
+import Link from "next/link";
 import { AdminActionForms } from "../../components/admin-action-forms";
 import { AnalyticsPanels } from "../../components/analytics-panels";
 import { DataTable } from "../../components/data-table";
@@ -135,6 +136,18 @@ export default async function DashboardHome() {
       <Card className="p-4 text-xs text-slate-300">
         <p className="font-semibold text-cyan-200">ⓘ Mission control help</p>
         <p className="mt-2">Tenants: organización comercial. Batches: lotes de tags. Tags: unidades emitidas. Events: taps/alertas en vivo. Leads/Tickets/Orders: pipeline CRM-lite para seguimiento de negocio.</p>
+      </Card>
+
+
+      <Card className="p-4">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo entry points</h2>
+        <p className="mt-2 text-sm text-slate-400">Accesos directos para explorar el sistema completo desde landing profesional.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-4">
+          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-lab">Demo Lab</Link>
+          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-sandbox">Sandbox anónimo</Link>
+          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-lab/encode">Encode Station</Link>
+          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-lab/mobile/demobodega/demo-item-001">Mobile preview</Link>
+        </div>
       </Card>
 
       <ModuleGrid
