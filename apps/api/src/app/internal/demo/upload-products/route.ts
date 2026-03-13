@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 import { sql } from '../../../../lib/db';
+import { normalizeSeedProducts } from '../../../../lib/demo-pack-normalizer';
 
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
@@ -11,15 +12,14 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({} as any));
   const bid = String(body.bid || 'DEMO-2026-02');
-  const raw = body.products ?? body;
-  const products = Array.isArray(raw) ? raw : Array.isArray(raw.products) ? raw.products : Array.isArray(raw.bottles) ? raw.bottles : [];
+  const products = normalizeSeedProducts(body.products ?? body);
 
   const batch = (await sql`SELECT id FROM batches WHERE bid=${bid} LIMIT 1`)[0];
   if (!batch) return json({ ok: false, reason: 'batch not found' }, 404);
 
   let updated = 0;
   for (const item of products) {
-    const uidHex = String(item.uidHex || item.uid_hex || '').toUpperCase();
+    const uidHex = item.uidHex;
     if (!uidHex) continue;
     const tag = (await sql`SELECT id FROM tags WHERE batch_id=${batch.id} AND uid_hex=${uidHex} LIMIT 1`)[0];
     if (!tag) continue;
