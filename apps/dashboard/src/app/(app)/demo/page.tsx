@@ -1,15 +1,15 @@
 import { SectionHeading } from "@product/ui";
-import { DemoControlCenter } from "../../../components/demo-control-center";
+import { DemoPublicExperience } from "../../../components/demo-public-experience";
 
 export default function DemoPage() {
   return (
     <main className="space-y-6">
       <SectionHeading
-        eyebrow="Demo"
-        title="Demo Control Center"
-        description="Investor-ready one-click controls to seed Demo Bodega and simulate production-like scans."
+        eyebrow="Public Demo"
+        title="Probá un toque NFC simulado"
+        description="Vista anónima: elegí vertical, corré escenario y mirá resultado + passport + mapa en vivo."
       />
-      <DemoControlCenter />
+      <DemoPublicExperience />
     </main>
   );
 }
