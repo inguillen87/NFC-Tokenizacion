@@ -17,6 +17,7 @@ type EventItem = {
   lat?: number;
   lng?: number;
   created_at?: string;
+  vertical?: string;
 };
 
 async function call(path: string, method = "GET", payload?: unknown) {
@@ -52,6 +53,18 @@ export function DemoPublicExperience() {
     [events]
   );
 
+  const metrics = useMemo(() => {
+    const base = {
+      total: events.length,
+      authOk: events.filter((event) => event.result === "VALID").length,
+      risk: events.filter((event) => event.result && event.result !== "VALID").length,
+      wine: events.filter((event) => event.vertical === "wine").length,
+      eventsVertical: events.filter((event) => event.vertical === "events").length,
+      docs: events.filter((event) => event.vertical === "docs").length,
+    };
+    return base;
+  }, [events]);
+
   async function refresh() {
     const summary = await call("summary");
     const list = Array.isArray(summary?.events) ? (summary.events as EventItem[]) : [];
@@ -72,6 +85,12 @@ export function DemoPublicExperience() {
         <p className="font-semibold text-white">La etiqueta aporta identidad. El celular aporta contexto. nexID aporta la verdad del objeto.</p>
         <p className="mt-1 text-xs text-slate-400">No leemos “todo el chip” desde web: en navegador mostramos NDEF + contexto móvil + veredicto backend.</p>
       </Card>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card className="p-3 text-xs text-slate-300">Scans demo: <b>{metrics.total}</b></Card>
+        <Card className="p-3 text-xs text-slate-300">AUTH OK: <b>{metrics.authOk}</b> · Riesgo: <b>{metrics.risk}</b></Card>
+        <Card className="p-3 text-xs text-slate-300">Vino: <b>{metrics.wine}</b> · Eventos: <b>{metrics.eventsVertical}</b> · Docs: <b>{metrics.docs}</b></Card>
+      </div>
 
       <Card className="p-4">
         <h3 className="text-sm font-semibold text-white">1) Elegir vertical</h3>
