@@ -14,8 +14,6 @@ type MapPoint = {
 
 type EventFilter = "all" | "clean" | "risk";
 
-const STYLE_URL = process.env.NEXT_PUBLIC_MAPLIBRE_STYLE_URL || "";
-
 export function DemoOpsMap({ points }: { points: MapPoint[] }) {
   const [playback, setPlayback] = useState(false);
   const [index, setIndex] = useState(100);
@@ -40,6 +38,8 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
     const limit = Math.max(1, Math.round((index / 100) * total));
     return filteredPoints.slice(0, limit);
   }, [filteredPoints, index]);
+
+  const riskPoints = useMemo(() => playablePoints.filter((point) => point.risk > 0).length, [playablePoints]);
 
 
 
@@ -88,11 +88,7 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
         <input type="range" min={10} max={100} step={10} value={index} onChange={(event) => setIndex(Number(event.target.value))} className="w-full" />
       </div>
 
-      <p className="mt-2 text-[11px] text-slate-500">
-        {STYLE_URL
-          ? `Map style configured: ${STYLE_URL}.`
-          : "Enterprise style URL missing: set NEXT_PUBLIC_MAPLIBRE_STYLE_URL to use your hosted style in production."}
-      </p>
+      <p className="mt-2 text-[11px] text-slate-500">{playablePoints.length} hubs activos · {riskPoints} con riesgo · Visualización enterprise unificada lista para demo.</p>
     </div>
   );
 }
