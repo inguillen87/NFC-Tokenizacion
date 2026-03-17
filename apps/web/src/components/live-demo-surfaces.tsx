@@ -76,6 +76,10 @@ export function LiveDemoSurfaces() {
           lng: Number(it.lng),
           scans: 1,
           risk: it.result === "VALID" ? 0 : 1,
+          vertical: verticalLabel(it.vertical),
+          status: stateLabel(it.result),
+          source: "live_feed",
+          lastSeen: it.created_at,
         })),
     [items]
   );
