@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 import { Badge, Card, SectionHeading } from "@product/ui";
 
 type EventItem = {
@@ -22,8 +23,10 @@ async function getSummary() {
   return (await response.json()) as SummaryData;
 }
 
-export default function DemoMobileItemPage({ params }: { params: { tenant: string; itemId: string } }) {
-  const { tenant, itemId } = params;
+export default function DemoMobileItemPage() {
+  const params = useParams<{ tenant: string; itemId: string }>();
+  const tenant = params?.tenant || "demobodega";
+  const itemId = params?.itemId || "demo-item-001";
   const [events, setEvents] = useState<EventItem[]>([]);
 
   useEffect(() => {
@@ -60,12 +63,17 @@ export default function DemoMobileItemPage({ params }: { params: { tenant: strin
     <main className="mx-auto max-w-md space-y-4 p-4">
       <SectionHeading eyebrow="Mobile preview" title="Producto verificado" description="Vista realista de consumidor por tenant/item" />
       <Card className="p-4">
+        <div className="mb-3 h-40 rounded-xl border border-white/10 bg-[radial-gradient(circle_at_30%_25%,rgba(56,189,248,.22),transparent_45%),radial-gradient(circle_at_70%_70%,rgba(16,185,129,.2),transparent_35%),#0f172a]" />
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">{itemId}</h2>
           <Badge tone={latest?.result === "VALID" ? "green" : "cyan"}>{latest?.result || "AUTH PENDING"}</Badge>
         </div>
         <p className="mt-2 text-sm text-slate-300">Tenant: {tenant}</p>
         <p className="text-sm text-slate-300">Último evento: {latest?.city || "-"}, {latest?.country_code || "-"}</p>
+        <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
+          <button type="button" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">Verificar botella/pulsera</button>
+          <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Abrir passport completo</button>
+        </div>
       </Card>
 
       <Card className="p-4">
@@ -88,6 +96,16 @@ export default function DemoMobileItemPage({ params }: { params: { tenant: strin
               <p className="text-slate-400">{event.when}</p>
             </div>
           ))}
+        </div>
+      </Card>
+
+      <Card className="p-4 text-xs text-slate-300">
+        <h3 className="text-sm font-semibold text-white">CTA comerciales</h3>
+        <div className="mt-2 grid gap-2 md:grid-cols-2">
+          <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-100">Activar ownership</button>
+          <button type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-violet-100">Registrar garantía</button>
+          <button type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-amber-100">Ver provenance</button>
+          <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Contactar soporte</button>
         </div>
       </Card>
     </main>

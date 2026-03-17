@@ -219,6 +219,7 @@ export function DemoLab() {
   }
 
   const openMobilePreviewHref = `${webBase}/demo-lab/mobile/demobodega/demo-item-001?demoMode=${mode}&pack=${pack}`;
+  const qrPreviewHref = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(openMobilePreviewHref)}`;
   const textScale = presenterMode ? "text-base" : "text-sm";
 
   return (
@@ -230,6 +231,16 @@ export function DemoLab() {
             {presenterMode ? "Salir modo presentador" : "Modo presentador"}
           </button>
         </div>
+      </Card>
+
+      <Card className="demo-lab-card p-4">
+        <h3 className="text-sm font-semibold text-white">Guión express para inversores (90 segundos)</h3>
+        <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-slate-300">
+          <li>Load demo pack.</li>
+          <li>Abrí mobile preview (o escaneá QR con tu celular).</li>
+          <li>Ejecutá Auto demo 90s y mostrales mapa + timeline + estado del item.</li>
+        </ol>
+        <button className="mt-3 w-full rounded-xl border border-violet-300/40 bg-violet-500/10 p-3 text-sm text-violet-100" onClick={() => void runAuto90SecondsDemo()} disabled={pending}>Iniciar pitch automático</button>
       </Card>
 
       <Card className="demo-lab-card p-4">
@@ -286,6 +297,18 @@ export function DemoLab() {
         <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-white" onClick={() => void downloadPackFile("seed")} disabled={pending}>Download JSON seed</button>
         <a className="demo-lab-action rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer">Paso 4 · Open mobile preview</a>
       </div>
+
+      <Card className="demo-lab-card p-4">
+        <h3 className="text-sm font-semibold text-white">QR espejo para demo en celular</h3>
+        <p className="mt-1 text-xs text-slate-400">Escaneá este QR con el teléfono del inversor/cliente para abrir exactamente el mismo destino del preview mobile.</p>
+        <div className="mt-3 flex flex-col items-center gap-2 md:flex-row md:items-start">
+          <img src={qrPreviewHref} alt="QR mobile preview" className="h-40 w-40 rounded-lg border border-white/15 bg-white p-2" />
+          <div className="text-xs text-slate-300">
+            <p className="break-all rounded-lg border border-white/10 bg-slate-900 p-2">{openMobilePreviewHref}</p>
+            <a className="mt-2 inline-block rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer">Abrir en esta compu</a>
+          </div>
+        </div>
+      </Card>
 
       <Card className="demo-lab-card p-4">
         <h3 className="text-sm font-semibold text-white">Simular evento (un clic)</h3>
