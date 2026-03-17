@@ -200,6 +200,10 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
                 lng: ((ev.point.x - 50) / 50) * 120,
                 scans: 1,
                 risk: ev.status === "valid" ? 0 : 1,
+                vertical: ev.vertical,
+                status: ev.status,
+                source: "radar_stream",
+                lastSeen: ev.at,
               }))}
             />
           </div>

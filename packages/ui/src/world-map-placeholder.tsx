@@ -10,7 +10,13 @@ type GeoPoint = {
   risk?: number;
   lat: number;
   lng: number;
+  vertical?: string;
+  status?: string;
+  source?: string;
+  lastSeen?: string;
 };
+
+type MetricMode = "scans" | "risk";
 
 const continentLabels = [
   { name: "NORTH AMERICA", x: 18, y: 26 },
@@ -46,6 +52,7 @@ export function WorldMapPlaceholder({
 }) {
   const safePoints = points.length > 0 ? points : defaultPoints;
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [metricMode, setMetricMode] = useState<MetricMode>("scans");
 
   const totalScans = safePoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const riskSignals = safePoints.reduce((acc, point) => acc + (point.risk || 0), 0);
@@ -60,12 +67,15 @@ export function WorldMapPlaceholder({
 
   const heatBackground = useMemo(() => {
     const layers = projectedPoints.map((item) => {
-      const intensity = Math.max(16, Math.min(30, 12 + Math.round(((item.point.scans || 1) / Math.max(1, totalScans)) * 100)));
-      const color = (item.point.risk || 0) > 0 ? "rgba(251,113,133,0.22)" : "rgba(45,212,191,0.20)";
+      const scanWeight = (item.point.scans || 1) / Math.max(1, totalScans);
+      const riskWeight = (item.point.risk || 0) / Math.max(1, riskSignals || 1);
+      const weight = metricMode === "risk" ? riskWeight : scanWeight;
+      const intensity = Math.max(16, Math.min(34, 12 + Math.round(weight * 120)));
+      const color = metricMode === "risk" ? "rgba(251,113,133,0.25)" : "rgba(45,212,191,0.22)";
       return `radial-gradient(circle at ${item.pos.x}% ${item.pos.y}%, ${color} 0%, rgba(15,23,42,0) ${intensity}%)`;
     });
     return layers.join(",");
-  }, [projectedPoints, totalScans]);
+  }, [metricMode, projectedPoints, totalScans, riskSignals]);
 
   return (
     <Card className="worldmap-card relative overflow-hidden p-4 md:p-6">
@@ -79,6 +89,15 @@ export function WorldMapPlaceholder({
           <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">{totalScans.toLocaleString()} scans</div>
           <div className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-rose-100">{riskSignals.toLocaleString()} risk</div>
         </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+        <button type="button" onClick={() => setMetricMode("scans")} className={`rounded-lg border px-3 py-1 ${metricMode === "scans" ? "border-cyan-300/40 bg-cyan-500/15 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+          Heat: scans
+        </button>
+        <button type="button" onClick={() => setMetricMode("risk")} className={`rounded-lg border px-3 py-1 ${metricMode === "risk" ? "border-rose-300/40 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+          Heat: risk
+        </button>
       </div>
 
       <div className="worldmap-shell mt-4 grid h-[21rem] place-items-center rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_45%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.16),transparent_40%),#020617] md:h-[25rem]">
@@ -126,16 +145,28 @@ export function WorldMapPlaceholder({
 
           {activePoint ? (
             <div
-              className="pointer-events-none absolute z-20 w-[10.5rem] -translate-x-1/2 rounded-lg border border-cyan-300/30 bg-slate-900/95 px-3 py-2 text-[11px] text-slate-100 shadow-[0_10px_30px_rgba(2,6,23,.6)]"
+              className="pointer-events-none absolute z-20 hidden w-[12rem] -translate-x-1/2 rounded-lg border border-cyan-300/30 bg-slate-900/95 px-3 py-2 text-[11px] text-slate-100 shadow-[0_10px_30px_rgba(2,6,23,.6)] md:block"
               style={{ left: `${Math.min(90, Math.max(10, activePoint.pos.x))}%`, top: `calc(${Math.min(90, Math.max(12, activePoint.pos.y))}% - 3.2rem)` }}
             >
               <p className="font-semibold text-white">{activePoint.point.city}{activePoint.point.country ? ` · ${activePoint.point.country}` : ""}</p>
               <p className="text-cyan-200">Scans: {(activePoint.point.scans || 0).toLocaleString()}</p>
               <p className="text-rose-200">Risk: {(activePoint.point.risk || 0).toLocaleString()}</p>
+              {activePoint.point.vertical ? <p className="text-slate-300">Vertical: {activePoint.point.vertical}</p> : null}
+              {activePoint.point.status ? <p className="text-slate-300">Status: {activePoint.point.status}</p> : null}
+              {activePoint.point.source ? <p className="text-slate-400">Source: {activePoint.point.source}</p> : null}
+              {activePoint.point.lastSeen ? <p className="text-slate-400">Last seen: {activePoint.point.lastSeen}</p> : null}
             </div>
           ) : null}
         </div>
       </div>
+
+      {activePoint ? (
+        <div className="mt-3 rounded-lg border border-cyan-300/25 bg-slate-900/85 px-3 py-2 text-[11px] text-slate-100 md:hidden">
+          <p className="font-semibold text-white">{activePoint.point.city}{activePoint.point.country ? ` · ${activePoint.point.country}` : ""}</p>
+          <p className="text-cyan-200">Scans: {(activePoint.point.scans || 0).toLocaleString()} · Risk: {(activePoint.point.risk || 0).toLocaleString()}</p>
+          <p className="text-slate-300">{activePoint.point.vertical ? `Vertical: ${activePoint.point.vertical} · ` : ""}{activePoint.point.status ? `Status: ${activePoint.point.status}` : ""}</p>
+        </div>
+      ) : null}
 
       <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-2 xl:grid-cols-4">
         {rankedPoints.map((point) => (
