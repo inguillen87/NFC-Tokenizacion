@@ -98,6 +98,18 @@ export function WorldMapPlaceholder({
 
   const activePoint = projectedPoints.find((item) => item.id === activeId) || projectedPoints[0];
   const rankedPoints = useMemo(() => [...windowedPoints].sort((a, b) => (b.scans || 0) - (a.scans || 0)).slice(0, 4), [windowedPoints]);
+  const statusCounts = useMemo(
+    () =>
+      windowedPoints.reduce(
+        (acc, point) => {
+          const key = normalizeStatus(point.status);
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        },
+        { AUTH_OK: 0, TAMPER_RISK: 0, DUPLICATE_RISK: 0, REVIEW: 0 } as Record<string, number>
+      ),
+    [windowedPoints]
+  );
 
   const heatBackground = useMemo(() => {
     const layers = projectedPoints.map((item) => {
@@ -119,7 +131,7 @@ export function WorldMapPlaceholder({
           <div className="mt-1 text-xs text-slate-400">{subtitle}</div>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px]">
-          <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100">{safePoints.length} hubs</div>
+          <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100">{windowedPoints.length} hubs</div>
           <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">{totalScans.toLocaleString()} scans</div>
           <div className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-rose-100">{riskSignals.toLocaleString()} risk</div>
         </div>
@@ -137,6 +149,16 @@ export function WorldMapPlaceholder({
             {windowMode === "all" ? "Window: all" : `Window: ${windowMode}`}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => {
+            setMetricMode("scans");
+            setTimeWindowMode("24h");
+          }}
+          className="rounded-lg border border-white/15 bg-white/5 px-3 py-1 text-slate-300"
+        >
+          Reset filters
+        </button>
       </div>
 
       <div className="worldmap-shell mt-4 grid h-[21rem] place-items-center rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_45%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.16),transparent_40%),#020617] md:h-[25rem]">
@@ -199,6 +221,12 @@ export function WorldMapPlaceholder({
         </div>
       </div>
 
+      {windowedPoints.length === 0 ? (
+        <div className="mt-3 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+          No hay eventos para la ventana seleccionada. Probá cambiar a 24h o all.
+        </div>
+      ) : null}
+
       {activePoint ? (
         <div className="mt-3 rounded-lg border border-cyan-300/25 bg-slate-900/85 px-3 py-2 text-[11px] text-slate-100 md:hidden">
           <p className="font-semibold text-white">{activePoint.point.city}{activePoint.point.country ? ` · ${activePoint.point.country}` : ""}</p>
@@ -216,27 +244,17 @@ export function WorldMapPlaceholder({
         ))}
       </div>
 
-      {activePoint ? (
-        <div className="mt-3 rounded-lg border border-cyan-300/25 bg-slate-900/85 px-3 py-2 text-[11px] text-slate-100 md:hidden">
-          <p className="font-semibold text-white">{activePoint.point.city}{activePoint.point.country ? ` · ${activePoint.point.country}` : ""}</p>
-          <p className="text-cyan-200">Scans: {(activePoint.point.scans || 0).toLocaleString()} · Risk: {(activePoint.point.risk || 0).toLocaleString()}</p>
-          <p className="text-slate-300">{activePoint.point.vertical ? `Vertical: ${activePoint.point.vertical} · ` : ""}{activePoint.point.status ? `Status: ${activePoint.point.status}` : ""}</p>
-        </div>
-      ) : null}
-
-      <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-2 xl:grid-cols-4">
-        {rankedPoints.map((point) => (
-          <div key={`${point.city}-${point.country || "--"}`} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200">
-            <p className="font-semibold text-white">{point.city} {point.country ? `· ${point.country}` : ""}</p>
-            <p className="text-cyan-200">{(point.scans || 0).toLocaleString()} scans · {(point.risk || 0).toLocaleString()} risk</p>
-          </div>
-        ))}
-      </div>
-
       <div className="mt-3 grid gap-2 text-[11px] md:grid-cols-3">
         <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-200">AUTH_OK · tráfico normal</div>
         <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-200">DUPLICATE_RISK · repetición anómala</div>
         <div className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-rose-200">TAMPER_RISK · estado abierto/sospechoso</div>
+      </div>
+
+      <div className="mt-2 grid gap-2 text-[11px] md:grid-cols-4">
+        <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/5 px-2 py-1 text-emerald-200">AUTH_OK: {statusCounts.AUTH_OK}</div>
+        <div className="rounded-lg border border-rose-300/20 bg-rose-500/5 px-2 py-1 text-rose-200">TAMPER_RISK: {statusCounts.TAMPER_RISK}</div>
+        <div className="rounded-lg border border-cyan-300/20 bg-cyan-500/5 px-2 py-1 text-cyan-200">DUPLICATE_RISK: {statusCounts.DUPLICATE_RISK}</div>
+        <div className="rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-slate-300">REVIEW: {statusCounts.REVIEW}</div>
       </div>
     </Card>
   );
