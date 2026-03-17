@@ -17,6 +17,7 @@ type GeoPoint = {
 };
 
 type MetricMode = "scans" | "risk";
+type TimeWindowMode = "5m" | "1h" | "24h" | "all";
 
 const continentLabels = [
   { name: "NORTH AMERICA", x: 18, y: 26 },
@@ -53,17 +54,50 @@ export function WorldMapPlaceholder({
   const safePoints = points.length > 0 ? points : defaultPoints;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [metricMode, setMetricMode] = useState<MetricMode>("scans");
+  const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
 
-  const totalScans = safePoints.reduce((acc, point) => acc + (point.scans || 0), 0);
-  const riskSignals = safePoints.reduce((acc, point) => acc + (point.risk || 0), 0);
+  const parseEventTime = (value?: string) => {
+    if (!value) return Date.now();
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) return parsed;
+    return Date.now();
+  };
+
+  const normalizeStatus = (value?: string) => {
+    const raw = (value || "").toUpperCase();
+    if (raw.includes("VALID") || raw.includes("AUTH_OK") || raw.includes("OK")) return "AUTH_OK";
+    if (raw.includes("TAMPER") || raw.includes("OPENED")) return "TAMPER_RISK";
+    if (raw.includes("DUPLICATE") || raw.includes("REPLAY")) return "DUPLICATE_RISK";
+    return "REVIEW";
+  };
+
+  const cutoffMs =
+    timeWindowMode === "5m"
+      ? Date.now() - 5 * 60 * 1000
+      : timeWindowMode === "1h"
+      ? Date.now() - 60 * 60 * 1000
+      : timeWindowMode === "24h"
+      ? Date.now() - 24 * 60 * 60 * 1000
+      : 0;
+
+  const windowedPoints = useMemo(
+    () =>
+      safePoints.filter((point) => {
+        if (timeWindowMode === "all") return true;
+        return parseEventTime(point.lastSeen) >= cutoffMs;
+      }),
+    [safePoints, timeWindowMode, cutoffMs]
+  );
+  const totalScans = windowedPoints.reduce((acc, point) => acc + (point.scans || 0), 0);
+  const riskSignals = windowedPoints.reduce((acc, point) => acc + (point.risk || 0), 0);
 
   const projectedPoints = useMemo(
-    () => safePoints.map((point, idx) => ({ id: `${point.city}-${point.lat}-${point.lng}-${idx}`, point, pos: project(point.lat, point.lng) })),
-    [safePoints]
+    () => windowedPoints.map((point, idx) => ({ id: `${point.city}-${point.lat}-${point.lng}-${idx}`, point, pos: project(point.lat, point.lng) })),
+    [windowedPoints]
   );
 
   const activePoint = projectedPoints.find((item) => item.id === activeId) || projectedPoints[0];
-  const rankedPoints = useMemo(() => [...safePoints].sort((a, b) => (b.scans || 0) - (a.scans || 0)).slice(0, 4), [safePoints]);
+  const rankedPoints = useMemo(() => [...windowedPoints].sort((a, b) => (b.scans || 0) - (a.scans || 0)).slice(0, 4), [windowedPoints]);
 
   const heatBackground = useMemo(() => {
     const layers = projectedPoints.map((item) => {
@@ -98,6 +132,11 @@ export function WorldMapPlaceholder({
         <button type="button" onClick={() => setMetricMode("risk")} className={`rounded-lg border px-3 py-1 ${metricMode === "risk" ? "border-rose-300/40 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
           Heat: risk
         </button>
+        {(["5m", "1h", "24h", "all"] as TimeWindowMode[]).map((windowMode) => (
+          <button key={windowMode} type="button" onClick={() => setTimeWindowMode(windowMode)} className={`rounded-lg border px-3 py-1 ${timeWindowMode === windowMode ? "border-indigo-300/40 bg-indigo-500/15 text-indigo-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+            {windowMode === "all" ? "Window: all" : `Window: ${windowMode}`}
+          </button>
+        ))}
       </div>
 
       <div className="worldmap-shell mt-4 grid h-[21rem] place-items-center rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_45%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.16),transparent_40%),#020617] md:h-[25rem]">
@@ -152,12 +191,29 @@ export function WorldMapPlaceholder({
               <p className="text-cyan-200">Scans: {(activePoint.point.scans || 0).toLocaleString()}</p>
               <p className="text-rose-200">Risk: {(activePoint.point.risk || 0).toLocaleString()}</p>
               {activePoint.point.vertical ? <p className="text-slate-300">Vertical: {activePoint.point.vertical}</p> : null}
-              {activePoint.point.status ? <p className="text-slate-300">Status: {activePoint.point.status}</p> : null}
+              <p className="text-slate-300">Status: {normalizeStatus(activePoint.point.status)}</p>
               {activePoint.point.source ? <p className="text-slate-400">Source: {activePoint.point.source}</p> : null}
               {activePoint.point.lastSeen ? <p className="text-slate-400">Last seen: {activePoint.point.lastSeen}</p> : null}
             </div>
           ) : null}
         </div>
+      </div>
+
+      {activePoint ? (
+        <div className="mt-3 rounded-lg border border-cyan-300/25 bg-slate-900/85 px-3 py-2 text-[11px] text-slate-100 md:hidden">
+          <p className="font-semibold text-white">{activePoint.point.city}{activePoint.point.country ? ` · ${activePoint.point.country}` : ""}</p>
+          <p className="text-cyan-200">Scans: {(activePoint.point.scans || 0).toLocaleString()} · Risk: {(activePoint.point.risk || 0).toLocaleString()}</p>
+          <p className="text-slate-300">{activePoint.point.vertical ? `Vertical: ${activePoint.point.vertical} · ` : ""}Status: {normalizeStatus(activePoint.point.status)}</p>
+        </div>
+      ) : null}
+
+      <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-2 xl:grid-cols-4">
+        {rankedPoints.map((point) => (
+          <div key={`${point.city}-${point.country || "--"}`} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200">
+            <p className="font-semibold text-white">{point.city} {point.country ? `· ${point.country}` : ""}</p>
+            <p className="text-cyan-200">{(point.scans || 0).toLocaleString()} scans · {(point.risk || 0).toLocaleString()} risk</p>
+          </div>
+        ))}
       </div>
 
       {activePoint ? (
