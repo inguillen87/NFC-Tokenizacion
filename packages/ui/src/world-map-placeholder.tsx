@@ -216,6 +216,23 @@ export function WorldMapPlaceholder({
         ))}
       </div>
 
+      {activePoint ? (
+        <div className="mt-3 rounded-lg border border-cyan-300/25 bg-slate-900/85 px-3 py-2 text-[11px] text-slate-100 md:hidden">
+          <p className="font-semibold text-white">{activePoint.point.city}{activePoint.point.country ? ` · ${activePoint.point.country}` : ""}</p>
+          <p className="text-cyan-200">Scans: {(activePoint.point.scans || 0).toLocaleString()} · Risk: {(activePoint.point.risk || 0).toLocaleString()}</p>
+          <p className="text-slate-300">{activePoint.point.vertical ? `Vertical: ${activePoint.point.vertical} · ` : ""}{activePoint.point.status ? `Status: ${activePoint.point.status}` : ""}</p>
+        </div>
+      ) : null}
+
+      <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-2 xl:grid-cols-4">
+        {rankedPoints.map((point) => (
+          <div key={`${point.city}-${point.country || "--"}`} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200">
+            <p className="font-semibold text-white">{point.city} {point.country ? `· ${point.country}` : ""}</p>
+            <p className="text-cyan-200">{(point.scans || 0).toLocaleString()} scans · {(point.risk || 0).toLocaleString()} risk</p>
+          </div>
+        ))}
+      </div>
+
       <div className="mt-3 grid gap-2 text-[11px] md:grid-cols-3">
         <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-200">AUTH_OK · tráfico normal</div>
         <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-200">DUPLICATE_RISK · repetición anómala</div>
