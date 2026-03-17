@@ -12,6 +12,15 @@ type GeoPoint = {
   lng: number;
 };
 
+const continentLabels = [
+  { name: "NORTH AMERICA", x: 18, y: 26 },
+  { name: "SOUTH AMERICA", x: 28, y: 64 },
+  { name: "EUROPE", x: 51, y: 25 },
+  { name: "AFRICA", x: 52, y: 58 },
+  { name: "ASIA", x: 73, y: 34 },
+  { name: "OCEANIA", x: 84, y: 71 },
+];
+
 function project(lat: number, lng: number) {
   const x = ((lng + 180) / 360) * 100;
   const y = ((90 - lat) / 180) * 100;
@@ -47,6 +56,7 @@ export function WorldMapPlaceholder({
   );
 
   const activePoint = projectedPoints.find((item) => item.id === activeId) || projectedPoints[0];
+  const rankedPoints = useMemo(() => [...safePoints].sort((a, b) => (b.scans || 0) - (a.scans || 0)).slice(0, 4), [safePoints]);
 
   const heatBackground = useMemo(() => {
     const layers = projectedPoints.map((item) => {
@@ -71,10 +81,16 @@ export function WorldMapPlaceholder({
         </div>
       </div>
 
-      <div className="worldmap-shell mt-4 grid h-[20rem] place-items-center rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_45%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.16),transparent_40%),#020617] md:h-[24rem]">
-        <div className="worldmap-canvas relative h-[17rem] w-full max-w-5xl overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-950/95 shadow-[inset_0_0_80px_rgba(2,6,23,0.85)] md:h-[20rem]">
+      <div className="worldmap-shell mt-4 grid h-[21rem] place-items-center rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_45%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.16),transparent_40%),#020617] md:h-[25rem]">
+        <div className="worldmap-canvas relative h-[18rem] w-full max-w-5xl overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-950/95 shadow-[inset_0_0_80px_rgba(2,6,23,0.85)] md:h-[21rem]">
           <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
           <div className="absolute inset-0" style={{ backgroundImage: heatBackground }} />
+
+          {continentLabels.map((label) => (
+            <div key={label.name} className="pointer-events-none absolute -translate-x-1/2 text-[9px] font-semibold tracking-[0.12em] text-cyan-100/55 md:text-[10px]" style={{ left: `${label.x}%`, top: `${label.y}%` }}>
+              {label.name}
+            </div>
+          ))}
 
           <svg viewBox="0 0 1000 420" className="absolute inset-0 h-full w-full opacity-60" aria-hidden>
             <g fill="rgba(56,189,248,0.15)" stroke="rgba(125,211,252,0.4)" strokeWidth="1.2">
@@ -110,8 +126,8 @@ export function WorldMapPlaceholder({
 
           {activePoint ? (
             <div
-              className="pointer-events-none absolute z-20 w-[10rem] -translate-x-1/2 rounded-lg border border-cyan-300/30 bg-slate-900/95 px-3 py-2 text-[11px] text-slate-100 shadow-[0_10px_30px_rgba(2,6,23,.6)]"
-              style={{ left: `${activePoint.pos.x}%`, top: `calc(${activePoint.pos.y}% - 3.2rem)` }}
+              className="pointer-events-none absolute z-20 w-[10.5rem] -translate-x-1/2 rounded-lg border border-cyan-300/30 bg-slate-900/95 px-3 py-2 text-[11px] text-slate-100 shadow-[0_10px_30px_rgba(2,6,23,.6)]"
+              style={{ left: `${Math.min(90, Math.max(10, activePoint.pos.x))}%`, top: `calc(${Math.min(90, Math.max(12, activePoint.pos.y))}% - 3.2rem)` }}
             >
               <p className="font-semibold text-white">{activePoint.point.city}{activePoint.point.country ? ` · ${activePoint.point.country}` : ""}</p>
               <p className="text-cyan-200">Scans: {(activePoint.point.scans || 0).toLocaleString()}</p>
@@ -119,6 +135,15 @@ export function WorldMapPlaceholder({
             </div>
           ) : null}
         </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-2 xl:grid-cols-4">
+        {rankedPoints.map((point) => (
+          <div key={`${point.city}-${point.country || "--"}`} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-200">
+            <p className="font-semibold text-white">{point.city} {point.country ? `· ${point.country}` : ""}</p>
+            <p className="text-cyan-200">{(point.scans || 0).toLocaleString()} scans · {(point.risk || 0).toLocaleString()} risk</p>
+          </div>
+        ))}
       </div>
 
       <div className="mt-3 grid gap-2 text-[11px] md:grid-cols-3">
