@@ -46,6 +46,8 @@ type RunbookStep = {
   kpi: string;
 };
 
+type AudienceMode = "ceo" | "client";
+
 const COPY: Record<Locale, Record<string, string>> = {
   "es-AR": {
     intro: "Demo Lab emula lectura real de tags (botella, pulsera, etiqueta) con backend y geolocalización.",
@@ -53,6 +55,84 @@ const COPY: Record<Locale, Record<string, string>> = {
   },
   "pt-BR": { intro: "Demo Lab emula leitura real de tags com backend e geolocalização.", pick: "Passo 1 · Escolha um pack vertical" },
   en: { intro: "Demo Lab emulates real tag reads with backend resolution and geolocation.", pick: "Step 1 · Pick a vertical pack" },
+};
+
+const SCENARIOS: ScanScenario[] = [
+  { label: "AUTH OK", description: "Validación normal de autenticidad", eventType: "valid" },
+  { label: "TAMPER RISK", description: "Producto abierto / sello alterado", eventType: "tamper" },
+  { label: "DUPLICATE RISK", description: "Relectura sospechosa / posible clon", eventType: "replay" },
+  { label: "CLAIMED", description: "Cambio de titularidad", eventType: "claim" },
+  { label: "REDEEMED", description: "Canje o redención final", eventType: "redeem" },
+  { label: "CHECK-IN", description: "Ingreso de pulsera/credencial a evento", eventType: "checkin" },
+];
+
+const RUNBOOKS: Record<VerticalKey, { headline: string; summary: string; proof: string; kpis: string[]; steps: RunbookStep[] }> = {
+  wine: {
+    headline: "Protegemos vino premium y mostramos autenticidad instantánea.",
+    summary: "Ideal para bodegas, importadores y distribuidores que necesitan autenticidad + storytelling + ownership.",
+    proof: "Mostrá botella auténtica, riesgo por tamper y trazabilidad de cada apertura.",
+    kpis: ["Auth rate", "Tamper alerts", "Recompra / club", "Geo de consumo"],
+    steps: [
+      { title: "Abrí con valor de marca", detail: "Cargá wine-secure y destacá botella premium + passport móvil.", kpi: "Premium proof" },
+      { title: "Mostrá fraude evitado", detail: "Corré AUTH OK seguido de TAMPER RISK para contrastar confianza vs. alerta.", kpi: "Tamper alerts" },
+      { title: "Cerrá con CRM", detail: "Explicá cómo ownership, warranty y provenance empujan recompra y loyalty.", kpi: "Club / leads" },
+    ],
+  },
+  events: {
+    headline: "Aceleramos access control y engagement en eventos masivos.",
+    summary: "Pensado para festivales, hospitality y credenciales con check-in más activaciones post-ingreso.",
+    proof: "Mostrá check-in instantáneo, replay sospechoso y geografía de asistencia.",
+    kpis: ["Check-ins/min", "Fraud blocks", "Attendee engagement", "Sponsor conversions"],
+    steps: [
+      { title: "Abrí con velocidad operativa", detail: "Cargá events-basic y enfatizá lectura rápida + validación en tiempo real.", kpi: "Check-ins/min" },
+      { title: "Mostrá seguridad", detail: "Corré CHECK-IN y luego DUPLICATE RISK para explicar anti-passback / replay.", kpi: "Fraud blocks" },
+      { title: "Cerrá con negocio", detail: "Mostrá CRM-lite y activaciones para sponsors o upsell VIP.", kpi: "Engagement" },
+    ],
+  },
+  docs: {
+    headline: "Validamos credenciales, certificados y presencia documentada.",
+    summary: "Sirve para diplomas, compliance, onboarding y documentos con verificación pública controlada.",
+    proof: "Mostrá emisión, ownership y evidencia de acceso desde backend.",
+    kpis: ["Verified views", "Ownership claims", "Audit evidence", "Support reduction"],
+    steps: [
+      { title: "Abrí con confianza", detail: "Cargá docs-presence y mostrà el documento como activo verificable.", kpi: "Verified views" },
+      { title: "Mostrá control", detail: "Corré AUTH OK y CLAIMED para explicar titularidad y auditoría.", kpi: "Claims" },
+      { title: "Cerrá con compliance", detail: "Saltá a Ops para enseñar evidencia geolocalizada y registro histórico.", kpi: "Audit trail" },
+    ],
+  },
+  cosmetics: {
+    headline: "Transformamos packaging en un canal de autenticidad y postventa.",
+    summary: "Útil para skincare, perfume y beauty retail con foco en fraude, loyalty y education.",
+    proof: "Mostrá autenticidad, provenance y activación de garantía / soporte.",
+    kpis: ["Auth scans", "Fake reduction", "Warranty activation", "Consumer education"],
+    steps: [
+      { title: "Abrí con confianza retail", detail: "Cargá cosmetics-secure y mostrà el passport del producto.", kpi: "Auth scans" },
+      { title: "Mostrá defensa de marca", detail: "Corré TAMPER RISK para explicar detección temprana en góndola o reventa.", kpi: "Fake reduction" },
+      { title: "Cerrá con postventa", detail: "Destacá garantía, soporte y contenido educativo mobile.", kpi: "Warranty" },
+    ],
+  },
+  agro: {
+    headline: "Digitalizamos trazabilidad agro y evidencia de origen.",
+    summary: "Pensado para exportación, certificación y seguimiento de lotes en campo y distribución.",
+    proof: "Mostrá provenance, lecturas por región y estado del lote en cada toque.",
+    kpis: ["Traceability", "Origin proof", "Distributor compliance", "Incident response"],
+    steps: [
+      { title: "Abrí con origen", detail: "Cargá un pack agro y destacá lote + proveniencia verificable.", kpi: "Origin proof" },
+      { title: "Mostrá observabilidad", detail: "Generá live stream para enseñar cobertura geográfica operativa.", kpi: "Traceability" },
+      { title: "Cerrá con compliance", detail: "Explicá cómo la evidencia reduce disputas y acelera exportación.", kpi: "Compliance" },
+    ],
+  },
+  pharma: {
+    headline: "Protegemos producto sensible y elevamos confianza regulatoria.",
+    summary: "Para pharma, wellness y supply chain con necesidad de autenticación y evidencia operacional.",
+    proof: "Mostrá autenticidad, replay risk y timeline trazable para auditoría.",
+    kpis: ["Verified units", "Replay detection", "Audit readiness", "Patient trust"],
+    steps: [
+      { title: "Abrí con riesgo alto", detail: "Cargá pharma y resaltá autenticación en producto sensible.", kpi: "Verified units" },
+      { title: "Mostrá prevención", detail: "Corré DUPLICATE RISK para explicar potencial clon o desvío.", kpi: "Replay detection" },
+      { title: "Cerrá con regulación", detail: "Llevá la conversación al timeline y evidence map.", kpi: "Audit readiness" },
+    ],
+  },
 };
 
 const SCENARIOS: ScanScenario[] = [
@@ -233,6 +313,7 @@ export function DemoLab() {
   const [presenterLock, setPresenterLock] = useState(false);
   const [nfcPermission, setNfcPermission] = useState<PermissionStateLite>("unknown");
   const [geoPermission, setGeoPermission] = useState<PermissionStateLite>("unknown");
+  const [audienceMode, setAudienceMode] = useState<AudienceMode>("client");
   const locale = detectLocale();
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://nexid.lat";
 
@@ -242,6 +323,25 @@ export function DemoLab() {
   const latestEvent = (summary.events || [])[0];
   const activeVertical = inferVerticalFromPack(pack);
   const runbook = RUNBOOKS[activeVertical];
+  const audienceCopy = audienceMode === "ceo"
+    ? {
+        title: "CEO / Ingeniero view",
+        summary: "Mostramos qué API, qué vertical, qué riesgo y qué evidencia operacional sostienen la demo.",
+        bullets: [
+          "Qué se está simulando o resolviendo en backend.",
+          "Qué pack/vertical está activo y cómo impacta el flujo.",
+          "Qué evidencia termina en mobile, timeline y ops map.",
+        ],
+      }
+    : {
+        title: "Client / Buyer view",
+        summary: "Mostramos el valor de compra: confianza, UX simple, activación postventa y protección de marca.",
+        bullets: [
+          "Qué gana el cliente final al escanear o tocar el producto.",
+          "Qué riesgo evitamos con autenticidad, tamper y replay detection.",
+          "Qué CTA comercial sigue después: ownership, garantía o soporte.",
+        ],
+      };
 
   async function runAction(action: () => Promise<unknown>) {
     setPending(true);
@@ -417,6 +517,20 @@ export function DemoLab() {
           <button type="button" className="rounded-xl border border-violet-300/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-100" onClick={() => void runSalesStory()} disabled={pending}>
             One-click Sales Story
           </button>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Narrativa</span>
+          <button type="button" className={`rounded-full border px-3 py-1 text-xs ${audienceMode === "client" ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/15 text-slate-300"}`} onClick={() => setAudienceMode("client")}>Cliente / comprador</button>
+          <button type="button" className={`rounded-full border px-3 py-1 text-xs ${audienceMode === "ceo" ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/15 text-slate-300"}`} onClick={() => setAudienceMode("ceo")}>CEO / ingeniero</button>
+        </div>
+        <div className="mt-3 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+          <p className="text-sm font-semibold text-white">{audienceCopy.title}</p>
+          <p className="mt-1 text-sm text-slate-300">{audienceCopy.summary}</p>
+          <ul className="mt-3 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
+            {audienceCopy.bullets.map((bullet) => (
+              <li key={bullet} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">{bullet}</li>
+            ))}
+          </ul>
         </div>
         <div className="mt-3 grid gap-2 md:grid-cols-4">
           {([

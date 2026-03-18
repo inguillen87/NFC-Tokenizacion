@@ -156,6 +156,10 @@ export default function DemoMobileItemPage() {
           <div className="rounded-xl border border-white/10 bg-slate-900 p-3">Pack: <b>{pack}</b></div>
           <div className="rounded-xl border border-white/10 bg-slate-900 p-3">Modo: <b>{demoMode}</b></div>
         </div>
+        <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
+          <p className="font-semibold">Lectura doble:</p>
+          <p className="mt-1">Para negocio: este estado ayuda a vender confianza y activar postventa. Para ingeniería: resume el outcome que viene del backend demo/live.</p>
+        </div>
       </Card>
 
       <Card className="p-4">

@@ -5,6 +5,7 @@ import { AdminActionForms } from "../../components/admin-action-forms";
 import { AnalyticsPanels } from "../../components/analytics-panels";
 import { DataTable } from "../../components/data-table";
 import { ModuleGrid } from "../../components/module-grid";
+import { AudienceOverviewExplainer } from "../../components/audience-overview-explainer";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { getDashboardI18n } from "../../lib/locale";
 
@@ -133,6 +134,45 @@ export default async function DashboardHome() {
       </div>
 
 
+
+<AudienceOverviewExplainer />
+
+      <Card className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Cómo leer la plataforma</h2>
+            <p className="mt-2 text-sm text-slate-400">Este admin ahora explica para qué sirve cada bloque, tanto si lo mira dirección como si lo mira un inversor o un cliente enterprise.</p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
+            <p className="font-semibold text-white">CEO / inversor</p>
+            <p className="mt-2">Overview, Analytics, Plans y Resellers muestran escala, monetización, riesgo y expansión comercial.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
+            <p className="font-semibold text-white">Operaciones / ingeniería</p>
+            <p className="mt-2">Batches, Tags, Events y API Keys explican cómo se emite, valida, monitorea y conecta el sistema.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
+            <p className="font-semibold text-white">Cliente / comprador</p>
+            <p className="mt-2">Demo Lab, Demo Control y Mobile Preview hacen visible la experiencia final y el valor de confianza.</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Qué hace cada módulo lateral</h2>
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4 text-xs text-slate-300">
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Overview</b><br />Resumen ejecutivo de salud, riesgo y actividad.</div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Batches & Activation</b><br />Dónde nacen y se activan los tags o credenciales.</div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Analytics</b><br />Dónde se ve adopción, fraude, geografía y performance.</div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">White-label / Resellers</b><br />Cómo escalar el negocio vía partners y cuentas enterprise.</div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Plans</b><br />Cómo se empaqueta monetización, renewals y expansión.</div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Demo Control</b><br />Versión rápida y limpia para reuniones comerciales.</div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Demo Lab</b><br />Orquestación completa con pitch, mobile y evidencia.</div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">API Keys</b><br />Conectividad y gobierno técnico para integraciones reales.</div>
+        </div>
+      </Card>
       <Card className="p-4 text-xs text-slate-300">
         <p className="font-semibold text-cyan-200">ⓘ Mission control help</p>
         <p className="mt-2">Tenants: organización comercial. Batches: lotes de tags. Tags: unidades emitidas. Events: taps/alertas en vivo. Leads/Tickets/Orders: pipeline CRM-lite para seguimiento de negocio.</p>

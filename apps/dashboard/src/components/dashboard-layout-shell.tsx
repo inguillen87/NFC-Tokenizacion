@@ -3,13 +3,13 @@ import type { ReactNode } from "react";
 import { Badge, Sidebar } from "@product/ui";
 
 const navItems = [
-  { href: "/", label: "Overview" },
-  { href: "/batches", label: "Batches & Activation" },
-  { href: "/analytics", label: "Analytics" },
-  { href: "/resellers", label: "White-label" },
-  { href: "/billing", label: "Plans" },
-  { href: "/demo", label: "Demo Control" },
-  { href: "/demo-lab", label: "Demo Lab" },
+  { href: "/", label: "Overview", description: "KPIs, mission control y contexto rápido para dirección.", badge: "core" },
+  { href: "/batches", label: "Batches & Activation", description: "Alta, activación y lifecycle de lotes y tags.", badge: "ops" },
+  { href: "/analytics", label: "Analytics", description: "Fraude, scans, geo y performance operacional/comercial.", badge: "insight" },
+  { href: "/resellers", label: "White-label", description: "Canal, partners y operación reseller / enterprise.", badge: "gtm" },
+  { href: "/billing", label: "Plans", description: "Planes, suscripciones y expansión monetizable.", badge: "rev" },
+  { href: "/demo", label: "Demo Control", description: "Entrada simple para contar el producto sin ruido técnico.", badge: "story" },
+  { href: "/demo-lab", label: "Demo Lab", description: "Runbooks, pitch, mobile preview y evidencia en vivo.", badge: "live" },
 ];
 
 export function DashboardLayoutShell({ children }: { children: ReactNode }) {
