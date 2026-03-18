@@ -47,7 +47,7 @@ function resolveTenantStatus(scans: number, duplicates: number, tamper: number) 
 export default async function DashboardHome() {
   const { locale, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
-  const [overviewRaw, liveEvents] = await Promise.all([getOverviewRows(), getLiveEvents()]);
+  const [overviewRaw, liveEvents]: [Array<Record<string, unknown>>, Array<Record<string, unknown>>] = await Promise.all([getOverviewRows(), getLiveEvents()]);
 
   const labels = locale === "en"
     ? {
@@ -73,7 +73,7 @@ export default async function DashboardHome() {
         roleNote: "Permisos contextuales visibles en tenants, CRM y orquestación demo.",
       };
 
-  const overviewRows = overviewRaw.map((row) => {
+  const overviewRows = overviewRaw.map((row: Record<string, unknown>) => {
     const scans = Number(row.scans || 0);
     const duplicates = Number(row.duplicates || 0);
     const tamper = Number(row.tamper || 0);
@@ -87,9 +87,9 @@ export default async function DashboardHome() {
   });
 
   const mapPoints = liveEvents
-    .filter((row) => typeof row.lat === "number" && typeof row.lng === "number")
+    .filter((row: Record<string, unknown>) => typeof row.lat === "number" && typeof row.lng === "number")
     .slice(0, 10)
-    .map((row) => ({
+    .map((row: Record<string, unknown>) => ({
       city: String(row.city || row.reason || "Unknown"),
       country: String(row.country_code || "--"),
       lat: Number(row.lat),
@@ -111,7 +111,7 @@ export default async function DashboardHome() {
             <Badge tone="cyan">{labels.mission}</Badge>
           </div>
           <div className="mt-4 space-y-2">
-            {liveEvents.slice(0, 8).map((event) => {
+            {liveEvents.slice(0, 8).map((event: Record<string, unknown>) => {
               const result = String(event.result || "VALID");
               const tone = result === "VALID" ? "text-emerald-300" : "text-rose-300";
               return (

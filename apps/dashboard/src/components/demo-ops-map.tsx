@@ -10,15 +10,21 @@ type MapPoint = {
   lng: number;
   scans: number;
   risk: number;
+  vertical?: string;
+  status?: string;
+  source?: string;
+  lastSeen?: string;
 };
 
 type EventFilter = "all" | "clean" | "risk";
+type ScopeFilter = "selected" | "all";
 
-export function DemoOpsMap({ points }: { points: MapPoint[] }) {
+export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points: MapPoint[]; selectedVertical?: string; selectedPack?: string }) {
   const [playback, setPlayback] = useState(false);
   const [index, setIndex] = useState(100);
   const [eventFilter, setEventFilter] = useState<EventFilter>("all");
   const [country, setCountry] = useState("ALL");
+  const [scope, setScope] = useState<ScopeFilter>("selected");
 
   const countries = useMemo(() => ["ALL", ...Array.from(new Set(points.map((point) => point.country))).sort()], [points]);
 
@@ -27,9 +33,10 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
       points.filter((point) => {
         const countryMatch = country === "ALL" ? true : point.country === country;
         const eventMatch = eventFilter === "all" ? true : eventFilter === "clean" ? point.risk === 0 : point.risk > 0;
-        return countryMatch && eventMatch;
+        const scopeMatch = scope === "all" ? true : selectedVertical ? point.vertical === selectedVertical : true;
+        return countryMatch && eventMatch && scopeMatch;
       }),
-    [points, country, eventFilter]
+    [points, country, eventFilter, scope, selectedVertical]
   );
 
   const playablePoints = useMemo(() => {
@@ -63,7 +70,7 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
         </button>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-2">
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
         <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={eventFilter} onChange={(event) => setEventFilter(event.target.value as EventFilter)}>
           <option value="all">Todos los eventos</option>
           <option value="clean">AUTH OK</option>
@@ -74,12 +81,21 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
             <option key={item} value={item}>{item}</option>
           ))}
         </select>
+        <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={scope} onChange={(event) => setScope(event.target.value as ScopeFilter)}>
+          <option value="selected">Solo demo seleccionado</option>
+          <option value="all">Todo el tráfico demo</option>
+        </select>
+      </div>
+
+      <div className="mt-3 rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-[11px] text-cyan-100">
+        Scope actual: <b>{scope === "selected" ? `pack ${selectedPack || "activo"} / vertical ${selectedVertical || "demo"}` : "todas las verticales demo"}</b>.
+        {scope === "selected" ? " Así evitamos mezclar ruido de otras demos cuando querés presentar un caso puntual." : " Vista agregada para enseñar calor multi-tenant / multi-artículo sin perder el legado del mapa global."}
       </div>
 
       <div className="mt-3">
         <WorldMapPlaceholder
           title="Global verification map"
-          subtitle="Fuente: eventos live/simulados consolidados por tenant + vertical + estado."
+          subtitle="Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
           points={playablePoints}
         />
       </div>
@@ -88,7 +104,7 @@ export function DemoOpsMap({ points }: { points: MapPoint[] }) {
         <input type="range" min={10} max={100} step={10} value={index} onChange={(event) => setIndex(Number(event.target.value))} className="w-full" />
       </div>
 
-      <p className="mt-2 text-[11px] text-slate-500">{playablePoints.length} hubs activos · {riskPoints} con riesgo · Visualización enterprise unificada lista para demo.</p>
+      <p className="mt-2 text-[11px] text-slate-500">{playablePoints.length} hubs activos · {riskPoints} con riesgo · {scope === "selected" ? "foco en el demo elegido" : "vista heat global consolidada"}.</p>
     </div>
   );
 }
