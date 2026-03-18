@@ -1,4 +1,6 @@
-import { Badge, Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
+import { Badge, Card, SectionHeading } from "@product/ui";
+import { DemoOpsMap } from "../../components/demo-ops-map";
+import Link from "next/link";
 import { AdminActionForms } from "../../components/admin-action-forms";
 import { AnalyticsPanels } from "../../components/analytics-panels";
 import { DataTable } from "../../components/data-table";
@@ -45,7 +47,7 @@ function resolveTenantStatus(scans: number, duplicates: number, tamper: number) 
 export default async function DashboardHome() {
   const { locale, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
-  const [overviewRaw, liveEvents] = await Promise.all([getOverviewRows(), getLiveEvents()]);
+  const [overviewRaw, liveEvents]: [Array<Record<string, unknown>>, Array<Record<string, unknown>>] = await Promise.all([getOverviewRows(), getLiveEvents()]);
 
   const labels = locale === "en"
     ? {
@@ -71,7 +73,7 @@ export default async function DashboardHome() {
         roleNote: "Permisos contextuales visibles en tenants, CRM y orquestación demo.",
       };
 
-  const overviewRows = overviewRaw.map((row) => {
+  const overviewRows = overviewRaw.map((row: Record<string, unknown>) => {
     const scans = Number(row.scans || 0);
     const duplicates = Number(row.duplicates || 0);
     const tamper = Number(row.tamper || 0);
@@ -85,9 +87,9 @@ export default async function DashboardHome() {
   });
 
   const mapPoints = liveEvents
-    .filter((row) => typeof row.lat === "number" && typeof row.lng === "number")
+    .filter((row: Record<string, unknown>) => typeof row.lat === "number" && typeof row.lng === "number")
     .slice(0, 10)
-    .map((row) => ({
+    .map((row: Record<string, unknown>) => ({
       city: String(row.city || row.reason || "Unknown"),
       country: String(row.country_code || "--"),
       lat: Number(row.lat),
@@ -109,7 +111,7 @@ export default async function DashboardHome() {
             <Badge tone="cyan">{labels.mission}</Badge>
           </div>
           <div className="mt-4 space-y-2">
-            {liveEvents.slice(0, 8).map((event) => {
+            {liveEvents.slice(0, 8).map((event: Record<string, unknown>) => {
               const result = String(event.result || "VALID");
               const tone = result === "VALID" ? "text-emerald-300" : "text-rose-300";
               return (
@@ -124,17 +126,28 @@ export default async function DashboardHome() {
           </div>
         </Card>
 
-        <WorldMapPlaceholder
-          title={labels.mapTitle}
-          subtitle={labels.mapSubtitle}
-          points={mapPoints}
-        />
+        <div>
+          <p className="mb-2 text-xs text-slate-400">{labels.mapTitle} · {labels.mapSubtitle}</p>
+          <DemoOpsMap points={mapPoints} />
+        </div>
       </div>
 
 
       <Card className="p-4 text-xs text-slate-300">
         <p className="font-semibold text-cyan-200">ⓘ Mission control help</p>
         <p className="mt-2">Tenants: organización comercial. Batches: lotes de tags. Tags: unidades emitidas. Events: taps/alertas en vivo. Leads/Tickets/Orders: pipeline CRM-lite para seguimiento de negocio.</p>
+      </Card>
+
+
+      <Card className="p-4">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo entry points</h2>
+        <p className="mt-2 text-sm text-slate-400">Accesos directos para explorar el sistema completo desde landing profesional.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-4">
+          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-lab">Demo Lab</Link>
+          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-sandbox">Sandbox anónimo</Link>
+          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-lab/encode">Encode Station</Link>
+          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-lab/mobile/demobodega/demo-item-001">Mobile preview</Link>
+        </div>
       </Card>
 
       <ModuleGrid
