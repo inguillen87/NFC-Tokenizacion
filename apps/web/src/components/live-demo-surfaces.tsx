@@ -76,6 +76,10 @@ export function LiveDemoSurfaces() {
           lng: Number(it.lng),
           scans: 1,
           risk: it.result === "VALID" ? 0 : 1,
+          vertical: verticalLabel(it.vertical),
+          status: stateLabel(it.result),
+          source: "live_feed",
+          lastSeen: it.created_at,
         })),
     [items]
   );
@@ -129,6 +133,7 @@ export function LiveDemoSurfaces() {
               <div className="mt-4 flex flex-wrap gap-2">
                 <a href="/demo" className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-2 py-1 text-[11px] text-cyan-200">Open mobile preview</a>
                 <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/`} className="rounded-lg border border-white/20 px-2 py-1 text-[11px] text-slate-300">Open tenant dashboard</a>
+                <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/investor-snapshot`} className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100">Investor snapshot</a>
               </div>
 
             </div>

@@ -1,5 +1,6 @@
-import { SectionHeading } from "@product/ui";
+import { Card, SectionHeading } from "@product/ui";
 import { DataTable } from "../../../components/data-table";
+import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 
@@ -61,8 +62,11 @@ export default async function LeadsTicketsPage() {
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.leadsTickets} title={copy.pages.leadsTickets.title} description={copy.pages.leadsTickets.description} />
-
-
+      <ModuleAudienceHero
+        ceo={{ eyebrow: "CEO / Investor read", summary: "Leads & Tickets muestra demanda, soporte y señal comercial en un mismo tablero.", decision: "Decidís si el pipeline está sano, si el interés se convierte y si soporte acompaña crecimiento.", cta: "Usalo para mostrar que la plataforma también mueve negocio, no solo autenticación." }}
+        operator={{ eyebrow: "Operator / Engineer read", summary: "Esta vista mezcla input comercial y soporte para que la operación responda con contexto.", decision: "Decidís dónde priorizar onboarding, resolver incidencias y coordinar abastecimiento o activación.", cta: "Leelo como mesa de control entre customer success, ops y soporte." }}
+        buyer={{ eyebrow: "Buyer / Client read", summary: "Leads & Tickets demuestra que la experiencia sigue viva después de venderse: onboarding, soporte y pedidos tienen continuidad.", decision: "Decidís si la solución viene acompañada por operación y atención real, no solo software." , cta: "Mostralo como evidencia de una plataforma lista para implementación y soporte continuo." }}
+      />
 
       <section className="grid gap-4 md:grid-cols-4">
         <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
@@ -94,6 +98,15 @@ export default async function LeadsTicketsPage() {
           ))}
         </div>
       </section>
+
+      <Card className="p-5 text-sm text-slate-300">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Por qué esta vista sí importa</h2>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Leads = demanda y nuevos casos de uso entrando al sistema.</div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Tickets = fricción real que hay que resolver para retener y escalar.</div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Orders = pipeline que ya se acerca a revenue y abastecimiento.</div>
+        </div>
+      </Card>
 
       <DataTable
         title="Leads inbox ⓘ"
