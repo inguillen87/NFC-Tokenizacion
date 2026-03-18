@@ -29,6 +29,10 @@ type WidgetCopy = {
   openLab: string;
   openSnapshot: string;
   openPricing: string;
+  quoteIntent: string;
+  demoIntent: string;
+  integrateIntent: string;
+  resellerIntent: string;
 };
 
 const copy: Record<AppLocale, WidgetCopy> = {
@@ -56,6 +60,10 @@ const copy: Record<AppLocale, WidgetCopy> = {
     openLab: "Abrir Demo Lab",
     openSnapshot: "Investor snapshot",
     openPricing: "Ver pricing",
+    quoteIntent: "Quiero cotizar",
+    demoIntent: "Quiero una demo",
+    integrateIntent: "Quiero integrar",
+    resellerIntent: "Quiero ser reseller",
   },
   "pt-BR": {
     title: "NexID Sales AI",
@@ -81,6 +89,10 @@ const copy: Record<AppLocale, WidgetCopy> = {
     openLab: "Abrir Demo Lab",
     openSnapshot: "Investor snapshot",
     openPricing: "Ver pricing",
+    quoteIntent: "Quero cotar",
+    demoIntent: "Quero uma demo",
+    integrateIntent: "Quero integrar",
+    resellerIntent: "Quero ser revendedor",
   },
   en: {
     title: "NexID Sales AI",
@@ -106,6 +118,10 @@ const copy: Record<AppLocale, WidgetCopy> = {
     openLab: "Open Demo Lab",
     openSnapshot: "Investor snapshot",
     openPricing: "View pricing",
+    quoteIntent: "I want pricing",
+    demoIntent: "I want a demo",
+    integrateIntent: "I want to integrate",
+    resellerIntent: "I want to become a reseller",
   },
 };
 
@@ -245,6 +261,13 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
                     {q}
                   </button>
                 ))}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {[t.quoteIntent, t.demoIntent, t.integrateIntent, t.resellerIntent].map((intent) => (
+                    <button key={intent} onClick={() => ask(intent)} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left text-xs text-slate-200">
+                      {intent}
+                    </button>
+                  ))}
+                </div>
                 <div className="grid grid-cols-1 gap-2 pt-1">
                   <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left text-xs text-slate-200">{t.openLab}</a>
                   <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/investor-snapshot`} className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-left text-xs text-amber-100">{t.openSnapshot}</a>
