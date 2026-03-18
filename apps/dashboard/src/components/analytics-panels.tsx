@@ -1,7 +1,8 @@
 "use client";
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Card, StatCard, WorldMapPlaceholder } from "@product/ui";
+import { Card, StatCard } from "@product/ui";
+import { DemoOpsMap } from "./demo-ops-map";
 
 type AnalyticsPanelsProps = {
   kpis: {
@@ -112,11 +113,14 @@ export function AnalyticsPanels({ kpis, extra, data }: AnalyticsPanelsProps) {
         </Card>
       </div>
 
-      <WorldMapPlaceholder
-        title="Global scan footprint"
-        subtitle="Mapa real por tenant/eventos. Lecturas de autenticación, cobertura y focos de riesgo." 
-        points={data?.geoPoints}
-      />
+      <DemoOpsMap points={(data?.geoPoints || []).map((point) => ({
+        city: point.city,
+        country: point.country || "--",
+        lat: point.lat,
+        lng: point.lng,
+        scans: point.scans || 1,
+        risk: point.risk || 0,
+      }))} />
     </div>
   );
 }

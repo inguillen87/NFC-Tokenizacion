@@ -24,6 +24,14 @@ const state = {
 };
 
 function rand(arr: string[]) { return arr[Math.floor(Math.random() * arr.length)] || arr[0]; }
+function productByVertical(vertical: string) {
+  if (vertical === "events") return "VIP Wristband";
+  if (vertical === "cosmetics") return "Derma Serum";
+  if (vertical === "agro") return "Seed Pack";
+  if (vertical === "pharma") return "Secure Pharma Box";
+  return "Gran Reserva Malbec";
+}
+
 function pushEvent(vertical = "wine", result = "VALID") {
   const cities = ["Mendoza", "São Paulo", "Santiago", "CDMX", "Miami", "Rosario"];
   const countries = ["AR", "BR", "CL", "MX", "US", "AR"];
@@ -36,7 +44,7 @@ function pushEvent(vertical = "wine", result = "VALID") {
     country_code: countries[idx] || "AR",
     lat: idx % 2 ? -23.55 : -32.88,
     lng: idx % 2 ? -46.63 : -68.84,
-    product_name: vertical === "events" ? "VIP Wristband" : vertical === "cosmetics" ? "Derma Serum" : vertical === "agro" ? "Seed Pack" : vertical === "pharma" ? "Secure Pharma Box" : "Gran Reserva Malbec",
+    product_name: productByVertical(vertical),
     vertical,
     created_at: new Date().toISOString(),
   };
@@ -58,6 +66,28 @@ function summary() {
 function fallback(path: string[], req: Request, bodyText: string | undefined) {
   const endpoint = path[0] || "summary";
   const body = bodyText ? JSON.parse(bodyText || "{}") : {};
+  const url = new URL(req.url);
+
+  if (endpoint === "pack-file") {
+    const pack = String(url.searchParams.get("pack") || "wine-secure");
+    const type = url.searchParams.get("type") === "seed" ? "seed" : "manifest";
+    if (type === "manifest") {
+      return {
+        ok: true,
+        source: "fallback",
+        content: "batch_id,uid_hex,roll_id,ic_type\nDEMO-2026-02,04B7723401E2A0,001,NTAG424DNA_TT",
+        filename: `${pack}.csv`,
+        contentType: "text/csv; charset=utf-8",
+      };
+    }
+    return {
+      ok: true,
+      source: "fallback",
+      content: JSON.stringify({ products: [{ uidHex: "04B7723401E2A0", sku: "DEMO-001", productName: "Demo item" }] }, null, 2),
+      filename: `${pack}.json`,
+      contentType: "application/json; charset=utf-8",
+    };
+  }
 
   if (endpoint === "packs") return { ok: true, packs: MOCK_PACKS };
   if (endpoint === "summary") return summary();
@@ -75,8 +105,22 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
   }
   if (endpoint === "simulate-tap") {
     const mode = String(body.mode || "valid");
-    pushEvent("wine", mode === "tamper" ? "TAMPER" : mode === "replay" ? "REPLAY_SUSPECT" : "VALID");
-    return { ok: true, source: "fallback", mode };
+    const scenario = String(body.scenario || "valid");
+    const vertical = String(body.vertical || "wine");
+    const result =
+      scenario === "claim"
+        ? "CLAIMED"
+        : scenario === "redeem"
+          ? "REDEEMED"
+          : scenario === "checkin"
+            ? "CHECK_IN"
+            : mode === "tamper"
+              ? "TAMPER"
+              : mode === "replay"
+                ? "REPLAY_SUSPECT"
+                : "VALID";
+    pushEvent(vertical, result);
+    return { ok: true, source: "fallback", mode, scenario, result };
   }
   if (endpoint === "upload-manifest") {
     const rows = String(body.csv || "").split("\n").filter(Boolean).length;
@@ -84,7 +128,11 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
     return { ok: true, source: "fallback", importedRows: rows };
   }
   if (endpoint === "upload-products") {
-    const products = Array.isArray(body.products) ? body.products.length : 0;
+    const products =
+      (Array.isArray(body.products) ? body.products.length : 0) +
+      (Array.isArray(body.bottles) ? body.bottles.length : 0) +
+      (Array.isArray(body.items) ? body.items.length : 0) +
+      (Array.isArray(body.catalog?.items) ? body.catalog.items.length : 0);
     return { ok: true, source: "fallback", productsImported: products };
   }
   if (endpoint === "reset") {
@@ -134,5 +182,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ path: s
 
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const p = await params;
-  return forward(req, p.path || []);
+  const path = p.path || [];
+  const response = await forward(req, path);
+  if (path[0] === "pack-file" && response.headers.get("content-type")?.includes("application/json")) {
+    const data = await response.json().catch(() => null) as { content?: string; filename?: string; contentType?: string } | null;
+    if (data?.content) {
+      return new NextResponse(data.content, {
+        status: 200,
+        headers: {
+          "Content-Type": data.contentType || "text/plain; charset=utf-8",
+          "Content-Disposition": `attachment; filename=\"${data.filename || "demo-pack.txt"}\"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+  }
+  return response;
 }
