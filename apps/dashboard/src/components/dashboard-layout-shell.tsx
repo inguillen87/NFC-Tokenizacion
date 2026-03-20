@@ -3,13 +3,13 @@ import type { ReactNode } from "react";
 import { Badge, Sidebar } from "@product/ui";
 
 const navItems = [
-  { href: "/", label: "Overview" },
-  { href: "/batches", label: "Batches & Activation" },
-  { href: "/analytics", label: "Analytics" },
-  { href: "/resellers", label: "White-label" },
-  { href: "/billing", label: "Plans" },
-  { href: "/demo", label: "Demo Control" },
-  { href: "/demo-lab", label: "Demo Lab" },
+  { href: "/", label: "Overview", description: "KPIs, mission control y contexto rápido para dirección.", badge: "core" },
+  { href: "/batches", label: "Batches & Activation", description: "Alta, activación y lifecycle de lotes y tags.", badge: "ops" },
+  { href: "/analytics", label: "Analytics", description: "Fraude, scans, geo y performance operacional/comercial.", badge: "insight" },
+  { href: "/resellers", label: "White-label", description: "Canal, partners y operación reseller / enterprise.", badge: "gtm" },
+  { href: "/billing", label: "Plans", description: "Planes, suscripciones y expansión monetizable.", badge: "rev" },
+  { href: "/demo", label: "Demo Control", description: "Entrada simple para contar el producto sin ruido técnico.", badge: "story" },
+  { href: "/demo-lab", label: "Demo Lab", description: "Runbooks, pitch, mobile preview y evidencia en vivo.", badge: "live" },
 ];
 
 export function DashboardLayoutShell({ children }: { children: ReactNode }) {
@@ -25,6 +25,9 @@ export function DashboardLayoutShell({ children }: { children: ReactNode }) {
             </div>
             <div className="flex items-center gap-3">
               <Badge tone="green">API Connected</Badge>
+              <Link href="/demo-lab" className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100 hover:bg-cyan-500/20">
+                Open Demo Lab
+              </Link>
               <Link href="/login" className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300 hover:text-white">
                 Logout
               </Link>

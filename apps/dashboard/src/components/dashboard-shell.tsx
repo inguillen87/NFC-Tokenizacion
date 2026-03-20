@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Badge, BrandDot, BrandLockup, LocaleSwitcher, ThemeToggle } from "@product/ui";
+import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import type { AppLocale } from "@product/config";
 import type { UserRole } from "../lib/dashboard-content";
 import { roleAccess } from "../lib/dashboard-content";
 
 type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "events" | "resellers" | "leadsTickets" | "subscriptions" | "apiKeys";
 
-export function DashboardShell({
+function DashboardShellInner({
   title,
   subtitle,
   nav,
@@ -30,6 +31,7 @@ export function DashboardShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { mode, setMode } = useAudienceMode();
   const [role, setRole] = useState<UserRole>("super-admin");
   const [query, setQuery] = useState("");
 
@@ -38,6 +40,14 @@ export function DashboardShell({
     : locale === "pt-BR"
       ? { faq: "FAQ", stack: "Stack", glossary: "Glossário", docs: "Docs" }
       : { faq: "FAQ", stack: "Stack", glossary: "Glosario", docs: "Docs" };
+
+
+
+  const audienceCopy = mode === "ceo"
+    ? { label: "CEO / Investor", summary: "Negocio, monetización, escala y control de riesgo.", tone: "cyan" as const }
+    : mode === "operator"
+      ? { label: "Operator / Engineer", summary: "Operación, activación, integraciones y trazabilidad.", tone: "green" as const }
+      : { label: "Buyer / Client", summary: "Confianza, UX y valor final para el usuario.", tone: "default" as const };
 
   const items = useMemo(
     () =>
@@ -61,6 +71,16 @@ export function DashboardShell({
         </div>
 
         <div className="mt-5 space-y-3">
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Audience mode</p>
+            <p className="mt-1 text-sm font-semibold text-white">{audienceCopy.label}</p>
+            <p className="mt-1 text-xs text-slate-400">{audienceCopy.summary}</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+              <button type="button" onClick={() => setMode("ceo")} className={`rounded-full border px-2.5 py-1 ${mode === "ceo" ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/15 text-slate-300"}`}>CEO</button>
+              <button type="button" onClick={() => setMode("operator")} className={`rounded-full border px-2.5 py-1 ${mode === "operator" ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/15 text-slate-300"}`}>Operator</button>
+              <button type="button" onClick={() => setMode("buyer")} className={`rounded-full border px-2.5 py-1 ${mode === "buyer" ? "border-violet-300/40 bg-violet-500/10 text-violet-100" : "border-white/15 text-slate-300"}`}>Buyer</button>
+            </div>
+          </div>
           <label className="text-xs uppercase tracking-[0.16em] text-slate-400">{shell.role}</label>
           <select className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={role} onChange={(event) => setRole(event.target.value as UserRole)}>
             {Object.entries(roles).map(([key, label]) => (
@@ -87,6 +107,7 @@ export function DashboardShell({
               <div className="mt-2 text-xl font-bold text-white">{title}</div>
             </div>
             <div className="flex items-center gap-2">
+              <Badge tone={audienceCopy.tone}>{audienceCopy.label}</Badge>
               <Badge tone="green">{shell.apiConnected}</Badge>
               <LocaleSwitcher value={locale} options={[...locales]} />
               <ThemeToggle />
@@ -103,5 +124,14 @@ export function DashboardShell({
         <div className="p-4 lg:p-8">{children}</div>
       </div>
     </div>
+  );
+}
+
+
+export function DashboardShell(props: Parameters<typeof DashboardShellInner>[0]) {
+  return (
+    <AudienceModeProvider>
+      <DashboardShellInner {...props} />
+    </AudienceModeProvider>
   );
 }
