@@ -48,6 +48,8 @@ type RunbookStep = {
 
 type AudienceMode = "ceo" | "client";
 type ExperiencePresetKey = "premium" | "event" | "credentials";
+type StageBeat = { title: string; speaker: string; goal: string };
+type CinematicCue = { beat: number; section: LabSection; durationSec: number; scenario?: ScanScenario["eventType"]; openMobile?: boolean; narration: string };
 
 const COPY: Record<Locale, Record<string, string>> = {
   "es-AR": {
@@ -110,6 +112,48 @@ function inferPresetFromPack(pack: string): ExperiencePresetKey {
   if (pack.includes("docs")) return "credentials";
   return "premium";
 }
+
+const DEMO_STAGE_BEATS: Record<ExperiencePresetKey, StageBeat[]> = {
+  premium: [
+    { title: "Open with product value", speaker: "Decí por qué este producto premium necesita autenticidad + UX.", goal: "Posicionar confianza y premium proof." },
+    { title: "Show authentic scan", speaker: "Mostrá AUTH OK y el passport mobile como prueba tangible.", goal: "Conectar tag + mobile + backend." },
+    { title: "Escalate to risk", speaker: "Corré tamper o replay para evidenciar defensa de marca.", goal: "Demostrar detección y protección." },
+    { title: "Close with ownership", speaker: "Terminá con ownership, warranty o loyalty como next step.", goal: "Traducir seguridad en negocio repetible." },
+  ],
+  event: [
+    { title: "Frame the venue", speaker: "Presentá el evento como operación con acceso, fraude y sponsors.", goal: "Definir el problema operativo." },
+    { title: "Run live check-in", speaker: "Mostrá lectura rápida y validación instantánea del ingreso.", goal: "Probar throughput y UX." },
+    { title: "Trigger replay risk", speaker: "Simulá anti-passback / replay para mostrar control real.", goal: "Mostrar seguridad y gobernanza." },
+    { title: "Close from ops map", speaker: "Cerrá con evidencia geográfica y activación comercial post ingreso.", goal: "Unir operación con revenue." },
+  ],
+  credentials: [
+    { title: "Introduce the credential", speaker: "Explicá el activo verificable y la necesidad de evidencia auditable.", goal: "Instalar el caso compliance." },
+    { title: "Verify presence", speaker: "Mostrá AUTH OK como prueba pública/controlada.", goal: "Mostrar validación documental." },
+    { title: "Activate ownership", speaker: "Corré CLAIMED o REDEEMED para enseñar lifecycle y titularidad.", goal: "Enseñar trazabilidad del documento." },
+    { title: "Close with audit trail", speaker: "Llevá la conversación al timeline y a la evidencia backend-linked.", goal: "Cerrar con readiness regulatoria." },
+  ],
+};
+
+const CINEMATIC_SCRIPTS: Record<ExperiencePresetKey, CinematicCue[]> = {
+  premium: [
+    { beat: 0, section: "setup", durationSec: 5, narration: "Abrimos con el valor del producto premium y preparamos el pack." },
+    { beat: 1, section: "mobile", durationSec: 6, scenario: "valid", openMobile: true, narration: "Mostramos autenticidad real y experiencia mobile premium." },
+    { beat: 2, section: "simulate", durationSec: 6, scenario: "tamper", narration: "Escalamos a riesgo para demostrar defensa de marca." },
+    { beat: 3, section: "ops", durationSec: 6, scenario: "claim", narration: "Cerramos con ownership, trazabilidad y monetización postventa." },
+  ],
+  event: [
+    { beat: 0, section: "setup", durationSec: 5, narration: "Enmarcamos la operación del evento y la necesidad de control en vivo." },
+    { beat: 1, section: "simulate", durationSec: 5, scenario: "checkin", narration: "Corremos check-in instantáneo para mostrar throughput operativo." },
+    { beat: 2, section: "simulate", durationSec: 6, scenario: "replay", narration: "Disparamos replay para enseñar anti-passback y seguridad." },
+    { beat: 3, section: "ops", durationSec: 6, scenario: "claim", narration: "Cerramos desde Ops con evidencia, activación y revenue del venue." },
+  ],
+  credentials: [
+    { beat: 0, section: "setup", durationSec: 5, narration: "Presentamos la credencial verificable y el problema de compliance." },
+    { beat: 1, section: "mobile", durationSec: 6, scenario: "valid", openMobile: true, narration: "Mostramos verificación positiva y prueba documental controlada." },
+    { beat: 2, section: "simulate", durationSec: 6, scenario: "claim", narration: "Activamos lifecycle del documento con titularidad y seguimiento." },
+    { beat: 3, section: "ops", durationSec: 6, scenario: "redeem", narration: "Cerramos con audit trail y evidencia backend-linked." },
+  ],
+};
 
 const RUNBOOKS: Record<VerticalKey, { headline: string; summary: string; proof: string; kpis: string[]; steps: RunbookStep[] }> = {
   wine: {
@@ -360,6 +404,12 @@ export function DemoLab() {
   const [geoPermission, setGeoPermission] = useState<PermissionStateLite>("unknown");
   const [audienceMode, setAudienceMode] = useState<AudienceMode>("client");
   const [selectedExperience, setSelectedExperience] = useState<ExperiencePresetKey>("premium");
+  const [stageMode, setStageMode] = useState(false);
+  const [stageBeatIndex, setStageBeatIndex] = useState(0);
+  const [autoRunActive, setAutoRunActive] = useState(false);
+  const [autoRunCueIndex, setAutoRunCueIndex] = useState(0);
+  const [autoRunSecondsLeft, setAutoRunSecondsLeft] = useState(0);
+  const [autoRunNarration, setAutoRunNarration] = useState("");
   const locale = detectLocale();
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://nexid.lat";
 
@@ -370,6 +420,10 @@ export function DemoLab() {
   const activeVertical = inferVerticalFromPack(pack);
   const runbook = RUNBOOKS[activeVertical];
   const experiencePreset = DEMO_EXPERIENCES[selectedExperience];
+  const stageBeats = DEMO_STAGE_BEATS[selectedExperience];
+  const activeStageBeat = stageBeats[stageBeatIndex] || stageBeats[0];
+  const cinematicScript = CINEMATIC_SCRIPTS[selectedExperience];
+  const activeCue = cinematicScript[autoRunCueIndex] || cinematicScript[0];
   const audienceCopy = audienceMode === "ceo"
     ? {
         title: "CEO / Ingeniero view",
@@ -528,9 +582,56 @@ export function DemoLab() {
   }
 
 
+
+  async function waitWithCountdown(seconds: number) {
+    setAutoRunSecondsLeft(seconds);
+    for (let remaining = seconds; remaining > 0; remaining -= 1) {
+      setAutoRunSecondsLeft(remaining);
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    setAutoRunSecondsLeft(0);
+  }
+
+  async function runCinematicAutoRun() {
+    if (autoRunActive) return;
+    setAutoRunActive(true);
+    setStageMode(true);
+    setAutoRunCueIndex(0);
+    setStageBeatIndex(0);
+    try {
+      await runAction(() => call("use-pack", "POST", { pack: experiencePreset.packKey }));
+      let openedMobile = false;
+      for (const [index, cue] of cinematicScript.entries()) {
+        setAutoRunCueIndex(index);
+        setStageBeatIndex(cue.beat);
+        setActiveSection(cue.section);
+        setAutoRunNarration(cue.narration);
+        if (cue.openMobile && !openedMobile && typeof window !== "undefined") {
+          window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
+          openedMobile = true;
+        }
+        if (cue.scenario) {
+          // eslint-disable-next-line no-await-in-loop
+          await triggerScenario(cue.scenario);
+        }
+        // eslint-disable-next-line no-await-in-loop
+        await waitWithCountdown(cue.durationSec);
+      }
+      setActiveSection("ops");
+      setAutoRunNarration("Auto-run terminada. Cerrá mostrando evidencia, KPI y siguiente paso comercial.");
+    } finally {
+      setAutoRunActive(false);
+      setAutoRunSecondsLeft(0);
+    }
+  }
+
   async function runExperiencePreset(presetKey: ExperiencePresetKey) {
     const preset = DEMO_EXPERIENCES[presetKey];
     setSelectedExperience(presetKey);
+    setStageMode(true);
+    setAutoRunNarration("");
+    setStageBeatIndex(0);
     setPack(preset.packKey);
     setMode(preset.mode);
     setAudienceMode(preset.audience);
@@ -540,6 +641,8 @@ export function DemoLab() {
   }
 
   async function runSalesStory() {
+    setStageMode(true);
+    setStageBeatIndex(0);
     setActiveSection("simulate");
     await runAction(() => call("use-pack", "POST", { pack }));
     if (typeof window !== "undefined") window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
@@ -613,6 +716,43 @@ export function DemoLab() {
         </div>
         <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4 text-xs text-cyan-100">
           Preset activo: <b>{experiencePreset.label}</b>. Esto alinea pack, modo y secuencia para contar una historia consistente de producto premium, evento en vivo o credencial auditada.
+        </div>
+        <div className="mt-3 rounded-2xl border border-violet-300/20 bg-violet-500/5 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.16em] text-violet-200">Stage mode</p>
+              <p className="mt-1 text-sm font-semibold text-white">{activeStageBeat.title}</p>
+              <p className="mt-1 text-xs text-slate-300">{activeStageBeat.speaker}</p>
+              <p className="mt-2 text-xs text-violet-200">Objetivo: {activeStageBeat.goal}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={`rounded-lg border px-3 py-1 text-xs ${stageMode ? "border-violet-300/40 bg-violet-500/10 text-violet-100" : "border-white/15 text-slate-300"}`} onClick={() => setStageMode((value) => !value)}>
+                {stageMode ? "Stage mode activo" : "Activar stage mode"}
+              </button>
+              <button type="button" className="rounded-lg border border-white/15 px-3 py-1 text-xs text-slate-300" onClick={() => setStageBeatIndex((value) => Math.max(0, value - 1))}>Anterior</button>
+              <button type="button" className="rounded-lg border border-white/15 px-3 py-1 text-xs text-slate-300" onClick={() => setStageBeatIndex((value) => Math.min(stageBeats.length - 1, value + 1))}>Siguiente</button>
+            </div>
+          </div>
+          <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-xs text-slate-300">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-white">Auto-run cinematográfica</p>
+                <p className="mt-1 text-slate-400">Escena actual: {activeCue?.section || "setup"} · cue {autoRunCueIndex + 1}/{cinematicScript.length}</p>
+              </div>
+              <button type="button" onClick={() => void runCinematicAutoRun()} disabled={pending || autoRunActive} className="rounded-lg border border-violet-300/40 bg-violet-500/10 px-3 py-2 text-xs text-violet-100 disabled:opacity-50">
+                {autoRunActive ? `Running · ${autoRunSecondsLeft}s` : "Start cinematic auto-run"}
+              </button>
+            </div>
+            <p className="mt-3 text-violet-100">{autoRunNarration || "Al iniciar, el Demo Lab avanzará por beats, cambiará secciones y disparará escenarios automáticamente."}</p>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-4">
+            {stageBeats.map((beat, index) => (
+              <button key={beat.title} type="button" onClick={() => setStageBeatIndex(index)} className={`rounded-xl border p-3 text-left text-xs ${stageBeatIndex === index ? "border-violet-300/50 bg-violet-500/10 text-violet-100" : "border-white/10 bg-slate-950/70 text-slate-300"}`}>
+                <p className="font-semibold text-white">Beat {index + 1}</p>
+                <p className="mt-1">{beat.title}</p>
+              </button>
+            ))}
+          </div>
         </div>
         <div className="mt-3 grid gap-2 md:grid-cols-4">
           {([
