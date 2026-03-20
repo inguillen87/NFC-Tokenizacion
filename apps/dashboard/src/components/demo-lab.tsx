@@ -47,6 +47,7 @@ type RunbookStep = {
 };
 
 type AudienceMode = "ceo" | "client";
+type ExperiencePresetKey = "premium" | "event" | "credentials";
 
 const COPY: Record<Locale, Record<string, string>> = {
   "es-AR": {
@@ -55,6 +56,128 @@ const COPY: Record<Locale, Record<string, string>> = {
   },
   "pt-BR": { intro: "Demo Lab emula leitura real de tags com backend e geolocalização.", pick: "Passo 1 · Escolha um pack vertical" },
   en: { intro: "Demo Lab emulates real tag reads with backend resolution and geolocation.", pick: "Step 1 · Pick a vertical pack" },
+};
+
+const SCENARIOS: ScanScenario[] = [
+  { label: "AUTH OK", description: "Validación normal de autenticidad", eventType: "valid" },
+  { label: "TAMPER RISK", description: "Producto abierto / sello alterado", eventType: "tamper" },
+  { label: "DUPLICATE RISK", description: "Relectura sospechosa / posible clon", eventType: "replay" },
+  { label: "CLAIMED", description: "Cambio de titularidad", eventType: "claim" },
+  { label: "REDEEMED", description: "Canje o redención final", eventType: "redeem" },
+  { label: "CHECK-IN", description: "Ingreso de pulsera/credencial a evento", eventType: "checkin" },
+];
+
+const DEMO_EXPERIENCES: Record<ExperiencePresetKey, {
+  label: string;
+  description: string;
+  packKey: string;
+  mode: DemoMode;
+  audience: AudienceMode;
+  section: LabSection;
+  playlist: Array<ScanScenario["eventType"]>;
+}> = {
+  premium: {
+    label: "Premium product journey",
+    description: "Autenticidad, tamper, ownership y postventa para vino, lujo, cosmética o pharma.",
+    packKey: "wine-secure",
+    mode: "consumer_tap",
+    audience: "client",
+    section: "mobile",
+    playlist: ["valid", "tamper", "claim", "redeem"],
+  },
+  event: {
+    label: "Live event control room",
+    description: "Check-in, anti-passback, replay y activación en tiempo real para credenciales o pulseras.",
+    packKey: "events-basic",
+    mode: "live_nfc",
+    audience: "ceo",
+    section: "ops",
+    playlist: ["checkin", "checkin", "replay", "claim"],
+  },
+  credentials: {
+    label: "Credential / compliance proof",
+    description: "Documentos, certificados y presencia auditables con ownership y evidence trail.",
+    packKey: "docs-presence",
+    mode: "consumer_tap",
+    audience: "ceo",
+    section: "mobile",
+    playlist: ["valid", "claim", "redeem"],
+  },
+};
+
+function inferPresetFromPack(pack: string): ExperiencePresetKey {
+  if (pack.includes("events")) return "event";
+  if (pack.includes("docs")) return "credentials";
+  return "premium";
+}
+
+const RUNBOOKS: Record<VerticalKey, { headline: string; summary: string; proof: string; kpis: string[]; steps: RunbookStep[] }> = {
+  wine: {
+    headline: "Protegemos vino premium y mostramos autenticidad instantánea.",
+    summary: "Ideal para bodegas, importadores y distribuidores que necesitan autenticidad + storytelling + ownership.",
+    proof: "Mostrá botella auténtica, riesgo por tamper y trazabilidad de cada apertura.",
+    kpis: ["Auth rate", "Tamper alerts", "Recompra / club", "Geo de consumo"],
+    steps: [
+      { title: "Abrí con valor de marca", detail: "Cargá wine-secure y destacá botella premium + passport móvil.", kpi: "Premium proof" },
+      { title: "Mostrá fraude evitado", detail: "Corré AUTH OK seguido de TAMPER RISK para contrastar confianza vs. alerta.", kpi: "Tamper alerts" },
+      { title: "Cerrá con CRM", detail: "Explicá cómo ownership, warranty y provenance empujan recompra y loyalty.", kpi: "Club / leads" },
+    ],
+  },
+  events: {
+    headline: "Aceleramos access control y engagement en eventos masivos.",
+    summary: "Pensado para festivales, hospitality y credenciales con check-in más activaciones post-ingreso.",
+    proof: "Mostrá check-in instantáneo, replay sospechoso y geografía de asistencia.",
+    kpis: ["Check-ins/min", "Fraud blocks", "Attendee engagement", "Sponsor conversions"],
+    steps: [
+      { title: "Abrí con velocidad operativa", detail: "Cargá events-basic y enfatizá lectura rápida + validación en tiempo real.", kpi: "Check-ins/min" },
+      { title: "Mostrá seguridad", detail: "Corré CHECK-IN y luego DUPLICATE RISK para explicar anti-passback / replay.", kpi: "Fraud blocks" },
+      { title: "Cerrá con negocio", detail: "Mostrá CRM-lite y activaciones para sponsors o upsell VIP.", kpi: "Engagement" },
+    ],
+  },
+  docs: {
+    headline: "Validamos credenciales, certificados y presencia documentada.",
+    summary: "Sirve para diplomas, compliance, onboarding y documentos con verificación pública controlada.",
+    proof: "Mostrá emisión, ownership y evidencia de acceso desde backend.",
+    kpis: ["Verified views", "Ownership claims", "Audit evidence", "Support reduction"],
+    steps: [
+      { title: "Abrí con confianza", detail: "Cargá docs-presence y mostrà el documento como activo verificable.", kpi: "Verified views" },
+      { title: "Mostrá control", detail: "Corré AUTH OK y CLAIMED para explicar titularidad y auditoría.", kpi: "Claims" },
+      { title: "Cerrá con compliance", detail: "Saltá a Ops para enseñar evidencia geolocalizada y registro histórico.", kpi: "Audit trail" },
+    ],
+  },
+  cosmetics: {
+    headline: "Transformamos packaging en un canal de autenticidad y postventa.",
+    summary: "Útil para skincare, perfume y beauty retail con foco en fraude, loyalty y education.",
+    proof: "Mostrá autenticidad, provenance y activación de garantía / soporte.",
+    kpis: ["Auth scans", "Fake reduction", "Warranty activation", "Consumer education"],
+    steps: [
+      { title: "Abrí con confianza retail", detail: "Cargá cosmetics-secure y mostrà el passport del producto.", kpi: "Auth scans" },
+      { title: "Mostrá defensa de marca", detail: "Corré TAMPER RISK para explicar detección temprana en góndola o reventa.", kpi: "Fake reduction" },
+      { title: "Cerrá con postventa", detail: "Destacá garantía, soporte y contenido educativo mobile.", kpi: "Warranty" },
+    ],
+  },
+  agro: {
+    headline: "Digitalizamos trazabilidad agro y evidencia de origen.",
+    summary: "Pensado para exportación, certificación y seguimiento de lotes en campo y distribución.",
+    proof: "Mostrá provenance, lecturas por región y estado del lote en cada toque.",
+    kpis: ["Traceability", "Origin proof", "Distributor compliance", "Incident response"],
+    steps: [
+      { title: "Abrí con origen", detail: "Cargá un pack agro y destacá lote + proveniencia verificable.", kpi: "Origin proof" },
+      { title: "Mostrá observabilidad", detail: "Generá live stream para enseñar cobertura geográfica operativa.", kpi: "Traceability" },
+      { title: "Cerrá con compliance", detail: "Explicá cómo la evidencia reduce disputas y acelera exportación.", kpi: "Compliance" },
+    ],
+  },
+  pharma: {
+    headline: "Protegemos producto sensible y elevamos confianza regulatoria.",
+    summary: "Para pharma, wellness y supply chain con necesidad de autenticación y evidencia operacional.",
+    proof: "Mostrá autenticidad, replay risk y timeline trazable para auditoría.",
+    kpis: ["Verified units", "Replay detection", "Audit readiness", "Patient trust"],
+    steps: [
+      { title: "Abrí con riesgo alto", detail: "Cargá pharma y resaltá autenticación en producto sensible.", kpi: "Verified units" },
+      { title: "Mostrá prevención", detail: "Corré DUPLICATE RISK para explicar potencial clon o desvío.", kpi: "Replay detection" },
+      { title: "Cerrá con regulación", detail: "Llevá la conversación al timeline y evidence map.", kpi: "Audit readiness" },
+    ],
+  },
 };
 
 const SCENARIOS: ScanScenario[] = [
@@ -236,6 +359,7 @@ export function DemoLab() {
   const [nfcPermission, setNfcPermission] = useState<PermissionStateLite>("unknown");
   const [geoPermission, setGeoPermission] = useState<PermissionStateLite>("unknown");
   const [audienceMode, setAudienceMode] = useState<AudienceMode>("client");
+  const [selectedExperience, setSelectedExperience] = useState<ExperiencePresetKey>("premium");
   const locale = detectLocale();
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://nexid.lat";
 
@@ -245,6 +369,7 @@ export function DemoLab() {
   const latestEvent = (summary.events || [])[0];
   const activeVertical = inferVerticalFromPack(pack);
   const runbook = RUNBOOKS[activeVertical];
+  const experiencePreset = DEMO_EXPERIENCES[selectedExperience];
   const audienceCopy = audienceMode === "ceo"
     ? {
         title: "CEO / Ingeniero view",
@@ -291,6 +416,10 @@ export function DemoLab() {
       if (list.length > 0 && !list.find((item) => item.key === pack)) setPack(list[0].key);
       await refreshSummary();
     })();
+  }, [pack]);
+
+  useEffect(() => {
+    setSelectedExperience(inferPresetFromPack(pack));
   }, [pack]);
 
   useEffect(() => {
@@ -383,12 +512,12 @@ export function DemoLab() {
     await runAction(() => call("simulate-tap", "POST", { mode: mapScenarioToApiMode(scenario), scenario, source: mode, vertical: activeVertical }));
   }
 
-  async function runAuto90SecondsDemo() {
-    const playlist: Array<ScanScenario["eventType"]> = activeVertical === "events"
+  async function runAuto90SecondsDemo(playlistOverride?: Array<ScanScenario["eventType"]>) {
+    const playlist: Array<ScanScenario["eventType"]> = playlistOverride || (activeVertical === "events"
       ? ["checkin", "replay", "claim"]
       : activeVertical === "docs"
         ? ["valid", "claim", "redeem"]
-        : ["valid", "tamper", "replay", "claim"];
+        : ["valid", "tamper", "replay", "claim"]);
 
     for (const scenario of playlist) {
       // eslint-disable-next-line no-await-in-loop
@@ -396,6 +525,18 @@ export function DemoLab() {
       // eslint-disable-next-line no-await-in-loop
       await new Promise((resolve) => setTimeout(resolve, 700));
     }
+  }
+
+
+  async function runExperiencePreset(presetKey: ExperiencePresetKey) {
+    const preset = DEMO_EXPERIENCES[presetKey];
+    setSelectedExperience(presetKey);
+    setPack(preset.packKey);
+    setMode(preset.mode);
+    setAudienceMode(preset.audience);
+    setActiveSection(preset.section);
+    await runAction(() => call("use-pack", "POST", { pack: preset.packKey }));
+    await runAuto90SecondsDemo(preset.playlist);
   }
 
   async function runSalesStory() {
@@ -453,6 +594,25 @@ export function DemoLab() {
               <li key={bullet} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">{bullet}</li>
             ))}
           </ul>
+        </div>
+        <div className="mt-4 grid gap-3 xl:grid-cols-3">
+          {(Object.entries(DEMO_EXPERIENCES) as Array<[ExperiencePresetKey, typeof DEMO_EXPERIENCES[ExperiencePresetKey]]>).map(([key, preset]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => void runExperiencePreset(key)}
+              disabled={pending}
+              className={`rounded-2xl border p-4 text-left ${selectedExperience === key ? "border-cyan-300/50 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900/70 text-slate-200"}`}
+            >
+              <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Experience preset</p>
+              <p className="mt-2 text-base font-semibold text-white">{preset.label}</p>
+              <p className="mt-2 text-xs text-slate-300">{preset.description}</p>
+              <p className="mt-3 text-[11px] text-cyan-200">{preset.packKey} · {modeLabel(preset.mode)} · {preset.playlist.length} beats</p>
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4 text-xs text-cyan-100">
+          Preset activo: <b>{experiencePreset.label}</b>. Esto alinea pack, modo y secuencia para contar una historia consistente de producto premium, evento en vivo o credencial auditada.
         </div>
         <div className="mt-3 grid gap-2 md:grid-cols-4">
           {([
