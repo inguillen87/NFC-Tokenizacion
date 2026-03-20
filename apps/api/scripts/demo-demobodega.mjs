@@ -61,8 +61,41 @@ function parseManifest(csv) {
 }
 
 function parseProducts(raw) {
-  const list = Array.isArray(raw) ? raw : Array.isArray(raw.products) ? raw.products : Array.isArray(raw.bottles) ? raw.bottles : [];
-  return list.map((p) => ({ ...p, uidHex: String(p.uidHex || p.uid_hex || "").toUpperCase() })).filter((p) => p.uidHex);
+  const source = raw && typeof raw === "object" ? raw : {};
+  const catalog = source.catalog && typeof source.catalog === "object" ? source.catalog : {};
+  const list = [
+    ...(Array.isArray(source.products) ? source.products : []),
+    ...(Array.isArray(source.bottles) ? source.bottles : []),
+    ...(Array.isArray(source.items) ? source.items : []),
+    ...(Array.isArray(catalog.items) ? catalog.items : []),
+  ];
+
+  const pick = (obj, keys) => {
+    for (const key of keys) {
+      const parts = key.split(".");
+      let value = obj;
+      for (const part of parts) value = value && typeof value === "object" ? value[part] : undefined;
+      if (value !== undefined && value !== null && value !== "") return value;
+    }
+    return undefined;
+  };
+
+  return list
+    .map((entry) => {
+      const p = entry && typeof entry === "object" ? entry : {};
+      const uidHex = String(pick(p, ["uidHex", "uid_hex", "tag.uidHex", "tag.uid_hex", "tag.uid", "tagUid", "tag_uid"]) || "").toUpperCase();
+      if (!uidHex) return null;
+      return {
+        ...p,
+        uidHex,
+        sku: pick(p, ["sku", "product.sku", "identity.sku"]),
+        productName: pick(p, ["productName", "product_name", "name", "display_name", "product.name", "identity.name"]),
+        vertical: pick(p, ["vertical", "product.vertical", "identity.vertical"]),
+        region: pick(p, ["region", "origin.region", "passport.provenance.region"]),
+        notes: pick(p, ["notes", "narrative", "passport.story", "metadata.notes"]),
+      };
+    })
+    .filter(Boolean);
 }
 
 const manifestRows = parseManifest(manifestCsv);

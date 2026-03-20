@@ -26,6 +26,19 @@ type WidgetCopy = {
   audioCall: string;
   videoCall: string;
   realtimeLabel: string;
+  openLab: string;
+  openSnapshot: string;
+  openPricing: string;
+  quoteIntent: string;
+  demoIntent: string;
+  integrateIntent: string;
+  resellerIntent: string;
+  welcomeMessage: string;
+  quickActionsLabel: string;
+  intentLabel: string;
+  resetChat: string;
+  leadReady: string;
+  leadMissing: string;
 };
 
 const copy: Record<AppLocale, WidgetCopy> = {
@@ -50,6 +63,19 @@ const copy: Record<AppLocale, WidgetCopy> = {
     audioCall: "Llamada telefónica",
     videoCall: "Videollamada",
     realtimeLabel: "¿No querés escribir? Hablamos en tiempo real.",
+    openLab: "Abrir Demo Lab",
+    openSnapshot: "Investor snapshot",
+    openPricing: "Ver pricing",
+    quoteIntent: "Quiero cotizar",
+    demoIntent: "Quiero una demo",
+    integrateIntent: "Quiero integrar",
+    resellerIntent: "Quiero ser reseller",
+    welcomeMessage: "Hola. Puedo ayudarte con pricing, muestra de tags, demo, integración o canal reseller.",
+    quickActionsLabel: "Atajos comerciales",
+    intentLabel: "Intenciones rápidas",
+    resetChat: "Reiniciar",
+    leadReady: "Contacto listo para enviar",
+    leadMissing: "Falta contacto para convertir el lead",
   },
   "pt-BR": {
     title: "NexID Sales AI",
@@ -72,6 +98,19 @@ const copy: Record<AppLocale, WidgetCopy> = {
     audioCall: "Ligação telefônica",
     videoCall: "Videochamada",
     realtimeLabel: "Prefere não digitar? Vamos em tempo real.",
+    openLab: "Abrir Demo Lab",
+    openSnapshot: "Investor snapshot",
+    openPricing: "Ver pricing",
+    quoteIntent: "Quero cotar",
+    demoIntent: "Quero uma demo",
+    integrateIntent: "Quero integrar",
+    resellerIntent: "Quero ser revendedor",
+    welcomeMessage: "Olá. Posso ajudar com proposta, amostras, demo, integração ou canal de revenda.",
+    quickActionsLabel: "Atalhos comerciais",
+    intentLabel: "Intenções rápidas",
+    resetChat: "Reiniciar",
+    leadReady: "Contato pronto para envio",
+    leadMissing: "Ainda falta contato para converter o lead",
   },
   en: {
     title: "NexID Sales AI",
@@ -94,6 +133,19 @@ const copy: Record<AppLocale, WidgetCopy> = {
     audioCall: "Phone call",
     videoCall: "Video call",
     realtimeLabel: "Don't want to type? Let's talk in real time.",
+    openLab: "Open Demo Lab",
+    openSnapshot: "Investor snapshot",
+    openPricing: "View pricing",
+    quoteIntent: "I want pricing",
+    demoIntent: "I want a demo",
+    integrateIntent: "I want to integrate",
+    resellerIntent: "I want to become a reseller",
+    welcomeMessage: "Hi. I can help with pricing, sample tags, demos, integrations, or reseller onboarding.",
+    quickActionsLabel: "Sales shortcuts",
+    intentLabel: "Quick intents",
+    resetChat: "Reset",
+    leadReady: "Contact is ready to submit",
+    leadMissing: "Contact info still needed to capture the lead",
   },
 };
 
@@ -107,6 +159,16 @@ function extractPhone(text: string) {
   return match?.[0]?.replace(/\s+/g, " ").trim() || "";
 }
 
+function resolveIntentFromQuery(value: string | null, t: WidgetCopy) {
+  if (!value) return "";
+  const normalized = value.toLowerCase();
+  if (normalized === "quote" || normalized === "pricing") return t.quoteIntent;
+  if (normalized === "demo") return t.demoIntent;
+  if (normalized === "integrate" || normalized === "integration") return t.integrateIntent;
+  if (normalized === "reseller" || normalized === "channel") return t.resellerIntent;
+  return "";
+}
+
 export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   const t = copy[locale] || copy["es-AR"];
   const [open, setOpen] = useState(false);
@@ -118,12 +180,24 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [leadState, setLeadState] = useState<"idle" | "ok" | "error">("idle");
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "unsupported">("idle");
+  const [bootIntent, setBootIntent] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("assistant") === "open") setOpen(true);
-  }, []);
+    const shouldOpen = params.get("assistant") === "open";
+    const intentFromQuery = resolveIntentFromQuery(params.get("assistant_intent"), t);
+    if (shouldOpen) setOpen(true);
+    if (intentFromQuery) {
+      setBootIntent(intentFromQuery);
+      setOpen(true);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    if (!open) return;
+    setMessages((prev) => (prev.length === 0 ? [{ role: "assistant", text: t.welcomeMessage }] : prev));
+  }, [open, t.welcomeMessage]);
 
   const readyContact = useMemo(() => fullName.trim().length > 2 && (email.trim().length > 4 || whatsapp.trim().length > 6), [fullName, email, whatsapp]);
 
@@ -169,6 +243,12 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
     }
   };
 
+  useEffect(() => {
+    if (!open || !bootIntent || messages.length > 1 || loading) return;
+    void ask(bootIntent);
+    setBootIntent("");
+  }, [bootIntent, loading, messages.length, open]);
+
   const sendLead = () => {
     if (!readyContact || loading) {
       setLeadState("error");
@@ -213,6 +293,12 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
     }
   };
 
+  const resetChat = () => {
+    setMessages([{ role: "assistant", text: t.welcomeMessage }]);
+    setInput("");
+    setLeadState("idle");
+  };
+
   return (
     <div className="fixed bottom-4 right-4 z-[70] w-[360px] max-w-[calc(100vw-1.5rem)]">
       {open ? (
@@ -222,17 +308,40 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
               <p className="text-sm font-semibold text-white">{t.title}</p>
               <p className="text-[11px] text-cyan-300">{t.subtitle}</p>
             </div>
-            <button onClick={() => setOpen(false)} className="rounded-md border border-white/20 px-2 py-1 text-xs text-slate-300">✕</button>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={resetChat} className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-slate-300">{t.resetChat}</button>
+              <button onClick={() => setOpen(false)} className="rounded-md border border-white/20 px-2 py-1 text-xs text-slate-300">✕</button>
+            </div>
           </div>
 
           <div className="max-h-[42vh] space-y-2 overflow-y-auto p-3">
-            {messages.length === 0 ? (
-              <div className="space-y-2">
-                {t.starter.map((q) => (
-                  <button key={q} onClick={() => ask(q)} className="w-full rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-left text-xs text-cyan-100">
-                    {q}
-                  </button>
-                ))}
+            {messages.length <= 1 ? (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{t.quickActionsLabel}</p>
+                  <div className="mt-2 space-y-2">
+                    {t.starter.map((q) => (
+                      <button key={q} onClick={() => ask(q)} className="w-full rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-left text-xs text-cyan-100">
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{t.intentLabel}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {[t.quoteIntent, t.demoIntent, t.integrateIntent, t.resellerIntent].map((intent) => (
+                      <button key={intent} onClick={() => ask(intent)} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left text-xs text-slate-200">
+                        {intent}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 pt-1">
+                  <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left text-xs text-slate-200">{t.openLab}</a>
+                  <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/investor-snapshot`} className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-left text-xs text-amber-100">{t.openSnapshot}</a>
+                  <a href="/pricing" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-left text-xs text-emerald-100">{t.openPricing}</a>
+                </div>
               </div>
             ) : null}
             {messages.map((message, idx) => (
@@ -244,7 +353,12 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
           </div>
 
           <div className="space-y-2 border-t border-white/10 p-3">
-            <p className="sales-realtime-label text-[11px] text-slate-300">{t.realtimeLabel}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="sales-realtime-label text-[11px] text-slate-300">{t.realtimeLabel}</p>
+              <span className={`rounded-full border px-2 py-1 text-[10px] ${readyContact ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-200" : "border-white/10 bg-white/5 text-slate-400"}`}>
+                {readyContact ? t.leadReady : t.leadMissing}
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <a href="tel:+5492613168608" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-center text-xs text-cyan-100">{t.audioCall}</a>
               <a href="https://meet.jit.si/nexid-realtime-support" target="_blank" rel="noreferrer" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">{t.videoCall}</a>

@@ -37,6 +37,8 @@ export default async function HomePage() {
       quickStack: "Stack",
       quickGlossary: "Glossary",
       quickAudiences: "Audience pitch",
+      quickDemoLab: "Demo Lab",
+      quickInvestor: "Investor snapshot",
     }
     : locale === "pt-BR"
     ? {
@@ -54,6 +56,8 @@ export default async function HomePage() {
       quickStack: "Stack",
       quickGlossary: "Glossário",
       quickAudiences: "Pitch por audiência",
+      quickDemoLab: "Demo Lab",
+      quickInvestor: "Investor snapshot",
     }
     : {
       demoJson: "Descargar seed JSON",
@@ -70,6 +74,8 @@ export default async function HomePage() {
       quickStack: "Stack",
       quickGlossary: "Glosario",
       quickAudiences: "Pitch por audiencia",
+      quickDemoLab: "Demo Lab",
+      quickInvestor: "Investor snapshot",
     };
 
   const demoPacks = [
@@ -101,6 +107,9 @@ export default async function HomePage() {
           <div className="header-actions flex items-center gap-2">
             <LocaleSwitcher value={locale} options={[...locales]} />
             <ThemeToggle />
+            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`}>
+              <Button variant="secondary">{labels.quickDemoLab}</Button>
+            </a>
             <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`}>
               <Button variant="secondary">{content.nav.cta}</Button>
             </a>
@@ -117,7 +126,9 @@ export default async function HomePage() {
             <Link href="/docs#faq" className="quick-link-chip rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-100">{labels.quickFaq}</Link>
             <Link href="/stack" className="quick-link-chip rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-indigo-100">{labels.quickStack}</Link>
             <Link href="/glossary" className="quick-link-chip rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-100">{labels.quickGlossary}</Link>
+            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/investor-snapshot`} className="quick-link-chip rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-amber-100">{labels.quickInvestor}</a>
             <Link href="/audiences" className="quick-link-chip rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-violet-100">{labels.quickAudiences}</Link>
+            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`} className="quick-link-chip rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-amber-100">{labels.quickDemoLab}</a>
           </div>
         </div>
       </section>
