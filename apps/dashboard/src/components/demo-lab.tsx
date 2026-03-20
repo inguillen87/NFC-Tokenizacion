@@ -224,6 +224,15 @@ const RUNBOOKS: Record<VerticalKey, { headline: string; summary: string; proof: 
   },
 };
 
+const SCENARIOS: ScanScenario[] = [
+  { label: "AUTH OK", description: "Validación normal de autenticidad", eventType: "valid" },
+  { label: "TAMPER RISK", description: "Producto abierto / sello alterado", eventType: "tamper" },
+  { label: "DUPLICATE RISK", description: "Relectura sospechosa / posible clon", eventType: "replay" },
+  { label: "CLAIMED", description: "Cambio de titularidad", eventType: "claim" },
+  { label: "REDEEMED", description: "Canje o redención final", eventType: "redeem" },
+  { label: "CHECK-IN", description: "Ingreso de pulsera/credencial a evento", eventType: "checkin" },
+];
+
 function detectLocale(): Locale {
   const value = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )locale=([^;]+)/)?.[1] || "es-AR" : "es-AR") as Locale;
   return value === "pt-BR" || value === "en" ? value : "es-AR";
