@@ -180,6 +180,93 @@ const RUNBOOKS: Record<VerticalKey, { headline: string; summary: string; proof: 
   },
 };
 
+const SCENARIOS: ScanScenario[] = [
+  { label: "AUTH OK", description: "Validación normal de autenticidad", eventType: "valid" },
+  { label: "TAMPER RISK", description: "Producto abierto / sello alterado", eventType: "tamper" },
+  { label: "DUPLICATE RISK", description: "Relectura sospechosa / posible clon", eventType: "replay" },
+  { label: "CLAIMED", description: "Cambio de titularidad", eventType: "claim" },
+  { label: "REDEEMED", description: "Canje o redención final", eventType: "redeem" },
+  { label: "CHECK-IN", description: "Ingreso de pulsera/credencial a evento", eventType: "checkin" },
+];
+
+const RUNBOOKS: Record<VerticalKey, { headline: string; summary: string; proof: string; kpis: string[]; steps: RunbookStep[] }> = {
+  wine: {
+    headline: "Protegemos vino premium y mostramos autenticidad instantánea.",
+    summary: "Ideal para bodegas, importadores y distribuidores que necesitan autenticidad + storytelling + ownership.",
+    proof: "Mostrá botella auténtica, riesgo por tamper y trazabilidad de cada apertura.",
+    kpis: ["Auth rate", "Tamper alerts", "Recompra / club", "Geo de consumo"],
+    steps: [
+      { title: "Abrí con valor de marca", detail: "Cargá wine-secure y destacá botella premium + passport móvil.", kpi: "Premium proof" },
+      { title: "Mostrá fraude evitado", detail: "Corré AUTH OK seguido de TAMPER RISK para contrastar confianza vs. alerta.", kpi: "Tamper alerts" },
+      { title: "Cerrá con CRM", detail: "Explicá cómo ownership, warranty y provenance empujan recompra y loyalty.", kpi: "Club / leads" },
+    ],
+  },
+  events: {
+    headline: "Aceleramos access control y engagement en eventos masivos.",
+    summary: "Pensado para festivales, hospitality y credenciales con check-in más activaciones post-ingreso.",
+    proof: "Mostrá check-in instantáneo, replay sospechoso y geografía de asistencia.",
+    kpis: ["Check-ins/min", "Fraud blocks", "Attendee engagement", "Sponsor conversions"],
+    steps: [
+      { title: "Abrí con velocidad operativa", detail: "Cargá events-basic y enfatizá lectura rápida + validación en tiempo real.", kpi: "Check-ins/min" },
+      { title: "Mostrá seguridad", detail: "Corré CHECK-IN y luego DUPLICATE RISK para explicar anti-passback / replay.", kpi: "Fraud blocks" },
+      { title: "Cerrá con negocio", detail: "Mostrá CRM-lite y activaciones para sponsors o upsell VIP.", kpi: "Engagement" },
+    ],
+  },
+  docs: {
+    headline: "Validamos credenciales, certificados y presencia documentada.",
+    summary: "Sirve para diplomas, compliance, onboarding y documentos con verificación pública controlada.",
+    proof: "Mostrá emisión, ownership y evidencia de acceso desde backend.",
+    kpis: ["Verified views", "Ownership claims", "Audit evidence", "Support reduction"],
+    steps: [
+      { title: "Abrí con confianza", detail: "Cargá docs-presence y mostrà el documento como activo verificable.", kpi: "Verified views" },
+      { title: "Mostrá control", detail: "Corré AUTH OK y CLAIMED para explicar titularidad y auditoría.", kpi: "Claims" },
+      { title: "Cerrá con compliance", detail: "Saltá a Ops para enseñar evidencia geolocalizada y registro histórico.", kpi: "Audit trail" },
+    ],
+  },
+  cosmetics: {
+    headline: "Transformamos packaging en un canal de autenticidad y postventa.",
+    summary: "Útil para skincare, perfume y beauty retail con foco en fraude, loyalty y education.",
+    proof: "Mostrá autenticidad, provenance y activación de garantía / soporte.",
+    kpis: ["Auth scans", "Fake reduction", "Warranty activation", "Consumer education"],
+    steps: [
+      { title: "Abrí con confianza retail", detail: "Cargá cosmetics-secure y mostrà el passport del producto.", kpi: "Auth scans" },
+      { title: "Mostrá defensa de marca", detail: "Corré TAMPER RISK para explicar detección temprana en góndola o reventa.", kpi: "Fake reduction" },
+      { title: "Cerrá con postventa", detail: "Destacá garantía, soporte y contenido educativo mobile.", kpi: "Warranty" },
+    ],
+  },
+  agro: {
+    headline: "Digitalizamos trazabilidad agro y evidencia de origen.",
+    summary: "Pensado para exportación, certificación y seguimiento de lotes en campo y distribución.",
+    proof: "Mostrá provenance, lecturas por región y estado del lote en cada toque.",
+    kpis: ["Traceability", "Origin proof", "Distributor compliance", "Incident response"],
+    steps: [
+      { title: "Abrí con origen", detail: "Cargá un pack agro y destacá lote + proveniencia verificable.", kpi: "Origin proof" },
+      { title: "Mostrá observabilidad", detail: "Generá live stream para enseñar cobertura geográfica operativa.", kpi: "Traceability" },
+      { title: "Cerrá con compliance", detail: "Explicá cómo la evidencia reduce disputas y acelera exportación.", kpi: "Compliance" },
+    ],
+  },
+  pharma: {
+    headline: "Protegemos producto sensible y elevamos confianza regulatoria.",
+    summary: "Para pharma, wellness y supply chain con necesidad de autenticación y evidencia operacional.",
+    proof: "Mostrá autenticidad, replay risk y timeline trazable para auditoría.",
+    kpis: ["Verified units", "Replay detection", "Audit readiness", "Patient trust"],
+    steps: [
+      { title: "Abrí con riesgo alto", detail: "Cargá pharma y resaltá autenticación en producto sensible.", kpi: "Verified units" },
+      { title: "Mostrá prevención", detail: "Corré DUPLICATE RISK para explicar potencial clon o desvío.", kpi: "Replay detection" },
+      { title: "Cerrá con regulación", detail: "Llevá la conversación al timeline y evidence map.", kpi: "Audit readiness" },
+    ],
+  },
+};
+
+const SCENARIOS: ScanScenario[] = [
+  { label: "AUTH OK", description: "Validación normal de autenticidad", eventType: "valid" },
+  { label: "TAMPER RISK", description: "Producto abierto / sello alterado", eventType: "tamper" },
+  { label: "DUPLICATE RISK", description: "Relectura sospechosa / posible clon", eventType: "replay" },
+  { label: "CLAIMED", description: "Cambio de titularidad", eventType: "claim" },
+  { label: "REDEEMED", description: "Canje o redención final", eventType: "redeem" },
+  { label: "CHECK-IN", description: "Ingreso de pulsera/credencial a evento", eventType: "checkin" },
+];
+
 function detectLocale(): Locale {
   const value = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )locale=([^;]+)/)?.[1] || "es-AR" : "es-AR") as Locale;
   return value === "pt-BR" || value === "en" ? value : "es-AR";
