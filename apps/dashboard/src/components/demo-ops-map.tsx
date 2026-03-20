@@ -36,7 +36,7 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
         const scopeMatch = scope === "all" ? true : selectedVertical ? point.vertical === selectedVertical : true;
         return countryMatch && eventMatch && scopeMatch;
       }),
-    [points, country, eventFilter, scope, selectedVertical]
+    [country, eventFilter, points, scope, selectedVertical],
   );
 
   const playablePoints = useMemo(() => {
@@ -47,8 +47,8 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
   }, [filteredPoints, index]);
 
   const riskPoints = useMemo(() => playablePoints.filter((point) => point.risk > 0).length, [playablePoints]);
-
-
+  const uniqueCountries = useMemo(() => new Set(playablePoints.map((point) => point.country)).size, [playablePoints]);
+  const coverage = filteredPoints.length > 0 ? Math.round((playablePoints.length / filteredPoints.length) * 100) : 0;
 
   useEffect(() => {
     if (!playback) return;
@@ -58,6 +58,14 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
     return () => clearInterval(timer);
   }, [playback]);
 
+  function resetFilters() {
+    setPlayback(false);
+    setIndex(100);
+    setEventFilter("all");
+    setCountry("ALL");
+    setScope("selected");
+  }
+
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/80 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -65,9 +73,37 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
           <h3 className="text-sm font-semibold text-white">Ops Map Pro (Enterprise Visual)</h3>
           <p className="text-xs text-slate-400">Playback + filtros + clusters visuales sobre datos reales de demo/live feed.</p>
         </div>
-        <button type="button" className="rounded-lg border border-white/20 px-3 py-1 text-xs text-white" onClick={() => setPlayback((value) => !value)}>
-          {playback ? "Pause playback" : "Play playback"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="rounded-lg border border-white/20 px-3 py-1 text-xs text-white" onClick={() => setPlayback((value) => !value)}>
+            {playback ? "Pause playback" : "Play playback"}
+          </button>
+          <button type="button" className="rounded-lg border border-white/10 px-3 py-1 text-xs text-slate-300" onClick={resetFilters}>
+            Reset filters
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-4">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+          <p className="text-slate-400">Visible hubs</p>
+          <p className="mt-1 text-lg font-semibold text-white">{playablePoints.length}</p>
+          <p className="text-[11px] text-slate-500">{coverage}% del scope filtrado</p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+          <p className="text-slate-400">Risk nodes</p>
+          <p className="mt-1 text-lg font-semibold text-white">{riskPoints}</p>
+          <p className="text-[11px] text-slate-500">alertas visibles en el mapa</p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+          <p className="text-slate-400">Countries</p>
+          <p className="mt-1 text-lg font-semibold text-white">{uniqueCountries}</p>
+          <p className="text-[11px] text-slate-500">cobertura geográfica actual</p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+          <p className="text-slate-400">Playback</p>
+          <p className="mt-1 text-lg font-semibold text-white">{index}%</p>
+          <p className="text-[11px] text-slate-500">ventana de reproducción</p>
+        </div>
       </div>
 
       <div className="mt-3 grid gap-2 md:grid-cols-3">
@@ -93,11 +129,17 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
       </div>
 
       <div className="mt-3">
-        <WorldMapPlaceholder
-          title="Global verification map"
-          subtitle="Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
-          points={playablePoints}
-        />
+        {playablePoints.length > 0 ? (
+          <WorldMapPlaceholder
+            title="Global verification map"
+            subtitle="Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
+            points={playablePoints}
+          />
+        ) : (
+          <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/60 px-4 py-10 text-center text-sm text-slate-400">
+            No hay hubs visibles con el filtro actual. Probá cambiar país, scope o tipo de evento.
+          </div>
+        )}
       </div>
 
       <div className="mt-3">

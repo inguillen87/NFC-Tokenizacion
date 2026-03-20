@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { Card } from "@product/ui";
+import { useEffect, useMemo, useState } from "react";
+import { Badge, Card } from "@product/ui";
 import { DemoOpsMap } from "./demo-ops-map";
 
 type Vertical = "wine" | "events" | "docs";
@@ -31,12 +31,28 @@ async function call(path: string, method = "GET", payload?: unknown) {
   return data;
 }
 
+function formatTimestamp(value?: string) {
+  if (!value) return "sin eventos";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" }).format(date);
+}
+
+function resultTone(result?: string) {
+  if (result === "VALID") return "text-emerald-300";
+  if (!result) return "text-slate-300";
+  return "text-amber-300";
+}
+
 export function DemoPublicExperience() {
   const [vertical, setVertical] = useState<Vertical>("wine");
   const [scenario, setScenario] = useState<Scenario>("valid");
   const [latest, setLatest] = useState<EventItem | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [status, setStatus] = useState("Elegí escenario y presioná Probar escenario");
+  const [loading, setLoading] = useState(true);
+  const [pendingScenario, setPendingScenario] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const points = useMemo(
     () =>
@@ -49,126 +65,195 @@ export function DemoPublicExperience() {
           lng: Number(event.lng),
           scans: 1,
           risk: event.result === "VALID" ? 0 : 1,
+          vertical: event.vertical,
+          status: event.result,
+          lastSeen: event.created_at,
         })),
-    [events]
+    [events],
   );
 
   const metrics = useMemo(() => {
-    const base = {
-      total: events.length,
-      authOk: events.filter((event) => event.result === "VALID").length,
-      risk: events.filter((event) => event.result && event.result !== "VALID").length,
+    const total = events.length;
+    const authOk = events.filter((event) => event.result === "VALID").length;
+    const risk = events.filter((event) => event.result && event.result !== "VALID").length;
+    return {
+      total,
+      authOk,
+      risk,
+      authRate: total > 0 ? Math.round((authOk / total) * 100) : 100,
       wine: events.filter((event) => event.vertical === "wine").length,
       eventsVertical: events.filter((event) => event.vertical === "events").length,
       docs: events.filter((event) => event.vertical === "docs").length,
     };
-    return base;
   }, [events]);
-
 
   const verticalNarrative = useMemo(() => {
     if (vertical === "wine") {
       return {
         title: "Demo vino secure",
         text: "Mostrá autenticidad de botella, estado de apertura y trazabilidad por ciudad en una sola historia comercial.",
+        badge: "Brand protection",
       };
     }
     if (vertical === "events") {
       return {
         title: "Demo eventos / VIP",
         text: "Mostrá check-in, control anti-duplicado y acceso en tiempo real para pulseras o credenciales.",
+        badge: "Access control",
       };
     }
     return {
       title: "Demo documentos / presencia",
       text: "Mostrá identidad documental, proof-of-presence y auditoría de visitas por sitio.",
+      badge: "Compliance proof",
     };
   }, [vertical]);
 
-  async function refresh() {
-    const summary = await call("summary");
-    const list = Array.isArray(summary?.events) ? (summary.events as EventItem[]) : [];
-    setEvents(list);
-    setLatest(list[0] || null);
+  async function refresh(showLoader = false) {
+    try {
+      if (showLoader) setLoading(true);
+      setError(null);
+      const summary = await call("summary");
+      const list = Array.isArray(summary?.events) ? (summary.events as EventItem[]) : [];
+      setEvents(list);
+      setLatest(list[0] || null);
+    } catch {
+      setError("No pudimos sincronizar el estado del demo. Reintentá en unos segundos.");
+    } finally {
+      setLoading(false);
+    }
   }
 
+  useEffect(() => {
+    void refresh(true);
+  }, []);
+
   async function runScenario() {
-    setStatus("Corriendo escenario...");
-    await call("simulate-tap", "POST", { mode: scenario, scenario, vertical, source: "consumer_tap" });
-    await refresh();
-    setStatus("Escenario aplicado. Mostrá resultado + mapa + passport.");
+    try {
+      setPendingScenario(true);
+      setError(null);
+      setStatus("Corriendo escenario...");
+      await call("simulate-tap", "POST", { mode: scenario, scenario, vertical, source: "consumer_tap" });
+      await refresh(false);
+      setStatus("Escenario aplicado. Mostrá resultado + mapa + passport.");
+    } catch {
+      setError("Falló la simulación del escenario. Revisá el proxy demo o reintentá.");
+      setStatus("No se pudo ejecutar el escenario.");
+    } finally {
+      setPendingScenario(false);
+    }
   }
 
   return (
     <div className="space-y-4">
       <Card className="p-4 text-sm text-slate-300">
-        <p className="font-semibold text-white">La etiqueta aporta identidad. El celular aporta contexto. nexID aporta la verdad del objeto.</p>
-        <p className="mt-1 text-xs text-slate-400">No leemos “todo el chip” desde web: en navegador mostramos NDEF + contexto móvil + veredicto backend.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-semibold text-white">La etiqueta aporta identidad. El celular aporta contexto. nexID aporta la verdad del objeto.</p>
+            <p className="mt-1 text-xs text-slate-400">No leemos “todo el chip” desde web: en navegador mostramos NDEF + contexto móvil + veredicto backend.</p>
+          </div>
+          <Badge tone="cyan">Consumer-ready demo</Badge>
+        </div>
       </Card>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-4">
         <Card className="p-3 text-xs text-slate-300">Scans demo: <b>{metrics.total}</b></Card>
-        <Card className="p-3 text-xs text-slate-300">AUTH OK: <b>{metrics.authOk}</b> · Riesgo: <b>{metrics.risk}</b></Card>
+        <Card className="p-3 text-xs text-slate-300">AUTH rate: <b>{metrics.authRate}%</b> · Riesgo: <b>{metrics.risk}</b></Card>
         <Card className="p-3 text-xs text-slate-300">Vino: <b>{metrics.wine}</b> · Eventos: <b>{metrics.eventsVertical}</b> · Docs: <b>{metrics.docs}</b></Card>
+        <Card className="p-3 text-xs text-slate-300">Última sync: <b>{loading ? "cargando" : formatTimestamp(latest?.created_at)}</b></Card>
       </div>
-
 
       <Card className="p-4 text-sm text-slate-300">
-        <h3 className="font-semibold text-white">{verticalNarrative.title}</h3>
-        <p className="mt-1 text-xs text-slate-400">{verticalNarrative.text}</p>
-      </Card>
-
-      <Card className="p-4">
-        <h3 className="text-sm font-semibold text-white">1) Elegir vertical</h3>
-        <div className="mt-2 grid gap-2 md:grid-cols-3">
-          {(["wine", "events", "docs"] as Vertical[]).map((item) => (
-            <button key={item} type="button" className={`rounded-lg border p-2 text-sm ${vertical === item ? "border-cyan-300/50 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900 text-white"}`} onClick={() => setVertical(item)}>
-              {item.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="p-4">
-        <h3 className="text-sm font-semibold text-white">2) Elegir escenario</h3>
-        <div className="mt-2 grid gap-2 md:grid-cols-3">
-          {([
-            ["valid", "AUTH OK"],
-            ["tamper", "TAMPER RISK"],
-            ["replay", "DUPLICATE RISK"],
-          ] as Array<[Scenario, string]>).map(([key, label]) => (
-            <button key={key} type="button" className={`rounded-lg border p-2 text-sm ${scenario === key ? "border-emerald-300/50 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900 text-white"}`} onClick={() => setScenario(key)}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="mt-3 w-full rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-3 text-sm text-cyan-100" onClick={() => void runScenario()}>
-          3) Probar escenario
-        </button>
-      </Card>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <Card className="p-4 text-sm text-slate-300">
-          <h3 className="font-semibold text-white">Resultado del toque</h3>
-          <p className="mt-2">Estado: <b>{latest?.result || "N/A"}</b></p>
-          <p className="text-xs text-slate-400">{latest?.created_at || "sin eventos"}</p>
-          <p className="mt-2 text-xs text-cyan-200">Leído de etiqueta · Aportado por celular · Resuelto por nexID · Simulado para demo</p>
-        </Card>
-        <Card className="p-4 text-sm text-slate-300">
-          <h3 className="font-semibold text-white">Historia / passport</h3>
-          <p className="mt-2">Item: {latest?.product_name || "Demo product"}</p>
-          <p>Última ciudad: {latest?.city || "-"} ({latest?.country_code || "-"})</p>
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
-            <Link href="/demo-lab/mobile/demobodega/demo-item-001" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Ver resultado en celular</Link>
-            <Link href="/demo-lab" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Abrir Demo Lab pro</Link>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-white">{verticalNarrative.title}</h3>
+            <p className="mt-1 text-xs text-slate-400">{verticalNarrative.text}</p>
           </div>
-        </Card>
+          <Badge tone="green">{verticalNarrative.badge}</Badge>
+        </div>
+      </Card>
+
+      <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="space-y-4">
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold text-white">1) Elegir vertical</h3>
+            <div className="mt-2 grid gap-2 md:grid-cols-3">
+              {(["wine", "events", "docs"] as Vertical[]).map((item) => (
+                <button key={item} type="button" className={`rounded-lg border p-2 text-sm ${vertical === item ? "border-cyan-300/50 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900 text-white"}`} onClick={() => setVertical(item)}>
+                  {item.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold text-white">2) Elegir escenario</h3>
+            <div className="mt-2 grid gap-2 md:grid-cols-3">
+              {([
+                ["valid", "AUTH OK"],
+                ["tamper", "TAMPER RISK"],
+                ["replay", "DUPLICATE RISK"],
+              ] as Array<[Scenario, string]>).map(([key, label]) => (
+                <button key={key} type="button" className={`rounded-lg border p-2 text-sm ${scenario === key ? "border-emerald-300/50 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900 text-white"}`} onClick={() => setScenario(key)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button type="button" className="flex-1 rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-3 text-sm text-cyan-100 disabled:opacity-50" onClick={() => void runScenario()} disabled={pendingScenario}>
+                {pendingScenario ? "Corriendo…" : "3) Probar escenario"}
+              </button>
+              <button type="button" className="rounded-lg border border-white/10 px-3 py-3 text-xs text-slate-300" onClick={() => void refresh(true)} disabled={loading || pendingScenario}>
+                Refresh
+              </button>
+            </div>
+          </Card>
+
+          <Card className="p-4 text-sm text-slate-300">
+            <h3 className="font-semibold text-white">Resultado del toque</h3>
+            <p className={`mt-2 font-medium ${resultTone(latest?.result)}`}>Estado: <b>{latest?.result || "N/A"}</b></p>
+            <p className="text-xs text-slate-400">{formatTimestamp(latest?.created_at)}</p>
+            <p className="mt-2 text-xs text-cyan-200">Leído de etiqueta · Aportado por celular · Resuelto por nexID · Simulado para demo</p>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card className="p-4 text-sm text-slate-300">
+            <h3 className="font-semibold text-white">Historia / passport</h3>
+            <p className="mt-2">Item: {latest?.product_name || "Demo product"}</p>
+            <p>Última ciudad: {latest?.city || "-"} ({latest?.country_code || "-"})</p>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              <Link href="/demo-lab/mobile/demobodega/demo-item-001" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Ver resultado en celular</Link>
+              <Link href="/demo-lab" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Abrir Demo Lab pro</Link>
+            </div>
+          </Card>
+
+          <Card className="p-4 text-sm text-slate-300">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-white">Feed reciente</h3>
+                <p className="mt-1 text-xs text-slate-400">Prueba rápida para que ventas muestre evidencia sin salir del sandbox.</p>
+              </div>
+              <Badge tone="amber">{events.length} events</Badge>
+            </div>
+            <div className="mt-3 space-y-2">
+              {(events.slice(0, 4).length ? events.slice(0, 4) : [{ id: 0 } as EventItem]).map((event) => (
+                <div key={event.id || `empty-${event.product_name || "demo"}`} className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+                  <p className={`font-medium ${resultTone(event.result)}`}>{event.result || "Sin actividad todavía"}</p>
+                  <p className="mt-1 text-white">{event.product_name || "Esperando primer evento demo"}</p>
+                  <p className="mt-1 text-slate-400">{event.city || "-"} {event.country_code ? `(${event.country_code})` : ""} · {formatTimestamp(event.created_at)}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
 
-      <DemoOpsMap points={points} />
+      <DemoOpsMap points={points} selectedVertical={vertical} selectedPack={`${vertical}-public`} />
 
       <Card className="p-4 text-xs text-slate-300">
         <p>{status}</p>
+        {error ? <p className="mt-2 text-rose-300">{error}</p> : null}
       </Card>
     </div>
   );
