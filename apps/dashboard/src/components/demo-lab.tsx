@@ -233,84 +233,6 @@ const SCENARIOS: ScanScenario[] = [
   { label: "CHECK-IN", description: "Ingreso de pulsera/credencial a evento", eventType: "checkin" },
 ];
 
-const RUNBOOKS: Record<VerticalKey, { headline: string; summary: string; proof: string; kpis: string[]; steps: RunbookStep[] }> = {
-  wine: {
-    headline: "Protegemos vino premium y mostramos autenticidad instantánea.",
-    summary: "Ideal para bodegas, importadores y distribuidores que necesitan autenticidad + storytelling + ownership.",
-    proof: "Mostrá botella auténtica, riesgo por tamper y trazabilidad de cada apertura.",
-    kpis: ["Auth rate", "Tamper alerts", "Recompra / club", "Geo de consumo"],
-    steps: [
-      { title: "Abrí con valor de marca", detail: "Cargá wine-secure y destacá botella premium + passport móvil.", kpi: "Premium proof" },
-      { title: "Mostrá fraude evitado", detail: "Corré AUTH OK seguido de TAMPER RISK para contrastar confianza vs. alerta.", kpi: "Tamper alerts" },
-      { title: "Cerrá con CRM", detail: "Explicá cómo ownership, warranty y provenance empujan recompra y loyalty.", kpi: "Club / leads" },
-    ],
-  },
-  events: {
-    headline: "Aceleramos access control y engagement en eventos masivos.",
-    summary: "Pensado para festivales, hospitality y credenciales con check-in más activaciones post-ingreso.",
-    proof: "Mostrá check-in instantáneo, replay sospechoso y geografía de asistencia.",
-    kpis: ["Check-ins/min", "Fraud blocks", "Attendee engagement", "Sponsor conversions"],
-    steps: [
-      { title: "Abrí con velocidad operativa", detail: "Cargá events-basic y enfatizá lectura rápida + validación en tiempo real.", kpi: "Check-ins/min" },
-      { title: "Mostrá seguridad", detail: "Corré CHECK-IN y luego DUPLICATE RISK para explicar anti-passback / replay.", kpi: "Fraud blocks" },
-      { title: "Cerrá con negocio", detail: "Mostrá CRM-lite y activaciones para sponsors o upsell VIP.", kpi: "Engagement" },
-    ],
-  },
-  docs: {
-    headline: "Validamos credenciales, certificados y presencia documentada.",
-    summary: "Sirve para diplomas, compliance, onboarding y documentos con verificación pública controlada.",
-    proof: "Mostrá emisión, ownership y evidencia de acceso desde backend.",
-    kpis: ["Verified views", "Ownership claims", "Audit evidence", "Support reduction"],
-    steps: [
-      { title: "Abrí con confianza", detail: "Cargá docs-presence y mostrà el documento como activo verificable.", kpi: "Verified views" },
-      { title: "Mostrá control", detail: "Corré AUTH OK y CLAIMED para explicar titularidad y auditoría.", kpi: "Claims" },
-      { title: "Cerrá con compliance", detail: "Saltá a Ops para enseñar evidencia geolocalizada y registro histórico.", kpi: "Audit trail" },
-    ],
-  },
-  cosmetics: {
-    headline: "Transformamos packaging en un canal de autenticidad y postventa.",
-    summary: "Útil para skincare, perfume y beauty retail con foco en fraude, loyalty y education.",
-    proof: "Mostrá autenticidad, provenance y activación de garantía / soporte.",
-    kpis: ["Auth scans", "Fake reduction", "Warranty activation", "Consumer education"],
-    steps: [
-      { title: "Abrí con confianza retail", detail: "Cargá cosmetics-secure y mostrà el passport del producto.", kpi: "Auth scans" },
-      { title: "Mostrá defensa de marca", detail: "Corré TAMPER RISK para explicar detección temprana en góndola o reventa.", kpi: "Fake reduction" },
-      { title: "Cerrá con postventa", detail: "Destacá garantía, soporte y contenido educativo mobile.", kpi: "Warranty" },
-    ],
-  },
-  agro: {
-    headline: "Digitalizamos trazabilidad agro y evidencia de origen.",
-    summary: "Pensado para exportación, certificación y seguimiento de lotes en campo y distribución.",
-    proof: "Mostrá provenance, lecturas por región y estado del lote en cada toque.",
-    kpis: ["Traceability", "Origin proof", "Distributor compliance", "Incident response"],
-    steps: [
-      { title: "Abrí con origen", detail: "Cargá un pack agro y destacá lote + proveniencia verificable.", kpi: "Origin proof" },
-      { title: "Mostrá observabilidad", detail: "Generá live stream para enseñar cobertura geográfica operativa.", kpi: "Traceability" },
-      { title: "Cerrá con compliance", detail: "Explicá cómo la evidencia reduce disputas y acelera exportación.", kpi: "Compliance" },
-    ],
-  },
-  pharma: {
-    headline: "Protegemos producto sensible y elevamos confianza regulatoria.",
-    summary: "Para pharma, wellness y supply chain con necesidad de autenticación y evidencia operacional.",
-    proof: "Mostrá autenticidad, replay risk y timeline trazable para auditoría.",
-    kpis: ["Verified units", "Replay detection", "Audit readiness", "Patient trust"],
-    steps: [
-      { title: "Abrí con riesgo alto", detail: "Cargá pharma y resaltá autenticación en producto sensible.", kpi: "Verified units" },
-      { title: "Mostrá prevención", detail: "Corré DUPLICATE RISK para explicar potencial clon o desvío.", kpi: "Replay detection" },
-      { title: "Cerrá con regulación", detail: "Llevá la conversación al timeline y evidence map.", kpi: "Audit readiness" },
-    ],
-  },
-};
-
-const SCENARIOS: ScanScenario[] = [
-  { label: "AUTH OK", description: "Validación normal de autenticidad", eventType: "valid" },
-  { label: "TAMPER RISK", description: "Producto abierto / sello alterado", eventType: "tamper" },
-  { label: "DUPLICATE RISK", description: "Relectura sospechosa / posible clon", eventType: "replay" },
-  { label: "CLAIMED", description: "Cambio de titularidad", eventType: "claim" },
-  { label: "REDEEMED", description: "Canje o redención final", eventType: "redeem" },
-  { label: "CHECK-IN", description: "Ingreso de pulsera/credencial a evento", eventType: "checkin" },
-];
-
 function detectLocale(): Locale {
   const value = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )locale=([^;]+)/)?.[1] || "es-AR" : "es-AR") as Locale;
   return value === "pt-BR" || value === "en" ? value : "es-AR";
@@ -404,12 +326,15 @@ export function DemoLab() {
   const [geoPermission, setGeoPermission] = useState<PermissionStateLite>("unknown");
   const [audienceMode, setAudienceMode] = useState<AudienceMode>("client");
   const [selectedExperience, setSelectedExperience] = useState<ExperiencePresetKey>("premium");
+  const [focusMode, setFocusMode] = useState(false);
   const [stageMode, setStageMode] = useState(false);
   const [stageBeatIndex, setStageBeatIndex] = useState(0);
   const [autoRunActive, setAutoRunActive] = useState(false);
   const [autoRunCueIndex, setAutoRunCueIndex] = useState(0);
   const [autoRunSecondsLeft, setAutoRunSecondsLeft] = useState(0);
   const [autoRunNarration, setAutoRunNarration] = useState("");
+  const [mobilePreviewOpened, setMobilePreviewOpened] = useState(false);
+  const [lastTriggeredScenario, setLastTriggeredScenario] = useState<string>("none");
   const locale = detectLocale();
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://nexid.lat";
 
@@ -424,6 +349,8 @@ export function DemoLab() {
   const activeStageBeat = stageBeats[stageBeatIndex] || stageBeats[0];
   const cinematicScript = CINEMATIC_SCRIPTS[selectedExperience];
   const activeCue = cinematicScript[autoRunCueIndex] || cinematicScript[0];
+  const autoRunProgress = cinematicScript.length > 0 ? Math.round(((autoRunCueIndex + (autoRunActive ? 1 : 0)) / cinematicScript.length) * 100) : 0;
+  const opsReady = points.length > 0;
   const audienceCopy = audienceMode === "ceo"
     ? {
         title: "CEO / Ingeniero view",
@@ -563,6 +490,7 @@ export function DemoLab() {
   }
 
   async function triggerScenario(scenario: ScanScenario["eventType"]) {
+    setLastTriggeredScenario(scenario);
     await runAction(() => call("simulate-tap", "POST", { mode: mapScenarioToApiMode(scenario), scenario, source: mode, vertical: activeVertical }));
   }
 
@@ -602,6 +530,8 @@ export function DemoLab() {
     try {
       await runAction(() => call("use-pack", "POST", { pack: experiencePreset.packKey }));
       let openedMobile = false;
+      setMobilePreviewOpened(false);
+      setLastTriggeredScenario("none");
       for (const [index, cue] of cinematicScript.entries()) {
         setAutoRunCueIndex(index);
         setStageBeatIndex(cue.beat);
@@ -610,6 +540,7 @@ export function DemoLab() {
         if (cue.openMobile && !openedMobile && typeof window !== "undefined") {
           window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
           openedMobile = true;
+          setMobilePreviewOpened(true);
         }
         if (cue.scenario) {
           // eslint-disable-next-line no-await-in-loop
@@ -631,6 +562,8 @@ export function DemoLab() {
     setSelectedExperience(presetKey);
     setStageMode(true);
     setAutoRunNarration("");
+    setMobilePreviewOpened(false);
+    setLastTriggeredScenario("none");
     setStageBeatIndex(0);
     setPack(preset.packKey);
     setMode(preset.mode);
@@ -643,6 +576,8 @@ export function DemoLab() {
   async function runSalesStory() {
     setStageMode(true);
     setStageBeatIndex(0);
+    setMobilePreviewOpened(false);
+    setLastTriggeredScenario("none");
     setActiveSection("simulate");
     await runAction(() => call("use-pack", "POST", { pack }));
     if (typeof window !== "undefined") window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
@@ -656,14 +591,17 @@ export function DemoLab() {
   const canShowTechnical = !presenterLock;
 
   return (
-    <div id="top" className={`demo-lab space-y-4 ${textScale}`}>
-      <Card className="demo-lab-card p-4 text-slate-300">
+    <div id="top" className={`demo-lab space-y-4 ${textScale} ${focusMode ? "fixed inset-0 z-[90] overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,.12),transparent_32%),#020617] px-4 py-4 md:px-8" : ""}`}>
+      <Card className={`demo-lab-card p-4 text-slate-300 ${focusMode ? "sticky top-0 z-20 border-cyan-300/20 bg-slate-950/95 shadow-[0_24px_80px_rgba(2,6,23,.55)] backdrop-blur" : ""}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p>{COPY[locale].intro}</p>
             <p className="mt-1 text-xs text-slate-400">Vertical activa: <b className="text-white">{activeVertical}</b> · Pack: <b className="text-white">{pack}</b> · Modo: <b className="text-white">{modeLabel(mode)}</b></p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setFocusMode((v) => !v)} className={`rounded-lg border px-3 py-1 text-xs ${focusMode ? "border-cyan-300/50 bg-cyan-500/10 text-cyan-100" : "border-white/20 text-white"}`}>
+              {focusMode ? "Salir fullscreen" : "Fullscreen presenter canvas"}
+            </button>
             <button type="button" onClick={() => setPresenterMode((v) => !v)} className="rounded-lg border border-white/20 px-3 py-1 text-xs text-white">
               {presenterMode ? "Salir modo presentador" : "Modo presentador"}
             </button>
@@ -717,7 +655,7 @@ export function DemoLab() {
         <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4 text-xs text-cyan-100">
           Preset activo: <b>{experiencePreset.label}</b>. Esto alinea pack, modo y secuencia para contar una historia consistente de producto premium, evento en vivo o credencial auditada.
         </div>
-        <div className="mt-3 rounded-2xl border border-violet-300/20 bg-violet-500/5 p-4">
+        <div className={`mt-3 rounded-2xl border border-violet-300/20 bg-violet-500/5 p-4 ${focusMode ? "shadow-[0_24px_90px_rgba(76,29,149,.28)] ring-1 ring-violet-300/20" : ""}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.16em] text-violet-200">Stage mode</p>
@@ -742,6 +680,15 @@ export function DemoLab() {
               <button type="button" onClick={() => void runCinematicAutoRun()} disabled={pending || autoRunActive} className="rounded-lg border border-violet-300/40 bg-violet-500/10 px-3 py-2 text-xs text-violet-100 disabled:opacity-50">
                 {autoRunActive ? `Running · ${autoRunSecondsLeft}s` : "Start cinematic auto-run"}
               </button>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+              <div className={`h-full rounded-full bg-violet-400 transition-all ${autoRunActive ? "animate-pulse" : ""}`} style={{ width: `${autoRunProgress}%` }} />
+            </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-4">
+              <div className={`rounded-xl border p-3 ${mobilePreviewOpened ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Mobile preview {mobilePreviewOpened ? "opened" : "pending"}</div>
+              <div className={`rounded-xl border p-3 ${lastTriggeredScenario !== "none" ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Scenario {lastTriggeredScenario}</div>
+              <div className={`rounded-xl border p-3 ${opsReady ? "border-amber-300/40 bg-amber-500/10 text-amber-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Ops map {opsReady ? "ready" : "waiting"}</div>
+              <div className={`rounded-xl border p-3 ${autoRunActive ? "border-violet-300/40 bg-violet-500/10 text-violet-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Progress {autoRunProgress}%</div>
             </div>
             <p className="mt-3 text-violet-100">{autoRunNarration || "Al iniciar, el Demo Lab avanzará por beats, cambiará secciones y disparará escenarios automáticamente."}</p>
           </div>
