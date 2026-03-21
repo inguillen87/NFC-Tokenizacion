@@ -23,6 +23,7 @@ type DocsCopy = {
   roadmapTitle: string;
   roadmapBullets: string[];
   actionsTitle: string;
+  quickJumpTitle: string;
   faqTitle: string;
   faqItems: Array<{ q: string; a: string }>;
   strategyTitle: string;
@@ -91,6 +92,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Siempre: NFC + QR fallback + data model DPP-ready.",
     ],
     actionsTitle: "Siguientes pasos",
+    quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ corta para explicar bien el producto",
     faqItems: [
       { q: "¿nexID vende chips NFC?", a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR." },
@@ -163,6 +165,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
     actionsTitle: "Próximos passos",
+    quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ curta para explicar o produto",
     faqItems: [
       { q: "A nexID vende chips NFC?", a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR." },
@@ -235,6 +238,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Always: NFC + QR fallback + DPP-ready data model.",
     ],
     actionsTitle: "Next steps",
+    quickJumpTitle: "Quick explore",
     faqTitle: "Short FAQ to make the value clear",
     faqItems: [
       { q: "Does nexID sell NFC chips?", a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers." },
@@ -263,14 +267,22 @@ export default async function DocsPage() {
       <BackLink />
       <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
-      <Card className="p-6">
+      <div className="flex flex-wrap gap-2">
+        <a href="#thesis" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100">{copy.pillarsTitle}</a>
+        <a href="#api" className="rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-xs text-indigo-100">{copy.apiTitle}</a>
+        <a href="#rollout" className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100">{copy.rolloutTitle}</a>
+        <a href="#faq" className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100">{copy.faqTitle}</a>
+        <a href="#strategy" className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-100">{copy.strategyTitle}</a>
+      </div>
+
+      <Card id="thesis" className="p-6 transition-transform duration-200 hover:-translate-y-1">
         <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
         <ul className="mt-4 space-y-2 text-sm text-slate-300">
           {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
         </ul>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-6 transition-transform duration-200 hover:-translate-y-1">
         <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.chipRows.map((row) => (
@@ -283,7 +295,7 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card id="api" className="p-6 transition-transform duration-200 hover:-translate-y-1">
         <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
         <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
         <div className="mt-4 space-y-3">
@@ -296,7 +308,7 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+      <div id="rollout" className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.packsTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.packs.map((item) => <li key={item}>• {item}</li>)}</ul>
@@ -320,10 +332,14 @@ export default async function DocsPage() {
         <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.faqItems.map((item) => (
-            <div key={item.q} className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm font-semibold text-white">{item.q}</p>
-              <p className="mt-1 text-sm text-slate-300">{item.a}</p>
-            </div>
+            <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-colors open:border-cyan-300/30 open:bg-cyan-500/5">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-white">
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-cyan-300 transition-transform group-open:rotate-45">＋</span>{item.q}
+                </span>
+              </summary>
+              <p className="mt-3 text-sm text-slate-300">{item.a}</p>
+            </details>
           ))}
         </div>
       </Card>

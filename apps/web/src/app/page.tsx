@@ -177,7 +177,7 @@ export default async function HomePage() {
           <p className="mt-2 text-sm text-slate-300">{labels.assetBody}</p>
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {demoPacks.map((pack) => (
-              <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-950/70 p-4 transition-transform duration-200 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-slate-950">
                 <p className="text-sm font-semibold text-white">{pack.label} <span className="text-cyan-300">· {pack.tag}</span></p>
                 <p className="mt-1 text-xs text-slate-300">{pack.sim}</p>
                 <div className="mt-3 grid gap-2 md:grid-cols-3">
@@ -198,7 +198,7 @@ export default async function HomePage() {
             <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{labels.rolloutTitle}</p>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               {labels.rolloutBullets.map((item) => (
-                <div key={item} className="rounded-lg border border-cyan-300/15 bg-slate-950/50 p-3 text-xs text-slate-200">{item}</div>
+                <div key={item} className="rounded-lg border border-cyan-300/15 bg-slate-950/50 p-3 text-xs text-slate-200 transition-transform duration-200 hover:-translate-y-0.5 hover:border-cyan-300/35">{item}</div>
               ))}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
