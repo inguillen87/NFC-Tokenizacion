@@ -56,6 +56,12 @@ export default async function PricingPage() {
             "Pilot terms should include semi-annual or annual SaaS prepayment.",
             "Sell avoided risk + enabled revenue + captured data, not raw chip cost.",
           ],
+          procurementTitle: "Enterprise rollout guardrails",
+          procurementBullets: [
+            "Do not accept supplier production without approved batch_id, URL template, key ownership and manifest format.",
+            "Treat pilot cost as proof budget; treat 10k/50k orders as governed programs with acceptance criteria.",
+            "Price includes software control, QA and activation governance — not just encoded hardware.",
+          ],
         }
       : locale === "pt-BR"
       ? {
@@ -99,6 +105,12 @@ export default async function PricingPage() {
             "Piloto com pré-pagamento SaaS semestral ou anual.",
             "Venda risco evitado + receita habilitada + dados capturados, não custo de chip.",
           ],
+          procurementTitle: "Guardrails para rollout enterprise",
+          procurementBullets: [
+            "Não aceitar produção do fornecedor sem batch_id, URL template, ownership das keys e formato de manifest aprovados.",
+            "Tratar custo de piloto como budget de prova; tratar pedidos de 10k/50k como programas governados com critérios de aceite.",
+            "O preço inclui controle de software, QA e governança de ativação — não só hardware codificado.",
+          ],
         }
       : {
           includeTitle: "Qué incluye cada propuesta",
@@ -140,6 +152,12 @@ export default async function PricingPage() {
             "Secure siempre lleva NRE/setup. No regalar ingeniería.",
             "Piloto con prepago semestral o anual de SaaS.",
             "Vendé riesgo evitado + revenue habilitado + datos capturados, no chip suelto.",
+          ],
+          procurementTitle: "Guardrails para rollout enterprise",
+          procurementBullets: [
+            "No aceptar producción del proveedor sin batch_id, URL template, ownership de keys y formato de manifest aprobados.",
+            "Tomar el costo piloto como presupuesto de prueba; tratar pedidos de 10k/50k como programas gobernados con criterios de aceptación.",
+            "El precio incluye control de software, QA y gobernanza de activación — no solo hardware codificado.",
           ],
         };
 
@@ -198,6 +216,15 @@ export default async function PricingPage() {
         <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.layersTitle}</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {labels.layers.map((item) => (
+            <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="mt-8 p-6 pricing-page-card">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.procurementTitle}</h3>
+        <div className="mt-4 grid gap-3">
+          {labels.procurementBullets.map((item) => (
             <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
           ))}
         </div>

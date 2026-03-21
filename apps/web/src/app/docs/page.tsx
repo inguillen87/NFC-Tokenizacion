@@ -16,6 +16,8 @@ type DocsCopy = {
   apiRoutes: Array<{ method: string; path: string; detail: string }>;
   packsTitle: string;
   packs: string[];
+  rolloutTitle: string;
+  rolloutBullets: string[];
   revenueTitle: string;
   revenueBullets: string[];
   roadmapTitle: string;
@@ -67,6 +69,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "2) Events Basic + Events Secure (volumen + moat en el mismo vertical).",
       "3) Docs & Presence Secure (credenciales, certificados y evidencia física).",
       "Expansión inmediata: Cosmetics Secure. Expansión regulatoria: exportadores DPP-ready.",
+    ],
+    rolloutTitle: "Estándar operativo para pilotos y rollouts serios",
+    rolloutBullets: [
+      "Crear batch por cliente/campaña con batch_id, SKU, cantidad esperada y perfil de seguridad definidos.",
+      "Entregar al proveedor un spec cerrado: chip, URL template, key ownership, formato CSV manifest y criterio de activación.",
+      "Importar manifest solo si el batch_id del archivo coincide exactamente con el batch creado en plataforma.",
+      "Operar estados planned / imported / active para detectar diferencias antes de escalar a 10k/50k unidades.",
     ],
     revenueTitle: "Modelo de ingresos (lo que entiende un inversor)",
     revenueBullets: [
@@ -133,6 +142,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure.",
       "Expansão imediata: Cosmetics Secure. Expansão regulatória: exportadores DPP-ready.",
     ],
+    rolloutTitle: "Padrão operacional para pilotos e rollouts sérios",
+    rolloutBullets: [
+      "Criar batch por cliente/campanha com batch_id, SKU, volume esperado e perfil de segurança definidos.",
+      "Enviar ao fornecedor um spec fechado: chip, URL template, ownership das keys, formato CSV manifest e critério de ativação.",
+      "Importar manifest apenas se o batch_id do arquivo coincidir exatamente com o batch criado na plataforma.",
+      "Operar estados planned / imported / active para detectar diferenças antes de escalar para 10k/50k unidades.",
+    ],
     revenueTitle: "Modelo de receita",
     revenueBullets: [
       "Setup/Pilot fee.",
@@ -197,6 +213,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "2) Events Basic + Events Secure.",
       "3) Docs & Presence Secure.",
       "Immediate expansion: Cosmetics Secure. Regulatory expansion: DPP-ready exporters.",
+    ],
+    rolloutTitle: "Operational standard for serious pilots and rollouts",
+    rolloutBullets: [
+      "Create one batch per customer/campaign with batch_id, SKU, expected volume and security profile defined up front.",
+      "Give suppliers a closed spec: chip, URL template, key ownership, CSV manifest format and activation criteria.",
+      "Import manifests only when the file batch_id exactly matches the batch created in platform.",
+      "Track planned / imported / active states to catch supplier mismatches before scaling to 10k/50k units.",
     ],
     revenueTitle: "Revenue model",
     revenueBullets: [
@@ -273,10 +296,14 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.packsTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.packs.map((item) => <li key={item}>• {item}</li>)}</ul>
+        </Card>
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.rolloutTitle}</h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.rolloutBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
         </Card>
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.revenueTitle}</h3>
