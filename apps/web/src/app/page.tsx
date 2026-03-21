@@ -39,6 +39,13 @@ export default async function HomePage() {
       quickAudiences: "Audience pitch",
       quickDemoLab: "Demo Lab",
       quickInvestor: "Investor snapshot",
+      rolloutTitle: "Pilot → rollout flow",
+      rolloutBullets: [
+        "1. Define batch_id, SKU, expected volume and security profile before production.",
+        "2. Send supplier the URL template, key ownership rules and manifest CSV format.",
+        "3. Import only manifests that match the created batch and compare planned vs imported tags.",
+        "4. Activate only audited units before opening the rollout to consumers or partners.",
+      ],
     }
     : locale === "pt-BR"
     ? {
@@ -58,6 +65,13 @@ export default async function HomePage() {
       quickAudiences: "Pitch por audiência",
       quickDemoLab: "Demo Lab",
       quickInvestor: "Investor snapshot",
+      rolloutTitle: "Fluxo piloto → rollout",
+      rolloutBullets: [
+        "1. Defina batch_id, SKU, volume esperado e perfil de segurança antes da produção.",
+        "2. Envie ao fornecedor o URL template, ownership das keys e o formato CSV do manifest.",
+        "3. Importe apenas manifests que coincidam com o batch criado e compare planned vs imported tags.",
+        "4. Ative somente unidades auditadas antes de abrir o rollout a consumidores ou parceiros.",
+      ],
     }
     : {
       demoJson: "Descargar seed JSON",
@@ -76,6 +90,13 @@ export default async function HomePage() {
       quickAudiences: "Pitch por audiencia",
       quickDemoLab: "Demo Lab",
       quickInvestor: "Investor snapshot",
+      rolloutTitle: "Flujo piloto → rollout",
+      rolloutBullets: [
+        "1. Definí batch_id, SKU, volumen esperado y perfil de seguridad antes de fabricar.",
+        "2. Entregá al proveedor URL template, ownership de keys y formato CSV del manifest.",
+        "3. Importá solo manifests que coincidan con el batch creado y compará planned vs imported tags.",
+        "4. Activá únicamente unidades auditadas antes de abrir el rollout a clientes o partners.",
+      ],
     };
 
   const demoPacks = [
@@ -166,6 +187,14 @@ export default async function HomePage() {
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyCsv}</div>
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyLab}</div>
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.forWho}</div>
+          </div>
+          <div className="mt-5 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{labels.rolloutTitle}</p>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {labels.rolloutBullets.map((item) => (
+                <div key={item} className="rounded-lg border border-cyan-300/15 bg-slate-950/50 p-3 text-xs text-slate-200">{item}</div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
