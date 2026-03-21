@@ -16,11 +16,14 @@ type DocsCopy = {
   apiRoutes: Array<{ method: string; path: string; detail: string }>;
   packsTitle: string;
   packs: string[];
+  rolloutTitle: string;
+  rolloutBullets: string[];
   revenueTitle: string;
   revenueBullets: string[];
   roadmapTitle: string;
   roadmapBullets: string[];
   actionsTitle: string;
+  quickJumpTitle: string;
   faqTitle: string;
   faqItems: Array<{ q: string; a: string }>;
   strategyTitle: string;
@@ -68,6 +71,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure (credenciales, certificados y evidencia física).",
       "Expansión inmediata: Cosmetics Secure. Expansión regulatoria: exportadores DPP-ready.",
     ],
+    rolloutTitle: "Estándar operativo para pilotos y rollouts serios",
+    rolloutBullets: [
+      "Crear batch por cliente/campaña con batch_id, SKU, cantidad esperada y perfil de seguridad definidos.",
+      "Entregar al proveedor un spec cerrado: chip, URL template, key ownership, formato CSV manifest y criterio de activación.",
+      "Importar manifest solo si el batch_id del archivo coincide exactamente con el batch creado en plataforma.",
+      "Operar estados planned / imported / active para detectar diferencias antes de escalar a 10k/50k unidades.",
+    ],
     revenueTitle: "Modelo de ingresos (lo que entiende un inversor)",
     revenueBullets: [
       "Setup/Pilot fee: discovery, diseño de caso, onboarding y activación.",
@@ -82,6 +92,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Siempre: NFC + QR fallback + data model DPP-ready.",
     ],
     actionsTitle: "Siguientes pasos",
+    quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ corta para explicar bien el producto",
     faqItems: [
       { q: "¿nexID vende chips NFC?", a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR." },
@@ -133,6 +144,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure.",
       "Expansão imediata: Cosmetics Secure. Expansão regulatória: exportadores DPP-ready.",
     ],
+    rolloutTitle: "Padrão operacional para pilotos e rollouts sérios",
+    rolloutBullets: [
+      "Criar batch por cliente/campanha com batch_id, SKU, volume esperado e perfil de segurança definidos.",
+      "Enviar ao fornecedor um spec fechado: chip, URL template, ownership das keys, formato CSV manifest e critério de ativação.",
+      "Importar manifest apenas se o batch_id do arquivo coincidir exatamente com o batch criado na plataforma.",
+      "Operar estados planned / imported / active para detectar diferenças antes de escalar para 10k/50k unidades.",
+    ],
     revenueTitle: "Modelo de receita",
     revenueBullets: [
       "Setup/Pilot fee.",
@@ -147,6 +165,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
     actionsTitle: "Próximos passos",
+    quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ curta para explicar o produto",
     faqItems: [
       { q: "A nexID vende chips NFC?", a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR." },
@@ -198,6 +217,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure.",
       "Immediate expansion: Cosmetics Secure. Regulatory expansion: DPP-ready exporters.",
     ],
+    rolloutTitle: "Operational standard for serious pilots and rollouts",
+    rolloutBullets: [
+      "Create one batch per customer/campaign with batch_id, SKU, expected volume and security profile defined up front.",
+      "Give suppliers a closed spec: chip, URL template, key ownership, CSV manifest format and activation criteria.",
+      "Import manifests only when the file batch_id exactly matches the batch created in platform.",
+      "Track planned / imported / active states to catch supplier mismatches before scaling to 10k/50k units.",
+    ],
     revenueTitle: "Revenue model",
     revenueBullets: [
       "Setup/Pilot fee.",
@@ -212,6 +238,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Always: NFC + QR fallback + DPP-ready data model.",
     ],
     actionsTitle: "Next steps",
+    quickJumpTitle: "Quick explore",
     faqTitle: "Short FAQ to make the value clear",
     faqItems: [
       { q: "Does nexID sell NFC chips?", a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers." },
@@ -240,14 +267,22 @@ export default async function DocsPage() {
       <BackLink />
       <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
-      <Card className="p-6">
+      <div className="flex flex-wrap gap-2">
+        <a href="#thesis" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100">{copy.pillarsTitle}</a>
+        <a href="#api" className="rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-xs text-indigo-100">{copy.apiTitle}</a>
+        <a href="#rollout" className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100">{copy.rolloutTitle}</a>
+        <a href="#faq" className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100">{copy.faqTitle}</a>
+        <a href="#strategy" className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-100">{copy.strategyTitle}</a>
+      </div>
+
+      <Card id="thesis" className="p-6 transition-transform duration-200 hover:-translate-y-1">
         <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
         <ul className="mt-4 space-y-2 text-sm text-slate-300">
           {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
         </ul>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-6 transition-transform duration-200 hover:-translate-y-1">
         <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.chipRows.map((row) => (
@@ -260,7 +295,7 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <Card id="api" className="p-6 transition-transform duration-200 hover:-translate-y-1">
         <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
         <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
         <div className="mt-4 space-y-3">
@@ -273,10 +308,14 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div id="rollout" className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.packsTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.packs.map((item) => <li key={item}>• {item}</li>)}</ul>
+        </Card>
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.rolloutTitle}</h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.rolloutBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
         </Card>
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.revenueTitle}</h3>
@@ -293,10 +332,14 @@ export default async function DocsPage() {
         <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.faqItems.map((item) => (
-            <div key={item.q} className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm font-semibold text-white">{item.q}</p>
-              <p className="mt-1 text-sm text-slate-300">{item.a}</p>
-            </div>
+            <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-colors open:border-cyan-300/30 open:bg-cyan-500/5">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-white">
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-cyan-300 transition-transform group-open:rotate-45">＋</span>{item.q}
+                </span>
+              </summary>
+              <p className="mt-3 text-sm text-slate-300">{item.a}</p>
+            </details>
           ))}
         </div>
       </Card>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Badge, BrandDot, BrandLockup, Button, Card } from "@product/ui";
 
 type Row = Record<string, string>;
@@ -15,9 +16,10 @@ function resolveTone(value: string) {
 }
 
 export function DataTable({ title, columns, rows, filterKey, loadingLabel, emptyLabel, searchPlaceholder = "Search", allFilterLabel = "All", refreshLabel = "Refresh", statusMap }: { title: string; columns: Array<{ key: string; label: string }>; rows: Row[]; filterKey: string; loadingLabel: string; emptyLabel: string; searchPlaceholder?: string; allFilterLabel?: string; refreshLabel?: string; statusMap?: Record<string, string> }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => rows.filter((row) => {
     const matchesQ = Object.values(row).join(" ").toLowerCase().includes(query.toLowerCase());
@@ -37,14 +39,14 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
             <option value="all">{allFilterLabel}</option>
             {statuses.map((item) => <option key={item} value={item}>{statusMap?.[item] ?? item}</option>)}
           </select>
-          <Button variant="secondary" onClick={async () => { setLoading(true); await new Promise((r) => setTimeout(r, 500)); setLoading(false); }}>{refreshLabel}</Button>
+          <Button variant="secondary" onClick={() => startTransition(() => router.refresh())}>{refreshLabel}</Button>
         </div>
       </div>
 
-      {loading ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-3"><BrandDot size={10} variant="pulse" theme="dark" />{loadingLabel}</div></div> : null}
-      {!loading && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
+      {isPending ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-3"><BrandDot size={10} variant="pulse" theme="dark" />{loadingLabel}</div></div> : null}
+      {!isPending && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
 
-      {!loading && filtered.length > 0 ? (
+      {!isPending && filtered.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-white/10">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-white/10 bg-slate-950/60 text-slate-400">
