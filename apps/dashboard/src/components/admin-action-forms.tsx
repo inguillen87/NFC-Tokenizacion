@@ -40,9 +40,47 @@ type AdminActionFormsProps = {
   };
 };
 
+type ApiSummaryItem = { label: string; value: string };
+
+function stringifyValue(value: unknown) {
+  if (Array.isArray(value)) return value.join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return String(value ?? "-");
+}
+
+function buildSummary(data: unknown): ApiSummaryItem[] {
+  if (!data || typeof data !== "object") return [];
+  const record = data as Record<string, unknown>;
+  const preferredKeys = [
+    "batch",
+    "tenant_slug",
+    "requested_quantity",
+    "sku",
+    "profile",
+    "inserted",
+    "reactivated",
+    "ignored",
+    "importedRows",
+    "manifestBatchIds",
+    "activated",
+    "requested",
+    "uids",
+    "reason",
+    "keys",
+  ];
+
+  const entries = preferredKeys
+    .filter((key) => key in record)
+    .map((key) => ({ label: key.replaceAll("_", " "), value: stringifyValue(record[key]) }));
+
+  if (entries.length) return entries;
+  return Object.entries(record).slice(0, 8).map(([key, value]) => ({ label: key.replaceAll("_", " "), value: stringifyValue(value) }));
+}
+
 export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
   const [role, setRole] = useState<Role>("super-admin");
   const [status, setStatus] = useState<string>(readyLabel);
+  const [summary, setSummary] = useState<ApiSummaryItem[]>([]);
   const [pending, setPending] = useState(false);
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
@@ -54,7 +92,6 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
   const canEdit = role !== "viewer";
   const roleMessage = useMemo(() => copy.roleHint[role], [copy.roleHint, role]);
 
-
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
     createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
@@ -64,11 +101,14 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
 
   async function submit(path: string, payload: unknown) {
     setPending(true);
+    setSummary([]);
     setStatus(`POST ${path}`);
     try {
       const data = await postAdmin<unknown>(path, payload);
-      setStatus(`OK ${JSON.stringify(data).slice(0, 180)}`);
+      setSummary(buildSummary(data));
+      setStatus("Action completed successfully");
     } catch (error) {
+      setSummary([]);
       setStatus(error instanceof Error ? error.message : "Request failed");
     } finally {
       setPending(false);
@@ -156,6 +196,16 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
       <Card className="p-4">
         <p className="text-xs text-cyan-300">{copy.apiStatus}</p>
         <p className="mt-1 break-all text-xs text-slate-300">{pending ? "Running action..." : status}</p>
+        {summary.length ? (
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {summary.map((item) => (
+              <div key={`${item.label}-${item.value}`} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
+                <p className="uppercase tracking-[0.14em] text-cyan-300">{item.label}</p>
+                <p className="mt-1 break-all text-slate-100">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </Card>
     </div>
   );
