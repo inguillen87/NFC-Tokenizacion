@@ -34,6 +34,12 @@ type GlossaryCopy = {
   replacementsTitle: string;
   replacementsLead: string;
   replacements: Array<{ bad: string; good: string }>;
+  replacementsBadLabel: string;
+  replacementsGoodLabel: string;
+  sayInsteadLabel: string;
+  usageTitle: string;
+  usageLead: string;
+  usageCards: Array<{ surface: string; goal: string; line: string }>;
   rulesTitle: string;
   rules: string[];
   helperTitle: string;
@@ -83,7 +89,8 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
     ],
     approvedTitle: "Términos aprobados",
-    approvedLead: "Son las expresiones que mejor describen la categoría, el producto y el valor comercial sin encerrar a nexID en una narrativa chica.",
+    approvedLead:
+      "Son las expresiones que mejor describen la categoría, el producto y el valor comercial sin encerrar a nexID en una narrativa chica.",
     approved: [
       {
         term: "Identidad física verificable",
@@ -122,7 +129,8 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
     ],
     avoidTitle: "Términos restringidos o a evitar",
-    avoidLead: "No siempre están “prohibidos” en sentido absoluto, pero sí degradan el posicionamiento o abren preguntas innecesarias.",
+    avoidLead:
+      "No siempre están “prohibidos” en sentido absoluto, pero sí degradan el posicionamiento o abren preguntas innecesarias.",
     avoid: [
       {
         term: "Empresa de chips NFC",
@@ -151,7 +159,8 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
     ],
     canonicalTitle: "Frases canónicas listas para usar",
-    canonicalLead: "Estas frases sirven como base para hero copy, decks, ventas, introducciones de demo y documentos comerciales.",
+    canonicalLead:
+      "Estas frases sirven como base para hero copy, decks, ventas, introducciones de demo y documentos comerciales.",
     canonical: [
       "Convertimos productos, credenciales y documentos en identidades digitales verificables.",
       "Antifraude protege la verdad del objeto. Tokenización digitaliza derechos sobre ese objeto.",
@@ -159,12 +168,41 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "La tokenización no es el inicio: primero identidad física verificable, después derechos digitales.",
     ],
     replacementsTitle: "Reemplazos rápidos",
-    replacementsLead: "Cuando un término genera ruido, cambiá la formulación por una que preserve precisión y amplitud comercial.",
+    replacementsLead:
+      "Cuando un término genera ruido, cambiá la formulación por una que preserve precisión y amplitud comercial.",
     replacements: [
       { bad: "Vendemos tags NFC", good: "Operamos identidades físicas verificables sobre carriers como NFC y QR." },
       { bad: "Es una activación con chip", good: "Es una experiencia conectada a una plataforma de validación y derechos." },
       { bad: "Tokenizamos productos", good: "Primero verificamos el objeto y luego digitalizamos derechos sobre él." },
       { bad: "Es solo para vino", good: "Ya aplica a vino, eventos, documentos, credenciales, lujo y sector público." },
+    ],
+    replacementsBadLabel: "Evitá decir",
+    replacementsGoodLabel: "Decilo así",
+    sayInsteadLabel: "Decí mejor",
+    usageTitle: "Cómo hablar según la superficie",
+    usageLead:
+      "No todo canal necesita el mismo nivel de detalle. Acá está el framing más útil según dónde estés comunicando o vendiendo.",
+    usageCards: [
+      {
+        surface: "Homepage / hero",
+        goal: "Abrir la categoría sin fricción",
+        line: "Presentá a nexID como infraestructura para identidades físicas verificables, no como hardware o tokenización aislada.",
+      },
+      {
+        surface: "Deck comercial",
+        goal: "Mostrar claridad de producto",
+        line: "Usá Verify → Passport → Rights para ordenar la conversación y separar autenticidad, datos y derechos digitales.",
+      },
+      {
+        surface: "Canal / reseller",
+        goal: "Vender resultado y margen",
+        line: "Priorizá rollout, SKU, batches, activación, trazabilidad y revenue; evitá jerga interna si no agrega valor comercial.",
+      },
+      {
+        surface: "Demo / WhatsApp",
+        goal: "Explicar rápido sin sobrecargar",
+        line: "Mostrá una prueba concreta de validación y después conectala con passport o rights según el caso.",
+      },
     ],
     rulesTitle: "Reglas editoriales de uso",
     rules: [
@@ -182,10 +220,12 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
     ],
     docsEyebrow: "Para profundizar",
     docsTitle: "Llevá este lenguaje a la documentación",
-    docsBody: "Si ya entendiste cómo nombrar la categoría y cada capa de producto, seguí con docs para ver rollout, perfiles de chip, API y FAQ comercial-técnica.",
+    docsBody:
+      "Si ya entendiste cómo nombrar la categoría y cada capa de producto, seguí con docs para ver rollout, perfiles de chip, API y FAQ comercial-técnica.",
     demoEyebrow: "Para verlo en acción",
     demoTitle: "Probalo en una demo real",
-    demoBody: "La mejor forma de fijar el discurso es ver Verify, Passport y Rights funcionando juntos en una superficie operativa y mobile.",
+    demoBody:
+      "La mejor forma de fijar el discurso es ver Verify, Passport y Rights funcionando juntos en una superficie operativa y mobile.",
     ctaDocs: "Abrir docs",
     ctaDemo: "Ver demo",
   },
@@ -217,7 +257,8 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
     ],
     approvedTitle: "Termos aprovados",
-    approvedLead: "São as expressões que melhor descrevem categoria, produto e valor comercial sem reduzir a nexID a uma narrativa pequena.",
+    approvedLead:
+      "São as expressões que melhor descrevem categoria, produto e valor comercial sem reduzir a nexID a uma narrativa pequena.",
     approved: [
       {
         term: "Identidade física verificável",
@@ -256,7 +297,8 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
     ],
     avoidTitle: "Termos restritos ou a evitar",
-    avoidLead: "Nem sempre são proibidos em sentido absoluto, mas degradam o posicionamento ou abrem perguntas desnecessárias.",
+    avoidLead:
+      "Nem sempre são proibidos em sentido absoluto, mas degradam o posicionamento ou abrem perguntas desnecessárias.",
     avoid: [
       {
         term: "Empresa de chips NFC",
@@ -285,7 +327,8 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
     ],
     canonicalTitle: "Frases canônicas prontas para uso",
-    canonicalLead: "Estas frases servem de base para hero copy, decks, vendas, introduções de demo e documentos comerciais.",
+    canonicalLead:
+      "Estas frases servem de base para hero copy, decks, vendas, introduções de demo e documentos comerciais.",
     canonical: [
       "Convertimos produtos, credenciais e documentos em identidades digitais verificáveis.",
       "Antifraude protege a verdade do objeto. Tokenização digitaliza direitos sobre esse objeto.",
@@ -293,12 +336,41 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "Tokenização não é o começo: primeiro identidade física verificável, depois direitos digitais.",
     ],
     replacementsTitle: "Substituições rápidas",
-    replacementsLead: "Quando um termo gerar ruído, troque por uma formulação mais precisa e comercialmente ampla.",
+    replacementsLead:
+      "Quando um termo gerar ruído, troque por uma formulação mais precisa e comercialmente ampla.",
     replacements: [
       { bad: "Vendemos tags NFC", good: "Operamos identidades físicas verificáveis sobre carriers como NFC e QR." },
       { bad: "É uma ativação com chip", good: "É uma experiência conectada a uma plataforma de validação e direitos." },
       { bad: "Tokenizamos produtos", good: "Primeiro verificamos o objeto e depois digitalizamos direitos sobre ele." },
       { bad: "Serve só para vinho", good: "Também aplica a vinho, eventos, documentos, credenciais, luxo e governo." },
+    ],
+    replacementsBadLabel: "Evite dizer",
+    replacementsGoodLabel: "Diga assim",
+    sayInsteadLabel: "Diga melhor",
+    usageTitle: "Como falar segundo a superfície",
+    usageLead:
+      "Nem todo canal precisa do mesmo nível de detalhe. Aqui está o framing mais útil segundo o contexto de comunicação ou venda.",
+    usageCards: [
+      {
+        surface: "Homepage / hero",
+        goal: "Abrir a categoria sem fricção",
+        line: "Apresente a nexID como infraestrutura para identidades físicas verificáveis, não como hardware ou tokenização isolada.",
+      },
+      {
+        surface: "Deck comercial",
+        goal: "Mostrar clareza de produto",
+        line: "Use Verify → Passport → Rights para ordenar a conversa e separar autenticidade, dados e direitos digitais.",
+      },
+      {
+        surface: "Canal / revenda",
+        goal: "Vender resultado e margem",
+        line: "Priorize rollout, SKU, batches, ativação, rastreabilidade e revenue; evite jargão interno se não agregar valor comercial.",
+      },
+      {
+        surface: "Demo / WhatsApp",
+        goal: "Explicar rápido sem sobrecarga",
+        line: "Mostre uma prova concreta de validação e depois conecte com passport ou rights conforme o caso.",
+      },
     ],
     rulesTitle: "Regras editoriais",
     rules: [
@@ -316,10 +388,12 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
     ],
     docsEyebrow: "Para aprofundar",
     docsTitle: "Leve esta linguagem para a documentação",
-    docsBody: "Se você já entendeu como nomear a categoria e cada camada do produto, siga para docs para ver rollout, perfis de chip, API e FAQ comercial-técnica.",
+    docsBody:
+      "Se você já entendeu como nomear a categoria e cada camada do produto, siga para docs para ver rollout, perfis de chip, API e FAQ comercial-técnica.",
     demoEyebrow: "Para ver em ação",
     demoTitle: "Teste em uma demo real",
-    demoBody: "A melhor forma de fixar o discurso é ver Verify, Passport e Rights funcionando juntos em uma superfície operacional e mobile.",
+    demoBody:
+      "A melhor forma de fixar o discurso é ver Verify, Passport e Rights funcionando juntos em uma superfície operacional e mobile.",
     ctaDocs: "Abrir docs",
     ctaDemo: "Ver demo",
   },
@@ -351,7 +425,8 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
     ],
     approvedTitle: "Approved terms",
-    approvedLead: "These are the strongest ways to describe the category, the product and the commercial value without boxing nexID into a narrow narrative.",
+    approvedLead:
+      "These are the strongest ways to describe the category, the product and the commercial value without boxing nexID into a narrow narrative.",
     approved: [
       {
         term: "Verifiable physical identity",
@@ -390,7 +465,8 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
     ],
     avoidTitle: "Restricted or avoid terms",
-    avoidLead: "Not always literally forbidden, but they weaken positioning or trigger unnecessary objections.",
+    avoidLead:
+      "Not always literally forbidden, but they weaken positioning or trigger unnecessary objections.",
     avoid: [
       {
         term: "NFC chip company",
@@ -419,7 +495,8 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
     ],
     canonicalTitle: "Canonical ready-to-use phrases",
-    canonicalLead: "Use these lines as starting points for hero copy, decks, sales intros, demo intros and commercial docs.",
+    canonicalLead:
+      "Use these lines as starting points for hero copy, decks, sales intros, demo intros and commercial docs.",
     canonical: [
       "We turn products, credentials and documents into verifiable digital identities.",
       "Anti-fraud protects the truth of the object. Tokenization digitizes rights on top of that object.",
@@ -427,12 +504,41 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "Tokenization is not step one: first establish a verifiable physical identity, then add digital rights.",
     ],
     replacementsTitle: "Quick replacements",
-    replacementsLead: "When wording creates friction, switch to a formulation that is more accurate and commercially scalable.",
+    replacementsLead:
+      "When wording creates friction, switch to a formulation that is more accurate and commercially scalable.",
     replacements: [
       { bad: "We sell NFC tags", good: "We operate verifiable physical identities on carriers such as NFC and QR." },
       { bad: "It is a chip activation", good: "It is an experience connected to a validation and rights platform." },
       { bad: "We tokenize products", good: "We first verify the object and then digitize rights on top of it." },
       { bad: "It is only for wine", good: "It already applies to wine, events, documents, credentials, luxury and public-sector flows." },
+    ],
+    replacementsBadLabel: "Avoid saying",
+    replacementsGoodLabel: "Say this instead",
+    sayInsteadLabel: "Say instead",
+    usageTitle: "How to talk by surface",
+    usageLead:
+      "Not every channel needs the same level of detail. Use the framing below depending on where you are communicating or selling.",
+    usageCards: [
+      {
+        surface: "Homepage / hero",
+        goal: "Open the category with low friction",
+        line: "Present nexID as infrastructure for verifiable physical identities, not as hardware or isolated tokenization.",
+      },
+      {
+        surface: "Sales deck",
+        goal: "Show product clarity",
+        line: "Use Verify → Passport → Rights to structure the conversation and separate authenticity, data and digital rights.",
+      },
+      {
+        surface: "Channel / reseller",
+        goal: "Sell outcome and margin",
+        line: "Prioritize rollout, SKU, batches, activation, traceability and revenue; avoid internal jargon unless it helps the buyer.",
+      },
+      {
+        surface: "Demo / WhatsApp",
+        goal: "Explain quickly without overload",
+        line: "Start with a concrete validation proof and only then connect it to passport or rights depending on the use case.",
+      },
     ],
     rulesTitle: "Editorial usage rules",
     rules: [
@@ -450,10 +556,12 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
     ],
     docsEyebrow: "Go deeper",
     docsTitle: "Carry this language into the docs",
-    docsBody: "Once the naming and product layers are clear, move into docs to review rollout standards, chip profiles, API surfaces and the short commercial FAQ.",
+    docsBody:
+      "Once the naming and product layers are clear, move into docs to review rollout standards, chip profiles, API surfaces and the short commercial FAQ.",
     demoEyebrow: "See it live",
     demoTitle: "Validate the story in a real demo",
-    demoBody: "The fastest way to internalize the language is to see Verify, Passport and Rights working together in an operational and mobile experience.",
+    demoBody:
+      "The fastest way to internalize the language is to see Verify, Passport and Rights working together in an operational and mobile experience.",
     ctaDocs: "Open docs",
     ctaDemo: "View demo",
   },
@@ -485,7 +593,10 @@ export default async function GlossaryPage() {
           </p>
           <div className="mt-4 grid gap-3">
             {copy.helperBullets.map((item) => (
-              <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300/20">
+              <div
+                key={item}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300/20"
+              >
                 {item}
               </div>
             ))}
@@ -551,7 +662,7 @@ export default async function GlossaryPage() {
                 <p className="text-sm font-semibold text-rose-100">{item.term}</p>
                 <p className="mt-2 text-sm leading-6 text-rose-50/90">{item.why}</p>
                 <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
-                  <span className="font-semibold text-emerald-200">Say instead:</span> {item.sayInstead}
+                  <span className="font-semibold text-emerald-200">{copy.sayInsteadLabel}:</span> {item.sayInstead}
                 </div>
               </div>
             ))}
@@ -566,13 +677,33 @@ export default async function GlossaryPage() {
           <p className="mt-2 text-sm text-slate-300">{copy.canonicalLead}</p>
           <div className="mt-4 grid gap-3">
             {copy.canonical.map((line) => (
-              <div key={line} className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-50">
+              <div
+                key={line}
+                className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-50"
+              >
                 {line}
               </div>
             ))}
           </div>
         </Card>
       </div>
+
+      <Card className="p-6">
+        <h3 className="inline-flex items-center gap-2 text-lg font-semibold text-white">
+          <MessagesSquare className="h-5 w-5 text-cyan-300" />
+          {copy.usageTitle}
+        </h3>
+        <p className="mt-2 max-w-3xl text-sm text-slate-300">{copy.usageLead}</p>
+        <div className="mt-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+          {copy.usageCards.map((item) => (
+            <div key={item.surface} className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300/25">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">{item.surface}</p>
+              <p className="mt-2 text-sm font-semibold text-white">{item.goal}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">{item.line}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <Card className="p-6">
@@ -584,9 +715,9 @@ export default async function GlossaryPage() {
           <div className="mt-4 grid gap-3">
             {copy.replacements.map((item) => (
               <div key={`${item.bad}-${item.good}`} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-200">Avoid saying</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-200">{copy.replacementsBadLabel}</p>
                 <p className="mt-1 text-sm text-rose-100">{item.bad}</p>
-                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200">Say this instead</p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200">{copy.replacementsGoodLabel}</p>
                 <p className="mt-1 text-sm text-emerald-100">{item.good}</p>
               </div>
             ))}
