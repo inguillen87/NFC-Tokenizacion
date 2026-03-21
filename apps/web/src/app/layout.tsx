@@ -29,6 +29,14 @@ export async function generateMetadata(): Promise<Metadata> {
     title: localizedTitle,
     description: siteConfig.description,
     manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "nexID",
+    },
+    formatDetection: {
+      telephone: false,
+    },
   };
 }
 
@@ -37,7 +45,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const locale = resolveLocale(cookieStore.get("locale")?.value);
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
       <body>
         {children}
         <HelpBot locale={locale} mode="sales" />
