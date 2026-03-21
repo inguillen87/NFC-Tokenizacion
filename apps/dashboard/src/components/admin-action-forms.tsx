@@ -47,8 +47,8 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
   const [batch, setBatch] = useState({ tenantId: "", batchId: "", sku: "", quantity: "" });
-  const [manifest, setManifest] = useState({ batchId: "", csv: "batch_id,uid_hex,ic_type,roll_id,qc_status,timestamp" });
-  const [activation, setActivation] = useState({ batchId: "", count: "" });
+  const [manifest, setManifest] = useState({ batchId: "", csv: "batch_id,uid_hex,ic_type,roll_id,qc_status,timestamp", activateImported: true });
+  const [activation, setActivation] = useState({ batchId: "", count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
 
   const canEdit = role !== "viewer";
@@ -58,8 +58,8 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
     createBatch: "Creates a batch under an existing tenant slug/id for provisioning tags.",
-    importManifest: "Imports CSV rows (UID + metadata) into an existing batch.",
-    activateRevoke: "Activate tags for issuance, or revoke a batch when risk is detected.",
+    importManifest: "Imports CSV rows (UID + metadata) into an existing batch and can leave them active on arrival. Use this when supplier-coded tags arrive with a manifest.",
+    activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
   };
 
   async function submit(path: string, payload: unknown) {
@@ -129,7 +129,11 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
             <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
-            <Button disabled={pending || !canEdit || !manifest.batchId} onClick={() => submit(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv })}>{copy.actions.importManifest}</Button>
+            <label className="flex items-center gap-2 text-xs text-slate-300">
+              <input disabled={!canEdit} type="checkbox" checked={manifest.activateImported} onChange={(event) => setManifest({ ...manifest, activateImported: event.target.checked })} />
+              Activate imported tags immediately when the supplier already encoded them
+            </label>
+            <Button disabled={pending || !canEdit || !manifest.batchId} onClick={() => submit(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv, activateImported: manifest.activateImported })}>{copy.actions.importManifest}</Button>
           </div>
         </Card>
 
@@ -139,7 +143,8 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={activation.batchId} onChange={(event) => setActivation({ ...activation, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.count} value={activation.count} onChange={(event) => setActivation({ ...activation, count: event.target.value })} />
-            <Button disabled={pending || !canEdit || !activation.batchId || !activation.count} onClick={() => submit("/admin/tags/activate", { ...activation, count: Number(activation.count || 0) })}>{copy.actions.activateTags}</Button>
+            <textarea disabled={!canEdit} className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" placeholder="Optional UID list, separated by commas or new lines" value={activation.uids} onChange={(event) => setActivation({ ...activation, uids: event.target.value })} />
+            <Button disabled={pending || !canEdit || !activation.batchId || (!activation.count && !activation.uids.trim())} onClick={() => submit("/admin/tags/activate", { bid: activation.batchId, count: Number(activation.count || 0), uids: activation.uids })}>{copy.actions.activateTags}</Button>
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
             <Button disabled={pending || !canEdit || !revoke.batchId} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke? This can impact live validations.")) submit(`/admin/batches/${revoke.batchId}/revoke`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>

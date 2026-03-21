@@ -16,17 +16,39 @@ export async function GET(req: Request) {
 
   const rows = tenantSlug
     ? await sql/*sql*/`
-      SELECT b.id, b.bid, b.status, b.created_at, t.slug AS tenant_slug
+      SELECT
+        b.id,
+        b.bid,
+        b.status,
+        b.created_at,
+        t.slug AS tenant_slug,
+        COUNT(tags.id)::int AS quantity,
+        COUNT(tags.id) FILTER (WHERE tags.status = 'active')::int AS active_tags,
+        COUNT(tags.id) FILTER (WHERE tags.status = 'inactive')::int AS inactive_tags,
+        COUNT(tags.id) FILTER (WHERE tags.status = 'revoked')::int AS revoked_tags
       FROM batches b
       JOIN tenants t ON t.id = b.tenant_id
+      LEFT JOIN tags ON tags.batch_id = b.id
       WHERE t.slug = ${tenantSlug}
+      GROUP BY b.id, t.slug
       ORDER BY b.created_at DESC
       LIMIT 300
     `
     : await sql/*sql*/`
-      SELECT b.id, b.bid, b.status, b.created_at, t.slug AS tenant_slug
+      SELECT
+        b.id,
+        b.bid,
+        b.status,
+        b.created_at,
+        t.slug AS tenant_slug,
+        COUNT(tags.id)::int AS quantity,
+        COUNT(tags.id) FILTER (WHERE tags.status = 'active')::int AS active_tags,
+        COUNT(tags.id) FILTER (WHERE tags.status = 'inactive')::int AS inactive_tags,
+        COUNT(tags.id) FILTER (WHERE tags.status = 'revoked')::int AS revoked_tags
       FROM batches b
       JOIN tenants t ON t.id = b.tenant_id
+      LEFT JOIN tags ON tags.batch_id = b.id
+      GROUP BY b.id, t.slug
       ORDER BY b.created_at DESC
       LIMIT 300
     `;
@@ -39,8 +61,8 @@ export async function POST(req: Request) {
   if (auth) return auth;
 
   const body: Record<string, unknown> = await req.json().catch(() => ({}));
-  const tenantSlug = String(body.tenant_slug || "").toLowerCase();
-  const bid = String(body.bid || "");
+  const tenantSlug = String(body.tenant_slug || body.tenantId || "").toLowerCase();
+  const bid = String(body.bid || body.batchId || "");
   if (!tenantSlug || !bid) return json({ ok: false, reason: "tenant_slug and bid required" }, 400);
 
   const tenants = await sql/*sql*/`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`;
