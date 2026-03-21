@@ -39,6 +39,8 @@ export default async function HomePage() {
       quickAudiences: "Audience pitch",
       quickDemoLab: "Demo Lab",
       quickInvestor: "Investor snapshot",
+      rolloutDocs: "Read rollout docs",
+      rolloutPricing: "See rollout pricing",
       rolloutTitle: "Pilot → rollout flow",
       rolloutBullets: [
         "1. Define batch_id, SKU, expected volume and security profile before production.",
@@ -65,6 +67,8 @@ export default async function HomePage() {
       quickAudiences: "Pitch por audiência",
       quickDemoLab: "Demo Lab",
       quickInvestor: "Investor snapshot",
+      rolloutDocs: "Ver docs de rollout",
+      rolloutPricing: "Ver pricing rollout",
       rolloutTitle: "Fluxo piloto → rollout",
       rolloutBullets: [
         "1. Defina batch_id, SKU, volume esperado e perfil de segurança antes da produção.",
@@ -90,6 +94,8 @@ export default async function HomePage() {
       quickAudiences: "Pitch por audiencia",
       quickDemoLab: "Demo Lab",
       quickInvestor: "Investor snapshot",
+      rolloutDocs: "Ver docs de rollout",
+      rolloutPricing: "Ver pricing rollout",
       rolloutTitle: "Flujo piloto → rollout",
       rolloutBullets: [
         "1. Definí batch_id, SKU, volumen esperado y perfil de seguridad antes de fabricar.",
@@ -194,6 +200,10 @@ export default async function HomePage() {
               {labels.rolloutBullets.map((item) => (
                 <div key={item} className="rounded-lg border border-cyan-300/15 bg-slate-950/50 p-3 text-xs text-slate-200">{item}</div>
               ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/docs" className="rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100">{labels.rolloutDocs}</Link>
+              <Link href="/pricing" className="rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100">{labels.rolloutPricing}</Link>
             </div>
           </div>
         </div>

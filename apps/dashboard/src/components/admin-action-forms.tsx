@@ -42,6 +42,8 @@ type AdminActionFormsProps = {
 
 type ApiSummaryItem = { label: string; value: string };
 
+type ActionPayload = Record<string, unknown>;
+
 function stringifyValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
   if (value && typeof value === "object") return JSON.stringify(value);
@@ -81,6 +83,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
   const [role, setRole] = useState<Role>("super-admin");
   const [status, setStatus] = useState<string>(readyLabel);
   const [summary, setSummary] = useState<ApiSummaryItem[]>([]);
+  const [lastResponse, setLastResponse] = useState<ActionPayload | null>(null);
   const [pending, setPending] = useState(false);
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
@@ -99,15 +102,26 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
     activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
   };
 
+  async function copyValue(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setStatus(`Copied ${value.slice(0, 24)}${value.length > 24 ? "…" : ""}`);
+    } catch {
+      setStatus("Clipboard unavailable");
+    }
+  }
+
   async function submit(path: string, payload: unknown) {
     setPending(true);
     setSummary([]);
     setStatus(`POST ${path}`);
     try {
       const data = await postAdmin<unknown>(path, payload);
+      setLastResponse((data && typeof data === "object") ? (data as ActionPayload) : null);
       setSummary(buildSummary(data));
       setStatus("Action completed successfully");
     } catch (error) {
+      setLastResponse(null);
       setSummary([]);
       setStatus(error instanceof Error ? error.message : "Request failed");
     } finally {
@@ -204,6 +218,22 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
                 <p className="mt-1 break-all text-slate-100">{item.value}</p>
               </div>
             ))}
+          </div>
+        ) : null}
+        {lastResponse && (lastResponse.keys || lastResponse.batch || lastResponse.ndef_url_template) ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {typeof lastResponse.batch === "object" && lastResponse.batch && "bid" in lastResponse.batch ? (
+              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String((lastResponse.batch as ActionPayload).bid || ""))}>Copy batch ID</button>
+            ) : null}
+            {typeof lastResponse.keys === "object" && lastResponse.keys && "k_meta_hex" in lastResponse.keys ? (
+              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String((lastResponse.keys as ActionPayload).k_meta_hex || ""))}>Copy meta key</button>
+            ) : null}
+            {typeof lastResponse.keys === "object" && lastResponse.keys && "k_file_hex" in lastResponse.keys ? (
+              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String((lastResponse.keys as ActionPayload).k_file_hex || ""))}>Copy file key</button>
+            ) : null}
+            {typeof lastResponse.ndef_url_template === "string" ? (
+              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String(lastResponse.ndef_url_template || ""))}>Copy SUN URL template</button>
+            ) : null}
           </div>
         ) : null}
       </Card>
