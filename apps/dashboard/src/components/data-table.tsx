@@ -32,7 +32,10 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
   return (
     <Card className="p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        <div>
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          <p className="mt-1 text-xs text-slate-400">{filtered.length} / {rows.length} rows visible</p>
+        </div>
         <div className="flex items-center gap-2">
           <input placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm" />
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm">
@@ -40,6 +43,7 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
             {statuses.map((item) => <option key={item} value={item}>{statusMap?.[item] ?? item}</option>)}
           </select>
           <Button variant="secondary" onClick={() => startTransition(() => router.refresh())}>{refreshLabel}</Button>
+          {(query || status !== "all") ? <button type="button" className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300" onClick={() => { setQuery(""); setStatus("all"); }}>Clear</button> : null}
         </div>
       </div>
 

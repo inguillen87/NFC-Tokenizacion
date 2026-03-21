@@ -62,6 +62,13 @@ export default async function PricingPage() {
             "Treat pilot cost as proof budget; treat 10k/50k orders as governed programs with acceptance criteria.",
             "Price includes software control, QA and activation governance — not just encoded hardware.",
           ],
+          rolloutChecklistTitle: "Checklist before approving rollout budget",
+          rolloutChecklist: [
+            "Approved batch_id convention and batch owner.",
+            "Supplier confirmed URL template, key custody and manifest schema.",
+            "Pilot KPI defined: activation, scan rate, fraud/tamper alerts and renewal path.",
+            "Commercial owner and operations owner assigned before go-live.",
+          ],
         }
       : locale === "pt-BR"
       ? {
@@ -111,6 +118,13 @@ export default async function PricingPage() {
             "Tratar custo de piloto como budget de prova; tratar pedidos de 10k/50k como programas governados com critérios de aceite.",
             "O preço inclui controle de software, QA e governança de ativação — não só hardware codificado.",
           ],
+          rolloutChecklistTitle: "Checklist antes de aprovar orçamento de rollout",
+          rolloutChecklist: [
+            "Convenção de batch_id e owner do lote aprovados.",
+            "Fornecedor confirmou URL template, custódia das keys e schema do manifest.",
+            "KPIs do piloto definidos: ativação, scan rate, alertas de fraude/tamper e caminho de renewal.",
+            "Owner comercial e owner operacional definidos antes do go-live.",
+          ],
         }
       : {
           includeTitle: "Qué incluye cada propuesta",
@@ -158,6 +172,13 @@ export default async function PricingPage() {
             "No aceptar producción del proveedor sin batch_id, URL template, ownership de keys y formato de manifest aprobados.",
             "Tomar el costo piloto como presupuesto de prueba; tratar pedidos de 10k/50k como programas gobernados con criterios de aceptación.",
             "El precio incluye control de software, QA y gobernanza de activación — no solo hardware codificado.",
+          ],
+          rolloutChecklistTitle: "Checklist antes de aprobar presupuesto de rollout",
+          rolloutChecklist: [
+            "Convención de batch_id y owner del lote aprobados.",
+            "Proveedor confirmó URL template, custodia de keys y schema del manifest.",
+            "KPIs del piloto definidos: activación, scan rate, alertas de fraude/tamper y camino de renewal.",
+            "Owner comercial y owner operativo definidos antes del go-live.",
           ],
         };
 
@@ -227,6 +248,16 @@ export default async function PricingPage() {
           {labels.procurementBullets.map((item) => (
             <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
           ))}
+        </div>
+        <div className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
+          <h4 className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">{labels.rolloutChecklistTitle}</h4>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            {labels.rolloutChecklist.map((item, index) => (
+              <div key={item} className="rounded-xl border border-cyan-300/20 bg-slate-950/50 px-3 py-3 text-sm text-cyan-50">
+                <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-cyan-300/30 text-xs text-cyan-200">{index + 1}</span>{item}
+              </div>
+            ))}
+          </div>
         </div>
       </Card>
 

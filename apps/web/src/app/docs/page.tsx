@@ -267,20 +267,23 @@ export default async function DocsPage() {
       <BackLink />
       <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.quickJumpTitle}</p>
+        <div className="flex flex-wrap gap-2">
         <a href="#thesis" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100">{copy.pillarsTitle}</a>
         <a href="#api" className="rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-xs text-indigo-100">{copy.apiTitle}</a>
         <a href="#rollout" className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100">{copy.rolloutTitle}</a>
         <a href="#faq" className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100">{copy.faqTitle}</a>
         <a href="#strategy" className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-100">{copy.strategyTitle}</a>
+        </div>
       </div>
 
-      <Card id="thesis" className="p-6 transition-transform duration-200 hover:-translate-y-1">
+      <div id="thesis"><Card className="p-6 transition-transform duration-200 hover:-translate-y-1">
         <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
         <ul className="mt-4 space-y-2 text-sm text-slate-300">
           {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
         </ul>
-      </Card>
+      </Card></div>
 
       <Card className="p-6 transition-transform duration-200 hover:-translate-y-1">
         <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
@@ -295,7 +298,7 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <Card id="api" className="p-6 transition-transform duration-200 hover:-translate-y-1">
+      <div id="api"><Card className="p-6 transition-transform duration-200 hover:-translate-y-1">
         <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
         <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
         <div className="mt-4 space-y-3">
@@ -306,7 +309,7 @@ export default async function DocsPage() {
             </div>
           ))}
         </div>
-      </Card>
+      </Card></div>
 
       <div id="rollout" className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="p-6">
@@ -328,7 +331,7 @@ export default async function DocsPage() {
       </div>
 
 
-      <Card id="faq" className="p-6 scroll-mt-28">
+      <div id="faq" className="scroll-mt-28"><Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.faqItems.map((item) => (
@@ -342,9 +345,9 @@ export default async function DocsPage() {
             </details>
           ))}
         </div>
-      </Card>
+      </Card></div>
 
-      <Card id="strategy" className="p-6 scroll-mt-28">
+      <div id="strategy" className="scroll-mt-28"><Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
         <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
         <div className="mt-4 flex flex-wrap gap-3">
@@ -352,7 +355,7 @@ export default async function DocsPage() {
           <Link className="rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100" href="/audiences">{copy.audiencesPage}</Link>
           <Link className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100" href="/glossary">{copy.glossaryPage}</Link>
         </div>
-      </Card>
+      </Card></div>
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>

@@ -43,6 +43,7 @@ type AdminActionFormsProps = {
 type ApiSummaryItem = { label: string; value: string };
 
 type ActionPayload = Record<string, unknown>;
+type CopyAction = { label: string; value: string };
 
 function stringifyValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
@@ -79,6 +80,28 @@ function buildSummary(data: unknown): ApiSummaryItem[] {
   return Object.entries(record).slice(0, 8).map(([key, value]) => ({ label: key.replaceAll("_", " "), value: stringifyValue(value) }));
 }
 
+
+function buildCopyActions(data: ActionPayload | null): CopyAction[] {
+  if (!data) return [];
+  const actions: CopyAction[] = [];
+  if (typeof data.batch === "object" && data.batch && "bid" in data.batch) {
+    actions.push({ label: "Copy batch ID", value: String((data.batch as ActionPayload).bid || "") });
+  }
+  if (typeof data.keys === "object" && data.keys && "k_meta_hex" in data.keys) {
+    actions.push({ label: "Copy meta key", value: String((data.keys as ActionPayload).k_meta_hex || "") });
+  }
+  if (typeof data.keys === "object" && data.keys && "k_file_hex" in data.keys) {
+    actions.push({ label: "Copy file key", value: String((data.keys as ActionPayload).k_file_hex || "") });
+  }
+  if (typeof data.ndef_url_template === "string") {
+    actions.push({ label: "Copy SUN URL template", value: String(data.ndef_url_template || "") });
+  }
+  if (actions.length > 1) {
+    actions.unshift({ label: "Copy supplier handoff", value: actions.map((item) => `${item.label.replace("Copy ", "")}:: ${item.value}`).join("\n") });
+  }
+  return actions.filter((item) => item.value);
+}
+
 export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
   const [role, setRole] = useState<Role>("super-admin");
   const [status, setStatus] = useState<string>(readyLabel);
@@ -94,6 +117,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
 
   const canEdit = role !== "viewer";
   const roleMessage = useMemo(() => copy.roleHint[role], [copy.roleHint, role]);
+  const copyActions = useMemo(() => buildCopyActions(lastResponse), [lastResponse]);
 
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
@@ -183,7 +207,8 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <p className="mt-1 text-xs text-slate-400">{hints.importManifest}</p>
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
-            <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
+            <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Expected columns: batch_id, uid_hex and optional metadata like ic_type, roll_id, qc_status, timestamp.</div>
             <label className="flex items-center gap-2 text-xs text-slate-300">
               <input disabled={!canEdit} type="checkbox" checked={manifest.activateImported} onChange={(event) => setManifest({ ...manifest, activateImported: event.target.checked })} />
               Activate imported tags immediately when the supplier already encoded them
@@ -198,7 +223,8 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={activation.batchId} onChange={(event) => setActivation({ ...activation, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.count} value={activation.count} onChange={(event) => setActivation({ ...activation, count: event.target.value })} />
-            <textarea disabled={!canEdit} className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" placeholder="Optional UID list, separated by commas or new lines" value={activation.uids} onChange={(event) => setActivation({ ...activation, uids: event.target.value })} />
+            <textarea disabled={!canEdit} className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="Optional UID list, separated by commas or new lines" value={activation.uids} onChange={(event) => setActivation({ ...activation, uids: event.target.value })} />
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Tip: paste one UID per line when QA wants to selectively activate audited units only.</div>
             <Button disabled={pending || !canEdit || !activation.batchId || (!activation.count && !activation.uids.trim())} onClick={() => submit("/admin/tags/activate", { bid: activation.batchId, count: Number(activation.count || 0), uids: activation.uids })}>{copy.actions.activateTags}</Button>
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
@@ -220,20 +246,11 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
             ))}
           </div>
         ) : null}
-        {lastResponse && (lastResponse.keys || lastResponse.batch || lastResponse.ndef_url_template) ? (
+        {copyActions.length ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            {typeof lastResponse.batch === "object" && lastResponse.batch && "bid" in lastResponse.batch ? (
-              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String((lastResponse.batch as ActionPayload).bid || ""))}>Copy batch ID</button>
-            ) : null}
-            {typeof lastResponse.keys === "object" && lastResponse.keys && "k_meta_hex" in lastResponse.keys ? (
-              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String((lastResponse.keys as ActionPayload).k_meta_hex || ""))}>Copy meta key</button>
-            ) : null}
-            {typeof lastResponse.keys === "object" && lastResponse.keys && "k_file_hex" in lastResponse.keys ? (
-              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String((lastResponse.keys as ActionPayload).k_file_hex || ""))}>Copy file key</button>
-            ) : null}
-            {typeof lastResponse.ndef_url_template === "string" ? (
-              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String(lastResponse.ndef_url_template || ""))}>Copy SUN URL template</button>
-            ) : null}
+            {copyActions.map((item) => (
+              <button key={item.label} type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(item.value)}>{item.label}</button>
+            ))}
           </div>
         ) : null}
       </Card>
