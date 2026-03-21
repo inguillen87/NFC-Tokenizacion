@@ -6,6 +6,32 @@ import { sql } from "../../../../../lib/db";
 import { checkAdmin } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 
+type ManifestPayload = {
+  csv?: string;
+  activateImported?: boolean;
+};
+
+type ManifestRow = Record<string, string>;
+
+function normalizeUid(value: unknown) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function normalizeBatchId(value: unknown) {
+  return String(value || "").trim();
+}
+
+async function readPayload(req: Request): Promise<ManifestPayload & { csv: string }> {
+  const contentType = req.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const body = (await req.json().catch(() => ({}))) as ManifestPayload;
+    return { csv: String(body.csv || ""), activateImported: Boolean(body.activateImported) };
+  }
+
+  const raw = await req.text();
+  return { csv: raw, activateImported: false };
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
   const auth = checkAdmin(req);
   if (auth) return auth;
@@ -15,22 +41,60 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
 
-  const raw = await req.text();
-  if (!raw.trim()) return json({ ok: false, reason: "empty csv body" }, 400);
+  const payload = await readPayload(req);
+  if (!payload.csv.trim()) return json({ ok: false, reason: "empty csv body" }, 400);
 
-  const rows = parse(raw, { columns: true, skip_empty_lines: true }) as Array<Record<string, string>>;
-  let inserted = 0;
+  const rows = parse(payload.csv, { columns: true, skip_empty_lines: true, trim: true }) as ManifestRow[];
+  if (!rows.length) return json({ ok: false, reason: "manifest has no rows" }, 400);
 
-  for (const row of rows) {
-    const uid = String(row.uid_hex || row.UID || "").toUpperCase();
-    if (!uid) continue;
-    await sql/*sql*/`
-      INSERT INTO tags (batch_id, uid_hex)
-      VALUES (${batch.id}, ${uid})
-      ON CONFLICT (batch_id, uid_hex) DO NOTHING
-    `;
-    inserted += 1;
+  const manifestBatchIds = Array.from(new Set(rows.map((row) => normalizeBatchId(row.batch_id || row.batchId)).filter(Boolean)));
+  const mismatchedBatchIds = manifestBatchIds.filter((value) => value !== bid);
+  if (mismatchedBatchIds.length > 0) {
+    return json({ ok: false, reason: "manifest batch_id does not match route batch", expected: bid, manifestBatchIds }, 400);
   }
 
-  return json({ ok: true, inserted, batch: bid });
+  const seen = new Set<string>();
+  const duplicates: string[] = [];
+  let inserted = 0;
+  let reactivated = 0;
+  let ignored = 0;
+
+  for (const row of rows) {
+    const uid = normalizeUid(row.uid_hex || row.UID || row.uid || row.uidHex);
+    if (!uid) {
+      ignored += 1;
+      continue;
+    }
+    if (seen.has(uid)) {
+      duplicates.push(uid);
+      continue;
+    }
+    seen.add(uid);
+
+    const result = await sql/*sql*/`
+      INSERT INTO tags (batch_id, uid_hex, status)
+      VALUES (${batch.id}, ${uid}, ${payload.activateImported ? 'active' : 'inactive'})
+      ON CONFLICT (batch_id, uid_hex)
+      DO UPDATE SET status = CASE
+        WHEN ${payload.activateImported} THEN 'active'::tag_status
+        ELSE tags.status
+      END
+      RETURNING xmax = 0 AS inserted, status
+    `;
+    const current = result[0];
+    if (current?.inserted) inserted += 1;
+    else if (payload.activateImported) reactivated += 1;
+  }
+
+  return json({
+    ok: true,
+    batch: bid,
+    manifestBatchIds: manifestBatchIds.length ? manifestBatchIds : [bid],
+    importedRows: rows.length,
+    inserted,
+    reactivated,
+    ignored,
+    duplicateUids: duplicates,
+    activated: payload.activateImported,
+  });
 }

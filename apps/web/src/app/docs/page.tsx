@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BackLink } from "../../components/back-link";
 import { Card, SectionHeading } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
+import { ArrowRight, BookOpen, CircleHelp, Layers3, Rocket, ShieldCheck } from "lucide-react";
 
 type DocsCopy = {
   eyebrow: string;
@@ -16,11 +17,14 @@ type DocsCopy = {
   apiRoutes: Array<{ method: string; path: string; detail: string }>;
   packsTitle: string;
   packs: string[];
+  rolloutTitle: string;
+  rolloutBullets: string[];
   revenueTitle: string;
   revenueBullets: string[];
   roadmapTitle: string;
   roadmapBullets: string[];
   actionsTitle: string;
+  quickJumpTitle: string;
   faqTitle: string;
   faqItems: Array<{ q: string; a: string }>;
   strategyTitle: string;
@@ -68,6 +72,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure (credenciales, certificados y evidencia física).",
       "Expansión inmediata: Cosmetics Secure. Expansión regulatoria: exportadores DPP-ready.",
     ],
+    rolloutTitle: "Estándar operativo para pilotos y rollouts serios",
+    rolloutBullets: [
+      "Crear batch por cliente/campaña con batch_id, SKU, cantidad esperada y perfil de seguridad definidos.",
+      "Entregar al proveedor un spec cerrado: chip, URL template, key ownership, formato CSV manifest y criterio de activación.",
+      "Importar manifest solo si el batch_id del archivo coincide exactamente con el batch creado en plataforma.",
+      "Operar estados planned / imported / active para detectar diferencias antes de escalar a 10k/50k unidades.",
+    ],
     revenueTitle: "Modelo de ingresos (lo que entiende un inversor)",
     revenueBullets: [
       "Setup/Pilot fee: discovery, diseño de caso, onboarding y activación.",
@@ -82,6 +93,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Siempre: NFC + QR fallback + data model DPP-ready.",
     ],
     actionsTitle: "Siguientes pasos",
+    quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ corta para explicar bien el producto",
     faqItems: [
       { q: "¿nexID vende chips NFC?", a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR." },
@@ -133,6 +145,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure.",
       "Expansão imediata: Cosmetics Secure. Expansão regulatória: exportadores DPP-ready.",
     ],
+    rolloutTitle: "Padrão operacional para pilotos e rollouts sérios",
+    rolloutBullets: [
+      "Criar batch por cliente/campanha com batch_id, SKU, volume esperado e perfil de segurança definidos.",
+      "Enviar ao fornecedor um spec fechado: chip, URL template, ownership das keys, formato CSV manifest e critério de ativação.",
+      "Importar manifest apenas se o batch_id do arquivo coincidir exatamente com o batch criado na plataforma.",
+      "Operar estados planned / imported / active para detectar diferenças antes de escalar para 10k/50k unidades.",
+    ],
     revenueTitle: "Modelo de receita",
     revenueBullets: [
       "Setup/Pilot fee.",
@@ -147,6 +166,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
     actionsTitle: "Próximos passos",
+    quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ curta para explicar o produto",
     faqItems: [
       { q: "A nexID vende chips NFC?", a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR." },
@@ -198,6 +218,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure.",
       "Immediate expansion: Cosmetics Secure. Regulatory expansion: DPP-ready exporters.",
     ],
+    rolloutTitle: "Operational standard for serious pilots and rollouts",
+    rolloutBullets: [
+      "Create one batch per customer/campaign with batch_id, SKU, expected volume and security profile defined up front.",
+      "Give suppliers a closed spec: chip, URL template, key ownership, CSV manifest format and activation criteria.",
+      "Import manifests only when the file batch_id exactly matches the batch created in platform.",
+      "Track planned / imported / active states to catch supplier mismatches before scaling to 10k/50k units.",
+    ],
     revenueTitle: "Revenue model",
     revenueBullets: [
       "Setup/Pilot fee.",
@@ -212,6 +239,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Always: NFC + QR fallback + DPP-ready data model.",
     ],
     actionsTitle: "Next steps",
+    quickJumpTitle: "Quick explore",
     faqTitle: "Short FAQ to make the value clear",
     faqItems: [
       { q: "Does nexID sell NFC chips?", a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers." },
@@ -240,14 +268,25 @@ export default async function DocsPage() {
       <BackLink />
       <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
-      <Card className="p-6">
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.quickJumpTitle}</p>
+        <div className="flex flex-wrap gap-2">
+        <a href="#thesis" className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5"><Layers3 className="h-3.5 w-3.5" />{copy.pillarsTitle}</a>
+        <a href="#api" className="inline-flex items-center gap-1 rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-xs text-indigo-100 transition-transform duration-200 hover:-translate-y-0.5"><ShieldCheck className="h-3.5 w-3.5" />{copy.apiTitle}</a>
+        <a href="#rollout" className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5"><Rocket className="h-3.5 w-3.5" />{copy.rolloutTitle}</a>
+        <a href="#faq" className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100 transition-transform duration-200 hover:-translate-y-0.5"><CircleHelp className="h-3.5 w-3.5" />{copy.faqTitle}</a>
+        <a href="#strategy" className="inline-flex items-center gap-1 rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-100 transition-transform duration-200 hover:-translate-y-0.5"><BookOpen className="h-3.5 w-3.5" />{copy.strategyTitle}</a>
+        </div>
+      </div>
+
+      <div id="thesis"><Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
         <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
         <ul className="mt-4 space-y-2 text-sm text-slate-300">
           {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
         </ul>
-      </Card>
+      </Card></div>
 
-      <Card className="p-6">
+      <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
         <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.chipRows.map((row) => (
@@ -260,7 +299,7 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <Card className="p-6">
+      <div id="api"><Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(99,102,241,0.10)]">
         <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
         <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
         <div className="mt-4 space-y-3">
@@ -271,12 +310,16 @@ export default async function DocsPage() {
             </div>
           ))}
         </div>
-      </Card>
+      </Card></div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div id="rollout" className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.packsTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.packs.map((item) => <li key={item}>• {item}</li>)}</ul>
+        </Card>
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.rolloutTitle}</h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.rolloutBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
         </Card>
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.revenueTitle}</h3>
@@ -289,34 +332,38 @@ export default async function DocsPage() {
       </div>
 
 
-      <Card id="faq" className="p-6 scroll-mt-28">
+      <div id="faq" className="scroll-mt-28"><Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.faqItems.map((item) => (
-            <div key={item.q} className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm font-semibold text-white">{item.q}</p>
-              <p className="mt-1 text-sm text-slate-300">{item.a}</p>
-            </div>
+            <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-all duration-200 open:border-cyan-300/30 open:bg-cyan-500/5 hover:border-white/20">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-white">
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-cyan-300 transition-transform group-open:rotate-45">＋</span>{item.q}
+                </span>
+              </summary>
+              <p className="mt-3 text-sm text-slate-300">{item.a}</p>
+            </details>
           ))}
         </div>
-      </Card>
+      </Card></div>
 
-      <Card id="strategy" className="p-6 scroll-mt-28">
+      <div id="strategy" className="scroll-mt-28"><Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
         <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/stack">{copy.stackPage}</Link>
-          <Link className="rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100" href="/audiences">{copy.audiencesPage}</Link>
-          <Link className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100" href="/glossary">{copy.glossaryPage}</Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5" href="/stack">{copy.stackPage}<ArrowRight className="h-4 w-4" /></Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100 transition-transform duration-200 hover:-translate-y-0.5" href="/audiences">{copy.audiencesPage}<ArrowRight className="h-4 w-4" /></Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5" href="/glossary">{copy.glossaryPage}<ArrowRight className="h-4 w-4" /></Link>
         </div>
-      </Card>
+      </Card></div>
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/?assistant=open">{copy.openAssistant}</Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5" href="/?assistant=open">{copy.openAssistant}<ArrowRight className="h-4 w-4" /></Link>
           <a className="rounded-lg border border-white/20 px-4 py-2 text-sm text-slate-100" href="https://wa.me/5492613168608" target="_blank" rel="noreferrer">{copy.talkAgent}</a>
-          <Link className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100" href="/?contact=demo#contact-modal">{copy.bookDemo}</Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5" href="/?contact=demo#contact-modal">{copy.bookDemo}<ArrowRight className="h-4 w-4" /></Link>
         </div>
       </Card>
     </main>
