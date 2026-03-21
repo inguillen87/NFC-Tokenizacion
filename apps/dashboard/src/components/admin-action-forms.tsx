@@ -40,35 +40,89 @@ type AdminActionFormsProps = {
   };
 };
 
+type ApiSummaryItem = { label: string; value: string };
+
+type ActionPayload = Record<string, unknown>;
+
+function stringifyValue(value: unknown) {
+  if (Array.isArray(value)) return value.join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return String(value ?? "-");
+}
+
+function buildSummary(data: unknown): ApiSummaryItem[] {
+  if (!data || typeof data !== "object") return [];
+  const record = data as Record<string, unknown>;
+  const preferredKeys = [
+    "batch",
+    "tenant_slug",
+    "requested_quantity",
+    "sku",
+    "profile",
+    "inserted",
+    "reactivated",
+    "ignored",
+    "importedRows",
+    "manifestBatchIds",
+    "activated",
+    "requested",
+    "uids",
+    "reason",
+    "keys",
+  ];
+
+  const entries = preferredKeys
+    .filter((key) => key in record)
+    .map((key) => ({ label: key.replaceAll("_", " "), value: stringifyValue(record[key]) }));
+
+  if (entries.length) return entries;
+  return Object.entries(record).slice(0, 8).map(([key, value]) => ({ label: key.replaceAll("_", " "), value: stringifyValue(value) }));
+}
+
 export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
   const [role, setRole] = useState<Role>("super-admin");
   const [status, setStatus] = useState<string>(readyLabel);
+  const [summary, setSummary] = useState<ApiSummaryItem[]>([]);
+  const [lastResponse, setLastResponse] = useState<ActionPayload | null>(null);
   const [pending, setPending] = useState(false);
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
   const [batch, setBatch] = useState({ tenantId: "", batchId: "", sku: "", quantity: "" });
-  const [manifest, setManifest] = useState({ batchId: "", csv: "batch_id,uid_hex,ic_type,roll_id,qc_status,timestamp" });
-  const [activation, setActivation] = useState({ batchId: "", count: "" });
+  const [manifest, setManifest] = useState({ batchId: "", csv: "batch_id,uid_hex,ic_type,roll_id,qc_status,timestamp", activateImported: true });
+  const [activation, setActivation] = useState({ batchId: "", count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
 
   const canEdit = role !== "viewer";
   const roleMessage = useMemo(() => copy.roleHint[role], [copy.roleHint, role]);
 
-
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
-    createBatch: "Creates a batch under an existing tenant slug/id for provisioning tags.",
-    importManifest: "Imports CSV rows (UID + metadata) into an existing batch.",
-    activateRevoke: "Activate tags for issuance, or revoke a batch when risk is detected.",
+    createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
+    importManifest: "Imports CSV rows (UID + metadata) into an existing batch, verifies batch_id alignment, and can leave them active on arrival when supplier-coded tags arrive ready to use.",
+    activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
   };
+
+  async function copyValue(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setStatus(`Copied ${value.slice(0, 24)}${value.length > 24 ? "…" : ""}`);
+    } catch {
+      setStatus("Clipboard unavailable");
+    }
+  }
 
   async function submit(path: string, payload: unknown) {
     setPending(true);
+    setSummary([]);
     setStatus(`POST ${path}`);
     try {
       const data = await postAdmin<unknown>(path, payload);
-      setStatus(`OK ${JSON.stringify(data).slice(0, 180)}`);
+      setLastResponse((data && typeof data === "object") ? (data as ActionPayload) : null);
+      setSummary(buildSummary(data));
+      setStatus("Action completed successfully");
     } catch (error) {
+      setLastResponse(null);
+      setSummary([]);
       setStatus(error instanceof Error ? error.message : "Request failed");
     } finally {
       setPending(false);
@@ -119,6 +173,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
+            <p className="text-[11px] text-slate-500">Tip: use tenant slug or tenant UUID. The response returns batch keys to keep for supplier setup.</p>
             <Button disabled={pending || !canEdit || !batch.tenantId || !batch.batchId} onClick={() => submit("/admin/batches", { ...batch, quantity: Number(batch.quantity || 0) })}>{copy.actions.createBatch}</Button>
           </div>
         </Card>
@@ -129,7 +184,11 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
             <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
-            <Button disabled={pending || !canEdit || !manifest.batchId} onClick={() => submit(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv })}>{copy.actions.importManifest}</Button>
+            <label className="flex items-center gap-2 text-xs text-slate-300">
+              <input disabled={!canEdit} type="checkbox" checked={manifest.activateImported} onChange={(event) => setManifest({ ...manifest, activateImported: event.target.checked })} />
+              Activate imported tags immediately when the supplier already encoded them
+            </label>
+            <Button disabled={pending || !canEdit || !manifest.batchId} onClick={() => submit(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv, activateImported: manifest.activateImported })}>{copy.actions.importManifest}</Button>
           </div>
         </Card>
 
@@ -139,7 +198,8 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={activation.batchId} onChange={(event) => setActivation({ ...activation, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.count} value={activation.count} onChange={(event) => setActivation({ ...activation, count: event.target.value })} />
-            <Button disabled={pending || !canEdit || !activation.batchId || !activation.count} onClick={() => submit("/admin/tags/activate", { ...activation, count: Number(activation.count || 0) })}>{copy.actions.activateTags}</Button>
+            <textarea disabled={!canEdit} className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" placeholder="Optional UID list, separated by commas or new lines" value={activation.uids} onChange={(event) => setActivation({ ...activation, uids: event.target.value })} />
+            <Button disabled={pending || !canEdit || !activation.batchId || (!activation.count && !activation.uids.trim())} onClick={() => submit("/admin/tags/activate", { bid: activation.batchId, count: Number(activation.count || 0), uids: activation.uids })}>{copy.actions.activateTags}</Button>
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
             <Button disabled={pending || !canEdit || !revoke.batchId} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke? This can impact live validations.")) submit(`/admin/batches/${revoke.batchId}/revoke`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>
@@ -150,6 +210,32 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
       <Card className="p-4">
         <p className="text-xs text-cyan-300">{copy.apiStatus}</p>
         <p className="mt-1 break-all text-xs text-slate-300">{pending ? "Running action..." : status}</p>
+        {summary.length ? (
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {summary.map((item) => (
+              <div key={`${item.label}-${item.value}`} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
+                <p className="uppercase tracking-[0.14em] text-cyan-300">{item.label}</p>
+                <p className="mt-1 break-all text-slate-100">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {lastResponse && (lastResponse.keys || lastResponse.batch || lastResponse.ndef_url_template) ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {typeof lastResponse.batch === "object" && lastResponse.batch && "bid" in lastResponse.batch ? (
+              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String((lastResponse.batch as ActionPayload).bid || ""))}>Copy batch ID</button>
+            ) : null}
+            {typeof lastResponse.keys === "object" && lastResponse.keys && "k_meta_hex" in lastResponse.keys ? (
+              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String((lastResponse.keys as ActionPayload).k_meta_hex || ""))}>Copy meta key</button>
+            ) : null}
+            {typeof lastResponse.keys === "object" && lastResponse.keys && "k_file_hex" in lastResponse.keys ? (
+              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String((lastResponse.keys as ActionPayload).k_file_hex || ""))}>Copy file key</button>
+            ) : null}
+            {typeof lastResponse.ndef_url_template === "string" ? (
+              <button type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(String(lastResponse.ndef_url_template || ""))}>Copy SUN URL template</button>
+            ) : null}
+          </div>
+        ) : null}
       </Card>
     </div>
   );
