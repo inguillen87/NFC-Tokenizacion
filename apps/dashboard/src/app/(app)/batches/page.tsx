@@ -29,11 +29,14 @@ export default async function BatchesPage() {
     const quantity = Number(row.quantity || 0);
     const active = Number(row.active_tags || 0);
     const inactive = Number(row.inactive_tags || 0);
+    const requested = Number(row.requested_quantity || 0);
+    const sku = String(row.sku || "-");
+    const profile = String(row.batch_profile || "custom");
     return {
-      batch: String(row.bid || "-"),
-      type: String(row.tenant_slug || "ops"),
+      batch: `${String(row.bid || "-")} · ${sku}`,
+      type: `${profile} · ${String(row.tenant_slug || "ops")}`,
       status: String(row.status || "pending"),
-      quantity: `${quantity.toLocaleString()} · ${active.toLocaleString()} active / ${inactive.toLocaleString()} pending`,
+      quantity: `${quantity.toLocaleString()} imported / ${requested.toLocaleString()} planned · ${active.toLocaleString()} active · ${inactive.toLocaleString()} pending`,
     };
   });
 
@@ -57,10 +60,10 @@ export default async function BatchesPage() {
       <Card className="p-5 text-sm text-slate-300">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Flujo recomendado para tags ya codificadas por proveedor</h2>
         <ol className="mt-3 list-decimal space-y-2 pl-5">
-          <li>Crear el batch con el tenant correcto y conservar las batch keys que devuelve la API.</li>
-          <li>Importar el CSV manifest recibido del proveedor para registrar UID + batch en plataforma.</li>
-          <li>Si las tags ya llegan programadas, activarlas durante import o por cantidad/UID puntual.</li>
-          <li>Usar el estado active/inactive para decidir qué unidades deja pasar la API al validar.</li>
+          <li>Crear el batch con tenant correcto, SKU, cantidad esperada y perfil de seguridad; guardar las batch keys que devuelve la API.</li>
+          <li>Importar el CSV manifest y verificar que el <code>batch_id</code> del archivo coincida exactamente con el batch creado.</li>
+          <li>Si las tags ya llegan programadas, activarlas en import o por cantidad/UID puntual para habilitar solo las unidades recibidas.</li>
+          <li>Usar planned vs imported vs active para detectar temprano diferencias del proveedor antes de escalar a 10k/50k.</li>
         </ol>
       </Card>
       <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} />

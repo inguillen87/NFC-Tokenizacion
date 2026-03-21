@@ -17,6 +17,10 @@ function normalizeUid(value: unknown) {
   return String(value || "").trim().toUpperCase();
 }
 
+function normalizeBatchId(value: unknown) {
+  return String(value || "").trim();
+}
+
 async function readPayload(req: Request): Promise<ManifestPayload & { csv: string }> {
   const contentType = req.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
@@ -42,6 +46,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
 
   const rows = parse(payload.csv, { columns: true, skip_empty_lines: true, trim: true }) as ManifestRow[];
   if (!rows.length) return json({ ok: false, reason: "manifest has no rows" }, 400);
+
+  const manifestBatchIds = Array.from(new Set(rows.map((row) => normalizeBatchId(row.batch_id || row.batchId)).filter(Boolean)));
+  const mismatchedBatchIds = manifestBatchIds.filter((value) => value !== bid);
+  if (mismatchedBatchIds.length > 0) {
+    return json({ ok: false, reason: "manifest batch_id does not match route batch", expected: bid, manifestBatchIds }, 400);
+  }
 
   const seen = new Set<string>();
   const duplicates: string[] = [];
@@ -79,6 +89,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   return json({
     ok: true,
     batch: bid,
+    manifestBatchIds: manifestBatchIds.length ? manifestBatchIds : [bid],
     importedRows: rows.length,
     inserted,
     reactivated,

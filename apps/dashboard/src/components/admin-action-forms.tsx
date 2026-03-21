@@ -57,8 +57,8 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
 
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
-    createBatch: "Creates a batch under an existing tenant slug/id for provisioning tags.",
-    importManifest: "Imports CSV rows (UID + metadata) into an existing batch and can leave them active on arrival. Use this when supplier-coded tags arrive with a manifest.",
+    createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
+    importManifest: "Imports CSV rows (UID + metadata) into an existing batch, verifies batch_id alignment, and can leave them active on arrival when supplier-coded tags arrive ready to use.",
     activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
   };
 
@@ -119,6 +119,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
+            <p className="text-[11px] text-slate-500">Tip: use tenant slug or tenant UUID. The response returns batch keys to keep for supplier setup.</p>
             <Button disabled={pending || !canEdit || !batch.tenantId || !batch.batchId} onClick={() => submit("/admin/batches", { ...batch, quantity: Number(batch.quantity || 0) })}>{copy.actions.createBatch}</Button>
           </div>
         </Card>
