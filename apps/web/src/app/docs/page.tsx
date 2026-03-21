@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BackLink } from "../../components/back-link";
 import { Card, SectionHeading } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
+import { ArrowRight, BookOpen, CircleHelp, Layers3, Rocket, ShieldCheck } from "lucide-react";
 
 type DocsCopy = {
   eyebrow: string;
@@ -270,22 +271,22 @@ export default async function DocsPage() {
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.quickJumpTitle}</p>
         <div className="flex flex-wrap gap-2">
-        <a href="#thesis" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100">{copy.pillarsTitle}</a>
-        <a href="#api" className="rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-xs text-indigo-100">{copy.apiTitle}</a>
-        <a href="#rollout" className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100">{copy.rolloutTitle}</a>
-        <a href="#faq" className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100">{copy.faqTitle}</a>
-        <a href="#strategy" className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-100">{copy.strategyTitle}</a>
+        <a href="#thesis" className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5"><Layers3 className="h-3.5 w-3.5" />{copy.pillarsTitle}</a>
+        <a href="#api" className="inline-flex items-center gap-1 rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-xs text-indigo-100 transition-transform duration-200 hover:-translate-y-0.5"><ShieldCheck className="h-3.5 w-3.5" />{copy.apiTitle}</a>
+        <a href="#rollout" className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5"><Rocket className="h-3.5 w-3.5" />{copy.rolloutTitle}</a>
+        <a href="#faq" className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100 transition-transform duration-200 hover:-translate-y-0.5"><CircleHelp className="h-3.5 w-3.5" />{copy.faqTitle}</a>
+        <a href="#strategy" className="inline-flex items-center gap-1 rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-100 transition-transform duration-200 hover:-translate-y-0.5"><BookOpen className="h-3.5 w-3.5" />{copy.strategyTitle}</a>
         </div>
       </div>
 
-      <div id="thesis"><Card className="p-6 transition-transform duration-200 hover:-translate-y-1">
+      <div id="thesis"><Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
         <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
         <ul className="mt-4 space-y-2 text-sm text-slate-300">
           {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
         </ul>
       </Card></div>
 
-      <Card className="p-6 transition-transform duration-200 hover:-translate-y-1">
+      <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
         <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.chipRows.map((row) => (
@@ -298,7 +299,7 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <div id="api"><Card className="p-6 transition-transform duration-200 hover:-translate-y-1">
+      <div id="api"><Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(99,102,241,0.10)]">
         <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
         <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
         <div className="mt-4 space-y-3">
@@ -335,7 +336,7 @@ export default async function DocsPage() {
         <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
         <div className="mt-4 grid gap-3">
           {copy.faqItems.map((item) => (
-            <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-colors open:border-cyan-300/30 open:bg-cyan-500/5">
+            <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-all duration-200 open:border-cyan-300/30 open:bg-cyan-500/5 hover:border-white/20">
               <summary className="cursor-pointer list-none text-sm font-semibold text-white">
                 <span className="inline-flex items-center gap-2">
                   <span className="text-cyan-300 transition-transform group-open:rotate-45">＋</span>{item.q}
@@ -351,18 +352,18 @@ export default async function DocsPage() {
         <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
         <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/stack">{copy.stackPage}</Link>
-          <Link className="rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100" href="/audiences">{copy.audiencesPage}</Link>
-          <Link className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100" href="/glossary">{copy.glossaryPage}</Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5" href="/stack">{copy.stackPage}<ArrowRight className="h-4 w-4" /></Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100 transition-transform duration-200 hover:-translate-y-0.5" href="/audiences">{copy.audiencesPage}<ArrowRight className="h-4 w-4" /></Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5" href="/glossary">{copy.glossaryPage}<ArrowRight className="h-4 w-4" /></Link>
         </div>
       </Card></div>
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/?assistant=open">{copy.openAssistant}</Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5" href="/?assistant=open">{copy.openAssistant}<ArrowRight className="h-4 w-4" /></Link>
           <a className="rounded-lg border border-white/20 px-4 py-2 text-sm text-slate-100" href="https://wa.me/5492613168608" target="_blank" rel="noreferrer">{copy.talkAgent}</a>
-          <Link className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100" href="/?contact=demo#contact-modal">{copy.bookDemo}</Link>
+          <Link className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5" href="/?contact=demo#contact-modal">{copy.bookDemo}<ArrowRight className="h-4 w-4" /></Link>
         </div>
       </Card>
     </main>

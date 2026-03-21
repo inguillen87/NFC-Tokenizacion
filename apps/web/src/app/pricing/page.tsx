@@ -4,6 +4,7 @@ import { Badge, Button, Card, SectionHeading } from "@product/ui";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
 import { CalculatorSection } from "../../components/calculator-section";
+import { ArrowRight, BadgeDollarSign, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 
 function Info({ text }: { text: string }) {
   return <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-cyan-300/40 text-xs text-cyan-200" title={text}>i</span>;
@@ -187,18 +188,18 @@ export default async function PricingPage() {
       <BackLink />
       <SectionHeading eyebrow={content.plans.eyebrow} title={content.plans.title} description={content.plans.description} />
 
-      <Card className="mt-6 p-5 pricing-page-card">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.includeTitle}</h3>
+      <Card className="mt-6 p-5 pricing-page-card border border-cyan-300/10 bg-gradient-to-br from-cyan-500/10 via-slate-950/40 to-slate-950/80">
+        <h3 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200"><Sparkles className="h-4 w-4" />{labels.includeTitle}</h3>
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {labels.includes.map((item) => (
-            <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">• {item}</div>
+            <div key={item} className="inline-flex items-start gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />{item}</div>
           ))}
         </div>
       </Card>
 
       <div className="mt-10 grid gap-6 xl:grid-cols-3">
         {content.plans.cards.map((plan) => (
-          <Card key={plan.name} className="p-6 pricing-page-card">
+          <Card key={plan.name} className="group p-6 pricing-page-card transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
             <Badge tone={plan.name.includes("ENTERPRISE") ? "amber" : "cyan"}>{plan.badge}</Badge>
             <h3 className="mt-4 text-2xl font-semibold text-white">{plan.name}<Info text={labels.cardInfo} /></h3>
             <p className="mt-3 text-sm text-slate-400">{plan.body}</p>
@@ -243,7 +244,7 @@ export default async function PricingPage() {
       </Card>
 
       <Card className="mt-8 p-6 pricing-page-card">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.procurementTitle}</h3>
+        <h3 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200"><ShieldCheck className="h-4 w-4" />{labels.procurementTitle}</h3>
         <div className="mt-4 grid gap-3">
           {labels.procurementBullets.map((item) => (
             <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
@@ -262,7 +263,7 @@ export default async function PricingPage() {
       </Card>
 
       <Card className="mt-8 p-6 pricing-page-card">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.pilotTitle}</h3>
+        <h3 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200"><BadgeDollarSign className="h-4 w-4" />{labels.pilotTitle}</h3>
         <div className="mt-4 grid gap-3">
           {labels.pilotRows.map((item) => (
             <div key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-200">• {item}</div>
@@ -280,14 +281,14 @@ export default async function PricingPage() {
         <SectionHeading eyebrow={content.roi.eyebrow} title={content.roi.title} description={content.roi.description} />
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {content.roi.metrics.map((m) => (
-            <div key={m.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div key={m.label} className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/20">
               <p className="text-xs uppercase tracking-[0.14em] text-cyan-300">{m.label}<Info text="Indicative business impact by vertical and adoption maturity." /></p>
               <p className="mt-2 text-2xl font-bold text-white">{m.value}</p>
               <p className="mt-1 text-sm text-slate-400">{m.detail}</p>
             </div>
           ))}
         </div>
-        <div className="mt-6"><Link href="/?contact=quote#contact-modal"><Button>{labels.roiCta}</Button></Link></div>
+        <div className="mt-6"><Link href="/?contact=quote#contact-modal"><Button>{labels.roiCta} <ArrowRight className="ml-2 h-4 w-4" /></Button></Link></div>
       </Card>
     </main>
   );

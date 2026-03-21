@@ -17,6 +17,7 @@ import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { productUrls } from "@product/config";
+import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
 
 export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
@@ -41,6 +42,8 @@ export default async function HomePage() {
       quickInvestor: "Investor snapshot",
       rolloutDocs: "Read rollout docs",
       rolloutPricing: "See rollout pricing",
+      mobileCtaDemo: "Book demo",
+      mobileCtaDocs: "Docs",
       rolloutTitle: "Pilot → rollout flow",
       rolloutBullets: [
         "1. Define batch_id, SKU, expected volume and security profile before production.",
@@ -69,6 +72,8 @@ export default async function HomePage() {
       quickInvestor: "Investor snapshot",
       rolloutDocs: "Ver docs de rollout",
       rolloutPricing: "Ver pricing rollout",
+      mobileCtaDemo: "Agendar demo",
+      mobileCtaDocs: "Docs",
       rolloutTitle: "Fluxo piloto → rollout",
       rolloutBullets: [
         "1. Defina batch_id, SKU, volume esperado e perfil de segurança antes da produção.",
@@ -96,6 +101,8 @@ export default async function HomePage() {
       quickInvestor: "Investor snapshot",
       rolloutDocs: "Ver docs de rollout",
       rolloutPricing: "Ver pricing rollout",
+      mobileCtaDemo: "Agendar demo",
+      mobileCtaDocs: "Docs",
       rolloutTitle: "Flujo piloto → rollout",
       rolloutBullets: [
         "1. Definí batch_id, SKU, volumen esperado y perfil de seguridad antes de fabricar.",
@@ -147,15 +154,15 @@ export default async function HomePage() {
 
 
       <section className="container-shell quick-links-section py-3">
-        <div className="quick-links-wrap rounded-xl border border-white/10 bg-slate-900/55 p-2">
+        <div className="quick-links-wrap rounded-xl border border-white/10 bg-slate-900/55 p-2 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_18px_45px_rgba(8,15,30,0.35)]">
           <div className="quick-links-scroll flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs">
-            <span className="px-2 py-1 font-semibold text-cyan-300">{labels.quickNavTitle}</span>
-            <Link href="/docs#faq" className="quick-link-chip rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-100">{labels.quickFaq}</Link>
-            <Link href="/stack" className="quick-link-chip rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-indigo-100">{labels.quickStack}</Link>
-            <Link href="/glossary" className="quick-link-chip rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-100">{labels.quickGlossary}</Link>
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/investor-snapshot`} className="quick-link-chip rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-amber-100">{labels.quickInvestor}</a>
-            <Link href="/audiences" className="quick-link-chip rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-violet-100">{labels.quickAudiences}</Link>
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`} className="quick-link-chip rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-amber-100">{labels.quickDemoLab}</a>
+            <span className="inline-flex items-center gap-1 px-2 py-1 font-semibold text-cyan-300"><Sparkles className="h-3.5 w-3.5" />{labels.quickNavTitle}</span>
+            <Link href="/docs#faq" className="quick-link-chip inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.quickFaq}</Link>
+            <Link href="/stack" className="quick-link-chip inline-flex items-center gap-1 rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-indigo-100 transition-transform duration-200 hover:-translate-y-0.5"><Layers3 className="h-3.5 w-3.5" />{labels.quickStack}</Link>
+            <Link href="/glossary" className="quick-link-chip rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.quickGlossary}</Link>
+            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/investor-snapshot`} className="quick-link-chip rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-amber-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.quickInvestor}</a>
+            <Link href="/audiences" className="quick-link-chip rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-violet-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.quickAudiences}</Link>
+            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`} className="quick-link-chip inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-amber-100 transition-transform duration-200 hover:-translate-y-0.5"><CirclePlay className="h-3.5 w-3.5" />{labels.quickDemoLab}</a>
           </div>
         </div>
       </section>
@@ -177,13 +184,13 @@ export default async function HomePage() {
           <p className="mt-2 text-sm text-slate-300">{labels.assetBody}</p>
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {demoPacks.map((pack) => (
-              <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-950/70 p-4 transition-transform duration-200 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-slate-950">
+              <div key={pack.key} className="group rounded-xl border border-white/10 bg-slate-950/70 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-slate-950 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
                 <p className="text-sm font-semibold text-white">{pack.label} <span className="text-cyan-300">· {pack.tag}</span></p>
                 <p className="mt-1 text-xs text-slate-300">{pack.sim}</p>
                 <div className="mt-3 grid gap-2 md:grid-cols-3">
-                  <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/seed.json`} download>{labels.demoJson}</a>
-                  <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/manifest.csv`} download>{labels.demoCsv}</a>
-                  <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200" href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`}>{labels.launchLab}</a>
+                  <a className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white transition-colors duration-200 group-hover:border-white/20" href={`/demo/${pack.key}/seed.json`} download><FileJson className="h-3.5 w-3.5" />{labels.demoJson}</a>
+                  <a className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white transition-colors duration-200 group-hover:border-white/20" href={`/demo/${pack.key}/manifest.csv`} download><FileSpreadsheet className="h-3.5 w-3.5" />{labels.demoCsv}</a>
+                  <a className="inline-flex items-center justify-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200 transition-transform duration-200 group-hover:translate-x-0.5" href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`}><CirclePlay className="h-3.5 w-3.5" />{labels.launchLab}</a>
                 </div>
               </div>
             ))}
@@ -198,12 +205,12 @@ export default async function HomePage() {
             <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{labels.rolloutTitle}</p>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               {labels.rolloutBullets.map((item) => (
-                <div key={item} className="rounded-lg border border-cyan-300/15 bg-slate-950/50 p-3 text-xs text-slate-200 transition-transform duration-200 hover:-translate-y-0.5 hover:border-cyan-300/35">{item}</div>
+                <div key={item} className="rounded-lg border border-cyan-300/15 bg-slate-950/50 p-3 text-xs text-slate-200 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-slate-950/70">{item}</div>
               ))}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/docs" className="rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100">{labels.rolloutDocs}</Link>
-              <Link href="/pricing" className="rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100">{labels.rolloutPricing}</Link>
+              <Link href="/docs" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutDocs}<ArrowRight className="h-3.5 w-3.5" /></Link>
+              <Link href="/pricing" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutPricing}<ArrowRight className="h-3.5 w-3.5" /></Link>
             </div>
           </div>
         </div>
@@ -227,6 +234,13 @@ export default async function HomePage() {
           </div>
         </div>
       </footer>
+
+      <div className="fixed inset-x-0 bottom-3 z-40 px-4 md:hidden">
+        <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
+          <Link href="/docs" className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center text-sm font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
+          <Link href="/?contact=demo#contact-modal" className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-3 text-sm font-medium text-cyan-100">{labels.mobileCtaDemo}<ArrowRight className="h-4 w-4" /></Link>
+        </div>
+      </div>
     </main>
   );
 }
