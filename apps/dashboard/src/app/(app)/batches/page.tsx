@@ -5,16 +5,37 @@ import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 
-const rows = [
-  { batch: "WINE-AR-2026-03", type: "secure", status: "active", quantity: "10,000" },
-  { batch: "COS-BR-2026-01", type: "secure", status: "active", quantity: "8,500" },
-  { batch: "EVENT-AR-APRIL", type: "basic", status: "pending", quantity: "3,000" },
-  { batch: "PHARMA-CL-09", type: "secure", status: "revoked", quantity: "1,200" },
-];
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+
+async function getBatchRows() {
+  try {
+    const response = await fetch(`${API_BASE}/admin/batches`, {
+      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return [] as Array<Record<string, unknown>>;
+    return response.json();
+  } catch {
+    return [] as Array<Record<string, unknown>>;
+  }
+}
 
 export default async function BatchesPage() {
   const { locale, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
+  const batchRows = await getBatchRows();
+
+  const rows = batchRows.map((row) => {
+    const quantity = Number(row.quantity || 0);
+    const active = Number(row.active_tags || 0);
+    const inactive = Number(row.inactive_tags || 0);
+    return {
+      batch: String(row.bid || "-"),
+      type: String(row.tenant_slug || "ops"),
+      status: String(row.status || "pending"),
+      quantity: `${quantity.toLocaleString()} · ${active.toLocaleString()} active / ${inactive.toLocaleString()} pending`,
+    };
+  });
 
   return (
     <main className="space-y-8">
@@ -33,6 +54,15 @@ export default async function BatchesPage() {
         </div>
       </Card>
       <DataTable title={copy.tables.batches.title} columns={[{ key: "batch", label: copy.tables.batches.batch }, { key: "type", label: copy.tables.batches.type }, { key: "status", label: copy.tables.batches.status }, { key: "quantity", label: copy.tables.batches.quantity }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
+      <Card className="p-5 text-sm text-slate-300">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Flujo recomendado para tags ya codificadas por proveedor</h2>
+        <ol className="mt-3 list-decimal space-y-2 pl-5">
+          <li>Crear el batch con el tenant correcto y conservar las batch keys que devuelve la API.</li>
+          <li>Importar el CSV manifest recibido del proveedor para registrar UID + batch en plataforma.</li>
+          <li>Si las tags ya llegan programadas, activarlas durante import o por cantidad/UID puntual.</li>
+          <li>Usar el estado active/inactive para decidir qué unidades deja pasar la API al validar.</li>
+        </ol>
+      </Card>
       <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} />
     </main>
   );
