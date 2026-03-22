@@ -179,6 +179,29 @@ export default async function DashboardHome() {
       </Card>
 
 
+
+      <Card className="p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Enterprise rollout readiness</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+            <p className="font-semibold text-white">1. Batch governance</p>
+            <p className="mt-2">Cada lote debe nacer con batch_id, SKU, perfil y volumen planificado definidos.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+            <p className="font-semibold text-white">2. Supplier handoff</p>
+            <p className="mt-2">El proveedor recibe URL template, ownership de keys y formato cerrado de manifest.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+            <p className="font-semibold text-white">3. QA on arrival</p>
+            <p className="mt-2">Importá solo manifests alineados con batch_id y compará planned / imported / active.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+            <p className="font-semibold text-white">4. Go-live discipline</p>
+            <p className="mt-2">Activá únicamente las unidades recibidas y auditadas antes de abrirlas al mercado.</p>
+          </div>
+        </div>
+      </Card>
+
       <Card className="p-4">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo entry points</h2>
         <p className="mt-2 text-sm text-slate-400">Accesos directos para explorar el sistema completo desde landing profesional.</p>
