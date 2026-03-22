@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { BackLink } from "../../components/back-link";
+import { PublicLinkChip } from "../../components/public-link-chip";
 import { getWebI18n } from "../../lib/locale";
 import {
   ArrowRight,
@@ -44,6 +45,10 @@ type GlossaryCopy = {
   rules: string[];
   helperTitle: string;
   helperBullets: string[];
+  quickNavTitle: string;
+  quickNav: Array<{ label: string; href: string; tone: "neutral" | "approved" | "avoid" | "say" }>;
+  exploreTitle: string;
+  exploreLinks: Array<{ label: string; href: string }>;
   docsEyebrow: string;
   docsTitle: string;
   docsBody: string;
@@ -55,6 +60,7 @@ type GlossaryCopy = {
 };
 
 const toneClasses = {
+  neutral: "border-white/10 bg-white/5 text-slate-100",
   approved: "border-cyan-300/25 bg-cyan-500/10 text-cyan-100",
   avoid: "border-rose-300/25 bg-rose-500/10 text-rose-100",
   say: "border-emerald-300/25 bg-emerald-500/10 text-emerald-100",
@@ -217,6 +223,19 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "¿El texto amplía la categoría o encierra a nexID en hardware/una vertical?",
       "¿La secuencia Verify / Passport / Rights está clara para alguien nuevo?",
       "¿Hay algún claim absoluto o promesa técnica que no podamos defender?",
+    ],
+    quickNavTitle: "Ir directo a",
+    quickNav: [
+      { label: "Approved", href: "#approved", tone: "approved" },
+      { label: "Avoid", href: "#avoid", tone: "avoid" },
+      { label: "Usage", href: "#usage", tone: "neutral" },
+      { label: "Replacements", href: "#replacements", tone: "say" },
+    ],
+    exploreTitle: "Seguir explorando",
+    exploreLinks: [
+      { label: "Ver stack Verify → Passport → Rights", href: "/stack" },
+      { label: "Abrir docs comercial + técnica", href: "/docs" },
+      { label: "Ver demo self-serve", href: "/demo" },
     ],
     docsEyebrow: "Para profundizar",
     docsTitle: "Llevá este lenguaje a la documentación",
@@ -386,6 +405,19 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "A sequência Verify / Passport / Rights está clara para alguém novo?",
       "Existe algum claim absoluto ou promessa técnica difícil de sustentar?",
     ],
+    quickNavTitle: "Ir direto para",
+    quickNav: [
+      { label: "Approved", href: "#approved", tone: "approved" },
+      { label: "Avoid", href: "#avoid", tone: "avoid" },
+      { label: "Usage", href: "#usage", tone: "neutral" },
+      { label: "Replacements", href: "#replacements", tone: "say" },
+    ],
+    exploreTitle: "Continuar explorando",
+    exploreLinks: [
+      { label: "Ver stack Verify → Passport → Rights", href: "/stack" },
+      { label: "Abrir docs comercial + técnica", href: "/docs" },
+      { label: "Ver demo self-serve", href: "/demo" },
+    ],
     docsEyebrow: "Para aprofundar",
     docsTitle: "Leve esta linguagem para a documentação",
     docsBody:
@@ -554,6 +586,19 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "Is the Verify / Passport / Rights sequence clear for a first-time reader?",
       "Is there any absolute claim or technical promise we cannot defend?",
     ],
+    quickNavTitle: "Jump straight to",
+    quickNav: [
+      { label: "Approved", href: "#approved", tone: "approved" },
+      { label: "Avoid", href: "#avoid", tone: "avoid" },
+      { label: "Usage", href: "#usage", tone: "neutral" },
+      { label: "Replacements", href: "#replacements", tone: "say" },
+    ],
+    exploreTitle: "Keep exploring",
+    exploreLinks: [
+      { label: "View the Verify → Passport → Rights stack", href: "/stack" },
+      { label: "Open commercial + technical docs", href: "/docs" },
+      { label: "See the self-serve demo", href: "/demo" },
+    ],
     docsEyebrow: "Go deeper",
     docsTitle: "Carry this language into the docs",
     docsBody:
@@ -604,12 +649,13 @@ export default async function GlossaryPage() {
         </Card>
       </div>
 
-      <div className="space-y-3">
-        <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-          <Sparkles className="h-4 w-4 text-cyan-300" />
-          {copy.jumpTitle}
-        </p>
-        <div className="grid gap-4 md:grid-cols-3">
+      <div className="space-y-4">
+        <div className="space-y-3">
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <Sparkles className="h-4 w-4 text-cyan-300" />
+            {copy.jumpTitle}
+          </p>
+          <div className="grid gap-4 md:grid-cols-3">
           {copy.jumpCards.map((card) => (
             <Card key={card.title} className="p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
               <div className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${toneClasses[card.tone]}`}>
@@ -618,10 +664,27 @@ export default async function GlossaryPage() {
               <p className="mt-4 text-sm leading-6 text-slate-300">{card.body}</p>
             </Card>
           ))}
+          </div>
         </div>
+
+        <Card className="p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.quickNavTitle}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {copy.quickNav.map((item) => (
+              <PublicLinkChip
+                key={item.href}
+                href={item.href}
+                variant={item.tone === "neutral" ? "slate" : item.tone}
+                className="uppercase tracking-[0.16em] font-semibold"
+              >
+                {item.label}
+              </PublicLinkChip>
+            ))}
+          </div>
+        </Card>
       </div>
 
-      <Card className="p-6">
+      <Card id="approved" className="p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h3 className="inline-flex items-center gap-2 text-lg font-semibold text-white">
@@ -650,7 +713,7 @@ export default async function GlossaryPage() {
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card className="p-6">
+        <Card id="avoid" className="p-6">
           <h3 className="inline-flex items-center gap-2 text-lg font-semibold text-white">
             <CircleAlert className="h-5 w-5 text-rose-300" />
             {copy.avoidTitle}
@@ -688,7 +751,7 @@ export default async function GlossaryPage() {
         </Card>
       </div>
 
-      <Card className="p-6">
+      <Card id="usage" className="p-6">
         <h3 className="inline-flex items-center gap-2 text-lg font-semibold text-white">
           <MessagesSquare className="h-5 w-5 text-cyan-300" />
           {copy.usageTitle}
@@ -706,7 +769,7 @@ export default async function GlossaryPage() {
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <Card className="p-6">
+        <Card id="replacements" className="p-6">
           <h3 className="inline-flex items-center gap-2 text-lg font-semibold text-white">
             <MessagesSquare className="h-5 w-5 text-cyan-300" />
             {copy.replacementsTitle}
@@ -738,6 +801,17 @@ export default async function GlossaryPage() {
           </div>
         </Card>
       </div>
+
+      <Card className="p-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.exploreTitle}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {copy.exploreLinks.map((item) => (
+            <PublicLinkChip key={item.href} href={item.href} size="md" trailingArrow>
+              {item.label}
+            </PublicLinkChip>
+          ))}
+        </div>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">

@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { Button, Card, SectionHeading } from "@product/ui";
 import { LiveDemoSurfaces } from "../../components/live-demo-surfaces";
+import { ProductExitLink } from "../../components/product-exit-link";
 import { VerticalDemoLibrary } from "../../components/vertical-demo-library";
 import { getWebI18n } from "../../lib/locale";
 import { ArrowRight, CirclePlay, FileDown, MapPinned, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
@@ -17,6 +19,9 @@ type DemoCopy = {
   howSteps: string[];
   proofTitle: string;
   proofBullets: string[];
+  nextTitle: string;
+  nextLead: string;
+  nextCards: Array<{ title: string; body: string; href: string; cta: string; kind: "internal" | "productExit" }>;
 };
 
 const iconMap = {
@@ -51,6 +56,31 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", DemoCopy> = {
       "La experiencia final puede ser simple aunque el backend sea enterprise.",
       "Verify, Passport y Rights se entienden mejor cuando se ven juntos en una demo real.",
     ],
+    nextTitle: "Qué hacer después de esta demo",
+    nextLead: "Según tu intención, esta es la mejor salida para convertir interés en conversación real, evaluación interna o análisis inversor.",
+    nextCards: [
+      {
+        title: "Quiero evaluarlo para mi empresa",
+        body: "SeguÍ con docs para entender rollout, perfiles de chip, batches, API y el estándar operativo antes de fabricar o pilotear.",
+        href: "/docs",
+        cta: "Ir a docs",
+        kind: "internal",
+      },
+      {
+        title: "Quiero ver si aplica a mi perfil o industria",
+        body: "Abrí audiences para adaptar el pitch según comprador: marca, reseller, gobierno, operador o stakeholder comercial.",
+        href: "/audiences",
+        cta: "Ver audiences",
+        kind: "internal",
+      },
+      {
+        title: "Quiero mirar el ángulo inversor / producto completo",
+        body: "Saltá a Investor Snapshot o abrí Demo Lab para ver mejor el moat, la narrativa de plataforma y el potencial comercial-operativo.",
+        href: "/investor-snapshot",
+        cta: "Abrir investor snapshot",
+        kind: "productExit",
+      },
+    ],
   },
   "pt-BR": {
     eyebrow: "nexID demo hub",
@@ -76,6 +106,31 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", DemoCopy> = {
       "nexID não é só hardware: é infraestrutura operacional e comercial.",
       "A experiência final pode ser simples mesmo com backend enterprise.",
       "Verify, Passport e Rights ficam mais claros quando aparecem juntos em uma demo real.",
+    ],
+    nextTitle: "O que fazer depois desta demo",
+    nextLead: "Dependendo da sua intenção, esta é a melhor saída para transformar interesse em conversa comercial, avaliação interna ou análise de investimento.",
+    nextCards: [
+      {
+        title: "Quero avaliar para minha empresa",
+        body: "Siga para docs para entender rollout, perfis de chip, batches, API e o padrão operacional antes de fabricar ou pilotar.",
+        href: "/docs",
+        cta: "Ir para docs",
+        kind: "internal",
+      },
+      {
+        title: "Quero ver se serve para meu perfil ou indústria",
+        body: "Abra audiences para adaptar a narrativa por comprador: marca, revenda, governo, operador ou stakeholder comercial.",
+        href: "/audiences",
+        cta: "Ver audiences",
+        kind: "internal",
+      },
+      {
+        title: "Quero olhar o ângulo investidor / produto completo",
+        body: "Vá para Investor Snapshot ou abra o Demo Lab para visualizar melhor moat, narrativa de plataforma e potencial comercial-operacional.",
+        href: "/investor-snapshot",
+        cta: "Abrir investor snapshot",
+        kind: "productExit",
+      },
     ],
   },
   en: {
@@ -103,6 +158,31 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", DemoCopy> = {
       "The end-user experience can stay simple while the backend remains enterprise-grade.",
       "Verify, Passport and Rights make more sense when seen together in a real demo flow.",
     ],
+    nextTitle: "What to do after this demo",
+    nextLead: "Depending on your intent, this is the best next step to turn curiosity into a real conversation, internal evaluation, or investor-level analysis.",
+    nextCards: [
+      {
+        title: "I want to evaluate it for my company",
+        body: "Move into docs to review rollout, chip profiles, batches, API surfaces and the operating standard before piloting or manufacturing.",
+        href: "/docs",
+        cta: "Open docs",
+        kind: "internal",
+      },
+      {
+        title: "I want to see whether it fits my buyer profile",
+        body: "Open audiences to tailor the narrative by buyer type: brand, reseller, government, operator or commercial stakeholder.",
+        href: "/audiences",
+        cta: "View audiences",
+        kind: "internal",
+      },
+      {
+        title: "I want the investor / full-platform angle",
+        body: "Jump into Investor Snapshot or Demo Lab to understand the moat, platform story and operational-commercial upside more clearly.",
+        href: "/investor-snapshot",
+        cta: "Open investor snapshot",
+        kind: "productExit",
+      },
+    ],
   },
 };
 
@@ -116,15 +196,15 @@ export default async function PublicDemoPage() {
         <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
         <div className="flex flex-wrap gap-3">
-          <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}>
+          <ProductExitLink kind="demoLab">
             <Button><CirclePlay className="mr-2 h-4 w-4" />{copy.primary}</Button>
-          </a>
+          </ProductExitLink>
           <a href="/demo/demobodega_seed.json" download>
             <Button variant="secondary"><FileDown className="mr-2 h-4 w-4" />{copy.download}</Button>
           </a>
-          <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}>
+          <ProductExitLink kind="demoLab">
             <Button variant="secondary">{copy.openLab}<ArrowRight className="ml-2 h-4 w-4" /></Button>
-          </a>
+          </ProductExitLink>
         </div>
 
         <div className="space-y-3">
@@ -172,6 +252,47 @@ export default async function PublicDemoPage() {
             </div>
           </Card>
         </div>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.nextTitle}</h3>
+          <p className="mt-2 max-w-3xl text-sm text-slate-300">{copy.nextLead}</p>
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            {copy.nextCards.map((card) => {
+              const content = (
+                <>
+                  <p className="text-sm font-semibold text-white">{card.title}</p>
+                  <p className="mt-3 text-sm leading-6 text-slate-300">{card.body}</p>
+                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-cyan-200">
+                    {card.cta}
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                </>
+              );
+
+              if (card.kind === "productExit") {
+                return (
+                  <ProductExitLink
+                    key={`${card.title}-${card.href}`}
+                    kind={card.href === "/investor-snapshot" ? "investorSnapshot" : "demoLab"}
+                    className="rounded-2xl border border-white/10 bg-white/5 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]"
+                  >
+                    {content}
+                  </ProductExitLink>
+                );
+              }
+
+              return (
+                <Link
+                  key={`${card.title}-${card.href}`}
+                  href={card.href}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]"
+                >
+                  {content}
+                </Link>
+              );
+            })}
+          </div>
+        </Card>
       </section>
 
       <VerticalDemoLibrary locale={locale} />

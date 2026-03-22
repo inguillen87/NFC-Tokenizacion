@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { BackLink } from "../../components/back-link";
+import { ProductExitLink, productExitHref } from "../../components/product-exit-link";
+import { PublicLinkChip } from "../../components/public-link-chip";
 import { Card, SectionHeading } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
-import { ArrowRight, BookOpen, CircleHelp, Layers3, Rocket, ShieldCheck } from "lucide-react";
+import { ArrowRight, BookOpen, CircleHelp, Layers3, Rocket, ShieldCheck, Sparkles } from "lucide-react";
 
 type DocsCopy = {
   eyebrow: string;
@@ -32,9 +34,20 @@ type DocsCopy = {
   stackPage: string;
   audiencesPage: string;
   glossaryPage: string;
+  demoPage: string;
+  jumpPillars: string;
+  jumpChipProfiles: string;
+  jumpApi: string;
+  jumpRollout: string;
+  jumpFaq: string;
+  jumpStrategy: string;
+  jumpActions: string;
+  exploreTitle: string;
+  exploreLinks: Array<{ label: string; href: string }>;
   openAssistant: string;
   talkAgent: string;
   bookDemo: string;
+  openLab: string;
 };
 
 const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
@@ -107,9 +120,25 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     stackPage: "Ver pila Verify → Passport → Rights",
     audiencesPage: "Ver pitch por audiencia (inversor, reseller, cliente, gobierno)",
     glossaryPage: "Abrir glosario operativo de marca",
+    demoPage: "Ver demo self-serve",
+    jumpPillars: "Tesis",
+    jumpChipProfiles: "Perfiles de chip",
+    jumpApi: "API",
+    jumpRollout: "Rollout",
+    jumpFaq: "FAQ",
+    jumpStrategy: "Strategy",
+    jumpActions: "Actions",
+    exploreTitle: "Conectar esta lectura con el resto del sitio",
+    exploreLinks: [
+      { label: "Ir al stack Verify → Passport → Rights", href: "/stack" },
+      { label: "Abrir glosario operativo", href: "/glossary" },
+      { label: "Ver demo y Demo Lab", href: "/demo" },
+      { label: "Ver pitch por audiencia", href: "/audiences" },
+    ],
     openAssistant: "Abrir BotIA",
     talkAgent: "Hablar con agente (WhatsApp)",
     bookDemo: "Agendar demo",
+    openLab: "Abrir Demo Lab",
   },
   "pt-BR": {
     eyebrow: "Docs comercial + técnica",
@@ -180,9 +209,25 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     stackPage: "Ver pilha Verify → Passport → Rights",
     audiencesPage: "Ver pitch por audiência (investidor, revendedor, cliente, governo)",
     glossaryPage: "Abrir glossário operacional de marca",
+    demoPage: "Ver demo self-serve",
+    jumpPillars: "Tese",
+    jumpChipProfiles: "Perfis de chip",
+    jumpApi: "API",
+    jumpRollout: "Rollout",
+    jumpFaq: "FAQ",
+    jumpStrategy: "Strategy",
+    jumpActions: "Actions",
+    exploreTitle: "Conectar esta leitura com o restante do site",
+    exploreLinks: [
+      { label: "Ir para o stack Verify → Passport → Rights", href: "/stack" },
+      { label: "Abrir glossário operacional", href: "/glossary" },
+      { label: "Ver demo e Demo Lab", href: "/demo" },
+      { label: "Ver pitch por audiência", href: "/audiences" },
+    ],
     openAssistant: "Abrir BotIA",
     talkAgent: "Falar com agente (WhatsApp)",
     bookDemo: "Agendar demo",
+    openLab: "Abrir Demo Lab",
   },
   en: {
     eyebrow: "Commercial + technical docs",
@@ -253,9 +298,25 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     stackPage: "View Verify → Passport → Rights stack",
     audiencesPage: "View audience pitch (investor, reseller, client, government)",
     glossaryPage: "Open operational brand glossary",
+    demoPage: "View self-serve demo",
+    jumpPillars: "Thesis",
+    jumpChipProfiles: "Chip profiles",
+    jumpApi: "API",
+    jumpRollout: "Rollout",
+    jumpFaq: "FAQ",
+    jumpStrategy: "Strategy",
+    jumpActions: "Actions",
+    exploreTitle: "Connect this page with the rest of the site",
+    exploreLinks: [
+      { label: "Go to the Verify → Passport → Rights stack", href: "/stack" },
+      { label: "Open the operational glossary", href: "/glossary" },
+      { label: "See the demo and Demo Lab", href: "/demo" },
+      { label: "View the audience pitch page", href: "/audiences" },
+    ],
     openAssistant: "Open BotIA",
     talkAgent: "Talk to agent (WhatsApp)",
     bookDemo: "Book demo",
+    openLab: "Open Demo Lab",
   },
 };
 
@@ -268,51 +329,75 @@ export default async function DocsPage() {
       <BackLink />
       <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.quickJumpTitle}</p>
-        <div className="flex flex-wrap gap-2">
-        <a href="#thesis" className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5"><Layers3 className="h-3.5 w-3.5" />{copy.pillarsTitle}</a>
-        <a href="#api" className="inline-flex items-center gap-1 rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-xs text-indigo-100 transition-transform duration-200 hover:-translate-y-0.5"><ShieldCheck className="h-3.5 w-3.5" />{copy.apiTitle}</a>
-        <a href="#rollout" className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5"><Rocket className="h-3.5 w-3.5" />{copy.rolloutTitle}</a>
-        <a href="#faq" className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100 transition-transform duration-200 hover:-translate-y-0.5"><CircleHelp className="h-3.5 w-3.5" />{copy.faqTitle}</a>
-        <a href="#strategy" className="inline-flex items-center gap-1 rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-100 transition-transform duration-200 hover:-translate-y-0.5"><BookOpen className="h-3.5 w-3.5" />{copy.strategyTitle}</a>
+      <div className="space-y-4">
+        <div className="space-y-3">
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <Sparkles className="h-4 w-4 text-cyan-300" />
+            {copy.quickJumpTitle}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <PublicLinkChip href="#thesis" icon={<Layers3 className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpPillars}</PublicLinkChip>
+            <PublicLinkChip href="#chips" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpChipProfiles}</PublicLinkChip>
+            <PublicLinkChip href="#api" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="indigo">{copy.jumpApi}</PublicLinkChip>
+            <PublicLinkChip href="#rollout" icon={<Rocket className="h-3.5 w-3.5" />} variant="emerald">{copy.jumpRollout}</PublicLinkChip>
+            <PublicLinkChip href="#faq" icon={<CircleHelp className="h-3.5 w-3.5" />} variant="amber">{copy.jumpFaq}</PublicLinkChip>
+            <PublicLinkChip href="#strategy" icon={<BookOpen className="h-3.5 w-3.5" />} variant="violet">{copy.jumpStrategy}</PublicLinkChip>
+            <PublicLinkChip href="#actions">{copy.jumpActions}</PublicLinkChip>
+          </div>
         </div>
+
+        <Card className="p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.exploreTitle}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {copy.exploreLinks.map((item) => (
+              <PublicLinkChip key={item.href} href={item.href} size="md" trailingArrow>
+                {item.label}
+              </PublicLinkChip>
+            ))}
+          </div>
+        </Card>
       </div>
 
-      <div id="thesis"><Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
-        <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
-        <ul className="mt-4 space-y-2 text-sm text-slate-300">
-          {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
-        </ul>
-      </Card></div>
+      <div id="thesis" className="scroll-mt-28">
+        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
+          <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
+          </ul>
+        </Card>
+      </div>
 
-      <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
-        <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
-        <div className="mt-4 grid gap-3">
-          {copy.chipRows.map((row) => (
-            <div key={row.chip} className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm font-semibold text-cyan-200">{row.chip}</p>
-              <p className="mt-1 text-sm text-slate-300">✓ {row.bestFor}</p>
-              <p className="mt-1 text-sm text-rose-300">⚠ {row.avoid}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <div id="chips" className="scroll-mt-28">
+        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
+          <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
+          <div className="mt-4 grid gap-3">
+            {copy.chipRows.map((row) => (
+              <div key={row.chip} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-sm font-semibold text-cyan-200">{row.chip}</p>
+                <p className="mt-1 text-sm text-slate-300">✓ {row.bestFor}</p>
+                <p className="mt-1 text-sm text-rose-300">⚠ {row.avoid}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
 
-      <div id="api"><Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(99,102,241,0.10)]">
-        <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
-        <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
-        <div className="mt-4 space-y-3">
-          {copy.apiRoutes.map((route) => (
-            <div key={`${route.method}-${route.path}`} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
-              <p className="font-semibold text-cyan-200">{route.method} <span className="text-white">{route.path}</span></p>
-              <p className="mt-1 text-slate-300">{route.detail}</p>
-            </div>
-          ))}
-        </div>
-      </Card></div>
+      <div id="api" className="scroll-mt-28">
+        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(99,102,241,0.10)]">
+          <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
+          <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
+          <div className="mt-4 space-y-3">
+            {copy.apiRoutes.map((route) => (
+              <div key={`${route.method}-${route.path}`} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                <p className="font-semibold text-cyan-200">{route.method} <span className="text-white">{route.path}</span></p>
+                <p className="mt-1 text-slate-300">{route.detail}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
 
-      <div id="rollout" className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+      <div id="rollout" className="grid gap-6 scroll-mt-28 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.packsTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.packs.map((item) => <li key={item}>• {item}</li>)}</ul>
@@ -331,41 +416,48 @@ export default async function DocsPage() {
         </Card>
       </div>
 
+      <div id="faq" className="scroll-mt-28">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
+          <div className="mt-4 grid gap-3">
+            {copy.faqItems.map((item) => (
+              <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-all duration-200 open:border-cyan-300/30 open:bg-cyan-500/5 hover:border-white/20">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-white">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="text-cyan-300 transition-transform group-open:rotate-45">＋</span>{item.q}
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-slate-300">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </Card>
+      </div>
 
-      <div id="faq" className="scroll-mt-28"><Card className="p-6">
-        <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
-        <div className="mt-4 grid gap-3">
-          {copy.faqItems.map((item) => (
-            <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-all duration-200 open:border-cyan-300/30 open:bg-cyan-500/5 hover:border-white/20">
-              <summary className="cursor-pointer list-none text-sm font-semibold text-white">
-                <span className="inline-flex items-center gap-2">
-                  <span className="text-cyan-300 transition-transform group-open:rotate-45">＋</span>{item.q}
-                </span>
-              </summary>
-              <p className="mt-3 text-sm text-slate-300">{item.a}</p>
-            </details>
-          ))}
-        </div>
-      </Card></div>
+      <div id="strategy" className="scroll-mt-28">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
+          <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <PublicLinkChip href="/stack" variant="cyan" size="md" trailingArrow>{copy.stackPage}</PublicLinkChip>
+            <PublicLinkChip href="/audiences" variant="indigo" size="md" trailingArrow>{copy.audiencesPage}</PublicLinkChip>
+            <PublicLinkChip href="/glossary" variant="emerald" size="md" trailingArrow>{copy.glossaryPage}</PublicLinkChip>
+            <PublicLinkChip href="/demo" variant="amber" size="md" trailingArrow>{copy.demoPage}</PublicLinkChip>
+          </div>
+        </Card>
+      </div>
 
-      <div id="strategy" className="scroll-mt-28"><Card className="p-6">
-        <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
-        <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5" href="/stack">{copy.stackPage}<ArrowRight className="h-4 w-4" /></Link>
-          <Link className="inline-flex items-center gap-2 rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100 transition-transform duration-200 hover:-translate-y-0.5" href="/audiences">{copy.audiencesPage}<ArrowRight className="h-4 w-4" /></Link>
-          <Link className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5" href="/glossary">{copy.glossaryPage}<ArrowRight className="h-4 w-4" /></Link>
-        </div>
-      </Card></div>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5" href="/?assistant=open">{copy.openAssistant}<ArrowRight className="h-4 w-4" /></Link>
-          <a className="rounded-lg border border-white/20 px-4 py-2 text-sm text-slate-100" href="https://wa.me/5492613168608" target="_blank" rel="noreferrer">{copy.talkAgent}</a>
-          <Link className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5" href="/?contact=demo#contact-modal">{copy.bookDemo}<ArrowRight className="h-4 w-4" /></Link>
-        </div>
-      </Card>
+      <div id="actions" className="scroll-mt-28">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <PublicLinkChip href="/?assistant=open" variant="cyan" size="md" trailingArrow>{copy.openAssistant}</PublicLinkChip>
+            <PublicLinkChip href={productExitHref.demoLab} size="md" trailingArrow>{copy.openLab}</PublicLinkChip>
+            <a className="rounded-lg border border-white/20 px-4 py-2 text-sm text-slate-100" href="https://wa.me/5492613168608" target="_blank" rel="noreferrer">{copy.talkAgent}</a>
+            <Link className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5" href="/?contact=demo#contact-modal">{copy.bookDemo}<ArrowRight className="h-4 w-4" /></Link>
+          </div>
+        </Card>
+      </div>
     </main>
   );
 }
