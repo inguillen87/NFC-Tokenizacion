@@ -49,10 +49,10 @@ export default async function HomePage() {
       mobileCtaDocs: "Docs",
       intentTitle: "Choose your path",
       intentCards: [
-        { title: "Use it in my company", body: "See rollout, chip profiles and operating model.", href: "/docs", type: "internal" },
-        { title: "See my buyer profile", body: "Match the pitch to brand, reseller, government or operator.", href: "/audiences", type: "internal" },
-        { title: "Open Demo Lab", body: "Jump directly into the product surface and simulate the flow.", href: "/demo-lab", type: "product" },
-        { title: "Investor angle", body: "Review the platform story, moat and rollout narrative.", href: "/investor-snapshot", type: "product" },
+        { title: "Use it in my company", body: "See rollout, chip profiles and operating model.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
+        { title: "See my buyer profile", body: "Match the pitch to brand, reseller, government or operator.", href: "/?contact=sales&intent=buyer_profile#contact-modal", type: "lead" },
+        { title: "Open Demo Lab", body: "Jump directly into the product surface and simulate the flow.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", type: "lead" },
+        { title: "Investor angle", body: "Review the platform story, moat and rollout narrative.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", type: "lead" },
       ],
       rolloutTitle: "Pilot → rollout flow",
       rolloutBullets: [
@@ -86,10 +86,10 @@ export default async function HomePage() {
       mobileCtaDocs: "Docs",
       intentTitle: "Escolha seu caminho",
       intentCards: [
-        { title: "Usar na minha empresa", body: "Veja rollout, perfis de chip e operação.", href: "/docs", type: "internal" },
-        { title: "Ver meu perfil comprador", body: "Adapte o pitch para marca, revenda, governo ou operador.", href: "/audiences", type: "internal" },
-        { title: "Abrir Demo Lab", body: "Entre direto na superfície do produto e simule o fluxo.", href: "/demo-lab", type: "product" },
-        { title: "Ângulo investidor", body: "Revise a narrativa de plataforma, moat e rollout.", href: "/investor-snapshot", type: "product" },
+        { title: "Usar na minha empresa", body: "Veja rollout, perfis de chip e operação.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
+        { title: "Ver meu perfil comprador", body: "Adapte o pitch para marca, revenda, governo ou operador.", href: "/?contact=sales&intent=buyer_profile#contact-modal", type: "lead" },
+        { title: "Abrir Demo Lab", body: "Entre direto na superfície do produto e simule o fluxo.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", type: "lead" },
+        { title: "Ângulo investidor", body: "Revise a narrativa de plataforma, moat e rollout.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", type: "lead" },
       ],
       rolloutTitle: "Fluxo piloto → rollout",
       rolloutBullets: [
@@ -122,10 +122,10 @@ export default async function HomePage() {
       mobileCtaDocs: "Docs",
       intentTitle: "Elegí tu camino",
       intentCards: [
-        { title: "Usarlo en mi empresa", body: "Mirá rollout, perfiles de chip y modelo operativo.", href: "/docs", type: "internal" },
-        { title: "Ver mi tipo de comprador", body: "Adaptá el pitch para marca, reseller, gobierno u operador.", href: "/audiences", type: "internal" },
-        { title: "Abrir Demo Lab", body: "Entrá directo a la superficie de producto y simulá el flujo.", href: "/demo-lab", type: "product" },
-        { title: "Ángulo inversor", body: "Revisá la narrativa de plataforma, moat y rollout.", href: "/investor-snapshot", type: "product" },
+        { title: "Usarlo en mi empresa", body: "Mirá rollout, perfiles de chip y modelo operativo.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
+        { title: "Ver mi tipo de comprador", body: "Adaptá el pitch para marca, reseller, gobierno u operador.", href: "/?contact=sales&intent=buyer_profile#contact-modal", type: "lead" },
+        { title: "Abrir Demo Lab", body: "Entrá directo a la superficie de producto y simulá el flujo.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", type: "lead" },
+        { title: "Ángulo inversor", body: "Revisá la narrativa de plataforma, moat y rollout.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", type: "lead" },
       ],
       rolloutTitle: "Flujo piloto → rollout",
       rolloutBullets: [
@@ -205,14 +205,6 @@ export default async function HomePage() {
                   <span className="mt-4 inline-flex items-center gap-2 text-sm text-cyan-200">Explorar<ArrowRight className="h-4 w-4" /></span>
                 </>
               );
-
-              if (card.type === "product") {
-                return (
-                  <ProductExitLink key={card.title} kind={card.href === "/investor-snapshot" ? "investorSnapshot" : "demoLab"} className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
-                    {body}
-                  </ProductExitLink>
-                );
-              }
 
               return (
                 <Link key={card.title} href={card.href} className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">

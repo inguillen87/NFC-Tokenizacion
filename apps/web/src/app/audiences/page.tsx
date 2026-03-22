@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { BackLink } from "../../components/back-link";
-import { ProductExitLink } from "../../components/product-exit-link";
 import { getWebI18n } from "../../lib/locale";
 import { ArrowRight, Briefcase, Building2, Landmark, Rocket, ShieldCheck, UserRound } from "lucide-react";
 
@@ -26,7 +25,7 @@ type AudienceCopy = {
   buyerFlowTitle: string;
   buyerFlow: string[];
   intentTitle: string;
-  intentCards: Array<{ title: string; body: string; href: string; kind: "internal" | "product" }>;
+  intentCards: Array<{ title: string; body: string; href: string; kind: "internal" | "product" | "lead" }>;
   assistantCta: string;
   demoCta: string;
 };
@@ -94,9 +93,9 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", AudienceCopy> = {
     ],
     intentTitle: "Elegí la conversación que querés tener",
     intentCards: [
-      { title: "Evaluar para empresa", body: "Ir a docs para rollout, operación y perfiles de chip.", href: "/docs", kind: "internal" },
-      { title: "Explorar demo", body: "Ver el flujo real y la experiencia de validación.", href: "/demo", kind: "internal" },
-      { title: "Mirar investor snapshot", body: "Entrar por narrativa de plataforma, moat y expansión.", href: "/investor-snapshot", kind: "product" },
+      { title: "Evaluar para empresa", body: "Ir directo a una conversación comercial sobre rollout, operación y perfiles de chip.", href: "/?contact=sales&intent=company_rollout#contact-modal", kind: "lead" },
+      { title: "Explorar demo", body: "Pedir una demo guiada del flujo real y la experiencia de validación.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", kind: "lead" },
+      { title: "Mirar investor snapshot", body: "Entrar por narrativa de plataforma, moat y expansión.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", kind: "lead" },
     ],
     assistantCta: "Abrir BotIA comercial",
     demoCta: "Agendar demo",
@@ -123,9 +122,9 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", AudienceCopy> = {
     ],
     intentTitle: "Escolha a conversa que você quer ter",
     intentCards: [
-      { title: "Avaliar para empresa", body: "Ir para docs para rollout, operação e perfis de chip.", href: "/docs", kind: "internal" },
-      { title: "Explorar demo", body: "Ver o fluxo real e a experiência de validação.", href: "/demo", kind: "internal" },
-      { title: "Ver investor snapshot", body: "Entrar por narrativa de plataforma, moat e expansão.", href: "/investor-snapshot", kind: "product" },
+      { title: "Avaliar para empresa", body: "Ir direto para uma conversa comercial sobre rollout, operação e perfis de chip.", href: "/?contact=sales&intent=company_rollout#contact-modal", kind: "lead" },
+      { title: "Explorar demo", body: "Pedir uma demo guiada do fluxo real e da experiência de validação.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", kind: "lead" },
+      { title: "Ver investor snapshot", body: "Entrar por narrativa de plataforma, moat e expansão.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", kind: "lead" },
     ],
     assistantCta: "Abrir BotIA comercial",
     demoCta: "Agendar demo",
@@ -152,9 +151,9 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", AudienceCopy> = {
     ],
     intentTitle: "Choose the conversation you want to have",
     intentCards: [
-      { title: "Evaluate for a company", body: "Go to docs for rollout, operations and chip profiles.", href: "/docs", kind: "internal" },
-      { title: "Explore the demo", body: "See the live flow and validation experience.", href: "/demo", kind: "internal" },
-      { title: "Open investor snapshot", body: "Lead with platform story, moat and expansion potential.", href: "/investor-snapshot", kind: "product" },
+      { title: "Evaluate for a company", body: "Jump straight into a commercial conversation about rollout, operations and chip profiles.", href: "/?contact=sales&intent=company_rollout#contact-modal", kind: "lead" },
+      { title: "Explore the demo", body: "Request a guided demo of the live validation experience.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", kind: "lead" },
+      { title: "Open investor snapshot", body: "Lead with platform story, moat and expansion potential.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", kind: "lead" },
     ],
     assistantCta: "Open sales assistant",
     demoCta: "Book demo",
@@ -162,10 +161,10 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", AudienceCopy> = {
 };
 
 function resolveHref(audience: AudienceCard["icon"]) {
-  if (audience === "brands") return "/docs";
-  if (audience === "reseller") return "/resellers";
-  if (audience === "government") return "/stack";
-  return "/demo";
+  if (audience === "brands") return "/?contact=sales&intent=brands&vertical=wine&volume=50000#contact-modal";
+  if (audience === "reseller") return "/?contact=reseller&intent=reseller_program&vertical=events&volume=25000#contact-modal";
+  if (audience === "government") return "/?contact=sales&intent=government_stack&vertical=pharma&volume=10000#contact-modal";
+  return "/?contact=demo&intent=customer_demo&vertical=cosmetics&volume=10000#contact-modal";
 }
 
 export default async function AudiencesPage() {
@@ -188,14 +187,6 @@ export default async function AudiencesPage() {
                 <span className="mt-4 inline-flex items-center gap-2 text-sm text-cyan-200">Explorar<ArrowRight className="h-4 w-4" /></span>
               </>
             );
-
-            if (card.kind === "product") {
-              return (
-                <ProductExitLink key={card.title} kind="investorSnapshot" className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
-                  {content}
-                </ProductExitLink>
-              );
-            }
 
             return (
               <Link key={card.title} href={card.href} className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
@@ -288,7 +279,7 @@ export default async function AudiencesPage() {
               {copy.assistantCta}
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link href="/?contact=demo#contact-modal" className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5">
+            <Link href="/?contact=demo&intent=demo_lab&vertical=events#contact-modal" className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5">
               {copy.demoCta}
               <ArrowRight className="h-4 w-4" />
             </Link>
