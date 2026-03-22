@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AppLocale } from "@product/config";
+import { ProductExitLink } from "./product-exit-link";
 
 type Locale = AppLocale;
 
@@ -62,7 +63,7 @@ export function VerticalDemoLibrary({ locale }: { locale: Locale }) {
               <a className="rounded-md border border-white/10 p-2 text-slate-200" href={`/demo/${p.key}/manifest.csv`} download>{t.downloadCsv}</a>
               <a className="rounded-md border border-white/10 p-2 text-slate-200" href={`/demo/${p.key}/seed.json`} download>{t.downloadJson}</a>
             </div>
-            <a className="mt-3 inline-block rounded-md border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300" href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`}>{t.openLab}</a>
+            <ProductExitLink kind="demoLab" className="mt-3 inline-block rounded-md border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">{t.openLab}</ProductExitLink>
           </article>
         ))}
       </div>
