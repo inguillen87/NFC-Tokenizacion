@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type KeyboardEventHandler } from "react";
 import type { AppLocale } from "@product/config";
+import { ProductExitLink } from "./product-exit-link";
 
 type Message = { role: "user" | "assistant"; text: string };
 

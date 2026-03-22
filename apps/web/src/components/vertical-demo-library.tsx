@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AppLocale } from "@product/config";
+import { ProductExitLink } from "./product-exit-link";
 
 type Locale = AppLocale;
 

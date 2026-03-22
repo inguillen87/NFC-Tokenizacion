@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, WorldMapPlaceholder } from "@product/ui";
+import { ProductExitLink } from "./product-exit-link";
 
 type LiveEvent = {
   id: number;

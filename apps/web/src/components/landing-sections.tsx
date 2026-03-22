@@ -4,6 +4,7 @@ import { HeroScene } from "./hero-scene";
 
 import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
+import { ProductExitLink } from "./product-exit-link";
 
 type Content = LandingContent;
 type StatsCopy = {
