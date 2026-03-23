@@ -3,36 +3,37 @@ import { redirect } from "next/navigation";
 import type { UserRole } from "./dashboard-content";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
 export type DashboardSession = {
+  id: string;
+  userId?: string;
   email: string;
   role: UserRole;
   label: string;
+  permissions: string[];
+  mfaVerified: boolean;
+  rotatedCookieValue?: string | null;
+  expiresAt?: string;
 };
-
-export function encodeSession(session: DashboardSession) {
-  return Buffer.from(JSON.stringify(session), "utf8").toString("base64url");
-}
-
-export function decodeSession(value: string | undefined | null): DashboardSession | null {
-  if (!value) return null;
-  try {
-    const raw = Buffer.from(value, "base64url").toString("utf8");
-    const data = JSON.parse(raw) as DashboardSession;
-    if (!data?.email || !data?.role || !data?.label) return null;
-    return data;
-  } catch {
-    return null;
-  }
-}
 
 export async function getDashboardSession() {
   const cookieStore = await cookies();
-  return decodeSession(cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value);
+  const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const res = await fetch(`${API_BASE}/auth/session`, {
+    headers: { authorization: `Bearer ${token}` },
+    cache: "no-store",
+  }).catch(() => null);
+  if (!res?.ok) return null;
+  const data = await res.json().catch(() => null) as { ok?: boolean; session?: DashboardSession } | null;
+  if (!data?.ok || !data.session) return null;
+  return data.session;
 }
 
-export async function requireDashboardSession() {
+export async function requireDashboardSession(permission?: string) {
   const session = await getDashboardSession();
   if (!session) redirect("/login");
+  if (permission && !session.permissions.includes(permission) && session.role !== "super-admin") redirect("/");
   return session;
 }

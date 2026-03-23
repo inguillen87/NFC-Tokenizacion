@@ -28,7 +28,7 @@ export default async function BatchesPage() {
   const session = await requireDashboardSession();
   const batchRows = await getBatchRows();
 
-  const rows = batchRows.map((row) => {
+  const rows = batchRows.map((row: Record<string, unknown>) => {
     const quantity = Number(row.quantity || 0);
     const active = Number(row.active_tags || 0);
     const inactive = Number(row.inactive_tags || 0);

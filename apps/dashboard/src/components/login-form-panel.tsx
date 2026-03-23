@@ -19,6 +19,7 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
   const [email, setEmail] = useState(profiles[0]?.email || "");
   const [password, setPassword] = useState(profiles[0]?.password || "");
   const [role, setRole] = useState(profiles[0]?.role || "super-admin");
+  const [mfaCode, setMfaCode] = useState("");
   const [status, setStatus] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -26,6 +27,7 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
     setEmail(profile.email);
     setPassword(profile.password);
     setRole(profile.role);
+    setMfaCode("");
     setStatus("");
   }
 
@@ -35,10 +37,11 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
     const res = await fetch("/api/session/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, mfaCode }),
     }).catch(() => null);
+    const data = await res?.json().catch(() => null);
     if (!res?.ok) {
-      setStatus("Credenciales inválidas o entorno sin preset configurado.");
+      setStatus(data?.mfaRequired ? "Ingresá tu código MFA de 6 dígitos para continuar." : (data?.reason || "Credenciales inválidas."));
       setPending(false);
       return;
     }
@@ -63,6 +66,7 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
       <div className="mt-4 grid gap-3">
         <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={emailPlaceholder} value={email} onChange={(event) => setEmail(event.target.value)} />
         <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={passwordPlaceholder} value={password} onChange={(event) => setPassword(event.target.value)} />
+        <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="MFA / TOTP code (optional)" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} />
         <div className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300">Role preset: <span className="text-cyan-200">{role}</span></div>
         <Button className="w-full" onClick={submit} disabled={pending}>{loginAction}</Button>
         {status ? <p className="text-sm text-rose-300">{status}</p> : null}

@@ -14,6 +14,7 @@ type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "event
 
 function pathnameToNavKey(pathname: string): NavKey {
   if (pathname === "/" || pathname === "") return "overview";
+  if (pathname.startsWith("/users") || pathname.startsWith("/mfa")) return "overview";
   if (pathname.startsWith("/api-keys")) return "apiKeys";
   if (pathname.startsWith("/leads-tickets")) return "leadsTickets";
   const segment = pathname.split("/").filter(Boolean)[0] || "overview";
@@ -31,6 +32,7 @@ function DashboardShellInner({
   currentRole,
   currentEmail,
   currentLabel,
+  currentPermissions,
   children,
 }: {
   title: string;
@@ -43,6 +45,7 @@ function DashboardShellInner({
   currentRole: UserRole;
   currentEmail: string;
   currentLabel: string;
+  currentPermissions: string[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -111,6 +114,14 @@ function DashboardShellInner({
               {item.label}
             </Link>
           ))}
+          {(currentPermissions.includes("users:manage") || currentRole === "super-admin") && (
+            <Link href="/users" className={`block rounded-xl px-3 py-2 text-sm transition ${pathname === "/users" ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
+              IAM Users
+            </Link>
+          )}
+          <Link href="/mfa" className={`block rounded-xl px-3 py-2 text-sm transition ${pathname === "/mfa" ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
+            MFA
+          </Link>
         </nav>
       </aside>
 

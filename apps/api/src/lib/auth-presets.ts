@@ -5,6 +5,7 @@ type Preset = {
   password: string;
   role: "super_admin" | "tenant_admin" | "reseller" | "viewer";
   fullName: string;
+  permissions: string[];
 };
 
 function read(value: string | undefined, fallback: string) {
@@ -19,24 +20,28 @@ export function getAuthPresets(): Preset[] {
       password: read(process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD, "Marcelog2026"),
       role: "super_admin",
       fullName: "Ignacio Guillen",
+      permissions: ["users:manage", "tenants:write", "batches:write", "analytics:read", "events:read"],
     },
     {
       email: read(process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL, "admin.demobodega@nexid.lat"),
       password: read(process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD, "DemoBodega2026"),
       role: "tenant_admin",
       fullName: "DemoBodega Admin",
+      permissions: ["users:manage", "batches:write", "analytics:read", "events:read"],
     },
     {
       email: read(process.env.NEXT_PUBLIC_RESELLER_EMAIL, "partner.demo@nexid.lat"),
       password: read(process.env.NEXT_PUBLIC_RESELLER_PASSWORD, "NexidPartner2026"),
       role: "reseller",
       fullName: "Partner Demo",
+      permissions: ["batches:write", "analytics:read", "events:read"],
     },
     {
       email: read(process.env.NEXT_PUBLIC_GENERIC_DEMO_EMAIL, "demo@nexid.lat"),
       password: read(process.env.NEXT_PUBLIC_GENERIC_DEMO_PASSWORD, "NexidDemo2026"),
       role: "viewer",
       fullName: "Generic Demo",
+      permissions: ["analytics:read", "events:read"],
     },
   ];
 }
@@ -57,6 +62,13 @@ export async function ensurePresetUser(sql: (strings: TemplateStringsArray, ...v
   const membershipRows = await sql`SELECT id FROM memberships WHERE user_id = ${userId}::uuid AND tenant_id IS NULL AND role = ${preset.role}::membership_role LIMIT 1`;
   if (!membershipRows[0]) {
     await sql`INSERT INTO memberships (user_id, tenant_id, role) VALUES (${userId}::uuid, NULL, ${preset.role}::membership_role)`;
+  }
+
+  for (const entry of preset.permissions) {
+    const [resource, action] = entry.split(":");
+    if (resource && action) {
+      await sql`INSERT INTO resource_permissions (user_id, resource, action) VALUES (${userId}::uuid, ${resource}, ${action}) ON CONFLICT DO NOTHING`;
+    }
   }
 
   return preset;
