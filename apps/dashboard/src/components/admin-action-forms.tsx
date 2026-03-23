@@ -9,6 +9,7 @@ type Role = "super-admin" | "tenant-admin" | "reseller" | "viewer";
 type AdminActionFormsProps = {
   roles: Record<Role, string>;
   readyLabel: string;
+  currentRole: Role;
   copy: {
     roleHeading: string;
     roleHint: Record<Role, string>;
@@ -102,8 +103,8 @@ function buildCopyActions(data: ActionPayload | null): CopyAction[] {
   return actions.filter((item) => item.value);
 }
 
-export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
-  const [role, setRole] = useState<Role>("super-admin");
+export function AdminActionForms({ copy, roles, readyLabel, currentRole }: AdminActionFormsProps) {
+  const role = currentRole;
   const [status, setStatus] = useState<string>(readyLabel);
   const [summary, setSummary] = useState<ApiSummaryItem[]>([]);
   const [lastResponse, setLastResponse] = useState<ActionPayload | null>(null);
@@ -121,7 +122,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
 
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
-    createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
+    createBatch: "Quick batch creation for platform-managed keys only. Do not use this card for supplier-programmed tags that already depend on agreed K_META_BATCH / K_FILE_BATCH values.",
     importManifest: "Imports CSV rows (UID + metadata) into an existing batch, verifies batch_id alignment, and can leave them active on arrival when supplier-coded tags arrive ready to use.",
     activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
   };
@@ -160,17 +161,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
         <p className="mt-1 text-xs text-slate-400">{roleMessage}</p>
 
         <label className="mt-4 block text-xs uppercase tracking-wide text-slate-400">{copy.roleLabel}</label>
-        <select
-          className="mt-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm"
-          value={role}
-          onChange={(event) => setRole(event.target.value as Role)}
-        >
-          {Object.entries(roles).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <div className="mt-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">{roles[role]}</div>
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -197,7 +188,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
-            <p className="text-[11px] text-slate-500">Tip: use tenant slug or tenant UUID. The response returns batch keys to keep for supplier setup.</p>
+            <p className="text-[11px] text-amber-200">Quick flow only. If factory already has fixed keys, stop here and use Register Supplier Batch.</p>
             <Button disabled={pending || !canEdit || !batch.tenantId || !batch.batchId} onClick={() => submit("/admin/batches", { ...batch, quantity: Number(batch.quantity || 0) })}>{copy.actions.createBatch}</Button>
           </div>
         </Card>

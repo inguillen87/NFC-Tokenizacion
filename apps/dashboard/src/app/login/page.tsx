@@ -1,11 +1,18 @@
 import Link from "next/link";
-import { BrandLockup, Button, Card } from "@product/ui";
+import { BrandLockup, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
 import { dashboardContent } from "../../lib/dashboard-content";
+import { getAccessProfiles } from "../../lib/access-profiles";
+import { LoginFormPanel } from "../../components/login-form-panel";
+import { getDashboardSession } from "../../lib/session";
+import { redirect } from "next/navigation";
 
 export default async function LoginPage() {
   const { t, locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
+  const profiles = getAccessProfiles();
+  const session = await getDashboardSession();
+  if (session) redirect("/");
 
   return (
     <main className="container-shell grid min-h-screen place-items-center py-10">
@@ -26,26 +33,15 @@ export default async function LoginPage() {
 
           </div>
 
-          <div>
-            <div className="grid gap-3">
-              <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.emailPlaceholder} />
-              <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.passwordPlaceholder} />
-              <select className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm">
-                {Object.entries(copy.roles).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-              <Link href="/">
-                <Button className="w-full">{copy.auth.loginAction}</Button>
-              </Link>
-            </div>
-
-            <div className="mt-4 flex justify-between text-xs">
-              <Link href="/register" className="text-cyan-300">{t.common.register}</Link>
-              <Link href="/forgot-password" className="text-cyan-300">{t.dashboard.forgotPassword}</Link>
-              <Link href="/invite-user" className="text-cyan-300">{copy.auth.inviteTitle}</Link>
-            </div>
-          </div>
+          <LoginFormPanel
+            emailPlaceholder={t.web.auth.emailPlaceholder}
+            passwordPlaceholder={t.web.auth.passwordPlaceholder}
+            loginAction={copy.auth.loginAction}
+            registerLabel={t.common.register}
+            forgotLabel={t.dashboard.forgotPassword}
+            inviteLabel={copy.auth.inviteTitle}
+            profiles={profiles}
+          />
         </div>
       </Card>
     </main>
