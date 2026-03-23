@@ -11,6 +11,12 @@ type Copy = {
   title: string;
   description: string;
   warning: string;
+  tenantName: string;
+  createTenantIfMissing: string;
+  keyExplain: string;
+  handoffTitle: string;
+  copyHandoff: string;
+  manifestPreviewTitle: string;
   tenantSlug: string;
   batchId: string;
   sku: string;
@@ -53,6 +59,12 @@ const copy: Record<AppLocale, Copy> = {
     title: "Register Supplier Batch",
     description: "Usá este flujo para tags codificadas por proveedor. Acá sí se cargan las llaves exactas acordadas con fábrica; no se generan llaves aleatorias.",
     warning: "No uses el alta rápida para tags supplier-coded: si cambiás K_META_BATCH o K_FILE_BATCH, las tags reales van a fallar con INVALID.",
+    tenantName: "Nombre del tenant (si hay que crearlo)",
+    createTenantIfMissing: "Crear tenant si todavía no existe",
+    keyExplain: "K_META_BATCH y K_FILE_BATCH son las llaves exactas del lote que deben coincidir con las que ya compartiste al proveedor.",
+    handoffTitle: "Supplier handoff summary",
+    copyHandoff: "Copiar handoff",
+    manifestPreviewTitle: "Preview de UIDs detectados",
     tenantSlug: "tenant_slug",
     batchId: "batch_id / BID",
     sku: "SKU",
@@ -98,6 +110,12 @@ const copy: Record<AppLocale, Copy> = {
     title: "Register Supplier Batch",
     description: "Use este fluxo para tags codificadas pelo fornecedor. Aqui você carrega as keys exatas acordadas com a fábrica; nada de keys aleatórias.",
     warning: "Não use a criação rápida para tags supplier-coded: se mudar K_META_BATCH ou K_FILE_BATCH, as tags reais vão falhar com INVALID.",
+    tenantName: "Nome do tenant (se precisar criar)",
+    createTenantIfMissing: "Criar tenant se ainda não existir",
+    keyExplain: "K_META_BATCH e K_FILE_BATCH são as keys exatas do lote e devem coincidir com as já compartilhadas com o fornecedor.",
+    handoffTitle: "Supplier handoff summary",
+    copyHandoff: "Copiar handoff",
+    manifestPreviewTitle: "Preview dos UIDs detectados",
     tenantSlug: "tenant_slug",
     batchId: "batch_id / BID",
     sku: "SKU",
@@ -143,6 +161,12 @@ const copy: Record<AppLocale, Copy> = {
     title: "Register Supplier Batch",
     description: "Use this flow for supplier-programmed tags. This is where you enter the exact factory-agreed keys; no random keys should be generated here.",
     warning: "Do not use quick batch creation for supplier-coded tags: if K_META_BATCH or K_FILE_BATCH change, real tags will fail with INVALID.",
+    tenantName: "Tenant name (if it must be created)",
+    createTenantIfMissing: "Create tenant if missing",
+    keyExplain: "K_META_BATCH and K_FILE_BATCH are the exact batch keys that must match what was already shared with the supplier.",
+    handoffTitle: "Supplier handoff summary",
+    copyHandoff: "Copy handoff",
+    manifestPreviewTitle: "Detected UID preview",
     tenantSlug: "tenant_slug",
     batchId: "batch_id / BID",
     sku: "SKU",
@@ -202,16 +226,18 @@ function pretty(data: unknown) {
 export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const t = copy[locale] || copy["es-AR"];
   const [form, setForm] = useState({
+    tenantName: "Demo Bodega",
     tenantSlug: "demobodega",
     batchId: "DEMO-2026-02",
     sku: "china-ntag424-demo",
-    quantity: "100",
+    quantity: "10",
     kMeta: "",
     kFile: "",
     notes: "",
     chipModel: "NTAG 424 DNA",
   });
   const [manifestCsv, setManifestCsv] = useState("batch_id,uid_hex\nDEMO-2026-02,");
+  const [createTenantIfMissing, setCreateTenantIfMissing] = useState(false);
   const [activateImported, setActivateImported] = useState(true);
   const [sampleUrl, setSampleUrl] = useState("");
   const [pending, setPending] = useState<"register" | "manifest" | "validate" | null>(null);
@@ -221,6 +247,18 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [copied, setCopied] = useState(false);
 
   const detailHref = useMemo(() => `/batches/${encodeURIComponent(form.batchId || "new")}`, [form.batchId]);
+  const expectedTemplate = useMemo(() => form.batchId.trim() ? `https://api.nexid.lat/sun/?v=1&bid=${form.batchId.trim()}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000` : "", [form.batchId]);
+  const manifestPreview = useMemo(() => {
+    const lines = manifestCsv.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map((value) => value.trim());
+    const uidIndex = headers.findIndex((header) => ["uid_hex", "uid", "UID", "uidHex"].includes(header));
+    const batchIndex = headers.findIndex((header) => ["batch_id", "batchId"].includes(header));
+    return lines.slice(1, 6).map((line) => {
+      const cols = line.split(",").map((value) => value.trim());
+      return { uid: uidIndex >= 0 ? cols[uidIndex] || "-" : "-", batch: batchIndex >= 0 ? cols[batchIndex] || "-" : form.batchId || "-" };
+    });
+  }, [form.batchId, manifestCsv]);
 
   async function run(path: string, init?: RequestInit) {
     const res = await fetch(path, { cache: "no-store", ...init });
@@ -243,6 +281,13 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setPending("register");
     setStatus("POST /api/admin/batches");
     try {
+      if (createTenantIfMissing && form.tenantName.trim()) {
+        await run("/api/admin/tenants", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: form.tenantName.trim(), slug: form.tenantSlug.trim() }),
+        }).catch(() => null);
+      }
       const payload = {
         tenant_slug: form.tenantSlug.trim(),
         bid: form.batchId.trim(),
@@ -329,6 +374,18 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     window.setTimeout(() => setCopied(false), 1200);
   }
 
+  async function copyHandoff() {
+    const handoff = [
+      `BATCH_ID=${form.batchId.trim()}`,
+      `K_META_BATCH=${normalizeHex(form.kMeta)}`,
+      `K_FILE_BATCH=${normalizeHex(form.kFile)}`,
+      `URL_TEMPLATE=${template || expectedTemplate}`,
+    ].join("\n");
+    await navigator.clipboard.writeText(handoff).catch(() => null);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  }
+
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -341,6 +398,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="p-6">
           <div className="grid gap-3 md:grid-cols-2">
+            <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.tenantName} value={form.tenantName} onChange={(e) => setForm({ ...form, tenantName: e.target.value })} />
             <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.tenantSlug} value={form.tenantSlug} onChange={(e) => setForm({ ...form, tenantSlug: e.target.value })} />
             <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.batchId} value={form.batchId} onChange={(e) => setForm({ ...form, batchId: e.target.value })} />
             <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.sku} value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
@@ -350,6 +408,11 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white md:col-span-2" placeholder={t.chipModel} value={form.chipModel} onChange={(e) => setForm({ ...form, chipModel: e.target.value })} />
             <textarea className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white md:col-span-2" placeholder={t.notes} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
+          <label className="mt-4 flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" checked={createTenantIfMissing} onChange={(e) => setCreateTenantIfMissing(e.target.checked)} />
+            <span>{t.createTenantIfMissing}</span>
+          </label>
+          <p className="mt-3 text-xs text-emerald-200">{t.keyExplain}</p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button onClick={registerBatch} disabled={pending !== null}>{t.register}</Button>
             <Link className="inline-flex items-center rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100" href="/batches">{t.nextBatchPage}</Link>
@@ -360,8 +423,18 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <Card className="p-6">
           <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-300">{t.previewTitle}</h3>
           <p className="mt-4 text-xs uppercase tracking-[0.16em] text-slate-400">{t.supplierTemplate}</p>
-          <p className="mt-2 break-all text-sm text-cyan-100">{template || t.noTemplate}</p>
-          <Button variant="secondary" className="mt-4" onClick={copyTemplate} disabled={!template}>{copied ? t.copied : t.copyTemplate}</Button>
+          <p className="mt-2 break-all text-sm text-cyan-100">{template || expectedTemplate || t.noTemplate}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={copyTemplate} disabled={!(template || expectedTemplate)}>{copied ? t.copied : t.copyTemplate}</Button>
+            <Button variant="secondary" onClick={copyHandoff} disabled={!form.batchId.trim() || !form.kMeta.trim() || !form.kFile.trim()}>{t.copyHandoff}</Button>
+          </div>
+          <p className="mt-6 text-xs uppercase tracking-[0.16em] text-slate-400">{t.handoffTitle}</p>
+          <pre className="mt-2 overflow-x-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-200">{[
+            `BATCH_ID=${form.batchId.trim() || "-"}`,
+            `K_META_BATCH=${normalizeHex(form.kMeta) || "-"}`,
+            `K_FILE_BATCH=${normalizeHex(form.kFile) || "-"}`,
+            `URL_TEMPLATE=${template || expectedTemplate || "-"}`,
+          ].join("\n")}</pre>
           <p className="mt-6 text-xs uppercase tracking-[0.16em] text-slate-400">{t.checklistTitle}</p>
           <ul className="mt-3 space-y-2 text-sm text-slate-300">
             {t.checklist.map((item) => <li key={item}>• {item}</li>)}
@@ -374,6 +447,16 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           <h3 className="text-lg font-semibold text-white">{t.importTitle}</h3>
           <p className="mt-2 text-sm text-slate-300">{t.importHint}</p>
           <textarea className="mt-4 min-h-40 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" value={manifestCsv} onChange={(e) => setManifestCsv(e.target.value)} />
+          {manifestPreview.length ? (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{t.manifestPreviewTitle}</p>
+              <div className="mt-3 grid gap-2">
+                {manifestPreview.map((item, index) => (
+                  <div key={`${item.uid}-${index}`} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-200">{item.batch} · {item.uid}</div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <label className="mt-3 flex items-center gap-2 text-sm text-slate-300">
             <input type="checkbox" checked={activateImported} onChange={(e) => setActivateImported(e.target.checked)} />
             <span>{t.activateImported}</span>
