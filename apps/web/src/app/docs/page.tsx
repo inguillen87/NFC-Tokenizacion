@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BackLink } from "../../components/back-link";
-import { ProductExitLink, productExitHref } from "../../components/product-exit-link";
+import { productExitHref } from "../../components/product-exit-link";
 import { PublicLinkChip } from "../../components/public-link-chip";
 import { Card, SectionHeading } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
@@ -489,6 +489,7 @@ export default async function DocsPage() {
           </div>
         </Card>
       </div>
+
 
       <div id="actions" className="scroll-mt-28">
         <Card className="p-6">
