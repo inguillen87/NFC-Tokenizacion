@@ -230,7 +230,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     tenantSlug: "demobodega",
     batchId: "DEMO-2026-02",
     sku: "china-ntag424-demo",
-    quantity: "10",
+    quantity: "100",
     kMeta: "",
     kFile: "",
     notes: "",

@@ -4,6 +4,7 @@ import { AdminActionForms } from "../../../components/admin-action-forms";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
+import { requireDashboardSession } from "../../../lib/session";
 import { getDashboardI18n } from "../../../lib/locale";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
@@ -24,6 +25,7 @@ async function getBatchRows() {
 export default async function BatchesPage() {
   const { locale, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
+  const session = await requireDashboardSession();
   const batchRows = await getBatchRows();
 
   const rows = batchRows.map((row) => {
@@ -71,7 +73,7 @@ export default async function BatchesPage() {
           <li>Usar planned vs imported vs active para detectar temprano diferencias del proveedor antes de escalar a 10k/50k.</li>
         </ol>
       </Card>
-      <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} />
+      <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} currentRole={session.role} />
     </main>
   );
 }

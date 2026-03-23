@@ -11,6 +11,15 @@ import { roleAccess } from "../lib/dashboard-content";
 
 type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "events" | "resellers" | "leadsTickets" | "subscriptions" | "apiKeys";
 
+
+function pathnameToNavKey(pathname: string): NavKey {
+  if (pathname === "/" || pathname === "") return "overview";
+  if (pathname.startsWith("/api-keys")) return "apiKeys";
+  if (pathname.startsWith("/leads-tickets")) return "leadsTickets";
+  const segment = pathname.split("/").filter(Boolean)[0] || "overview";
+  return (segment === "overview" ? "overview" : segment) as NavKey;
+}
+
 function DashboardShellInner({
   title,
   subtitle,
@@ -19,6 +28,9 @@ function DashboardShellInner({
   shell,
   locale,
   locales,
+  currentRole,
+  currentEmail,
+  currentLabel,
   children,
 }: {
   title: string;
@@ -28,11 +40,14 @@ function DashboardShellInner({
   shell: { search: string; role: string; logout: string; apiConnected: string };
   locale: AppLocale;
   locales: readonly AppLocale[];
+  currentRole: UserRole;
+  currentEmail: string;
+  currentLabel: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const { mode, setMode } = useAudienceMode();
-  const [role, setRole] = useState<UserRole>("super-admin");
+  const role = currentRole;
   const [query, setQuery] = useState("");
 
   const quick = locale === "en"
@@ -48,6 +63,9 @@ function DashboardShellInner({
     : mode === "operator"
       ? { label: "Operator / Engineer", summary: "Operación, activación, integraciones y trazabilidad.", tone: "green" as const }
       : { label: "Buyer / Client", summary: "Confianza, UX y valor final para el usuario.", tone: "default" as const };
+
+  const activeKey = pathnameToNavKey(pathname);
+  const forbidden = !roleAccess[role].includes(activeKey);
 
   const items = useMemo(
     () =>
@@ -82,11 +100,8 @@ function DashboardShellInner({
             </div>
           </div>
           <label className="text-xs uppercase tracking-[0.16em] text-slate-400">{shell.role}</label>
-          <select className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={role} onChange={(event) => setRole(event.target.value as UserRole)}>
-            {Object.entries(roles).map(([key, label]) => (
-              <option key={key} value={key}>{label}</option>
-            ))}
-          </select>
+          <div className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">{roles[role]} · {currentLabel}</div>
+          <div className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-400">{currentEmail}</div>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={shell.search} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" />
         </div>
 
@@ -111,7 +126,7 @@ function DashboardShellInner({
               <Badge tone="green">{shell.apiConnected}</Badge>
               <LocaleSwitcher value={locale} options={[...locales]} />
               <ThemeToggle />
-              <Link href="/login" className="rounded-lg border border-white/10 px-3 py-2 text-xs">{shell.logout}</Link>
+              <Link href="/logout" className="rounded-lg border border-white/10 px-3 py-2 text-xs">{shell.logout}</Link>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -121,7 +136,7 @@ function DashboardShellInner({
             <a className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-slate-200" href="/docs" target="_blank" rel="noreferrer">{quick.docs}</a>
           </div>
         </header>
-        <div className="p-4 lg:p-8">{children}</div>
+        <div className="p-4 lg:p-8">{forbidden ? <div className="rounded-3xl border border-rose-300/20 bg-rose-500/10 p-6 text-sm text-rose-100">Your current role does not have access to this module.</div> : children}</div>
       </div>
     </div>
   );
