@@ -342,7 +342,6 @@ export function DemoLab() {
   const cinematicScript = CINEMATIC_SCRIPTS[selectedExperience];
   const activeCue = cinematicScript[autoRunCueIndex] || cinematicScript[0];
   const autoRunProgress = cinematicScript.length > 0 ? Math.round(((autoRunCueIndex + (autoRunActive ? 1 : 0)) / cinematicScript.length) * 100) : 0;
-  const opsReady = points.length > 0;
   const audienceCopy = audienceMode === "ceo"
     ? {
         title: "CEO / Ingeniero view",
@@ -431,6 +430,8 @@ export function DemoLab() {
         })),
     [summary.events],
   );
+
+  const opsReady = points.length > 0;
 
   const readFile = async (file: File) => file.text();
 

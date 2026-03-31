@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { AdminActionForms } from "../../../components/admin-action-forms";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
+import { requireDashboardSession } from "../../../lib/session";
 import { getDashboardI18n } from "../../../lib/locale";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
@@ -49,7 +51,10 @@ export default async function BatchesPage() {
         buyer={{ eyebrow: "Buyer / Client read", summary: "Batches demuestra que la solución no es artesanal: puede desplegarse por campañas, productos y mercados completos.", decision: "Decidís si el sistema escala desde piloto a rollout masivo sin perder control.", cta: "Mostralo cuando quieras hablar de implementación real y no solo de demo." }}
       />
       <Card className="p-5 text-sm text-slate-300">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Qué hacés acá en la práctica</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Qué hacés acá en la práctica</h2>
+          <Link href="/batches/supplier" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">Register Supplier Batch</Link>
+        </div>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Crear o importar lotes nuevos para campañas, productos o partners.</div>
           <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Activar o revocar lotes según rollout, incidentes o compliance.</div>
