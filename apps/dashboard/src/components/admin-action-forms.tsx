@@ -103,8 +103,8 @@ function buildCopyActions(data: ActionPayload | null): CopyAction[] {
   return actions.filter((item) => item.value);
 }
 
-export function AdminActionForms({ copy, roles, readyLabel, currentRole }: AdminActionFormsProps) {
-  const role = currentRole;
+export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
+  const [role, setRole] = useState<Role>("super-admin");
   const [status, setStatus] = useState<string>(readyLabel);
   const [summary, setSummary] = useState<ApiSummaryItem[]>([]);
   const [lastResponse, setLastResponse] = useState<ActionPayload | null>(null);
@@ -122,8 +122,8 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
 
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
-    createBatch: "Quick batch creation for platform-managed keys only. Do not use this card for supplier-programmed tags that already depend on agreed K_META_BATCH / K_FILE_BATCH values.",
-    importManifest: "Imports CSV rows (UID + metadata) into an existing batch, verifies batch_id alignment, and can leave them active on arrival when supplier-coded tags arrive ready to use.",
+    createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
+    importManifest: "Imports supplier UID manifests into an existing batch (CSV with columns or plain UID text list), verifies batch_id alignment when provided, and can leave tags active on arrival when supplier-coded tags arrive ready to use.",
     activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
   };
 
@@ -188,7 +188,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
-            <p className="text-[11px] text-amber-200">Quick flow only. If factory already has fixed keys, stop here and use Register Supplier Batch.</p>
+            <p className="text-[11px] text-slate-500">Tip: use tenant slug or tenant UUID. The response returns batch keys to keep for supplier setup.</p>
             <Button disabled={pending || !canEdit || !batch.tenantId || !batch.batchId} onClick={() => submit("/admin/batches", { ...batch, quantity: Number(batch.quantity || 0) })}>{copy.actions.createBatch}</Button>
           </div>
         </Card>
@@ -199,7 +199,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
             <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
-            <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Expected columns: batch_id, uid_hex and optional metadata like ic_type, roll_id, qc_status, timestamp.</div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Accepted formats: (1) CSV with uid_hex (+ optional batch_id, ic_type, roll_id, qc_status, timestamp) or (2) plain text UID list, one UID per line (optional first line: uid_hex).</div>
             <label className="flex items-center gap-2 text-xs text-slate-300">
               <input disabled={!canEdit} type="checkbox" checked={manifest.activateImported} onChange={(event) => setManifest({ ...manifest, activateImported: event.target.checked })} />
               Activate imported tags immediately when the supplier already encoded them

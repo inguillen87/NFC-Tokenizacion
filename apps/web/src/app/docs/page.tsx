@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BackLink } from "../../components/back-link";
-import { productExitHref } from "../../components/product-exit-link";
+import { ProductExitLink, productExitHref } from "../../components/product-exit-link";
 import { PublicLinkChip } from "../../components/public-link-chip";
 import { Card, SectionHeading } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
@@ -21,8 +21,6 @@ type DocsCopy = {
   packs: string[];
   rolloutTitle: string;
   rolloutBullets: string[];
-  activationTitle: string;
-  activationSteps: Array<{ title: string; body: string }>;
   revenueTitle: string;
   revenueBullets: string[];
   roadmapTitle: string;
@@ -93,15 +91,6 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Entregar al proveedor un spec cerrado: chip, URL template, key ownership, formato CSV manifest y criterio de activación.",
       "Importar manifest solo si el batch_id del archivo coincide exactamente con el batch creado en plataforma.",
       "Operar estados planned / imported / active para detectar diferencias antes de escalar a 10k/50k unidades.",
-    ],
-    activationTitle: "Playbook de activación tenant → batch → tags",
-    activationSteps: [
-      { title: "1. Alta del tenant", body: "Crear el tenant antes de fabricar o pilotear. Sin tenant no existe aislamiento comercial ni operativo para batches, analytics y webhooks." },
-      { title: "2. Alta del batch", body: "Dar de alta el batch exacto que va a imprimir fábrica. El bid del link NDEF debe existir en la base; si no, /sun responde unknown batch." },
-      { title: "3. Entrega al proveedor", body: "Compartir URL template, bid, profile, quantity y las keys del lote. El proveedor encodea usando ese spec cerrado, sin improvisar variantes." },
-      { title: "4. Import manifest", body: "Cuando llegan UID/CSV, importar el manifest sobre ese mismo bid. La API rechaza archivos cuyo batch_id no coincida exactamente." },
-      { title: "5. Activar tags", body: "Activar los UID importados para que un tap válido pase de NOT_REGISTERED / NOT_ACTIVE a VALID. Eso permite escalar igual para 10, 100 o millones." },
-      { title: "6. UX al tocar", body: "El click/tap del link debe resolver autenticidad, estado y contexto comercial en la misma experiencia: válido, no registrado, no activo, replay o revocado." },
     ],
     revenueTitle: "Modelo de ingresos (lo que entiende un inversor)",
     revenueBullets: [
@@ -192,15 +181,6 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Importar manifest apenas se o batch_id do arquivo coincidir exatamente com o batch criado na plataforma.",
       "Operar estados planned / imported / active para detectar diferenças antes de escalar para 10k/50k unidades.",
     ],
-    activationTitle: "Playbook de ativação tenant → batch → tags",
-    activationSteps: [
-      { title: "1. Alta do tenant", body: "Criar o tenant antes da fabricação ou piloto. Sem tenant não existe isolamento comercial nem operacional para batches, analytics e webhooks." },
-      { title: "2. Alta do batch", body: "Criar o batch exato que a fábrica vai gravar. O bid do link NDEF precisa existir no banco; caso contrário, /sun retorna unknown batch." },
-      { title: "3. Handoff ao fornecedor", body: "Compartilhar URL template, bid, profile, quantity e as keys do lote. O fornecedor grava seguindo esse spec fechado, sem variantes improvisadas." },
-      { title: "4. Import manifest", body: "Quando UID/CSV chegarem, importar o manifest sobre o mesmo bid. A API rejeita arquivos cujo batch_id não coincida exatamente." },
-      { title: "5. Ativar tags", body: "Ativar os UID importados para que um tap válido saia de NOT_REGISTERED / NOT_ACTIVE para VALID. Isso escala igual para 10, 100 ou milhões." },
-      { title: "6. UX no toque", body: "O click/tap do link deve resolver autenticidade, estado e contexto comercial na mesma experiência: válido, não registrado, não ativo, replay ou revogado." },
-    ],
     revenueTitle: "Modelo de receita",
     revenueBullets: [
       "Setup/Pilot fee.",
@@ -289,15 +269,6 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Give suppliers a closed spec: chip, URL template, key ownership, CSV manifest format and activation criteria.",
       "Import manifests only when the file batch_id exactly matches the batch created in platform.",
       "Track planned / imported / active states to catch supplier mismatches before scaling to 10k/50k units.",
-    ],
-    activationTitle: "Activation playbook: tenant → batch → tags",
-    activationSteps: [
-      { title: "1. Create the tenant", body: "Create the tenant before manufacturing or piloting. Without a tenant there is no commercial or operational isolation for batches, analytics and webhooks." },
-      { title: "2. Create the batch", body: "Create the exact batch the factory will encode. The bid inside the NDEF link must exist in the database; otherwise /sun returns unknown batch." },
-      { title: "3. Supplier handoff", body: "Share URL template, bid, profile, quantity and the batch keys. The supplier encodes against that closed spec with no ad-hoc variations." },
-      { title: "4. Import manifest", body: "When UID/CSV files arrive, import the manifest into that same bid. The API rejects files whose batch_id does not match exactly." },
-      { title: "5. Activate tags", body: "Activate imported UIDs so a valid tap moves from NOT_REGISTERED / NOT_ACTIVE into VALID. This keeps the same operating model for 10, 100 or millions of tags." },
-      { title: "6. Tap UX", body: "The click/tap experience should resolve authenticity, operational state and commercial context together: valid, not registered, not active, replay or revoked." },
     ],
     revenueTitle: "Revenue model",
     revenueBullets: [
@@ -445,20 +416,6 @@ export default async function DocsPage() {
         </Card>
       </div>
 
-      <div className="scroll-mt-28">
-        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(16,185,129,0.10)]">
-          <h3 className="text-lg font-semibold text-white">{copy.activationTitle}</h3>
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {copy.activationSteps.map((step) => (
-              <div key={step.title} className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-semibold text-emerald-200">{step.title}</p>
-                <p className="mt-2 text-sm text-slate-300">{step.body}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
       <div id="faq" className="scroll-mt-28">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
@@ -489,7 +446,6 @@ export default async function DocsPage() {
           </div>
         </Card>
       </div>
-
 
       <div id="actions" className="scroll-mt-28">
         <Card className="p-6">

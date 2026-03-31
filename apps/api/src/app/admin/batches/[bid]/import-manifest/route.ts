@@ -32,6 +32,31 @@ async function readPayload(req: Request): Promise<ManifestPayload & { csv: strin
   return { csv: raw, activateImported: false };
 }
 
+function parseUidText(content: string): ManifestRow[] {
+  const lines = content
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) return [];
+
+  const first = lines[0].toLowerCase();
+  const startIndex = first === "uid_hex" || first === "uid" ? 1 : 0;
+  return lines.slice(startIndex).map((uid) => ({ uid_hex: uid }));
+}
+
+function parseManifestRows(content: string): ManifestRow[] {
+  try {
+    const rows = parse(content, { columns: true, skip_empty_lines: true, trim: true }) as ManifestRow[];
+    if (rows.length) return rows;
+  } catch {
+    // fall through and try plain UID list parsing
+  }
+
+  return parseUidText(content);
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
   const auth = checkAdmin(req);
   if (auth) return auth;
@@ -44,7 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const payload = await readPayload(req);
   if (!payload.csv.trim()) return json({ ok: false, reason: "empty csv body" }, 400);
 
-  const rows = parse(payload.csv, { columns: true, skip_empty_lines: true, trim: true }) as ManifestRow[];
+  const rows = parseManifestRows(payload.csv);
   if (!rows.length) return json({ ok: false, reason: "manifest has no rows" }, 400);
 
   const manifestBatchIds = Array.from(new Set(rows.map((row) => normalizeBatchId(row.batch_id || row.batchId)).filter(Boolean)));
