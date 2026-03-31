@@ -111,10 +111,19 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
   const [pending, setPending] = useState(false);
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
-  const [batch, setBatch] = useState({ tenantId: "", batchId: "", sku: "", quantity: "" });
-  const [manifest, setManifest] = useState({ batchId: "", csv: "batch_id,uid_hex,ic_type,roll_id,qc_status,timestamp", activateImported: true });
-  const [activation, setActivation] = useState({ batchId: "", count: "", uids: "" });
+  const [batch, setBatch] = useState({
+    tenantId: "demobodega",
+    batchId: "DEMO-2026-02",
+    sku: "",
+    quantity: "10",
+    chipModel: "NTAG 424 DNA TT",
+    kMetaHex: "",
+    kFileHex: "",
+  });
+  const [manifest, setManifest] = useState({ batchId: "DEMO-2026-02", csv: "uid_hex\n0487856A0B1090", activateImported: true });
+  const [activation, setActivation] = useState({ batchId: "DEMO-2026-02", count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
+  const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
 
   const canEdit = role !== "viewer";
   const roleMessage = useMemo(() => copy.roleHint[role], [copy.roleHint, role]);
@@ -125,6 +134,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
     createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
     importManifest: "Imports supplier UID manifests into an existing batch (CSV with columns or plain UID text list), verifies batch_id alignment when provided, and can leave tags active on arrival when supplier-coded tags arrive ready to use.",
     activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
+    validateSampleUrl: "Validates a supplier SUN URL and returns a human-readable trust state (VALID, NOT_REGISTERED, NOT_ACTIVE, INVALID, REPLAY_SUSPECT, UNKNOWN_BATCH).",
   };
 
   async function copyValue(value: string) {
@@ -186,10 +196,32 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantId} value={batch.tenantId} onChange={(event) => setBatch({ ...batch, tenantId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
+            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Chip model (e.g. NTAG 424 DNA TT)" value={batch.chipModel} onChange={(event) => setBatch({ ...batch, chipModel: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
-            <p className="text-[11px] text-slate-500">Tip: use tenant slug or tenant UUID. The response returns batch keys to keep for supplier setup.</p>
-            <Button disabled={pending || !canEdit || !batch.tenantId || !batch.batchId} onClick={() => submit("/admin/batches", { ...batch, quantity: Number(batch.quantity || 0) })}>{copy.actions.createBatch}</Button>
+            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_META_BATCH (32 hex, optional)" value={batch.kMetaHex} onChange={(event) => setBatch({ ...batch, kMetaHex: event.target.value })} />
+            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_FILE_BATCH (32 hex, optional)" value={batch.kFileHex} onChange={(event) => setBatch({ ...batch, kFileHex: event.target.value })} />
+            <p className="text-[11px] text-slate-500">Supplier batch registration (no CLI): tenant + batch + chip + keys + quantity. Use tenant slug or tenant UUID.</p>
+            <Button
+              disabled={pending || !canEdit || !batch.tenantId || !batch.batchId}
+              onClick={() =>
+                submit("/admin/batches", {
+                  tenantId: batch.tenantId,
+                  batchId: batch.batchId,
+                  sku: batch.sku,
+                  quantity: Number(batch.quantity || 0),
+                  profile: "secure",
+                  k_meta_hex: batch.kMetaHex || undefined,
+                  k_file_hex: batch.kFileHex || undefined,
+                  sdm_config: {
+                    ic_type: batch.chipModel,
+                    tag_type: batch.chipModel,
+                    security_profile: "secure",
+                  },
+                })}
+            >
+              {copy.actions.createBatch}
+            </Button>
           </div>
         </Card>
 
@@ -220,6 +252,29 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
             <Button disabled={pending || !canEdit || !revoke.batchId} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke? This can impact live validations.")) submit(`/admin/batches/${revoke.batchId}/revoke`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <h3 className="text-base font-semibold text-white">Validate Supplier Sample URL <span className="ml-1 text-cyan-300" title={hints.validateSampleUrl}>ⓘ</span></h3>
+          <p className="mt-1 text-xs text-slate-400">{hints.validateSampleUrl}</p>
+          <div className="mt-4 grid gap-3">
+            <textarea
+              disabled={!canEdit}
+              className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
+              placeholder="https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=...&enc=...&cmac=..."
+              value={urlValidation.sampleUrl}
+              onChange={(event) => setUrlValidation({ sampleUrl: event.target.value })}
+            />
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">
+              Expected trust states: VALID · NOT_REGISTERED · NOT_ACTIVE · INVALID · REPLAY_SUSPECT · UNKNOWN_BATCH
+            </div>
+            <Button
+              disabled={pending || !canEdit || !urlValidation.sampleUrl.trim()}
+              onClick={() => submit("/admin/sun/validate", { sampleUrl: urlValidation.sampleUrl })}
+            >
+              Validate sample URL
+            </Button>
           </div>
         </Card>
       </div>
