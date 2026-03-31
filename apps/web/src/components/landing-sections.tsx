@@ -4,6 +4,7 @@ import { HeroScene } from "./hero-scene";
 
 import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
+import { ProductExitLink } from "./product-exit-link";
 
 type Content = LandingContent;
 type StatsCopy = {
@@ -65,7 +66,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
           </div>
 
           <div className="mt-2">
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`} className="hero-mini-cta hero-mini-cta--neutral inline-flex rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">{demoLabCta}</a>
+            <ProductExitLink kind="demoLab" className="hero-mini-cta hero-mini-cta--neutral inline-flex rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">{demoLabCta}</ProductExitLink>
           </div>
 
           <div className="mt-7 flex flex-wrap gap-2">

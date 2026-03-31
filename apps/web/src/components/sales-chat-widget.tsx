@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type KeyboardEventHandler } from "react";
 import type { AppLocale } from "@product/config";
+import { ProductExitLink } from "./product-exit-link";
 
 type Message = { role: "user" | "assistant"; text: string };
 
@@ -338,8 +339,8 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-2 pt-1">
-                  <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/demo-lab`} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left text-xs text-slate-200">{t.openLab}</a>
-                  <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || "https://app.nexid.lat"}/investor-snapshot`} className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-left text-xs text-amber-100">{t.openSnapshot}</a>
+                  <ProductExitLink kind="demoLab" className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left text-xs text-slate-200">{t.openLab}</ProductExitLink>
+                  <ProductExitLink kind="investorSnapshot" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-left text-xs text-amber-100">{t.openSnapshot}</ProductExitLink>
                   <a href="/pricing" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-left text-xs text-emerald-100">{t.openPricing}</a>
                 </div>
               </div>

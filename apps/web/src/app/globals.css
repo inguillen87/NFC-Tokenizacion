@@ -22,10 +22,16 @@ body {
     linear-gradient(to right, rgba(30, 41, 59, 0.44) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(30, 41, 59, 0.44) 1px, transparent 1px);
   background-size: auto, auto, auto, 30px 30px, 30px 30px;
+  overscroll-behavior-y: none;
 }
 
 a {
   text-decoration: none;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.24);
+  color: #f8fafc;
 }
 
 .container-shell {
@@ -253,6 +259,19 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
   .brand-dot__core,
   .brand-i-head-orbit,
   .brand-i-head--travel,
