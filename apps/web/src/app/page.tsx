@@ -16,7 +16,11 @@ import { DemoRequestSection } from "../components/demo-request-section";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
+import { ProductExitLink } from "../components/product-exit-link";
+import { PublicLinkChip } from "../components/public-link-chip";
 import { productUrls } from "@product/config";
+import { productExitHref } from "../components/product-exit-link";
+import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
 
 export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
@@ -39,6 +43,24 @@ export default async function HomePage() {
       quickAudiences: "Audience pitch",
       quickDemoLab: "Demo Lab",
       quickInvestor: "Investor snapshot",
+      rolloutDocs: "Read rollout docs",
+      rolloutPricing: "See rollout pricing",
+      mobileCtaDemo: "Book demo",
+      mobileCtaDocs: "Docs",
+      intentTitle: "Choose your path",
+      intentCards: [
+        { title: "Use it in my company", body: "See rollout, chip profiles and operating model.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
+        { title: "See my buyer profile", body: "Match the pitch to brand, reseller, government or operator.", href: "/?contact=sales&intent=buyer_profile#contact-modal", type: "lead" },
+        { title: "Open Demo Lab", body: "Jump directly into the product surface and simulate the flow.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", type: "lead" },
+        { title: "Investor angle", body: "Review the platform story, moat and rollout narrative.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", type: "lead" },
+      ],
+      rolloutTitle: "Pilot → rollout flow",
+      rolloutBullets: [
+        "1. Define batch_id, SKU, expected volume and security profile before production.",
+        "2. Send supplier the URL template, key ownership rules and manifest CSV format.",
+        "3. Import only manifests that match the created batch and compare planned vs imported tags.",
+        "4. Activate only audited units before opening the rollout to consumers or partners.",
+      ],
     }
     : locale === "pt-BR"
     ? {
@@ -58,6 +80,24 @@ export default async function HomePage() {
       quickAudiences: "Pitch por audiência",
       quickDemoLab: "Demo Lab",
       quickInvestor: "Investor snapshot",
+      rolloutDocs: "Ver docs de rollout",
+      rolloutPricing: "Ver pricing rollout",
+      mobileCtaDemo: "Agendar demo",
+      mobileCtaDocs: "Docs",
+      intentTitle: "Escolha seu caminho",
+      intentCards: [
+        { title: "Usar na minha empresa", body: "Veja rollout, perfis de chip e operação.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
+        { title: "Ver meu perfil comprador", body: "Adapte o pitch para marca, revenda, governo ou operador.", href: "/?contact=sales&intent=buyer_profile#contact-modal", type: "lead" },
+        { title: "Abrir Demo Lab", body: "Entre direto na superfície do produto e simule o fluxo.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", type: "lead" },
+        { title: "Ângulo investidor", body: "Revise a narrativa de plataforma, moat e rollout.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", type: "lead" },
+      ],
+      rolloutTitle: "Fluxo piloto → rollout",
+      rolloutBullets: [
+        "1. Defina batch_id, SKU, volume esperado e perfil de segurança antes da produção.",
+        "2. Envie ao fornecedor o URL template, ownership das keys e o formato CSV do manifest.",
+        "3. Importe apenas manifests que coincidam com o batch criado e compare planned vs imported tags.",
+        "4. Ative somente unidades auditadas antes de abrir o rollout a consumidores ou parceiros.",
+      ],
     }
     : {
       demoJson: "Descargar seed JSON",
@@ -76,6 +116,24 @@ export default async function HomePage() {
       quickAudiences: "Pitch por audiencia",
       quickDemoLab: "Demo Lab",
       quickInvestor: "Investor snapshot",
+      rolloutDocs: "Ver docs de rollout",
+      rolloutPricing: "Ver pricing rollout",
+      mobileCtaDemo: "Agendar demo",
+      mobileCtaDocs: "Docs",
+      intentTitle: "Elegí tu camino",
+      intentCards: [
+        { title: "Usarlo en mi empresa", body: "Mirá rollout, perfiles de chip y modelo operativo.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
+        { title: "Ver mi tipo de comprador", body: "Adaptá el pitch para marca, reseller, gobierno u operador.", href: "/?contact=sales&intent=buyer_profile#contact-modal", type: "lead" },
+        { title: "Abrir Demo Lab", body: "Entrá directo a la superficie de producto y simulá el flujo.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", type: "lead" },
+        { title: "Ángulo inversor", body: "Revisá la narrativa de plataforma, moat y rollout.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", type: "lead" },
+      ],
+      rolloutTitle: "Flujo piloto → rollout",
+      rolloutBullets: [
+        "1. Definí batch_id, SKU, volumen esperado y perfil de seguridad antes de fabricar.",
+        "2. Entregá al proveedor URL template, ownership de keys y formato CSV del manifest.",
+        "3. Importá solo manifests que coincidan con el batch creado y compará planned vs imported tags.",
+        "4. Activá únicamente unidades auditadas antes de abrir el rollout a clientes o partners.",
+      ],
     };
 
   const demoPacks = [
@@ -107,9 +165,9 @@ export default async function HomePage() {
           <div className="header-actions flex items-center gap-2">
             <LocaleSwitcher value={locale} options={[...locales]} />
             <ThemeToggle />
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`}>
+            <ProductExitLink kind="demoLab">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
-            </a>
+            </ProductExitLink>
             <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`}>
               <Button variant="secondary">{content.nav.cta}</Button>
             </a>
@@ -120,20 +178,44 @@ export default async function HomePage() {
 
 
       <section className="container-shell quick-links-section py-3">
-        <div className="quick-links-wrap rounded-xl border border-white/10 bg-slate-900/55 p-2">
+        <div className="quick-links-wrap rounded-xl border border-white/10 bg-slate-900/55 p-2 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_18px_45px_rgba(8,15,30,0.35)]">
           <div className="quick-links-scroll flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs">
-            <span className="px-2 py-1 font-semibold text-cyan-300">{labels.quickNavTitle}</span>
-            <Link href="/docs#faq" className="quick-link-chip rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-cyan-100">{labels.quickFaq}</Link>
-            <Link href="/stack" className="quick-link-chip rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1.5 text-indigo-100">{labels.quickStack}</Link>
-            <Link href="/glossary" className="quick-link-chip rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-100">{labels.quickGlossary}</Link>
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/investor-snapshot`} className="quick-link-chip rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-amber-100">{labels.quickInvestor}</a>
-            <Link href="/audiences" className="quick-link-chip rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-violet-100">{labels.quickAudiences}</Link>
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`} className="quick-link-chip rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-amber-100">{labels.quickDemoLab}</a>
+            <span className="inline-flex items-center gap-1 px-2 py-1 font-semibold text-cyan-300"><Sparkles className="h-3.5 w-3.5" />{labels.quickNavTitle}</span>
+            <PublicLinkChip href="/docs#faq" variant="cyan" className="quick-link-chip">{labels.quickFaq}</PublicLinkChip>
+            <PublicLinkChip href="/stack" variant="indigo" icon={<Layers3 className="h-3.5 w-3.5" />} className="quick-link-chip">{labels.quickStack}</PublicLinkChip>
+            <PublicLinkChip href="/glossary" variant="emerald" className="quick-link-chip">{labels.quickGlossary}</PublicLinkChip>
+            <PublicLinkChip href={productExitHref.investorSnapshot} variant="amber" className="quick-link-chip">{labels.quickInvestor}</PublicLinkChip>
+            <PublicLinkChip href="/audiences" variant="violet" className="quick-link-chip">{labels.quickAudiences}</PublicLinkChip>
+            <PublicLinkChip href={productExitHref.demoLab} variant="amber" icon={<CirclePlay className="h-3.5 w-3.5" />} className="quick-link-chip">{labels.quickDemoLab}</PublicLinkChip>
           </div>
         </div>
       </section>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
+
+      <section className="container-shell py-6">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{labels.intentTitle}</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {labels.intentCards.map((card) => {
+              const body = (
+                <>
+                  <p className="text-sm font-semibold text-white">{card.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">{card.body}</p>
+                  <span className="mt-4 inline-flex items-center gap-2 text-sm text-cyan-200">Explorar<ArrowRight className="h-4 w-4" /></span>
+                </>
+              );
+
+              return (
+                <Link key={card.title} href={card.href} className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
+                  {body}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       <RadarSection radar={content.radar} locale={locale} />
       <InteractiveDemoSection locale={locale} />
 
@@ -150,13 +232,13 @@ export default async function HomePage() {
           <p className="mt-2 text-sm text-slate-300">{labels.assetBody}</p>
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {demoPacks.map((pack) => (
-              <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <div key={pack.key} className="group rounded-xl border border-white/10 bg-slate-950/70 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-slate-950 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
                 <p className="text-sm font-semibold text-white">{pack.label} <span className="text-cyan-300">· {pack.tag}</span></p>
                 <p className="mt-1 text-xs text-slate-300">{pack.sim}</p>
                 <div className="mt-3 grid gap-2 md:grid-cols-3">
-                  <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/seed.json`} download>{labels.demoJson}</a>
-                  <a className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white" href={`/demo/${pack.key}/manifest.csv`} download>{labels.demoCsv}</a>
-                  <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200" href={`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || productUrls.app}/demo-lab`}>{labels.launchLab}</a>
+                  <a className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white transition-colors duration-200 group-hover:border-white/20" href={`/demo/${pack.key}/seed.json`} download><FileJson className="h-3.5 w-3.5" />{labels.demoJson}</a>
+                  <a className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white transition-colors duration-200 group-hover:border-white/20" href={`/demo/${pack.key}/manifest.csv`} download><FileSpreadsheet className="h-3.5 w-3.5" />{labels.demoCsv}</a>
+                  <ProductExitLink kind="demoLab" className="inline-flex items-center justify-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200 transition-transform duration-200 group-hover:translate-x-0.5"><CirclePlay className="h-3.5 w-3.5" />{labels.launchLab}</ProductExitLink>
                 </div>
               </div>
             ))}
@@ -166,6 +248,18 @@ export default async function HomePage() {
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyCsv}</div>
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyLab}</div>
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.forWho}</div>
+          </div>
+          <div className="mt-5 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{labels.rolloutTitle}</p>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {labels.rolloutBullets.map((item) => (
+                <div key={item} className="rounded-lg border border-cyan-300/15 bg-slate-950/50 p-3 text-xs text-slate-200 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-slate-950/70">{item}</div>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/docs" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutDocs}<ArrowRight className="h-3.5 w-3.5" /></Link>
+              <Link href="/pricing" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutPricing}<ArrowRight className="h-3.5 w-3.5" /></Link>
+            </div>
           </div>
         </div>
       </section>
@@ -188,6 +282,13 @@ export default async function HomePage() {
           </div>
         </div>
       </footer>
+
+      <div className="fixed inset-x-0 bottom-3 z-40 px-4 pb-[max(env(safe-area-inset-bottom),0px)] md:hidden">
+        <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
+          <Link href="/docs" className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center text-sm font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
+          <Link href="/?contact=demo#contact-modal" className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-3 text-sm font-medium text-cyan-100">{labels.mobileCtaDemo}<ArrowRight className="h-4 w-4" /></Link>
+        </div>
+      </div>
     </main>
   );
 }
