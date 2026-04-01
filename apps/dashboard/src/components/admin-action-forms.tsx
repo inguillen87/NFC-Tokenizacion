@@ -9,6 +9,7 @@ type Role = "super-admin" | "tenant-admin" | "reseller" | "viewer";
 type AdminActionFormsProps = {
   roles: Record<Role, string>;
   readyLabel: string;
+  currentRole: Role;
   copy: {
     roleHeading: string;
     roleHint: Record<Role, string>;
@@ -243,17 +244,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
         <p className="mt-1 text-xs text-slate-400">{roleMessage}</p>
 
         <label className="mt-4 block text-xs uppercase tracking-wide text-slate-400">{copy.roleLabel}</label>
-        <select
-          className="mt-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm"
-          value={role}
-          onChange={(event) => setRole(event.target.value as Role)}
-        >
-          {Object.entries(roles).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <div className="mt-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">{roles[role]}</div>
       </Card>
 
       <Card className="p-5">

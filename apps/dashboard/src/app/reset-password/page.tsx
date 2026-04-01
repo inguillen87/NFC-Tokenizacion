@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { BrandLockup, Button, Card } from "@product/ui";
+import { BrandLockup, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
 import { dashboardContent } from "../../lib/dashboard-content";
+import { ResetPasswordPanel } from "../../components/reset-password-panel";
 
 export default async function ResetPasswordPage() {
   const { locale, t } = await getDashboardI18n();
@@ -13,16 +14,8 @@ export default async function ResetPasswordPage() {
         <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={30} variant="pulse" theme="dark" /></Link>
         <h1 className="mt-4 text-2xl font-bold text-white">{copy.auth.resetTitle}</h1>
         <p className="mt-2 text-sm text-slate-400">{copy.auth.resetBody}</p>
-
-        <div className="mt-6 grid gap-3">
-          <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.passwordPlaceholder} />
-          <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.passwordPlaceholder} />
-          <Button className="w-full">{copy.auth.resetAction}</Button>
-        </div>
-
-        <p className="mt-4 text-xs">
-          <Link href="/login" className="text-cyan-300">{t.common.login}</Link>
-        </p>
+        <ResetPasswordPanel passwordPlaceholder={t.web.auth.passwordPlaceholder} actionLabel={copy.auth.resetAction} />
+        <p className="mt-4 text-xs"><Link href="/login" className="text-cyan-300">{t.common.login}</Link></p>
       </Card>
     </main>
   );

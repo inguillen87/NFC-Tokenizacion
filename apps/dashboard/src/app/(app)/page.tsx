@@ -7,6 +7,7 @@ import { DataTable } from "../../components/data-table";
 import { ModuleGrid } from "../../components/module-grid";
 import { AudienceOverviewExplainer } from "../../components/audience-overview-explainer";
 import { dashboardContent } from "../../lib/dashboard-content";
+import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
@@ -48,6 +49,7 @@ function resolveTenantStatus(scans: number, duplicates: number, tamper: number) 
 export default async function DashboardHome() {
   const { locale, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
+  const session = await requireDashboardSession();
   const [overviewRaw, liveEvents]: [Array<Record<string, unknown>>, Array<Record<string, unknown>>] = await Promise.all([getOverviewRows(), getLiveEvents()]);
 
   const labels = locale === "en"
@@ -257,7 +259,7 @@ export default async function DashboardHome() {
         </div>
       </Card>
 
-      <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} />
+      <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} currentRole={session.role} />
     </main>
   );
 }
