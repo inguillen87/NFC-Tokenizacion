@@ -3,6 +3,7 @@ import { Button, Card, SectionHeading } from "@product/ui";
 import { LiveDemoSurfaces } from "../../components/live-demo-surfaces";
 import { ProductExitLink } from "../../components/product-exit-link";
 import { VerticalDemoLibrary } from "../../components/vertical-demo-library";
+import { DemoProcessSimulator } from "../../components/demo-process-simulator";
 import { getWebI18n } from "../../lib/locale";
 import { ArrowRight, CirclePlay, FileDown, MapPinned, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
 
@@ -252,6 +253,8 @@ export default async function PublicDemoPage() {
             </div>
           </Card>
         </div>
+
+        <DemoProcessSimulator locale={locale} />
 
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.nextTitle}</h3>

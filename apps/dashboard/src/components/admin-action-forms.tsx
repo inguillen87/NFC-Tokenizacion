@@ -46,6 +46,19 @@ type ApiSummaryItem = { label: string; value: string };
 type ActionPayload = Record<string, unknown>;
 type CopyAction = { label: string; value: string };
 
+const ECHO_DEMO_UIDS = [
+  "0487856A0B1090",
+  "048A876A0B1090",
+  "0483846A0B1090",
+  "047F846A0B1090",
+  "047B846A0B1090",
+  "0477846A0B1090",
+  "0474856A0B1090",
+  "0470856A0B1090",
+  "0483826A0B1090",
+  "0465846A0B1090",
+];
+
 function stringifyValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
   if (value && typeof value === "object") return JSON.stringify(value);
@@ -103,6 +116,43 @@ function buildCopyActions(data: ActionPayload | null): CopyAction[] {
   return actions.filter((item) => item.value);
 }
 
+function parseManifestPreview(input: string) {
+  const text = String(input || "").trim();
+  if (!text) return { format: "empty", rows: 0, unique: 0, duplicates: 0, sample: [] as string[], batchIds: [] as string[] };
+
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) return { format: "empty", rows: 0, unique: 0, duplicates: 0, sample: [] as string[], batchIds: [] as string[] };
+
+  const looksCsv = lines[0].includes(",");
+  const rows = looksCsv ? lines.slice(1) : lines;
+  const entries = rows
+    .map((line) => {
+      if (!looksCsv) return { uid: line, batch: "" };
+      const [uid, batch] = line.split(",").map((value) => String(value || "").trim());
+      return { uid, batch };
+    })
+    .filter((row) => row.uid && row.uid.toLowerCase() !== "uid_hex");
+
+  const normalizedUids = entries.map((row) => row.uid.toUpperCase());
+  const unique = new Set(normalizedUids);
+  const duplicateCount = Math.max(0, normalizedUids.length - unique.size);
+  const batchIds = Array.from(new Set(entries.map((row) => row.batch).filter(Boolean)));
+
+  return {
+    format: looksCsv ? "csv" : "txt",
+    rows: entries.length,
+    unique: unique.size,
+    duplicates: duplicateCount,
+    sample: Array.from(unique).slice(0, 3),
+    batchIds,
+  };
+}
+
 export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
   const [role, setRole] = useState<Role>("super-admin");
   const [status, setStatus] = useState<string>(readyLabel);
@@ -128,6 +178,29 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
   const canEdit = role !== "viewer";
   const roleMessage = useMemo(() => copy.roleHint[role], [copy.roleHint, role]);
   const copyActions = useMemo(() => buildCopyActions(lastResponse), [lastResponse]);
+  const manifestPreview = useMemo(() => parseManifestPreview(manifest.csv), [manifest.csv]);
+  const onboardingSteps = useMemo(() => [
+    {
+      label: "1) Register supplier batch",
+      done: Boolean(batch.tenantId.trim() && batch.batchId.trim()),
+      detail: "Tenant + batch + keys + chip model",
+    },
+    {
+      label: "2) Import supplier manifest",
+      done: manifestPreview.unique > 0,
+      detail: `${manifestPreview.unique} unique UID(s) detected`,
+    },
+    {
+      label: "3) Activate imported tags",
+      done: activation.batchId.trim().length > 0,
+      detail: "Activate by count or specific UID list",
+    },
+    {
+      label: "4) Validate SUN sample URL",
+      done: urlValidation.sampleUrl.trim().length > 0,
+      detail: "Paste one /sun?... URL to verify trust state",
+    },
+  ], [activation.batchId, batch.batchId, batch.tenantId, manifestPreview.unique, urlValidation.sampleUrl]);
 
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
@@ -172,6 +245,19 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
 
         <label className="mt-4 block text-xs uppercase tracking-wide text-slate-400">{copy.roleLabel}</label>
         <div className="mt-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">{roles[role]}</div>
+      </Card>
+
+      <Card className="p-5">
+        <h3 className="text-base font-semibold text-white">Supplier flow checklist</h3>
+        <p className="mt-1 text-xs text-slate-400">Guided no-CLI onboarding to avoid operator mistakes during supplier handoff.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {onboardingSteps.map((step) => (
+            <div key={step.label} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs">
+              <p className={step.done ? "font-semibold text-emerald-300" : "font-semibold text-amber-300"}>{step.done ? "✓" : "•"} {step.label}</p>
+              <p className="mt-1 text-slate-400">{step.detail}</p>
+            </div>
+          ))}
+        </div>
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -229,9 +315,22 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <h3 className="text-base font-semibold text-white">{copy.importManifest} <span className="ml-1 text-cyan-300" title={hints.importManifest}>ⓘ</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.importManifest}</p>
           <div className="mt-4 grid gap-3">
+            <button
+              type="button"
+              disabled={!canEdit}
+              className="w-fit rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-100 disabled:opacity-50"
+              onClick={() => setManifest({ ...manifest, csv: `uid_hex\n${ECHO_DEMO_UIDS.join("\n")}` })}
+            >
+              Load Echo sample UID list (10)
+            </button>
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
             <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
             <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Accepted formats: (1) CSV with uid_hex (+ optional batch_id, ic_type, roll_id, qc_status, timestamp) or (2) plain text UID list, one UID per line (optional first line: uid_hex).</div>
+            <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-100">
+              <p>Preview: format <b>{manifestPreview.format.toUpperCase()}</b> · rows <b>{manifestPreview.rows}</b> · unique UIDs <b>{manifestPreview.unique}</b> · duplicates <b>{manifestPreview.duplicates}</b></p>
+              {manifestPreview.batchIds.length ? <p className="mt-1">Detected batch_id values: {manifestPreview.batchIds.join(", ")}</p> : null}
+              {manifestPreview.sample.length ? <p className="mt-1">Sample UIDs: {manifestPreview.sample.join(", ")}</p> : null}
+            </div>
             <label className="flex items-center gap-2 text-xs text-slate-300">
               <input disabled={!canEdit} type="checkbox" checked={manifest.activateImported} onChange={(event) => setManifest({ ...manifest, activateImported: event.target.checked })} />
               Activate imported tags immediately when the supplier already encoded them
