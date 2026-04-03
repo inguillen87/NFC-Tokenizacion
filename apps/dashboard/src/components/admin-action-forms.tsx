@@ -9,6 +9,7 @@ type Role = "super-admin" | "tenant-admin" | "reseller" | "viewer";
 type AdminActionFormsProps = {
   roles: Record<Role, string>;
   readyLabel: string;
+  currentRole: Role;
   copy: {
     roleHeading: string;
     roleHint: Record<Role, string>;
@@ -243,17 +244,20 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
         <p className="mt-1 text-xs text-slate-400">{roleMessage}</p>
 
         <label className="mt-4 block text-xs uppercase tracking-wide text-slate-400">{copy.roleLabel}</label>
-        <select
-          className="mt-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm"
-          value={role}
-          onChange={(event) => setRole(event.target.value as Role)}
-        >
-          {Object.entries(roles).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
+        <div className="mt-2 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">{roles[role]}</div>
+      </Card>
+
+      <Card className="p-5">
+        <h3 className="text-base font-semibold text-white">Supplier flow checklist</h3>
+        <p className="mt-1 text-xs text-slate-400">Guided no-CLI onboarding to avoid operator mistakes during supplier handoff.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {onboardingSteps.map((step) => (
+            <div key={step.label} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs">
+              <p className={step.done ? "font-semibold text-emerald-300" : "font-semibold text-amber-300"}>{step.done ? "✓" : "•"} {step.label}</p>
+              <p className="mt-1 text-slate-400">{step.detail}</p>
+            </div>
           ))}
-        </select>
+        </div>
       </Card>
 
       <Card className="p-5">
