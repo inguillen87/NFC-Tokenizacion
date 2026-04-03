@@ -5,6 +5,8 @@ import { ProductExitLink } from "../../components/product-exit-link";
 import { VerticalDemoLibrary } from "../../components/vertical-demo-library";
 import { DemoProcessSimulator } from "../../components/demo-process-simulator";
 import { DemoFaq } from "../../components/demo-faq";
+import { DemoSessionPlanner } from "../../components/demo-session-planner";
+import { DemoReadinessBoard } from "../../components/demo-readiness-board";
 import { getWebI18n } from "../../lib/locale";
 import { ArrowRight, CirclePlay, FileDown, MapPinned, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
 
@@ -257,6 +259,8 @@ export default async function PublicDemoPage() {
 
         <DemoProcessSimulator locale={locale} />
         <DemoFaq locale={locale} />
+        <DemoSessionPlanner locale={locale} />
+        <DemoReadinessBoard locale={locale} />
 
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.nextTitle}</h3>
