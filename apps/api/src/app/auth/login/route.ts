@@ -1,0 +1,50 @@
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+import { sql } from '../../../lib/db';
+import { json } from '../../../lib/http';
+import { ensurePresetUser } from '../../../lib/auth-presets';
+import { verifyPassword } from '../../../lib/password';
+import { auditAuthEvent, createSession, getAuthUserByEmail, normalizeRole, verifyTotpCode } from '../../../lib/iam';
+import { getRequestMeta } from '../../../lib/request-meta';
+
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => ({})) as { email?: string; password?: string; mfaCode?: string; };
+  const email = String(body.email || '').trim().toLowerCase();
+  const password = String(body.password || '').trim();
+  const mfaCode = String(body.mfaCode || '').trim();
+  if (!email || !password) return json({ ok: false, reason: 'email and password required' }, 400);
+
+  const meta = getRequestMeta(req);
+  await ensurePresetUser(sql as any, email);
+  const user = await getAuthUserByEmail(sql as any, email);
+
+  if (!user || !verifyPassword(password, String(user.password_hash || ''))) {
+    await auditAuthEvent(sql as any, { email, eventName: 'login_failed', ok: false, role: user?.role, ...meta, meta: { reason: 'invalid_credentials', source: 'dashboard' } }).catch(() => null);
+    return json({ ok: false, reason: 'invalid credentials' }, 401);
+  }
+
+  if (user.mfa_enabled) {
+    const factor = await sql`SELECT secret FROM user_mfa_factors WHERE user_id = ${user.id}::uuid LIMIT 1`;
+    const secret = factor[0]?.secret ? String(factor[0].secret) : '';
+    if (!secret || !verifyTotpCode(secret, mfaCode)) {
+      await auditAuthEvent(sql as any, { email, eventName: 'mfa_challenge_failed', ok: false, role: user.role, ...meta, meta: { source: 'dashboard' } }).catch(() => null);
+      return json({ ok: false, reason: 'mfa required', mfaRequired: true }, 401);
+    }
+    await sql`UPDATE user_mfa_factors SET last_verified_at = now(), updated_at = now() WHERE user_id = ${user.id}::uuid`;
+  }
+
+  const session = await createSession(sql as any, { user, ...meta, mfaVerified: user.mfa_enabled });
+  await auditAuthEvent(sql as any, { email, eventName: 'login', ok: true, role: user.role, ...meta, meta: { source: 'dashboard', mfaVerified: user.mfa_enabled } }).catch(() => null);
+
+  return json({
+    ok: true,
+    email: user.email,
+    role: normalizeRole(user.role),
+    label: user.label,
+    permissions: user.permissions,
+    mfaRequired: false,
+    sessionToken: `${session.id}.${session.secret}`,
+    expiresAt: session.expiresAt,
+  });
+}
