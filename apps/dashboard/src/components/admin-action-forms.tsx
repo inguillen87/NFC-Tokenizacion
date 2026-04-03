@@ -40,35 +40,196 @@ type AdminActionFormsProps = {
   };
 };
 
+type ApiSummaryItem = { label: string; value: string };
+
+type ActionPayload = Record<string, unknown>;
+type CopyAction = { label: string; value: string };
+
+const ECHO_DEMO_UIDS = [
+  "0487856A0B1090",
+  "048A876A0B1090",
+  "0483846A0B1090",
+  "047F846A0B1090",
+  "047B846A0B1090",
+  "0477846A0B1090",
+  "0474856A0B1090",
+  "0470856A0B1090",
+  "0483826A0B1090",
+  "0465846A0B1090",
+];
+
+function stringifyValue(value: unknown) {
+  if (Array.isArray(value)) return value.join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return String(value ?? "-");
+}
+
+function buildSummary(data: unknown): ApiSummaryItem[] {
+  if (!data || typeof data !== "object") return [];
+  const record = data as Record<string, unknown>;
+  const preferredKeys = [
+    "batch",
+    "tenant_slug",
+    "requested_quantity",
+    "sku",
+    "profile",
+    "inserted",
+    "reactivated",
+    "ignored",
+    "importedRows",
+    "manifestBatchIds",
+    "activated",
+    "requested",
+    "uids",
+    "reason",
+    "keys",
+  ];
+
+  const entries = preferredKeys
+    .filter((key) => key in record)
+    .map((key) => ({ label: key.replaceAll("_", " "), value: stringifyValue(record[key]) }));
+
+  if (entries.length) return entries;
+  return Object.entries(record).slice(0, 8).map(([key, value]) => ({ label: key.replaceAll("_", " "), value: stringifyValue(value) }));
+}
+
+
+function buildCopyActions(data: ActionPayload | null): CopyAction[] {
+  if (!data) return [];
+  const actions: CopyAction[] = [];
+  if (typeof data.batch === "object" && data.batch && "bid" in data.batch) {
+    actions.push({ label: "Copy batch ID", value: String((data.batch as ActionPayload).bid || "") });
+  }
+  if (typeof data.keys === "object" && data.keys && "k_meta_hex" in data.keys) {
+    actions.push({ label: "Copy meta key", value: String((data.keys as ActionPayload).k_meta_hex || "") });
+  }
+  if (typeof data.keys === "object" && data.keys && "k_file_hex" in data.keys) {
+    actions.push({ label: "Copy file key", value: String((data.keys as ActionPayload).k_file_hex || "") });
+  }
+  if (typeof data.ndef_url_template === "string") {
+    actions.push({ label: "Copy SUN URL template", value: String(data.ndef_url_template || "") });
+  }
+  if (actions.length > 1) {
+    actions.unshift({ label: "Copy supplier handoff", value: actions.map((item) => `${item.label.replace("Copy ", "")}:: ${item.value}`).join("\n") });
+  }
+  return actions.filter((item) => item.value);
+}
+
+function parseManifestPreview(input: string) {
+  const text = String(input || "").trim();
+  if (!text) return { format: "empty", rows: 0, unique: 0, duplicates: 0, sample: [] as string[], batchIds: [] as string[] };
+
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) return { format: "empty", rows: 0, unique: 0, duplicates: 0, sample: [] as string[], batchIds: [] as string[] };
+
+  const looksCsv = lines[0].includes(",");
+  const rows = looksCsv ? lines.slice(1) : lines;
+  const entries = rows
+    .map((line) => {
+      if (!looksCsv) return { uid: line, batch: "" };
+      const [uid, batch] = line.split(",").map((value) => String(value || "").trim());
+      return { uid, batch };
+    })
+    .filter((row) => row.uid && row.uid.toLowerCase() !== "uid_hex");
+
+  const normalizedUids = entries.map((row) => row.uid.toUpperCase());
+  const unique = new Set(normalizedUids);
+  const duplicateCount = Math.max(0, normalizedUids.length - unique.size);
+  const batchIds = Array.from(new Set(entries.map((row) => row.batch).filter(Boolean)));
+
+  return {
+    format: looksCsv ? "csv" : "txt",
+    rows: entries.length,
+    unique: unique.size,
+    duplicates: duplicateCount,
+    sample: Array.from(unique).slice(0, 3),
+    batchIds,
+  };
+}
+
 export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
   const [role, setRole] = useState<Role>("super-admin");
   const [status, setStatus] = useState<string>(readyLabel);
+  const [summary, setSummary] = useState<ApiSummaryItem[]>([]);
+  const [lastResponse, setLastResponse] = useState<ActionPayload | null>(null);
   const [pending, setPending] = useState(false);
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
-  const [batch, setBatch] = useState({ tenantId: "", batchId: "", sku: "", quantity: "" });
-  const [manifest, setManifest] = useState({ batchId: "", csv: "batch_id,uid_hex,ic_type,roll_id,qc_status,timestamp" });
-  const [activation, setActivation] = useState({ batchId: "", count: "" });
+  const [batch, setBatch] = useState({
+    tenantId: "demobodega",
+    batchId: "DEMO-2026-02",
+    sku: "",
+    quantity: "10",
+    chipModel: "NTAG 424 DNA TT",
+    kMetaHex: "",
+    kFileHex: "",
+  });
+  const [manifest, setManifest] = useState({ batchId: "DEMO-2026-02", csv: "uid_hex\n0487856A0B1090", activateImported: true });
+  const [activation, setActivation] = useState({ batchId: "DEMO-2026-02", count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
+  const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
 
   const canEdit = role !== "viewer";
   const roleMessage = useMemo(() => copy.roleHint[role], [copy.roleHint, role]);
-
+  const copyActions = useMemo(() => buildCopyActions(lastResponse), [lastResponse]);
+  const manifestPreview = useMemo(() => parseManifestPreview(manifest.csv), [manifest.csv]);
+  const onboardingSteps = useMemo(() => [
+    {
+      label: "1) Register supplier batch",
+      done: Boolean(batch.tenantId.trim() && batch.batchId.trim()),
+      detail: "Tenant + batch + keys + chip model",
+    },
+    {
+      label: "2) Import supplier manifest",
+      done: manifestPreview.unique > 0,
+      detail: `${manifestPreview.unique} unique UID(s) detected`,
+    },
+    {
+      label: "3) Activate imported tags",
+      done: activation.batchId.trim().length > 0,
+      detail: "Activate by count or specific UID list",
+    },
+    {
+      label: "4) Validate SUN sample URL",
+      done: urlValidation.sampleUrl.trim().length > 0,
+      detail: "Paste one /sun?... URL to verify trust state",
+    },
+  ], [activation.batchId, batch.batchId, batch.tenantId, manifestPreview.unique, urlValidation.sampleUrl]);
 
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
-    createBatch: "Creates a batch under an existing tenant slug/id for provisioning tags.",
-    importManifest: "Imports CSV rows (UID + metadata) into an existing batch.",
-    activateRevoke: "Activate tags for issuance, or revoke a batch when risk is detected.",
+    createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
+    importManifest: "Imports supplier UID manifests into an existing batch (CSV with columns or plain UID text list), verifies batch_id alignment when provided, and can leave tags active on arrival when supplier-coded tags arrive ready to use.",
+    activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
+    validateSampleUrl: "Validates a supplier SUN URL and returns a human-readable trust state (VALID, NOT_REGISTERED, NOT_ACTIVE, INVALID, REPLAY_SUSPECT, UNKNOWN_BATCH).",
   };
+
+  async function copyValue(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setStatus(`Copied ${value.slice(0, 24)}${value.length > 24 ? "…" : ""}`);
+    } catch {
+      setStatus("Clipboard unavailable");
+    }
+  }
 
   async function submit(path: string, payload: unknown) {
     setPending(true);
+    setSummary([]);
     setStatus(`POST ${path}`);
     try {
       const data = await postAdmin<unknown>(path, payload);
-      setStatus(`OK ${JSON.stringify(data).slice(0, 180)}`);
+      setLastResponse((data && typeof data === "object") ? (data as ActionPayload) : null);
+      setSummary(buildSummary(data));
+      setStatus("Action completed successfully");
     } catch (error) {
+      setLastResponse(null);
+      setSummary([]);
       setStatus(error instanceof Error ? error.message : "Request failed");
     } finally {
       setPending(false);
@@ -95,6 +256,19 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
         </select>
       </Card>
 
+      <Card className="p-5">
+        <h3 className="text-base font-semibold text-white">Supplier flow checklist</h3>
+        <p className="mt-1 text-xs text-slate-400">Guided no-CLI onboarding to avoid operator mistakes during supplier handoff.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {onboardingSteps.map((step) => (
+            <div key={step.label} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs">
+              <p className={step.done ? "font-semibold text-emerald-300" : "font-semibold text-amber-300"}>{step.done ? "✓" : "•"} {step.label}</p>
+              <p className="mt-1 text-slate-400">{step.detail}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="p-5">
           <h3 className="text-base font-semibold text-white">{copy.createTenant} <span className="ml-1 text-cyan-300" title={hints.createTenant}>ⓘ</span></h3>
@@ -117,9 +291,32 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantId} value={batch.tenantId} onChange={(event) => setBatch({ ...batch, tenantId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
+            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Chip model (e.g. NTAG 424 DNA TT)" value={batch.chipModel} onChange={(event) => setBatch({ ...batch, chipModel: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
-            <Button disabled={pending || !canEdit || !batch.tenantId || !batch.batchId} onClick={() => submit("/admin/batches", { ...batch, quantity: Number(batch.quantity || 0) })}>{copy.actions.createBatch}</Button>
+            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_META_BATCH (32 hex, optional)" value={batch.kMetaHex} onChange={(event) => setBatch({ ...batch, kMetaHex: event.target.value })} />
+            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_FILE_BATCH (32 hex, optional)" value={batch.kFileHex} onChange={(event) => setBatch({ ...batch, kFileHex: event.target.value })} />
+            <p className="text-[11px] text-slate-500">Supplier batch registration (no CLI): tenant + batch + chip + keys + quantity. Use tenant slug or tenant UUID.</p>
+            <Button
+              disabled={pending || !canEdit || !batch.tenantId || !batch.batchId}
+              onClick={() =>
+                submit("/admin/batches", {
+                  tenantId: batch.tenantId,
+                  batchId: batch.batchId,
+                  sku: batch.sku,
+                  quantity: Number(batch.quantity || 0),
+                  profile: "secure",
+                  k_meta_hex: batch.kMetaHex || undefined,
+                  k_file_hex: batch.kFileHex || undefined,
+                  sdm_config: {
+                    ic_type: batch.chipModel,
+                    tag_type: batch.chipModel,
+                    security_profile: "secure",
+                  },
+                })}
+            >
+              {copy.actions.createBatch}
+            </Button>
           </div>
         </Card>
 
@@ -127,9 +324,27 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <h3 className="text-base font-semibold text-white">{copy.importManifest} <span className="ml-1 text-cyan-300" title={hints.importManifest}>ⓘ</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.importManifest}</p>
           <div className="mt-4 grid gap-3">
+            <button
+              type="button"
+              disabled={!canEdit}
+              className="w-fit rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-100 disabled:opacity-50"
+              onClick={() => setManifest({ ...manifest, csv: `uid_hex\n${ECHO_DEMO_UIDS.join("\n")}` })}
+            >
+              Load Echo sample UID list (10)
+            </button>
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
-            <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
-            <Button disabled={pending || !canEdit || !manifest.batchId} onClick={() => submit(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv })}>{copy.actions.importManifest}</Button>
+            <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Accepted formats: (1) CSV with uid_hex (+ optional batch_id, ic_type, roll_id, qc_status, timestamp) or (2) plain text UID list, one UID per line (optional first line: uid_hex).</div>
+            <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-100">
+              <p>Preview: format <b>{manifestPreview.format.toUpperCase()}</b> · rows <b>{manifestPreview.rows}</b> · unique UIDs <b>{manifestPreview.unique}</b> · duplicates <b>{manifestPreview.duplicates}</b></p>
+              {manifestPreview.batchIds.length ? <p className="mt-1">Detected batch_id values: {manifestPreview.batchIds.join(", ")}</p> : null}
+              {manifestPreview.sample.length ? <p className="mt-1">Sample UIDs: {manifestPreview.sample.join(", ")}</p> : null}
+            </div>
+            <label className="flex items-center gap-2 text-xs text-slate-300">
+              <input disabled={!canEdit} type="checkbox" checked={manifest.activateImported} onChange={(event) => setManifest({ ...manifest, activateImported: event.target.checked })} />
+              Activate imported tags immediately when the supplier already encoded them
+            </label>
+            <Button disabled={pending || !canEdit || !manifest.batchId} onClick={() => submit(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv, activateImported: manifest.activateImported })}>{copy.actions.importManifest}</Button>
           </div>
         </Card>
 
@@ -139,10 +354,35 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
           <div className="mt-4 grid gap-3">
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={activation.batchId} onChange={(event) => setActivation({ ...activation, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.count} value={activation.count} onChange={(event) => setActivation({ ...activation, count: event.target.value })} />
-            <Button disabled={pending || !canEdit || !activation.batchId || !activation.count} onClick={() => submit("/admin/tags/activate", { ...activation, count: Number(activation.count || 0) })}>{copy.actions.activateTags}</Button>
+            <textarea disabled={!canEdit} className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="Optional UID list, separated by commas or new lines" value={activation.uids} onChange={(event) => setActivation({ ...activation, uids: event.target.value })} />
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Tip: paste one UID per line when QA wants to selectively activate audited units only.</div>
+            <Button disabled={pending || !canEdit || !activation.batchId || (!activation.count && !activation.uids.trim())} onClick={() => submit("/admin/tags/activate", { bid: activation.batchId, count: Number(activation.count || 0), uids: activation.uids })}>{copy.actions.activateTags}</Button>
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
             <Button disabled={pending || !canEdit || !revoke.batchId} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke? This can impact live validations.")) submit(`/admin/batches/${revoke.batchId}/revoke`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <h3 className="text-base font-semibold text-white">Validate Supplier Sample URL <span className="ml-1 text-cyan-300" title={hints.validateSampleUrl}>ⓘ</span></h3>
+          <p className="mt-1 text-xs text-slate-400">{hints.validateSampleUrl}</p>
+          <div className="mt-4 grid gap-3">
+            <textarea
+              disabled={!canEdit}
+              className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
+              placeholder="https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=...&enc=...&cmac=..."
+              value={urlValidation.sampleUrl}
+              onChange={(event) => setUrlValidation({ sampleUrl: event.target.value })}
+            />
+            <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">
+              Expected trust states: VALID · NOT_REGISTERED · NOT_ACTIVE · INVALID · REPLAY_SUSPECT · UNKNOWN_BATCH
+            </div>
+            <Button
+              disabled={pending || !canEdit || !urlValidation.sampleUrl.trim()}
+              onClick={() => submit("/admin/sun/validate", { sampleUrl: urlValidation.sampleUrl })}
+            >
+              Validate sample URL
+            </Button>
           </div>
         </Card>
       </div>
@@ -150,6 +390,23 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
       <Card className="p-4">
         <p className="text-xs text-cyan-300">{copy.apiStatus}</p>
         <p className="mt-1 break-all text-xs text-slate-300">{pending ? "Running action..." : status}</p>
+        {summary.length ? (
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {summary.map((item) => (
+              <div key={`${item.label}-${item.value}`} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
+                <p className="uppercase tracking-[0.14em] text-cyan-300">{item.label}</p>
+                <p className="mt-1 break-all text-slate-100">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {copyActions.length ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {copyActions.map((item) => (
+              <button key={item.label} type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(item.value)}>{item.label}</button>
+            ))}
+          </div>
+        ) : null}
       </Card>
     </div>
   );

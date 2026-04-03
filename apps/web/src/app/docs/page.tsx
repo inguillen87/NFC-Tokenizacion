@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { BackLink } from "../../components/back-link";
+import { ProductExitLink, productExitHref } from "../../components/product-exit-link";
+import { PublicLinkChip } from "../../components/public-link-chip";
 import { Card, SectionHeading } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
+import { ArrowRight, BookOpen, CircleHelp, Layers3, Rocket, ShieldCheck, Sparkles } from "lucide-react";
 
 type DocsCopy = {
   eyebrow: string;
@@ -16,11 +19,14 @@ type DocsCopy = {
   apiRoutes: Array<{ method: string; path: string; detail: string }>;
   packsTitle: string;
   packs: string[];
+  rolloutTitle: string;
+  rolloutBullets: string[];
   revenueTitle: string;
   revenueBullets: string[];
   roadmapTitle: string;
   roadmapBullets: string[];
   actionsTitle: string;
+  quickJumpTitle: string;
   faqTitle: string;
   faqItems: Array<{ q: string; a: string }>;
   strategyTitle: string;
@@ -28,9 +34,20 @@ type DocsCopy = {
   stackPage: string;
   audiencesPage: string;
   glossaryPage: string;
+  demoPage: string;
+  jumpPillars: string;
+  jumpChipProfiles: string;
+  jumpApi: string;
+  jumpRollout: string;
+  jumpFaq: string;
+  jumpStrategy: string;
+  jumpActions: string;
+  exploreTitle: string;
+  exploreLinks: Array<{ label: string; href: string }>;
   openAssistant: string;
   talkAgent: string;
   bookDemo: string;
+  openLab: string;
 };
 
 const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
@@ -68,6 +85,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure (credenciales, certificados y evidencia física).",
       "Expansión inmediata: Cosmetics Secure. Expansión regulatoria: exportadores DPP-ready.",
     ],
+    rolloutTitle: "Estándar operativo para pilotos y rollouts serios",
+    rolloutBullets: [
+      "Crear batch por cliente/campaña con batch_id, SKU, cantidad esperada y perfil de seguridad definidos.",
+      "Entregar al proveedor un spec cerrado: chip, URL template, key ownership, formato CSV manifest y criterio de activación.",
+      "Importar manifest solo si el batch_id del archivo coincide exactamente con el batch creado en plataforma.",
+      "Operar estados planned / imported / active para detectar diferencias antes de escalar a 10k/50k unidades.",
+    ],
     revenueTitle: "Modelo de ingresos (lo que entiende un inversor)",
     revenueBullets: [
       "Setup/Pilot fee: discovery, diseño de caso, onboarding y activación.",
@@ -82,6 +106,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Siempre: NFC + QR fallback + data model DPP-ready.",
     ],
     actionsTitle: "Siguientes pasos",
+    quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ corta para explicar bien el producto",
     faqItems: [
       { q: "¿nexID vende chips NFC?", a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR." },
@@ -95,9 +120,25 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     stackPage: "Ver pila Verify → Passport → Rights",
     audiencesPage: "Ver pitch por audiencia (inversor, reseller, cliente, gobierno)",
     glossaryPage: "Abrir glosario operativo de marca",
+    demoPage: "Ver demo self-serve",
+    jumpPillars: "Tesis",
+    jumpChipProfiles: "Perfiles de chip",
+    jumpApi: "API",
+    jumpRollout: "Rollout",
+    jumpFaq: "FAQ",
+    jumpStrategy: "Strategy",
+    jumpActions: "Actions",
+    exploreTitle: "Conectar esta lectura con el resto del sitio",
+    exploreLinks: [
+      { label: "Ir al stack Verify → Passport → Rights", href: "/stack" },
+      { label: "Abrir glosario operativo", href: "/glossary" },
+      { label: "Ver demo y Demo Lab", href: "/demo" },
+      { label: "Ver pitch por audiencia", href: "/audiences" },
+    ],
     openAssistant: "Abrir BotIA",
     talkAgent: "Hablar con agente (WhatsApp)",
     bookDemo: "Agendar demo",
+    openLab: "Abrir Demo Lab",
   },
   "pt-BR": {
     eyebrow: "Docs comercial + técnica",
@@ -133,6 +174,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure.",
       "Expansão imediata: Cosmetics Secure. Expansão regulatória: exportadores DPP-ready.",
     ],
+    rolloutTitle: "Padrão operacional para pilotos e rollouts sérios",
+    rolloutBullets: [
+      "Criar batch por cliente/campanha com batch_id, SKU, volume esperado e perfil de segurança definidos.",
+      "Enviar ao fornecedor um spec fechado: chip, URL template, ownership das keys, formato CSV manifest e critério de ativação.",
+      "Importar manifest apenas se o batch_id do arquivo coincidir exatamente com o batch criado na plataforma.",
+      "Operar estados planned / imported / active para detectar diferenças antes de escalar para 10k/50k unidades.",
+    ],
     revenueTitle: "Modelo de receita",
     revenueBullets: [
       "Setup/Pilot fee.",
@@ -147,6 +195,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
     actionsTitle: "Próximos passos",
+    quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ curta para explicar o produto",
     faqItems: [
       { q: "A nexID vende chips NFC?", a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR." },
@@ -160,9 +209,25 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     stackPage: "Ver pilha Verify → Passport → Rights",
     audiencesPage: "Ver pitch por audiência (investidor, revendedor, cliente, governo)",
     glossaryPage: "Abrir glossário operacional de marca",
+    demoPage: "Ver demo self-serve",
+    jumpPillars: "Tese",
+    jumpChipProfiles: "Perfis de chip",
+    jumpApi: "API",
+    jumpRollout: "Rollout",
+    jumpFaq: "FAQ",
+    jumpStrategy: "Strategy",
+    jumpActions: "Actions",
+    exploreTitle: "Conectar esta leitura com o restante do site",
+    exploreLinks: [
+      { label: "Ir para o stack Verify → Passport → Rights", href: "/stack" },
+      { label: "Abrir glossário operacional", href: "/glossary" },
+      { label: "Ver demo e Demo Lab", href: "/demo" },
+      { label: "Ver pitch por audiência", href: "/audiences" },
+    ],
     openAssistant: "Abrir BotIA",
     talkAgent: "Falar com agente (WhatsApp)",
     bookDemo: "Agendar demo",
+    openLab: "Abrir Demo Lab",
   },
   en: {
     eyebrow: "Commercial + technical docs",
@@ -198,6 +263,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "3) Docs & Presence Secure.",
       "Immediate expansion: Cosmetics Secure. Regulatory expansion: DPP-ready exporters.",
     ],
+    rolloutTitle: "Operational standard for serious pilots and rollouts",
+    rolloutBullets: [
+      "Create one batch per customer/campaign with batch_id, SKU, expected volume and security profile defined up front.",
+      "Give suppliers a closed spec: chip, URL template, key ownership, CSV manifest format and activation criteria.",
+      "Import manifests only when the file batch_id exactly matches the batch created in platform.",
+      "Track planned / imported / active states to catch supplier mismatches before scaling to 10k/50k units.",
+    ],
     revenueTitle: "Revenue model",
     revenueBullets: [
       "Setup/Pilot fee.",
@@ -212,6 +284,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Always: NFC + QR fallback + DPP-ready data model.",
     ],
     actionsTitle: "Next steps",
+    quickJumpTitle: "Quick explore",
     faqTitle: "Short FAQ to make the value clear",
     faqItems: [
       { q: "Does nexID sell NFC chips?", a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers." },
@@ -225,9 +298,25 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     stackPage: "View Verify → Passport → Rights stack",
     audiencesPage: "View audience pitch (investor, reseller, client, government)",
     glossaryPage: "Open operational brand glossary",
+    demoPage: "View self-serve demo",
+    jumpPillars: "Thesis",
+    jumpChipProfiles: "Chip profiles",
+    jumpApi: "API",
+    jumpRollout: "Rollout",
+    jumpFaq: "FAQ",
+    jumpStrategy: "Strategy",
+    jumpActions: "Actions",
+    exploreTitle: "Connect this page with the rest of the site",
+    exploreLinks: [
+      { label: "Go to the Verify → Passport → Rights stack", href: "/stack" },
+      { label: "Open the operational glossary", href: "/glossary" },
+      { label: "See the demo and Demo Lab", href: "/demo" },
+      { label: "View the audience pitch page", href: "/audiences" },
+    ],
     openAssistant: "Open BotIA",
     talkAgent: "Talk to agent (WhatsApp)",
     bookDemo: "Book demo",
+    openLab: "Open Demo Lab",
   },
 };
 
@@ -240,43 +329,82 @@ export default async function DocsPage() {
       <BackLink />
       <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
-        <ul className="mt-4 space-y-2 text-sm text-slate-300">
-          {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
-        </ul>
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
-        <div className="mt-4 grid gap-3">
-          {copy.chipRows.map((row) => (
-            <div key={row.chip} className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm font-semibold text-cyan-200">{row.chip}</p>
-              <p className="mt-1 text-sm text-slate-300">✓ {row.bestFor}</p>
-              <p className="mt-1 text-sm text-rose-300">⚠ {row.avoid}</p>
-            </div>
-          ))}
+      <div className="space-y-4">
+        <div className="space-y-3">
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <Sparkles className="h-4 w-4 text-cyan-300" />
+            {copy.quickJumpTitle}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <PublicLinkChip href="#thesis" icon={<Layers3 className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpPillars}</PublicLinkChip>
+            <PublicLinkChip href="#chips" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpChipProfiles}</PublicLinkChip>
+            <PublicLinkChip href="#api" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="indigo">{copy.jumpApi}</PublicLinkChip>
+            <PublicLinkChip href="#rollout" icon={<Rocket className="h-3.5 w-3.5" />} variant="emerald">{copy.jumpRollout}</PublicLinkChip>
+            <PublicLinkChip href="#faq" icon={<CircleHelp className="h-3.5 w-3.5" />} variant="amber">{copy.jumpFaq}</PublicLinkChip>
+            <PublicLinkChip href="#strategy" icon={<BookOpen className="h-3.5 w-3.5" />} variant="violet">{copy.jumpStrategy}</PublicLinkChip>
+            <PublicLinkChip href="#actions">{copy.jumpActions}</PublicLinkChip>
+          </div>
         </div>
-      </Card>
 
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
-        <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
-        <div className="mt-4 space-y-3">
-          {copy.apiRoutes.map((route) => (
-            <div key={`${route.method}-${route.path}`} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
-              <p className="font-semibold text-cyan-200">{route.method} <span className="text-white">{route.path}</span></p>
-              <p className="mt-1 text-slate-300">{route.detail}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
+        <Card className="p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.exploreTitle}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {copy.exploreLinks.map((item) => (
+              <PublicLinkChip key={item.href} href={item.href} size="md" trailingArrow>
+                {item.label}
+              </PublicLinkChip>
+            ))}
+          </div>
+        </Card>
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div id="thesis" className="scroll-mt-28">
+        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
+          <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
+          </ul>
+        </Card>
+      </div>
+
+      <div id="chips" className="scroll-mt-28">
+        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
+          <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
+          <div className="mt-4 grid gap-3">
+            {copy.chipRows.map((row) => (
+              <div key={row.chip} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-sm font-semibold text-cyan-200">{row.chip}</p>
+                <p className="mt-1 text-sm text-slate-300">✓ {row.bestFor}</p>
+                <p className="mt-1 text-sm text-rose-300">⚠ {row.avoid}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div id="api" className="scroll-mt-28">
+        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(99,102,241,0.10)]">
+          <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
+          <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
+          <div className="mt-4 space-y-3">
+            {copy.apiRoutes.map((route) => (
+              <div key={`${route.method}-${route.path}`} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                <p className="font-semibold text-cyan-200">{route.method} <span className="text-white">{route.path}</span></p>
+                <p className="mt-1 text-slate-300">{route.detail}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div id="rollout" className="grid gap-6 scroll-mt-28 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.packsTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.packs.map((item) => <li key={item}>• {item}</li>)}</ul>
+        </Card>
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.rolloutTitle}</h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.rolloutBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
         </Card>
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.revenueTitle}</h3>
@@ -288,37 +416,48 @@ export default async function DocsPage() {
         </Card>
       </div>
 
+      <div id="faq" className="scroll-mt-28">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
+          <div className="mt-4 grid gap-3">
+            {copy.faqItems.map((item) => (
+              <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-all duration-200 open:border-cyan-300/30 open:bg-cyan-500/5 hover:border-white/20">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-white">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="text-cyan-300 transition-transform group-open:rotate-45">＋</span>{item.q}
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-slate-300">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </Card>
+      </div>
 
-      <Card id="faq" className="p-6 scroll-mt-28">
-        <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
-        <div className="mt-4 grid gap-3">
-          {copy.faqItems.map((item) => (
-            <div key={item.q} className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm font-semibold text-white">{item.q}</p>
-              <p className="mt-1 text-sm text-slate-300">{item.a}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <div id="strategy" className="scroll-mt-28">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
+          <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <PublicLinkChip href="/stack" variant="cyan" size="md" trailingArrow>{copy.stackPage}</PublicLinkChip>
+            <PublicLinkChip href="/audiences" variant="indigo" size="md" trailingArrow>{copy.audiencesPage}</PublicLinkChip>
+            <PublicLinkChip href="/glossary" variant="emerald" size="md" trailingArrow>{copy.glossaryPage}</PublicLinkChip>
+            <PublicLinkChip href="/demo" variant="amber" size="md" trailingArrow>{copy.demoPage}</PublicLinkChip>
+          </div>
+        </Card>
+      </div>
 
-      <Card id="strategy" className="p-6 scroll-mt-28">
-        <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
-        <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/stack">{copy.stackPage}</Link>
-          <Link className="rounded-lg border border-indigo-300/35 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100" href="/audiences">{copy.audiencesPage}</Link>
-          <Link className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100" href="/glossary">{copy.glossaryPage}</Link>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link className="rounded-lg border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100" href="/?assistant=open">{copy.openAssistant}</Link>
-          <a className="rounded-lg border border-white/20 px-4 py-2 text-sm text-slate-100" href="https://wa.me/5492613168608" target="_blank" rel="noreferrer">{copy.talkAgent}</a>
-          <Link className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100" href="/?contact=demo#contact-modal">{copy.bookDemo}</Link>
-        </div>
-      </Card>
+      <div id="actions" className="scroll-mt-28">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <PublicLinkChip href="/?assistant=open" variant="cyan" size="md" trailingArrow>{copy.openAssistant}</PublicLinkChip>
+            <PublicLinkChip href={productExitHref.demoLab} size="md" trailingArrow>{copy.openLab}</PublicLinkChip>
+            <a className="rounded-lg border border-white/20 px-4 py-2 text-sm text-slate-100" href="https://wa.me/5492613168608" target="_blank" rel="noreferrer">{copy.talkAgent}</a>
+            <Link className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5" href="/?contact=demo#contact-modal">{copy.bookDemo}<ArrowRight className="h-4 w-4" /></Link>
+          </div>
+        </Card>
+      </div>
     </main>
   );
 }
