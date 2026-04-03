@@ -260,6 +260,19 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
         </div>
       </Card>
 
+      <Card className="p-5">
+        <h3 className="text-base font-semibold text-white">Supplier flow checklist</h3>
+        <p className="mt-1 text-xs text-slate-400">Guided no-CLI onboarding to avoid operator mistakes during supplier handoff.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {onboardingSteps.map((step) => (
+            <div key={step.label} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs">
+              <p className={step.done ? "font-semibold text-emerald-300" : "font-semibold text-amber-300"}>{step.done ? "✓" : "•"} {step.label}</p>
+              <p className="mt-1 text-slate-400">{step.detail}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="p-5">
           <h3 className="text-base font-semibold text-white">{copy.createTenant} <span className="ml-1 text-cyan-300" title={hints.createTenant}>ⓘ</span></h3>
