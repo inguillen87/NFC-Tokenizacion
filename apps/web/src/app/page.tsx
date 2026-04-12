@@ -13,6 +13,8 @@ import { RadarSection } from "../components/radar-section";
 import { InteractiveDemoSection } from "../components/interactive-demo-section";
 import { SalesChatWidget } from "../components/sales-chat-widget";
 import { DemoRequestSection } from "../components/demo-request-section";
+import { MobileNavSheet } from "../components/mobile-nav-sheet";
+import { PwaInstallPrompt } from "../components/pwa-install-prompt";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
@@ -144,6 +146,14 @@ export default async function HomePage() {
     { key: "pharma-secure", label: "Docs & presence secure", tag: "NTAG 424 DNA", sim: "Certificates + contractor credential + proof-of-presence" },
     { key: "luxury-basic", label: "Luxury basic", tag: "NTAG215", sim: "Brand story + ownership activation" },
   ];
+  const mobileNavItems = [
+    { label: content.nav.product, href: "/" },
+    { label: content.nav.pricing, href: "/pricing" },
+    { label: content.nav.reseller, href: "/resellers" },
+    { label: content.nav.docs, href: "/docs" },
+    { label: labels.quickStack, href: "/stack" },
+    { label: labels.quickFaq, href: "/docs#faq" },
+  ];
 
   return (
     <main>
@@ -163,12 +173,13 @@ export default async function HomePage() {
           </nav>
 
           <div className="header-actions flex items-center gap-2">
+            <MobileNavSheet items={mobileNavItems} />
             <LocaleSwitcher value={locale} options={[...locales]} />
             <ThemeToggle />
-            <ProductExitLink kind="demoLab">
+            <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`}>
+            <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`} className="hidden sm:inline-flex">
               <Button variant="secondary">{content.nav.cta}</Button>
             </a>
           </div>
@@ -289,6 +300,7 @@ export default async function HomePage() {
           <Link href="/?contact=demo#contact-modal" className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-3 text-sm font-medium text-cyan-100">{labels.mobileCtaDemo}<ArrowRight className="h-4 w-4" /></Link>
         </div>
       </div>
+      <PwaInstallPrompt />
     </main>
   );
 }
