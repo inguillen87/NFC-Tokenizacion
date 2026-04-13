@@ -1460,3 +1460,50 @@ html.theme-light .header-dashboard-link button {
   border-color: rgba(15, 23, 42, 0.24) !important;
   background: rgba(255, 255, 255, 0.95) !important;
 }
+
+.mobile-nav-sheet {
+  box-shadow: 0 26px 80px rgba(2, 8, 23, 0.6);
+}
+
+.mobile-nav-sheet nav a {
+  transition: border-color .2s ease, background-color .2s ease;
+}
+
+.mobile-nav-sheet nav a:active {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.12);
+}
+
+.pwa-install-card {
+  animation: pwaSlideUp .3s ease-out;
+}
+
+@keyframes pwaSlideUp {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+html.theme-light .mobile-nav-toggle,
+html.theme-light .mobile-nav-sheet,
+html.theme-light .pwa-install-card {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-color: rgba(15, 23, 42, 0.2) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .mobile-nav-sheet nav a {
+  background: rgba(248, 250, 252, 0.95) !important;
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.14) !important;
+}
+
+html.theme-light .pwa-install-card .text-slate-100,
+html.theme-light .pwa-install-card .text-slate-300 {
+  color: #0f172a !important;
+}
