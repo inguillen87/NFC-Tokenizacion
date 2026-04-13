@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { resolveLocale, siteConfig } from "@product/config";
 import { HelpBot } from "@product/ui";
+import { PwaSetup } from "../components/pwa-setup";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -37,6 +38,14 @@ export async function generateMetadata(): Promise<Metadata> {
     formatDetection: {
       telephone: false,
     },
+    applicationName: "nexID",
+    icons: {
+      icon: [
+        { url: "/nexid-mark-64.png", sizes: "64x64", type: "image/png" },
+        { url: "/nexid-mark-256.png", sizes: "256x256", type: "image/png" },
+      ],
+      apple: [{ url: "/nexid-mark-light-512.png", sizes: "512x512", type: "image/png" }],
+    },
   };
 }
 
@@ -47,6 +56,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body>
+        <PwaSetup />
         {children}
         <HelpBot locale={locale} mode="sales" />
       </body>
