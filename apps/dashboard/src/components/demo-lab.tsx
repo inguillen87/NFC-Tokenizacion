@@ -327,7 +327,7 @@ export function DemoLab() {
   const [autoRunNarration, setAutoRunNarration] = useState("");
   const [mobilePreviewOpened, setMobilePreviewOpened] = useState(false);
   const [lastTriggeredScenario, setLastTriggeredScenario] = useState<string>("none");
-  const locale = detectLocale();
+  const [locale, setLocale] = useState<Locale>("es-AR");
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://nexid.lat";
 
   const nfcSupport = typeof window !== "undefined" && "NDEFReader" in window;
@@ -361,6 +361,10 @@ export function DemoLab() {
           "Qué CTA comercial sigue después: ownership, garantía o soporte.",
         ],
       };
+
+  useEffect(() => {
+    setLocale(detectLocale());
+  }, []);
 
   async function runAction(action: () => Promise<unknown>) {
     setPending(true);

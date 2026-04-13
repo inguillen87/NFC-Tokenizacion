@@ -79,7 +79,7 @@ async function forward(req: Request, path: string[]) {
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
 
-  if (isDemoSession(req) && !hasAdminKey) {
+  if (!hasAdminKey) {
     return demoAdminResponse(req.method, path, body || "");
   }
 
@@ -93,7 +93,7 @@ async function forward(req: Request, path: string[]) {
     cache: "no-store",
   });
 
-  if (response.status === 401 && isDemoSession(req)) {
+  if (response.status === 401) {
     return demoAdminResponse(req.method, path, body || "");
   }
 
