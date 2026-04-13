@@ -27,7 +27,7 @@ type Summary = {
 };
 
 type Locale = "es-AR" | "pt-BR" | "en";
-type Pack = { key: string; icType: string; batchId: string };
+type Pack = { key: string; icType: string; batchId: string; tenant?: string; itemId?: string; label?: string };
 type DemoMode = "simulated" | "consumer_tap" | "live_nfc";
 type LabSection = "setup" | "simulate" | "mobile" | "ops";
 
@@ -392,7 +392,7 @@ export function DemoLab() {
       if (list.length > 0 && !list.find((item) => item.key === pack)) setPack(list[0].key);
       await refreshSummary();
     })();
-  }, [pack]);
+  }, []);
 
   useEffect(() => {
     setSelectedExperience(inferPresetFromPack(pack));
@@ -582,7 +582,11 @@ export function DemoLab() {
     setActiveSection("ops");
   }
 
-  const openMobilePreviewHref = `${webBase}/demo-lab/mobile/demobodega/demo-item-001?demoMode=${mode}&pack=${pack}`;
+  const selectedPack = packs.find((item) => item.key === pack);
+  const previewTenant = selectedPack?.tenant || "demobodega";
+  const previewItemId = selectedPack?.itemId || "demo-item-001";
+  const activeBatchId = selectedPack?.batchId || "DEMO-2026-02";
+  const openMobilePreviewHref = `${webBase}/demo-lab/mobile/${previewTenant}/${previewItemId}?demoMode=${mode}&pack=${pack}`;
   const qrPreviewHref = useMemo(() => demoMatrixDataUrl(openMobilePreviewHref), [openMobilePreviewHref]);
   const textScale = presenterMode ? "text-base" : "text-sm";
   const canShowTechnical = !presenterLock;
@@ -858,10 +862,10 @@ export function DemoLab() {
 
           <div className={`grid gap-3 md:grid-cols-2 ${activeSection === "simulate" ? "" : "hidden"}`}>
             <label className="demo-lab-upload rounded-xl border border-white/10 bg-slate-900 p-3 text-white">CSV manifest uploader
-              <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const csv = await readFile(file); await runAction(() => call("upload-manifest", "POST", { bid: "DEMO-2026-02", csv })); }} />
+              <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const csv = await readFile(file); await runAction(() => call("upload-manifest", "POST", { bid: activeBatchId, csv })); }} />
             </label>
             <label className="demo-lab-upload rounded-xl border border-white/10 bg-slate-900 p-3 text-white">JSON metadata uploader
-              <input type="file" accept=".json,application/json" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const data = JSON.parse(await readFile(file)); await runAction(() => call("upload-products", "POST", { bid: "DEMO-2026-02", ...data })); }} />
+              <input type="file" accept=".json,application/json" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const data = JSON.parse(await readFile(file)); await runAction(() => call("upload-products", "POST", { bid: activeBatchId, ...data })); }} />
             </label>
           </div>
         </>

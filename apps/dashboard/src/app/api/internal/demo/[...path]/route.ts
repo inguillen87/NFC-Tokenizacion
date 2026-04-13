@@ -7,12 +7,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_
 type DemoEvent = { id: number; result: string; uid_hex: string; city: string; country_code: string; lat: number; lng: number; product_name: string; vertical: string; created_at: string };
 
 const MOCK_PACKS = [
-  { key: "wine-secure", icType: "NTAG424DNA_TT", batchId: "DEMO-2026-02" },
-  { key: "events-basic", icType: "NTAG215", batchId: "EVENTS-2026-01" },
-  { key: "cosmetics-secure", icType: "NTAG424DNA_TT", batchId: "COS-2026-01" },
-  { key: "agro-secure", icType: "NTAG424DNA_TT", batchId: "AGRO-2026-01" },
-  { key: "pharma-secure", icType: "NTAG424DNA_TT", batchId: "PHARMA-2026-01" },
-  { key: "luxury-basic", icType: "NTAG215", batchId: "LUX-2026-01" },
+  { key: "wine-secure", label: "Wine secure", icType: "NTAG424DNA_TT", batchId: "DEMO-2026-02", tenant: "demobodega", itemId: "demo-item-001" },
+  { key: "events-basic", label: "Events basic", icType: "NTAG215", batchId: "EVENTS-2026-01", tenant: "demoevents", itemId: "demo-item-001" },
+  { key: "cosmetics-secure", label: "Cosmetics secure", icType: "NTAG424DNA_TT", batchId: "COS-2026-01", tenant: "democosmetics", itemId: "demo-item-001" },
+  { key: "agro-secure", label: "Agro secure", icType: "NTAG424DNA_TT", batchId: "AGRO-2026-01", tenant: "demoagro", itemId: "demo-item-001" },
+  { key: "pharma-secure", label: "Pharma secure", icType: "NTAG424DNA_TT", batchId: "PHARMA-2026-01", tenant: "demopharma", itemId: "demo-item-001" },
+  { key: "luxury-basic", label: "Luxury basic", icType: "NTAG215", batchId: "LUX-2026-01", tenant: "demoluxury", itemId: "demo-item-001" },
+  { key: "docs-presence", label: "Docs & presence", icType: "NTAG424DNA", batchId: "DOCS-2026-01", tenant: "demodocs", itemId: "demo-item-001" },
+  { key: "reseller-flow", label: "Reseller flow", icType: "NTAG215", batchId: "RSL-2026-01", tenant: "demoreseller", itemId: "demo-item-001" },
+  { key: "government-proof", label: "Government proof", icType: "NTAG424DNA", batchId: "GOV-2026-01", tenant: "demogov", itemId: "demo-item-001" },
+  { key: "operator-qa", label: "Operator QA", icType: "NTAG424DNA_TT", batchId: "OPS-2026-01", tenant: "demoops", itemId: "demo-item-001" },
 ];
 
 const state = {
@@ -70,12 +74,13 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
 
   if (endpoint === "pack-file") {
     const pack = String(url.searchParams.get("pack") || "wine-secure");
+    const selectedPack = MOCK_PACKS.find((item) => item.key === pack) || MOCK_PACKS[0];
     const type = url.searchParams.get("type") === "seed" ? "seed" : "manifest";
     if (type === "manifest") {
       return {
         ok: true,
         source: "fallback",
-        content: "batch_id,uid_hex,roll_id,ic_type\nDEMO-2026-02,04B7723401E2A0,001,NTAG424DNA_TT",
+        content: `batch_id,uid_hex,roll_id,ic_type\n${selectedPack?.batchId || "DEMO-2026-02"},04B7723401E2A0,001,${selectedPack?.icType || "NTAG424DNA_TT"}`,
         filename: `${pack}.csv`,
         contentType: "text/csv; charset=utf-8",
       };
