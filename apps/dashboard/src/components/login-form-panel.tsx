@@ -44,7 +44,7 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
       if (data?.mfaRequired) {
         setStatus("Ingresá tu código MFA de 6 dígitos para continuar.");
       } else if (res?.status && res.status >= 500) {
-        setStatus("Servicio de autenticación temporalmente no disponible. Reintentá en unos segundos.");
+        setStatus("Servicio de autenticación temporalmente no disponible. Usá un preset demo para ingresar igual.");
       } else {
         setStatus(data?.reason || "Credenciales inválidas.");
       }
