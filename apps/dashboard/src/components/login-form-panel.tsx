@@ -41,7 +41,13 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
     }).catch(() => null);
     const data = await res?.json().catch(() => null);
     if (!res?.ok) {
-      setStatus(data?.mfaRequired ? "Ingresá tu código MFA de 6 dígitos para continuar." : (data?.reason || "Credenciales inválidas."));
+      if (data?.mfaRequired) {
+        setStatus("Ingresá tu código MFA de 6 dígitos para continuar.");
+      } else if (res?.status && res.status >= 500) {
+        setStatus("Servicio de autenticación temporalmente no disponible. Usá un preset demo para ingresar igual.");
+      } else {
+        setStatus(data?.reason || "Credenciales inválidas.");
+      }
       setPending(false);
       return;
     }
