@@ -6,7 +6,21 @@ import { DEMO_SUPPLIER_BATCH_ID, DEMO_SUPPLIER_UIDS } from "../lib/demo-uids";
 
 type AppLocale = "es-AR" | "pt-BR" | "en";
 
-type WizardStep = 1 | 2 | 3 | 4 | 5;
+type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
+
+type BatchSummary = {
+  bid: string;
+  status: string;
+  tenant_slug: string;
+  chip_model: string;
+  sku: string;
+  requested_quantity: number;
+  imported_tags: number;
+  active_tags: number;
+  inactive_tags: number;
+  has_meta_key: boolean;
+  has_file_key: boolean;
+};
 
 function normalizeHex(value: string) {
   return value.trim().toUpperCase();
@@ -18,11 +32,12 @@ function isHex32(value: string) {
 
 function parseUidLines(raw: string) {
   return raw
-    .split(/\r?\n/)
-    .map((line) => line.trim().replace(/[,;\s]+/g, ""))
+    .replace(/^\uFEFF/, "")
+    .split(/[\r\n,;\t ]+/)
+    .map((token) => token.trim().toUpperCase())
     .filter(Boolean)
-    .map((line) => line.toUpperCase())
-    .filter((line) => /^[0-9A-F]{8,20}$/.test(line));
+    .filter((token) => token !== "UID_HEX" && token !== "UID")
+    .filter((token) => /^[0-9A-F]{8,20}$/.test(token));
 }
 
 function describeValidationStatus(reason: string) {
@@ -88,6 +103,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         step3: "Step 3 · UID intake",
         step4: "Step 4 · Register + Import + Activate",
         step5: "Step 5 · Supplier pretest",
+        step6: "Step 6 · Batch detail",
       }
     : locale === "pt-BR"
       ? {
@@ -104,6 +120,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           step3: "Passo 3 · Carga de UIDs",
           step4: "Passo 4 · Registrar + Importar + Ativar",
           step5: "Passo 5 · Pré-teste do fornecedor",
+          step6: "Passo 6 · Detalhe do lote",
         }
       : {
           title: "Wizard de Onboarding de Lote Proveedor",
@@ -119,6 +136,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           step3: "Paso 3 · Carga de UIDs",
           step4: "Paso 4 · Registrar + Importar + Activar",
           step5: "Paso 5 · Pretest proveedor",
+          step6: "Paso 6 · Detalle de batch",
         };
 
   const [activeStep, setActiveStep] = useState<WizardStep>(1);
@@ -128,6 +146,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   const [tenantSlug, setTenantSlug] = useState("demobodega");
   const [tenantName, setTenantName] = useState("Demo Bodega");
+  const [batchMode, setBatchMode] = useState<"supplier" | "internal">("supplier");
   const [bid, setBid] = useState(DEMO_SUPPLIER_BATCH_ID);
   const [chipModel, setChipModel] = useState("NTAG 424 DNA TagTamper");
   const [sku, setSku] = useState("wine-secure");
@@ -145,8 +164,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [readyToScan, setReadyToScan] = useState(false);
   const [validationCode, setValidationCode] = useState("PENDING");
   const [validationDetail, setValidationDetail] = useState("Pegá una URL SUN para evaluar estado de negocio.");
+  const [batchSummary, setBatchSummary] = useState<BatchSummary | null>(null);
 
-  const steps = [copy.step1, copy.step2, copy.step3, copy.step4, copy.step5];
+  const steps = [copy.step1, copy.step2, copy.step3, copy.step4, copy.step5, copy.step6];
 
   const progress = Math.round(((activeStep - 1) / (steps.length - 1)) * 100);
   const uidPreview = useMemo(() => uids.slice(0, 10), [uids]);
@@ -196,13 +216,22 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     }).catch(() => null);
   }
 
+  async function refreshBatchSummary() {
+    if (!bid.trim()) return;
+    const data = await run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/summary`);
+    if (data.batch && typeof data.batch === "object") {
+      setBatchSummary(data.batch as BatchSummary);
+    }
+  }
+
   async function registerBatch() {
     if (!tenantSlug.trim() || !bid.trim()) throw new Error("Completá tenant_slug y bid en Step 1.");
-    if (!isHex32(kMeta) || !isHex32(kFile)) throw new Error("K_META y K_FILE deben ser hex de 32 caracteres.");
+    if (batchMode === "supplier" && (!isHex32(kMeta) || !isHex32(kFile))) throw new Error("K_META y K_FILE deben ser hex de 32 caracteres.");
     return run("/api/admin/batches/register", {
       method: "POST",
       body: JSON.stringify({
         tenant_slug: tenantSlug.trim(),
+        mode: batchMode,
         bid: bid.trim(),
         chip_model: chipModel.trim(),
         sku: sku.trim(),
@@ -244,6 +273,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       await registerBatch();
       await importUids();
       await activateAll();
+      await refreshBatchSummary();
       setReadyToScan(true);
       setStatus("READY TO SCAN: batch registrado, UIDs importados y activados.");
       setActiveStep(5);
@@ -300,7 +330,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
           <div className="h-2 rounded-full bg-cyan-400" style={{ width: `${progress}%` }} />
         </div>
-        <div className="mt-3 grid gap-2 md:grid-cols-5">
+        <div className="mt-3 grid gap-2 md:grid-cols-6">
           {steps.map((step, index) => (
             <button key={step} type="button" className={`rounded-xl border px-2 py-2 text-xs ${activeStep === index + 1 ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`} onClick={() => setActiveStep((index + 1) as WizardStep)}>
               {step}
@@ -312,6 +342,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       <Card className={`p-6 ${activeStep === 1 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 1 · Batch identity</h3>
         <p className="mt-1 text-xs text-slate-400">ⓘ Tenant = marca/cliente dueño del lote. Para demo real usá: Demo Bodega / demobodega.</p>
+        <div className="mt-3 flex gap-2">
+          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "supplier" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("supplier")}>Supplier batch mode</button>
+          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "internal" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("internal")}>Internal batch mode</button>
+        </div>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_slug" value={tenantSlug} onChange={(event) => setTenantSlug(event.target.value)} />
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_name" value={tenantName} onChange={(event) => setTenantName(event.target.value)} />
@@ -327,7 +361,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <h3 className="text-lg font-semibold text-white">Step 2 · Batch keys</h3>
         <p className="mt-1 text-xs text-slate-400">{copy.source}</p>
         <div className="mt-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Atención: este flujo es para tags supplier-programmed. K_META_BATCH y K_FILE_BATCH son obligatorias y no se autogeneran.
+          {batchMode === "supplier"
+            ? "Supplier mode: K_META_BATCH y K_FILE_BATCH son obligatorias y no se autogeneran."
+            : "Internal mode: podés dejar keys vacías y el backend las genera automáticamente."}
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_meta_hex (16 bytes / 32 hex)" value={kMeta} onChange={(event) => setKMeta(event.target.value)} />
@@ -358,6 +394,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         </div>
         <input type="file" accept=".txt,.csv,text/plain,text/csv" className="mt-3 block w-full text-sm text-slate-200" onChange={(event) => void onUidFile(event)} />
         <p className="mt-2 text-xs text-slate-400">Rows parsed: {uids.length} · Duplicates: {duplicateCount} · Batch consistency issues: {batchMismatchCount}</p>
+        <p className={`mt-2 text-xs ${uids.length === 10 ? "text-emerald-200" : "text-amber-200"}`}>
+          Source-of-truth check: expected 10 supplier UIDs · loaded {uids.length}
+        </p>
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           {uidPreview.map((uid, index) => (
             <div key={`${uid}-${index}`} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-200">{uid}</div>
@@ -391,8 +430,53 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         </div>
       </Card>
 
+
+
+      <Card className={`p-6 ${activeStep === 6 ? "" : "hidden"}`}>
+        <h3 className="text-lg font-semibold text-white">Step 6 · Batch detail</h3>
+        <p className="mt-1 text-sm text-slate-300">Estado operativo del lote con acciones directas (sin terminal ni SQL).</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button disabled={pending} onClick={() => void refreshBatchSummary()}>Refresh batch summary</Button>
+          <a href={`/batches/${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open batch detail page</a>
+          <a href={`/events?bid=${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open events</a>
+          <a href={`/tags?bid=${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tags</a>
+          <a href={`/demo-lab?bid=${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Open demo lab</a>
+        </div>
+        {batchSummary ? (
+          <div className="mt-4 grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200 md:grid-cols-2">
+            <p>Batch: <b>{batchSummary.bid}</b></p>
+            <p>Tenant: <b>{batchSummary.tenant_slug}</b></p>
+            <p>Chip model: <b>{batchSummary.chip_model || "-"}</b></p>
+            <p>Quantity: <b>{batchSummary.requested_quantity}</b></p>
+            <p>Imported tags: <b>{batchSummary.imported_tags}</b></p>
+            <p>Active tags: <b>{batchSummary.active_tags}</b></p>
+            <p>Inactive tags: <b>{batchSummary.inactive_tags}</b></p>
+            <p>Manifest state: <b>{batchSummary.imported_tags > 0 ? "manifest imported" : "pending import"}</b></p>
+            <p>K_META loaded: <b>{batchSummary.has_meta_key ? "yes" : "no"}</b></p>
+            <p>K_FILE loaded: <b>{batchSummary.has_file_key ? "yes" : "no"}</b></p>
+            <p className="md:col-span-2">Next actions: import manifest · activate tags · revoke batch · open events · open tags · open mobile preview.</p>
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-amber-200">No batch summary loaded yet. Run Step 4 first and then refresh.</p>
+        )}
+      </Card>
+
       <Card className="p-6">
         <p className="text-sm text-slate-300">{status}</p>
+        {batchSummary ? (
+          <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200 md:grid-cols-2">
+            <p>Batch: <b>{batchSummary.bid}</b></p>
+            <p>Tenant: <b>{batchSummary.tenant_slug}</b></p>
+            <p>Chip: <b>{batchSummary.chip_model || "-"}</b></p>
+            <p>SKU/Profile: <b>{batchSummary.sku || "-"}</b></p>
+            <p>Requested qty: <b>{batchSummary.requested_quantity}</b></p>
+            <p>Imported tags: <b>{batchSummary.imported_tags}</b></p>
+            <p>Active tags: <b>{batchSummary.active_tags}</b></p>
+            <p>Inactive tags: <b>{batchSummary.inactive_tags}</b></p>
+            <p>Meta key loaded: <b>{batchSummary.has_meta_key ? "yes" : "no"}</b></p>
+            <p>File key loaded: <b>{batchSummary.has_file_key ? "yes" : "no"}</b></p>
+          </div>
+        ) : null}
         <pre className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-4 text-xs text-slate-200">{responseText}</pre>
       </Card>
     </div>

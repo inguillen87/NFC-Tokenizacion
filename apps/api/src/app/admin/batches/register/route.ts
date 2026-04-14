@@ -7,6 +7,14 @@ import { sql } from '../../../../lib/db';
 import { encryptKey16 } from '../../../../lib/keys';
 import { randomBytes } from 'node:crypto';
 
+function firstString(...values: unknown[]) {
+  for (const value of values) {
+    const normalized = String(value || '').trim();
+    if (normalized) return normalized;
+  }
+  return '';
+}
+
 function requiredHex32(value: unknown, field: string) {
   const normalized = String(value || '').trim().toUpperCase();
   if (!/^[0-9A-F]{32}$/.test(normalized)) {
@@ -38,27 +46,29 @@ export async function POST(req: Request) {
   if (auth) return auth;
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const mode = String(body.mode || 'supplier').trim().toLowerCase();
-  const tenantSlug = String(body.tenant_slug || '').trim();
-  const bid = String(body.bid || '').trim();
+  const mode = firstString(body.mode, 'supplier').toLowerCase();
+  const tenantSlug = firstString(body.tenant_slug, body.tenant, body.tenantId, body.tenant_id);
+  const bid = firstString(body.bid, body.batch_id, body.batchId);
   if (!tenantSlug || !bid) return json({ ok: false, reason: 'tenant_slug and bid required' }, 400);
 
   const tenant = await resolveTenant(tenantSlug);
   if (!tenant) return json({ ok: false, reason: 'tenant not found' }, 404);
 
   try {
-    const maybeMeta = optionalHex32(body.k_meta_hex);
-    const maybeFile = optionalHex32(body.k_file_hex);
-    const kMetaHex = mode === 'internal' ? maybeMeta || randomBytes(16).toString('hex').toUpperCase() : requiredHex32(body.k_meta_hex, 'k_meta_hex');
-    const kFileHex = mode === 'internal' ? maybeFile || randomBytes(16).toString('hex').toUpperCase() : requiredHex32(body.k_file_hex, 'k_file_hex');
+    const metaInput = firstString(body.k_meta_hex, body.k_meta_batch, body.kMetaHex);
+    const fileInput = firstString(body.k_file_hex, body.k_file_batch, body.kFileHex);
+    const maybeMeta = optionalHex32(metaInput);
+    const maybeFile = optionalHex32(fileInput);
+    const kMetaHex = mode === 'internal' ? maybeMeta || randomBytes(16).toString('hex').toUpperCase() : requiredHex32(metaInput, 'k_meta_hex');
+    const kFileHex = mode === 'internal' ? maybeFile || randomBytes(16).toString('hex').toUpperCase() : requiredHex32(fileInput, 'k_file_hex');
     const metaCt = encryptKey16(Buffer.from(kMetaHex, 'hex'));
     const fileCt = encryptKey16(Buffer.from(kFileHex, 'hex'));
 
     const sdmConfig = {
-      profile: String(body.sku || body.profile || 'supplier').trim() || 'supplier',
-      sku: String(body.sku || '').trim() || undefined,
-      chip_model: String(body.chip_model || '').trim() || undefined,
-      requested_quantity: Math.max(0, Math.trunc(Number(body.quantity || 0))) || undefined,
+      profile: firstString(body.profile, body.sku, 'supplier') || 'supplier',
+      sku: firstString(body.sku, body.profile) || undefined,
+      chip_model: firstString(body.chip_model, body.chip, body.chip_type) || undefined,
+      requested_quantity: Math.max(0, Math.trunc(Number(body.quantity || body.qty || body.requested_quantity || 0))) || undefined,
       notes: String(body.notes || '').trim() || undefined,
       source: 'supplier_wizard',
       mode,
