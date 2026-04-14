@@ -14,6 +14,7 @@ type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "event
 
 function pathnameToNavKey(pathname: string): NavKey {
   if (pathname === "/" || pathname === "") return "overview";
+  if (pathname.startsWith("/onboarding")) return "overview";
   if (pathname.startsWith("/users") || pathname.startsWith("/mfa")) return "overview";
   if (pathname.startsWith("/demo-lab") || pathname.startsWith("/demo-sandbox") || pathname.startsWith("/demo")) return "overview";
   if (pathname.startsWith("/api-keys")) return "apiKeys";
@@ -133,6 +134,9 @@ function DashboardShellInner({
         </div>
 
         <nav className="mt-6 grid grid-cols-2 gap-1 lg:block lg:space-y-1">
+          <Link href="/onboarding" className={`block rounded-xl px-3 py-2 text-sm transition ${pathname.startsWith("/onboarding") ? "bg-white/10 text-white" : "text-cyan-200 hover:bg-cyan-500/10 hover:text-cyan-100"}`}>
+            Onboarding
+          </Link>
           {items.map((item) => (
             <Link key={item.href} href={item.href} className={`block rounded-xl px-3 py-2 text-sm transition ${pathname === item.href ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
               {item.label}
