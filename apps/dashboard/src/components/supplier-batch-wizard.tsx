@@ -155,6 +155,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [kMeta, setKMeta] = useState("c2a462e6ab434828153d73ce440704ac");
   const [kFile, setKFile] = useState("bfce6c576540c04c840f1cfd457bf213");
   const [uids, setUids] = useState<string[]>([]);
+  const [rawUidText, setRawUidText] = useState("");
   const [manifestSourceType, setManifestSourceType] = useState<"txt" | "csv">("txt");
   const [batchMismatchCount, setBatchMismatchCount] = useState(0);
   const [duplicateCount, setDuplicateCount] = useState(0);
@@ -171,6 +172,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const progress = Math.round(((activeStep - 1) / (steps.length - 1)) * 100);
   const uidPreview = useMemo(() => uids.slice(0, 10), [uids]);
   const expectedNdefTemplate = useMemo(() => `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(bid || "DEMO-2026-02")}&picc_data=...&enc=...&cmac=...`, [bid]);
+
+  const keysReady = batchMode === "internal" || (isHex32(kMeta) && isHex32(kFile));
+  const supplierUidReady = batchMode === "internal" || uids.length === 10;
+  const onboardingReady = keysReady && supplierUidReady && Boolean(tenantSlug.trim()) && Boolean(bid.trim());
 
   async function run(path: string, init?: RequestInit) {
     const response = await fetch(path, {
@@ -206,6 +211,15 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setDuplicateCount(parsed.length - new Set(parsed).size);
     setBatchMismatchCount(0);
     setStatus(`UIDs detectados: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
+  }
+
+
+  function parseRawUidText() {
+    const parsed = parseUidLines(rawUidText || "");
+    setUids(parsed);
+    setDuplicateCount(parsed.length - new Set(parsed).size);
+    setBatchMismatchCount(0);
+    setStatus(`UIDs detectados desde texto: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
   }
 
   async function createTenantIfMissing() {
@@ -342,6 +356,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       <Card className={`p-6 ${activeStep === 1 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 1 · Batch identity</h3>
         <p className="mt-1 text-xs text-slate-400">ⓘ Tenant = marca/cliente dueño del lote. Para demo real usá: Demo Bodega / demobodega.</p>
+        <div className="mt-2 rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
+          Supplier mode = lote programado por proveedor (keys obligatorias). Internal mode = lote interno (keys autogenerables).
+        </div>
         <div className="mt-3 flex gap-2">
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "supplier" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("supplier")}>Supplier batch mode</button>
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "internal" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("internal")}>Internal batch mode</button>
@@ -392,6 +409,8 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "txt" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("txt")}>TXT UID list</button>
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "csv" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("csv")}>CSV manifest</button>
         </div>
+        <textarea className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" value={rawUidText} onChange={(event) => setRawUidText(event.target.value)} placeholder="Pegá lista TXT (1 UID por línea) para parsear sin archivo." />
+        <button type="button" className="mt-2 rounded-lg border border-white/15 px-3 py-1 text-xs text-slate-100" onClick={parseRawUidText}>Parse pasted TXT</button>
         <input type="file" accept=".txt,.csv,text/plain,text/csv" className="mt-3 block w-full text-sm text-slate-200" onChange={(event) => void onUidFile(event)} />
         <p className="mt-2 text-xs text-slate-400">Rows parsed: {uids.length} · Duplicates: {duplicateCount} · Batch consistency issues: {batchMismatchCount}</p>
         <p className={`mt-2 text-xs ${uids.length === 10 ? "text-emerald-200" : "text-amber-200"}`}>
@@ -408,14 +427,15 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <h3 className="text-lg font-semibold text-white">Step 4 · Register + Import + Activate</h3>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button disabled={pending} onClick={() => void createTenantIfMissing()}>Create tenant if missing</Button>
-          <Button disabled={pending} onClick={() => void registerBatch()}>Register batch</Button>
-          <Button disabled={pending} onClick={() => void importUids()}>Import UIDs</Button>
-          <Button disabled={pending} onClick={() => void activateAll()}>Activate all imported UIDs</Button>
-          <Button disabled={pending} variant="secondary" onClick={() => void runAll()}>Run all</Button>
+          <Button disabled={pending || !keysReady} onClick={() => void registerBatch()}>Register batch</Button>
+          <Button disabled={pending || !uids.length} onClick={() => void importUids()}>Import UIDs</Button>
+          <Button disabled={pending || !uids.length} onClick={() => void activateAll()}>Activate all imported UIDs</Button>
+          <Button disabled={pending || !onboardingReady} variant="secondary" onClick={() => void runAll()}>Run all</Button>
         </div>
         <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
           Imported: {importedCount} · Active: {activeCount}
         </div>
+        {!onboardingReady ? <p className="mt-2 text-xs text-amber-200">Run all habilita cuando haya tenant+bid y, en supplier mode, keys válidas + 10 UIDs cargados.</p> : null}
         {readyToScan ? <p className="mt-3 rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">READY TO SCAN</p> : null}
       </Card>
 

@@ -54,6 +54,7 @@ export function MobileDemoClient({
   mode,
   locale,
   seedItems,
+  bid,
 }: {
   tenant: string;
   itemId: string;
@@ -61,6 +62,7 @@ export function MobileDemoClient({
   mode: DemoMode;
   locale: string;
   seedItems: SeedItem[];
+  bid?: string;
 }) {
   const [consumerState, setConsumerState] = useState<ConsumerState>("AUTH_PENDING");
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -77,8 +79,11 @@ export function MobileDemoClient({
   const [leadRole, setLeadRole] = useState("");
   const [leadMessage, setLeadMessage] = useState("");
   const [leadSaved, setLeadSaved] = useState(false);
+  const [ctaStatus, setCtaStatus] = useState("");
+  const [ctaPending, setCtaPending] = useState(false);
 
   const current = STATE_COPY[consumerState];
+  const effectiveBid = (bid || "DEMO-2026-02").trim() || "DEMO-2026-02";
   const activeItem = useMemo(() => seedItems.find((item) => (item.uidHex || item.uid_hex || "").length > 0) || seedItems[0] || {}, [seedItems]);
 
   useEffect(() => {
@@ -109,13 +114,12 @@ export function MobileDemoClient({
 
 
   async function postCta(action: "claim-ownership" | "register-warranty" | "tokenize-request") {
-    const bid = "DEMO-2026-02";
     const uid = String(activeItem.uidHex || activeItem.uid_hex || "").trim().toUpperCase();
     if (!uid) throw new Error("UID missing for CTA call");
     const response = await fetch(`/api/public-cta/${action}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bid, uid, tenant, itemId, pack }),
+      body: JSON.stringify({ bid: effectiveBid, uid, tenant, itemId, pack }),
     });
     const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
     if (!response.ok || data?.ok === false) {
@@ -125,11 +129,10 @@ export function MobileDemoClient({
   }
 
   async function fetchProvenance() {
-    const bid = "DEMO-2026-02";
     const uid = String(activeItem.uidHex || activeItem.uid_hex || "").trim().toUpperCase();
     if (!uid) throw new Error("UID missing for provenance");
     const url = new URL(`/api/public-cta/provenance`, window.location.origin);
-    url.searchParams.set("bid", bid);
+    url.searchParams.set("bid", effectiveBid);
     url.searchParams.set("uid", uid);
     const response = await fetch(url.toString(), { method: "GET" });
     const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
@@ -141,22 +144,34 @@ export function MobileDemoClient({
 
   async function activateOwnership() {
     setConsumerState("CLAIMED");
+    setCtaPending(true);
     try {
       await postCta("claim-ownership");
+      setCtaStatus("Ownership activado y persistido en backend.");
       pushEvent("OWNERSHIP_CLAIMED", "Ownership activado y persistido en backend CTA.");
     } catch (error) {
-      pushEvent("OWNERSHIP_CLAIMED_LOCAL", `Fallback local: ${error instanceof Error ? error.message : "CTA unavailable"}`);
+      const reason = error instanceof Error ? error.message : "CTA unavailable";
+      setCtaStatus(`Ownership fallback local: ${reason}`);
+      pushEvent("OWNERSHIP_CLAIMED_LOCAL", `Fallback local: ${reason}`);
+    } finally {
+      setCtaPending(false);
     }
   }
 
   async function saveWarranty() {
     if (!warrantyName.trim()) return;
     setWarrantySaved(true);
+    setCtaPending(true);
     try {
       await postCta("register-warranty");
+      setCtaStatus(`Garantía registrada para ${warrantyName.trim()} y persistida en backend.`);
       pushEvent("WARRANTY_REGISTERED", `Garantía registrada para ${warrantyName.trim()} y persistida en backend.`);
     } catch (error) {
-      pushEvent("WARRANTY_REGISTERED_LOCAL", `Fallback local: ${error instanceof Error ? error.message : "CTA unavailable"}`);
+      const reason = error instanceof Error ? error.message : "CTA unavailable";
+      setCtaStatus(`Garantía fallback local: ${reason}`);
+      pushEvent("WARRANTY_REGISTERED_LOCAL", `Fallback local: ${reason}`);
+    } finally {
+      setCtaPending(false);
     }
   }
 
@@ -247,9 +262,12 @@ export function MobileDemoClient({
                 try {
                   const data = await fetchProvenance();
                   const total = Array.isArray((data as { actions?: unknown[] }).actions) ? (data as { actions: unknown[] }).actions.length : 0;
+                  setCtaStatus(`Provenance consultada: ${total} acciones registradas.`);
                   pushEvent("PROVENANCE_VIEWED", `Provenance consultada: ${total} acciones registradas.`);
                 } catch (error) {
-                  pushEvent("PROVENANCE_VIEWED_LOCAL", `Fallback local: ${error instanceof Error ? error.message : "provenance unavailable"}`);
+                  const reason = error instanceof Error ? error.message : "provenance unavailable";
+                  setCtaStatus(`Provenance fallback local: ${reason}`);
+                  pushEvent("PROVENANCE_VIEWED_LOCAL", `Fallback local: ${reason}`);
                 }
                 setTimelineOpen((value) => !value);
               })()}>Ver provenance</button>
@@ -258,6 +276,9 @@ export function MobileDemoClient({
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900 p-2">
               <input value={warrantyName} onChange={(event) => setWarrantyName(event.target.value)} placeholder="Nombre para garantía" className="w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
               {warrantySaved ? <p className="mt-2 text-emerald-300">Garantía guardada y vinculada al lifecycle.</p> : null}
+              <p className="mt-2 text-[11px] text-slate-400">Batch: {effectiveBid} · UID: {activeItem.uidHex || activeItem.uid_hex || "-"}</p>
+              {ctaPending ? <p className="mt-1 text-xs text-cyan-200">Procesando CTA...</p> : null}
+              {ctaStatus ? <p className="mt-1 text-xs text-cyan-100">{ctaStatus}</p> : null}
             </div>
           </Card>
 

@@ -19,10 +19,13 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
 
 export function CtaActions({ bid, uid }: Props) {
   const [status, setStatus] = useState<string>("");
+  const [pending, setPending] = useState(false);
 
   const trigger = async (path: string, method: "POST" | "GET") => {
+    setPending(true);
     const data = await call(path, method, { bid, uid });
     setStatus(JSON.stringify(data));
+    setPending(false);
   };
 
   return (
@@ -33,6 +36,7 @@ export function CtaActions({ bid, uid }: Props) {
         <button onClick={() => void trigger("/api/public-cta/provenance", "GET")} className="rounded border border-cyan-300/40 px-2 py-1">Ver provenance</button>
         <button onClick={() => void trigger("/api/public-cta/tokenize-request", "POST")} className="rounded border border-cyan-300/40 px-2 py-1">Tokenización opcional</button>
       </div>
+      {pending ? <p className="text-xs text-cyan-200">Ejecutando acción...</p> : null}
       {status ? <pre className="overflow-x-auto rounded border border-white/10 bg-slate-950/70 p-2 text-[11px] text-slate-200">{status}</pre> : null}
     </div>
   );
