@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { MobileDemoClient } from "../[itemId]/mobile-demo-client";
+import { MobileDemoClient } from "../../../../../components/mobile-demo-client";
 
 type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consumer_duplicate";
 
@@ -17,7 +17,7 @@ async function loadPackSeed(pack: string) {
   }
 }
 
-export default async function PublicMobileDemoItemAliasPage({
+export default async function PublicMobileDemoItemPage({
   params,
   searchParams,
 }: {
