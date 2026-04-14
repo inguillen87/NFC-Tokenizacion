@@ -5,6 +5,7 @@ import "./globals.css";
 import { resolveLocale, siteConfig } from "@product/config";
 import { HelpBot } from "@product/ui";
 import { PwaSetup } from "../components/pwa-setup";
+import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -56,6 +57,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body>
+        <MisconfigurationBanner />
         <PwaSetup />
         {children}
         <HelpBot locale={locale} mode="sales" />
