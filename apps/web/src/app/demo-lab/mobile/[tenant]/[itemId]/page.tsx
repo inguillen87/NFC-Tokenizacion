@@ -30,7 +30,7 @@ export default async function PublicMobileDemoItemPage({
   const modeValue = String(query.demoMode || "consumer_tap");
   const mode = (["consumer_tap", "consumer_opened", "consumer_tamper", "consumer_duplicate"].includes(modeValue) ? modeValue : "consumer_tap") as DemoMode;
   const locale = String(query.locale || "es-AR");
-  const bid = String(query.bid || "DEMO-2026-02");
+  const bid = String(query.bid || "");
   const seedItems = await loadPackSeed(pack);
 
   return <MobileDemoClient tenant={tenant} itemId={itemId} pack={pack} mode={mode} locale={locale} bid={bid} seedItems={seedItems as never[]} />;

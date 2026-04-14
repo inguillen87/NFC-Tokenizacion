@@ -222,6 +222,39 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setStatus(`UIDs detectados desde texto: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
   }
 
+
+  function applyDemoPreset() {
+    setTenantSlug("demobodega");
+    setTenantName("Demo Bodega");
+    setBatchMode("supplier");
+    setBid(DEMO_SUPPLIER_BATCH_ID);
+    setChipModel("NTAG 424 DNA TagTamper");
+    setSku("wine-secure");
+    setQuantity("10");
+    setKMeta("c2a462e6ab434828153d73ce440704ac");
+    setKFile("bfce6c576540c04c840f1cfd457bf213");
+    setUids([...DEMO_SUPPLIER_UIDS]);
+    setRawUidText(DEMO_SUPPLIER_UIDS.join("\n"));
+    setDuplicateCount(0);
+    setBatchMismatchCount(0);
+    setStatus("Preset DEMO-2026-02 cargado: tenant + keys + 10 UIDs source-of-truth.");
+  }
+
+  function downloadManifestTemplate() {
+    const header = "batch_id,uid_hex\n";
+    const rows = (uids.length ? uids : DEMO_SUPPLIER_UIDS).map((uid) => `${bid || DEMO_SUPPLIER_BATCH_ID},${uid}`).join("\n");
+    const csv = `${header}${rows}\n`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${bid || DEMO_SUPPLIER_BATCH_ID}-manifest-template.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function createTenantIfMissing() {
     if (!tenantSlug.trim() || !tenantName.trim()) return;
     await run("/api/admin/tenants", {
@@ -341,6 +374,12 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             <p className="text-xs text-cyan-100/90">{copy.quickFooter}</p>
           </div>
         </div>
+        <div className="mt-4 grid gap-2 rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-xs text-violet-100 md:grid-cols-[1fr_auto_auto] md:items-center">
+          <p>CEO demo fast-track: carga lote real DEMO-2026-02 con las 10 UIDs del supplier TXT y deja el wizard listo para Run all.</p>
+          <button type="button" className="rounded-lg border border-violet-200/40 px-3 py-1" onClick={applyDemoPreset}>Load DEMO-2026-02 preset</button>
+          <button type="button" className="rounded-lg border border-white/25 px-3 py-1 text-slate-100" onClick={downloadManifestTemplate}>Download manifest template</button>
+        </div>
+
         <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
           <div className="h-2 rounded-full bg-cyan-400" style={{ width: `${progress}%` }} />
         </div>
