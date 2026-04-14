@@ -7,6 +7,12 @@ const APP_SHELL = [
   "/nexid-mark-pulse.svg",
 ];
 
+function fetchWithTimeout(request, timeoutMs = 6000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(request, { signal: controller.signal }).finally(() => clearTimeout(timeout));
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
   self.skipWaiting();
@@ -34,13 +40,13 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(() => caches.match("/")),
+      fetchWithTimeout(request).catch(() => caches.match("/")),
     );
     return;
   }
 
   if (request.destination === "script") {
-    event.respondWith(fetch(request));
+    event.respondWith(fetchWithTimeout(request));
     return;
   }
 
@@ -51,7 +57,7 @@ self.addEventListener("fetch", (event) => {
           return cached;
         }
 
-        return fetch(request).then((response) => {
+        return fetchWithTimeout(request).then((response) => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return response;
