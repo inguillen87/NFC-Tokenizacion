@@ -23,6 +23,41 @@ type CommercialState = {
   recommendation: string;
 };
 
+type PackDetail = {
+  title: string;
+  chip: string;
+  narrative: string;
+  attributes: Array<{ label: string; value: string }>;
+  antiFraud: string[];
+};
+
+const PACK_DETAILS: Record<string, PackDetail> = {
+  "wine-secure": {
+    title: "Wine secure · bottle passport",
+    chip: "NTAG 424 DNA TT",
+    narrative: "Producto premium con trazabilidad completa y detección de tamper.",
+    attributes: [
+      { label: "Varietal", value: "Malbec" },
+      { label: "Barrica", value: "18 meses roble francés" },
+      { label: "Temperatura servicio", value: "16°C" },
+      { label: "Ventana ideal", value: "2026-2032" },
+    ],
+    antiFraud: ["TagTamper activo", "Replay detection", "Ownership claim listo"],
+  },
+  "events-basic": {
+    title: "Events basic · wristband access",
+    chip: "NTAG215",
+    narrative: "Alternativa simple al QR para evitar screenshot sharing en accesos.",
+    attributes: [
+      { label: "Tipo credencial", value: "Pulsera VIP" },
+      { label: "Modo acceso", value: "Single use + anti passback" },
+      { label: "Gate", value: "A-3" },
+      { label: "Latencia target", value: "< 300ms" },
+    ],
+    antiFraud: ["Más difícil de copiar que QR", "Bloqueo replay sospechoso", "Control por UID físico"],
+  },
+};
+
 async function getSummary() {
   const response = await fetch("/api/internal/demo/summary", { cache: "no-store" });
   if (!response.ok) throw new Error("summary failed");
@@ -92,6 +127,7 @@ export default function DemoMobileItemPage() {
   const tenant = params?.tenant || "demobodega";
   const itemId = params?.itemId || "demo-item-001";
   const pack = searchParams.get("pack") || "wine-secure";
+  const requestedUid = searchParams.get("uid");
   const demoMode = searchParams.get("demoMode") || "simulated";
   const [events, setEvents] = useState<EventItem[]>([]);
 
@@ -120,6 +156,8 @@ export default function DemoMobileItemPage() {
   }, []);
 
   const latest = events[0];
+  const uid = requestedUid || latest?.uid_hex || "N/A";
+  const detail = PACK_DETAILS[pack] || PACK_DETAILS["wine-secure"];
   const commercial = getCommercialState(latest?.result);
 
   const timeline = useMemo(() => {
@@ -171,10 +209,47 @@ export default function DemoMobileItemPage() {
         <p className="mt-2 text-sm text-slate-300">Tenant: {tenant}</p>
         <p className="text-xs text-emerald-300">Estado sincronizado con Demo Lab y backend interno.</p>
         <p className="text-sm text-slate-300">Último evento: {latest?.city || "-"}, {latest?.country_code || "-"}</p>
+        <p className="text-xs text-slate-400">UID: {uid}</p>
         <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
           <button type="button" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">Verificar botella/pulsera</button>
           <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Abrir passport completo</button>
         </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="text-sm font-semibold text-white">{detail.title}</h3>
+        <p className="mt-1 text-xs text-slate-300">{detail.narrative}</p>
+        <p className="mt-2 text-xs text-cyan-200">Chip profile: {detail.chip}</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {detail.attributes.map((field) => (
+            <div key={field.label} className="rounded-lg border border-white/10 bg-slate-900 p-2.5 text-xs">
+              <p className="text-slate-400">{field.label}</p>
+              <p className="font-semibold text-white">{field.value}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="text-sm font-semibold text-white">Anti-fraude / trazabilidad</h3>
+        <ul className="mt-2 space-y-1 text-xs text-slate-300">
+          {detail.antiFraud.map((item) => (
+            <li key={item}>• {item}</li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="text-sm font-semibold text-white">Payload JSON (demo)</h3>
+        <pre className="mt-2 overflow-auto rounded-lg border border-white/10 bg-slate-900 p-3 text-[11px] text-cyan-100">{JSON.stringify({
+          tenant,
+          itemId,
+          pack,
+          uid,
+          status: commercial.label,
+          latestResult: latest?.result || "PENDING",
+          attributes: Object.fromEntries(detail.attributes.map((field) => [field.label, field.value])),
+        }, null, 2)}</pre>
       </Card>
 
       <Card className="p-4">
@@ -206,7 +281,7 @@ export default function DemoMobileItemPage() {
           <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-100">Activar ownership</button>
           <button type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-violet-100">Registrar garantía</button>
           <button type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-amber-100">Ver provenance</button>
-          <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Contactar soporte</button>
+          <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Tokenización opcional (NFT/asset)</button>
         </div>
       </Card>
     </main>
