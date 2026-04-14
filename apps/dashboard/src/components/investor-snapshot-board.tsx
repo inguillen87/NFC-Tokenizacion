@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card } from "@product/ui";
+import { productUrls } from "@product/config";
 
 type SummaryEvent = {
   id: number;
@@ -68,6 +69,7 @@ function resultTone(result?: string) {
 }
 
 export function InvestorSnapshotBoard() {
+  const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
   const [summary, setSummary] = useState<SummaryData>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -229,9 +231,9 @@ export function InvestorSnapshotBoard() {
             <Link href="/demo-lab" className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
               Open Demo Lab
             </Link>
-            <Link href="/demo-lab/mobile/demobodega/demo-item-001" className="rounded-xl border border-white/15 px-4 py-3 text-sm text-slate-200">
-              Open mobile preview
-            </Link>
+            <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-xl border border-white/15 px-4 py-3 text-sm text-slate-200">
+              Open public mobile preview
+            </a>
             <Link href="/analytics" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
               Open analytics proof
             </Link>

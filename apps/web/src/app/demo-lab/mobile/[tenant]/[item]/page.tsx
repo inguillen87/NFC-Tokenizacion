@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { MobileDemoClient } from "./mobile-demo-client";
+import { MobileDemoClient } from "../[itemId]/mobile-demo-client";
 
 type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consumer_duplicate";
 
@@ -17,14 +17,14 @@ async function loadPackSeed(pack: string) {
   }
 }
 
-export default async function PublicMobileDemoPage({
+export default async function PublicMobileDemoItemAliasPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ tenant: string; itemId: string }>;
+  params: Promise<{ tenant: string; item: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { tenant, itemId } = await params;
+  const { tenant, item } = await params;
   const query = await searchParams;
   const pack = String(query.pack || "wine-secure");
   const modeValue = String(query.demoMode || "consumer_tap");
@@ -32,5 +32,5 @@ export default async function PublicMobileDemoPage({
   const locale = String(query.locale || "es-AR");
   const seedItems = await loadPackSeed(pack);
 
-  return <MobileDemoClient tenant={tenant} itemId={itemId} pack={pack} mode={mode} locale={locale} seedItems={seedItems as never[]} />;
+  return <MobileDemoClient tenant={tenant} itemId={item} pack={pack} mode={mode} locale={locale} seedItems={seedItems as never[]} />;
 }
