@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@product/ui";
+import { productUrls } from "@product/config";
 import { DemoOpsMap } from "./demo-ops-map";
 
 type SummaryEvent = {
@@ -27,7 +28,7 @@ type Summary = {
 };
 
 type Locale = "es-AR" | "pt-BR" | "en";
-type Pack = { key: string; icType: string; batchId: string };
+type Pack = { key: string; icType: string; batchId: string; tenant?: string; itemId?: string; label?: string };
 type DemoMode = "simulated" | "consumer_tap" | "live_nfc";
 type LabSection = "setup" | "simulate" | "mobile" | "ops";
 
@@ -67,6 +68,19 @@ const SCENARIOS: ScanScenario[] = [
   { label: "CLAIMED", description: "Cambio de titularidad", eventType: "claim" },
   { label: "REDEEMED", description: "Canje o redención final", eventType: "redeem" },
   { label: "CHECK-IN", description: "Ingreso de pulsera/credencial a evento", eventType: "checkin" },
+];
+
+const DEMO_UIDS = [
+  "0487856A0B1090",
+  "048A876A0B1090",
+  "0483846A0B1090",
+  "047F846A0B1090",
+  "047B846A0B1090",
+  "0477846A0B1090",
+  "0474856A0B1090",
+  "0470856A0B1090",
+  "0483826A0B1090",
+  "0465846A0B1090",
 ];
 
 const DEMO_EXPERIENCES: Record<ExperiencePresetKey, {
@@ -327,12 +341,19 @@ export function DemoLab() {
   const [autoRunNarration, setAutoRunNarration] = useState("");
   const [mobilePreviewOpened, setMobilePreviewOpened] = useState(false);
   const [lastTriggeredScenario, setLastTriggeredScenario] = useState<string>("none");
-  const locale = detectLocale();
-  const webBase = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://nexid.lat";
+  const [readiness, setReadiness] = useState({
+    packLoaded: false,
+    manifestLoaded: false,
+    scenarioRun: false,
+    mobileOpened: false,
+  });
+  const [locale, setLocale] = useState<Locale>("es-AR");
+  const webBase = productUrls.web;
 
   const nfcSupport = typeof window !== "undefined" && "NDEFReader" in window;
   const hasSecureContext = typeof window !== "undefined" ? window.isSecureContext : false;
   const hasGeo = typeof navigator !== "undefined" && "geolocation" in navigator;
+  const liveNfcReady = nfcSupport && hasSecureContext;
   const latestEvent = (summary.events || [])[0];
   const activeVertical = inferVerticalFromPack(pack);
   const runbook = RUNBOOKS[activeVertical];
@@ -362,6 +383,10 @@ export function DemoLab() {
         ],
       };
 
+  useEffect(() => {
+    setLocale(detectLocale());
+  }, []);
+
   async function runAction(action: () => Promise<unknown>) {
     setPending(true);
     try {
@@ -388,7 +413,7 @@ export function DemoLab() {
       if (list.length > 0 && !list.find((item) => item.key === pack)) setPack(list[0].key);
       await refreshSummary();
     })();
-  }, [pack]);
+  }, []);
 
   useEffect(() => {
     setSelectedExperience(inferPresetFromPack(pack));
@@ -484,6 +509,7 @@ export function DemoLab() {
 
   async function triggerScenario(scenario: ScanScenario["eventType"]) {
     setLastTriggeredScenario(scenario);
+    setReadiness((state) => ({ ...state, scenarioRun: true }));
     await runAction(() => call("simulate-tap", "POST", { mode: mapScenarioToApiMode(scenario), scenario, source: mode, vertical: activeVertical }));
   }
 
@@ -573,15 +599,46 @@ export function DemoLab() {
     setLastTriggeredScenario("none");
     setActiveSection("simulate");
     await runAction(() => call("use-pack", "POST", { pack }));
+    setReadiness((state) => ({ ...state, packLoaded: true }));
     if (typeof window !== "undefined") window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
+    setReadiness((state) => ({ ...state, mobileOpened: true }));
     await runAuto90SecondsDemo();
     setActiveSection("ops");
   }
 
-  const openMobilePreviewHref = `${webBase}/demo-lab/mobile/demobodega/demo-item-001?demoMode=${mode}&pack=${pack}`;
+  const selectedPack = packs.find((item) => item.key === pack);
+  const previewTenant = selectedPack?.tenant || "demobodega";
+  const previewItemId = selectedPack?.itemId || "demo-item-001";
+  const activeBatchId = selectedPack?.batchId || "DEMO-2026-02";
+  const openMobilePreviewHref = `${webBase}/demo-lab/mobile/${previewTenant}/${previewItemId}?demoMode=${mode}&pack=${pack}`;
+  const tagPreviewLinks = DEMO_UIDS.map((uid) => `${openMobilePreviewHref}&uid=${uid}`);
   const qrPreviewHref = useMemo(() => demoMatrixDataUrl(openMobilePreviewHref), [openMobilePreviewHref]);
   const textScale = presenterMode ? "text-base" : "text-sm";
   const canShowTechnical = !presenterLock;
+
+  async function applyPackReadyFlow() {
+    const csv = ["batch_id,uid_hex,roll_id,ic_type", ...DEMO_UIDS.map((uid, index) => `${activeBatchId},${uid},${String(index + 1).padStart(3, "0")},${selectedPack?.icType || "NTAG424DNA_TT"}`)].join("\n");
+    await runAction(async () => {
+      await call("use-pack", "POST", { pack });
+      await call("upload-manifest", "POST", { bid: activeBatchId, csv });
+      await call("generate-live-scans", "POST", { count: 10 });
+      setReadiness({ packLoaded: true, manifestLoaded: true, scenarioRun: true, mobileOpened: false });
+      return { ok: true, flow: "pack-ready", pack, batch: activeBatchId, tags: DEMO_UIDS.length };
+    });
+  }
+
+  async function runMeetingStory(duration: "30s" | "90s") {
+    setPresenterLock(true);
+    if (duration === "30s") {
+      setActiveSection("mobile");
+      await runAction(() => call("use-pack", "POST", { pack }));
+      setReadiness((state) => ({ ...state, packLoaded: true }));
+      if (typeof window !== "undefined") window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
+      setReadiness((state) => ({ ...state, mobileOpened: true }));
+      return;
+    }
+    await runSalesStory();
+  }
 
   return (
     <div id="top" className={`demo-lab space-y-4 ${textScale} ${focusMode ? "fixed inset-0 z-[90] overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,.12),transparent_32%),#020617] px-4 py-4 md:px-8" : ""}`}>
@@ -611,9 +668,20 @@ export function DemoLab() {
             <h2 className="text-xl font-semibold text-white">Demo Lab · flujo guiado para ventas</h2>
             <p className="mt-1 text-sm text-slate-300">Runbook dinámico por vertical, pitch guiado y evidencia operativa lista para reuniones.</p>
           </div>
-          <button type="button" className="rounded-xl border border-violet-300/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-100" onClick={() => void runSalesStory()} disabled={pending}>
-            One-click Sales Story
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100" onClick={() => void runMeetingStory("30s")} disabled={pending}>
+              Meeting 30s
+            </button>
+            <button type="button" className="rounded-xl border border-violet-300/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-100" onClick={() => void runMeetingStory("90s")} disabled={pending}>
+              Meeting 90s
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-4">
+          <div className={`rounded-xl border p-3 text-xs ${readiness.packLoaded ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>Pack cargado</div>
+          <div className={`rounded-xl border p-3 text-xs ${readiness.manifestLoaded ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>Manifest aplicado</div>
+          <div className={`rounded-xl border p-3 text-xs ${readiness.scenarioRun ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>Escenario ejecutado</div>
+          <div className={`rounded-xl border p-3 text-xs ${readiness.mobileOpened ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>Mobile abierto</div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Narrativa</span>
@@ -739,6 +807,25 @@ export function DemoLab() {
       </Card>
 
       <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
+        <h3 className="font-semibold text-white">Checklist “todo funcionando”</h3>
+        <p className="mt-2 text-xs text-slate-300">Para cerrar la demo completa necesitamos: pack activo, escenario corrido, mobile abierto y entorno listo para LIVE NFC.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className={`rounded-xl border p-3 text-xs ${readiness.packLoaded ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>1) Pack activo: <b>{readiness.packLoaded ? "OK" : "pendiente"}</b></div>
+          <div className={`rounded-xl border p-3 text-xs ${readiness.scenarioRun ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>2) Escenario: <b>{readiness.scenarioRun ? "OK" : "pendiente"}</b></div>
+          <div className={`rounded-xl border p-3 text-xs ${readiness.mobileOpened ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>3) Mobile: <b>{readiness.mobileOpened ? "OK" : "pendiente"}</b></div>
+          <div className={`rounded-xl border p-3 text-xs ${liveNfcReady ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-amber-300/30 bg-amber-500/10 text-amber-100"}`}>4) LIVE NFC: <b>{liveNfcReady ? "listo" : "requiere dispositivo NFC + HTTPS"}</b></div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer" onClick={() => setReadiness((state) => ({ ...state, mobileOpened: true }))}>
+            Abrir mobile ahora
+          </a>
+          <button type="button" className="rounded-lg border border-white/15 px-3 py-1 text-xs text-white" onClick={() => void navigator.clipboard?.writeText(openMobilePreviewHref)}>
+            Copiar URL mobile
+          </button>
+        </div>
+      </Card>
+
+      <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
         <h3 className="font-semibold text-white">Demo Wizard (para reuniones)</h3>
         <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-slate-300">
           <li>Paso 1: elegí un pack vertical.</li>
@@ -746,6 +833,27 @@ export function DemoLab() {
           <li>Paso 3: cargá pack y ejecutá escenarios.</li>
           <li>Paso 4: abrí la vista mobile por item/tenant.</li>
         </ol>
+      </Card>
+
+      <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-semibold text-white">Pack listo en 1 click (10 tags)</h3>
+          <button type="button" onClick={() => void applyPackReadyFlow()} disabled={pending} className="rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
+            Aplicar pack completo
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-slate-300">Esto carga pack, sube manifest de 10 UIDs y genera eventos demo para mostrar trazabilidad/antifraude sin esperar chips físicos.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {DEMO_UIDS.map((uid, index) => (
+            <div key={uid} className="rounded-lg border border-white/10 bg-slate-900/70 p-2.5 text-xs text-slate-200">
+              <p className="font-semibold text-white">Tag {index + 1}</p>
+              <p className="mt-1 break-all text-slate-300">{uid}</p>
+              <button type="button" onClick={() => void navigator.clipboard?.writeText(tagPreviewLinks[index] || openMobilePreviewHref)} className="mt-2 rounded-md border border-white/15 px-2 py-1 text-[11px] text-cyan-100">
+                Copiar URL mobile
+              </button>
+            </div>
+          ))}
+        </div>
       </Card>
 
       <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
@@ -767,6 +875,11 @@ export function DemoLab() {
           ))}
         </div>
         <p className="mt-3 text-xs text-slate-300">Modo activo: <b>{modeLabel(mode)}</b></p>
+        {mode === "live_nfc" && !liveNfcReady ? (
+          <p className="mt-2 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            LIVE NFC requiere navegador compatible (Android + Chrome), HTTPS y permiso NFC. Si no, usá SIMULATED para demo comercial.
+          </p>
+        ) : null}
       </Card>
 
       {canShowTechnical ? (
@@ -776,7 +889,7 @@ export function DemoLab() {
           <p className="mt-1">Permiso NFC: <b>{nfcPermission}</b> · Permiso GPS: <b>{geoPermission}</b></p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100" onClick={() => void triggerScenario("valid")}>
-              Start live NFC scan (emulado)
+              Simular lectura NFC (demo)
             </button>
             <button type="button" className="rounded-lg border border-white/20 px-3 py-1 text-white" onClick={requestGeoForLive}>
               Pedir geolocalización real
@@ -796,7 +909,7 @@ export function DemoLab() {
             <p className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">Sin ruido técnico</p>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
-            <button className="rounded-2xl border border-white/10 bg-slate-900 p-5 text-left text-white" onClick={() => runAction(() => call("use-pack", "POST", { pack }))} disabled={pending}>
+            <button className="rounded-2xl border border-white/10 bg-slate-900 p-5 text-left text-white" onClick={() => runAction(() => call("use-pack", "POST", { pack })).then(() => setReadiness((state) => ({ ...state, packLoaded: true })))} disabled={pending}>
               <p className="text-lg font-semibold">1. Load pack</p>
               <p className="mt-2 text-sm text-slate-300">Prepará el vertical elegido y dejá el contexto listo para el pitch.</p>
             </button>
@@ -804,7 +917,7 @@ export function DemoLab() {
               <p className="text-lg font-semibold">2. Run scenario</p>
               <p className="mt-2 text-sm">Dispará {SCENARIOS.find((scenario) => scenario.eventType === selectedScenario)?.label || "AUTH OK"} en un clic.</p>
             </button>
-            <a className="rounded-2xl border border-cyan-300/30 bg-cyan-500/10 p-5 text-left text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer">
+            <a className="rounded-2xl border border-cyan-300/30 bg-cyan-500/10 p-5 text-left text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer" onClick={() => setReadiness((state) => ({ ...state, mobileOpened: true }))}>
               <p className="text-lg font-semibold">3. Open mobile</p>
               <p className="mt-2 text-sm">Abrí la experiencia del consumidor sin cambiar de historia ni contexto.</p>
             </a>
@@ -854,10 +967,10 @@ export function DemoLab() {
 
           <div className={`grid gap-3 md:grid-cols-2 ${activeSection === "simulate" ? "" : "hidden"}`}>
             <label className="demo-lab-upload rounded-xl border border-white/10 bg-slate-900 p-3 text-white">CSV manifest uploader
-              <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const csv = await readFile(file); await runAction(() => call("upload-manifest", "POST", { bid: "DEMO-2026-02", csv })); }} />
+              <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const csv = await readFile(file); await runAction(() => call("upload-manifest", "POST", { bid: activeBatchId, csv })); setReadiness((state) => ({ ...state, manifestLoaded: true })); }} />
             </label>
             <label className="demo-lab-upload rounded-xl border border-white/10 bg-slate-900 p-3 text-white">JSON metadata uploader
-              <input type="file" accept=".json,application/json" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const data = JSON.parse(await readFile(file)); await runAction(() => call("upload-products", "POST", { bid: "DEMO-2026-02", ...data })); }} />
+              <input type="file" accept=".json,application/json" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const data = JSON.parse(await readFile(file)); await runAction(() => call("upload-products", "POST", { bid: activeBatchId, ...data })); setReadiness((state) => ({ ...state, manifestLoaded: true })); }} />
             </label>
           </div>
         </>

@@ -1,215 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { Button, Card } from "@product/ui";
 
 type AppLocale = "es-AR" | "pt-BR" | "en";
 
-type Copy = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  warning: string;
-  tenantName: string;
-  createTenantIfMissing: string;
-  keyExplain: string;
-  handoffTitle: string;
-  copyHandoff: string;
-  manifestPreviewTitle: string;
-  tenantSlug: string;
-  batchId: string;
-  sku: string;
-  quantity: string;
-  kMeta: string;
-  kFile: string;
-  notes: string;
-  chipModel: string;
-  register: string;
-  previewTitle: string;
-  supplierTemplate: string;
-  noTemplate: string;
-  copyTemplate: string;
-  copied: string;
-  importTitle: string;
-  importHint: string;
-  importAction: string;
-  activateImported: string;
-  validateTitle: string;
-  validateHint: string;
-  sampleUrl: string;
-  validateAction: string;
-  nextTitle: string;
-  nextBatchPage: string;
-  nextBatchDetail: string;
-  responseTitle: string;
-  checklistTitle: string;
-  checklist: string[];
-  keyError: string;
-  requiredError: string;
-  sampleUrlError: string;
-  batchMissing: string;
-  batchExists: string;
-  validateOk: string;
-};
-
-const copy: Record<AppLocale, Copy> = {
-  "es-AR": {
-    eyebrow: "Supplier-backed batch",
-    title: "Register Supplier Batch",
-    description: "Usá este flujo para tags codificadas por proveedor. Acá sí se cargan las llaves exactas acordadas con fábrica; no se generan llaves aleatorias.",
-    warning: "No uses el alta rápida para tags supplier-coded: si cambiás K_META_BATCH o K_FILE_BATCH, las tags reales van a fallar con INVALID.",
-    tenantName: "Nombre del tenant (si hay que crearlo)",
-    createTenantIfMissing: "Crear tenant si todavía no existe",
-    keyExplain: "K_META_BATCH y K_FILE_BATCH son las llaves exactas del lote que deben coincidir con las que ya compartiste al proveedor.",
-    handoffTitle: "Supplier handoff summary",
-    copyHandoff: "Copiar handoff",
-    manifestPreviewTitle: "Preview de UIDs detectados",
-    tenantSlug: "tenant_slug",
-    batchId: "batch_id / BID",
-    sku: "SKU",
-    quantity: "Cantidad esperada",
-    kMeta: "K_META_BATCH (32 hex)",
-    kFile: "K_FILE_BATCH (32 hex)",
-    notes: "Notas operativas (opcional)",
-    chipModel: "Modelo de chip (opcional)",
-    register: "Registrar supplier batch",
-    previewTitle: "Preview operativo",
-    supplierTemplate: "URL template para proveedor",
-    noTemplate: "Todavía no hay template. Registrá el batch con llaves correctas para generarlo.",
-    copyTemplate: "Copiar template",
-    copied: "Copiado",
-    importTitle: "Manifest workflow",
-    importHint: "Cuando llegue el CSV del proveedor, pegalo acá. Debe incluir batch_id y uid_hex. Podés activar en el mismo paso.",
-    importAction: "Importar manifest",
-    activateImported: "Activar tags al importar",
-    validateTitle: "Validate Supplier Sample URL",
-    validateHint: "Pegá una URL real de /sun. El sistema valida si el batch existe y luego prueba la respuesta real del endpoint.",
-    sampleUrl: "https://api.nexid.lat/sun?...",
-    validateAction: "Validar sample URL",
-    nextTitle: "Siguientes acciones",
-    nextBatchPage: "Abrir batch ops",
-    nextBatchDetail: "Abrir batch detail",
-    responseTitle: "Respuesta",
-    checklistTitle: "Checklist para Echo / proveedor",
-    checklist: [
-      "No cambiar batch_id, URL template ni sample keys ya acordadas.",
-      "Pedir manifest CSV con batch_id y uid_hex por tag.",
-      "Confirmar que el BID grabado en NDEF coincide exactamente con este batch.",
-      "Confirmar que el encoding usa estas mismas llaves y no otras generadas por el proveedor.",
-    ],
-    keyError: "Las keys deben ser hex de 32 caracteres.",
-    requiredError: "Tenant, batch_id, k_meta_hex y k_file_hex son obligatorios para este flujo.",
-    sampleUrlError: "Pegá una URL válida de /sun con bid.",
-    batchMissing: "El batch del sample URL todavía no existe en la plataforma.",
-    batchExists: "El batch del sample URL ya existe en plataforma.",
-    validateOk: "Validación ejecutada sobre la URL real del proveedor.",
-  },
-  "pt-BR": {
-    eyebrow: "Supplier-backed batch",
-    title: "Register Supplier Batch",
-    description: "Use este fluxo para tags codificadas pelo fornecedor. Aqui você carrega as keys exatas acordadas com a fábrica; nada de keys aleatórias.",
-    warning: "Não use a criação rápida para tags supplier-coded: se mudar K_META_BATCH ou K_FILE_BATCH, as tags reais vão falhar com INVALID.",
-    tenantName: "Nome do tenant (se precisar criar)",
-    createTenantIfMissing: "Criar tenant se ainda não existir",
-    keyExplain: "K_META_BATCH e K_FILE_BATCH são as keys exatas do lote e devem coincidir com as já compartilhadas com o fornecedor.",
-    handoffTitle: "Supplier handoff summary",
-    copyHandoff: "Copiar handoff",
-    manifestPreviewTitle: "Preview dos UIDs detectados",
-    tenantSlug: "tenant_slug",
-    batchId: "batch_id / BID",
-    sku: "SKU",
-    quantity: "Quantidade esperada",
-    kMeta: "K_META_BATCH (32 hex)",
-    kFile: "K_FILE_BATCH (32 hex)",
-    notes: "Notas operacionais (opcional)",
-    chipModel: "Modelo do chip (opcional)",
-    register: "Registrar supplier batch",
-    previewTitle: "Preview operacional",
-    supplierTemplate: "URL template para o fornecedor",
-    noTemplate: "Ainda não há template. Registre o batch com as keys corretas para gerá-lo.",
-    copyTemplate: "Copiar template",
-    copied: "Copiado",
-    importTitle: "Manifest workflow",
-    importHint: "Quando o CSV chegar, cole aqui. Ele deve incluir batch_id e uid_hex. Você pode ativar no mesmo passo.",
-    importAction: "Importar manifest",
-    activateImported: "Ativar tags no import",
-    validateTitle: "Validate Supplier Sample URL",
-    validateHint: "Cole uma URL real de /sun. O sistema valida se o batch existe e depois testa a resposta real do endpoint.",
-    sampleUrl: "https://api.nexid.lat/sun?...",
-    validateAction: "Validar sample URL",
-    nextTitle: "Próximas ações",
-    nextBatchPage: "Abrir batch ops",
-    nextBatchDetail: "Abrir batch detail",
-    responseTitle: "Resposta",
-    checklistTitle: "Checklist para Echo / fornecedor",
-    checklist: [
-      "Não mudar batch_id, URL template nem sample keys já acordadas.",
-      "Pedir manifest CSV com batch_id e uid_hex por tag.",
-      "Confirmar que o BID gravado no NDEF coincide exatamente com este batch.",
-      "Confirmar que o encoding usa estas mesmas keys e não outras geradas pelo fornecedor.",
-    ],
-    keyError: "As keys devem ser hex com 32 caracteres.",
-    requiredError: "Tenant, batch_id, k_meta_hex e k_file_hex são obrigatórios neste fluxo.",
-    sampleUrlError: "Cole uma URL válida de /sun com bid.",
-    batchMissing: "O batch do sample URL ainda não existe na plataforma.",
-    batchExists: "O batch do sample URL já existe na plataforma.",
-    validateOk: "Validação executada sobre a URL real do fornecedor.",
-  },
-  en: {
-    eyebrow: "Supplier-backed batch",
-    title: "Register Supplier Batch",
-    description: "Use this flow for supplier-programmed tags. This is where you enter the exact factory-agreed keys; no random keys should be generated here.",
-    warning: "Do not use quick batch creation for supplier-coded tags: if K_META_BATCH or K_FILE_BATCH change, real tags will fail with INVALID.",
-    tenantName: "Tenant name (if it must be created)",
-    createTenantIfMissing: "Create tenant if missing",
-    keyExplain: "K_META_BATCH and K_FILE_BATCH are the exact batch keys that must match what was already shared with the supplier.",
-    handoffTitle: "Supplier handoff summary",
-    copyHandoff: "Copy handoff",
-    manifestPreviewTitle: "Detected UID preview",
-    tenantSlug: "tenant_slug",
-    batchId: "batch_id / BID",
-    sku: "SKU",
-    quantity: "Expected quantity",
-    kMeta: "K_META_BATCH (32 hex)",
-    kFile: "K_FILE_BATCH (32 hex)",
-    notes: "Operational notes (optional)",
-    chipModel: "Chip model (optional)",
-    register: "Register supplier batch",
-    previewTitle: "Operational preview",
-    supplierTemplate: "Supplier URL template",
-    noTemplate: "No template yet. Register the batch with the correct keys to generate it.",
-    copyTemplate: "Copy template",
-    copied: "Copied",
-    importTitle: "Manifest workflow",
-    importHint: "When the supplier CSV arrives, paste it here. It must include batch_id and uid_hex. You can activate on import.",
-    importAction: "Import manifest",
-    activateImported: "Activate tags on import",
-    validateTitle: "Validate Supplier Sample URL",
-    validateHint: "Paste a real /sun URL. The wizard checks whether the batch exists and then tests the real endpoint response.",
-    sampleUrl: "https://api.nexid.lat/sun?...",
-    validateAction: "Validate sample URL",
-    nextTitle: "Next actions",
-    nextBatchPage: "Open batch ops",
-    nextBatchDetail: "Open batch detail",
-    responseTitle: "Response",
-    checklistTitle: "Checklist for Echo / supplier",
-    checklist: [
-      "Do not change batch_id, URL template or the sample keys already agreed.",
-      "Request a manifest CSV with batch_id and uid_hex per tag.",
-      "Confirm the BID written in NDEF exactly matches this batch.",
-      "Confirm encoding uses these exact keys and not supplier-generated replacements.",
-    ],
-    keyError: "Keys must be 32-character hex values.",
-    requiredError: "Tenant, batch_id, k_meta_hex and k_file_hex are required in this flow.",
-    sampleUrlError: "Paste a valid /sun URL containing bid.",
-    batchMissing: "The batch from the sample URL does not exist in platform yet.",
-    batchExists: "The batch from the sample URL already exists in platform.",
-    validateOk: "Validation executed against the supplier's real URL.",
-  },
-};
-
-type ApiRecord = Record<string, unknown>;
+type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 function normalizeHex(value: string) {
   return value.trim().toUpperCase();
@@ -219,263 +15,364 @@ function isHex32(value: string) {
   return /^[0-9A-F]{32}$/.test(normalizeHex(value));
 }
 
-function pretty(data: unknown) {
-  return JSON.stringify(data, null, 2);
+function parseUidLines(raw: string) {
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/[,;\s]+/g, ""))
+    .filter(Boolean)
+    .map((line) => line.toUpperCase())
+    .filter((line) => /^[0-9A-F]{8,20}$/.test(line));
+}
+
+function parseUidCsv(raw: string) {
+  const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 2) return { uids: [], batchIds: [] as string[] };
+  const header = lines[0].split(",").map((item) => item.trim().toLowerCase());
+  const uidIndex = header.findIndex((item) => ["uid_hex", "uid", "uidhex"].includes(item));
+  const batchIndex = header.findIndex((item) => ["batch_id", "batchid", "bid"].includes(item));
+  if (uidIndex < 0) return { uids: [], batchIds: [] as string[] };
+  const rows = lines.slice(1).map((line) => line.split(",").map((item) => item.trim()));
+  const uids = rows.map((row) => row[uidIndex]?.toUpperCase() || "").filter((uid) => /^[0-9A-F]{8,20}$/.test(uid));
+  const batchIds = batchIndex >= 0 ? rows.map((row) => row[batchIndex] || "") : [];
+  return { uids, batchIds };
+}
+
+function actionMessage(reason: string) {
+  const lower = reason.toLowerCase();
+  if (lower.includes("unknown batch") || lower.includes("batch not found")) {
+    return "Este BID no está registrado todavía. Volvé al Step 4 y registralo.";
+  }
+  if (lower.includes("not allowed") || lower.includes("not active") || lower.includes("allowlist")) {
+    return "El UID existe pero no está activado o allowlisteado. Importá UIDs y activá en el Step 4.";
+  }
+  if (lower.includes("cmac") || lower.includes("mismatch")) {
+    return "Keys incorrectas (o proveedor programó con keys distintas). Revisá K_META / K_FILE del Step 2.";
+  }
+  return "Revisá el detalle técnico y volvé a ejecutar el paso recomendado.";
+}
+
+async function parseJsonSafe(response: Response) {
+  const text = await response.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { raw: text };
+  }
 }
 
 export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
-  const t = copy[locale] || copy["es-AR"];
-  const [form, setForm] = useState({
-    tenantName: "Demo Bodega",
-    tenantSlug: "demobodega",
-    batchId: "DEMO-2026-02",
-    sku: "china-ntag424-demo",
-    quantity: "100",
-    kMeta: "",
-    kFile: "",
-    notes: "",
-    chipModel: "NTAG 424 DNA",
-  });
-  const [manifestCsv, setManifestCsv] = useState("batch_id,uid_hex\nDEMO-2026-02,");
-  const [createTenantIfMissing, setCreateTenantIfMissing] = useState(false);
-  const [activateImported, setActivateImported] = useState(true);
-  const [sampleUrl, setSampleUrl] = useState("");
-  const [pending, setPending] = useState<"register" | "manifest" | "validate" | null>(null);
-  const [responseText, setResponseText] = useState("{}");
-  const [status, setStatus] = useState(t.description);
-  const [template, setTemplate] = useState("");
-  const [copied, setCopied] = useState(false);
+  const copy = locale === "en"
+    ? {
+        title: "Supplier Batch Onboarding Wizard",
+        subtitle: "Simple mode: complete 5 steps and leave the batch ready to scan.",
+        source: "source: supplier.txt",
+        startStatus: "Complete the onboarding in 5 steps to leave the batch READY TO SCAN.",
+        quickTitle: "Quick route (recommended)",
+        quickHint: "If this is your first run, use this button and then validate one supplier URL.",
+        quickAction: "Run complete setup",
+        quickFooter: "This runs: create tenant (if missing) → register batch → import UIDs → activate UIDs.",
+        step1: "Step 1 · Batch identity",
+        step2: "Step 2 · Batch keys",
+        step3: "Step 3 · UID intake",
+        step4: "Step 4 · Register + Import + Activate",
+        step5: "Step 5 · Supplier pretest",
+      }
+    : locale === "pt-BR"
+      ? {
+          title: "Onboarding de Lote do Fornecedor",
+          subtitle: "Modo simples: complete os 5 passos e deixe o lote pronto para scan.",
+          source: "fonte: supplier.txt",
+          startStatus: "Complete o onboarding em 5 passos para deixar o lote READY TO SCAN.",
+          quickTitle: "Rota rápida (recomendada)",
+          quickHint: "Se for sua primeira execução, use este botão e depois valide uma URL SUN.",
+          quickAction: "Executar setup completo",
+          quickFooter: "Executa: criar tenant (se faltar) → registrar lote → importar UIDs → ativar UIDs.",
+          step1: "Passo 1 · Identidade do lote",
+          step2: "Passo 2 · Chaves do lote",
+          step3: "Passo 3 · Carga de UIDs",
+          step4: "Passo 4 · Registrar + Importar + Ativar",
+          step5: "Passo 5 · Pré-teste do fornecedor",
+        }
+      : {
+          title: "Wizard de Onboarding de Lote Proveedor",
+          subtitle: "Modo simple: completá 5 pasos y dejá el lote listo para escanear.",
+          source: "fuente: supplier.txt",
+          startStatus: "Completá el onboarding en 5 pasos para dejar el batch READY TO SCAN.",
+          quickTitle: "Ruta rápida (recomendada)",
+          quickHint: "Si es tu primera corrida, usá este botón y después validá una URL SUN.",
+          quickAction: "Ejecutar setup completo",
+          quickFooter: "Esto ejecuta: crear tenant (si falta) → registrar batch → importar UIDs → activar UIDs.",
+          step1: "Paso 1 · Identidad del batch",
+          step2: "Paso 2 · Keys del batch",
+          step3: "Paso 3 · Carga de UIDs",
+          step4: "Paso 4 · Registrar + Importar + Activar",
+          step5: "Paso 5 · Pretest proveedor",
+        };
 
-  const detailHref = useMemo(() => `/batches/${encodeURIComponent(form.batchId || "new")}`, [form.batchId]);
-  const expectedTemplate = useMemo(() => form.batchId.trim() ? `https://api.nexid.lat/sun/?v=1&bid=${form.batchId.trim()}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000` : "", [form.batchId]);
-  const manifestPreview = useMemo(() => {
-    const lines = manifestCsv.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map((value) => value.trim());
-    const uidIndex = headers.findIndex((header) => ["uid_hex", "uid", "UID", "uidHex"].includes(header));
-    const batchIndex = headers.findIndex((header) => ["batch_id", "batchId"].includes(header));
-    return lines.slice(1, 6).map((line) => {
-      const cols = line.split(",").map((value) => value.trim());
-      return { uid: uidIndex >= 0 ? cols[uidIndex] || "-" : "-", batch: batchIndex >= 0 ? cols[batchIndex] || "-" : form.batchId || "-" };
-    });
-  }, [form.batchId, manifestCsv]);
+  const [activeStep, setActiveStep] = useState<WizardStep>(1);
+  const [pending, setPending] = useState(false);
+  const [status, setStatus] = useState(copy.startStatus);
+  const [responseText, setResponseText] = useState("{}");
+
+  const [tenantSlug, setTenantSlug] = useState("demobodega");
+  const [tenantName, setTenantName] = useState("Demo Bodega");
+  const [bid, setBid] = useState("DEMO-2026-02");
+  const [chipModel, setChipModel] = useState("NTAG 424 DNA TagTamper");
+  const [sku, setSku] = useState("wine-secure");
+  const [quantity, setQuantity] = useState("10");
+  const [notes, setNotes] = useState("Supplier-programmed batch. Do not rotate keys.");
+  const [kMeta, setKMeta] = useState("c2a462e6ab434828153d73ce440704ac");
+  const [kFile, setKFile] = useState("bfce6c576540c04c840f1cfd457bf213");
+  const [uids, setUids] = useState<string[]>([]);
+  const [manifestSourceType, setManifestSourceType] = useState<"txt" | "csv">("txt");
+  const [batchMismatchCount, setBatchMismatchCount] = useState(0);
+  const [importedCount, setImportedCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+  const [supplierUrl, setSupplierUrl] = useState("");
+  const [readyToScan, setReadyToScan] = useState(false);
+
+  const steps = [copy.step1, copy.step2, copy.step3, copy.step4, copy.step5];
+
+  const progress = Math.round(((activeStep - 1) / (steps.length - 1)) * 100);
+  const uidPreview = useMemo(() => uids.slice(0, 10), [uids]);
+  const expectedNdefTemplate = useMemo(() => `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(bid || "DEMO-2026-02")}&picc_data=...&enc=...&cmac=...`, [bid]);
 
   async function run(path: string, init?: RequestInit) {
-    const res = await fetch(path, { cache: "no-store", ...init });
-    const text = await res.text();
-    const data = text ? JSON.parse(text) : null;
-    setResponseText(pretty(data));
-    if (!res.ok) throw new Error(typeof data === "object" && data && "reason" in data ? String((data as ApiRecord).reason || res.statusText) : res.statusText);
-    return data as ApiRecord;
+    const response = await fetch(path, {
+      cache: "no-store",
+      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+      ...init,
+    });
+    const data = await parseJsonSafe(response);
+    setResponseText(JSON.stringify(data, null, 2));
+    if (!response.ok) {
+      const reason = typeof data === "object" && data && "reason" in data ? String((data as { reason?: unknown }).reason || response.statusText) : response.statusText;
+      throw new Error(reason);
+    }
+    return data as Record<string, unknown>;
+  }
+
+  async function onUidFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const raw = await file.text();
+    if (file.name.toLowerCase().endsWith(".csv")) {
+      const parsed = parseUidCsv(raw);
+      setUids(parsed.uids || []);
+      const mismatches = (parsed.batchIds || []).filter((entry) => entry && entry !== bid).length;
+      setBatchMismatchCount(mismatches);
+      setStatus(`UIDs detectados: ${parsed.uids.length}.`);
+      return;
+    }
+    const parsed = parseUidLines(raw);
+    setUids(parsed);
+    setBatchMismatchCount(0);
+    setStatus(`UIDs detectados: ${parsed.length}.`);
+  }
+
+  async function createTenantIfMissing() {
+    if (!tenantSlug.trim() || !tenantName.trim()) return;
+    await run("/api/admin/tenants", {
+      method: "POST",
+      body: JSON.stringify({ slug: tenantSlug.trim(), name: tenantName.trim() }),
+    }).catch(() => null);
   }
 
   async function registerBatch() {
-    if (!form.tenantSlug.trim() || !form.batchId.trim() || !form.kMeta.trim() || !form.kFile.trim()) {
-      setStatus(t.requiredError);
-      return;
-    }
-    if (!isHex32(form.kMeta) || !isHex32(form.kFile)) {
-      setStatus(t.keyError);
-      return;
-    }
-    setPending("register");
-    setStatus("POST /api/admin/batches");
+    if (!tenantSlug.trim() || !bid.trim()) throw new Error("Completá tenant_slug y bid en Step 1.");
+    if (!isHex32(kMeta) || !isHex32(kFile)) throw new Error("K_META y K_FILE deben ser hex de 32 caracteres.");
+    return run("/api/admin/batches/register", {
+      method: "POST",
+      body: JSON.stringify({
+        tenant_slug: tenantSlug.trim(),
+        bid: bid.trim(),
+        chip_model: chipModel.trim(),
+        sku: sku.trim(),
+        quantity: Number(quantity || 0),
+        notes: notes.trim(),
+        k_meta_hex: normalizeHex(kMeta),
+        k_file_hex: normalizeHex(kFile),
+        sdm_config: { source: "supplier.txt", url_template: expectedNdefTemplate },
+      }),
+    });
+  }
+
+  async function importUids() {
+    if (!bid.trim()) throw new Error("Falta BID.");
+    if (!uids.length) throw new Error("Cargá UIDs en Step 3.");
+    const data = await run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/import-uids`, {
+      method: "POST",
+      body: JSON.stringify({ uids, sourceType: manifestSourceType }),
+    });
+    setImportedCount(Number(data.imported || uids.length));
+    return data;
+  }
+
+  async function activateAll() {
+    if (!bid.trim()) throw new Error("Falta BID.");
+    const data = await run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/activate-all`, {
+      method: "POST",
+      body: JSON.stringify({ limit: uids.length || undefined }),
+    });
+    setActiveCount(Number(data.activated || 0));
+    return data;
+  }
+
+  async function runAll() {
+    setPending(true);
+    setStatus("Ejecutando onboarding...");
     try {
-      if (createTenantIfMissing && form.tenantName.trim()) {
-        await run("/api/admin/tenants", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: form.tenantName.trim(), slug: form.tenantSlug.trim() }),
-        }).catch(() => null);
-      }
-      const payload = {
-        tenant_slug: form.tenantSlug.trim(),
-        bid: form.batchId.trim(),
-        sku: form.sku.trim(),
-        quantity: Number(form.quantity || 0),
-        profile: "secure",
-        k_meta_hex: normalizeHex(form.kMeta),
-        k_file_hex: normalizeHex(form.kFile),
-        sdm_config: {
-          security_profile: "secure",
-          chip_model: form.chipModel.trim() || undefined,
-          notes: form.notes.trim() || undefined,
-        },
-      };
-      const data = await run("/api/admin/batches", {
+      await createTenantIfMissing();
+      await registerBatch();
+      await importUids();
+      await activateAll();
+      setReadyToScan(true);
+      setStatus("READY TO SCAN: batch registrado, UIDs importados y activados.");
+      setActiveStep(5);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error inesperado";
+      setStatus(message);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function validateNow() {
+    if (!supplierUrl.trim()) {
+      setStatus("Pegá una URL SUN del proveedor.");
+      return;
+    }
+    setPending(true);
+    setStatus("Validando URL SUN...");
+    try {
+      const data = await run("/api/admin/sun/validate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ url: supplierUrl.trim() }),
       });
-      setTemplate(String(data.ndef_url_template || ""));
-      setStatus(`OK · ${form.batchId}`);
+      const reason = String(data.reason || "");
+      const advice = actionMessage(reason);
+      setStatus(`Validación completa. ${advice}`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "register failed");
+      const message = error instanceof Error ? error.message : "validation failed";
+      setStatus(`${message}. ${actionMessage(message)}`);
     } finally {
-      setPending(null);
+      setPending(false);
     }
-  }
-
-  async function importManifest() {
-    if (!form.batchId.trim()) {
-      setStatus(t.requiredError);
-      return;
-    }
-    setPending("manifest");
-    setStatus(`POST /api/admin/batches/${form.batchId}/import-manifest`);
-    try {
-      await run(`/api/admin/batches/${encodeURIComponent(form.batchId.trim())}/import-manifest`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv: manifestCsv, activateImported }),
-      });
-      setStatus(`OK · manifest ${form.batchId}`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "manifest failed");
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function validateSampleUrl() {
-    if (!sampleUrl.trim()) {
-      setStatus(t.sampleUrlError);
-      return;
-    }
-    setPending("validate");
-    try {
-      const url = new URL(sampleUrl.trim());
-      const bid = url.searchParams.get("bid") || "";
-      if (!bid || !url.pathname.includes("/sun")) {
-        setStatus(t.sampleUrlError);
-        setPending(null);
-        return;
-      }
-      const batches = await run("/api/admin/batches");
-      const rows = Array.isArray(batches) ? batches : [];
-      const exists = rows.some((row) => typeof row === "object" && row && String((row as ApiRecord).bid || "") === bid);
-      const sampleResponse = await fetch(sampleUrl.trim(), { cache: "no-store" });
-      const sampleText = await sampleResponse.text();
-      let sampleData: unknown = sampleText;
-      try { sampleData = JSON.parse(sampleText); } catch {}
-      setResponseText(pretty({ batchCheck: exists ? t.batchExists : t.batchMissing, sampleStatus: sampleResponse.status, sampleResponse: sampleData }));
-      setStatus(`${exists ? t.batchExists : t.batchMissing} ${t.validateOk}`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "validation failed");
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function copyTemplate() {
-    if (!template) return;
-    await navigator.clipboard.writeText(template).catch(() => null);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1200);
-  }
-
-  async function copyHandoff() {
-    const handoff = [
-      `BATCH_ID=${form.batchId.trim()}`,
-      `K_META_BATCH=${normalizeHex(form.kMeta)}`,
-      `K_FILE_BATCH=${normalizeHex(form.kFile)}`,
-      `URL_TEMPLATE=${template || expectedTemplate}`,
-    ].join("\n");
-    await navigator.clipboard.writeText(handoff).catch(() => null);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1200);
   }
 
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-300">{t.eyebrow}</p>
-        <h2 className="mt-2 text-2xl font-semibold text-white">{t.title}</h2>
-        <p className="mt-2 text-sm text-slate-300">{t.description}</p>
-        <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-100">{t.warning}</div>
+        <h2 className="text-2xl font-semibold text-white">{copy.title}</h2>
+        <p className="mt-2 text-sm text-slate-300">{copy.subtitle}</p>
+        <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">{copy.quickTitle}</p>
+          <p className="mt-1 text-sm text-cyan-50">{copy.quickHint}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button disabled={pending} onClick={() => void runAll()}>{copy.quickAction}</Button>
+            <p className="text-xs text-cyan-100/90">{copy.quickFooter}</p>
+          </div>
+        </div>
+        <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
+          <div className="h-2 rounded-full bg-cyan-400" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-5">
+          {steps.map((step, index) => (
+            <button key={step} type="button" className={`rounded-xl border px-2 py-2 text-xs ${activeStep === index + 1 ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`} onClick={() => setActiveStep((index + 1) as WizardStep)}>
+              {step}
+            </button>
+          ))}
+        </div>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="p-6">
-          <div className="grid gap-3 md:grid-cols-2">
-            <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.tenantName} value={form.tenantName} onChange={(e) => setForm({ ...form, tenantName: e.target.value })} />
-            <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.tenantSlug} value={form.tenantSlug} onChange={(e) => setForm({ ...form, tenantSlug: e.target.value })} />
-            <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.batchId} value={form.batchId} onChange={(e) => setForm({ ...form, batchId: e.target.value })} />
-            <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.sku} value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
-            <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.quantity} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
-            <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.kMeta} value={form.kMeta} onChange={(e) => setForm({ ...form, kMeta: e.target.value })} />
-            <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.kFile} value={form.kFile} onChange={(e) => setForm({ ...form, kFile: e.target.value })} />
-            <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white md:col-span-2" placeholder={t.chipModel} value={form.chipModel} onChange={(e) => setForm({ ...form, chipModel: e.target.value })} />
-            <textarea className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white md:col-span-2" placeholder={t.notes} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-          </div>
-          <label className="mt-4 flex items-center gap-2 text-sm text-slate-300">
-            <input type="checkbox" checked={createTenantIfMissing} onChange={(e) => setCreateTenantIfMissing(e.target.checked)} />
-            <span>{t.createTenantIfMissing}</span>
-          </label>
-          <p className="mt-3 text-xs text-emerald-200">{t.keyExplain}</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button onClick={registerBatch} disabled={pending !== null}>{t.register}</Button>
-            <Link className="inline-flex items-center rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100" href="/batches">{t.nextBatchPage}</Link>
-            <Link className="inline-flex items-center rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100" href={detailHref}>{t.nextBatchDetail}</Link>
-          </div>
-        </Card>
+      <Card className={`p-6 ${activeStep === 1 ? "" : "hidden"}`}>
+        <h3 className="text-lg font-semibold text-white">Step 1 · Batch identity</h3>
+        <p className="mt-1 text-xs text-slate-400">ⓘ Tenant = marca/cliente dueño del lote. Para demo real usá: Demo Bodega / demobodega.</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_slug" value={tenantSlug} onChange={(event) => setTenantSlug(event.target.value)} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_name" value={tenantName} onChange={(event) => setTenantName(event.target.value)} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="bid" value={bid} onChange={(event) => setBid(event.target.value)} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="chip model" value={chipModel} onChange={(event) => setChipModel(event.target.value)} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="sku" value={sku} onChange={(event) => setSku(event.target.value)} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="quantity" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+          <textarea className="min-h-20 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white md:col-span-3" placeholder="notes" value={notes} onChange={(event) => setNotes(event.target.value)} />
+        </div>
+      </Card>
 
-        <Card className="p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-300">{t.previewTitle}</h3>
-          <p className="mt-4 text-xs uppercase tracking-[0.16em] text-slate-400">{t.supplierTemplate}</p>
-          <p className="mt-2 break-all text-sm text-cyan-100">{template || expectedTemplate || t.noTemplate}</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button variant="secondary" onClick={copyTemplate} disabled={!(template || expectedTemplate)}>{copied ? t.copied : t.copyTemplate}</Button>
-            <Button variant="secondary" onClick={copyHandoff} disabled={!form.batchId.trim() || !form.kMeta.trim() || !form.kFile.trim()}>{t.copyHandoff}</Button>
-          </div>
-          <p className="mt-6 text-xs uppercase tracking-[0.16em] text-slate-400">{t.handoffTitle}</p>
-          <pre className="mt-2 overflow-x-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-200">{[
-            `BATCH_ID=${form.batchId.trim() || "-"}`,
-            `K_META_BATCH=${normalizeHex(form.kMeta) || "-"}`,
-            `K_FILE_BATCH=${normalizeHex(form.kFile) || "-"}`,
-            `URL_TEMPLATE=${template || expectedTemplate || "-"}`,
-          ].join("\n")}</pre>
-          <p className="mt-6 text-xs uppercase tracking-[0.16em] text-slate-400">{t.checklistTitle}</p>
-          <ul className="mt-3 space-y-2 text-sm text-slate-300">
-            {t.checklist.map((item) => <li key={item}>• {item}</li>)}
-          </ul>
-        </Card>
-      </div>
+      <Card className={`p-6 ${activeStep === 2 ? "" : "hidden"}`}>
+        <h3 className="text-lg font-semibold text-white">Step 2 · Batch keys</h3>
+        <p className="mt-1 text-xs text-slate-400">{copy.source}</p>
+        <div className="mt-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          Atención: este flujo es para tags supplier-programmed. K_META_BATCH y K_FILE_BATCH son obligatorias y no se autogeneran.
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_meta_hex (16 bytes / 32 hex)" value={kMeta} onChange={(event) => setKMeta(event.target.value)} />
+          <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_file_hex (16 bytes / 32 hex)" value={kFile} onChange={(event) => setKFile(event.target.value)} />
+        </div>
+        <p className="mt-3 text-xs text-cyan-200">NDEF template preview: {expectedNdefTemplate}</p>
+      </Card>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-white">{t.importTitle}</h3>
-          <p className="mt-2 text-sm text-slate-300">{t.importHint}</p>
-          <textarea className="mt-4 min-h-40 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" value={manifestCsv} onChange={(e) => setManifestCsv(e.target.value)} />
-          {manifestPreview.length ? (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{t.manifestPreviewTitle}</p>
-              <div className="mt-3 grid gap-2">
-                {manifestPreview.map((item, index) => (
-                  <div key={`${item.uid}-${index}`} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-200">{item.batch} · {item.uid}</div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <label className="mt-3 flex items-center gap-2 text-sm text-slate-300">
-            <input type="checkbox" checked={activateImported} onChange={(e) => setActivateImported(e.target.checked)} />
-            <span>{t.activateImported}</span>
-          </label>
-          <Button className="mt-4" onClick={importManifest} disabled={pending !== null}>{t.importAction}</Button>
-        </Card>
+      <Card className={`p-6 ${activeStep === 3 ? "" : "hidden"}`}>
+        <h3 className="text-lg font-semibold text-white">Step 3 · UID intake</h3>
+        <p className="mt-1 text-sm text-slate-300">Subí .txt o .csv. Se normaliza a upper-case hex automáticamente.</p>
+        <button
+          type="button"
+          className="mt-2 rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100"
+          onClick={() =>
+            setUids([
+              "0487856A0B1090",
+              "048A876A0B1090",
+              "0483846A0B1090",
+              "047F846A0B1090",
+              "047B846A0B1090",
+              "0477846A0B1090",
+              "0474856A0B1090",
+              "0470856A0B1090",
+              "0483826A0B1090",
+              "0465846A0B1090",
+            ])
+          }
+        >
+          Load Echo sample UID list (10)
+        </button>
+        <div className="mt-2 flex gap-2">
+          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "txt" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("txt")}>TXT UID list</button>
+          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "csv" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("csv")}>CSV manifest</button>
+        </div>
+        <input type="file" accept=".txt,.csv,text/plain,text/csv" className="mt-3 block w-full text-sm text-slate-200" onChange={(event) => void onUidFile(event)} />
+        <p className="mt-2 text-xs text-slate-400">Rows parsed: {uids.length} · Batch consistency issues: {batchMismatchCount}</p>
+        <div className="mt-4 grid gap-2 md:grid-cols-2">
+          {uidPreview.map((uid, index) => (
+            <div key={`${uid}-${index}`} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-200">{uid}</div>
+          ))}
+        </div>
+      </Card>
 
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-white">{t.validateTitle}</h3>
-          <p className="mt-2 text-sm text-slate-300">{t.validateHint}</p>
-          <textarea className="mt-4 min-h-32 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder={t.sampleUrl} value={sampleUrl} onChange={(e) => setSampleUrl(e.target.value)} />
-          <Button className="mt-4" onClick={validateSampleUrl} disabled={pending !== null}>{t.validateAction}</Button>
-        </Card>
-      </div>
+      <Card className={`p-6 ${activeStep === 4 ? "" : "hidden"}`}>
+        <h3 className="text-lg font-semibold text-white">Step 4 · Register + Import + Activate</h3>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button disabled={pending} onClick={() => void createTenantIfMissing()}>Create tenant if missing</Button>
+          <Button disabled={pending} onClick={() => void registerBatch()}>Register batch</Button>
+          <Button disabled={pending} onClick={() => void importUids()}>Import UIDs</Button>
+          <Button disabled={pending} onClick={() => void activateAll()}>Activate all imported UIDs</Button>
+          <Button disabled={pending} variant="secondary" onClick={() => void runAll()}>Run all</Button>
+        </div>
+        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+          Imported: {importedCount} · Active: {activeCount}
+        </div>
+        {readyToScan ? <p className="mt-3 rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">READY TO SCAN</p> : null}
+      </Card>
+
+      <Card className={`p-6 ${activeStep === 5 ? "" : "hidden"}`}>
+        <h3 className="text-lg font-semibold text-white">Step 5 · Supplier pretest</h3>
+        <p className="mt-1 text-sm text-slate-300">Pegá URL SUN completa y validá ahora (ok/reason/latencia/tag_status/batch_status).</p>
+        <textarea className="mt-3 min-h-28 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" value={supplierUrl} onChange={(event) => setSupplierUrl(event.target.value)} placeholder="https://api.nexid.lat/sun?..." />
+        <Button className="mt-3" disabled={pending} onClick={() => void validateNow()}>Validate now</Button>
+      </Card>
 
       <Card className="p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{t.responseTitle}</p>
-        <p className="mt-2 text-sm text-slate-300">{status}</p>
-        <pre className="mt-4 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-slate-200">{responseText}</pre>
+        <p className="text-sm text-slate-300">{status}</p>
+        <pre className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-4 text-xs text-slate-200">{responseText}</pre>
       </Card>
     </div>
   );

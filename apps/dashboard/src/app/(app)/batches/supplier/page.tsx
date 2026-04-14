@@ -15,6 +15,9 @@ export default async function SupplierBatchPage() {
           <li>No crear el lote real desde el flujo rápido si las tags ya fueron negociadas con llaves concretas.</li>
           <li>Registrar primero el batch con esas llaves; después importar manifest; recién después validar sample URLs reales.</li>
         </ul>
+        <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          Supplier mode: <b>K_META_BATCH</b> y <b>K_FILE_BATCH</b> son obligatorias. No se autogeneran keys.
+        </p>
       </Card>
       <SupplierBatchWizard locale={locale} />
     </main>

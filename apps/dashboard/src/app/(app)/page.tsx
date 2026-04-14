@@ -5,7 +5,6 @@ import { AdminActionForms } from "../../components/admin-action-forms";
 import { AnalyticsPanels } from "../../components/analytics-panels";
 import { DataTable } from "../../components/data-table";
 import { ModuleGrid } from "../../components/module-grid";
-import { AudienceOverviewExplainer } from "../../components/audience-overview-explainer";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
@@ -101,6 +100,19 @@ export default async function DashboardHome() {
       risk: String(row.result || "VALID") === "VALID" ? 0 : 1,
     }));
 
+  const demoPacks = [
+    { key: "wine-secure", label: "Wine secure", tenant: "demobodega", itemId: "demo-item-001" },
+    { key: "events-basic", label: "Events basic", tenant: "demoevents", itemId: "demo-item-001" },
+    { key: "cosmetics-secure", label: "Cosmetics secure", tenant: "democosmetics", itemId: "demo-item-001" },
+    { key: "agro-secure", label: "Agro secure", tenant: "demoagro", itemId: "demo-item-001" },
+    { key: "pharma-secure", label: "Pharma secure", tenant: "demopharma", itemId: "demo-item-001" },
+    { key: "luxury-basic", label: "Luxury basic", tenant: "demoluxury", itemId: "demo-item-001" },
+    { key: "docs-presence", label: "Docs & presence", tenant: "demodocs", itemId: "demo-item-001" },
+    { key: "reseller-flow", label: "Reseller flow", tenant: "demoreseller", itemId: "demo-item-001" },
+    { key: "government-proof", label: "Government proof", tenant: "demogov", itemId: "demo-item-001" },
+    { key: "operator-qa", label: "Operator QA", tenant: "demoops", itemId: "demo-item-001" },
+  ];
+
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.overview} title={copy.pages.overview.title} description={copy.pages.overview.description} />
@@ -135,83 +147,46 @@ export default async function DashboardHome() {
         </div>
       </div>
 
-
-
-<AudienceOverviewExplainer />
-
       <Card className="p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Cómo leer la plataforma</h2>
-            <p className="mt-2 text-sm text-slate-400">Este admin ahora explica para qué sirve cada bloque, tanto si lo mira dirección como si lo mira un inversor o un cliente enterprise.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo express · first time flow</h2>
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="cyan">CEO</Badge>
+            <Badge tone="green">Operator</Badge>
+            <Badge tone="default">Buyer</Badge>
           </div>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
-            <p className="font-semibold text-white">CEO / inversor</p>
-            <p className="mt-2">Overview, Analytics, Plans y Resellers muestran escala, monetización, riesgo y expansión comercial.</p>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
+            <p className="font-semibold text-white">1) Elegí demo pack</p>
+            <p className="mt-1">Seleccioná uno de los 10 escenarios según industria.</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
-            <p className="font-semibold text-white">Operaciones / ingeniería</p>
-            <p className="mt-2">Batches, Tags, Events y API Keys explican cómo se emite, valida, monitorea y conecta el sistema.</p>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
+            <p className="font-semibold text-white">2) Mostrá mobile</p>
+            <p className="mt-1">Abrí preview móvil y explicá trust state en 15 segundos.</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
-            <p className="font-semibold text-white">Cliente / comprador</p>
-            <p className="mt-2">Demo Lab, Demo Control y Mobile Preview hacen visible la experiencia final y el valor de confianza.</p>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
+            <p className="font-semibold text-white">3) Simulá operación</p>
+            <p className="mt-1">Cargá manifest, activá tags y validá URL SUN en Batch Ops.</p>
           </div>
         </div>
       </Card>
-
-      <Card className="p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Qué hace cada módulo lateral</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4 text-xs text-slate-300">
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Overview</b><br />Resumen ejecutivo de salud, riesgo y actividad.</div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Batches & Activation</b><br />Dónde nacen y se activan los tags o credenciales.</div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Analytics</b><br />Dónde se ve adopción, fraude, geografía y performance.</div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">White-label / Resellers</b><br />Cómo escalar el negocio vía partners y cuentas enterprise.</div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Plans</b><br />Cómo se empaqueta monetización, renewals y expansión.</div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Demo Control</b><br />Versión rápida y limpia para reuniones comerciales.</div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">Demo Lab</b><br />Orquestación completa con pitch, mobile y evidencia.</div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3"><b className="text-white">API Keys</b><br />Conectividad y gobierno técnico para integraciones reales.</div>
-        </div>
-      </Card>
-      <Card className="p-4 text-xs text-slate-300">
-        <p className="font-semibold text-cyan-200">ⓘ Mission control help</p>
-        <p className="mt-2">Tenants: organización comercial. Batches: lotes de tags. Tags: unidades emitidas. Events: taps/alertas en vivo. Leads/Tickets/Orders: pipeline CRM-lite para seguimiento de negocio.</p>
-      </Card>
-
-
 
       <Card className="p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Enterprise rollout readiness</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-4 text-sm text-slate-300">
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-            <p className="font-semibold text-white">1. Batch governance</p>
-            <p className="mt-2">Cada lote debe nacer con batch_id, SKU, perfil y volumen planificado definidos.</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-            <p className="font-semibold text-white">2. Supplier handoff</p>
-            <p className="mt-2">El proveedor recibe URL template, ownership de keys y formato cerrado de manifest.</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-            <p className="font-semibold text-white">3. QA on arrival</p>
-            <p className="mt-2">Importá solo manifests alineados con batch_id y compará planned / imported / active.</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-            <p className="font-semibold text-white">4. Go-live discipline</p>
-            <p className="mt-2">Activá únicamente las unidades recibidas y auditadas antes de abrirlas al mercado.</p>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">10 demo packs listos</h2>
+          <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Open orchestrator</Link>
         </div>
-      </Card>
-
-      <Card className="p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo entry points</h2>
-        <p className="mt-2 text-sm text-slate-400">Accesos directos para explorar el sistema completo desde landing profesional.</p>
-        <div className="mt-3 grid gap-2 md:grid-cols-4">
-          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-lab">Demo Lab</Link>
-          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-sandbox">Sandbox anónimo</Link>
-          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-lab/encode">Encode Station</Link>
-          <Link className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-white" href="/demo-lab/mobile/demobodega/demo-item-001">Mobile preview</Link>
+        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+          {demoPacks.map((pack) => (
+            <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-900/70 p-3">
+              <p className="text-sm font-semibold text-white">{pack.label}</p>
+              <div className="mt-2 grid gap-2">
+                <Link href={`/demo-lab/mobile/${pack.tenant}/${pack.itemId}`} className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-slate-100">Mobile view</Link>
+                <Link href="/batches" className="rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-100">Manifest flow</Link>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
+import { productUrls } from "@product/config";
+import { BatchSunValidator } from "../../../../components/batch-sun-validator";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+const API_BASE = productUrls.api;
 
 async function getBatch(bid: string) {
   try {
@@ -34,8 +36,12 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
               <div><dt className="text-slate-400">Tenant</dt><dd className="text-white">{String(batch.tenant_slug || "-")}</dd></div>
               <div><dt className="text-slate-400">Status</dt><dd className="text-white">{String(batch.status || "-")}</dd></div>
               <div><dt className="text-slate-400">Profile</dt><dd className="text-white">{String(batch.batch_profile || "custom")}</dd></div>
+              <div><dt className="text-slate-400">Chip model</dt><dd className="text-white">{String(batch.chip_model || batch.type || "-")}</dd></div>
               <div><dt className="text-slate-400">SKU</dt><dd className="text-white">{String(batch.sku || "-")}</dd></div>
-              <div><dt className="text-slate-400">Requested quantity</dt><dd className="text-white">{String(batch.requested_quantity || 0)}</dd></div>
+              <div><dt className="text-slate-400">Requested quantity</dt><dd className="text-white">{String(batch.requested_quantity || batch.qty || 0)}</dd></div>
+              <div><dt className="text-slate-400">Imported tags</dt><dd className="text-white">{String(batch.imported_count || batch.tags_imported || "unknown")}</dd></div>
+              <div><dt className="text-slate-400">Active tags</dt><dd className="text-white">{String(batch.active_count || batch.tags_active || "unknown")}</dd></div>
+              <div><dt className="text-slate-400">Keys loaded</dt><dd className="text-white">{batch.k_meta_hex || batch.k_file_hex ? "yes" : "unknown"}</dd></div>
             </dl>
           </Card>
           <Card className="p-6">
@@ -49,6 +55,14 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/batches" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Volver a batches</Link>
               <Link href="/batches/supplier" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Abrir supplier flow</Link>
+              <Link href="/events" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open events</Link>
+              <Link href="/tags" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tags</Link>
+              <Link href="/demo-lab" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open demo lab</Link>
+              <Link href="/demo-lab/mobile/demobodega/demo-item-001" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Open mobile preview</Link>
+              <Link href="/tenants" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tenant dashboard</Link>
+            </div>
+            <div className="mt-6">
+              <BatchSunValidator bid={bid} />
             </div>
           </Card>
         </div>
