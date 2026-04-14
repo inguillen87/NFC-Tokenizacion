@@ -117,12 +117,12 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [tenantSlug, setTenantSlug] = useState("demobodega");
   const [tenantName, setTenantName] = useState("Demo Bodega");
   const [bid, setBid] = useState("DEMO-2026-02");
-  const [chipModel, setChipModel] = useState("NTAG424DNA_TT");
-  const [sku, setSku] = useState("demo-secure-2026");
+  const [chipModel, setChipModel] = useState("NTAG 424 DNA TagTamper");
+  const [sku, setSku] = useState("wine-secure");
   const [quantity, setQuantity] = useState("10");
   const [notes, setNotes] = useState("Supplier-programmed batch. Do not rotate keys.");
-  const [kMeta, setKMeta] = useState("");
-  const [kFile, setKFile] = useState("");
+  const [kMeta, setKMeta] = useState("c2a462e6ab434828153d73ce440704ac");
+  const [kFile, setKFile] = useState("bfce6c576540c04c840f1cfd457bf213");
   const [uids, setUids] = useState<string[]>([]);
   const [manifestSourceType, setManifestSourceType] = useState<"txt" | "csv">("txt");
   const [batchMismatchCount, setBatchMismatchCount] = useState(0);
@@ -287,6 +287,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
       <Card className={`p-6 ${activeStep === 1 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 1 · Batch identity</h3>
+        <p className="mt-1 text-xs text-slate-400">ⓘ Tenant = marca/cliente dueño del lote. Para demo real usá: Demo Bodega / demobodega.</p>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_slug" value={tenantSlug} onChange={(event) => setTenantSlug(event.target.value)} />
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_name" value={tenantName} onChange={(event) => setTenantName(event.target.value)} />
@@ -302,7 +303,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <h3 className="text-lg font-semibold text-white">Step 2 · Batch keys</h3>
         <p className="mt-1 text-xs text-slate-400">{copy.source}</p>
         <div className="mt-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Atención: este flujo es para tags supplier-programmed. No auto-genera keys.
+          Atención: este flujo es para tags supplier-programmed. K_META_BATCH y K_FILE_BATCH son obligatorias y no se autogeneran.
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_meta_hex (16 bytes / 32 hex)" value={kMeta} onChange={(event) => setKMeta(event.target.value)} />
@@ -314,6 +315,26 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       <Card className={`p-6 ${activeStep === 3 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 3 · UID intake</h3>
         <p className="mt-1 text-sm text-slate-300">Subí .txt o .csv. Se normaliza a upper-case hex automáticamente.</p>
+        <button
+          type="button"
+          className="mt-2 rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100"
+          onClick={() =>
+            setUids([
+              "0487856A0B1090",
+              "048A876A0B1090",
+              "0483846A0B1090",
+              "047F846A0B1090",
+              "047B846A0B1090",
+              "0477846A0B1090",
+              "0474856A0B1090",
+              "0470856A0B1090",
+              "0483826A0B1090",
+              "0465846A0B1090",
+            ])
+          }
+        >
+          Load Echo sample UID list (10)
+        </button>
         <div className="mt-2 flex gap-2">
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "txt" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("txt")}>TXT UID list</button>
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "csv" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("csv")}>CSV manifest</button>
