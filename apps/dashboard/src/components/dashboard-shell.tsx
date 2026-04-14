@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Badge, BrandDot, BrandLockup, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
@@ -14,7 +14,9 @@ type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "event
 
 function pathnameToNavKey(pathname: string): NavKey {
   if (pathname === "/" || pathname === "") return "overview";
+  if (pathname.startsWith("/onboarding")) return "overview";
   if (pathname.startsWith("/users") || pathname.startsWith("/mfa")) return "overview";
+  if (pathname.startsWith("/demo-lab") || pathname.startsWith("/demo-sandbox") || pathname.startsWith("/demo")) return "overview";
   if (pathname.startsWith("/api-keys")) return "apiKeys";
   if (pathname.startsWith("/leads-tickets")) return "leadsTickets";
   const segment = pathname.split("/").filter(Boolean)[0] || "overview";
@@ -52,6 +54,7 @@ function DashboardShellInner({
   const { mode, setMode } = useAudienceMode();
   const role = currentRole;
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement | null>(null);
 
   const quick = locale === "en"
     ? { faq: "FAQ", stack: "Stack", glossary: "Glossary", docs: "Docs" }
@@ -69,6 +72,13 @@ function DashboardShellInner({
 
   const activeKey = pathnameToNavKey(pathname);
   const forbidden = !roleAccess[role].includes(activeKey);
+  const isDemoMode = currentPermissions.includes("*") || currentLabel.toLowerCase().includes("demo");
+  const mobileQuickLinks = [
+    { href: "/", label: locale === "en" ? "Home" : "Inicio" },
+    { href: "/demo-lab", label: "Demo Lab" },
+    { href: "/batches", label: locale === "en" ? "Batches" : "Lotes" },
+    { href: "/events", label: locale === "en" ? "Events" : "Eventos" },
+  ];
 
   const items = useMemo(
     () =>
@@ -81,6 +91,20 @@ function DashboardShellInner({
         .filter((item) => item.label.toLowerCase().includes(query.toLowerCase())),
     [nav, query, role],
   );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTypingContext = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
+      if (isTypingContext) return;
+      if (event.key === "/") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white lg:flex">
@@ -105,10 +129,14 @@ function DashboardShellInner({
           <label className="text-xs uppercase tracking-[0.16em] text-slate-400">{shell.role}</label>
           <div className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">{roles[role]} · {currentLabel}</div>
           <div className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-400">{currentEmail}</div>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={shell.search} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" />
+          <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={shell.search} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" />
+          <p className="text-[11px] text-slate-500">Tip: press <kbd className="rounded border border-white/10 px-1 py-0.5 text-[10px]">/</kbd> to focus search.</p>
         </div>
 
         <nav className="mt-6 grid grid-cols-2 gap-1 lg:block lg:space-y-1">
+          <Link href="/onboarding" className={`block rounded-xl px-3 py-2 text-sm transition ${pathname.startsWith("/onboarding") ? "bg-white/10 text-white" : "text-cyan-200 hover:bg-cyan-500/10 hover:text-cyan-100"}`}>
+            Onboarding
+          </Link>
           {items.map((item) => (
             <Link key={item.href} href={item.href} className={`block rounded-xl px-3 py-2 text-sm transition ${pathname === item.href ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
               {item.label}
@@ -123,6 +151,15 @@ function DashboardShellInner({
             MFA
           </Link>
         </nav>
+        {isDemoMode ? (
+          <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs">
+            <p className="font-semibold uppercase tracking-[0.12em] text-cyan-200">Demo fast lane</p>
+            <div className="mt-2 grid gap-2">
+              <Link href="/demo-lab/encode" className="rounded-lg border border-cyan-300/25 bg-slate-950/40 px-2.5 py-2 text-cyan-100">Encode simulation</Link>
+              <Link href="/demo-lab/mobile/demobodega/demo-item-001" className="rounded-lg border border-cyan-300/25 bg-slate-950/40 px-2.5 py-2 text-cyan-100">Mobile scan mock</Link>
+            </div>
+          </div>
+        ) : null}
       </aside>
 
       <div className="min-w-0 flex-1">
@@ -146,8 +183,41 @@ function DashboardShellInner({
             <a className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-200" href="/glossary" target="_blank" rel="noreferrer">{quick.glossary}</a>
             <a className="rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-slate-200" href="/docs" target="_blank" rel="noreferrer">{quick.docs}</a>
           </div>
+          {isDemoMode ? (
+            <div className="demo-mode-banner mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">Demo mode active · safe fallback enabled</p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-slate-950/40 px-3 py-1.5 text-cyan-100">Open Demo Lab</Link>
+                  <Link href="/batches" className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-slate-200">Batch Ops</Link>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </header>
-        <div className="p-4 lg:p-8">{forbidden ? <div className="rounded-3xl border border-rose-300/20 bg-rose-500/10 p-6 text-sm text-rose-100">Your current role does not have access to this module.</div> : children}</div>
+        <div className="p-4 lg:p-8">
+          {forbidden ? (
+            <div className="rounded-3xl border border-rose-300/20 bg-rose-500/10 p-6 text-sm text-rose-100">
+              <p>Your current role does not have access to this module.</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link href="/" className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs text-slate-100">Back to overview</Link>
+                <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100">Open demo-safe module</Link>
+              </div>
+            </div>
+          ) : children}
+        </div>
+        <div className="dashboard-mobile-dock fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-slate-950/95 px-2 pb-[max(env(safe-area-inset-bottom),0px)] pt-2 backdrop-blur-xl lg:hidden">
+          <div className="grid grid-cols-4 gap-2">
+            {mobileQuickLinks.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link key={item.href} href={item.href} className={`rounded-xl px-2 py-2 text-center text-[11px] font-semibold ${isActive ? "border border-cyan-300/35 bg-cyan-500/10 text-cyan-100" : "border border-white/10 bg-white/5 text-slate-200"}`}>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

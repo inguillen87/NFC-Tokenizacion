@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "nexID — NFC Authentication & Product Identity",
     short_name: "nexID",
     description: "Enterprise-grade NFC authentication, traceability and product identity cloud.",
-    start_url: "/",
+    start_url: "/?source=pwa",
     id: "/",
     display: "standalone",
     display_override: ["window-controls-overlay", "standalone"],
@@ -39,6 +39,16 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/nexid-mark-128.png", sizes: "128x128", type: "image/png" },
       { src: "/nexid-mark-256.png", sizes: "256x256", type: "image/png" },
       { src: "/nexid-mark-512.png", sizes: "512x512", type: "image/png" },
+      { src: "/nexid-mark-pulse-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+    ],
+    screenshots: [
+      {
+        src: "/nexid-mark-1024.png",
+        sizes: "1024x1024",
+        type: "image/png",
+        label: "nexID app icon",
+        form_factor: "wide",
+      },
     ],
   };
 }
