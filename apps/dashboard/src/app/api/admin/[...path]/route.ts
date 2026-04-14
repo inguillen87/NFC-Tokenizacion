@@ -141,6 +141,21 @@ function demoAdminResponse(method: string, path: string[], body: string) {
       { status: valid ? 200 : 400 },
     );
   }
+  if (method === "POST" && normalized === "leads") {
+    return NextResponse.json(
+      {
+        ok: true,
+        lead: {
+          id: "demo-lead-001",
+          source: String(payload?.source || "dashboard_demo"),
+          interest: String(payload?.interest || "request_demo"),
+          email: String(payload?.email || "demo@nexid.lat"),
+          created_at: new Date().toISOString(),
+        },
+      },
+      { status: 201 },
+    );
+  }
   return NextResponse.json({ ok: true, demo: true, path: normalized });
 }
 
