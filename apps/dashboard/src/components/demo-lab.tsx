@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@product/ui";
+import { productUrls } from "@product/config";
 import { DemoOpsMap } from "./demo-ops-map";
 
 type SummaryEvent = {
@@ -347,7 +348,7 @@ export function DemoLab() {
     mobileOpened: false,
   });
   const [locale, setLocale] = useState<Locale>("es-AR");
-  const webBase = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://nexid.lat";
+  const webBase = productUrls.web;
 
   const nfcSupport = typeof window !== "undefined" && "NDEFReader" in window;
   const hasSecureContext = typeof window !== "undefined" ? window.isSecureContext : false;

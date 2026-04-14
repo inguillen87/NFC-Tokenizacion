@@ -1,8 +1,9 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import { productUrls } from "@product/config";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+const API_BASE = productUrls.api;
 const DEMO_BATCH = {
   bid: "DEMO-2026-02",
   tenant_id: "demobodega",

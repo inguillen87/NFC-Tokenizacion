@@ -26,11 +26,15 @@ function parseUidLines(raw: string) {
 
 function parseUidCsv(raw: string) {
   const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (lines.length < 2) return [];
+  if (lines.length < 2) return { uids: [], batchIds: [] as string[] };
   const header = lines[0].split(",").map((item) => item.trim().toLowerCase());
   const uidIndex = header.findIndex((item) => ["uid_hex", "uid", "uidhex"].includes(item));
-  if (uidIndex < 0) return [];
-  return lines.slice(1).map((line) => line.split(",")[uidIndex]?.trim().toUpperCase() || "").filter((uid) => /^[0-9A-F]{8,20}$/.test(uid));
+  const batchIndex = header.findIndex((item) => ["batch_id", "batchid", "bid"].includes(item));
+  if (uidIndex < 0) return { uids: [], batchIds: [] as string[] };
+  const rows = lines.slice(1).map((line) => line.split(",").map((item) => item.trim()));
+  const uids = rows.map((row) => row[uidIndex]?.toUpperCase() || "").filter((uid) => /^[0-9A-F]{8,20}$/.test(uid));
+  const batchIds = batchIndex >= 0 ? rows.map((row) => row[batchIndex] || "") : [];
+  return { uids, batchIds };
 }
 
 function actionMessage(reason: string) {
@@ -65,9 +69,17 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [tenantSlug, setTenantSlug] = useState("demobodega");
   const [tenantName, setTenantName] = useState("Demo Bodega");
   const [bid, setBid] = useState("DEMO-2026-02");
+  const [chipModel, setChipModel] = useState("NTAG424DNA_TT");
+  const [sku, setSku] = useState("demo-secure-2026");
+  const [quantity, setQuantity] = useState("10");
+  const [notes, setNotes] = useState("Supplier-programmed batch. Do not rotate keys.");
   const [kMeta, setKMeta] = useState("");
   const [kFile, setKFile] = useState("");
   const [uids, setUids] = useState<string[]>([]);
+  const [manifestSourceType, setManifestSourceType] = useState<"txt" | "csv">("txt");
+  const [batchMismatchCount, setBatchMismatchCount] = useState(0);
+  const [importedCount, setImportedCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
   const [supplierUrl, setSupplierUrl] = useState("");
   const [readyToScan, setReadyToScan] = useState(false);
 
@@ -81,6 +93,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   const progress = Math.round(((activeStep - 1) / (steps.length - 1)) * 100);
   const uidPreview = useMemo(() => uids.slice(0, 10), [uids]);
+  const expectedNdefTemplate = useMemo(() => `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(bid || "DEMO-2026-02")}&picc_data=...&enc=...&cmac=...`, [bid]);
 
   async function run(path: string, init?: RequestInit) {
     const response = await fetch(path, {
@@ -101,8 +114,17 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     const file = event.target.files?.[0];
     if (!file) return;
     const raw = await file.text();
-    const parsed = file.name.toLowerCase().endsWith(".csv") ? parseUidCsv(raw) : parseUidLines(raw);
+    if (file.name.toLowerCase().endsWith(".csv")) {
+      const parsed = parseUidCsv(raw);
+      setUids(parsed.uids || []);
+      const mismatches = (parsed.batchIds || []).filter((entry) => entry && entry !== bid).length;
+      setBatchMismatchCount(mismatches);
+      setStatus(`UIDs detectados: ${parsed.uids.length}.`);
+      return;
+    }
+    const parsed = parseUidLines(raw);
     setUids(parsed);
+    setBatchMismatchCount(0);
     setStatus(`UIDs detectados: ${parsed.length}.`);
   }
 
@@ -122,9 +144,13 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       body: JSON.stringify({
         tenant_slug: tenantSlug.trim(),
         bid: bid.trim(),
+        chip_model: chipModel.trim(),
+        sku: sku.trim(),
+        quantity: Number(quantity || 0),
+        notes: notes.trim(),
         k_meta_hex: normalizeHex(kMeta),
         k_file_hex: normalizeHex(kFile),
-        sdm_config: { source: "supplier.txt" },
+        sdm_config: { source: "supplier.txt", url_template: expectedNdefTemplate },
       }),
     });
   }
@@ -132,18 +158,22 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   async function importUids() {
     if (!bid.trim()) throw new Error("Falta BID.");
     if (!uids.length) throw new Error("Cargá UIDs en Step 3.");
-    return run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/import-uids`, {
+    const data = await run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/import-uids`, {
       method: "POST",
-      body: JSON.stringify({ uids }),
+      body: JSON.stringify({ uids, sourceType: manifestSourceType }),
     });
+    setImportedCount(Number(data.imported || uids.length));
+    return data;
   }
 
   async function activateAll() {
     if (!bid.trim()) throw new Error("Falta BID.");
-    return run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/activate-all`, {
+    const data = await run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/activate-all`, {
       method: "POST",
       body: JSON.stringify({ limit: uids.length || undefined }),
     });
+    setActiveCount(Number(data.activated || 0));
+    return data;
   }
 
   async function runAll() {
@@ -217,22 +247,35 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_slug" value={tenantSlug} onChange={(event) => setTenantSlug(event.target.value)} />
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_name" value={tenantName} onChange={(event) => setTenantName(event.target.value)} />
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="bid" value={bid} onChange={(event) => setBid(event.target.value)} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="chip model" value={chipModel} onChange={(event) => setChipModel(event.target.value)} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="sku" value={sku} onChange={(event) => setSku(event.target.value)} />
+          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="quantity" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+          <textarea className="min-h-20 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white md:col-span-3" placeholder="notes" value={notes} onChange={(event) => setNotes(event.target.value)} />
         </div>
       </Card>
 
       <Card className={`p-6 ${activeStep === 2 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 2 · Batch keys</h3>
         <p className="mt-1 text-xs text-slate-400">{labels.source}</p>
+        <div className="mt-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          Atención: este flujo es para tags supplier-programmed. No auto-genera keys.
+        </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_meta_hex (16 bytes / 32 hex)" value={kMeta} onChange={(event) => setKMeta(event.target.value)} />
           <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_file_hex (16 bytes / 32 hex)" value={kFile} onChange={(event) => setKFile(event.target.value)} />
         </div>
+        <p className="mt-3 text-xs text-cyan-200">NDEF template preview: {expectedNdefTemplate}</p>
       </Card>
 
       <Card className={`p-6 ${activeStep === 3 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 3 · UID intake</h3>
         <p className="mt-1 text-sm text-slate-300">Subí .txt o .csv. Se normaliza a upper-case hex automáticamente.</p>
+        <div className="mt-2 flex gap-2">
+          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "txt" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("txt")}>TXT UID list</button>
+          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "csv" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("csv")}>CSV manifest</button>
+        </div>
         <input type="file" accept=".txt,.csv,text/plain,text/csv" className="mt-3 block w-full text-sm text-slate-200" onChange={(event) => void onUidFile(event)} />
+        <p className="mt-2 text-xs text-slate-400">Rows parsed: {uids.length} · Batch consistency issues: {batchMismatchCount}</p>
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           {uidPreview.map((uid, index) => (
             <div key={`${uid}-${index}`} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-200">{uid}</div>
@@ -248,6 +291,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           <Button disabled={pending} onClick={() => void importUids()}>Import UIDs</Button>
           <Button disabled={pending} onClick={() => void activateAll()}>Activate all imported UIDs</Button>
           <Button disabled={pending} variant="secondary" onClick={() => void runAll()}>Run all</Button>
+        </div>
+        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+          Imported: {importedCount} · Active: {activeCount}
         </div>
         {readyToScan ? <p className="mt-3 rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">READY TO SCAN</p> : null}
       </Card>
