@@ -107,15 +107,57 @@ export function MobileDemoClient({
     }
   }
 
-  function activateOwnership() {
-    setConsumerState("CLAIMED");
-    pushEvent("OWNERSHIP_CLAIMED", "Ownership activado para este producto demo.");
+
+  async function postCta(action: "claim-ownership" | "register-warranty" | "tokenize-request") {
+    const bid = "DEMO-2026-02";
+    const uid = String(activeItem.uidHex || activeItem.uid_hex || "").trim().toUpperCase();
+    if (!uid) throw new Error("UID missing for CTA call");
+    const response = await fetch(`/api/public-cta/${action}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bid, uid, tenant, itemId, pack }),
+    });
+    const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
+    if (!response.ok || data?.ok === false) {
+      throw new Error(String(data?.reason || `CTA failed (${response.status})`));
+    }
+    return data;
   }
 
-  function saveWarranty() {
+  async function fetchProvenance() {
+    const bid = "DEMO-2026-02";
+    const uid = String(activeItem.uidHex || activeItem.uid_hex || "").trim().toUpperCase();
+    if (!uid) throw new Error("UID missing for provenance");
+    const url = new URL(`/api/public-cta/provenance`, window.location.origin);
+    url.searchParams.set("bid", bid);
+    url.searchParams.set("uid", uid);
+    const response = await fetch(url.toString(), { method: "GET" });
+    const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
+    if (!response.ok || data?.ok === false) {
+      throw new Error(String(data?.reason || `Provenance failed (${response.status})`));
+    }
+    return data;
+  }
+
+  async function activateOwnership() {
+    setConsumerState("CLAIMED");
+    try {
+      await postCta("claim-ownership");
+      pushEvent("OWNERSHIP_CLAIMED", "Ownership activado y persistido en backend CTA.");
+    } catch (error) {
+      pushEvent("OWNERSHIP_CLAIMED_LOCAL", `Fallback local: ${error instanceof Error ? error.message : "CTA unavailable"}`);
+    }
+  }
+
+  async function saveWarranty() {
     if (!warrantyName.trim()) return;
     setWarrantySaved(true);
-    pushEvent("WARRANTY_REGISTERED", `Garantía registrada para ${warrantyName.trim()}.`);
+    try {
+      await postCta("register-warranty");
+      pushEvent("WARRANTY_REGISTERED", `Garantía registrada para ${warrantyName.trim()} y persistida en backend.`);
+    } catch (error) {
+      pushEvent("WARRANTY_REGISTERED_LOCAL", `Fallback local: ${error instanceof Error ? error.message : "CTA unavailable"}`);
+    }
   }
 
   function requestTokenization() {
@@ -152,6 +194,14 @@ export function MobileDemoClient({
     } catch {
       // keep demo resilient even if backend is unavailable
     } finally {
+      if (leadIntent === "tokenization_optional") {
+        try {
+          await postCta("tokenize-request");
+          pushEvent("TOKENIZATION_REQUESTED", "Tokenización opcional solicitada y guardada en CTA backend.");
+        } catch (error) {
+          pushEvent("TOKENIZATION_REQUESTED_LOCAL", `Fallback local: ${error instanceof Error ? error.message : "CTA unavailable"}`);
+        }
+      }
       setLeadSaved(true);
       pushEvent("LEAD_CAPTURED", `${leadIntent} · ${leadEmail.trim()}`);
     }
@@ -191,9 +241,18 @@ export function MobileDemoClient({
           <Card className="p-4 text-xs text-slate-300">
             <h2 className="text-sm font-semibold text-white">Ownership · Warranty · Provenance</h2>
             <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-left text-cyan-100" onClick={activateOwnership}>Activar ownership</button>
-              <button type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-left text-violet-100" onClick={saveWarranty}>Registrar garantía</button>
-              <button type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-left text-amber-100" onClick={() => setTimelineOpen((value) => !value)}>Ver provenance</button>
+              <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-left text-cyan-100" onClick={() => void activateOwnership()}>Activar ownership</button>
+              <button type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-left text-violet-100" onClick={() => void saveWarranty()}>Registrar garantía</button>
+              <button type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-left text-amber-100" onClick={() => void (async () => {
+                try {
+                  const data = await fetchProvenance();
+                  const total = Array.isArray((data as { actions?: unknown[] }).actions) ? (data as { actions: unknown[] }).actions.length : 0;
+                  pushEvent("PROVENANCE_VIEWED", `Provenance consultada: ${total} acciones registradas.`);
+                } catch (error) {
+                  pushEvent("PROVENANCE_VIEWED_LOCAL", `Fallback local: ${error instanceof Error ? error.message : "provenance unavailable"}`);
+                }
+                setTimelineOpen((value) => !value);
+              })()}>Ver provenance</button>
               <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-left text-white" onClick={requestTokenization}>Tokenización opcional</button>
             </div>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900 p-2">
