@@ -12,6 +12,19 @@ export async function GET() {
   }
   const upstream = await proxyToApi("/auth/session");
   const data = await upstream.json().catch(() => null);
+  if (upstream.status === 401) {
+    return NextResponse.json({
+      ok: true,
+      session: {
+        id: "demo-public-session",
+        email: "public@nexid.demo",
+        role: "viewer",
+        locale: "es-AR",
+        mode: "public-demo",
+      },
+      guest: true,
+    });
+  }
   const response = NextResponse.json(data || { ok: false }, { status: upstream.status });
   if (data?.rotatedSessionToken) {
     response.cookies.set(DASHBOARD_SESSION_COOKIE, data.rotatedSessionToken, {

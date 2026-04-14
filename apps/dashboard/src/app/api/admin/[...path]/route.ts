@@ -30,6 +30,27 @@ function safeParseJson(text: string) {
 function demoAdminResponse(method: string, path: string[], body: string) {
   const normalized = path.join("/");
   const payload = safeParseJson(body);
+  const parseUidRows = (raw: unknown) => {
+    const text = String(raw || "").replace(/^\uFEFF/, "").trim();
+    if (!text) return [] as string[];
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (!lines.length) return [] as string[];
+    const header = lines[0].toLowerCase();
+    if (header.includes(",")) {
+      const columns = lines[0].split(",").map((item) => item.trim().toLowerCase());
+      const uidIndex = columns.findIndex((item) => ["uid_hex", "uid", "uidhex"].includes(item));
+      if (uidIndex < 0) return [];
+      return lines
+        .slice(1)
+        .map((line) => line.split(",")[uidIndex] || "")
+        .map((uid) => uid.trim().toUpperCase())
+        .filter((uid) => /^[0-9A-F]{8,20}$/.test(uid));
+    }
+    return lines
+      .map((line) => line.replace(/[,;\s]+/g, "").toUpperCase())
+      .filter((line) => line !== "UID_HEX")
+      .filter((uid) => /^[0-9A-F]{8,20}$/.test(uid));
+  };
 
   if (method === "GET" && normalized === "batches") {
     return NextResponse.json([DEMO_BATCH]);
@@ -74,11 +95,12 @@ function demoAdminResponse(method: string, path: string[], body: string) {
     });
   }
   if (method === "POST" && normalized.endsWith("/import-manifest")) {
+    const importedRows = parseUidRows(payload?.csv).length;
     return NextResponse.json({
       ok: true,
       batch: DEMO_BATCH.bid,
-      importedRows: 1,
-      activated: payload?.activateImported ? 1 : 0,
+      importedRows,
+      activated: payload?.activateImported ? importedRows : 0,
       ignored: 0,
       manifestBatchIds: [DEMO_BATCH.bid],
     });
@@ -99,35 +121,45 @@ function demoAdminResponse(method: string, path: string[], body: string) {
       status: "revoked",
     });
   }
+  if (method === "POST" && normalized === "sun/validate") {
+    const reason = String(payload?.url || payload?.sampleUrl || "").trim() ? "Demo validator executed" : "missing sun params";
+    const valid = reason !== "missing sun params";
+    return NextResponse.json(
+      {
+        ok: valid,
+        result: valid ? "VALID" : "INVALID",
+        human_status: valid ? "VALID" : "INVALID",
+        reason,
+        status_hint: valid ? "VALID" : "INVALID",
+        parsed: {
+          bid: "DEMO-2026-02",
+          uid_hex: "0487856A0B1090",
+          picc_data: "DEMO",
+        },
+        next_step: valid ? "Batch and tag are ready to scan." : "Paste a full /sun URL with bid, picc_data, enc and cmac.",
+      },
+      { status: valid ? 200 : 400 },
+    );
+  }
+  if (method === "POST" && normalized === "leads") {
+    return NextResponse.json(
+      {
+        ok: true,
+        lead: {
+          id: "demo-lead-001",
+          source: String(payload?.source || "dashboard_demo"),
+          interest: String(payload?.interest || "request_demo"),
+          email: String(payload?.email || "demo@nexid.lat"),
+          created_at: new Date().toISOString(),
+        },
+      },
+      { status: 201 },
+    );
+  }
   return NextResponse.json({ ok: true, demo: true, path: normalized });
 }
 
 async function forward(req: Request, path: string[]) {
-  if (req.method === "POST" && path.join("/") === "sun/validate") {
-    const payload = safeParseJson(await req.text());
-    const rawUrl = String(payload?.url || payload?.sampleUrl || "");
-    if (!rawUrl) return NextResponse.json({ ok: false, reason: "Missing SUN URL" }, { status: 400 });
-    const startedAt = Date.now();
-    try {
-      const response = await fetch(rawUrl, { cache: "no-store" });
-      const latency_ms = Date.now() - startedAt;
-      const text = await response.text();
-      const parsed = safeParseJson(text);
-      const reason = String((parsed?.reason as string) || (parsed?.error as string) || "");
-      return NextResponse.json({
-        ok: response.ok && !reason,
-        reason: reason || (response.ok ? "ok" : response.statusText),
-        latency_ms,
-        tag_status: parsed?.tag_status || parsed?.status || null,
-        batch_status: parsed?.batch_status || null,
-        status_code: response.status,
-        response: parsed || text,
-      }, { status: response.ok ? 200 : response.status });
-    } catch (error) {
-      return NextResponse.json({ ok: false, reason: error instanceof Error ? error.message : "SUN validation failed", latency_ms: Date.now() - startedAt }, { status: 502 });
-    }
-  }
-
   const target = `${API_BASE}/admin/${path.join("/")}${new URL(req.url).search}`;
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());

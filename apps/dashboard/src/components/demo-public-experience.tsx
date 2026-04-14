@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Card } from "@product/ui";
 import { DemoOpsMap } from "./demo-ops-map";
+import { productUrls } from "@product/config";
 
 type Vertical = "wine" | "events" | "docs";
 type Scenario = "valid" | "tamper" | "replay";
@@ -45,6 +46,7 @@ function resultTone(result?: string) {
 }
 
 export function DemoPublicExperience() {
+  const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
   const [vertical, setVertical] = useState<Vertical>("wine");
   const [scenario, setScenario] = useState<Scenario>("valid");
   const [latest, setLatest] = useState<EventItem | null>(null);
@@ -223,7 +225,7 @@ export function DemoPublicExperience() {
             <p className="mt-2">Item: {latest?.product_name || "Demo product"}</p>
             <p>Última ciudad: {latest?.city || "-"} ({latest?.country_code || "-"})</p>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
-              <Link href="/demo-lab/mobile/demobodega/demo-item-001" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Ver resultado en celular</Link>
+              <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Ver resultado en celular (público)</a>
               <Link href="/demo-lab" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Abrir Demo Lab pro</Link>
             </div>
           </Card>
