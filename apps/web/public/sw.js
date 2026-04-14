@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexid-v2";
+const CACHE_NAME = "nexid-v3";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -39,7 +39,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (request.destination === "image" || request.destination === "style" || request.destination === "script" || request.destination === "font") {
+  if (request.destination === "script") {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (request.destination === "image" || request.destination === "style" || request.destination === "font") {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) {
