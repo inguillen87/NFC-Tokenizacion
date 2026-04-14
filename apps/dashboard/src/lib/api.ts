@@ -7,7 +7,14 @@ export async function postAdmin<T>(path: string, payload: unknown): Promise<T> {
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { ok: false, raw: text };
+    }
+  }
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${JSON.stringify(data)}`);
   return data as T;
 }

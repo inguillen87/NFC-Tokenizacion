@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
+import { productUrls } from "@product/config";
 import { AdminActionForms } from "../../../components/admin-action-forms";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
@@ -7,7 +8,7 @@ import { dashboardContent } from "../../../lib/dashboard-content";
 import { requireDashboardSession } from "../../../lib/session";
 import { getDashboardI18n } from "../../../lib/locale";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+const API_BASE = productUrls.api;
 
 async function getBatchRows() {
   try {
@@ -63,7 +64,11 @@ export default async function BatchesPage() {
       </Card>
       <DataTable title={copy.tables.batches.title} columns={[{ key: "batch", label: copy.tables.batches.batch }, { key: "type", label: copy.tables.batches.type }, { key: "status", label: copy.tables.batches.status }, { key: "quantity", label: copy.tables.batches.quantity }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
       <Card className="p-5 text-sm text-slate-300">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Flujo recomendado para tags ya codificadas por proveedor</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Flujo interno (solo superuser/operator) para tags codificadas por proveedor</h2>
+        <p className="mt-2 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          Este bloque es operativo interno. No está pensado para clientes finales.
+          Para cliente final mostrale únicamente resultados de autenticación, trazabilidad y experiencia mobile.
+        </p>
         <ol className="mt-3 list-decimal space-y-2 pl-5">
           <li>Crear el batch con tenant correcto, SKU, cantidad esperada y perfil de seguridad; guardar las batch keys que devuelve la API.</li>
           <li>Importar el CSV manifest y verificar que el <code>batch_id</code> del archivo coincida exactamente con el batch creado.</li>

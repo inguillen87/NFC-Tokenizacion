@@ -237,6 +237,49 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
     }
   }
 
+  async function runSupplierFlow() {
+    if (!canEdit) return;
+    setPending(true);
+    setSummary([]);
+    setLastResponse(null);
+    setStatus("Running supplier flow: register → import → activate → validate...");
+    try {
+      const register = await postAdmin<unknown>("/admin/batches", {
+        tenantId: batch.tenantId,
+        batchId: batch.batchId,
+        sku: batch.sku,
+        quantity: Number(batch.quantity || 0),
+        profile: "secure",
+        k_meta_hex: batch.kMetaHex || undefined,
+        k_file_hex: batch.kFileHex || undefined,
+        sdm_config: {
+          ic_type: batch.chipModel,
+          tag_type: batch.chipModel,
+          security_profile: "secure",
+        },
+      });
+      const imported = await postAdmin<unknown>(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv, activateImported: manifest.activateImported });
+      const activated = await postAdmin<unknown>("/admin/tags/activate", {
+        bid: activation.batchId || manifest.batchId,
+        count: Number(activation.count || manifestPreview.unique || 0),
+        uids: activation.uids || "",
+      });
+      const validated = urlValidation.sampleUrl.trim()
+        ? await postAdmin<unknown>("/admin/sun/validate", { url: urlValidation.sampleUrl })
+        : null;
+      const finalPayload = { register, imported, activated, validated };
+      setLastResponse(finalPayload as ActionPayload);
+      setSummary(buildSummary(finalPayload));
+      setStatus("Supplier flow completed");
+    } catch (error) {
+      setLastResponse(null);
+      setSummary([]);
+      setStatus(error instanceof Error ? error.message : "Supplier flow failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card className="p-5">
@@ -248,29 +291,11 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
       </Card>
 
       <Card className="p-5">
-        <h3 className="text-base font-semibold text-white">Supplier flow checklist</h3>
-        <p className="mt-1 text-xs text-slate-400">Guided no-CLI onboarding to avoid operator mistakes during supplier handoff.</p>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {onboardingSteps.map((step) => (
-            <div key={step.label} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs">
-              <p className={step.done ? "font-semibold text-emerald-300" : "font-semibold text-amber-300"}>{step.done ? "✓" : "•"} {step.label}</p>
-              <p className="mt-1 text-slate-400">{step.detail}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        <h3 className="text-base font-semibold text-white">Supplier flow checklist</h3>
-        <p className="mt-1 text-xs text-slate-400">Guided no-CLI onboarding to avoid operator mistakes during supplier handoff.</p>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {onboardingSteps.map((step) => (
-            <div key={step.label} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs">
-              <p className={step.done ? "font-semibold text-emerald-300" : "font-semibold text-amber-300"}>{step.done ? "✓" : "•"} {step.label}</p>
-              <p className="mt-1 text-slate-400">{step.detail}</p>
-            </div>
-          ))}
-        </div>
+        <h3 className="text-base font-semibold text-white">Supplier flow runner</h3>
+        <p className="mt-1 text-xs text-slate-400">Run end-to-end without CLI: register batch, import manifest, activate tags and validate sample URL.</p>
+        <Button className="mt-3" disabled={pending || !canEdit || !batch.batchId || !manifest.batchId} onClick={() => void runSupplierFlow()}>
+          Run full supplier flow
+        </Button>
       </Card>
 
       <Card className="p-5">
@@ -396,7 +421,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
             </div>
             <Button
               disabled={pending || !canEdit || !urlValidation.sampleUrl.trim()}
-              onClick={() => submit("/admin/sun/validate", { sampleUrl: urlValidation.sampleUrl })}
+              onClick={() => submit("/admin/sun/validate", { url: urlValidation.sampleUrl })}
             >
               Validate sample URL
             </Button>
