@@ -5,11 +5,21 @@ import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 import { sql } from '../../../../lib/db';
 import { encryptKey16 } from '../../../../lib/keys';
+import { randomBytes } from 'node:crypto';
 
 function requiredHex32(value: unknown, field: string) {
   const normalized = String(value || '').trim().toUpperCase();
   if (!/^[0-9A-F]{32}$/.test(normalized)) {
     throw new Error(`${field} must be a 32-char hex string`);
+  }
+  return normalized;
+}
+
+function optionalHex32(value: unknown) {
+  const normalized = String(value || '').trim().toUpperCase();
+  if (!normalized) return null;
+  if (!/^[0-9A-F]{32}$/.test(normalized)) {
+    throw new Error('hex keys must be 32-char hex strings');
   }
   return normalized;
 }
@@ -28,6 +38,7 @@ export async function POST(req: Request) {
   if (auth) return auth;
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const mode = String(body.mode || 'supplier').trim().toLowerCase();
   const tenantSlug = String(body.tenant_slug || '').trim();
   const bid = String(body.bid || '').trim();
   if (!tenantSlug || !bid) return json({ ok: false, reason: 'tenant_slug and bid required' }, 400);
@@ -36,8 +47,10 @@ export async function POST(req: Request) {
   if (!tenant) return json({ ok: false, reason: 'tenant not found' }, 404);
 
   try {
-    const kMetaHex = requiredHex32(body.k_meta_hex, 'k_meta_hex');
-    const kFileHex = requiredHex32(body.k_file_hex, 'k_file_hex');
+    const maybeMeta = optionalHex32(body.k_meta_hex);
+    const maybeFile = optionalHex32(body.k_file_hex);
+    const kMetaHex = mode === 'internal' ? maybeMeta || randomBytes(16).toString('hex').toUpperCase() : requiredHex32(body.k_meta_hex, 'k_meta_hex');
+    const kFileHex = mode === 'internal' ? maybeFile || randomBytes(16).toString('hex').toUpperCase() : requiredHex32(body.k_file_hex, 'k_file_hex');
     const metaCt = encryptKey16(Buffer.from(kMetaHex, 'hex'));
     const fileCt = encryptKey16(Buffer.from(kFileHex, 'hex'));
 
@@ -48,6 +61,7 @@ export async function POST(req: Request) {
       requested_quantity: Math.max(0, Math.trunc(Number(body.quantity || 0))) || undefined,
       notes: String(body.notes || '').trim() || undefined,
       source: 'supplier_wizard',
+      mode,
       url_template: `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(bid)}&picc_data=...&enc=...&cmac=...`,
     };
 
