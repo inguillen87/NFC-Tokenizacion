@@ -339,6 +339,7 @@ export function DemoLab() {
   const [autoRunCueIndex, setAutoRunCueIndex] = useState(0);
   const [autoRunSecondsLeft, setAutoRunSecondsLeft] = useState(0);
   const [autoRunNarration, setAutoRunNarration] = useState("");
+  const [autoRunLog, setAutoRunLog] = useState<string[]>([]);
   const [mobilePreviewOpened, setMobilePreviewOpened] = useState(false);
   const [lastTriggeredScenario, setLastTriggeredScenario] = useState<string>("none");
   const [readiness, setReadiness] = useState({
@@ -566,8 +567,10 @@ export function DemoLab() {
     setStageMode(true);
     setAutoRunCueIndex(0);
     setStageBeatIndex(0);
+    setAutoRunLog([]);
     try {
       await runAction(() => call("use-pack", "POST", { pack: experiencePreset.packKey }));
+      setAutoRunLog([`1) Pack ${experiencePreset.packKey} cargado.`]);
       let openedMobile = false;
       setMobilePreviewOpened(false);
       setLastTriggeredScenario("none");
@@ -576,20 +579,24 @@ export function DemoLab() {
         setStageBeatIndex(cue.beat);
         setActiveSection(cue.section);
         setAutoRunNarration(cue.narration);
+        setAutoRunLog((prev) => [...prev, `${index + 1}) ${cue.narration}`].slice(-8));
         if (cue.openMobile && !openedMobile && typeof window !== "undefined") {
           window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
           openedMobile = true;
           setMobilePreviewOpened(true);
+          setAutoRunLog((prev) => [...prev, `${index + 1}) Mobile preview abierto (${openMobilePreviewHref}).`].slice(-8));
         }
         if (cue.scenario) {
           // eslint-disable-next-line no-await-in-loop
           await triggerScenario(cue.scenario);
+          setAutoRunLog((prev) => [...prev, `${index + 1}) Escenario ejecutado: ${cue.scenario}.`].slice(-8));
         }
         // eslint-disable-next-line no-await-in-loop
         await waitWithCountdown(cue.durationSec);
       }
       setActiveSection("ops");
       setAutoRunNarration("Auto-run terminada. Cerrá mostrando evidencia, KPI y siguiente paso comercial.");
+      setAutoRunLog((prev) => [...prev, "Cierre: mostrar KPI + siguiente acción comercial (ownership / warranty / provenance / tokenización)."].slice(-8));
     } finally {
       setAutoRunActive(false);
       setAutoRunSecondsLeft(0);
@@ -650,6 +657,7 @@ export function DemoLab() {
 
   async function runMeetingStory(duration: "30s" | "90s") {
     setPresenterLock(true);
+    setAutoRunLog([]);
     if (duration === "30s") {
       await runAction(() => call("use-pack", "POST", { pack }));
       setReadiness((state) => ({ ...state, packLoaded: true }));
@@ -657,11 +665,14 @@ export function DemoLab() {
       if (typeof window !== "undefined") window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
       setReadiness((state) => ({ ...state, mobileOpened: true }));
       setAutoRunNarration("Paso 1/4: valor del producto. Paso 2/4: autenticidad validada en mobile.");
+      setAutoRunLog((prev) => [...prev, "Paso 1/4: cargar pack y abrir narrativa de valor."]);
       await triggerScenario("valid");
       setAutoRunNarration("Paso 3/4: simulación de riesgo (tamper) + actualización del feed.");
+      setAutoRunLog((prev) => [...prev, "Paso 2/4: AUTH_OK en mobile.", "Paso 3/4: TAMPER_RISK para evidenciar riesgo."]);
       await triggerScenario("tamper");
       setActiveSection("ops");
       setAutoRunNarration("Paso 4/4: cierre con CTA comerciales (ownership, garantía, provenance, tokenización).");
+      setAutoRunLog((prev) => [...prev, "Paso 4/4: cierre con CTA comerciales y próxima acción recomendada."]);
       return;
     }
     await runSalesStory();
@@ -780,6 +791,14 @@ export function DemoLab() {
               <div className={`rounded-xl border p-3 ${autoRunActive ? "border-violet-300/40 bg-violet-500/10 text-violet-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Progress {autoRunProgress}%</div>
             </div>
             <p className="mt-3 text-violet-100">{autoRunNarration || "Al iniciar, el Demo Lab avanzará por beats, cambiará secciones y disparará escenarios automáticamente."}</p>
+            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cinematic log</p>
+              <ul className="mt-2 space-y-1 text-xs text-slate-200">
+                {(autoRunLog.length ? autoRunLog : ["Sin pasos ejecutados todavía."]).map((line, index) => (
+                  <li key={`${line}-${index}`} className="rounded border border-white/5 bg-white/5 px-2 py-1">{line}</li>
+                ))}
+              </ul>
+            </div>
           </div>
           <div className="mt-3 grid gap-2 md:grid-cols-4">
             {stageBeats.map((beat, index) => (
