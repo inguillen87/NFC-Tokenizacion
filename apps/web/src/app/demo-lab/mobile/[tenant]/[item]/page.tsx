@@ -17,7 +17,7 @@ async function loadPackSeed(pack: string) {
   }
 }
 
-export default async function PublicMobileDemoItemAliasPage({
+export default async function PublicMobileDemoItemPage({
   params,
   searchParams,
 }: {
