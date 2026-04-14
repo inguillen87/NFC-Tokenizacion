@@ -22,7 +22,6 @@ async function getBatch(bid: string) {
 export default async function BatchDetailPage({ params }: { params: Promise<{ bid: string }> }) {
   const { bid } = await params;
   const batch = await getBatch(bid);
-  const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
 
   return (
     <main className="space-y-8">
@@ -59,7 +58,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
               <Link href="/events" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open events</Link>
               <Link href="/tags" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tags</Link>
               <Link href="/demo-lab" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open demo lab</Link>
-              <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Open public mobile preview</a>
+              <Link href="/demo-lab/mobile/demobodega/demo-item-001" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Open mobile preview</Link>
               <Link href="/tenants" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tenant dashboard</Link>
             </div>
             <div className="mt-6">

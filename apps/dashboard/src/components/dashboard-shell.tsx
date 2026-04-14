@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Badge, BrandDot, BrandLockup, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
-import { productUrls, type AppLocale } from "@product/config";
+import type { AppLocale } from "@product/config";
 import type { UserRole } from "../lib/dashboard-content";
 import { roleAccess } from "../lib/dashboard-content";
 
@@ -73,7 +73,6 @@ function DashboardShellInner({
   const activeKey = pathnameToNavKey(pathname);
   const forbidden = !roleAccess[role].includes(activeKey);
   const isDemoMode = currentPermissions.includes("*") || currentLabel.toLowerCase().includes("demo");
-  const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
   const mobileQuickLinks = [
     { href: "/", label: locale === "en" ? "Home" : "Inicio" },
     { href: "/demo-lab", label: "Demo Lab" },
@@ -157,7 +156,7 @@ function DashboardShellInner({
             <p className="font-semibold uppercase tracking-[0.12em] text-cyan-200">Demo fast lane</p>
             <div className="mt-2 grid gap-2">
               <Link href="/demo-lab/encode" className="rounded-lg border border-cyan-300/25 bg-slate-950/40 px-2.5 py-2 text-cyan-100">Encode simulation</Link>
-              <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/25 bg-slate-950/40 px-2.5 py-2 text-cyan-100">Mobile scan mock</a>
+              <Link href="/demo-lab/mobile/demobodega/demo-item-001" className="rounded-lg border border-cyan-300/25 bg-slate-950/40 px-2.5 py-2 text-cyan-100">Mobile scan mock</Link>
             </div>
           </div>
         ) : null}

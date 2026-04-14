@@ -47,7 +47,7 @@ type RunbookStep = {
   kpi: string;
 };
 
-type AudienceMode = "ceo" | "operator" | "buyer";
+type AudienceMode = "ceo" | "client";
 type ExperiencePresetKey = "premium" | "event" | "credentials";
 type StageBeat = { title: string; speaker: string; goal: string };
 type CinematicCue = { beat: number; section: LabSection; durationSec: number; scenario?: ScanScenario["eventType"]; openMobile?: boolean; narration: string };
@@ -97,7 +97,7 @@ const DEMO_EXPERIENCES: Record<ExperiencePresetKey, {
     description: "Autenticidad, tamper, ownership y postventa para vino, lujo, cosmética o pharma.",
     packKey: "wine-secure",
     mode: "consumer_tap",
-    audience: "buyer",
+    audience: "client",
     section: "mobile",
     playlist: ["valid", "tamper", "claim", "redeem"],
   },
@@ -330,7 +330,7 @@ export function DemoLab() {
   const [presenterLock, setPresenterLock] = useState(false);
   const [nfcPermission, setNfcPermission] = useState<PermissionStateLite>("unknown");
   const [geoPermission, setGeoPermission] = useState<PermissionStateLite>("unknown");
-  const [audienceMode, setAudienceMode] = useState<AudienceMode>("buyer");
+  const [audienceMode, setAudienceMode] = useState<AudienceMode>("client");
   const [selectedExperience, setSelectedExperience] = useState<ExperiencePresetKey>("premium");
   const [focusMode, setFocusMode] = useState(false);
   const [stageMode, setStageMode] = useState(false);
@@ -339,7 +339,6 @@ export function DemoLab() {
   const [autoRunCueIndex, setAutoRunCueIndex] = useState(0);
   const [autoRunSecondsLeft, setAutoRunSecondsLeft] = useState(0);
   const [autoRunNarration, setAutoRunNarration] = useState("");
-  const [autoRunLog, setAutoRunLog] = useState<string[]>([]);
   const [mobilePreviewOpened, setMobilePreviewOpened] = useState(false);
   const [lastTriggeredScenario, setLastTriggeredScenario] = useState<string>("none");
   const [readiness, setReadiness] = useState({
@@ -349,12 +348,11 @@ export function DemoLab() {
     mobileOpened: false,
   });
   const [locale, setLocale] = useState<Locale>("es-AR");
-  const [envSupport, setEnvSupport] = useState({ nfc: false, secure: false, geo: false });
   const webBase = productUrls.web;
 
-  const nfcSupport = envSupport.nfc;
-  const hasSecureContext = envSupport.secure;
-  const hasGeo = envSupport.geo;
+  const nfcSupport = typeof window !== "undefined" && "NDEFReader" in window;
+  const hasSecureContext = typeof window !== "undefined" ? window.isSecureContext : false;
+  const hasGeo = typeof navigator !== "undefined" && "geolocation" in navigator;
   const liveNfcReady = nfcSupport && hasSecureContext;
   const latestEvent = (summary.events || [])[0];
   const activeVertical = inferVerticalFromPack(pack);
@@ -369,31 +367,15 @@ export function DemoLab() {
     ? {
         title: "CEO / Ingeniero view",
         summary: "Mostramos qué API, qué vertical, qué riesgo y qué evidencia operacional sostienen la demo.",
-        kpiFocus: "KPI: revenue expansion + risk containment",
-        commercialNext: "Próximo paso: propuesta de rollout por país + plan enterprise.",
         bullets: [
           "Qué se está simulando o resolviendo en backend.",
           "Qué pack/vertical está activo y cómo impacta el flujo.",
           "Qué evidencia termina en mobile, timeline y ops map.",
         ],
       }
-    : audienceMode === "operator"
-      ? {
-          title: "Operator / Engineer view",
-          summary: "Mostramos controles operativos, estado por lote/tag y respuesta práctica ante alertas.",
-          kpiFocus: "KPI: activación efectiva + excepción resuelta",
-          commercialNext: "Próximo paso: cerrar lote READY TO SCAN y playbook de incidentes.",
-          bullets: [
-            "Qué pasos ejecutar: cargar pack, importar UIDs, activar, validar URL.",
-            "Qué señales de riesgo importan: tamper, replay y no activo.",
-            "Qué siguiente acción tomar para dejar el lote READY TO SCAN.",
-          ],
-        }
-      : {
+    : {
         title: "Client / Buyer view",
         summary: "Mostramos el valor de compra: confianza, UX simple, activación postventa y protección de marca.",
-        kpiFocus: "KPI: confianza de compra + retención postventa",
-        commercialNext: "Próximo paso: CTA ownership/garantía + demo comercial.",
         bullets: [
           "Qué gana el cliente final al escanear o tocar el producto.",
           "Qué riesgo evitamos con autenticidad, tamper y replay detection.",
@@ -403,15 +385,6 @@ export function DemoLab() {
 
   useEffect(() => {
     setLocale(detectLocale());
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setEnvSupport({
-      nfc: "NDEFReader" in window,
-      secure: window.isSecureContext,
-      geo: typeof navigator !== "undefined" && "geolocation" in navigator,
-    });
   }, []);
 
   async function runAction(action: () => Promise<unknown>) {
@@ -573,10 +546,8 @@ export function DemoLab() {
     setStageMode(true);
     setAutoRunCueIndex(0);
     setStageBeatIndex(0);
-    setAutoRunLog([]);
     try {
       await runAction(() => call("use-pack", "POST", { pack: experiencePreset.packKey }));
-      setAutoRunLog([`1) Pack ${experiencePreset.packKey} cargado.`]);
       let openedMobile = false;
       setMobilePreviewOpened(false);
       setLastTriggeredScenario("none");
@@ -585,24 +556,20 @@ export function DemoLab() {
         setStageBeatIndex(cue.beat);
         setActiveSection(cue.section);
         setAutoRunNarration(cue.narration);
-        setAutoRunLog((prev) => [...prev, `${index + 1}) ${cue.narration}`].slice(-8));
         if (cue.openMobile && !openedMobile && typeof window !== "undefined") {
           window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
           openedMobile = true;
           setMobilePreviewOpened(true);
-          setAutoRunLog((prev) => [...prev, `${index + 1}) Mobile preview abierto (${openMobilePreviewHref}).`].slice(-8));
         }
         if (cue.scenario) {
           // eslint-disable-next-line no-await-in-loop
           await triggerScenario(cue.scenario);
-          setAutoRunLog((prev) => [...prev, `${index + 1}) Escenario ejecutado: ${cue.scenario}.`].slice(-8));
         }
         // eslint-disable-next-line no-await-in-loop
         await waitWithCountdown(cue.durationSec);
       }
       setActiveSection("ops");
       setAutoRunNarration("Auto-run terminada. Cerrá mostrando evidencia, KPI y siguiente paso comercial.");
-      setAutoRunLog((prev) => [...prev, "Cierre: mostrar KPI + siguiente acción comercial (ownership / warranty / provenance / tokenización)."].slice(-8));
     } finally {
       setAutoRunActive(false);
       setAutoRunSecondsLeft(0);
@@ -643,8 +610,7 @@ export function DemoLab() {
   const previewTenant = selectedPack?.tenant || "demobodega";
   const previewItemId = selectedPack?.itemId || "demo-item-001";
   const activeBatchId = selectedPack?.batchId || "DEMO-2026-02";
-  const mobileDemoMode = mode === "live_nfc" ? "consumer_opened" : "consumer_tap";
-  const openMobilePreviewHref = `${webBase}/demo-lab/mobile/${previewTenant}/${previewItemId}?demoMode=${mobileDemoMode}&pack=${pack}`;
+  const openMobilePreviewHref = `${webBase}/demo-lab/mobile/${previewTenant}/${previewItemId}?demoMode=${mode}&pack=${pack}`;
   const tagPreviewLinks = DEMO_UIDS.map((uid) => `${openMobilePreviewHref}&uid=${uid}`);
   const qrPreviewHref = useMemo(() => demoMatrixDataUrl(openMobilePreviewHref), [openMobilePreviewHref]);
   const textScale = presenterMode ? "text-base" : "text-sm";
@@ -663,22 +629,12 @@ export function DemoLab() {
 
   async function runMeetingStory(duration: "30s" | "90s") {
     setPresenterLock(true);
-    setAutoRunLog([]);
     if (duration === "30s") {
+      setActiveSection("mobile");
       await runAction(() => call("use-pack", "POST", { pack }));
       setReadiness((state) => ({ ...state, packLoaded: true }));
-      setActiveSection("mobile");
       if (typeof window !== "undefined") window.open(openMobilePreviewHref, "_blank", "noopener,noreferrer");
       setReadiness((state) => ({ ...state, mobileOpened: true }));
-      setAutoRunNarration("Paso 1/4: valor del producto. Paso 2/4: autenticidad validada en mobile.");
-      setAutoRunLog((prev) => [...prev, "Paso 1/4: cargar pack y abrir narrativa de valor."]);
-      await triggerScenario("valid");
-      setAutoRunNarration("Paso 3/4: simulación de riesgo (tamper) + actualización del feed.");
-      setAutoRunLog((prev) => [...prev, "Paso 2/4: AUTH_OK en mobile.", "Paso 3/4: TAMPER_RISK para evidenciar riesgo."]);
-      await triggerScenario("tamper");
-      setActiveSection("ops");
-      setAutoRunNarration("Paso 4/4: cierre con CTA comerciales (ownership, garantía, provenance, tokenización).");
-      setAutoRunLog((prev) => [...prev, "Paso 4/4: cierre con CTA comerciales y próxima acción recomendada."]);
       return;
     }
     await runSalesStory();
@@ -729,17 +685,12 @@ export function DemoLab() {
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Narrativa</span>
-          <button type="button" className={`rounded-full border px-3 py-1 text-xs ${audienceMode === "buyer" ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/15 text-slate-300"}`} onClick={() => setAudienceMode("buyer")}>Buyer / cliente</button>
-          <button type="button" className={`rounded-full border px-3 py-1 text-xs ${audienceMode === "operator" ? "border-amber-300/40 bg-amber-500/10 text-amber-100" : "border-white/15 text-slate-300"}`} onClick={() => setAudienceMode("operator")}>Operator</button>
+          <button type="button" className={`rounded-full border px-3 py-1 text-xs ${audienceMode === "client" ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/15 text-slate-300"}`} onClick={() => setAudienceMode("client")}>Cliente / comprador</button>
           <button type="button" className={`rounded-full border px-3 py-1 text-xs ${audienceMode === "ceo" ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/15 text-slate-300"}`} onClick={() => setAudienceMode("ceo")}>CEO / ingeniero</button>
         </div>
         <div className="mt-3 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
           <p className="text-sm font-semibold text-white">{audienceCopy.title}</p>
           <p className="mt-1 text-sm text-slate-300">{audienceCopy.summary}</p>
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
-            <p className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">{audienceCopy.kpiFocus}</p>
-            <p className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">{audienceCopy.commercialNext}</p>
-          </div>
           <ul className="mt-3 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
             {audienceCopy.bullets.map((bullet) => (
               <li key={bullet} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">{bullet}</li>
@@ -801,14 +752,6 @@ export function DemoLab() {
               <div className={`rounded-xl border p-3 ${autoRunActive ? "border-violet-300/40 bg-violet-500/10 text-violet-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Progress {autoRunProgress}%</div>
             </div>
             <p className="mt-3 text-violet-100">{autoRunNarration || "Al iniciar, el Demo Lab avanzará por beats, cambiará secciones y disparará escenarios automáticamente."}</p>
-            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cinematic log</p>
-              <ul className="mt-2 space-y-1 text-xs text-slate-200">
-                {(autoRunLog.length ? autoRunLog : ["Sin pasos ejecutados todavía."]).map((line, index) => (
-                  <li key={`${line}-${index}`} className="rounded border border-white/5 bg-white/5 px-2 py-1">{line}</li>
-                ))}
-              </ul>
-            </div>
           </div>
           <div className="mt-3 grid gap-2 md:grid-cols-4">
             {stageBeats.map((beat, index) => (

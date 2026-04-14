@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { Button, Card } from "@product/ui";
 import { postAdmin } from "../lib/api";
-import { DEMO_SUPPLIER_UID_TEXT } from "../lib/demo-uids";
 
 type Role = "super-admin" | "tenant-admin" | "reseller" | "viewer";
 
@@ -47,6 +46,18 @@ type ApiSummaryItem = { label: string; value: string };
 type ActionPayload = Record<string, unknown>;
 type CopyAction = { label: string; value: string };
 
+const ECHO_DEMO_UIDS = [
+  "0487856A0B1090",
+  "048A876A0B1090",
+  "0483846A0B1090",
+  "047F846A0B1090",
+  "047B846A0B1090",
+  "0477846A0B1090",
+  "0474856A0B1090",
+  "0470856A0B1090",
+  "0483826A0B1090",
+  "0465846A0B1090",
+];
 
 function stringifyValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
@@ -159,7 +170,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
     kMetaHex: "",
     kFileHex: "",
   });
-  const [manifest, setManifest] = useState({ batchId: "DEMO-2026-02", csv: DEMO_SUPPLIER_UID_TEXT, activateImported: true });
+  const [manifest, setManifest] = useState({ batchId: "DEMO-2026-02", csv: "uid_hex\n0487856A0B1090", activateImported: true });
   const [activation, setActivation] = useState({ batchId: "DEMO-2026-02", count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
   const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
@@ -269,19 +280,6 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
     }
   }
 
-  async function onManifestFile(file: File) {
-    const raw = (await file.text()).replace(/^\uFEFF/, "");
-    const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    if (!lines.length) return;
-    const first = lines[0].toLowerCase();
-    if (!first.includes(",")) {
-      const normalized = lines.filter((line) => line.toLowerCase() !== "uid_hex").map((line) => line.replace(/[,;\s]+/g, "").toUpperCase()).filter(Boolean);
-      setManifest((current) => ({ ...current, csv: ["uid_hex", ...normalized].join("\n") }));
-      return;
-    }
-    setManifest((current) => ({ ...current, csv: raw }));
-  }
-
   return (
     <div className="space-y-6">
       <Card className="p-5">
@@ -375,25 +373,11 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
               onClick={() =>
                 setManifest({
                   ...manifest,
-                  csv: DEMO_SUPPLIER_UID_TEXT,
+                  csv: ["uid_hex,batch_id", ...ECHO_DEMO_UIDS.map((uid) => `${uid},${manifest.batchId || "DEMO-2026-02"}`)].join("\n"),
                 })}
             >
               Load Echo sample UID list (10)
             </button>
-            <label className="w-fit rounded-full border border-white/20 px-3 py-1 text-[11px] text-slate-200">
-              Upload supplier TXT/CSV
-              <input
-                disabled={!canEdit}
-                type="file"
-                accept=".txt,.csv,text/plain,text/csv"
-                className="sr-only"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) return;
-                  void onManifestFile(file);
-                }}
-              />
-            </label>
             <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
             <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
             <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Accepted formats: (1) CSV with uid_hex (+ optional batch_id, ic_type, roll_id, qc_status, timestamp) or (2) plain text UID list, one UID per line (optional first line: uid_hex).</div>

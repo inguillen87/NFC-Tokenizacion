@@ -2,7 +2,6 @@
 
 import { useMemo, useState, type ChangeEvent } from "react";
 import { Button, Card } from "@product/ui";
-import { DEMO_SUPPLIER_BATCH_ID, DEMO_SUPPLIER_UIDS } from "../lib/demo-uids";
 
 type AppLocale = "es-AR" | "pt-BR" | "en";
 
@@ -23,17 +22,6 @@ function parseUidLines(raw: string) {
     .filter(Boolean)
     .map((line) => line.toUpperCase())
     .filter((line) => /^[0-9A-F]{8,20}$/.test(line));
-}
-
-function describeValidationStatus(reason: string) {
-  const normalized = reason.toUpperCase();
-  if (normalized.includes("UNKNOWN_BATCH")) return { code: "UNKNOWN_BATCH", detail: "El BID no existe. Registrá el lote y cargá keys primero." };
-  if (normalized.includes("NOT_REGISTERED")) return { code: "NOT_REGISTERED", detail: "El UID no fue importado en este batch. Reimportá manifest." };
-  if (normalized.includes("NOT_ACTIVE")) return { code: "NOT_ACTIVE", detail: "El UID existe pero no está activo. Ejecutá Activate imported tags." };
-  if (normalized.includes("REPLAY")) return { code: "REPLAY_SUSPECT", detail: "Se detectó repetición anómala. Revisá origen del scan y riesgo de clonación." };
-  if (normalized.includes("INVALID") || normalized.includes("CMAC")) return { code: "INVALID", detail: "Firma no válida o keys incorrectas para este tag." };
-  if (normalized.includes("VALID") || normalized.includes("OK")) return { code: "VALID", detail: "Validación correcta. El tag y el lote están consistentes." };
-  return { code: "UNKNOWN", detail: "Resultado no mapeado automáticamente. Revisá el JSON de respuesta." };
 }
 
 function parseUidCsv(raw: string) {
@@ -128,7 +116,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   const [tenantSlug, setTenantSlug] = useState("demobodega");
   const [tenantName, setTenantName] = useState("Demo Bodega");
-  const [bid, setBid] = useState(DEMO_SUPPLIER_BATCH_ID);
+  const [bid, setBid] = useState("DEMO-2026-02");
   const [chipModel, setChipModel] = useState("NTAG 424 DNA TagTamper");
   const [sku, setSku] = useState("wine-secure");
   const [quantity, setQuantity] = useState("10");
@@ -138,13 +126,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [uids, setUids] = useState<string[]>([]);
   const [manifestSourceType, setManifestSourceType] = useState<"txt" | "csv">("txt");
   const [batchMismatchCount, setBatchMismatchCount] = useState(0);
-  const [duplicateCount, setDuplicateCount] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [supplierUrl, setSupplierUrl] = useState("");
   const [readyToScan, setReadyToScan] = useState(false);
-  const [validationCode, setValidationCode] = useState("PENDING");
-  const [validationDetail, setValidationDetail] = useState("Pegá una URL SUN para evaluar estado de negocio.");
 
   const steps = [copy.step1, copy.step2, copy.step3, copy.step4, copy.step5];
 
@@ -175,17 +160,14 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       const parsed = parseUidCsv(raw);
       setUids(parsed.uids || []);
       const mismatches = (parsed.batchIds || []).filter((entry) => entry && entry !== bid).length;
-      const duplicates = parsed.uids.length - new Set(parsed.uids).size;
       setBatchMismatchCount(mismatches);
-      setDuplicateCount(duplicates);
-      setStatus(`UIDs detectados: ${parsed.uids.length}. Duplicados: ${duplicates}.`);
+      setStatus(`UIDs detectados: ${parsed.uids.length}.`);
       return;
     }
     const parsed = parseUidLines(raw);
     setUids(parsed);
-    setDuplicateCount(parsed.length - new Set(parsed).size);
     setBatchMismatchCount(0);
-    setStatus(`UIDs detectados: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
+    setStatus(`UIDs detectados: ${parsed.length}.`);
   }
 
   async function createTenantIfMissing() {
@@ -268,16 +250,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         body: JSON.stringify({ url: supplierUrl.trim() }),
       });
       const reason = String(data.reason || "");
-      const statusInfo = describeValidationStatus(reason);
-      setValidationCode(statusInfo.code);
-      setValidationDetail(statusInfo.detail);
       const advice = actionMessage(reason);
       setStatus(`Validación completa. ${advice}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "validation failed";
-      const statusInfo = describeValidationStatus(message);
-      setValidationCode(statusInfo.code);
-      setValidationDetail(statusInfo.detail);
       setStatus(`${message}. ${actionMessage(message)}`);
     } finally {
       setPending(false);
@@ -342,22 +318,29 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <button
           type="button"
           className="mt-2 rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100"
-          onClick={() => {
-            const list = [...DEMO_SUPPLIER_UIDS];
-            setUids(list);
-            setDuplicateCount(0);
-            setBatchMismatchCount(0);
-            setStatus(`UID list oficial cargada: ${list.length}/10.`);
-          }}
+          onClick={() =>
+            setUids([
+              "0487856A0B1090",
+              "048A876A0B1090",
+              "0483846A0B1090",
+              "047F846A0B1090",
+              "047B846A0B1090",
+              "0477846A0B1090",
+              "0474856A0B1090",
+              "0470856A0B1090",
+              "0483826A0B1090",
+              "0465846A0B1090",
+            ])
+          }
         >
-          Load supplier source-of-truth UID list (10)
+          Load Echo sample UID list (10)
         </button>
         <div className="mt-2 flex gap-2">
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "txt" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("txt")}>TXT UID list</button>
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "csv" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("csv")}>CSV manifest</button>
         </div>
         <input type="file" accept=".txt,.csv,text/plain,text/csv" className="mt-3 block w-full text-sm text-slate-200" onChange={(event) => void onUidFile(event)} />
-        <p className="mt-2 text-xs text-slate-400">Rows parsed: {uids.length} · Duplicates: {duplicateCount} · Batch consistency issues: {batchMismatchCount}</p>
+        <p className="mt-2 text-xs text-slate-400">Rows parsed: {uids.length} · Batch consistency issues: {batchMismatchCount}</p>
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           {uidPreview.map((uid, index) => (
             <div key={`${uid}-${index}`} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-200">{uid}</div>
@@ -385,10 +368,6 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <p className="mt-1 text-sm text-slate-300">Pegá URL SUN completa y validá ahora (ok/reason/latencia/tag_status/batch_status).</p>
         <textarea className="mt-3 min-h-28 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" value={supplierUrl} onChange={(event) => setSupplierUrl(event.target.value)} placeholder="https://api.nexid.lat/sun?..." />
         <Button className="mt-3" disabled={pending} onClick={() => void validateNow()}>Validate now</Button>
-        <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
-          <p className="font-semibold">Validation status: {validationCode}</p>
-          <p className="mt-1">{validationDetail}</p>
-        </div>
       </Card>
 
       <Card className="p-6">

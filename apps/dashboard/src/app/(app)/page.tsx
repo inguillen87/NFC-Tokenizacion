@@ -8,7 +8,6 @@ import { ModuleGrid } from "../../components/module-grid";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
-import { productUrls } from "@product/config";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
@@ -49,7 +48,6 @@ function resolveTenantStatus(scans: number, duplicates: number, tamper: number) 
 export default async function DashboardHome() {
   const { locale, t } = await getDashboardI18n();
   const copy = dashboardContent[locale];
-  const publicMobileBase = `${productUrls.web}/demo-lab/mobile`;
   const session = await requireDashboardSession();
   const [overviewRaw, liveEvents]: [Array<Record<string, unknown>>, Array<Record<string, unknown>>] = await Promise.all([getOverviewRows(), getLiveEvents()]);
 
@@ -184,7 +182,7 @@ export default async function DashboardHome() {
             <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-900/70 p-3">
               <p className="text-sm font-semibold text-white">{pack.label}</p>
               <div className="mt-2 grid gap-2">
-                <a href={`${publicMobileBase}/${pack.tenant}/${pack.itemId}?pack=${encodeURIComponent(pack.key)}&demoMode=consumer_tap`} target="_blank" rel="noreferrer" className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-slate-100">Mobile view (public)</a>
+                <Link href={`/demo-lab/mobile/${pack.tenant}/${pack.itemId}`} className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-slate-100">Mobile view</Link>
                 <Link href="/batches" className="rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-100">Manifest flow</Link>
               </div>
             </div>
