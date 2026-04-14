@@ -18,11 +18,12 @@ function isHex32(value: string) {
 
 function parseUidLines(raw: string) {
   return raw
-    .split(/\r?\n/)
-    .map((line) => line.trim().replace(/[,;\s]+/g, ""))
+    .replace(/^\uFEFF/, "")
+    .split(/[\r\n,;\t ]+/)
+    .map((token) => token.trim().toUpperCase())
     .filter(Boolean)
-    .map((line) => line.toUpperCase())
-    .filter((line) => /^[0-9A-F]{8,20}$/.test(line));
+    .filter((token) => token !== "UID_HEX" && token !== "UID")
+    .filter((token) => /^[0-9A-F]{8,20}$/.test(token));
 }
 
 function describeValidationStatus(reason: string) {
@@ -128,6 +129,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   const [tenantSlug, setTenantSlug] = useState("demobodega");
   const [tenantName, setTenantName] = useState("Demo Bodega");
+  const [batchMode, setBatchMode] = useState<"supplier" | "internal">("supplier");
   const [bid, setBid] = useState(DEMO_SUPPLIER_BATCH_ID);
   const [chipModel, setChipModel] = useState("NTAG 424 DNA TagTamper");
   const [sku, setSku] = useState("wine-secure");
@@ -203,6 +205,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       method: "POST",
       body: JSON.stringify({
         tenant_slug: tenantSlug.trim(),
+        mode: batchMode,
         bid: bid.trim(),
         chip_model: chipModel.trim(),
         sku: sku.trim(),
@@ -312,6 +315,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       <Card className={`p-6 ${activeStep === 1 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 1 · Batch identity</h3>
         <p className="mt-1 text-xs text-slate-400">ⓘ Tenant = marca/cliente dueño del lote. Para demo real usá: Demo Bodega / demobodega.</p>
+        <div className="mt-3 flex gap-2">
+          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "supplier" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("supplier")}>Supplier batch mode</button>
+          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "internal" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("internal")}>Internal batch mode</button>
+        </div>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_slug" value={tenantSlug} onChange={(event) => setTenantSlug(event.target.value)} />
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_name" value={tenantName} onChange={(event) => setTenantName(event.target.value)} />
@@ -327,7 +334,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <h3 className="text-lg font-semibold text-white">Step 2 · Batch keys</h3>
         <p className="mt-1 text-xs text-slate-400">{copy.source}</p>
         <div className="mt-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Atención: este flujo es para tags supplier-programmed. K_META_BATCH y K_FILE_BATCH son obligatorias y no se autogeneran.
+          {batchMode === "supplier"
+            ? "Supplier mode: K_META_BATCH y K_FILE_BATCH son obligatorias y no se autogeneran."
+            : "Internal mode: podés dejar keys vacías y el backend las genera automáticamente."}
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_meta_hex (16 bytes / 32 hex)" value={kMeta} onChange={(event) => setKMeta(event.target.value)} />
