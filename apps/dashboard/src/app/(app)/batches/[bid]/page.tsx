@@ -57,6 +57,9 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
               <Link href="/batches/supplier" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Abrir supplier flow</Link>
               <Link href="/events" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open events</Link>
               <Link href="/tags" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tags</Link>
+              <Link href="/demo-lab" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open demo lab</Link>
+              <Link href="/demo-lab/mobile/demobodega/demo-item-001" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Open mobile preview</Link>
+              <Link href="/tenants" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tenant dashboard</Link>
             </div>
             <div className="mt-6">
               <BatchSunValidator bid={bid} />

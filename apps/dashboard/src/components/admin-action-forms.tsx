@@ -370,7 +370,11 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
               type="button"
               disabled={!canEdit}
               className="w-fit rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-100 disabled:opacity-50"
-              onClick={() => setManifest({ ...manifest, csv: `uid_hex\n${ECHO_DEMO_UIDS.join("\n")}` })}
+              onClick={() =>
+                setManifest({
+                  ...manifest,
+                  csv: ["uid_hex,batch_id", ...ECHO_DEMO_UIDS.map((uid) => `${uid},${manifest.batchId || "DEMO-2026-02"}`)].join("\n"),
+                })}
             >
               Load Echo sample UID list (10)
             </button>
