@@ -61,9 +61,57 @@ async function parseJsonSafe(response: Response) {
 }
 
 export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
+  const copy = locale === "en"
+    ? {
+        title: "Supplier Batch Onboarding Wizard",
+        subtitle: "Simple mode: complete 5 steps and leave the batch ready to scan.",
+        source: "source: supplier.txt",
+        startStatus: "Complete the onboarding in 5 steps to leave the batch READY TO SCAN.",
+        quickTitle: "Quick route (recommended)",
+        quickHint: "If this is your first run, use this button and then validate one supplier URL.",
+        quickAction: "Run complete setup",
+        quickFooter: "This runs: create tenant (if missing) → register batch → import UIDs → activate UIDs.",
+        step1: "Step 1 · Batch identity",
+        step2: "Step 2 · Batch keys",
+        step3: "Step 3 · UID intake",
+        step4: "Step 4 · Register + Import + Activate",
+        step5: "Step 5 · Supplier pretest",
+      }
+    : locale === "pt-BR"
+      ? {
+          title: "Onboarding de Lote do Fornecedor",
+          subtitle: "Modo simples: complete os 5 passos e deixe o lote pronto para scan.",
+          source: "fonte: supplier.txt",
+          startStatus: "Complete o onboarding em 5 passos para deixar o lote READY TO SCAN.",
+          quickTitle: "Rota rápida (recomendada)",
+          quickHint: "Se for sua primeira execução, use este botão e depois valide uma URL SUN.",
+          quickAction: "Executar setup completo",
+          quickFooter: "Executa: criar tenant (se faltar) → registrar lote → importar UIDs → ativar UIDs.",
+          step1: "Passo 1 · Identidade do lote",
+          step2: "Passo 2 · Chaves do lote",
+          step3: "Passo 3 · Carga de UIDs",
+          step4: "Passo 4 · Registrar + Importar + Ativar",
+          step5: "Passo 5 · Pré-teste do fornecedor",
+        }
+      : {
+          title: "Wizard de Onboarding de Lote Proveedor",
+          subtitle: "Modo simple: completá 5 pasos y dejá el lote listo para escanear.",
+          source: "fuente: supplier.txt",
+          startStatus: "Completá el onboarding en 5 pasos para dejar el batch READY TO SCAN.",
+          quickTitle: "Ruta rápida (recomendada)",
+          quickHint: "Si es tu primera corrida, usá este botón y después validá una URL SUN.",
+          quickAction: "Ejecutar setup completo",
+          quickFooter: "Esto ejecuta: crear tenant (si falta) → registrar batch → importar UIDs → activar UIDs.",
+          step1: "Paso 1 · Identidad del batch",
+          step2: "Paso 2 · Keys del batch",
+          step3: "Paso 3 · Carga de UIDs",
+          step4: "Paso 4 · Registrar + Importar + Activar",
+          step5: "Paso 5 · Pretest proveedor",
+        };
+
   const [activeStep, setActiveStep] = useState<WizardStep>(1);
   const [pending, setPending] = useState(false);
-  const [status, setStatus] = useState("Completá el onboarding en 5 pasos para dejar el batch READY TO SCAN.");
+  const [status, setStatus] = useState(copy.startStatus);
   const [responseText, setResponseText] = useState("{}");
 
   const [tenantSlug, setTenantSlug] = useState("demobodega");
@@ -83,13 +131,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [supplierUrl, setSupplierUrl] = useState("");
   const [readyToScan, setReadyToScan] = useState(false);
 
-  const steps = [
-    "Step 1 · Batch identity",
-    "Step 2 · Batch keys",
-    "Step 3 · UID intake",
-    "Step 4 · Register + Import + Activate",
-    "Step 5 · Supplier pretest",
-  ];
+  const steps = [copy.step1, copy.step2, copy.step3, copy.step4, copy.step5];
 
   const progress = Math.round(((activeStep - 1) / (steps.length - 1)) * 100);
   const uidPreview = useMemo(() => uids.slice(0, 10), [uids]);
@@ -218,17 +260,19 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     }
   }
 
-  const labels = locale === "en"
-    ? { title: "Supplier Batch Onboarding Wizard", subtitle: "No CLI required. Complete the 5-step flow and validate against /sun.", source: "source: supplier.txt" }
-    : locale === "pt-BR"
-      ? { title: "Onboarding de Lote do Fornecedor", subtitle: "Sem CLI. Complete os 5 passos e valide no /sun.", source: "fonte: supplier.txt" }
-      : { title: "Supplier Batch Onboarding Wizard", subtitle: "Sin CLI. Completá los 5 pasos y validá contra /sun.", source: "source: supplier.txt" };
-
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h2 className="text-2xl font-semibold text-white">{labels.title}</h2>
-        <p className="mt-2 text-sm text-slate-300">{labels.subtitle}</p>
+        <h2 className="text-2xl font-semibold text-white">{copy.title}</h2>
+        <p className="mt-2 text-sm text-slate-300">{copy.subtitle}</p>
+        <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">{copy.quickTitle}</p>
+          <p className="mt-1 text-sm text-cyan-50">{copy.quickHint}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button disabled={pending} onClick={() => void runAll()}>{copy.quickAction}</Button>
+            <p className="text-xs text-cyan-100/90">{copy.quickFooter}</p>
+          </div>
+        </div>
         <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
           <div className="h-2 rounded-full bg-cyan-400" style={{ width: `${progress}%` }} />
         </div>
@@ -256,7 +300,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
       <Card className={`p-6 ${activeStep === 2 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 2 · Batch keys</h3>
-        <p className="mt-1 text-xs text-slate-400">{labels.source}</p>
+        <p className="mt-1 text-xs text-slate-400">{copy.source}</p>
         <div className="mt-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
           Atención: este flujo es para tags supplier-programmed. No auto-genera keys.
         </div>
