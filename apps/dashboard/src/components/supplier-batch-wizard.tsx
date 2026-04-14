@@ -8,6 +8,20 @@ type AppLocale = "es-AR" | "pt-BR" | "en";
 
 type WizardStep = 1 | 2 | 3 | 4 | 5;
 
+type BatchSummary = {
+  bid: string;
+  status: string;
+  tenant_slug: string;
+  chip_model: string;
+  sku: string;
+  requested_quantity: number;
+  imported_tags: number;
+  active_tags: number;
+  inactive_tags: number;
+  has_meta_key: boolean;
+  has_file_key: boolean;
+};
+
 function normalizeHex(value: string) {
   return value.trim().toUpperCase();
 }
@@ -147,6 +161,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [readyToScan, setReadyToScan] = useState(false);
   const [validationCode, setValidationCode] = useState("PENDING");
   const [validationDetail, setValidationDetail] = useState("Pegá una URL SUN para evaluar estado de negocio.");
+  const [batchSummary, setBatchSummary] = useState<BatchSummary | null>(null);
 
   const steps = [copy.step1, copy.step2, copy.step3, copy.step4, copy.step5];
 
@@ -198,9 +213,17 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     }).catch(() => null);
   }
 
+  async function refreshBatchSummary() {
+    if (!bid.trim()) return;
+    const data = await run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/summary`);
+    if (data.batch && typeof data.batch === "object") {
+      setBatchSummary(data.batch as BatchSummary);
+    }
+  }
+
   async function registerBatch() {
     if (!tenantSlug.trim() || !bid.trim()) throw new Error("Completá tenant_slug y bid en Step 1.");
-    if (!isHex32(kMeta) || !isHex32(kFile)) throw new Error("K_META y K_FILE deben ser hex de 32 caracteres.");
+    if (batchMode === "supplier" && (!isHex32(kMeta) || !isHex32(kFile))) throw new Error("K_META y K_FILE deben ser hex de 32 caracteres.");
     return run("/api/admin/batches/register", {
       method: "POST",
       body: JSON.stringify({
@@ -247,6 +270,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       await registerBatch();
       await importUids();
       await activateAll();
+      await refreshBatchSummary();
       setReadyToScan(true);
       setStatus("READY TO SCAN: batch registrado, UIDs importados y activados.");
       setActiveStep(5);
@@ -367,6 +391,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         </div>
         <input type="file" accept=".txt,.csv,text/plain,text/csv" className="mt-3 block w-full text-sm text-slate-200" onChange={(event) => void onUidFile(event)} />
         <p className="mt-2 text-xs text-slate-400">Rows parsed: {uids.length} · Duplicates: {duplicateCount} · Batch consistency issues: {batchMismatchCount}</p>
+        <p className={`mt-2 text-xs ${uids.length === 10 ? "text-emerald-200" : "text-amber-200"}`}>
+          Source-of-truth check: expected 10 supplier UIDs · loaded {uids.length}
+        </p>
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           {uidPreview.map((uid, index) => (
             <div key={`${uid}-${index}`} className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-200">{uid}</div>
@@ -402,6 +429,20 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
       <Card className="p-6">
         <p className="text-sm text-slate-300">{status}</p>
+        {batchSummary ? (
+          <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200 md:grid-cols-2">
+            <p>Batch: <b>{batchSummary.bid}</b></p>
+            <p>Tenant: <b>{batchSummary.tenant_slug}</b></p>
+            <p>Chip: <b>{batchSummary.chip_model || "-"}</b></p>
+            <p>SKU/Profile: <b>{batchSummary.sku || "-"}</b></p>
+            <p>Requested qty: <b>{batchSummary.requested_quantity}</b></p>
+            <p>Imported tags: <b>{batchSummary.imported_tags}</b></p>
+            <p>Active tags: <b>{batchSummary.active_tags}</b></p>
+            <p>Inactive tags: <b>{batchSummary.inactive_tags}</b></p>
+            <p>Meta key loaded: <b>{batchSummary.has_meta_key ? "yes" : "no"}</b></p>
+            <p>File key loaded: <b>{batchSummary.has_file_key ? "yes" : "no"}</b></p>
+          </div>
+        ) : null}
         <pre className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-4 text-xs text-slate-200">{responseText}</pre>
       </Card>
     </div>
