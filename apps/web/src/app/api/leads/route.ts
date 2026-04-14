@@ -11,12 +11,21 @@ export async function POST(req: Request) {
   const body = await req.text();
 
   try {
-    const response = await fetch(`${API_BASE}/admin/leads`, {
+    let response = await fetch(`${API_BASE}/public/leads`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
       cache: "no-store",
     });
+
+    if (response.status === 404 || response.status === 405) {
+      response = await fetch(`${API_BASE}/admin/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        cache: "no-store",
+      });
+    }
 
     const text = await response.text();
     return new NextResponse(text, {
