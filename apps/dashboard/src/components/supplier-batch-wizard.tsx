@@ -61,20 +61,68 @@ async function parseJsonSafe(response: Response) {
 }
 
 export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
+  const copy = locale === "en"
+    ? {
+        title: "Supplier Batch Onboarding Wizard",
+        subtitle: "Simple mode: complete 5 steps and leave the batch ready to scan.",
+        source: "source: supplier.txt",
+        startStatus: "Complete the onboarding in 5 steps to leave the batch READY TO SCAN.",
+        quickTitle: "Quick route (recommended)",
+        quickHint: "If this is your first run, use this button and then validate one supplier URL.",
+        quickAction: "Run complete setup",
+        quickFooter: "This runs: create tenant (if missing) → register batch → import UIDs → activate UIDs.",
+        step1: "Step 1 · Batch identity",
+        step2: "Step 2 · Batch keys",
+        step3: "Step 3 · UID intake",
+        step4: "Step 4 · Register + Import + Activate",
+        step5: "Step 5 · Supplier pretest",
+      }
+    : locale === "pt-BR"
+      ? {
+          title: "Onboarding de Lote do Fornecedor",
+          subtitle: "Modo simples: complete os 5 passos e deixe o lote pronto para scan.",
+          source: "fonte: supplier.txt",
+          startStatus: "Complete o onboarding em 5 passos para deixar o lote READY TO SCAN.",
+          quickTitle: "Rota rápida (recomendada)",
+          quickHint: "Se for sua primeira execução, use este botão e depois valide uma URL SUN.",
+          quickAction: "Executar setup completo",
+          quickFooter: "Executa: criar tenant (se faltar) → registrar lote → importar UIDs → ativar UIDs.",
+          step1: "Passo 1 · Identidade do lote",
+          step2: "Passo 2 · Chaves do lote",
+          step3: "Passo 3 · Carga de UIDs",
+          step4: "Passo 4 · Registrar + Importar + Ativar",
+          step5: "Passo 5 · Pré-teste do fornecedor",
+        }
+      : {
+          title: "Wizard de Onboarding de Lote Proveedor",
+          subtitle: "Modo simple: completá 5 pasos y dejá el lote listo para escanear.",
+          source: "fuente: supplier.txt",
+          startStatus: "Completá el onboarding en 5 pasos para dejar el batch READY TO SCAN.",
+          quickTitle: "Ruta rápida (recomendada)",
+          quickHint: "Si es tu primera corrida, usá este botón y después validá una URL SUN.",
+          quickAction: "Ejecutar setup completo",
+          quickFooter: "Esto ejecuta: crear tenant (si falta) → registrar batch → importar UIDs → activar UIDs.",
+          step1: "Paso 1 · Identidad del batch",
+          step2: "Paso 2 · Keys del batch",
+          step3: "Paso 3 · Carga de UIDs",
+          step4: "Paso 4 · Registrar + Importar + Activar",
+          step5: "Paso 5 · Pretest proveedor",
+        };
+
   const [activeStep, setActiveStep] = useState<WizardStep>(1);
   const [pending, setPending] = useState(false);
-  const [status, setStatus] = useState("Completá el onboarding en 5 pasos para dejar el batch READY TO SCAN.");
+  const [status, setStatus] = useState(copy.startStatus);
   const [responseText, setResponseText] = useState("{}");
 
   const [tenantSlug, setTenantSlug] = useState("demobodega");
   const [tenantName, setTenantName] = useState("Demo Bodega");
   const [bid, setBid] = useState("DEMO-2026-02");
-  const [chipModel, setChipModel] = useState("NTAG424DNA_TT");
-  const [sku, setSku] = useState("demo-secure-2026");
+  const [chipModel, setChipModel] = useState("NTAG 424 DNA TagTamper");
+  const [sku, setSku] = useState("wine-secure");
   const [quantity, setQuantity] = useState("10");
   const [notes, setNotes] = useState("Supplier-programmed batch. Do not rotate keys.");
-  const [kMeta, setKMeta] = useState("");
-  const [kFile, setKFile] = useState("");
+  const [kMeta, setKMeta] = useState("c2a462e6ab434828153d73ce440704ac");
+  const [kFile, setKFile] = useState("bfce6c576540c04c840f1cfd457bf213");
   const [uids, setUids] = useState<string[]>([]);
   const [manifestSourceType, setManifestSourceType] = useState<"txt" | "csv">("txt");
   const [batchMismatchCount, setBatchMismatchCount] = useState(0);
@@ -83,13 +131,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [supplierUrl, setSupplierUrl] = useState("");
   const [readyToScan, setReadyToScan] = useState(false);
 
-  const steps = [
-    "Step 1 · Batch identity",
-    "Step 2 · Batch keys",
-    "Step 3 · UID intake",
-    "Step 4 · Register + Import + Activate",
-    "Step 5 · Supplier pretest",
-  ];
+  const steps = [copy.step1, copy.step2, copy.step3, copy.step4, copy.step5];
 
   const progress = Math.round(((activeStep - 1) / (steps.length - 1)) * 100);
   const uidPreview = useMemo(() => uids.slice(0, 10), [uids]);
@@ -218,17 +260,19 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     }
   }
 
-  const labels = locale === "en"
-    ? { title: "Supplier Batch Onboarding Wizard", subtitle: "No CLI required. Complete the 5-step flow and validate against /sun.", source: "source: supplier.txt" }
-    : locale === "pt-BR"
-      ? { title: "Onboarding de Lote do Fornecedor", subtitle: "Sem CLI. Complete os 5 passos e valide no /sun.", source: "fonte: supplier.txt" }
-      : { title: "Supplier Batch Onboarding Wizard", subtitle: "Sin CLI. Completá los 5 pasos y validá contra /sun.", source: "source: supplier.txt" };
-
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h2 className="text-2xl font-semibold text-white">{labels.title}</h2>
-        <p className="mt-2 text-sm text-slate-300">{labels.subtitle}</p>
+        <h2 className="text-2xl font-semibold text-white">{copy.title}</h2>
+        <p className="mt-2 text-sm text-slate-300">{copy.subtitle}</p>
+        <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">{copy.quickTitle}</p>
+          <p className="mt-1 text-sm text-cyan-50">{copy.quickHint}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button disabled={pending} onClick={() => void runAll()}>{copy.quickAction}</Button>
+            <p className="text-xs text-cyan-100/90">{copy.quickFooter}</p>
+          </div>
+        </div>
         <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
           <div className="h-2 rounded-full bg-cyan-400" style={{ width: `${progress}%` }} />
         </div>
@@ -243,6 +287,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
       <Card className={`p-6 ${activeStep === 1 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 1 · Batch identity</h3>
+        <p className="mt-1 text-xs text-slate-400">ⓘ Tenant = marca/cliente dueño del lote. Para demo real usá: Demo Bodega / demobodega.</p>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_slug" value={tenantSlug} onChange={(event) => setTenantSlug(event.target.value)} />
           <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_name" value={tenantName} onChange={(event) => setTenantName(event.target.value)} />
@@ -256,9 +301,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
       <Card className={`p-6 ${activeStep === 2 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 2 · Batch keys</h3>
-        <p className="mt-1 text-xs text-slate-400">{labels.source}</p>
+        <p className="mt-1 text-xs text-slate-400">{copy.source}</p>
         <div className="mt-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Atención: este flujo es para tags supplier-programmed. No auto-genera keys.
+          Atención: este flujo es para tags supplier-programmed. K_META_BATCH y K_FILE_BATCH son obligatorias y no se autogeneran.
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_meta_hex (16 bytes / 32 hex)" value={kMeta} onChange={(event) => setKMeta(event.target.value)} />
@@ -270,6 +315,26 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       <Card className={`p-6 ${activeStep === 3 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 3 · UID intake</h3>
         <p className="mt-1 text-sm text-slate-300">Subí .txt o .csv. Se normaliza a upper-case hex automáticamente.</p>
+        <button
+          type="button"
+          className="mt-2 rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100"
+          onClick={() =>
+            setUids([
+              "0487856A0B1090",
+              "048A876A0B1090",
+              "0483846A0B1090",
+              "047F846A0B1090",
+              "047B846A0B1090",
+              "0477846A0B1090",
+              "0474856A0B1090",
+              "0470856A0B1090",
+              "0483826A0B1090",
+              "0465846A0B1090",
+            ])
+          }
+        >
+          Load Echo sample UID list (10)
+        </button>
         <div className="mt-2 flex gap-2">
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "txt" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("txt")}>TXT UID list</button>
           <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "csv" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("csv")}>CSV manifest</button>

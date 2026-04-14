@@ -105,7 +105,7 @@ function demoAdminResponse(method: string, path: string[], body: string) {
 async function forward(req: Request, path: string[]) {
   if (req.method === "POST" && path.join("/") === "sun/validate") {
     const payload = safeParseJson(await req.text());
-    const rawUrl = String(payload?.url || "");
+    const rawUrl = String(payload?.url || payload?.sampleUrl || "");
     if (!rawUrl) return NextResponse.json({ ok: false, reason: "Missing SUN URL" }, { status: 400 });
     const startedAt = Date.now();
     try {

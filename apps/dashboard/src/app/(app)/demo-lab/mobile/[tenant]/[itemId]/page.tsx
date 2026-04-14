@@ -28,6 +28,7 @@ type PackDetail = {
   chip: string;
   narrative: string;
   attributes: Array<{ label: string; value: string }>;
+  ctas: string[];
   antiFraud: string[];
 };
 
@@ -38,10 +39,14 @@ const PACK_DETAILS: Record<string, PackDetail> = {
     narrative: "Producto premium con trazabilidad completa y detección de tamper.",
     attributes: [
       { label: "Varietal", value: "Malbec" },
+      { label: "Añada", value: "2022" },
+      { label: "Alcohol", value: "13.8%" },
       { label: "Barrica", value: "18 meses roble francés" },
+      { label: "Región", value: "Valle de Uco, Mendoza" },
       { label: "Temperatura servicio", value: "16°C" },
       { label: "Ventana ideal", value: "2026-2032" },
     ],
+    ctas: ["Ver más", "Registrar botella", "Notas de cata", "Garantía / provenance"],
     antiFraud: ["TagTamper activo", "Replay detection", "Ownership claim listo"],
   },
   "events-basic": {
@@ -54,6 +59,7 @@ const PACK_DETAILS: Record<string, PackDetail> = {
       { label: "Gate", value: "A-3" },
       { label: "Latencia target", value: "< 300ms" },
     ],
+    ctas: ["Ver beneficios", "Registrar acceso", "Activar perks", "Soporte evento"],
     antiFraud: ["Más difícil de copiar que QR", "Bloqueo replay sospechoso", "Control por UID físico"],
   },
 };
@@ -67,7 +73,7 @@ async function getSummary() {
 function getCommercialState(result?: string): CommercialState {
   if (result === "VALID") {
     return {
-      label: "AUTH_OK",
+      label: "VALID",
       tone: "green",
       message: "Producto auténtico y backend consistente.",
       recommendation: "Recomendación: comprar seguro / activar ownership.",
@@ -75,7 +81,7 @@ function getCommercialState(result?: string): CommercialState {
   }
   if (result === "TAMPER") {
     return {
-      label: "TAMPER_RISK",
+      label: "TAMPER ALERT",
       tone: "amber",
       message: "Se detectó riesgo de manipulación o apertura sospechosa.",
       recommendation: "Recomendación: revisar lote, canal o packaging antes de vender.",
@@ -83,7 +89,7 @@ function getCommercialState(result?: string): CommercialState {
   }
   if (result === "REPLAY_SUSPECT") {
     return {
-      label: "DUPLICATE_RISK",
+      label: "REPLAY SUSPECT",
       tone: "red",
       message: "El patrón sugiere relectura sospechosa o potencial clon.",
       recommendation: "Recomendación: bloquear operación y verificar serial / procedencia.",
@@ -91,7 +97,7 @@ function getCommercialState(result?: string): CommercialState {
   }
   if (result === "CLAIMED") {
     return {
-      label: "OWNERSHIP_ACTIVE",
+      label: "OPENED",
       tone: "cyan",
       message: "El activo ya fue asociado a un titular o comprador.",
       recommendation: "Recomendación: continuar con loyalty, soporte o postventa.",
@@ -99,7 +105,7 @@ function getCommercialState(result?: string): CommercialState {
   }
   if (result === "REDEEMED") {
     return {
-      label: "REDEEMED",
+      label: "OPENED",
       tone: "cyan",
       message: "El token ya fue canjeado o consumido en destino.",
       recommendation: "Recomendación: ofrecer next best action o recompra.",
@@ -107,7 +113,7 @@ function getCommercialState(result?: string): CommercialState {
   }
   if (result === "CHECK_IN") {
     return {
-      label: "CHECK_IN_OK",
+      label: "VALID",
       tone: "green",
       message: "Ingreso validado correctamente en tiempo real.",
       recommendation: "Recomendación: avanzar con hospitalidad, upsell o sponsor action.",
@@ -162,7 +168,7 @@ export default function DemoMobileItemPage() {
 
   const timeline = useMemo(() => {
     const base = events.slice(0, 6).map((event) => ({
-      label: event.result || "AUTH_OK",
+      label: event.result || "VALID",
       detail: `${event.product_name || event.uid_hex || itemId} · ${event.city || "-"}, ${event.country_code || "-"}`,
       when: event.created_at || "now",
     }));
@@ -172,14 +178,16 @@ export default function DemoMobileItemPage() {
     return [
       { label: "ISSUED", detail: `${itemId} emitido en ${tenant}`, when: "seed" },
       { label: "ACTIVE", detail: "Distribución inicial", when: "seed" },
-      { label: "AUTH_OK", detail: "Esperando primer toque", when: "pending" },
+      { label: "AUTH_PENDING", detail: "Esperando primer toque", when: "pending" },
     ];
   }, [events, itemId, tenant]);
 
   return (
-    <main className="mx-auto max-w-md space-y-4 p-4">
+    <main className="mx-auto max-w-5xl space-y-4 p-4">
       <SectionHeading eyebrow="Mobile preview" title="Producto verificado" description="Vista realista de consumidor por tenant/item con refresh automático cada 5s" />
-
+      <div className="mx-auto w-full max-w-[420px] rounded-[2.3rem] border border-cyan-300/20 bg-slate-950 p-2.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)]">
+        <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
+        <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
       <Card className="sticky top-4 z-10 border border-white/10 bg-slate-950/95 p-4 backdrop-blur">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -201,7 +209,12 @@ export default function DemoMobileItemPage() {
       </Card>
 
       <Card className="p-4">
-        <div className="mb-3 h-40 rounded-xl border border-white/10 bg-[radial-gradient(circle_at_30%_25%,rgba(56,189,248,.22),transparent_45%),radial-gradient(circle_at_70%_70%,rgba(16,185,129,.2),transparent_35%),#0f172a]" />
+        <div className="relative mb-3 h-44 overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_30%_25%,rgba(56,189,248,.22),transparent_45%),radial-gradient(circle_at_70%_70%,rgba(16,185,129,.2),transparent_35%),#0f172a]">
+          <div className="absolute inset-y-6 left-1/2 w-24 -translate-x-1/2 rounded-3xl border border-amber-200/20 bg-gradient-to-b from-amber-100/20 via-amber-300/10 to-amber-700/20 shadow-[0_18px_40px_rgba(146,64,14,.35)]" />
+          <div className="absolute bottom-4 left-1/2 h-2 w-14 -translate-x-1/2 rounded-full bg-black/40 blur-sm" />
+          <div className="absolute right-3 top-3 rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">LIVE TAP</div>
+          <div className="absolute left-3 top-3 rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">SCAN PULSE</div>
+        </div>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">{itemId}</h2>
           <Badge tone={commercial.tone}>{commercial.label}</Badge>
@@ -211,8 +224,9 @@ export default function DemoMobileItemPage() {
         <p className="text-sm text-slate-300">Último evento: {latest?.city || "-"}, {latest?.country_code || "-"}</p>
         <p className="text-xs text-slate-400">UID: {uid}</p>
         <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
-          <button type="button" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">Verificar botella/pulsera</button>
-          <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Abrir passport completo</button>
+          {detail.ctas.map((cta) => (
+            <button key={cta} type="button" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">{cta}</button>
+          ))}
         </div>
       </Card>
 
@@ -284,6 +298,8 @@ export default function DemoMobileItemPage() {
           <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Tokenización opcional (NFT/asset)</button>
         </div>
       </Card>
+        </div>
+      </div>
     </main>
   );
 }

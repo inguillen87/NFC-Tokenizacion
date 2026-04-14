@@ -353,6 +353,7 @@ export function DemoLab() {
   const nfcSupport = typeof window !== "undefined" && "NDEFReader" in window;
   const hasSecureContext = typeof window !== "undefined" ? window.isSecureContext : false;
   const hasGeo = typeof navigator !== "undefined" && "geolocation" in navigator;
+  const liveNfcReady = nfcSupport && hasSecureContext;
   const latestEvent = (summary.events || [])[0];
   const activeVertical = inferVerticalFromPack(pack);
   const runbook = RUNBOOKS[activeVertical];
@@ -806,6 +807,25 @@ export function DemoLab() {
       </Card>
 
       <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
+        <h3 className="font-semibold text-white">Checklist “todo funcionando”</h3>
+        <p className="mt-2 text-xs text-slate-300">Para cerrar la demo completa necesitamos: pack activo, escenario corrido, mobile abierto y entorno listo para LIVE NFC.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <div className={`rounded-xl border p-3 text-xs ${readiness.packLoaded ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>1) Pack activo: <b>{readiness.packLoaded ? "OK" : "pendiente"}</b></div>
+          <div className={`rounded-xl border p-3 text-xs ${readiness.scenarioRun ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>2) Escenario: <b>{readiness.scenarioRun ? "OK" : "pendiente"}</b></div>
+          <div className={`rounded-xl border p-3 text-xs ${readiness.mobileOpened ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>3) Mobile: <b>{readiness.mobileOpened ? "OK" : "pendiente"}</b></div>
+          <div className={`rounded-xl border p-3 text-xs ${liveNfcReady ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-amber-300/30 bg-amber-500/10 text-amber-100"}`}>4) LIVE NFC: <b>{liveNfcReady ? "listo" : "requiere dispositivo NFC + HTTPS"}</b></div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer" onClick={() => setReadiness((state) => ({ ...state, mobileOpened: true }))}>
+            Abrir mobile ahora
+          </a>
+          <button type="button" className="rounded-lg border border-white/15 px-3 py-1 text-xs text-white" onClick={() => void navigator.clipboard?.writeText(openMobilePreviewHref)}>
+            Copiar URL mobile
+          </button>
+        </div>
+      </Card>
+
+      <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
         <h3 className="font-semibold text-white">Demo Wizard (para reuniones)</h3>
         <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-slate-300">
           <li>Paso 1: elegí un pack vertical.</li>
@@ -855,6 +875,11 @@ export function DemoLab() {
           ))}
         </div>
         <p className="mt-3 text-xs text-slate-300">Modo activo: <b>{modeLabel(mode)}</b></p>
+        {mode === "live_nfc" && !liveNfcReady ? (
+          <p className="mt-2 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            LIVE NFC requiere navegador compatible (Android + Chrome), HTTPS y permiso NFC. Si no, usá SIMULATED para demo comercial.
+          </p>
+        ) : null}
       </Card>
 
       {canShowTechnical ? (
@@ -864,7 +889,7 @@ export function DemoLab() {
           <p className="mt-1">Permiso NFC: <b>{nfcPermission}</b> · Permiso GPS: <b>{geoPermission}</b></p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100" onClick={() => void triggerScenario("valid")}>
-              Start live NFC scan (emulado)
+              Simular lectura NFC (demo)
             </button>
             <button type="button" className="rounded-lg border border-white/20 px-3 py-1 text-white" onClick={requestGeoForLive}>
               Pedir geolocalización real

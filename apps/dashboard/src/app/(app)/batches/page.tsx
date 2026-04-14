@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
-import { AdminActionForms } from "../../../components/admin-action-forms";
+import { productUrls } from "@product/config";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
-import { requireDashboardSession } from "../../../lib/session";
 import { getDashboardI18n } from "../../../lib/locale";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+const API_BASE = productUrls.api;
 
 async function getBatchRows() {
   try {
@@ -23,7 +22,7 @@ async function getBatchRows() {
 }
 
 export default async function BatchesPage() {
-  const { locale, t } = await getDashboardI18n();
+  const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const batchRows = await getBatchRows();
 
@@ -51,27 +50,34 @@ export default async function BatchesPage() {
         buyer={{ eyebrow: "Buyer / Client read", summary: "Batches demuestra que la solución no es artesanal: puede desplegarse por campañas, productos y mercados completos.", decision: "Decidís si el sistema escala desde piloto a rollout masivo sin perder control.", cta: "Mostralo cuando quieras hablar de implementación real y no solo de demo." }}
       />
       <Card className="p-5 text-sm text-slate-300">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Qué hacés acá en la práctica</h2>
-          <Link href="/batches/supplier" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">Register Supplier Batch</Link>
-        </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Crear o importar lotes nuevos para campañas, productos o partners.</div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Activar o revocar lotes según rollout, incidentes o compliance.</div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Conectar emisión con manifest, tags y perfil de producto.</div>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Elegí modo de operación</h2>
+        <p className="mt-2 text-xs text-slate-400">Separado en 2 flujos para evitar confusión: lote interno (nexID genera) vs lote supplier (proveedor ya programó).</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">Modo 1</p>
+            <p className="mt-1 text-base font-semibold text-white">Create internal batch</p>
+            <p className="mt-2 text-xs text-slate-300">Para lotes que nacen dentro de nexID. Puede autogenerar keys.</p>
+            <Link href="/batches/internal" className="mt-3 inline-block rounded-lg border border-emerald-300/35 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">Open internal flow</Link>
+          </div>
+          <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-amber-200">Modo 2</p>
+            <p className="mt-1 text-base font-semibold text-white">Register supplier batch</p>
+            <p className="mt-2 text-xs text-slate-300">Para tags programadas por proveedor. K_META_BATCH y K_FILE_BATCH obligatorias.</p>
+            <Link href="/batches/supplier" className="mt-3 inline-block rounded-lg border border-amber-300/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">Open supplier wizard</Link>
+          </div>
         </div>
       </Card>
       <DataTable title={copy.tables.batches.title} columns={[{ key: "batch", label: copy.tables.batches.batch }, { key: "type", label: copy.tables.batches.type }, { key: "status", label: copy.tables.batches.status }, { key: "quantity", label: copy.tables.batches.quantity }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
       <Card className="p-5 text-sm text-slate-300">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Flujo recomendado para tags ya codificadas por proveedor</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Flujo recomendado (supplier real)</h2>
         <ol className="mt-3 list-decimal space-y-2 pl-5">
-          <li>Crear el batch con tenant correcto, SKU, cantidad esperada y perfil de seguridad; guardar las batch keys que devuelve la API.</li>
-          <li>Importar el CSV manifest y verificar que el <code>batch_id</code> del archivo coincida exactamente con el batch creado.</li>
-          <li>Si las tags ya llegan programadas, activarlas en import o por cantidad/UID puntual para habilitar solo las unidades recibidas.</li>
-          <li>Usar planned vs imported vs active para detectar temprano diferencias del proveedor antes de escalar a 10k/50k.</li>
+          <li>Create tenant.</li>
+          <li>Register supplier batch (con keys exactas).</li>
+          <li>Import TXT/CSV manifest (10 UIDs).</li>
+          <li>Activate imported tags (un click).</li>
+          <li>Validate supplier sample URL + open mobile preview.</li>
         </ol>
       </Card>
-      <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} />
     </main>
   );
 }
