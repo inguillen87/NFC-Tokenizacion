@@ -48,8 +48,6 @@ type ActionPayload = Record<string, unknown>;
 type CopyAction = { label: string; value: string };
 
 
-const ECHO_DEMO_TEXT = ["uid_hex", ...ECHO_DEMO_UIDS].join("\n");
-
 function stringifyValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
   if (value && typeof value === "object") return JSON.stringify(value);

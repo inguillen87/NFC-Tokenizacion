@@ -45,6 +45,17 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
         </Card>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-4">
+        <Link href={`/batches?tenant=${tenant.slug}`} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-xs text-slate-200">Batches</Link>
+        <Link href={`/tags?tenant=${tenant.slug}`} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-xs text-slate-200">Tags</Link>
+        <Link href={`/events?tenant=${tenant.slug}`} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-xs text-slate-200">Events</Link>
+        <Link href={`/subscriptions?tenant=${tenant.slug}`} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-xs text-slate-200">Plan / billing</Link>
+        <Link href={`/analytics?tenant=${tenant.slug}`} className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-xs text-cyan-100">Operational health</Link>
+        <Link href={`/leads-tickets?tenant=${tenant.slug}`} className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4 text-xs text-amber-100">Leads / opportunities</Link>
+        <Link href={`/api-keys?tenant=${tenant.slug}`} className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 text-xs text-violet-100">Webhooks / keys</Link>
+        <Link href={`/demo?tenant=${tenant.slug}`} className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-xs text-emerald-100">Manifests / demo ops</Link>
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="p-5 text-sm text-slate-300">
           <h3 className="font-semibold text-white">Operational modules</h3>

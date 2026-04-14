@@ -7,6 +7,7 @@ type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consum
 type ConsumerState = "AUTH_PENDING" | "VALID" | "OPENED" | "TAMPER_RISK" | "CLAIMED" | "REPLAY_SUSPECT";
 
 type EventItem = { type: string; note: string; at: string };
+type LeadIntent = "request_demo" | "talk_sales" | "become_reseller" | "request_quote" | "tokenization_optional";
 
 type SeedItem = {
   uidHex?: string;
@@ -67,7 +68,14 @@ export function MobileDemoClient({
   const [warrantySaved, setWarrantySaved] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [leadIntent, setLeadIntent] = useState<LeadIntent>("request_demo");
+  const [leadName, setLeadName] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
+  const [leadCompany, setLeadCompany] = useState("");
+  const [leadCountry, setLeadCountry] = useState("");
+  const [leadRole, setLeadRole] = useState("");
+  const [leadMessage, setLeadMessage] = useState("");
   const [leadSaved, setLeadSaved] = useState(false);
 
   const current = STATE_COPY[consumerState];
@@ -112,13 +120,41 @@ export function MobileDemoClient({
 
   function requestTokenization() {
     setShowTokenModal(true);
+    setLeadIntent("tokenization_optional");
     pushEvent("TOKENIZATION_GATE_OPENED", "Interés en tokenización capturado (tokenization-ready).");
   }
 
-  function saveLeadInterest() {
+  function openLeadFlow(intent: LeadIntent) {
+    setLeadIntent(intent);
+    setShowLeadModal(true);
+  }
+
+  async function saveLeadInterest() {
     if (!leadEmail.trim()) return;
-    setLeadSaved(true);
-    pushEvent("TOKENIZATION_INTEREST", `Lead guardado en demo local: ${leadEmail.trim()}`);
+    const payload = {
+      name: leadName || "Demo visitor",
+      email: leadEmail.trim(),
+      company: leadCompany || "Unknown",
+      country: leadCountry || "Unknown",
+      role: leadRole || "Buyer",
+      source: "public_mobile_demo",
+      interest: leadIntent,
+      message: leadMessage || "Lead captured from mobile preview CTA",
+      vertical: pack,
+      created_at: new Date().toISOString(),
+    };
+    try {
+      await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      // keep demo resilient even if backend is unavailable
+    } finally {
+      setLeadSaved(true);
+      pushEvent("LEAD_CAPTURED", `${leadIntent} · ${leadEmail.trim()}`);
+    }
   }
 
   return (
@@ -166,6 +202,16 @@ export function MobileDemoClient({
             </div>
           </Card>
 
+          <Card className="p-4 text-xs text-slate-300">
+            <h2 className="text-sm font-semibold text-white">Commercial CTA</h2>
+            <div className="mt-2 grid gap-2 md:grid-cols-2">
+              <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-left text-cyan-100" onClick={() => openLeadFlow("request_demo")}>Request Demo</button>
+              <button type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-left text-violet-100" onClick={() => openLeadFlow("talk_sales")}>Talk to Sales</button>
+              <button type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-left text-amber-100" onClick={() => openLeadFlow("become_reseller")}>Become Reseller</button>
+              <button type="button" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-left text-emerald-100" onClick={() => openLeadFlow("request_quote")}>Request Quote</button>
+            </div>
+          </Card>
+
           {timelineOpen ? (
             <Card className="p-4 text-xs text-slate-300">
               <h3 className="text-sm font-semibold text-white">Provenance timeline</h3>
@@ -193,6 +239,28 @@ export function MobileDemoClient({
             <button type="button" className="rounded border border-white/20 px-3 py-1 text-white" onClick={() => setShowTokenModal(false)}>Cerrar</button>
           </div>
           {leadSaved ? <p className="mt-2 text-emerald-300">Lead capturado para seguimiento comercial.</p> : null}
+        </Card>
+      ) : null}
+
+      {showLeadModal ? (
+        <Card className="mx-auto max-w-[430px] border border-violet-300/25 bg-slate-950/95 p-4 text-xs text-slate-300">
+          <p className="text-sm font-semibold text-white">Lead capture · {leadIntent}</p>
+          <p className="mt-1">Este CTA crea una oportunidad real en CRM-lite (o fallback local si el backend no responde).</p>
+          <div className="mt-3 grid gap-2">
+            <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Nombre" value={leadName} onChange={(event) => setLeadName(event.target.value)} />
+            <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Email" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
+            <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Compañía" value={leadCompany} onChange={(event) => setLeadCompany(event.target.value)} />
+            <div className="grid grid-cols-2 gap-2">
+              <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="País" value={leadCountry} onChange={(event) => setLeadCountry(event.target.value)} />
+              <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Rol" value={leadRole} onChange={(event) => setLeadRole(event.target.value)} />
+            </div>
+            <textarea className="min-h-20 rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Mensaje" value={leadMessage} onChange={(event) => setLeadMessage(event.target.value)} />
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button type="button" className="rounded border border-violet-300/40 bg-violet-500/10 px-3 py-1 text-violet-100" onClick={() => void saveLeadInterest()}>Guardar lead</button>
+            <button type="button" className="rounded border border-white/20 px-3 py-1 text-white" onClick={() => setShowLeadModal(false)}>Cerrar</button>
+          </div>
+          {leadSaved ? <p className="mt-2 text-emerald-300">Lead guardado.</p> : null}
         </Card>
       ) : null}
     </main>

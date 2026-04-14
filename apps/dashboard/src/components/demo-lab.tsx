@@ -369,6 +369,8 @@ export function DemoLab() {
     ? {
         title: "CEO / Ingeniero view",
         summary: "Mostramos qué API, qué vertical, qué riesgo y qué evidencia operacional sostienen la demo.",
+        kpiFocus: "KPI: revenue expansion + risk containment",
+        commercialNext: "Próximo paso: propuesta de rollout por país + plan enterprise.",
         bullets: [
           "Qué se está simulando o resolviendo en backend.",
           "Qué pack/vertical está activo y cómo impacta el flujo.",
@@ -379,6 +381,8 @@ export function DemoLab() {
       ? {
           title: "Operator / Engineer view",
           summary: "Mostramos controles operativos, estado por lote/tag y respuesta práctica ante alertas.",
+          kpiFocus: "KPI: activación efectiva + excepción resuelta",
+          commercialNext: "Próximo paso: cerrar lote READY TO SCAN y playbook de incidentes.",
           bullets: [
             "Qué pasos ejecutar: cargar pack, importar UIDs, activar, validar URL.",
             "Qué señales de riesgo importan: tamper, replay y no activo.",
@@ -388,6 +392,8 @@ export function DemoLab() {
       : {
         title: "Client / Buyer view",
         summary: "Mostramos el valor de compra: confianza, UX simple, activación postventa y protección de marca.",
+        kpiFocus: "KPI: confianza de compra + retención postventa",
+        commercialNext: "Próximo paso: CTA ownership/garantía + demo comercial.",
         bullets: [
           "Qué gana el cliente final al escanear o tocar el producto.",
           "Qué riesgo evitamos con autenticidad, tamper y replay detection.",
@@ -730,6 +736,10 @@ export function DemoLab() {
         <div className="mt-3 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
           <p className="text-sm font-semibold text-white">{audienceCopy.title}</p>
           <p className="mt-1 text-sm text-slate-300">{audienceCopy.summary}</p>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            <p className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">{audienceCopy.kpiFocus}</p>
+            <p className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">{audienceCopy.commercialNext}</p>
+          </div>
           <ul className="mt-3 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
             {audienceCopy.bullets.map((bullet) => (
               <li key={bullet} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">{bullet}</li>
