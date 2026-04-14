@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button, Card } from "@product/ui";
 import { postAdmin } from "../lib/api";
+import { DEMO_SUPPLIER_UID_TEXT } from "../lib/demo-uids";
 
 type Role = "super-admin" | "tenant-admin" | "reseller" | "viewer";
 
@@ -46,18 +47,6 @@ type ApiSummaryItem = { label: string; value: string };
 type ActionPayload = Record<string, unknown>;
 type CopyAction = { label: string; value: string };
 
-const ECHO_DEMO_UIDS = [
-  "0487856A0B1090",
-  "048A876A0B1090",
-  "0483846A0B1090",
-  "047F846A0B1090",
-  "047B846A0B1090",
-  "0477846A0B1090",
-  "0474856A0B1090",
-  "0470856A0B1090",
-  "0483826A0B1090",
-  "0465846A0B1090",
-];
 
 const ECHO_DEMO_TEXT = ["uid_hex", ...ECHO_DEMO_UIDS].join("\n");
 
@@ -172,7 +161,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
     kMetaHex: "",
     kFileHex: "",
   });
-  const [manifest, setManifest] = useState({ batchId: "DEMO-2026-02", csv: ECHO_DEMO_TEXT, activateImported: true });
+  const [manifest, setManifest] = useState({ batchId: "DEMO-2026-02", csv: DEMO_SUPPLIER_UID_TEXT, activateImported: true });
   const [activation, setActivation] = useState({ batchId: "DEMO-2026-02", count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
   const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
@@ -388,7 +377,7 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
               onClick={() =>
                 setManifest({
                   ...manifest,
-                  csv: ["uid_hex", ...ECHO_DEMO_UIDS].join("\n"),
+                  csv: DEMO_SUPPLIER_UID_TEXT,
                 })}
             >
               Load Echo sample UID list (10)

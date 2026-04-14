@@ -4,13 +4,7 @@ import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
-
-const rows = [
-  { tenant: "Bodega Andes", slug: "bodega-andes", plan: "secure", status: "active", region: "AR" },
-  { tenant: "Cosmetica Norte", slug: "cosmetica-norte", plan: "enterprise", status: "active", region: "BR" },
-  { tenant: "Pharma Delta", slug: "pharma-delta", plan: "secure", status: "risk", region: "CL" },
-  { tenant: "Event Ops AR", slug: "event-ops-ar", plan: "basic", status: "pending", region: "AR" },
-];
+import { TENANT_DIRECTORY } from "../../../lib/tenant-directory";
 
 export default async function TenantsPage() {
   const { locale } = await getDashboardI18n();
@@ -32,15 +26,16 @@ export default async function TenantsPage() {
           <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Coordinar expansión, soporte y monetización por tenant.</div>
         </div>
       </Card>
-      <DataTable title={copy.tables.tenants.title} columns={[{ key: "tenant", label: copy.tables.tenants.tenant }, { key: "plan", label: copy.tables.tenants.plan }, { key: "status", label: copy.tables.tenants.status }, { key: "region", label: copy.tables.tenants.region }]} rows={rows.map(({ slug, ...rest }) => rest)} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
+      <DataTable title={copy.tables.tenants.title} columns={[{ key: "tenant", label: copy.tables.tenants.tenant }, { key: "plan", label: copy.tables.tenants.plan }, { key: "status", label: copy.tables.tenants.status }, { key: "region", label: copy.tables.tenants.region }]} rows={TENANT_DIRECTORY.map(({ slug, ...rest }) => rest)} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
       <Card className="p-5 text-sm text-slate-300">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Tenant actions (usar en demo comercial)</h2>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
-          {rows.map((tenant) => (
+          {TENANT_DIRECTORY.map((tenant) => (
             <div key={tenant.slug} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
               <p className="font-semibold text-white">{tenant.tenant}</p>
               <p className="mt-1 text-xs text-slate-400">{tenant.slug} · {tenant.region} · {tenant.plan}</p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                <Link href={`/tenants/${tenant.slug}`} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2.5 py-1.5 text-emerald-100">Overview</Link>
                 <Link href={`/events?tenant=${tenant.slug}`} className="rounded-lg border border-white/15 px-2.5 py-1.5 text-slate-100">Ver eventos</Link>
                 <Link href={`/analytics?tenant=${tenant.slug}`} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1.5 text-cyan-100">Ver analytics</Link>
                 <Link href={`/batches?tenant=${tenant.slug}`} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-2.5 py-1.5 text-violet-100">Ver lotes</Link>
