@@ -21,10 +21,10 @@ export default async function PublicMobileDemoItemPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ tenant: string; item: string }>;
+  params: Promise<{ tenant: string; itemId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { tenant, item } = await params;
+  const { tenant, itemId } = await params;
   const query = await searchParams;
   const pack = String(query.pack || "wine-secure");
   const modeValue = String(query.demoMode || "consumer_tap");
@@ -32,5 +32,5 @@ export default async function PublicMobileDemoItemPage({
   const locale = String(query.locale || "es-AR");
   const seedItems = await loadPackSeed(pack);
 
-  return <MobileDemoClient tenant={tenant} itemId={item} pack={pack} mode={mode} locale={locale} seedItems={seedItems as never[]} />;
+  return <MobileDemoClient tenant={tenant} itemId={itemId} pack={pack} mode={mode} locale={locale} seedItems={seedItems as never[]} />;
 }
