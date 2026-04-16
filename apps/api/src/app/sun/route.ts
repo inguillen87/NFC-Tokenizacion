@@ -31,11 +31,54 @@ function wantsHtml(req: Request, url: URL) {
   return accept.includes("text/html");
 }
 
+function buildTroubleshooting(reason: string, bid: string) {
+  const normalized = reason.toLowerCase();
+  if (normalized.includes("unknown batch")) {
+    return {
+      title: "Batch no registrado en este ambiente",
+      bullets: [
+        `El BID ${bid} no existe en la base conectada a este dominio.`,
+        "Revisá si el lote fue creado en otro entorno (demo/local vs producción).",
+        "Desde Dashboard: registrar batch → importar manifest → activar tags.",
+      ],
+    };
+  }
+  if (normalized.includes("replay")) {
+    return {
+      title: "URL copiada o reutilizada",
+      bullets: [
+        "El payload SUN ya fue usado anteriormente.",
+        "El flujo válido es tocar nuevamente el NFC (nuevo contador).",
+        "No reutilizar URLs pegadas para validar autenticidad.",
+      ],
+    };
+  }
+  if (normalized.includes("cmac") || normalized.includes("invalid")) {
+    return {
+      title: "Firma SUN inválida",
+      bullets: [
+        "Puede haber diferencia de llaves entre proveedor y backend.",
+        "Verificá K_META/K_FILE del batch y que las tags sean del mismo lote.",
+        "Usá una URL generada por tap real (no manual).",
+      ],
+    };
+  }
+  return {
+    title: "Validación no concluyente",
+    bullets: [
+      "Revisá parámetros SUN y estado de onboarding del batch.",
+      "Confirmá que el UID esté importado y activo.",
+      "Si persiste, revisar eventos y llaves del lote.",
+    ],
+  };
+}
+
 function renderSunHtml(input: { bid: string; picc_data: string; enc: string; cmac: string; result: Awaited<ReturnType<typeof processSunScan>> }) {
   const status = input.result.body.result || (input.result.body.ok ? "VALID" : "INVALID");
   const tone = input.result.body.ok ? "#22c55e" : "#f97316";
   const trust = input.result.body.ok ? "Autenticidad confirmada" : `Estado: ${status}`;
   const reason = input.result.body.reason || "Sin observaciones adicionales";
+  const troubleshooting = buildTroubleshooting(reason, input.bid);
   const uid = input.result.body.uid || "N/A";
   const ctr = typeof input.result.body.ctr === "number" ? String(input.result.body.ctr) : "N/A";
   const sensors = [
@@ -60,6 +103,8 @@ body{margin:0;background:#020617;color:#e2e8f0;font-family:Inter,system-ui,sans-
 .sensor p{display:flex;justify-content:space-between;font-size:12px}.bar{height:8px;background:#1e293b;border-radius:999px;overflow:hidden}.bar span{display:block;height:100%;background:linear-gradient(90deg,#22d3ee,#a78bfa)}
 .timeline li{margin:7px 0;font-size:13px;color:#cbd5e1}
 .foot{margin-top:12px;font-size:11px;color:#94a3b8}
+.hint{margin-top:12px;border:1px solid rgba(251,191,36,.35);border-radius:14px;padding:12px;background:rgba(251,191,36,.08)}
+.hint li{margin:6px 0;font-size:12px;color:#fef3c7}
 </style></head><body><main class="wrap">
 <section class="hero">
   <span class="chip ${input.result.body.ok ? "ok" : "warn"}">${trust}</span>
@@ -80,6 +125,12 @@ body{margin:0;background:#020617;color:#e2e8f0;font-family:Inter,system-ui,sans-
 <li>Control anti-falsificación con SUN/CMAC y serialización por UID.</li>
 <li>Estado antifraude: <b style="color:${tone}">${status}</b> · ${reason}</li>
 </ul></section>
+<section class="hint">
+  <h3 style="margin:0 0 6px;color:#fde68a">${troubleshooting.title}</h3>
+  <ul style="margin:0;padding-left:18px">
+    ${troubleshooting.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}
+  </ul>
+</section>
 <p class="foot">Raw params · picc_data=${input.picc_data.slice(0, 12)}... · enc=${input.enc.slice(0, 12)}... · cmac=${input.cmac.slice(0, 8)}...</p>
 </main></body></html>`;
 }

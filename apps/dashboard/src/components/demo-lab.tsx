@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card } from "@product/ui";
 import { productUrls } from "@product/config";
 import { DemoOpsMap } from "./demo-ops-map";
+import { QuickOnboardingPanel } from "./quick-onboarding-panel";
 
 type SummaryEvent = {
   id: number;
@@ -1089,6 +1090,8 @@ export function DemoLab() {
           </div>
         </>
       )}
+
+      <QuickOnboardingPanel context="demo-lab" />
 
       <div className={`grid gap-3 md:grid-cols-3 ${activeSection === "ops" ? "" : "hidden"}`}>
         <Card className="demo-lab-card p-4 text-slate-200">Tenant: <b>{summary.tenant?.name || "-"}</b><br />Slug: {summary.tenant?.slug || "-"}</Card>

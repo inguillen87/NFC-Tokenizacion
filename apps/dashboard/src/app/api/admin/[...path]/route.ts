@@ -177,8 +177,9 @@ async function forward(req: Request, path: string[]) {
   const target = `${API_BASE}/admin/${path.join("/")}${new URL(req.url).search}`;
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
+  const demoSession = isDemoSession(req);
 
-  if (!hasAdminKey) {
+  if (demoSession || !hasAdminKey) {
     return demoAdminResponse(req.method, path, body || "");
   }
 
@@ -193,6 +194,10 @@ async function forward(req: Request, path: string[]) {
   });
 
   if (response.status === 401) {
+    return demoAdminResponse(req.method, path, body || "");
+  }
+
+  if (!response.ok && demoSession) {
     return demoAdminResponse(req.method, path, body || "");
   }
 

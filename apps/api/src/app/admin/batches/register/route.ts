@@ -96,8 +96,7 @@ export async function POST(req: Request) {
         status = 'active',
         meta_key_ct = EXCLUDED.meta_key_ct,
         file_key_ct = EXCLUDED.file_key_ct,
-        sdm_config = EXCLUDED.sdm_config,
-        updated_at = now()
+        sdm_config = EXCLUDED.sdm_config
       RETURNING id, bid, status, created_at
     `;
 
