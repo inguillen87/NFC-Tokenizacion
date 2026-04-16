@@ -213,10 +213,6 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     6: Boolean(batchSummary),
   } as const;
 
-  const keysReady = batchMode === "internal" || (isHex32(kMeta) && isHex32(kFile));
-  const supplierUidReady = batchMode === "internal" || uids.length === 10;
-  const onboardingReady = keysReady && supplierUidReady && Boolean(tenantSlug.trim()) && Boolean(bid.trim());
-
   async function run(path: string, init?: RequestInit) {
     const response = await fetch(path, {
       cache: "no-store",
@@ -584,37 +580,6 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           <a href={`/tags?bid=${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tags</a>
           <a href={`/demo-lab?bid=${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Open demo lab</a>
           <a href={`/demo-lab/mobile/${encodeURIComponent(tenantSlug.trim() || "demobodega")}/${encodeURIComponent(firstUid)}?pack=wine-secure&bid=${encodeURIComponent(bid.trim() || "DEMO-2026-02")}&demoMode=consumer_tap`} className="rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100">Open public mobile preview</a>
-        </div>
-        {batchSummary ? (
-          <div className="mt-4 grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200 md:grid-cols-2">
-            <p>Batch: <b>{batchSummary.bid}</b></p>
-            <p>Tenant: <b>{batchSummary.tenant_slug}</b></p>
-            <p>Chip model: <b>{batchSummary.chip_model || "-"}</b></p>
-            <p>Quantity: <b>{batchSummary.requested_quantity}</b></p>
-            <p>Imported tags: <b>{batchSummary.imported_tags}</b></p>
-            <p>Active tags: <b>{batchSummary.active_tags}</b></p>
-            <p>Inactive tags: <b>{batchSummary.inactive_tags}</b></p>
-            <p>Manifest state: <b>{batchSummary.imported_tags > 0 ? "manifest imported" : "pending import"}</b></p>
-            <p>K_META loaded: <b>{batchSummary.has_meta_key ? "yes" : "no"}</b></p>
-            <p>K_FILE loaded: <b>{batchSummary.has_file_key ? "yes" : "no"}</b></p>
-            <p className="md:col-span-2">Next actions: import manifest · activate tags · revoke batch · open events · open tags · open mobile preview.</p>
-          </div>
-        ) : (
-          <p className="mt-3 text-xs text-amber-200">No batch summary loaded yet. Run Step 4 first and then refresh.</p>
-        )}
-      </Card>
-
-
-
-      <Card className={`p-6 ${activeStep === 6 ? "" : "hidden"}`}>
-        <h3 className="text-lg font-semibold text-white">Step 6 · Batch detail</h3>
-        <p className="mt-1 text-sm text-slate-300">Estado operativo del lote con acciones directas (sin terminal ni SQL).</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button disabled={pending} onClick={() => void refreshBatchSummary()}>Refresh batch summary</Button>
-          <a href={`/batches/${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open batch detail page</a>
-          <a href={`/events?bid=${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open events</a>
-          <a href={`/tags?bid=${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tags</a>
-          <a href={`/demo-lab?bid=${encodeURIComponent(bid.trim() || "DEMO-2026-02")}`} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Open demo lab</a>
         </div>
         {batchSummary ? (
           <div className="mt-4 grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200 md:grid-cols-2">
