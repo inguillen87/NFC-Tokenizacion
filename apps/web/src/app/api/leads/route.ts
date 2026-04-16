@@ -1,11 +1,9 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import { productUrls } from "@product/config";
 
-const API_BASE =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://api.nexid.lat";
+const API_BASE = productUrls.api;
 
 export async function POST(req: Request) {
   const body = await req.text();
