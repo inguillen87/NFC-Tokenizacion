@@ -165,6 +165,8 @@ export function MobileDemoClient({
   const activeVertical = detectVertical(pack, activeItem);
   const template = VERTICAL_TEMPLATES[activeVertical];
   const stateTimeline: ConsumerState[] = ["AUTH_PENDING", "VALID", "OPENED", "TAMPER_RISK", "CLAIMED", "REPLAY_SUSPECT"];
+  const firstScan = events.length ? events[events.length - 1] : null;
+  const lastScan = events.length ? events[0] : null;
 
   useEffect(() => {
     const mapped = MODE_STATE[mode] || "VALID";
@@ -347,7 +349,16 @@ export function MobileDemoClient({
           <Card className="p-4 text-xs text-slate-300">
             <h2 className="text-sm font-semibold text-white">{template.title}</h2>
             <p className="mt-1 text-[11px] text-cyan-200">{template.subtitle}</p>
-            <p className="mt-2 text-lg font-semibold text-white">{activeItem.productName || "Reserva Demo 2024"}</p>
+            <div className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-gradient-to-r from-fuchsia-500/20 via-violet-500/10 to-cyan-500/20 p-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-violet-100">Premium product view</p>
+              <div className="mt-2 flex items-end justify-between">
+                <div>
+                  <p className="text-lg font-semibold text-white">{activeItem.productName || "Reserva Demo 2024"}</p>
+                  <p className="text-[11px] text-slate-200">Ventana ideal de consumo · 2026-2030</p>
+                </div>
+                <div className="h-16 w-8 rounded-full border border-white/20 bg-white/10 shadow-[inset_0_0_22px_rgba(34,211,238,.35)]" />
+              </div>
+            </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {template.fields.map((field) => (
                 <p key={field.label}>{field.label}: <span className="text-white">{field.value(activeItem)}</span></p>
@@ -364,6 +375,12 @@ export function MobileDemoClient({
                   {state}
                 </div>
               ))}
+            </div>
+            <div className="mt-3 rounded-lg border border-white/10 bg-slate-900/70 p-2">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Trazabilidad corta</p>
+              <p className="mt-1 text-slate-300">Primer scan: <span className="text-white">{firstScan ? new Date(firstScan.at).toLocaleString() : "-"}</span></p>
+              <p className="text-slate-300">Último scan: <span className="text-white">{lastScan ? new Date(lastScan.at).toLocaleString() : "-"}</span></p>
+              <p className="text-slate-300">Último evento: <span className="text-white">{lastScan?.type || "-"}</span></p>
             </div>
           </Card>
 
