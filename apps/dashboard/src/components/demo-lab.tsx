@@ -401,6 +401,33 @@ export function DemoLab() {
         ],
       };
 
+  const audienceAction = audienceMode === "ceo"
+    ? { primary: "Run 90s board narrative", secondary: "Open investor snapshot" }
+    : audienceMode === "operator"
+      ? { primary: "Run supplier onboarding", secondary: "Open ops evidence" }
+      : { primary: "Open public mobile preview", secondary: "Trigger CTA journey" };
+
+  const roleState = audienceMode === "ceo"
+    ? {
+        map: opsReady ? "Rollout map active" : "Waiting first geo evidence",
+        feed: lastTriggeredScenario !== "none" ? `Risk/revenue event: ${lastTriggeredScenario}` : "No event yet",
+        mobile: mobilePreviewOpened ? "Consumer proof opened" : "Open mobile proof",
+        cta: "Next: enterprise rollout proposal",
+      }
+    : audienceMode === "operator"
+      ? {
+          map: opsReady ? "Ops map with evidence points" : "No geodata yet",
+          feed: lastTriggeredScenario !== "none" ? `Exception monitor: ${lastTriggeredScenario}` : "Run scenario for evidence",
+          mobile: mobilePreviewOpened ? "Field preview verified" : "Preview pending",
+          cta: "Next: leave batch READY TO SCAN",
+        }
+      : {
+          map: opsReady ? "Brand trust map visible" : "Experience pre-scan",
+          feed: lastTriggeredScenario !== "none" ? `Consumer moment: ${lastTriggeredScenario}` : "Tap pending",
+          mobile: mobilePreviewOpened ? "Premium mobile UX live" : "Open mobile journey",
+          cta: "Next: ownership / warranty / provenance",
+        };
+
   useEffect(() => {
     setLocale(detectLocale());
   }, []);
@@ -745,6 +772,36 @@ export function DemoLab() {
               <li key={bullet} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">{bullet}</li>
             ))}
           </ul>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100"
+              onClick={() => {
+                if (audienceMode === "ceo") void runMeetingStory("90s");
+                if (audienceMode === "operator") setActiveSection("simulate");
+                if (audienceMode === "buyer") setMobilePreviewOpened(true);
+              }}
+            >
+              {audienceAction.primary}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-100"
+              onClick={() => {
+                if (audienceMode === "ceo") window.location.href = "/investor-snapshot";
+                if (audienceMode === "operator") setActiveSection("ops");
+                if (audienceMode === "buyer") setActiveSection("mobile");
+              }}
+            >
+              {audienceAction.secondary}
+            </button>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-4">
+            <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">Map: {roleState.map}</div>
+            <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 p-3 text-xs text-amber-100">Live feed: {roleState.feed}</div>
+            <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-xs text-violet-100">Mobile: {roleState.mobile}</div>
+            <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">CTA: {roleState.cta}</div>
+          </div>
         </div>
         <div className="mt-4 grid gap-3 xl:grid-cols-3">
           {(Object.entries(DEMO_EXPERIENCES) as Array<[ExperiencePresetKey, typeof DEMO_EXPERIENCES[ExperiencePresetKey]]>).map(([key, preset]) => (

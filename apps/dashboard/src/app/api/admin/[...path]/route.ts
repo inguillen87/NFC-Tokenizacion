@@ -55,6 +55,17 @@ function demoAdminResponse(method: string, path: string[], body: string) {
   if (method === "GET" && normalized === "batches") {
     return NextResponse.json([DEMO_BATCH]);
   }
+  if (method === "GET" && normalized === "tenants") {
+    return NextResponse.json([{ id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString() }]);
+  }
+  if (method === "POST" && normalized === "tenants") {
+    return NextResponse.json({
+      id: "demo-tenant-001",
+      slug: String(payload?.slug || "demobodega"),
+      name: String(payload?.name || "Demo Bodega"),
+      created_at: new Date().toISOString(),
+    }, { status: 201 });
+  }
   if (method === "POST" && normalized === "batches") {
     return NextResponse.json({
       ok: true,
@@ -155,6 +166,9 @@ function demoAdminResponse(method: string, path: string[], body: string) {
       },
       { status: 201 },
     );
+  }
+  if (method === "POST" && normalized === "users") {
+    return NextResponse.json({ ok: true, userId: "demo-user-001" });
   }
   return NextResponse.json({ ok: true, demo: true, path: normalized });
 }
