@@ -7,6 +7,8 @@ import { processSunScan } from '../../lib/sun-service';
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
 const rateMap = new Map<string, { count: number; start: number }>();
+const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
+const HEX_RE = /^[0-9A-F]+$/i;
 
 function isRateLimited(ip: string | null) {
   if (!ip) return false;
@@ -117,6 +119,19 @@ export async function GET(req: Request): Promise<Response> {
 
   if (!bid || !picc_data || !enc || !cmac) {
     return json({ ok: false, reason: 'missing params', need: ['bid', 'picc_data', 'enc', 'cmac'] }, 400);
+  }
+
+  if (!BID_RE.test(bid)) {
+    return json({ ok: false, reason: 'invalid bid format' }, 400);
+  }
+  if (!HEX_RE.test(picc_data) || picc_data.length % 2 !== 0) {
+    return json({ ok: false, reason: 'invalid picc_data hex' }, 400);
+  }
+  if (!HEX_RE.test(enc) || enc.length !== 32) {
+    return json({ ok: false, reason: 'invalid enc hex (expected 32 hex chars)' }, 400);
+  }
+  if (!HEX_RE.test(cmac) || cmac.length !== 16) {
+    return json({ ok: false, reason: 'invalid cmac hex (expected 16 hex chars)' }, 400);
   }
 
   const result = await processSunScan({

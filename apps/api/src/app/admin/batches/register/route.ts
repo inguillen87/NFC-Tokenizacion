@@ -41,6 +41,17 @@ async function resolveTenant(input: string) {
   return rows[0] || null;
 }
 
+function resolveApiOrigin(req: Request) {
+  const forwardedProto = (req.headers.get('x-forwarded-proto') || '').trim();
+  const forwardedHost = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').trim();
+  if (forwardedHost) {
+    const proto = forwardedProto || (process.env.NODE_ENV === 'production' ? 'https' : 'http');
+    return `${proto}://${forwardedHost}`.replace(/\/$/, '');
+  }
+  const fallback = (process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || '').trim();
+  return fallback ? fallback.replace(/\/$/, '') : 'https://api.nexid.lat';
+}
+
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
@@ -64,6 +75,7 @@ export async function POST(req: Request) {
     const metaCt = encryptKey16(Buffer.from(kMetaHex, 'hex'));
     const fileCt = encryptKey16(Buffer.from(kFileHex, 'hex'));
 
+    const apiOrigin = resolveApiOrigin(req);
     const sdmConfig = {
       profile: firstString(body.profile, body.sku, 'supplier') || 'supplier',
       sku: firstString(body.sku, body.profile) || undefined,
@@ -72,7 +84,7 @@ export async function POST(req: Request) {
       notes: String(body.notes || '').trim() || undefined,
       source: 'supplier_wizard',
       mode,
-      url_template: `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(bid)}&picc_data=...&enc=...&cmac=...`,
+      url_template: `${apiOrigin}/sun?v=1&bid=${encodeURIComponent(bid)}&picc_data=...&enc=...&cmac=...`,
     };
 
     const rows = await sql`

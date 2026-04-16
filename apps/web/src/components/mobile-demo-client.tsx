@@ -8,6 +8,7 @@ type ConsumerState = "AUTH_PENDING" | "VALID" | "OPENED" | "TAMPER_RISK" | "CLAI
 
 type EventItem = { type: string; note: string; at: string };
 type LeadIntent = "request_demo" | "talk_sales" | "become_reseller" | "request_quote" | "tokenization_optional";
+type GeoState = { lat: number; lng: number; accuracy?: number | null; capturedAt: string };
 
 type SeedItem = {
   uidHex?: string;
@@ -42,6 +43,8 @@ const MODE_STATE: Record<DemoMode, ConsumerState> = {
   consumer_duplicate: "REPLAY_SUSPECT",
 };
 
+const WINERY_HQ = { name: "Bodega demo · Mendoza", lat: -33.0086, lng: -68.7794 };
+
 const STATE_COPY: Record<ConsumerState, { label: string; tone: "green" | "amber" | "cyan" | "red"; message: string }> = {
   AUTH_PENDING: { label: "AUTH PENDING", tone: "cyan", message: "Verificando autenticidad criptográfica y estado del lote." },
   VALID: { label: "VALID", tone: "green", message: "Producto auténtico. Escaneo válido y trazabilidad activa." },
@@ -57,6 +60,15 @@ function nowIso() {
 
 function storeKey(tenant: string, itemId: string, pack: string) {
   return `nexid:mobile:${tenant}:${itemId}:${pack}`;
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function detectVertical(pack: string, item: SeedItem): VerticalTemplate["key"] {
@@ -157,6 +169,8 @@ export function MobileDemoClient({
   const [ctaStatus, setCtaStatus] = useState("");
   const [ctaPending, setCtaPending] = useState(false);
   const [scanProgress, setScanProgress] = useState(5);
+  const [geoState, setGeoState] = useState<GeoState | null>(null);
+  const [geoError, setGeoError] = useState("");
   const demoSessionId = useMemo(() => `${tenant}:${itemId}:${pack}`, [itemId, pack, tenant]);
 
   const current = STATE_COPY[consumerState];
@@ -167,6 +181,23 @@ export function MobileDemoClient({
   const stateTimeline: ConsumerState[] = ["AUTH_PENDING", "VALID", "OPENED", "TAMPER_RISK", "CLAIMED", "REPLAY_SUSPECT"];
   const firstScan = events.length ? events[events.length - 1] : null;
   const lastScan = events.length ? events[0] : null;
+  const trustIndex = useMemo(() => {
+    if (consumerState === "VALID") return 96;
+    if (consumerState === "CLAIMED") return 92;
+    if (consumerState === "OPENED") return 78;
+    if (consumerState === "TAMPER_RISK") return 52;
+    if (consumerState === "REPLAY_SUSPECT") return 34;
+    return 64;
+  }, [consumerState]);
+  const investorSignals = useMemo(() => ([
+    { label: "Scan-to-CTA", value: `${Math.max(18, Math.min(67, 22 + events.length * 4))}%`, tone: "text-cyan-100" },
+    { label: "Fraud shield", value: consumerState === "REPLAY_SUSPECT" ? "Replay blocked" : "Active", tone: consumerState === "REPLAY_SUSPECT" ? "text-amber-200" : "text-emerald-200" },
+    { label: "Lead quality", value: leadSaved ? "Qualified" : "Pending", tone: leadSaved ? "text-emerald-200" : "text-slate-300" },
+  ]), [consumerState, events.length, leadSaved]);
+  const distanceFromWinery = useMemo(() => {
+    if (!geoState) return null;
+    return haversineKm(WINERY_HQ.lat, WINERY_HQ.lng, geoState.lat, geoState.lng);
+  }, [geoState]);
 
   useEffect(() => {
     const mapped = MODE_STATE[mode] || "VALID";
@@ -197,6 +228,25 @@ export function MobileDemoClient({
     }
   }, [tenant, itemId, pack]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGeoError("");
+        setGeoState({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          capturedAt: nowIso(),
+        });
+      },
+      (error) => {
+        setGeoError(error.message || "geolocation unavailable");
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
+    );
+  }, []);
+
   function pushEvent(type: string, note: string) {
     const next = [{ type, note, at: nowIso() }, ...events].slice(0, 12);
     setEvents(next);
@@ -213,7 +263,23 @@ export function MobileDemoClient({
     const response = await fetch(`/api/public-cta/${action}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bid: effectiveBid, uid, tenant, itemId, pack }),
+      body: JSON.stringify({
+        bid: effectiveBid,
+        uid,
+        tenant,
+        itemId,
+        pack,
+        geo: geoState
+          ? {
+              lat: geoState.lat,
+              lng: geoState.lng,
+              accuracy: geoState.accuracy ?? null,
+              captured_at: geoState.capturedAt,
+              winery_origin: WINERY_HQ,
+              distance_km: distanceFromWinery ? Number(distanceFromWinery.toFixed(2)) : null,
+            }
+          : null,
+      }),
     });
     const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
     if (!response.ok || data?.ok === false) {
@@ -292,7 +358,7 @@ export function MobileDemoClient({
       source: "public_mobile_demo",
       interest: leadIntent,
       message: `${leadMessage || "Lead captured from mobile preview CTA"} [tenant=${tenant}] [session=${demoSessionId}] [pack=${pack}] [interest=${leadIntent}]`,
-      notes: `tenant=${tenant} | item=${itemId} | session=${demoSessionId} | bid=${effectiveBid || "missing"} | mode=${effectiveBid.startsWith("DEMO-") ? "demo" : effectiveBid ? "production" : "missing-bid"}`,
+      notes: `tenant=${tenant} | item=${itemId} | session=${demoSessionId} | bid=${effectiveBid || "missing"} | mode=${effectiveBid.startsWith("DEMO-") ? "demo" : effectiveBid ? "production" : "missing-bid"} | geo=${geoState ? `${geoState.lat.toFixed(5)},${geoState.lng.toFixed(5)}` : "na"} | distance_km=${distanceFromWinery ? distanceFromWinery.toFixed(1) : "na"}`,
       vertical: pack,
       created_at: new Date().toISOString(),
     };
@@ -319,7 +385,7 @@ export function MobileDemoClient({
   }
 
   return (
-    <main className="mx-auto max-w-5xl space-y-4 p-4">
+    <main className="mx-auto max-w-5xl space-y-4 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.10),transparent_38%)] p-4">
       <div className="mx-auto w-full max-w-[430px] rounded-[2.3rem] border border-cyan-300/20 bg-slate-950 p-2.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)]">
         <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
         <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
@@ -344,6 +410,24 @@ export function MobileDemoClient({
               </div>
               <p className="mt-1 text-[11px] text-slate-300">Cryptographic handshake {scanProgress}%</p>
             </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {investorSignals.map((signal) => (
+                <div key={signal.label} className="rounded-lg border border-white/10 bg-slate-900/70 p-2">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">{signal.label}</p>
+                  <p className={`mt-1 text-xs font-semibold ${signal.tone}`}>{signal.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 rounded-lg border border-white/10 bg-slate-900/70 p-2">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Geo trace capture</p>
+              {geoState ? (
+                <p className="mt-1 text-[11px] text-cyan-100">
+                  📍 {geoState.lat.toFixed(5)}, {geoState.lng.toFixed(5)} · ±{Math.round(geoState.accuracy || 0)}m
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] text-slate-300">{geoError || "Esperando permiso de ubicación del dispositivo..."}</p>
+              )}
+            </div>
           </Card>
 
           <Card className="p-4 text-xs text-slate-300">
@@ -365,6 +449,16 @@ export function MobileDemoClient({
               ))}
             </div>
             <p className="mt-2 text-slate-400">SKU {activeItem.sku || "wine-secure"} · UID {(activeItem.uidHex || activeItem.uid_hex || "-")}</p>
+            <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-cyan-100">Trust index</p>
+                <p className="text-sm font-semibold text-white">{trustIndex}/100</p>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-900/70">
+                <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-violet-400 to-emerald-300 transition-all" style={{ width: `${trustIndex}%` }} />
+              </div>
+              <p className="mt-1 text-[11px] text-cyan-100/90">Listo para demo comercial de alto impacto (marca + seguridad + conversión).</p>
+            </div>
           </Card>
 
           <Card className="p-4 text-xs text-slate-300">
@@ -382,14 +476,37 @@ export function MobileDemoClient({
               <p className="text-slate-300">Último scan: <span className="text-white">{lastScan ? new Date(lastScan.at).toLocaleString() : "-"}</span></p>
               <p className="text-slate-300">Último evento: <span className="text-white">{lastScan?.type || "-"}</span></p>
             </div>
+            <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-emerald-100">Origin route map</p>
+                <p className="text-[11px] text-emerald-100">{distanceFromWinery ? `${distanceFromWinery.toFixed(1)} km` : "N/A"}</p>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-200">{WINERY_HQ.name} → {geoState ? "Punto de lectura" : "Ubicación pendiente"}</p>
+              <div className="mt-2 rounded-lg border border-white/10 bg-slate-950/70 p-2">
+                <div className="h-16 rounded bg-[linear-gradient(130deg,rgba(16,185,129,.20),rgba(14,165,233,.18),rgba(99,102,241,.12))] p-2">
+                  <div className="flex h-full items-center justify-between">
+                    <div className="rounded-full border border-emerald-300/40 bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-100">🏭 Origen</div>
+                    <div className="h-[2px] flex-1 bg-gradient-to-r from-emerald-300/50 to-cyan-300/50" />
+                    <div className={`rounded-full border px-2 py-0.5 text-[10px] ${consumerState === "REPLAY_SUSPECT" ? "border-amber-300/40 bg-amber-500/20 text-amber-100" : "border-cyan-300/40 bg-cyan-500/20 text-cyan-100"}`}>
+                      {consumerState === "REPLAY_SUSPECT" ? "⚠️ Copia detectada" : "📱 Lectura"}
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-1 text-[10px] text-slate-300">
+                  {consumerState === "REPLAY_SUSPECT"
+                    ? "Este payload fue reutilizado fuera del flujo NFC original."
+                    : "Ruta comercial trazada para storytelling de distribución y anti-fraude."}
+                </p>
+              </div>
+            </div>
           </Card>
 
           <Card className="p-4 text-xs text-slate-300">
             <h2 className="text-sm font-semibold text-white">Ownership · Warranty · Provenance</h2>
             <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-left text-cyan-100" onClick={() => void activateOwnership()}>Activar ownership</button>
-              <button type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-left text-violet-100" onClick={() => void saveWarranty()}>Registrar garantía</button>
-              <button type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-left text-amber-100" onClick={() => void (async () => {
+              <button type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.08)]" onClick={() => void activateOwnership()}>✅ Activar ownership</button>
+              <button type="button" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100 shadow-[0_0_0_1px_rgba(167,139,250,.10)]" onClick={() => void saveWarranty()}>🛡️ Registrar garantía</button>
+              <button type="button" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,.10)]" onClick={() => void (async () => {
                 try {
                   const data = await fetchProvenance();
                   const total = Array.isArray((data as { actions?: unknown[] }).actions) ? (data as { actions: unknown[] }).actions.length : 0;
@@ -401,8 +518,8 @@ export function MobileDemoClient({
                   pushEvent("PROVENANCE_VIEWED_LOCAL", `Fallback local: ${reason}`);
                 }
                 setTimelineOpen((value) => !value);
-              })()}>Ver provenance</button>
-              <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-left text-white" onClick={requestTokenization}>Tokenización opcional</button>
+              })()}>📜 Ver provenance</button>
+              <button type="button" className="rounded-xl border border-white/20 bg-white/5 px-3 py-2.5 text-left text-white" onClick={requestTokenization}>✨ Tokenización opcional</button>
             </div>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900 p-2">
               <input value={warrantyName} onChange={(event) => setWarrantyName(event.target.value)} placeholder="Nombre para garantía" className="w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
@@ -416,10 +533,10 @@ export function MobileDemoClient({
           <Card className="p-4 text-xs text-slate-300">
             <h2 className="text-sm font-semibold text-white">Commercial CTA</h2>
             <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-left text-cyan-100" onClick={() => openLeadFlow("request_demo")}>Request Demo</button>
-              <button type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-left text-violet-100" onClick={() => openLeadFlow("talk_sales")}>Talk to Sales</button>
-              <button type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-left text-amber-100" onClick={() => openLeadFlow("become_reseller")}>Become Reseller</button>
-              <button type="button" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-left text-emerald-100" onClick={() => openLeadFlow("request_quote")}>Request Quote</button>
+              <button type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100" onClick={() => openLeadFlow("request_demo")}>🚀 Request Demo</button>
+              <button type="button" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100" onClick={() => openLeadFlow("talk_sales")}>💼 Talk to Sales</button>
+              <button type="button" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100" onClick={() => openLeadFlow("become_reseller")}>🤝 Become Reseller</button>
+              <button type="button" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2.5 text-left text-emerald-100" onClick={() => openLeadFlow("request_quote")}>📈 Request Quote</button>
             </div>
           </Card>
 
@@ -438,6 +555,10 @@ export function MobileDemoClient({
             </Card>
           ) : null}
         </div>
+      </div>
+      <div className="mx-auto w-full max-w-[430px] rounded-2xl border border-violet-300/20 bg-[linear-gradient(110deg,rgba(124,58,237,.16),rgba(14,165,233,.12))] p-3 text-xs text-slate-100">
+        <p className="font-semibold">Investor spotlight</p>
+        <p className="mt-1 text-slate-200">Esta demo móvil combina anti-fraude, trazabilidad y conversión comercial en una sola experiencia premium.</p>
       </div>
 
       {showTokenModal ? (

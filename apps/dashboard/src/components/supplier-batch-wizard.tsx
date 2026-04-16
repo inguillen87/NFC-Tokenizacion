@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ChangeEvent } from "react";
 import { Button, Card } from "@product/ui";
+import { productUrls } from "@product/config";
 import { DEMO_SUPPLIER_BATCH_ID, DEMO_SUPPLIER_UIDS } from "../lib/demo-uids";
 
 type AppLocale = "es-AR" | "pt-BR" | "en";
@@ -197,7 +198,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   const progress = Math.round(((activeStep - 1) / (steps.length - 1)) * 100);
   const uidPreview = useMemo(() => uids.slice(0, 10), [uids]);
-  const expectedNdefTemplate = useMemo(() => `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(bid || "DEMO-2026-02")}&picc_data=...&enc=...&cmac=...`, [bid]);
+  const expectedNdefTemplate = useMemo(() => `${productUrls.api}/sun?v=1&bid=${encodeURIComponent(bid || "DEMO-2026-02")}&picc_data=...&enc=...&cmac=...`, [bid]);
   const firstUid = uidPreview[0] || "demo-item-001";
 
   const keysReady = batchMode === "internal" || (isHex32(kMeta) && isHex32(kFile));
