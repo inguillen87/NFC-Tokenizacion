@@ -81,8 +81,10 @@ export default async function AnalyticsPage() {
   const session = await requireDashboardSession();
   const tenantScope = inferTenantScope(session);
   const isTenantAdmin = session.role === "tenant-admin";
-  const copy = dashboardContent[locale];
-  const kpis = i18n?.t?.dashboard?.kpis || FALLBACK_KPIS;
+  const fallbackLocale = "es-AR" as const;
+  const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
+  const translatedKpis = i18n && typeof i18n === "object" && "t" in i18n ? i18n.t?.dashboard?.kpis : null;
+  const kpis = translatedKpis || FALLBACK_KPIS;
   const analyticsData = await getAnalytics(tenantScope);
 
   return (

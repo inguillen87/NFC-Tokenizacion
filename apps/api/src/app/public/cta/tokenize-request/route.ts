@@ -3,6 +3,12 @@ import { recordDemoCta } from "../../../../lib/demo-cta";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { sql } from "../../../../lib/db";
 
+const LEDGER_NETWORK_ALLOWED = new Set(["polygon-amoy", "polygon", "ethereum-sepolia", "ethereum-mainnet", "base-sepolia", "base-mainnet"]);
+
+function sanitizeText(value: unknown, max = 120) {
+  return String(value || "").trim().slice(0, max);
+}
+
 export async function POST(req: Request) {
   const traceId = req.headers.get("x-nexid-trace-id") || `api_cta_${Date.now().toString(36)}`;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -13,14 +19,16 @@ export async function POST(req: Request) {
   const auth = requireShareToken(req, bid, uid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
 
+  const requestedNetworkRaw = sanitizeText(body.ledger_network || "polygon-amoy", 40).toLowerCase();
+  const ledgerNetwork = LEDGER_NETWORK_ALLOWED.has(requestedNetworkRaw) ? requestedNetworkRaw : "polygon-amoy";
   const ledger = {
-    ledger_status: String(body.ledger_status || "simulated"),
-    ledger_network: String(body.ledger_network || "polygon-amoy"),
-    ledger_ref: String(body.ledger_ref || "") || null,
-    asset_ref: String(body.asset_ref || `${bid}:${uid}`),
-    anchor_hash: String(body.anchor_hash || "") || null,
-    issuer_wallet: String(body.issuer_wallet || "") || null,
-    last_anchor_at: String(body.last_anchor_at || "") || null,
+    ledger_status: sanitizeText(body.ledger_status || "simulated", 32),
+    ledger_network: ledgerNetwork,
+    ledger_ref: sanitizeText(body.ledger_ref, 160) || null,
+    asset_ref: sanitizeText(body.asset_ref || `${bid}:${uid}`, 180),
+    anchor_hash: sanitizeText(body.anchor_hash, 180) || null,
+    issuer_wallet: sanitizeText(body.issuer_wallet, 180) || null,
+    last_anchor_at: sanitizeText(body.last_anchor_at, 80) || null,
   };
 
   const batchRows = await sql/*sql*/`
@@ -30,6 +38,29 @@ export async function POST(req: Request) {
     LIMIT 1
   `;
   const batch = batchRows[0];
+
+  const existingRows = await sql/*sql*/`
+    SELECT id, status, requested_at, network, asset_ref, issuer_wallet, anchor_hash
+    FROM tokenization_requests
+    WHERE bid = ${bid}
+      AND uid_hex = ${uid}
+      AND status = 'pending'
+    ORDER BY requested_at DESC
+    LIMIT 1
+  `;
+  const existingPending = existingRows[0];
+  if (existingPending) {
+    return json({
+      ok: true,
+      action: "tokenize_request",
+      deduplicated: true,
+      reason: "existing pending request reused",
+      tokenization_request: existingPending,
+      trace_id: traceId,
+      share_token_status: auth.share_token_status,
+    });
+  }
+
   const reqRows = await sql/*sql*/`
     INSERT INTO tokenization_requests (
       tenant_id, batch_id, bid, uid_hex, status, network, asset_ref, issuer_wallet, anchor_hash, requested_by, next_attempt_at, meta
