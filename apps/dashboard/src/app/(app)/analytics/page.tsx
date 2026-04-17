@@ -77,33 +77,44 @@ async function getAnalytics(tenantScope = "") {
 }
 
 export default async function AnalyticsPage() {
-  const { locale } = await getDashboardI18n();
-  const session = await requireDashboardSession();
-  const tenantScope = inferTenantScope(session);
-  const isTenantAdmin = session.role === "tenant-admin";
-  const fallbackLocale = "es-AR" as const;
-  const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
-  const analyticsPageCopy = copy.pages?.analytics || dashboardContent[fallbackLocale].pages.analytics;
-  const analyticsNavLabel = copy.nav?.analytics || dashboardContent[fallbackLocale].nav.analytics;
-  const translatedKpis = messages[locale]?.dashboard?.kpis || null;
-  const kpis = translatedKpis || FALLBACK_KPIS;
-  const analyticsData = await getAnalytics(tenantScope);
+  try {
+    const { locale } = await getDashboardI18n();
+    const session = await requireDashboardSession();
+    const tenantScope = inferTenantScope(session);
+    const isTenantAdmin = session.role === "tenant-admin";
+    const fallbackLocale = "es-AR" as const;
+    const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
+    const analyticsPageCopy = copy.pages?.analytics || dashboardContent[fallbackLocale].pages.analytics;
+    const analyticsNavLabel = copy.nav?.analytics || dashboardContent[fallbackLocale].nav.analytics;
+    const translatedKpis = messages[locale]?.dashboard?.kpis || null;
+    const kpis = translatedKpis || FALLBACK_KPIS;
+    const analyticsData = await getAnalytics(tenantScope);
 
-  return (
-    <main className="space-y-8">
-      <SectionHeading eyebrow={analyticsNavLabel} title={analyticsPageCopy.title} description={analyticsPageCopy.description} />
-      <ModuleAudienceHero
-        ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Analytics ejecutivo del tenant: adopción, riesgo y operación real de tu cuenta." : "Analytics prueba adopción, fraude evitado y expansión del negocio con evidencia real.", decision: isTenantAdmin ? "Decidís dónde reforzar operación del tenant y cómo evolucionan scans/riesgo en tu mercado." : "Decidís dónde acelerar inversión comercial, qué vertical está traccionando y cómo evoluciona el riesgo.", cta: "Usalo para mostrar crecimiento, legitimidad operativa y retorno de una demo exitosa." }}
-        operator={{ eyebrow: "Operator / Engineer read", summary: "Analytics es el tablero de observabilidad para ver scans, duplicados, tamper y comportamiento por región.", decision: "Decidís dónde ajustar reglas, revisar anomalías y priorizar respuesta operativa.", cta: isTenantAdmin ? "Scope operativo: solo eventos y métricas de tu tenant." : "Leelo junto a Events y API Keys para conectar operación + integraciones." }}
-        buyer={{ eyebrow: "Buyer / Client read", summary: "Analytics demuestra que la solución no es humo: se usa, detecta riesgo y genera interacción real.", decision: "Decidís si esto mejora confianza de marca, postventa y trazabilidad para tus clientes.", cta: "Mostralo después de Demo Lab para cerrar con prueba cuantitativa." }}
-      />
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
-        Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
-      </div>
-      <div>
-        <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData || undefined} mapMode={isTenantAdmin ? "tenant" : "global"} />
-      </div>
-    </main>
-  );
+    return (
+      <main className="space-y-8">
+        <SectionHeading eyebrow={analyticsNavLabel} title={analyticsPageCopy.title} description={analyticsPageCopy.description} />
+        <ModuleAudienceHero
+          ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Analytics ejecutivo del tenant: adopción, riesgo y operación real de tu cuenta." : "Analytics prueba adopción, fraude evitado y expansión del negocio con evidencia real.", decision: isTenantAdmin ? "Decidís dónde reforzar operación del tenant y cómo evolucionan scans/riesgo en tu mercado." : "Decidís dónde acelerar inversión comercial, qué vertical está traccionando y cómo evoluciona el riesgo.", cta: "Usalo para mostrar crecimiento, legitimidad operativa y retorno de una demo exitosa." }}
+          operator={{ eyebrow: "Operator / Engineer read", summary: "Analytics es el tablero de observabilidad para ver scans, duplicados, tamper y comportamiento por región.", decision: "Decidís dónde ajustar reglas, revisar anomalías y priorizar respuesta operativa.", cta: isTenantAdmin ? "Scope operativo: solo eventos y métricas de tu tenant." : "Leelo junto a Events y API Keys para conectar operación + integraciones." }}
+          buyer={{ eyebrow: "Buyer / Client read", summary: "Analytics demuestra que la solución no es humo: se usa, detecta riesgo y genera interacción real.", decision: "Decidís si esto mejora confianza de marca, postventa y trazabilidad para tus clientes.", cta: "Mostralo después de Demo Lab para cerrar con prueba cuantitativa." }}
+        />
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
+          Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
+        </div>
+        <div>
+          <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData || undefined} mapMode={isTenantAdmin ? "tenant" : "global"} />
+        </div>
+      </main>
+    );
+  } catch {
+    const fallbackLocale = "es-AR" as const;
+    const copy = dashboardContent[fallbackLocale];
+    return (
+      <main className="space-y-8">
+        <SectionHeading eyebrow={copy.nav.analytics} title={copy.pages.analytics.title} description={copy.pages.analytics.description} />
+        <AnalyticsPanels kpis={FALLBACK_KPIS} extra={copy.analytics} />
+      </main>
+    );
+  }
 }
         <AnalyticsPanels kpis={t.dashboard.kpis} extra={copy.analytics} data={analyticsData || undefined} mapMode={isTenantAdmin ? "tenant" : "global"} />
