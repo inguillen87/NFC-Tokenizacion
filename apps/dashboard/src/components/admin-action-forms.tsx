@@ -105,6 +105,14 @@ function buildCopyActions(data: ActionPayload | null): CopyAction[] {
   return actions.filter((item) => item.value);
 }
 
+function safeParseJson(text: string) {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
 function parseManifestPreview(input: string) {
   const text = String(input || "").trim();
   if (!text) return { format: "empty", rows: 0, unique: 0, duplicates: 0, sample: [] as string[], batchIds: [] as string[] };
@@ -142,8 +150,8 @@ function parseManifestPreview(input: string) {
   };
 }
 
-export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsProps) {
-  const [role, setRole] = useState<Role>("super-admin");
+export function AdminActionForms({ copy, roles, readyLabel, currentRole }: AdminActionFormsProps) {
+  const [role] = useState<Role>(currentRole || "super-admin");
   const [status, setStatus] = useState<string>(readyLabel);
   const [summary, setSummary] = useState<ApiSummaryItem[]>([]);
   const [lastResponse, setLastResponse] = useState<ActionPayload | null>(null);
@@ -163,6 +171,14 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
   const [activation, setActivation] = useState({ batchId: "DEMO-2026-02", count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
   const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
+  const [pilot, setPilot] = useState({
+    tenantName: "Bodega Andes Pilot",
+    tenantSlug: "bodega-andes-pilot",
+    batchId: "WINE-2026-PILOT-10",
+    userEmail: "ops@bodega-andes.com",
+    userPassword: "Nexid!2026",
+    userName: "Ops Bodega Andes",
+  });
 
   const canEdit = role !== "viewer";
   const roleMessage = useMemo(() => copy.roleHint[role], [copy.roleHint, role]);
@@ -221,6 +237,72 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
       setLastResponse(null);
       setSummary([]);
       setStatus(error instanceof Error ? error.message : "Request failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function provisionWinePilot() {
+    if (!canEdit) return;
+    setPending(true);
+    setSummary([]);
+    setLastResponse(null);
+    setStatus("Provisioning wine pilot: tenant → batch → 10 tags → user...");
+    try {
+      const tenantsRes = await fetch("/api/admin/tenants", { cache: "no-store" });
+      const tenantsRaw = await tenantsRes.text();
+      const tenantsData = safeParseJson(tenantsRaw);
+      const existingTenant = Array.isArray(tenantsData)
+        ? tenantsData.find((item) => String((item as ActionPayload).slug || "").toLowerCase() === pilot.tenantSlug.toLowerCase())
+        : null;
+
+      const tenant = existingTenant
+        ? existingTenant
+        : await postAdmin<unknown>("/admin/tenants", { slug: pilot.tenantSlug, name: pilot.tenantName });
+
+      const register = await postAdmin<unknown>("/admin/batches/register", {
+        mode: "supplier",
+        tenant_slug: pilot.tenantSlug,
+        bid: pilot.batchId,
+        chip_model: "NTAG 424 DNA TT",
+        quantity: 10,
+        profile: "wine-secure",
+      });
+
+      const imported = await postAdmin<unknown>(`/admin/batches/${pilot.batchId}/import-manifest`, {
+        csv: DEMO_SUPPLIER_UID_TEXT,
+        activateImported: true,
+      });
+
+      const activated = await postAdmin<unknown>(`/admin/batches/${pilot.batchId}/activate-all`, { limit: 10 });
+
+      const userResponse = await fetch("/api/iam/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: pilot.userEmail,
+          fullName: pilot.userName,
+          password: pilot.userPassword,
+          role: "tenant-admin",
+          tenantSlug: pilot.tenantSlug,
+          permissions: ["batches:write", "events:read", "analytics:read", "users:manage"],
+        }),
+      });
+      const userText = await userResponse.text();
+      const user = safeParseJson(userText);
+      if (!userResponse.ok) throw new Error(`User provisioning failed: ${userText}`);
+
+      const finalPayload = { tenant, register, imported, activated, user };
+      setLastResponse(finalPayload as ActionPayload);
+      setSummary(buildSummary(finalPayload));
+      setStatus("Wine pilot provisioned successfully (tenant + batch + tags + tenant-admin).");
+      setBatch((current) => ({ ...current, tenantId: pilot.tenantSlug, batchId: pilot.batchId, quantity: "10" }));
+      setManifest((current) => ({ ...current, batchId: pilot.batchId, csv: DEMO_SUPPLIER_UID_TEXT, activateImported: true }));
+      setActivation((current) => ({ ...current, batchId: pilot.batchId, count: "10" }));
+    } catch (error) {
+      setLastResponse(null);
+      setSummary([]);
+      setStatus(error instanceof Error ? error.message : "Provisioning flow failed");
     } finally {
       setPending(false);
     }
@@ -297,6 +379,26 @@ export function AdminActionForms({ copy, roles, readyLabel }: AdminActionFormsPr
         <p className="mt-1 text-xs text-slate-400">Run end-to-end without CLI: register batch, import manifest, activate tags and validate sample URL.</p>
         <Button className="mt-3" disabled={pending || !canEdit || !batch.batchId || !manifest.batchId} onClick={() => void runSupplierFlow()}>
           Run full supplier flow
+        </Button>
+      </Card>
+
+      <Card className="p-5">
+        <h3 className="text-base font-semibold text-white">Wine pilot launcher (10 physical tags)</h3>
+        <p className="mt-1 text-xs text-slate-400">One-click enterprise setup from Super Admin: create tenant, register batch, import/activate 10 tags and create tenant-admin credentials.</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant name" value={pilot.tenantName} onChange={(event) => setPilot((current) => ({ ...current, tenantName: event.target.value }))} />
+          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant slug" value={pilot.tenantSlug} onChange={(event) => setPilot((current) => ({ ...current, tenantSlug: event.target.value }))} />
+          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="batch id" value={pilot.batchId} onChange={(event) => setPilot((current) => ({ ...current, batchId: event.target.value }))} />
+          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="ops user name" value={pilot.userName} onChange={(event) => setPilot((current) => ({ ...current, userName: event.target.value }))} />
+          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="ops email" value={pilot.userEmail} onChange={(event) => setPilot((current) => ({ ...current, userEmail: event.target.value }))} />
+          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="temporary password (8+)" value={pilot.userPassword} onChange={(event) => setPilot((current) => ({ ...current, userPassword: event.target.value }))} />
+        </div>
+        <Button
+          className="mt-3"
+          disabled={pending || !canEdit || !pilot.tenantSlug || !pilot.batchId || !pilot.userEmail || pilot.userPassword.length < 8}
+          onClick={() => void provisionWinePilot()}
+        >
+          Provision wine pilot (10 tags + tenant admin)
         </Button>
       </Card>
 

@@ -50,11 +50,21 @@ export async function POST(req: Request) {
   const root = randomBytes(16);
   const rootKeyCt = encryptKey16(root);
 
-  const rows = await sql/*sql*/`
-    INSERT INTO tenants (slug, name, root_key_ct)
-    VALUES (${slug}, ${name}, ${rootKeyCt})
-    RETURNING id, slug, name, created_at
-  `;
-
-  return json(rows[0], 201);
+  try {
+    const rows = await sql/*sql*/`
+      INSERT INTO tenants (slug, name, root_key_ct)
+      VALUES (${slug}, ${name}, ${rootKeyCt})
+      RETURNING id, slug, name, created_at
+    `;
+    return json(rows[0], 201);
+  } catch {
+    const existing = await sql/*sql*/`
+      SELECT id, slug, name, created_at
+      FROM tenants
+      WHERE slug = ${slug}
+      LIMIT 1
+    `;
+    if (existing[0]) return json(existing[0], 200);
+    return json({ ok: false, reason: "tenant create failed" }, 500);
+  }
 }
