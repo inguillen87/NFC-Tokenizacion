@@ -21,6 +21,16 @@ type AnalyticsPayload = {
   trend: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
   batchStatus: Array<{ name: string; value: number }>;
   geoPoints: Array<{ city: string; country: string; scans: number; risk: number; lat: number; lng: number }>;
+  deviceSignals: Array<{ device: string; scans: number; countries: number; validRate: number; risk: number }>;
+  tagJourney: Array<{
+    uid: string;
+    taps: number;
+    firstSeenAt: string | null;
+    lastSeenAt: string | null;
+    origin: { city: string; country: string; lat: number | null; lng: number | null };
+    current: { city: string; country: string; lat: number | null; lng: number | null };
+    lastDevice: string;
+  }>;
 };
 const FALLBACK_KPIS = {
   scans: "Scans",
@@ -75,6 +85,21 @@ async function getAnalytics(tenantScope = ""): Promise<AnalyticsPayload | null> 
       geoPoints: [
         { city: "Mendoza", country: "AR", scans: 220, risk: 0, lat: -32.8895, lng: -68.8458 },
         { city: "Buenos Aires", country: "AR", scans: 180, risk: 1, lat: -34.6037, lng: -58.3816 },
+      ],
+      deviceSignals: [
+        { device: "iPhone Safari", scans: 220, countries: 3, validRate: 98.1, risk: 4 },
+        { device: "Android Chrome", scans: 180, countries: 4, validRate: 96.7, risk: 8 },
+      ],
+      tagJourney: [
+        {
+          uid: "04A1B2C3D4E5F6",
+          taps: 9,
+          firstSeenAt: new Date().toISOString(),
+          lastSeenAt: new Date().toISOString(),
+          origin: { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458 },
+          current: { city: "São Paulo", country: "BR", lat: -23.5505, lng: -46.6333 },
+          lastDevice: "iPhone Safari",
+        },
       ],
     };
   }

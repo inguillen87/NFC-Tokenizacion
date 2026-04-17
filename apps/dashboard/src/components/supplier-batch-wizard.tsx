@@ -305,13 +305,18 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setNotes("Custom tenant rollout.");
   }
 
+  function syncParsedUids(parsed: string[], mismatches = 0) {
+    const duplicates = parsed.length - new Set(parsed).size;
+    setUids(parsed);
+    setDuplicateCount(duplicates);
+    setBatchMismatchCount(mismatches);
+    setQuantity(String(parsed.length || quantity));
+    setStatus(`UIDs detectados: ${parsed.length}. Duplicados: ${duplicates}.`);
+  }
+
   function parseRawUidText() {
     const parsed = parseUidLines(rawUidText || "");
-    setUids(parsed);
-    setDuplicateCount(parsed.length - new Set(parsed).size);
-    setBatchMismatchCount(0);
-    setQuantity(String(parsed.length || quantity));
-    setStatus(`UIDs detectados: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
+    syncParsedUids(parsed);
   }
 
   async function onUidFile(event: ChangeEvent<HTMLInputElement>) {
@@ -320,21 +325,11 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     const raw = await file.text();
     if (file.name.toLowerCase().endsWith(".csv")) {
       const parsed = parseUidCsv(raw);
-      setUids(parsed.uids || []);
       const mismatches = (parsed.batchIds || []).filter((entry) => entry && entry !== bid).length;
-      const duplicates = parsed.uids.length - new Set(parsed.uids).size;
-      setBatchMismatchCount(mismatches);
-      setDuplicateCount(duplicates);
-      setQuantity(String(parsed.uids.length || quantity));
-      setStatus(`UIDs detectados: ${parsed.uids.length}. Duplicados: ${duplicates}.`);
+      syncParsedUids(parsed.uids || [], mismatches);
       return;
     }
-    const parsed = parseUidLines(raw);
-    setUids(parsed);
-    setDuplicateCount(parsed.length - new Set(parsed).size);
-    setBatchMismatchCount(0);
-    setQuantity(String(parsed.length || quantity));
-    setStatus(`UIDs detectados: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
+    syncParsedUids(parseUidLines(raw));
   }
   function applyDemoPreset() {
     setTenantSlug("demobodega");
