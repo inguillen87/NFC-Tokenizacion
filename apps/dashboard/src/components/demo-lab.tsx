@@ -407,6 +407,7 @@ export function DemoLab() {
     : audienceMode === "operator"
       ? { primary: "Run supplier onboarding", secondary: "Open ops evidence" }
       : { primary: "Open public mobile preview", secondary: "Trigger CTA journey" };
+  const opsReady = Boolean((summary.events || []).some((event) => typeof event.lat === "number" && typeof event.lng === "number"));
 
   const roleState = audienceMode === "ceo"
     ? {
@@ -510,8 +511,6 @@ export function DemoLab() {
         })),
     [summary.events],
   );
-
-  const opsReady = points.length > 0;
 
   const readFile = async (file: File) => file.text();
 

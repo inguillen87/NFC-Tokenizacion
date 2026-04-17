@@ -42,7 +42,7 @@ export default async function BatchesPage() {
   const batchRows = await getBatchRows(tenantScope);
   const scopedBatchRows = batchRows;
 
-  const rows = scopedBatchRows.map((row) => {
+  const rows = scopedBatchRows.map((row: Record<string, unknown>) => {
     const quantity = Number(row.quantity || 0);
     const active = Number(row.active_tags || 0);
     const inactive = Number(row.inactive_tags || 0);

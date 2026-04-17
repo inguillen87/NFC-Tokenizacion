@@ -63,12 +63,10 @@ export default async function LeadsTicketsPage({
 
   const leadsArray = Array.isArray(leads) ? leads as Array<Record<string, unknown>> : [];
   const scopedLeads = tenantScope ? leadsArray.filter((lead) => leadTenant(lead) === tenantScope) : leadsArray;
-  const scopedTickets = Array.isArray(tickets)
-    ? (tenantScope ? tickets.filter((item: Record<string, unknown>) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : tickets)
-    : [];
-  const scopedOrders = Array.isArray(orders)
-    ? (tenantScope ? orders.filter((item: Record<string, unknown>) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : orders)
-    : [];
+  const ticketsArray = Array.isArray(tickets) ? tickets as Array<Record<string, unknown>> : [];
+  const ordersArray = Array.isArray(orders) ? orders as Array<Record<string, unknown>> : [];
+  const scopedTickets = tenantScope ? ticketsArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ticketsArray;
+  const scopedOrders = tenantScope ? ordersArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ordersArray;
   const leadCount = scopedLeads.length;
   const ticketCount = scopedTickets.length;
   const orderCount = scopedOrders.length;
@@ -88,12 +86,12 @@ export default async function LeadsTicketsPage({
     const bySession = sessionFilter ? item.session.toLowerCase().includes(sessionFilter) : true;
     return byTenant && bySession;
   });
-  const sourceStats = scopedLeads.reduce((acc, lead) => {
+  const sourceStats = scopedLeads.reduce<Record<string, number>>((acc, lead) => {
     const source = String(lead.source || "unknown");
     acc[source] = (acc[source] || 0) + 1;
     return acc;
-  }, {} as Record<string, number>);
-  const topSources = Object.entries(sourceStats).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  }, {});
+  const topSources = Object.entries(sourceStats).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 4) as Array<[string, number]>;
 
   const labels = locale === "en"
     ? {
@@ -151,7 +149,7 @@ export default async function LeadsTicketsPage({
       </section>
 
       <section className="grid gap-3 md:grid-cols-4">
-        {topSources.length ? topSources.map(([source, count]) => (
+        {topSources.length ? topSources.map(([source, count]: [string, number]) => (
           <div key={source} className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
             <p className="text-[11px] uppercase tracking-[0.14em] text-violet-200">Lead source</p>
             <p className="mt-1 text-sm text-white">{source}</p>
