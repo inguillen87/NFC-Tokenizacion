@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { resolveLocale } from "@product/config";
 import { HelpBot } from "@product/ui";
+import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -29,8 +30,12 @@ export async function generateMetadata(): Promise<Metadata> {
     title: localizedTitle,
     description: "Multi-tenant operations dashboard",
     icons: {
-      icon: [{ url: "/logo-mark.svg", type: "image/svg+xml" }],
-      shortcut: [{ url: "/logo-mark.svg", type: "image/svg+xml" }],
+      icon: [
+        { url: "/favicon.ico", type: "image/x-icon" },
+        { url: "/logo-mark.svg", type: "image/svg+xml" },
+      ],
+      shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
+      apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
     },
   };
 }
@@ -42,6 +47,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang={locale}>
       <body>
+        <MisconfigurationBanner />
         {children}
         <HelpBot locale={locale} mode="support" />
       </body>

@@ -3,6 +3,44 @@ import { Card, SectionHeading } from "@product/ui";
 import { TENANT_DIRECTORY } from "../../../../lib/tenant-directory";
 import { productUrls } from "@product/config";
 
+function tenantPlaybook(vertical: string) {
+  const key = vertical.toLowerCase();
+  if (key.includes("wine")) {
+    return {
+      productLabel: "Wine Trust Passport",
+      readiness: "Etiquetado premium + postventa + anti-replay",
+      kpis: { batches: "2 activos", tags: "10 físicas piloto", scans: "240/30d", incidents: "1 alerta replay" },
+      nextActions: [
+        "Cerrar onboarding lote proveedor con import + activate.",
+        "Activar ownership/warranty para CTA post-scan.",
+        "Habilitar panel ejecutivo de riesgo por región.",
+      ],
+    };
+  }
+  if (key.includes("events")) {
+    return {
+      productLabel: "Event Access Shield",
+      readiness: "Ticketing seguro + antifraude de accesos",
+      kpis: { batches: "1 activo", tags: "500 credenciales", scans: "1.2k/30d", incidents: "3 intentos clonados" },
+      nextActions: [
+        "Integrar validador con operación de ingreso.",
+        "Monitorear replay/tamper en picos de evento.",
+        "Activar dashboard de turnstile por venue.",
+      ],
+    };
+  }
+  return {
+    productLabel: "Secure Product Passport",
+    readiness: "Trazabilidad + autenticidad + soporte comercial",
+    kpis: { batches: "1 activo", tags: "200 unidades", scans: "680/30d", incidents: "0 críticas" },
+    nextActions: [
+      "Consolidar lotes y política de reorden.",
+      "Activar módulos de warranty/provenance.",
+      "Definir playbook de expansión por canal.",
+    ],
+  };
+}
+
 export default async function TenantDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const tenant = TENANT_DIRECTORY.find((item) => item.slug === slug);
@@ -17,6 +55,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
   }
 
   const publicMobile = `${productUrls.web}/demo-lab/mobile/${tenant.slug}/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
+  const playbook = tenantPlaybook(tenant.vertical);
 
   return (
     <main className="space-y-8">
@@ -43,6 +82,13 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
             <Link href={`/leads-tickets?tenant=${tenant.slug}`} className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-amber-100">Lead / opportunities</Link>
           </div>
         </Card>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Product line</p><p className="mt-1 text-sm font-semibold text-white">{playbook.productLabel}</p></Card>
+        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Batches</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.batches}</p></Card>
+        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Tags / inventory</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.tags}</p></Card>
+        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Scans / incidents</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.scans} · {playbook.kpis.incidents}</p></Card>
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -76,6 +122,15 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
           </ul>
         </Card>
       </div>
+      <Card className="p-5 text-sm text-slate-300">
+        <h3 className="font-semibold text-white">Next 30/90 day actions</h3>
+        <p className="mt-1 text-xs text-slate-400">{playbook.readiness}</p>
+        <ol className="mt-3 list-decimal space-y-2 pl-5">
+          {playbook.nextActions.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ol>
+      </Card>
     </main>
   );
 }
