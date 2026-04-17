@@ -407,7 +407,7 @@ export function DemoLab() {
     : audienceMode === "operator"
       ? { primary: "Run supplier onboarding", secondary: "Open ops evidence" }
       : { primary: "Open public mobile preview", secondary: "Trigger CTA journey" };
-  const opsReady = Boolean((summary.events || []).some((event) => typeof event.lat === "number" && typeof event.lng === "number"));
+  const opsReady = Boolean((summary.events || []).some((event) => Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng))));
 
   const roleState = audienceMode === "ceo"
     ? {
@@ -496,7 +496,7 @@ export function DemoLab() {
   const points = useMemo(
     () =>
       (summary.events || [])
-        .filter((event) => typeof event.lat === "number" && typeof event.lng === "number")
+        .filter((event) => Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng)))
         .map((event) => ({
           city: event.city || "Unknown",
           country: event.country_code || "--",

@@ -18,16 +18,7 @@ const FALLBACK_KPIS = {
   tamper: "Tamper alerts",
 };
 
-function inferTenantSlugFromSession(session: { role: string; email: string }) {
-  if (session.role !== "tenant-admin") return "";
-  const email = (session.email || "").toLowerCase();
-  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
-  if (explicit) return explicit;
-  if (email.includes("demobodega")) return "demobodega";
-  return "";
-}
-
-function inferTenantSlugFromSession(session: { role: string; email: string }) {
+function resolveTenantScopeFromSession(session: { role: string; email: string }) {
   if (session.role !== "tenant-admin") return "";
   const email = (session.email || "").toLowerCase();
   const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
@@ -75,10 +66,11 @@ export default async function DashboardHome() {
   const fallbackLocale = "es-AR" as const;
   const t = messages[locale] || messages[fallbackLocale];
   const kpis = t?.dashboard?.kpis || FALLBACK_KPIS;
+  const dashboardText = t?.dashboard || messages[fallbackLocale].dashboard;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
   const publicMobileBase = `${productUrls.web}/demo-lab/mobile`;
   const session = await requireDashboardSession();
-  const tenantScope = inferTenantSlugFromSession(session);
+  const tenantScope = resolveTenantScopeFromSession(session);
   const isTenantAdmin = session.role === "tenant-admin";
   const [overviewRaw, liveEvents]: [Array<Record<string, unknown>>, Array<Record<string, unknown>>] = await Promise.all([getOverviewRows(), getLiveEvents()]);
 
@@ -128,7 +120,7 @@ export default async function DashboardHome() {
   });
 
   const mapPoints = scopedLiveEvents
-    .filter((row: Record<string, unknown>) => typeof row.lat === "number" && typeof row.lng === "number")
+    .filter((row: Record<string, unknown>) => Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng)))
     .slice(0, 10)
     .map((row: Record<string, unknown>) => ({
       city: String(row.city || row.reason || "Unknown"),
@@ -270,7 +262,7 @@ export default async function DashboardHome() {
       />
 
       {!isTenantAdmin ? <Card className="p-6">
-        <h2 className="text-lg font-semibold text-white">{t.dashboard.roleBasedOps}</h2>
+        <h2 className="text-lg font-semibold text-white">{dashboardText.roleBasedOps}</h2>
         <p className="mt-2 text-sm text-slate-400">{copy.pages.batches.description}</p>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           {Object.entries(copy.roles).map(([roleKey, roleLabel]) => (
@@ -283,7 +275,7 @@ export default async function DashboardHome() {
       </Card>
       : null}
 
-      {!isTenantAdmin ? <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} currentRole={session.role} /> : null}
+      {!isTenantAdmin ? <AdminActionForms copy={dashboardText.forms} roles={copy.roles} readyLabel={copy.shell.ready} currentRole={session.role} /> : null}
     </main>
   );
 }

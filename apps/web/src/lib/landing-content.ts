@@ -48,7 +48,7 @@ export type LandingContent = {
 
 export const landingContent: Record<AppLocale, LandingContent> = {
   "es-AR": {
-    nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Dashboard", requestDemo: "Solicitar demo" },
+    nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Ingresar", requestDemo: "Solicitar demo" },
     hero: {
       badge: "Plataforma de identidad física verificable",
       title: "Convertí productos, credenciales y documentos en identidades digitales verificables.",
@@ -202,7 +202,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     docsList: ["Discovery workshop and technical scoping", "Tenant onboarding and access governance", "Batch setup and activation playbook", "Operational monitoring and fraud alerts", "Go-live support and success metrics"],
   },
   "pt-BR": {
-    nav: { product: "Produto", pricing: "Planos", reseller: "Revendedores", docs: "Arquitetura", cta: "Dashboard", requestDemo: "Solicitar demo" },
+    nav: { product: "Produto", pricing: "Planos", reseller: "Revendedores", docs: "Arquitetura", cta: "Entrar", requestDemo: "Solicitar demo" },
     hero: { badge: "Plataforma de identidade física verificável", title: "Converta produtos, credenciais e documentos em identidades digitais verificáveis.", body: "A nexID conecta carriers físicos como NFC e QR com backend de validação para autenticar, registrar estado e ativar ownership, acesso, garantia, resgate e rastreabilidade.", primary: "Solicitar amostras", secondary: "Ver demo", tertiary: "Quero ser revendedor" },
     trustBar: ["Programas NTAG215", "NTAG 424 DNA TagTamper", "API de autenticação", "SaaS de validación", "Canal white-label"],
     howItWorks: { eyebrow: "Como funciona", title: "Encosta, valida e vende melhor", description: "Explicação simples: cada tap vira prova, alerta e oportunidade comercial.", steps: [{ title: "1. Você ativa o lote", body: "Escolhe chip, quantidade e campanha em poucos cliques." }, { title: "2. O cliente encosta o celular", body: "A tela mostra rápido se o produto é autêntico." }, { title: "3. O sistema registra tudo", body: "Fica salvo local, horário e resultado da leitura." }, { title: "4. Você vende com dados", body: "Dispara ação de marketing, suporte ou revenda." }] },
@@ -239,7 +239,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     docsList: ["Discovery workshop and technical scoping", "Tenant onboarding and access governance", "Batch setup and activation playbook", "Operational monitoring and fraud alerts", "Go-live support and success metrics"],
   },
   en: {
-    nav: { product: "Product", pricing: "Pricing", reseller: "Resellers", docs: "Docs", cta: "Dashboard", requestDemo: "Request demo" },
+    nav: { product: "Product", pricing: "Pricing", reseller: "Resellers", docs: "Docs", cta: "Login", requestDemo: "Request demo" },
     hero: { badge: "Verifiable physical identity platform", title: "Turn products, credentials and documents into verifiable digital identities.", body: "nexID connects physical carriers like NFC and QR to a validation backend so you can authenticate, track status and activate ownership, access, warranty, redemption and traceability.", primary: "Request samples", secondary: "View demo", tertiary: "Become a reseller" },
     trustBar: ["NTAG215 programs", "NTAG 424 DNA TagTamper", "Authentication API", "Multi-tenant SaaS", "White-label distribution"],
     howItWorks: { eyebrow: "How it works", title: "Tap, verify, and sell better", description: "Simple flow: each tap becomes proof, insight, and a sales action.", steps: [{ title: "1. Activate your batch", body: "Pick chip type, quantity, and campaign in minutes." }, { title: "2. Customer taps", body: "The phone shows authenticity instantly." }, { title: "3. Data is saved", body: "You keep place, time, and scan result." }, { title: "4. Teams take action", body: "Launch marketing, support, or reseller actions fast." }] },
