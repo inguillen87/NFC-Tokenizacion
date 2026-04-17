@@ -8,7 +8,7 @@ import { ModuleGrid } from "../../components/module-grid";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
-import { productUrls } from "@product/config";
+import { messages, productUrls } from "@product/config";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
@@ -56,8 +56,10 @@ function resolveTenantStatus(scans: number, duplicates: number, tamper: number) 
 }
 
 export default async function DashboardHome() {
-  const { locale, t } = await getDashboardI18n();
-  const copy = dashboardContent[locale];
+  const { locale } = await getDashboardI18n();
+  const fallbackLocale = "es-AR" as const;
+  const t = messages[locale] || messages[fallbackLocale];
+  const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
   const publicMobileBase = `${productUrls.web}/demo-lab/mobile`;
   const session = await requireDashboardSession();
   const tenantScope = inferTenantSlugFromSession(session);

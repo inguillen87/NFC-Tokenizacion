@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { json } from '../../lib/http';
 import { processSunScan } from '../../lib/sun-service';
+import { createDemoShareToken } from '../../lib/demo-share';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
@@ -116,6 +117,16 @@ function renderSunHtml(input: { bid: string; picc_data: string; enc: string; cma
   const yearAging = Math.max(1, new Date().getUTCFullYear() - vintage);
   const eventUid = input.result.body.uid || "";
   const eventCtr = typeof input.result.body.ctr === "number" ? input.result.body.ctr : null;
+  const shareToken = eventUid
+    ? (() => {
+        try {
+          const now = Math.floor(Date.now() / 1000);
+          return createDemoShareToken({ bid: input.bid, uid: eventUid, exp: now + 60 * 30 });
+        } catch {
+          return null;
+        }
+      })()
+    : null;
 
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -178,6 +189,7 @@ ${troubleshooting ? `<section class="hint">
   const payload = {
     bid: ${JSON.stringify(input.bid)},
     uid: ${JSON.stringify(eventUid)},
+    share: ${JSON.stringify(shareToken)},
     ctr: ${eventCtr === null ? "null" : String(eventCtr)},
     scannedAt: new Date().toISOString(),
     client: {
@@ -234,18 +246,28 @@ ${troubleshooting ? `<section class="hint">
     button.addEventListener("click", async () => {
       const action = button.getAttribute("data-cta");
       if (!action) return;
+      if (!payload.share) {
+        button.textContent = "CTA no disponible";
+        return;
+      }
       button.setAttribute("disabled", "true");
       try {
-        const response = await fetch("/public/cta/" + action, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            bid: ${JSON.stringify(input.bid)},
-            uid: ${JSON.stringify(eventUid || "")},
-            status: ${JSON.stringify(status)},
-            source: "sun_mobile_preview",
-          }),
-        });
+        const isProvenance = action === "provenance";
+        const endpoint = isProvenance
+          ? "/public/cta/provenance?bid=" + encodeURIComponent(payload.bid) + "&uid=" + encodeURIComponent(payload.uid) + "&share=" + encodeURIComponent(payload.share)
+          : "/public/cta/" + action + "?share=" + encodeURIComponent(payload.share);
+        const response = await fetch(endpoint, isProvenance
+          ? { method: "GET", cache: "no-store" }
+          : {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                bid: ${JSON.stringify(input.bid)},
+                uid: ${JSON.stringify(eventUid || "")},
+                status: ${JSON.stringify(status)},
+                source: "sun_mobile_preview",
+              }),
+            });
         const data = await response.json().catch(() => ({}));
         button.textContent = data?.ok ? "Hecho ✓" : "Intentar de nuevo";
       } catch {

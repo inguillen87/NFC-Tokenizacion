@@ -83,13 +83,15 @@ export default async function AnalyticsPage() {
   const isTenantAdmin = session.role === "tenant-admin";
   const fallbackLocale = "es-AR" as const;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
+  const analyticsPageCopy = copy.pages?.analytics || dashboardContent[fallbackLocale].pages.analytics;
+  const analyticsNavLabel = copy.nav?.analytics || dashboardContent[fallbackLocale].nav.analytics;
   const translatedKpis = messages[locale]?.dashboard?.kpis || null;
   const kpis = translatedKpis || FALLBACK_KPIS;
   const analyticsData = await getAnalytics(tenantScope);
 
   return (
     <main className="space-y-8">
-      <SectionHeading eyebrow={copy.nav.analytics} title={copy.pages.analytics.title} description={copy.pages.analytics.description} />
+      <SectionHeading eyebrow={analyticsNavLabel} title={analyticsPageCopy.title} description={analyticsPageCopy.description} />
       <ModuleAudienceHero
         ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Analytics ejecutivo del tenant: adopción, riesgo y operación real de tu cuenta." : "Analytics prueba adopción, fraude evitado y expansión del negocio con evidencia real.", decision: isTenantAdmin ? "Decidís dónde reforzar operación del tenant y cómo evolucionan scans/riesgo en tu mercado." : "Decidís dónde acelerar inversión comercial, qué vertical está traccionando y cómo evoluciona el riesgo.", cta: "Usalo para mostrar crecimiento, legitimidad operativa y retorno de una demo exitosa." }}
         operator={{ eyebrow: "Operator / Engineer read", summary: "Analytics es el tablero de observabilidad para ver scans, duplicados, tamper y comportamiento por región.", decision: "Decidís dónde ajustar reglas, revisar anomalías y priorizar respuesta operativa.", cta: isTenantAdmin ? "Scope operativo: solo eventos y métricas de tu tenant." : "Leelo junto a Events y API Keys para conectar operación + integraciones." }}
