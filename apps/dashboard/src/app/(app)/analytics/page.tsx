@@ -6,6 +6,22 @@ import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+type AnalyticsPayload = {
+  kpis: {
+    scans: number;
+    validRate: number;
+    invalidRate: number;
+    duplicates: number;
+    tamper: number;
+    activeBatches: number;
+    activeTenants: number;
+    geoRegions: number;
+    resellerPerformance: number;
+  };
+  trend: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
+  batchStatus: Array<{ name: string; value: number }>;
+  geoPoints: Array<{ city: string; country: string; scans: number; risk: number; lat: number; lng: number }>;
+};
 const FALLBACK_KPIS = {
   scans: "Scans",
   validInvalid: "Valid / Invalid",
@@ -28,7 +44,7 @@ function inferTenantScope(session: { role: string; email: string }) {
   return "";
 }
 
-async function getAnalytics(tenantScope = "") {
+async function getAnalytics(tenantScope = ""): Promise<AnalyticsPayload | null> {
   if (!(process.env.ADMIN_API_KEY || "").trim()) {
     return {
       kpis: {
