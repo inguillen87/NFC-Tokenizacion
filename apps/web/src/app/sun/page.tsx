@@ -70,6 +70,27 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           {canAutoOnboard ? <OnboardDemoButton bid={bid} /> : null}
         </section>
 
+        <section className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-4">
+          <p className="text-sm font-semibold text-emerald-100">Enterprise story · Digital Product Passport</p>
+          <p className="mt-1 text-xs text-emerald-50">
+            Esto no es un flujo crypto-first: primero autenticidad y trazabilidad; luego ownership/provenance/warranty;
+            y finalmente una capa blockchain-ready opcional para clientes premium.
+          </p>
+          <div className="mt-3 grid gap-2 md:grid-cols-4">
+            {[
+              { title: "1) Authenticity", body: "Validación NFC criptográfica + anti-clonación." },
+              { title: "2) Risk", body: "Replay/tamper intelligence para operaciones y fraude." },
+              { title: "3) Ownership", body: "Ownership + warranty + provenance como estado real." },
+              { title: "4) Optional tokenization", body: "Anchoring/smart-contract layer opcional según caso de negocio." },
+            ].map((step) => (
+              <article key={step.title} className="rounded-lg border border-white/10 bg-slate-950/60 p-3">
+                <p className="text-xs font-semibold text-white">{step.title}</p>
+                <p className="mt-1 text-[11px] text-slate-300">{step.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <pre className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">{JSON.stringify(result, null, 2)}</pre>
       </section>
 
