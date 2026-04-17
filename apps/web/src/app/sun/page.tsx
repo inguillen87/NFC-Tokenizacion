@@ -19,9 +19,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const bid = String(params.bid || result.bid || "");
   const uid = String(result.uid_hex || "");
   const status = String(result.result || result.reason || (result.ok ? "AUTH_OK" : "INVALID"));
-  const isValid = status === "VALID" || status === "AUTH_OK";
+  const normalizedStatus = status.toUpperCase();
+  const isValid = normalizedStatus === "VALID" || normalizedStatus === "AUTH_OK";
   const reason = String(result.reason || "");
-  const troubleshooting = reason.toLowerCase().includes("unknown batch")
+  const trustState = isValid
+    ? { label: "Producto auténtico", detail: "Validación completa y consistente.", tone: "text-emerald-300" }
+    : normalizedStatus.includes("REPLAY")
+      ? { label: "Replay detectado", detail: "Payload reutilizado. Requiere tap real.", tone: "text-amber-300" }
+      : { label: "Validación no concluyente", detail: "Se requiere revisión de onboarding/keys.", tone: "text-amber-300" };
+  const troubleshooting = isValid
+    ? []
+    : reason.toLowerCase().includes("unknown batch")
     ? [
         "Este BID no está registrado en este entorno.",
         "Registrá batch + importá manifest + activá tags desde Dashboard.",
@@ -49,8 +57,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         <section className="mt-4 grid gap-3 md:grid-cols-3">
           <article className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
             <p className="text-xs uppercase tracking-wider text-slate-400">Validation status</p>
-            <p className={`mt-2 text-lg font-semibold ${isValid ? "text-emerald-300" : "text-amber-300"}`}>{status}</p>
-            <p className="mt-2 text-[11px] text-slate-300">{isValid ? "Activo y autenticado" : "Requiere atención operativa"}</p>
+            <p className={`mt-2 text-lg font-semibold ${trustState.tone}`}>{trustState.label}</p>
+            <p className="mt-2 text-[11px] text-slate-300">{trustState.detail}</p>
           </article>
           <article className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
             <p className="text-xs uppercase tracking-wider text-slate-400">Batch ID</p>
@@ -62,13 +70,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </article>
         </section>
 
-        <section className="mt-4 rounded-xl border border-amber-300/20 bg-amber-500/10 p-4">
-          <p className="text-sm font-semibold text-amber-100">Troubleshooting guiado</p>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-50">
-            {troubleshooting.map((item) => <li key={item}>{item}</li>)}
-          </ul>
-          {canAutoOnboard ? <OnboardDemoButton bid={bid} /> : null}
-        </section>
+        {troubleshooting.length ? (
+          <section className="mt-4 rounded-xl border border-amber-300/20 bg-amber-500/10 p-4">
+            <p className="text-sm font-semibold text-amber-100">Troubleshooting guiado</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-50">
+              {troubleshooting.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+            {canAutoOnboard ? <OnboardDemoButton bid={bid} /> : null}
+          </section>
+        ) : (
+          <section className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-4">
+            <p className="text-sm font-semibold text-emerald-100">Estado consistente</p>
+            <p className="mt-1 text-xs text-emerald-50">Validación completa. Próximo paso: activar ownership/garantía/provenance para completar la experiencia de producto.</p>
+          </section>
+        )}
 
         <section className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-4">
           <p className="text-sm font-semibold text-emerald-100">Enterprise story · Digital Product Passport</p>

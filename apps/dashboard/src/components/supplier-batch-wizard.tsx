@@ -199,6 +199,17 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     () => `${productUrls.api}/sun?v=1&bid=${encodeURIComponent(bid || DEMO_SUPPLIER_BATCH_ID)}&picc_data=...&enc=...&cmac=...`,
     [bid],
   );
+  const nextAction = !stepReady[1]
+    ? "Completá datos de tenant + batch en Step 1."
+    : !stepReady[2]
+      ? "Cargá K_META/K_FILE válidas en Step 2."
+      : !stepReady[3]
+        ? "Importá 10 UIDs únicas en Step 3."
+        : !stepReady[4]
+          ? "Ejecutá Register + Import + Activate en Step 4."
+          : !stepReady[5]
+            ? "Pegá URL /sun real y validá estado en Step 5."
+            : "Step 6 listo: abrir mobile preview y revisar resumen operativo.";
 
   async function run(path: string, init?: RequestInit) {
     const response = await fetch(path, {
@@ -548,7 +559,16 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-slate-400">Wizard lineal: completá cada paso para habilitar el siguiente.</p>
+        <div className="mt-4 grid gap-2 md:grid-cols-5">
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Rows parsed<br /><b className="text-white">{uids.length}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Unique UIDs<br /><b className="text-white">{uniqueUidCount}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Imported<br /><b className="text-white">{importedCount}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Active<br /><b className="text-white">{activeCount}</b></div>
+          <div className={`rounded-xl border p-3 text-xs ${validationCode === "VALID" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : validationCode === "REPLAY_SUSPECT" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-white/10 bg-slate-900/60 text-slate-300"}`}>
+            Validator<br /><b>{validationCode}</b>
+          </div>
+        </div>
+        <p className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Next action: <b>{nextAction}</b></p>
       </Card>
 
       <Card className={`p-6 ${activeStep === 1 ? "" : "hidden"}`}>

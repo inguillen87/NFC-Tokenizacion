@@ -6,6 +6,18 @@ import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+const FALLBACK_KPIS = {
+  scans: "Scans",
+  validInvalid: "Valid / Invalid",
+  duplicates: "Duplicados",
+  tamper: "Tamper alerts",
+  scansDelta: "",
+  validInvalidDelta: "",
+  duplicatesDelta: "",
+  tamperDelta: "",
+  trendTitle: "Security trend",
+  statusTitle: "Batch status",
+};
 
 function inferTenantScope(session: { role: string; email: string }) {
   if (session.role !== "tenant-admin") return "";
@@ -64,11 +76,13 @@ async function getAnalytics(tenantScope = "") {
 }
 
 export default async function AnalyticsPage() {
-  const { locale, t } = await getDashboardI18n();
+  const i18n = await getDashboardI18n();
+  const locale = i18n.locale;
   const session = await requireDashboardSession();
   const tenantScope = inferTenantScope(session);
   const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
+  const kpis = i18n?.t?.dashboard?.kpis || FALLBACK_KPIS;
   const analyticsData = await getAnalytics(tenantScope);
 
   return (
@@ -83,7 +97,7 @@ export default async function AnalyticsPage() {
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
       </div>
       <div>
-        <AnalyticsPanels kpis={t.dashboard.kpis} extra={copy.analytics} data={analyticsData || undefined} />
+        <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData || undefined} mapMode={isTenantAdmin ? "tenant" : "global"} />
       </div>
     </main>
   );
