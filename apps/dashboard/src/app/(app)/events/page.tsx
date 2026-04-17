@@ -22,9 +22,18 @@ type EventRow = {
   meta?: Record<string, unknown>;
 };
 
-async function getLiveEvents() {
+async function getLiveEvents(tenantScope = "") {
+  if (!(process.env.ADMIN_API_KEY || "").trim()) {
+    const demoRows: EventRow[] = [
+      { id: "evt-local-001", tenant_slug: "demobodega", bid: "WINE-2026-PILOT-10", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", country_code: "AR", city: "Mendoza", created_at: new Date().toISOString(), source: "live", device_label: "Android NFC" },
+      { id: "evt-local-002", tenant_slug: "demobodega", bid: "WINE-2026-PILOT-10", result: "REPLAY_SUSPECT", reason: "replay_suspect", uid_hex: "04A1B2C3D4", country_code: "AR", city: "Buenos Aires", created_at: new Date().toISOString(), source: "live", device_label: "iOS Safari" },
+      { id: "evt-local-003", tenant_slug: "demoevents", bid: "EVENT-2026-01", result: "VALID", reason: "sun_ok", uid_hex: "0411223344", country_code: "BR", city: "São Paulo", created_at: new Date().toISOString(), source: "live", device_label: "Android NFC" },
+    ];
+    return tenantScope ? demoRows.filter((row) => row.tenant_slug === tenantScope) : demoRows;
+  }
   try {
-    const response = await fetch(`${API_BASE}/admin/events?limit=120`, {
+    const query = tenantScope ? `?limit=120&tenant=${encodeURIComponent(tenantScope)}` : "?limit=120";
+    const response = await fetch(`${API_BASE}/admin/events${query}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
@@ -34,6 +43,15 @@ async function getLiveEvents() {
   } catch {
     return [] as EventRow[];
   }
+}
+
+function inferTenantScope(session: { role: string; email: string }) {
+  if (session.role !== "tenant-admin") return "";
+  const email = session.email.toLowerCase();
+  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
+  if (explicit) return explicit;
+  if (email.includes("demobodega")) return "demobodega";
+  return "";
 }
 
 function toUiRows(rows: EventRow[]) {
@@ -61,19 +79,31 @@ function toUiRows(rows: EventRow[]) {
 
 export default async function EventsPage() {
   const { locale } = await getDashboardI18n();
-  await requireDashboardSession();
+  const session = await requireDashboardSession();
+  const tenantScope = inferTenantScope(session);
+  const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
-  const liveRows = await getLiveEvents();
+  const liveRows = await getLiveEvents(tenantScope);
   const rows = toUiRows(liveRows);
+  const validCount = rows.filter((item) => item.status === "active").length;
+  const riskCount = rows.filter((item) => item.status === "risk").length;
 
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.events} title={copy.pages.events.title} description={copy.pages.events.description} />
       <ModuleAudienceHero
-        ceo={{ eyebrow: "CEO / Investor read", summary: "Events muestran actividad real, alertas y evidencia de que la plataforma protege operaciones activas.", decision: "Decidís qué cuentas o verticales tienen mayor tracción o mayor riesgo operacional.", cta: "Usalo como feed vivo para probar que el sistema ya está operando y generando valor." }}
-        operator={{ eyebrow: "Operator / Engineer read", summary: "Events es la consola para revisar autenticaciones, replay, tamper y comportamiento en tiempo casi real.", decision: "Decidís dónde investigar anomalías, ajustar reglas y priorizar incident response.", cta: "Conectalo mentalmente con Analytics, Ops Map y API Keys." }}
+        ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Vista ejecutiva del tenant con actividad real y alertas de autenticidad." : "Events muestran actividad real, alertas y evidencia de que la plataforma protege operaciones activas.", decision: isTenantAdmin ? "Decidís dónde reforzar operación del tenant y priorizar mitigación de riesgo." : "Decidís qué cuentas o verticales tienen mayor tracción o mayor riesgo operacional.", cta: "Usalo como feed vivo para probar que el sistema ya está operando y generando valor." }}
+        operator={{ eyebrow: "Operator / Engineer read", summary: "Events es la consola para revisar autenticaciones, replay, tamper y comportamiento en tiempo casi real.", decision: "Decidís dónde investigar anomalías, ajustar reglas y priorizar incident response.", cta: isTenantAdmin ? "Scope actual: solo tu tenant operativo." : "Conectalo mentalmente con Analytics, Ops Map y API Keys." }}
         buyer={{ eyebrow: "Buyer / Client read", summary: "Events demuestra que el sistema no solo promete: detecta riesgos y confirma autenticidad en escenarios reales.", decision: "Decidís si esta visibilidad mejora confianza y control en tu operación o canal.", cta: "Mostralo después del mobile preview para cerrar con evidencia operacional." }}
       />
+      <Card className="p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{isTenantAdmin ? "Estado operativo del tenant" : "Estado operativo global"}</h2>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">Eventos visibles<br /><b className="text-xl text-white">{rows.length}</b></div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">Valid<br /><b className="text-xl text-emerald-300">{validCount}</b></div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">Riesgo<br /><b className="text-xl text-rose-300">{riskCount}</b></div>
+        </div>
+      </Card>
       <Card className="p-5">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Cómo leer este feed</h2>
         <div className="mt-3 grid gap-3 text-sm text-slate-300 md:grid-cols-3">
@@ -85,7 +115,7 @@ export default async function EventsPage() {
       <DataTable
         title={copy.tables.events.title}
         columns={[
-          { key: "tenant", label: copy.tables.events.tenant },
+          ...(!isTenantAdmin ? [{ key: "tenant", label: copy.tables.events.tenant }] : []),
           { key: "result", label: copy.tables.events.result },
           { key: "status", label: copy.tables.events.status },
           { key: "geo", label: copy.tables.events.geo },

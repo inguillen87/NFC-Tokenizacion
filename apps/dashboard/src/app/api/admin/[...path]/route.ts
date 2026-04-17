@@ -27,9 +27,11 @@ function safeParseJson(text: string) {
   }
 }
 
-function demoAdminResponse(method: string, path: string[], body: string) {
+function demoAdminResponse(method: string, path: string[], body: string, reqUrl?: string) {
   const normalized = path.join("/");
+  const url = new URL(reqUrl || `http://localhost/admin/${normalized}`);
   const payload = safeParseJson(body);
+  const tenantFilter = (url.searchParams.get("tenant") || "").trim().toLowerCase();
   const parseUidRows = (raw: unknown) => {
     const text = String(raw || "").replace(/^\uFEFF/, "").trim();
     if (!text) return [] as string[];
@@ -56,7 +58,20 @@ function demoAdminResponse(method: string, path: string[], body: string) {
     return NextResponse.json([DEMO_BATCH]);
   }
   if (method === "GET" && normalized === "tenants") {
-    return NextResponse.json([{ id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString() }]);
+    const rows = [
+      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1 },
+      { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0 },
+    ];
+    return NextResponse.json(rows);
+  }
+  if (method === "GET" && normalized === "events") {
+    const rows = [
+      { id: "evt-demo-001", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", created_at: new Date().toISOString(), city: "Mendoza", country_code: "AR", lat: -32.8895, lng: -68.8458, bid: "DEMO-2026-02", tenant_slug: "demobodega" },
+      { id: "evt-demo-002", result: "VALID", reason: "sun_ok", uid_hex: "04B1C2D3E4", created_at: new Date().toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "DEMO-2026-02", tenant_slug: "demobodega" },
+      { id: "evt-demo-003", result: "INVALID", reason: "replay_detected", uid_hex: "04F1E2D3C4", created_at: new Date().toISOString(), city: "São Paulo", country_code: "BR", lat: -23.5505, lng: -46.6333, bid: "EVENT-2026-01", tenant_slug: "demoevents" },
+    ];
+    const filtered = tenantFilter ? rows.filter((row) => row.tenant_slug === tenantFilter) : rows;
+    return NextResponse.json(filtered);
   }
   if (method === "POST" && normalized === "tenants") {
     return NextResponse.json({
@@ -180,7 +195,7 @@ async function forward(req: Request, path: string[]) {
   const demoSession = isDemoSession(req);
 
   if (demoSession || !hasAdminKey) {
-    return demoAdminResponse(req.method, path, body || "");
+    return demoAdminResponse(req.method, path, body || "", req.url);
   }
 
   const response = await fetch(target, {
@@ -194,7 +209,11 @@ async function forward(req: Request, path: string[]) {
   });
 
   if (response.status === 401) {
-    return demoAdminResponse(req.method, path, body || "");
+    return demoAdminResponse(req.method, path, body || "", req.url);
+  }
+
+  if (!response.ok && demoSession) {
+    return demoAdminResponse(req.method, path, body || "", req.url);
   }
 
   if (!response.ok && demoSession) {
