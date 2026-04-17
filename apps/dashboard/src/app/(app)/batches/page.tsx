@@ -3,6 +3,7 @@ import { Card, SectionHeading } from "@product/ui";
 import { productUrls } from "@product/config";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
+import { QuickOnboardingPanel } from "../../../components/quick-onboarding-panel";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 
@@ -67,6 +68,7 @@ export default async function BatchesPage() {
           </div>
         </div>
       </Card>
+      <QuickOnboardingPanel context="dashboard" />
       <DataTable title={copy.tables.batches.title} columns={[{ key: "batch", label: copy.tables.batches.batch }, { key: "type", label: copy.tables.batches.type }, { key: "status", label: copy.tables.batches.status }, { key: "quantity", label: copy.tables.batches.quantity }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
       <Card className="p-5 text-sm text-slate-300">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Flujo recomendado (supplier real)</h2>

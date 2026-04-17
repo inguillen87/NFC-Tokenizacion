@@ -55,6 +55,17 @@ function demoAdminResponse(method: string, path: string[], body: string) {
   if (method === "GET" && normalized === "batches") {
     return NextResponse.json([DEMO_BATCH]);
   }
+  if (method === "GET" && normalized === "tenants") {
+    return NextResponse.json([{ id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString() }]);
+  }
+  if (method === "POST" && normalized === "tenants") {
+    return NextResponse.json({
+      id: "demo-tenant-001",
+      slug: String(payload?.slug || "demobodega"),
+      name: String(payload?.name || "Demo Bodega"),
+      created_at: new Date().toISOString(),
+    }, { status: 201 });
+  }
   if (method === "POST" && normalized === "batches") {
     return NextResponse.json({
       ok: true,
@@ -156,6 +167,9 @@ function demoAdminResponse(method: string, path: string[], body: string) {
       { status: 201 },
     );
   }
+  if (method === "POST" && normalized === "users") {
+    return NextResponse.json({ ok: true, userId: "demo-user-001" });
+  }
   return NextResponse.json({ ok: true, demo: true, path: normalized });
 }
 
@@ -163,8 +177,9 @@ async function forward(req: Request, path: string[]) {
   const target = `${API_BASE}/admin/${path.join("/")}${new URL(req.url).search}`;
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
+  const demoSession = isDemoSession(req);
 
-  if (!hasAdminKey) {
+  if (demoSession || !hasAdminKey) {
     return demoAdminResponse(req.method, path, body || "");
   }
 
@@ -179,6 +194,10 @@ async function forward(req: Request, path: string[]) {
   });
 
   if (response.status === 401) {
+    return demoAdminResponse(req.method, path, body || "");
+  }
+
+  if (!response.ok && demoSession) {
     return demoAdminResponse(req.method, path, body || "");
   }
 

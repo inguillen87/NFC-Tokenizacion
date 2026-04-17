@@ -49,6 +49,16 @@ export async function processSunScan(input: {
   let replaySuspect = false;
 
   if (res.ok) {
+    const priorEventRows = await sql/*sql*/`
+      SELECT id
+      FROM events
+      WHERE batch_id = ${batch.id}
+        AND uid_hex = ${res.uidHex}
+        AND sdm_read_ctr = ${res.ctr}
+      LIMIT 1
+    `;
+    if (priorEventRows[0]) replaySuspect = true;
+
     const tagRows = await sql/*sql*/`
       SELECT id, status, last_seen_ctr
       FROM tags
@@ -73,13 +83,16 @@ export async function processSunScan(input: {
 
   let result = !res.ok
     ? 'INVALID'
-    : !allowlisted
+    : replaySuspect
+      ? 'REPLAY_SUSPECT'
+      : !allowlisted
       ? 'NOT_REGISTERED'
       : tagStatus !== 'active'
         ? 'NOT_ACTIVE'
-        : replaySuspect
-          ? 'REPLAY_SUSPECT'
-          : 'VALID';
+        : 'VALID';
+
+  const successReason = replaySuspect ? 'copied URL / replay suspected' : null;
+  const resolvedReason = !res.ok ? res.reason : successReason;
 
   if (input.context?.forceResult) result = input.context.forceResult;
 
@@ -100,7 +113,7 @@ export async function processSunScan(input: {
       ${allowlisted},
       ${tagStatus},
       ${result},
-      ${res.ok ? null : res.reason},
+      ${resolvedReason},
       ${input.context?.ip || null},
       ${input.context?.userAgent || null},
       ${input.context?.city || null},
@@ -129,7 +142,7 @@ export async function processSunScan(input: {
       enc_plain_hex: res.ok ? res.encPlainHex : undefined,
       allowlisted,
       tag_status: tagStatus,
-      reason: res.ok ? undefined : res.reason,
+      reason: resolvedReason || undefined,
     },
   };
 }
