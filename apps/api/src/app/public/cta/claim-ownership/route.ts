@@ -12,6 +12,13 @@ export async function POST(req: Request) {
   const auth = requireShareToken(req, bid, uid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
 
-  const saved = await recordDemoCta("claim_ownership", bid, uid, body);
-  return json({ ok: true, action: "claim_ownership", id: saved.id, created_at: saved.created_at, trace_id: traceId, share_token_status: auth.share_token_status });
+  const ownership = {
+    ownership_status: "claimed",
+    claim_source: String(body.claim_source || body.source || "public_cta"),
+    issuer: String(body.issuer || "nexID"),
+    owner_reference: String(body.owner_reference || body.email || body.phone || "consumer"),
+    transfer_capability: "state-only",
+  };
+  const saved = await recordDemoCta("claim_ownership", bid, uid, { ...body, ...ownership, claimed_at: new Date().toISOString() });
+  return json({ ok: true, action: "claim_ownership", id: saved.id, created_at: saved.created_at, ownership, trace_id: traceId, share_token_status: auth.share_token_status });
 }

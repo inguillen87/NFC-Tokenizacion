@@ -12,6 +12,14 @@ export async function POST(req: Request) {
   const auth = requireShareToken(req, bid, uid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
 
-  const saved = await recordDemoCta("tokenize_request", bid, uid, body);
-  return json({ ok: true, action: "tokenize_request", id: saved.id, created_at: saved.created_at, trace_id: traceId, share_token_status: auth.share_token_status });
+  const ledger = {
+    ledger_status: String(body.ledger_status || "simulated"),
+    ledger_network: String(body.ledger_network || "not_selected"),
+    asset_ref: String(body.asset_ref || `${bid}:${uid}`),
+    anchor_hash: String(body.anchor_hash || "") || null,
+    issuer_wallet: String(body.issuer_wallet || "") || null,
+    last_anchor_at: String(body.last_anchor_at || "") || null,
+  };
+  const saved = await recordDemoCta("tokenize_request", bid, uid, { ...body, ...ledger, tokenization_requested_at: new Date().toISOString() });
+  return json({ ok: true, action: "tokenize_request", id: saved.id, created_at: saved.created_at, ledger, trace_id: traceId, share_token_status: auth.share_token_status });
 }

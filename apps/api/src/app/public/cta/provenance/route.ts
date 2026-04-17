@@ -1,5 +1,5 @@
 import { json } from "../../../../lib/http";
-import { listDemoCta } from "../../../../lib/demo-cta";
+import { buildLifecycleState, listDemoCta } from "../../../../lib/demo-cta";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 
 export async function GET(req: Request) {
@@ -13,5 +13,6 @@ export async function GET(req: Request) {
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
 
   const actions = await listDemoCta(bid, uid);
-  return json({ ok: true, bid, uid, actions, trace_id: traceId, share_token_status: auth.share_token_status });
+  const lifecycle = buildLifecycleState(bid, uid, actions);
+  return json({ ok: true, bid, uid, actions, ...lifecycle, trace_id: traceId, share_token_status: auth.share_token_status });
 }
