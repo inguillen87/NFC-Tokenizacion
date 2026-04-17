@@ -221,6 +221,50 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setAdminPassword((current) => (current === "NexID!DemoA1" ? generatePassword() : current));
   }, []);
 
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("supplier_wizard_draft_v1");
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<{
+        activeStep: WizardStep;
+        tenantSlug: string;
+        tenantName: string;
+        bid: string;
+        sku: string;
+        quantity: string;
+        supplierUrl: string;
+        batchMode: "supplier" | "internal";
+      }>;
+      if (draft.activeStep && draft.activeStep >= 1 && draft.activeStep <= 6) setActiveStep(draft.activeStep);
+      if (typeof draft.tenantSlug === "string") setTenantSlug(draft.tenantSlug);
+      if (typeof draft.tenantName === "string") setTenantName(draft.tenantName);
+      if (typeof draft.bid === "string") setBid(draft.bid);
+      if (typeof draft.sku === "string") setSku(draft.sku);
+      if (typeof draft.quantity === "string") setQuantity(draft.quantity);
+      if (typeof draft.supplierUrl === "string") setSupplierUrl(draft.supplierUrl);
+      if (draft.batchMode === "supplier" || draft.batchMode === "internal") setBatchMode(draft.batchMode);
+    } catch {
+      // ignore malformed local draft
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("supplier_wizard_draft_v1", JSON.stringify({
+        activeStep,
+        tenantSlug,
+        tenantName,
+        bid,
+        sku,
+        quantity,
+        supplierUrl,
+        batchMode,
+      }));
+    } catch {
+      // ignore storage write failures
+    }
+  }, [activeStep, tenantSlug, tenantName, bid, sku, quantity, supplierUrl, batchMode]);
+
   function applyPreset(segment: TenantSegment) {
     setTenantSegment(segment);
     if (segment === "cosmetica") {
@@ -467,6 +511,12 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       <Card className="p-6">
         <h2 className="text-2xl font-semibold text-white">{copy.title}</h2>
         <p className="mt-2 text-sm text-slate-300">{copy.subtitle}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <a href="/onboarding" className="rounded-lg border border-white/15 px-3 py-1 text-slate-100">← Volver a onboarding</a>
+          <a href="/batches" className="rounded-lg border border-white/15 px-3 py-1 text-slate-100">Ver todos los batches</a>
+          <button type="button" className="rounded-lg border border-cyan-300/30 px-3 py-1 text-cyan-100" onClick={() => setActiveStep((prev) => Math.max(1, prev - 1) as WizardStep)}>Paso anterior</button>
+          <button type="button" className="rounded-lg border border-cyan-300/30 px-3 py-1 text-cyan-100" onClick={() => setActiveStep((prev) => Math.min(6, prev + 1) as WizardStep)}>Paso siguiente</button>
+        </div>
 
         <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">Super Admin Fast Lane</p>
@@ -696,6 +746,15 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           </div>
         ) : null}
         <pre className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-4 text-xs text-slate-200">{responseText}</pre>
+      </Card>
+      <Card className="sticky bottom-3 z-10 border border-cyan-300/25 bg-slate-950/95 p-4 backdrop-blur">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-slate-300">Navegación rápida: si la sesión vence y volvés a loguear, el wizard recupera draft automáticamente.</p>
+          <div className="flex gap-2">
+            <Button variant="secondary" disabled={activeStep <= 1} onClick={() => setActiveStep((prev) => Math.max(1, prev - 1) as WizardStep)}>← Back step</Button>
+            <Button disabled={activeStep >= 6} onClick={() => setActiveStep((prev) => Math.min(6, prev + 1) as WizardStep)}>Next step →</Button>
+          </div>
+        </div>
       </Card>
     </div>
   );

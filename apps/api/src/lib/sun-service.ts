@@ -59,6 +59,11 @@ export async function processSunScan(input: {
       JSON.stringify(input.rawQuery || {}),
     ] as const;
 
+    const isMissingColumnError = (error: unknown) => {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      return message.includes('column') && message.includes('does not exist');
+    };
+
     try {
       await sql/*sql*/`
         INSERT INTO events (
@@ -73,19 +78,33 @@ export async function processSunScan(input: {
       `;
       return;
     } catch (error) {
-      const message = error instanceof Error ? error.message.toLowerCase() : "";
-      if (!message.includes('read_counter')) throw error;
+      if (!isMissingColumnError(error)) throw error;
+    }
+
+    try {
+      await sql/*sql*/`
+        INSERT INTO events (
+          tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
+          ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
+          source, meta, raw_query
+        ) VALUES (
+          ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
+          ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
+          ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
+        )
+      `;
+      return;
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error;
     }
 
     await sql/*sql*/`
       INSERT INTO events (
         tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
-        ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
-        source, meta, raw_query
+        ip, user_agent, raw_query
       ) VALUES (
         ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
-        ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
-        ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
+        ${commonValues[9]}, ${commonValues[10]}, ${commonValues[22]}::jsonb
       )
     `;
   }

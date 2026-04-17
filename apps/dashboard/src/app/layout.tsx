@@ -30,8 +30,12 @@ export async function generateMetadata(): Promise<Metadata> {
     title: localizedTitle,
     description: "Multi-tenant operations dashboard",
     icons: {
-      icon: [{ url: "/logo-mark.svg", type: "image/svg+xml" }],
-      shortcut: [{ url: "/logo-mark.svg", type: "image/svg+xml" }],
+      icon: [
+        { url: "/favicon.ico", type: "image/x-icon" },
+        { url: "/logo-mark.svg", type: "image/svg+xml" },
+      ],
+      shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
+      apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
     },
   };
 }
