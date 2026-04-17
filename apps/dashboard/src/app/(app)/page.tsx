@@ -12,6 +12,15 @@ import { productUrls } from "@product/config";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
+function inferTenantSlugFromSession(session: { role: string; email: string }) {
+  if (session.role !== "tenant-admin") return "";
+  const email = (session.email || "").toLowerCase();
+  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
+  if (explicit) return explicit;
+  if (email.includes("demobodega")) return "demobodega";
+  return "";
+}
+
 async function getOverviewRows() {
   try {
     const response = await fetch(`${API_BASE}/admin/tenants?withStats=1`, {
@@ -51,6 +60,8 @@ export default async function DashboardHome() {
   const copy = dashboardContent[locale];
   const publicMobileBase = `${productUrls.web}/demo-lab/mobile`;
   const session = await requireDashboardSession();
+  const tenantScope = inferTenantSlugFromSession(session);
+  const isTenantAdmin = session.role === "tenant-admin";
   const [overviewRaw, liveEvents]: [Array<Record<string, unknown>>, Array<Record<string, unknown>>] = await Promise.all([getOverviewRows(), getLiveEvents()]);
 
   const labels = locale === "en"
@@ -58,26 +69,34 @@ export default async function DashboardHome() {
         liveFeed: "Live operations feed",
         mission: "Mission control",
         mapTitle: "Live scan map",
-        mapSubtitle: "Geolocated scans from tenants, demo packs and reseller simulations",
-        roleNote: "Contextual permissions visible across tenants, CRM and demo orchestration.",
+        mapSubtitle: isTenantAdmin ? "Geolocated scans for your tenant operations." : "Geolocated scans from tenants, demo packs and reseller simulations",
+        roleNote: isTenantAdmin ? "Tenant-level operations scope with no cross-tenant demo noise." : "Contextual permissions visible across tenants, CRM and demo orchestration.",
       }
     : locale === "pt-BR"
     ? {
         liveFeed: "Feed de operações ao vivo",
         mission: "Mission control",
         mapTitle: "Mapa de scans ao vivo",
-        mapSubtitle: "Scans geolocalizados de tenants, packs demo e simulações reseller",
-        roleNote: "Permissões contextuais visíveis em tenants, CRM e orquestração demo.",
+        mapSubtitle: isTenantAdmin ? "Scans geolocalizados das operações do seu tenant." : "Scans geolocalizados de tenants, packs demo e simulações reseller",
+        roleNote: isTenantAdmin ? "Escopo operacional por tenant, sem ruído de demos cross-tenant." : "Permissões contextuais visíveis em tenants, CRM e orquestração demo.",
       }
     : {
         liveFeed: "Feed operativo en vivo",
         mission: "Mission control",
         mapTitle: "Mapa de escaneos en vivo",
-        mapSubtitle: "Escaneos geolocalizados de tenants, packs demo y simulaciones reseller",
-        roleNote: "Permisos contextuales visibles en tenants, CRM y orquestación demo.",
+        mapSubtitle: isTenantAdmin ? "Escaneos geolocalizados de la operación de tu tenant." : "Escaneos geolocalizados de tenants, packs demo y simulaciones reseller",
+        roleNote: isTenantAdmin ? "Alcance operativo por tenant, sin ruido de demos cross-tenant." : "Permisos contextuales visibles en tenants, CRM y orquestación demo.",
       };
 
-  const overviewRows = overviewRaw.map((row: Record<string, unknown>) => {
+  const scopedOverviewRaw = tenantScope
+    ? overviewRaw.filter((row: Record<string, unknown>) => String(row.slug || "").toLowerCase() === tenantScope)
+    : overviewRaw;
+
+  const scopedLiveEvents = tenantScope
+    ? liveEvents.filter((row: Record<string, unknown>) => String(row.tenant_slug || "").toLowerCase() === tenantScope)
+    : liveEvents;
+
+  const overviewRows = scopedOverviewRaw.map((row: Record<string, unknown>) => {
     const scans = Number(row.scans || 0);
     const duplicates = Number(row.duplicates || 0);
     const tamper = Number(row.tamper || 0);
@@ -90,7 +109,7 @@ export default async function DashboardHome() {
     };
   });
 
-  const mapPoints = liveEvents
+  const mapPoints = scopedLiveEvents
     .filter((row: Record<string, unknown>) => typeof row.lat === "number" && typeof row.lng === "number")
     .slice(0, 10)
     .map((row: Record<string, unknown>) => ({
@@ -128,7 +147,7 @@ export default async function DashboardHome() {
             <Badge tone="cyan">{labels.mission}</Badge>
           </div>
           <div className="mt-4 space-y-2">
-            {liveEvents.slice(0, 8).map((event: Record<string, unknown>) => {
+            {scopedLiveEvents.slice(0, 8).map((event: Record<string, unknown>) => {
               const result = String(event.result || "VALID");
               const tone = result === "VALID" ? "text-emerald-300" : "text-rose-300";
               return (
@@ -140,16 +159,17 @@ export default async function DashboardHome() {
                 </div>
               );
             })}
+            {!scopedLiveEvents.length ? <p className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">No hay eventos recientes en el alcance actual. Probá escanear un tag activo o ajustá el tenant operativo.</p> : null}
           </div>
         </Card>
 
         <div>
           <p className="mb-2 text-xs text-slate-400">{labels.mapTitle} · {labels.mapSubtitle}</p>
-          <DemoOpsMap points={mapPoints} />
+          <DemoOpsMap points={mapPoints} mode={isTenantAdmin ? "tenant" : "global"} />
         </div>
       </div>
 
-      <Card className="p-5">
+      {!isTenantAdmin ? <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo express · first time flow</h2>
           <div className="flex flex-wrap gap-2">
@@ -172,9 +192,9 @@ export default async function DashboardHome() {
             <p className="mt-1">Cargá manifest, activá tags y validá URL SUN en Batch Ops.</p>
           </div>
         </div>
-      </Card>
+      </Card> : null}
 
-      <Card className="p-5">
+      {!isTenantAdmin ? <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">10 demo packs listos</h2>
           <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Open orchestrator</Link>
@@ -190,18 +210,26 @@ export default async function DashboardHome() {
             </div>
           ))}
         </div>
-      </Card>
+      </Card> : null}
 
       <ModuleGrid
         actionLabel={copy.shell.openModule}
-        modules={[
-          { title: copy.pages.tenants.title, description: copy.pages.tenants.description, href: "/tenants", status: copy.statuses.active, tone: "green" },
-          { title: copy.pages.batches.title, description: copy.pages.batches.description, href: "/batches", status: copy.statuses.active, tone: "green" },
-          { title: copy.pages.tags.title, description: copy.pages.tags.description, href: "/tags", status: copy.statuses.active, tone: "green" },
-          { title: copy.pages.events.title, description: copy.pages.events.description, href: "/events", status: copy.statuses.active, tone: "green" },
-          { title: copy.pages.resellers.title, description: copy.pages.resellers.description, href: "/resellers", status: copy.statuses.active, tone: "green" },
-          { title: copy.pages.apiKeys.title, description: copy.pages.apiKeys.description, href: "/api-keys", status: copy.statuses.pending, tone: "amber" },
-        ]}
+        modules={isTenantAdmin
+          ? [
+              { title: copy.pages.batches.title, description: copy.pages.batches.description, href: "/batches", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.tags.title, description: copy.pages.tags.description, href: "/tags", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.events.title, description: copy.pages.events.description, href: "/events", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.analytics.title, description: copy.pages.analytics.description, href: "/analytics", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.leadsTickets.title, description: copy.pages.leadsTickets.description, href: "/leads-tickets", status: copy.statuses.active, tone: "green" as const },
+            ]
+          : [
+              { title: copy.pages.tenants.title, description: copy.pages.tenants.description, href: "/tenants", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.batches.title, description: copy.pages.batches.description, href: "/batches", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.tags.title, description: copy.pages.tags.description, href: "/tags", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.events.title, description: copy.pages.events.description, href: "/events", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.resellers.title, description: copy.pages.resellers.description, href: "/resellers", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.apiKeys.title, description: copy.pages.apiKeys.description, href: "/api-keys", status: copy.statuses.pending, tone: "amber" as const },
+            ]}
       />
 
       <DataTable
@@ -223,7 +251,7 @@ export default async function DashboardHome() {
         statusMap={copy.statuses}
       />
 
-      <Card className="p-6">
+      {!isTenantAdmin ? <Card className="p-6">
         <h2 className="text-lg font-semibold text-white">{t.dashboard.roleBasedOps}</h2>
         <p className="mt-2 text-sm text-slate-400">{copy.pages.batches.description}</p>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
@@ -235,8 +263,9 @@ export default async function DashboardHome() {
           ))}
         </div>
       </Card>
+      : null}
 
-      <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} currentRole={session.role} />
+      {!isTenantAdmin ? <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} currentRole={session.role} /> : null}
     </main>
   );
 }

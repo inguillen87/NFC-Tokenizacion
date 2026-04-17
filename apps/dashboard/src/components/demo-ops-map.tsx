@@ -18,8 +18,19 @@ type MapPoint = {
 
 type EventFilter = "all" | "clean" | "risk";
 type ScopeFilter = "selected" | "all";
+type MapMode = "demo" | "tenant" | "global";
 
-export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points: MapPoint[]; selectedVertical?: string; selectedPack?: string }) {
+export function DemoOpsMap({
+  points,
+  selectedVertical,
+  selectedPack,
+  mode = "demo",
+}: {
+  points: MapPoint[];
+  selectedVertical?: string;
+  selectedPack?: string;
+  mode?: MapMode;
+}) {
   const [playback, setPlayback] = useState(false);
   const [index, setIndex] = useState(100);
   const [eventFilter, setEventFilter] = useState<EventFilter>("all");
@@ -33,10 +44,10 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
       points.filter((point) => {
         const countryMatch = country === "ALL" ? true : point.country === country;
         const eventMatch = eventFilter === "all" ? true : eventFilter === "clean" ? point.risk === 0 : point.risk > 0;
-        const scopeMatch = scope === "all" ? true : selectedVertical ? point.vertical === selectedVertical : true;
+        const scopeMatch = mode === "demo" ? (scope === "all" ? true : selectedVertical ? point.vertical === selectedVertical : true) : true;
         return countryMatch && eventMatch && scopeMatch;
       }),
-    [country, eventFilter, points, scope, selectedVertical],
+    [country, eventFilter, mode, points, scope, selectedVertical],
   );
 
   const playablePoints = useMemo(() => {
@@ -63,7 +74,7 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
     setIndex(100);
     setEventFilter("all");
     setCountry("ALL");
-    setScope("selected");
+    if (mode === "demo") setScope("selected");
   }
 
   return (
@@ -71,7 +82,13 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-white">Ops Map Pro (Enterprise Visual)</h3>
-          <p className="text-xs text-slate-400">Playback + filtros + clusters visuales sobre datos reales de demo/live feed.</p>
+          <p className="text-xs text-slate-400">
+            {mode === "tenant"
+              ? "Playback + filtros sobre eventos operativos reales de tu tenant."
+              : mode === "global"
+                ? "Playback + filtros sobre datos operativos multi-tenant."
+                : "Playback + filtros + clusters visuales sobre datos reales de demo/live feed."}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="rounded-lg border border-white/20 px-3 py-1 text-xs text-white" onClick={() => setPlayback((value) => !value)}>
@@ -106,7 +123,7 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
+      <div className={`mt-3 grid gap-2 ${mode === "demo" ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
         <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={eventFilter} onChange={(event) => setEventFilter(event.target.value as EventFilter)}>
           <option value="all">Todos los eventos</option>
           <option value="clean">AUTH OK</option>
@@ -117,22 +134,34 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
             <option key={item} value={item}>{item}</option>
           ))}
         </select>
-        <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={scope} onChange={(event) => setScope(event.target.value as ScopeFilter)}>
-          <option value="selected">Solo demo seleccionado</option>
-          <option value="all">Todo el tráfico demo</option>
-        </select>
+        {mode === "demo" ? (
+          <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={scope} onChange={(event) => setScope(event.target.value as ScopeFilter)}>
+            <option value="selected">Solo demo seleccionado</option>
+            <option value="all">Todo el tráfico demo</option>
+          </select>
+        ) : null}
       </div>
 
-      <div className="mt-3 rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-[11px] text-cyan-100">
-        Scope actual: <b>{scope === "selected" ? `pack ${selectedPack || "activo"} / vertical ${selectedVertical || "demo"}` : "todas las verticales demo"}</b>.
-        {scope === "selected" ? " Así evitamos mezclar ruido de otras demos cuando querés presentar un caso puntual." : " Vista agregada para enseñar calor multi-tenant / multi-artículo sin perder el legado del mapa global."}
-      </div>
+      {mode === "demo" ? (
+        <div className="mt-3 rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-[11px] text-cyan-100">
+          Scope actual: <b>{scope === "selected" ? `pack ${selectedPack || "activo"} / vertical ${selectedVertical || "demo"}` : "todas las verticales demo"}</b>.
+          {scope === "selected" ? " Así evitamos mezclar ruido de otras demos cuando querés presentar un caso puntual." : " Vista agregada para enseñar calor multi-tenant / multi-artículo sin perder el legado del mapa global."}
+        </div>
+      ) : (
+        <div className="mt-3 rounded-lg border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-100">
+          Scope actual: <b>{mode === "tenant" ? "tenant operativo activo" : "multi-tenant operacional"}</b>. Filtros orientados a operación real.
+        </div>
+      )}
 
       <div className="mt-3">
         {playablePoints.length > 0 ? (
           <WorldMapPlaceholder
             title="Global verification map"
-            subtitle="Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
+            subtitle={mode === "demo"
+              ? "Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
+              : mode === "tenant"
+                ? "Fuente: eventos del tenant activo con geolocalización y estado operativo."
+                : "Fuente: eventos operativos multi-tenant consolidados por estado y geografía."}
             points={playablePoints}
           />
         ) : (
@@ -146,7 +175,9 @@ export function DemoOpsMap({ points, selectedVertical, selectedPack }: { points:
         <input type="range" min={10} max={100} step={10} value={index} onChange={(event) => setIndex(Number(event.target.value))} className="w-full" />
       </div>
 
-      <p className="mt-2 text-[11px] text-slate-500">{playablePoints.length} hubs activos · {riskPoints} con riesgo · {scope === "selected" ? "foco en el demo elegido" : "vista heat global consolidada"}.</p>
+      <p className="mt-2 text-[11px] text-slate-500">
+        {playablePoints.length} hubs activos · {riskPoints} con riesgo · {mode === "demo" ? (scope === "selected" ? "foco en el demo elegido" : "vista heat global consolidada") : mode === "tenant" ? "foco en el tenant operativo" : "vista global operacional"}.
+      </p>
     </div>
   );
 }
