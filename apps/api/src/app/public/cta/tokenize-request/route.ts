@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   const batch = batchRows[0];
   const reqRows = await sql/*sql*/`
     INSERT INTO tokenization_requests (
-      tenant_id, batch_id, bid, uid_hex, status, network, asset_ref, issuer_wallet, anchor_hash, requested_by, meta
+      tenant_id, batch_id, bid, uid_hex, status, network, asset_ref, issuer_wallet, anchor_hash, requested_by, next_attempt_at, meta
     ) VALUES (
       ${batch?.tenant_id || null},
       ${batch?.id || null},
@@ -44,6 +44,7 @@ export async function POST(req: Request) {
       ${ledger.issuer_wallet},
       ${ledger.anchor_hash},
       'public_cta',
+      now(),
       ${JSON.stringify({ trace_id: traceId, share_token_status: auth.share_token_status })}::jsonb
     )
     RETURNING id, status, requested_at

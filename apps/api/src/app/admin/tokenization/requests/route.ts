@@ -4,18 +4,10 @@ export const dynamic = "force-dynamic";
 import { checkAdmin } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
-import { createHash, randomBytes } from "node:crypto";
+import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
 
 function clean(value: unknown) {
   return String(value || "").trim();
-}
-
-function buildSimulatedTxHash(requestId: string, uid: string) {
-  return `0x${createHash("sha256").update(`${requestId}:${uid}:${Date.now()}`).digest("hex")}`;
-}
-
-function buildTokenId(uid: string) {
-  return createHash("sha1").update(uid).digest("hex").slice(0, 16);
 }
 
 export async function GET(req: Request): Promise<Response> {
@@ -59,50 +51,13 @@ export async function POST(req: Request): Promise<Response> {
 
   if (!requestId) return json({ ok: false, reason: "request_id required" }, 400);
 
-  const rows = await sql/*sql*/`
-    SELECT id, bid, uid_hex, status
-    FROM tokenization_requests
-    WHERE id = ${requestId}::uuid
-    LIMIT 1
-  `;
-  const existing = rows[0];
-  if (!existing) return json({ ok: false, reason: "request not found" }, 404);
-  if (existing.status === "anchored") return json({ ok: true, request_id: existing.id, status: "anchored", already_processed: true });
-
-  const txHash = buildSimulatedTxHash(existing.id, existing.uid_hex);
-  const tokenId = buildTokenId(existing.uid_hex);
-  const anchorHash = `0x${randomBytes(32).toString("hex")}`;
-
-  await sql/*sql*/`
-    UPDATE tokenization_requests
-    SET status = 'anchored',
-        network = ${network},
-        issuer_wallet = COALESCE(${issuerWallet}, issuer_wallet),
-        tx_hash = ${txHash},
-        token_id = ${tokenId},
-        anchor_hash = ${anchorHash},
-        processed_at = now(),
-        meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor: "admin_tokenize_endpoint", anchored_at: new Date().toISOString() })}::jsonb
-    WHERE id = ${existing.id}::uuid
-  `;
-
-  await sql/*sql*/`
-    INSERT INTO demo_cta_actions (action, bid, uid_hex, payload)
-    VALUES (
-      'ledger_anchored',
-      ${existing.bid},
-      ${existing.uid_hex},
-      ${JSON.stringify({ tx_hash: txHash, token_id: tokenId, network, anchor_hash: anchorHash, issuer_wallet: issuerWallet })}::jsonb
-    )
-  `;
-
-  return json({
-    ok: true,
-    request_id: existing.id,
-    status: "anchored",
-    tx_hash: txHash,
-    token_id: tokenId,
+  const result = await anchorTokenizationRequest({
+    requestId,
     network,
-    anchor_hash: anchorHash,
+    issuerWallet,
+    processor: "admin_tokenize_endpoint",
   });
+  if (!result.ok && result.reason === "request_not_found") return json({ ok: false, reason: "request not found" }, 404);
+  if (!result.ok) return json(result, 400);
+  return json(result);
 }

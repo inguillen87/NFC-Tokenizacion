@@ -146,9 +146,14 @@ CREATE TABLE IF NOT EXISTS tokenization_requests (
   requested_by text,
   requested_at timestamptz NOT NULL DEFAULT now(),
   processed_at timestamptz,
+  attempt_count integer NOT NULL DEFAULT 0,
+  last_error text,
+  next_attempt_at timestamptz,
+  external_ref text,
   meta jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE INDEX IF NOT EXISTS idx_tokenization_requests_bid_uid ON tokenization_requests(bid, uid_hex, requested_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tokenization_requests_status ON tokenization_requests(status, requested_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tokenization_requests_tenant ON tokenization_requests(tenant_id, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tokenization_requests_next_attempt ON tokenization_requests(status, next_attempt_at, requested_at);
