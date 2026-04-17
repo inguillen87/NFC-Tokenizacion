@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { resolveLocale } from "@product/config";
 import { HelpBot } from "@product/ui";
+import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -42,6 +43,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang={locale}>
       <body>
+        <MisconfigurationBanner />
         {children}
         <HelpBot locale={locale} mode="support" />
       </body>

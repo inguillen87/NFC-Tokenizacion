@@ -21,10 +21,11 @@ export async function POST(req: Request) {
         .split(/[\s,\n]+/)
         .map(normalizeUid)
         .filter(Boolean);
-  const count = Number(body.count || 0);
+  const count = Number(body.count || body.quantity || 0);
+  const activateAll = body.all === true;
 
-  if (!bid || (!uids.length && count <= 0)) {
-    return json({ ok: false, reason: "bid and either uids or count required" }, 400);
+  if (!bid || (!uids.length && count <= 0 && !activateAll)) {
+    return json({ ok: false, reason: "bid and either uids, quantity/count, or all=true required" }, 400);
   }
 
   const batchRows = await sql/*sql*/`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
@@ -32,14 +33,21 @@ export async function POST(req: Request) {
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
 
   let targetUids = Array.from(new Set(uids));
-  if (!targetUids.length && count > 0) {
-    const candidates = await sql/*sql*/`
-      SELECT uid_hex
-      FROM tags
-      WHERE batch_id = ${batch.id} AND status = 'inactive'
-      ORDER BY created_at ASC, uid_hex ASC
-      LIMIT ${Math.max(0, Math.trunc(count))}
-    `;
+  if (!targetUids.length && (count > 0 || activateAll)) {
+    const candidates = activateAll
+      ? await sql/*sql*/`
+          SELECT uid_hex
+          FROM tags
+          WHERE batch_id = ${batch.id} AND status = 'inactive'
+          ORDER BY created_at ASC, uid_hex ASC
+        `
+      : await sql/*sql*/`
+          SELECT uid_hex
+          FROM tags
+          WHERE batch_id = ${batch.id} AND status = 'inactive'
+          ORDER BY created_at ASC, uid_hex ASC
+          LIMIT ${Math.max(0, Math.trunc(count))}
+        `;
     targetUids = candidates.map((row) => String(row.uid_hex || "")).filter(Boolean);
   }
 
@@ -54,11 +62,18 @@ export async function POST(req: Request) {
     RETURNING uid_hex
   `;
 
+  const remaining = await sql/*sql*/`
+    SELECT COUNT(*)::int AS count
+    FROM tags
+    WHERE batch_id = ${batch.id} AND status = 'inactive'
+  `;
+
   return json({
     ok: true,
     batch: bid,
     requested: targetUids.length,
     activated: updated.length,
     uids: updated.map((row) => row.uid_hex),
+    remainingInactive: Number(remaining[0]?.count || 0),
   });
 }
