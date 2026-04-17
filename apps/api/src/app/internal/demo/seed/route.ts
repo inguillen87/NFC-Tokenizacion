@@ -1,26 +1,24 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
-
-const execFileAsync = promisify(execFile);
+import { seedDemoPack } from '../../../../lib/demo-seed';
 
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+
   try {
-    const { stdout, stderr } = await execFileAsync('node', ['scripts/demo-demobodega.mjs'], {
-      cwd: process.cwd(),
-      env: process.env,
-      maxBuffer: 1024 * 1024,
+    const result = await seedDemoPack({
+      pack: String(body.pack || 'wine-secure'),
+      forceBid: String(body.forceBid || body.bid || '').trim() || undefined,
     });
-    return json({ ok: true, stdout, stderr });
+    return json(result);
   } catch (error) {
-    const err = error as Error & { stdout?: string; stderr?: string };
-    return json({ ok: false, reason: err.message, stdout: err.stdout, stderr: err.stderr }, 500);
+    const err = error as Error;
+    return json({ ok: false, reason: err.message }, 500);
   }
 }
