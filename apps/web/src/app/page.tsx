@@ -63,6 +63,15 @@ export default async function HomePage() {
         "3. Import only manifests that match the created batch and compare planned vs imported tags.",
         "4. Activate only audited units before opening the rollout to consumers or partners.",
       ],
+      investorTitle: "Investor-ready narrative",
+      investorBody: "Enterprise anti-fraud + traceability SaaS first. Optional blockchain-ready layer only for premium use cases with clear ROI.",
+      investorCards: [
+        "Revenue now: hardware, setup, dashboard SaaS, API, support, reseller channel.",
+        "Moat: authenticity + risk data graph (batch, claims, ownership, geography, tamper).",
+        "Upside: optional ownership, provenance, warranty and tokenization-ready anchoring.",
+      ],
+      investorCta: "Open investor snapshot",
+      sunCta: "Open SUN validation center",
     }
     : locale === "pt-BR"
     ? {
@@ -100,6 +109,15 @@ export default async function HomePage() {
         "3. Importe apenas manifests que coincidam com o batch criado e compare planned vs imported tags.",
         "4. Ative somente unidades auditadas antes de abrir o rollout a consumidores ou parceiros.",
       ],
+      investorTitle: "Narrativa pronta para investidor",
+      investorBody: "SaaS enterprise de anti-fraude + rastreabilidade primeiro. Camada blockchain-ready opcional apenas para casos premium com ROI claro.",
+      investorCards: [
+        "Receita hoje: hardware, setup, dashboard SaaS, API, suporte e canal reseller.",
+        "Moat: grafo de dados de autenticidade + risco (batch, claims, ownership, geografia, tamper).",
+        "Upside: ownership, provenance, warranty e tokenization-ready opcionais.",
+      ],
+      investorCta: "Abrir investor snapshot",
+      sunCta: "Abrir SUN validation center",
     }
     : {
       demoJson: "Descargar seed JSON",
@@ -136,6 +154,15 @@ export default async function HomePage() {
         "3. Importá solo manifests que coincidan con el batch creado y compará planned vs imported tags.",
         "4. Activá únicamente unidades auditadas antes de abrir el rollout a clientes o partners.",
       ],
+      investorTitle: "Narrativa lista para inversores",
+      investorBody: "Primero SaaS enterprise anti-fraude + trazabilidad. La capa blockchain-ready es opcional para casos premium con ROI real.",
+      investorCards: [
+        "Revenue hoy: hardware, setup, dashboard SaaS, API, soporte y canal reseller.",
+        "Moat: grafo de datos de autenticidad + riesgo (lotes, claims, ownership, geografía, tamper).",
+        "Upside: ownership, provenance, warranty y tokenización opcional anclable.",
+      ],
+      investorCta: "Abrir investor snapshot",
+      sunCta: "Abrir SUN validation center",
     };
 
   const demoPacks = [
@@ -146,6 +173,37 @@ export default async function HomePage() {
     { key: "pharma-secure", label: "Docs & presence secure", tag: "NTAG 424 DNA", sim: "Certificates + contractor credential + proof-of-presence" },
     { key: "luxury-basic", label: "Luxury basic", tag: "NTAG215", sim: "Brand story + ownership activation" },
   ];
+
+  const techMatrix = locale === "en"
+    ? {
+      title: "Tag strategy: QR + NTAG212/213/215 + NTAG424 DNA TagTamper",
+      body: "Enterprise rollout combines accessibility (QR/basic tags) with anti-fraud cryptographic proof (424 TT) according to product risk and margin.",
+      rows: [
+        { tech: "QR + NTAG212/213", fit: "Entry SKU / broad campaigns", proof: "Fast adoption, lower security", mobile: "Landing + lead capture + basic provenance" },
+        { tech: "NTAG215", fit: "Events, memberships, loyalty", proof: "UID allowlist + anti-duplicate ops", mobile: "Access/control experience with CTA" },
+        { tech: "NTAG424 DNA / TagTamper", fit: "Wine, pharma, cosmetics, agro", proof: "Encrypted SUN + anti-tamper + anti-clone", mobile: "Premium authenticity passport + ownership/warranty" },
+      ],
+    }
+    : locale === "pt-BR"
+      ? {
+        title: "Estratégia de tags: QR + NTAG212/213/215 + NTAG424 DNA TagTamper",
+        body: "Rollout enterprise combina acessibilidade (QR/tags básicas) com prova anti-fraude criptográfica (424 TT) conforme risco e margem.",
+        rows: [
+          { tech: "QR + NTAG212/213", fit: "SKU de entrada / campanhas massivas", proof: "Adoção rápida, segurança menor", mobile: "Landing + captura de lead + provenance básico" },
+          { tech: "NTAG215", fit: "Eventos, memberships, loyalty", proof: "UID allowlist + operação anti-duplicação", mobile: "Experiência de acesso/controle com CTA" },
+          { tech: "NTAG424 DNA / TagTamper", fit: "Vinho, pharma, cosméticos, agro", proof: "SUN criptográfico + anti-tamper + anti-clone", mobile: "Passport premium de autenticidade + ownership/garantia" },
+        ],
+      }
+      : {
+        title: "Estrategia de tags: QR + NTAG212/213/215 + NTAG424 DNA TagTamper",
+        body: "El rollout enterprise combina accesibilidad (QR/tags básicos) con prueba antifraude criptográfica (424 TT) según riesgo y margen de producto.",
+        rows: [
+          { tech: "QR + NTAG212/213", fit: "SKU de entrada / campañas masivas", proof: "Adopción rápida, seguridad menor", mobile: "Landing + captura de lead + provenance básico" },
+          { tech: "NTAG215", fit: "Eventos, memberships, loyalty", proof: "UID allowlist + operación anti-duplicado", mobile: "Experiencia de acceso/control con CTA" },
+          { tech: "NTAG424 DNA / TagTamper", fit: "Vino, pharma, cosmética, agro", proof: "SUN cifrado + anti-tamper + anti-clon", mobile: "Passport premium de autenticidad + ownership/garantía" },
+        ],
+      };
+
   const mobileNavItems = [
     { label: content.nav.product, href: "/" },
     { label: content.nav.pricing, href: "/pricing" },
@@ -227,6 +285,24 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="container-shell pb-6">
+        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-5 md:p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-emerald-200">{labels.investorTitle}</p>
+          <p className="mt-2 text-sm text-slate-100">{labels.investorBody}</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {labels.investorCards.map((item) => (
+              <div key={item} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-200">
+                {item}
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <PublicLinkChip href={productExitHref.investorSnapshot} variant="amber">{labels.investorCta}</PublicLinkChip>
+            <PublicLinkChip href="/sun" variant="emerald">{labels.sunCta}</PublicLinkChip>
+          </div>
+        </div>
+      </section>
+
       <RadarSection radar={content.radar} locale={locale} />
       <InteractiveDemoSection locale={locale} />
 
@@ -271,6 +347,23 @@ export default async function HomePage() {
               <Link href="/docs" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutDocs}<ArrowRight className="h-3.5 w-3.5" /></Link>
               <Link href="/pricing" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutPricing}<ArrowRight className="h-3.5 w-3.5" /></Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-shell py-8">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{techMatrix.title}</p>
+          <p className="mt-2 text-sm text-slate-300">{techMatrix.body}</p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {techMatrix.rows.map((row) => (
+              <article key={row.tech} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+                <p className="text-sm font-semibold text-white">{row.tech}</p>
+                <p className="mt-2 text-xs text-slate-300">Fit: <span className="text-white">{row.fit}</span></p>
+                <p className="mt-1 text-xs text-slate-300">Security: <span className="text-white">{row.proof}</span></p>
+                <p className="mt-1 text-xs text-cyan-100">Mobile UX: {row.mobile}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
