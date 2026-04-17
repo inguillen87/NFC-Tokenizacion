@@ -11,6 +11,21 @@ import { getDashboardI18n } from "../../lib/locale";
 import { messages, productUrls } from "@product/config";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+const FALLBACK_KPIS = {
+  scans: "Scans",
+  validInvalid: "Valid / Invalid",
+  duplicates: "Duplicados",
+  tamper: "Tamper alerts",
+};
+
+function inferTenantSlugFromSession(session: { role: string; email: string }) {
+  if (session.role !== "tenant-admin") return "";
+  const email = (session.email || "").toLowerCase();
+  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
+  if (explicit) return explicit;
+  if (email.includes("demobodega")) return "demobodega";
+  return "";
+}
 
 function inferTenantSlugFromSession(session: { role: string; email: string }) {
   if (session.role !== "tenant-admin") return "";
@@ -59,6 +74,7 @@ export default async function DashboardHome() {
   const { locale } = await getDashboardI18n();
   const fallbackLocale = "es-AR" as const;
   const t = messages[locale] || messages[fallbackLocale];
+  const kpis = t?.dashboard?.kpis || FALLBACK_KPIS;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
   const publicMobileBase = `${productUrls.web}/demo-lab/mobile`;
   const session = await requireDashboardSession();
@@ -140,7 +156,7 @@ export default async function DashboardHome() {
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.overview} title={copy.pages.overview.title} description={copy.pages.overview.description} />
 
-      <AnalyticsPanels kpis={t.dashboard.kpis} extra={copy.analytics} />
+      <AnalyticsPanels kpis={kpis} extra={copy.analytics} />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-5">
@@ -239,9 +255,9 @@ export default async function DashboardHome() {
         columns={[
           { key: "tenant", label: copy.tables.tenants.tenant },
           { key: "status", label: copy.tables.tenants.status },
-          { key: "scans", label: t.dashboard.kpis.scans },
-          { key: "duplicates", label: t.dashboard.kpis.duplicates },
-          { key: "tamper", label: t.dashboard.kpis.tamper },
+          { key: "scans", label: kpis.scans },
+          { key: "duplicates", label: kpis.duplicates },
+          { key: "tamper", label: kpis.tamper },
         ]}
         rows={overviewRows}
         filterKey="status"

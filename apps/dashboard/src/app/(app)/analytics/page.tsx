@@ -83,7 +83,8 @@ export default async function AnalyticsPage() {
 
   const fallbackLocale = "es-AR" as const;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
-  const kpis = messages[locale]?.dashboard?.kpis || FALLBACK_KPIS;
+  const translation = messages[locale] || messages[fallbackLocale];
+  const kpis = translation?.dashboard?.kpis || FALLBACK_KPIS;
   const analyticsData = await getAnalytics(tenantScope);
 
   return (
