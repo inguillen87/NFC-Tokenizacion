@@ -185,22 +185,34 @@ export async function GET(req: Request): Promise<Response> {
     return json({ ok: false, reason: 'invalid cmac hex (expected 16 hex chars)' }, 400);
   }
 
-  const result = await processSunScan({
-    bid,
-    piccDataHex: picc_data,
-    encHex: enc,
-    cmacHex: cmac,
-    rawQuery: Object.fromEntries(url.searchParams.entries()),
-    context: {
-      ip,
-      userAgent: ua,
-      city: geoCity,
-      countryCode: geoCountry,
-      lat: Number.isFinite(geoLat) ? geoLat : null,
-      lng: Number.isFinite(geoLng) ? geoLng : null,
-      source: 'real',
-    },
-  });
+  let result: Awaited<ReturnType<typeof processSunScan>>;
+  try {
+    result = await processSunScan({
+      bid,
+      piccDataHex: picc_data,
+      encHex: enc,
+      cmacHex: cmac,
+      rawQuery: Object.fromEntries(url.searchParams.entries()),
+      context: {
+        ip,
+        userAgent: ua,
+        city: geoCity,
+        countryCode: geoCountry,
+        lat: Number.isFinite(geoLat) ? geoLat : null,
+        lng: Number.isFinite(geoLng) ? geoLng : null,
+        source: 'real',
+      },
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'sun_processing_error';
+    result = {
+      status: 200,
+      body: {
+        ok: false,
+        reason: `sun_processing_error: ${reason}`,
+      },
+    };
+  }
 
   if (result.body.ok) {
     void dispatchValidScanWebhook({
