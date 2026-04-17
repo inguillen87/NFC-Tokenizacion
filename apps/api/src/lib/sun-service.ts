@@ -23,6 +23,92 @@ export async function processSunScan(input: {
   rawQuery?: Record<string, string>;
   context?: ScanContext;
 }) {
+  async function insertEvent(payload: {
+    uidHex: string | null;
+    ctr: number | null;
+    cmacOk: boolean;
+    allowlistedValue: boolean;
+    tagStatusValue: string | null;
+    resultValue: string;
+    reasonValue: string | null;
+    hasGeoValue: boolean;
+  }) {
+    const commonValues = [
+      batch.tenant_id,
+      batch.id,
+      payload.uidHex,
+      payload.ctr,
+      payload.cmacOk,
+      payload.allowlistedValue,
+      payload.tagStatusValue,
+      payload.resultValue,
+      payload.reasonValue,
+      input.context?.ip || null,
+      input.context?.userAgent || null,
+      input.context?.city || null,
+      input.context?.countryCode || null,
+      payload.hasGeoValue ? input.context?.lat! : null,
+      payload.hasGeoValue ? input.context?.lng! : null,
+      input.context?.city || null,
+      input.context?.countryCode || null,
+      payload.hasGeoValue ? input.context?.lat! : null,
+      payload.hasGeoValue ? input.context?.lng! : null,
+      input.context?.deviceLabel || null,
+      input.context?.source || 'real',
+      JSON.stringify(input.context?.meta || {}),
+      JSON.stringify(input.rawQuery || {}),
+    ] as const;
+
+    const isMissingColumnError = (error: unknown) => {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      return message.includes('column') && message.includes('does not exist');
+    };
+
+    try {
+      await sql/*sql*/`
+        INSERT INTO events (
+          tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, reason,
+          ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
+          source, meta, raw_query
+        ) VALUES (
+          ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
+          ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
+          ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
+        )
+      `;
+      return;
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error;
+    }
+
+    try {
+      await sql/*sql*/`
+        INSERT INTO events (
+          tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
+          ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
+          source, meta, raw_query
+        ) VALUES (
+          ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
+          ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
+          ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
+        )
+      `;
+      return;
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error;
+    }
+
+    await sql/*sql*/`
+      INSERT INTO events (
+        tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
+        ip, user_agent, raw_query
+      ) VALUES (
+        ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
+        ${commonValues[9]}, ${commonValues[10]}, ${commonValues[22]}::jsonb
+      )
+    `;
+  }
+
   const batchRows = await sql/*sql*/`
     SELECT b.id, b.tenant_id, b.status, b.meta_key_ct, b.file_key_ct
     FROM batches b
@@ -49,6 +135,16 @@ export async function processSunScan(input: {
   let replaySuspect = false;
 
   if (res.ok) {
+    const priorEventRows = await sql/*sql*/`
+      SELECT id
+      FROM events
+      WHERE batch_id = ${batch.id}
+        AND uid_hex = ${res.uidHex}
+        AND sdm_read_ctr = ${res.ctr}
+      LIMIT 1
+    `;
+    if (priorEventRows[0]) replaySuspect = true;
+
     const tagRows = await sql/*sql*/`
       SELECT id, status, last_seen_ctr
       FROM tags
@@ -73,50 +169,31 @@ export async function processSunScan(input: {
 
   let result = !res.ok
     ? 'INVALID'
-    : !allowlisted
+    : replaySuspect
+      ? 'REPLAY_SUSPECT'
+      : !allowlisted
       ? 'NOT_REGISTERED'
       : tagStatus !== 'active'
         ? 'NOT_ACTIVE'
-        : replaySuspect
-          ? 'REPLAY_SUSPECT'
-          : 'VALID';
+        : 'VALID';
+
+  const successReason = replaySuspect ? 'copied URL / replay suspected' : null;
+  const resolvedReason = !res.ok ? res.reason : successReason;
 
   if (input.context?.forceResult) result = input.context.forceResult;
 
   const hasGeo = Number.isFinite(input.context?.lat) && Number.isFinite(input.context?.lng);
 
-  await sql/*sql*/`
-    INSERT INTO events (
-      tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, reason,
-      ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
-      source, meta, raw_query
-    ) VALUES (
-      ${batch.tenant_id},
-      ${batch.id},
-      ${res.ok ? res.uidHex : null},
-      ${res.ok ? res.ctr : null},
-      ${res.ok ? res.ctr : null},
-      ${res.ok},
-      ${allowlisted},
-      ${tagStatus},
-      ${result},
-      ${res.ok ? null : res.reason},
-      ${input.context?.ip || null},
-      ${input.context?.userAgent || null},
-      ${input.context?.city || null},
-      ${input.context?.countryCode || null},
-      ${hasGeo ? input.context?.lat! : null},
-      ${hasGeo ? input.context?.lng! : null},
-      ${input.context?.city || null},
-      ${input.context?.countryCode || null},
-      ${hasGeo ? input.context?.lat! : null},
-      ${hasGeo ? input.context?.lng! : null},
-      ${input.context?.deviceLabel || null},
-      ${input.context?.source || 'real'}::scan_source,
-      ${JSON.stringify(input.context?.meta || {})}::jsonb,
-      ${JSON.stringify(input.rawQuery || {})}::jsonb
-    )
-  `;
+  await insertEvent({
+    uidHex: res.ok ? res.uidHex : null,
+    ctr: res.ok ? res.ctr : null,
+    cmacOk: res.ok,
+    allowlistedValue: allowlisted,
+    tagStatusValue: tagStatus,
+    resultValue: result,
+    reasonValue: resolvedReason,
+    hasGeoValue: hasGeo,
+  });
 
   return {
     status: result === 'VALID' ? 200 : 403,
@@ -129,7 +206,7 @@ export async function processSunScan(input: {
       enc_plain_hex: res.ok ? res.encPlainHex : undefined,
       allowlisted,
       tag_status: tagStatus,
-      reason: res.ok ? undefined : res.reason,
+      reason: resolvedReason || undefined,
     },
   };
 }
