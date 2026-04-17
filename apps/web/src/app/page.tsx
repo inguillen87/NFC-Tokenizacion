@@ -63,6 +63,15 @@ export default async function HomePage() {
         "3. Import only manifests that match the created batch and compare planned vs imported tags.",
         "4. Activate only audited units before opening the rollout to consumers or partners.",
       ],
+      investorTitle: "Investor-ready narrative",
+      investorBody: "Enterprise anti-fraud + traceability SaaS first. Optional blockchain-ready layer only for premium use cases with clear ROI.",
+      investorCards: [
+        "Revenue now: hardware, setup, dashboard SaaS, API, support, reseller channel.",
+        "Moat: authenticity + risk data graph (batch, claims, ownership, geography, tamper).",
+        "Upside: optional ownership, provenance, warranty and tokenization-ready anchoring.",
+      ],
+      investorCta: "Open investor snapshot",
+      sunCta: "Open SUN validation center",
     }
     : locale === "pt-BR"
     ? {
@@ -100,6 +109,15 @@ export default async function HomePage() {
         "3. Importe apenas manifests que coincidam com o batch criado e compare planned vs imported tags.",
         "4. Ative somente unidades auditadas antes de abrir o rollout a consumidores ou parceiros.",
       ],
+      investorTitle: "Narrativa pronta para investidor",
+      investorBody: "SaaS enterprise de anti-fraude + rastreabilidade primeiro. Camada blockchain-ready opcional apenas para casos premium com ROI claro.",
+      investorCards: [
+        "Receita hoje: hardware, setup, dashboard SaaS, API, suporte e canal reseller.",
+        "Moat: grafo de dados de autenticidade + risco (batch, claims, ownership, geografia, tamper).",
+        "Upside: ownership, provenance, warranty e tokenization-ready opcionais.",
+      ],
+      investorCta: "Abrir investor snapshot",
+      sunCta: "Abrir SUN validation center",
     }
     : {
       demoJson: "Descargar seed JSON",
@@ -136,6 +154,15 @@ export default async function HomePage() {
         "3. Importá solo manifests que coincidan con el batch creado y compará planned vs imported tags.",
         "4. Activá únicamente unidades auditadas antes de abrir el rollout a clientes o partners.",
       ],
+      investorTitle: "Narrativa lista para inversores",
+      investorBody: "Primero SaaS enterprise anti-fraude + trazabilidad. La capa blockchain-ready es opcional para casos premium con ROI real.",
+      investorCards: [
+        "Revenue hoy: hardware, setup, dashboard SaaS, API, soporte y canal reseller.",
+        "Moat: grafo de datos de autenticidad + riesgo (lotes, claims, ownership, geografía, tamper).",
+        "Upside: ownership, provenance, warranty y tokenización opcional anclable.",
+      ],
+      investorCta: "Abrir investor snapshot",
+      sunCta: "Abrir SUN validation center",
     };
 
   const demoPacks = [
@@ -254,6 +281,24 @@ export default async function HomePage() {
                 </Link>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      <section className="container-shell pb-6">
+        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-5 md:p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-emerald-200">{labels.investorTitle}</p>
+          <p className="mt-2 text-sm text-slate-100">{labels.investorBody}</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {labels.investorCards.map((item) => (
+              <div key={item} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-200">
+                {item}
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <PublicLinkChip href={productExitHref.investorSnapshot} variant="amber">{labels.investorCta}</PublicLinkChip>
+            <PublicLinkChip href="/sun" variant="emerald">{labels.sunCta}</PublicLinkChip>
           </div>
         </div>
       </section>
