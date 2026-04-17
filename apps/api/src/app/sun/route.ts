@@ -89,6 +89,8 @@ function renderSunHtml(input: { bid: string; picc_data: string; enc: string; cma
   const sensorBars = sensors.map((sensor) => `<div class="sensor"><p><span>${sensor.label}</span><b>${sensor.value}</b></p><div class="bar"><span style="width:${sensor.score}%"></span></div></div>`).join("");
   const vintage = Number(input.bid.replace(/[^\d]/g, "").slice(0, 4)) || 2024;
   const yearAging = Math.max(1, new Date().getUTCFullYear() - vintage);
+  const eventUid = input.result.body.uid || "";
+  const eventCtr = typeof input.result.body.ctr === "number" ? input.result.body.ctr : null;
 
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -132,6 +134,63 @@ body{margin:0;background:#020617;color:#e2e8f0;font-family:Inter,system-ui,sans-
   </ul>
 </section>
 <p class="foot">Raw params · picc_data=${input.picc_data.slice(0, 12)}... · enc=${input.enc.slice(0, 12)}... · cmac=${input.cmac.slice(0, 8)}...</p>
+<script>
+(() => {
+  const payload = {
+    bid: ${JSON.stringify(input.bid)},
+    uid: ${JSON.stringify(eventUid)},
+    ctr: ${eventCtr === null ? "null" : String(eventCtr)},
+    scannedAt: new Date().toISOString(),
+    client: {
+      ua: navigator.userAgent || null,
+      language: navigator.language || null,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+      platform: navigator.platform || null,
+      screen: { w: window.screen?.width || null, h: window.screen?.height || null, dpr: window.devicePixelRatio || null },
+      mobile: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || ""),
+    },
+  };
+
+  const send = (extra) => {
+    fetch("/sun/context", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...payload, ...extra }),
+      keepalive: true,
+      cache: "no-store",
+    }).catch(() => null);
+  };
+
+  if (!payload.uid || payload.ctr === null) {
+    send({ contextStatus: "no_uid_or_ctr" });
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    send({ contextStatus: "geolocation_not_supported" });
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      send({
+        contextStatus: "ok",
+        geo: {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          altitude: position.coords.altitude ?? null,
+          speed: position.coords.speed ?? null,
+        },
+      });
+    },
+    (error) => {
+      send({ contextStatus: "geolocation_denied", geoError: error?.message || "denied" });
+    },
+    { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 },
+  );
+})();
+</script>
 </main></body></html>`;
 }
 
