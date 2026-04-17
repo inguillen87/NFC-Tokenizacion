@@ -20,7 +20,21 @@ async function adminGet(path: string) {
   }
 }
 
-export default async function LeadsTicketsPage() {
+function parseMeta(raw: unknown, key: string) {
+  const text = String(raw || "");
+  const pattern = new RegExp(`(?:\\[|\\b|\\|\\s*)${key}=([^\\]\\|\\s]+)`, "i");
+  const match = text.match(pattern);
+  return match?.[1] || "";
+}
+
+export default async function LeadsTicketsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = searchParams ? await searchParams : {};
+  const tenantFilter = String(query.tenant || "").trim().toLowerCase();
+  const sessionFilter = String(query.session || "").trim().toLowerCase();
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
 
@@ -34,6 +48,27 @@ export default async function LeadsTicketsPage() {
   const ticketCount = Array.isArray(tickets) ? tickets.length : 0;
   const orderCount = Array.isArray(orders) ? orders.length : 0;
   const hotPipeline = leadCount + orderCount;
+
+  const leadsArray = Array.isArray(leads) ? leads as Array<Record<string, unknown>> : [];
+  const ctaOpportunities = leadsArray
+    .map((lead) => {
+      const tenant = parseMeta(lead.message, "tenant") || parseMeta(lead.notes, "tenant");
+      const session = parseMeta(lead.message, "session") || parseMeta(lead.notes, "session");
+      const interest = parseMeta(lead.message, "interest") || String(lead.role_interest || "-");
+      return { lead, tenant, session, interest, source: String(lead.source || "unknown") };
+    })
+    .filter((item) => item.source.includes("public") || item.source.includes("demo"));
+  const filteredOpportunities = ctaOpportunities.filter((item) => {
+    const byTenant = tenantFilter ? item.tenant.toLowerCase() === tenantFilter : true;
+    const bySession = sessionFilter ? item.session.toLowerCase().includes(sessionFilter) : true;
+    return byTenant && bySession;
+  });
+  const sourceStats = leadsArray.reduce((acc, lead) => {
+    const source = String(lead.source || "unknown");
+    acc[source] = (acc[source] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const topSources = Object.entries(sourceStats).sort((a, b) => b[1] - a[1]).slice(0, 4);
 
   const labels = locale === "en"
     ? {
@@ -86,6 +121,49 @@ export default async function LeadsTicketsPage() {
           <p className="mt-2 text-2xl font-semibold text-cyan-100">{hotPipeline}</p>
         </div>
       </section>
+
+      <section className="grid gap-3 md:grid-cols-4">
+        {topSources.length ? topSources.map(([source, count]) => (
+          <div key={source} className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-violet-200">Lead source</p>
+            <p className="mt-1 text-sm text-white">{source}</p>
+            <p className="mt-2 text-xl font-semibold text-violet-100">{count}</p>
+          </div>
+        )) : <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300 md:col-span-4">No lead source stats yet.</div>}
+      </section>
+
+      <section className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+        <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">CRM-lite consolidated (public CTA)</p>
+        <p className="mt-1">Opportunities from demo/public CTA: <b>{filteredOpportunities.length}</b></p>
+        <p className="mt-1 text-xs text-cyan-200">Filters · tenant: <b>{tenantFilter || "all"}</b> · session: <b>{sessionFilter || "all"}</b></p>
+      </section>
+
+      <DataTable
+        title="CTA opportunities ⓘ"
+        columns={[
+          { key: "created_at", label: "Created" },
+          { key: "tenant", label: "Tenant" },
+          { key: "session", label: "Demo session" },
+          { key: "interest", label: "Interest" },
+          { key: "source", label: "Source" },
+          { key: "status", label: "Status" },
+        ]}
+        rows={filteredOpportunities.map((item) => ({
+          created_at: String((item.lead.created_at || "").toString().slice(0, 19).replace("T", " ") || "-"),
+          tenant: item.tenant || "-",
+          session: item.session || "-",
+          interest: item.interest || "-",
+          source: item.source,
+          status: String(item.lead.status || "new"),
+        }))}
+        filterKey="status"
+        loadingLabel={copy.shell.loading}
+        emptyLabel={copy.shell.empty}
+        searchPlaceholder={copy.shell.search}
+        allFilterLabel={copy.shell.all}
+        refreshLabel={copy.shell.refresh}
+        statusMap={copy.statuses}
+      />
 
       <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
         <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-cyan-200">{labels.feed}</h2>

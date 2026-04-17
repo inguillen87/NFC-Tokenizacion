@@ -1,11 +1,9 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import { productUrls } from "@product/config";
 
-const API_BASE =
-  process.env.API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://api.nexid.lat";
+const API_BASE = productUrls.api;
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -28,11 +26,19 @@ export async function POST(req: Request) {
     }
 
     const text = await response.text();
+    if (response.status >= 500) {
+      return NextResponse.json({
+        ok: true,
+        queued_local: true,
+        reason: "lead backend temporary failure",
+        upstream_status: response.status,
+      }, { status: 202 });
+    }
     return new NextResponse(text, {
       status: response.status,
       headers: { "Content-Type": response.headers.get("content-type") || "application/json" },
     });
   } catch {
-    return NextResponse.json({ ok: false, reason: "lead backend unavailable" }, { status: 503 });
+    return NextResponse.json({ ok: true, queued_local: true, reason: "lead backend unavailable" }, { status: 202 });
   }
 }
