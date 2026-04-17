@@ -23,6 +23,73 @@ export async function processSunScan(input: {
   rawQuery?: Record<string, string>;
   context?: ScanContext;
 }) {
+  async function insertEvent(payload: {
+    uidHex: string | null;
+    ctr: number | null;
+    cmacOk: boolean;
+    allowlistedValue: boolean;
+    tagStatusValue: string | null;
+    resultValue: string;
+    reasonValue: string | null;
+    hasGeoValue: boolean;
+  }) {
+    const commonValues = [
+      batch.tenant_id,
+      batch.id,
+      payload.uidHex,
+      payload.ctr,
+      payload.cmacOk,
+      payload.allowlistedValue,
+      payload.tagStatusValue,
+      payload.resultValue,
+      payload.reasonValue,
+      input.context?.ip || null,
+      input.context?.userAgent || null,
+      input.context?.city || null,
+      input.context?.countryCode || null,
+      payload.hasGeoValue ? input.context?.lat! : null,
+      payload.hasGeoValue ? input.context?.lng! : null,
+      input.context?.city || null,
+      input.context?.countryCode || null,
+      payload.hasGeoValue ? input.context?.lat! : null,
+      payload.hasGeoValue ? input.context?.lng! : null,
+      input.context?.deviceLabel || null,
+      input.context?.source || 'real',
+      JSON.stringify(input.context?.meta || {}),
+      JSON.stringify(input.rawQuery || {}),
+    ] as const;
+
+    try {
+      await sql/*sql*/`
+        INSERT INTO events (
+          tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, reason,
+          ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
+          source, meta, raw_query
+        ) VALUES (
+          ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
+          ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
+          ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
+        )
+      `;
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      if (!message.includes('read_counter')) throw error;
+    }
+
+    await sql/*sql*/`
+      INSERT INTO events (
+        tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
+        ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
+        source, meta, raw_query
+      ) VALUES (
+        ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
+        ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
+        ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
+      )
+    `;
+  }
+
   const batchRows = await sql/*sql*/`
     SELECT b.id, b.tenant_id, b.status, b.meta_key_ct, b.file_key_ct
     FROM batches b
@@ -98,38 +165,16 @@ export async function processSunScan(input: {
 
   const hasGeo = Number.isFinite(input.context?.lat) && Number.isFinite(input.context?.lng);
 
-  await sql/*sql*/`
-    INSERT INTO events (
-      tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, reason,
-      ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
-      source, meta, raw_query
-    ) VALUES (
-      ${batch.tenant_id},
-      ${batch.id},
-      ${res.ok ? res.uidHex : null},
-      ${res.ok ? res.ctr : null},
-      ${res.ok ? res.ctr : null},
-      ${res.ok},
-      ${allowlisted},
-      ${tagStatus},
-      ${result},
-      ${resolvedReason},
-      ${input.context?.ip || null},
-      ${input.context?.userAgent || null},
-      ${input.context?.city || null},
-      ${input.context?.countryCode || null},
-      ${hasGeo ? input.context?.lat! : null},
-      ${hasGeo ? input.context?.lng! : null},
-      ${input.context?.city || null},
-      ${input.context?.countryCode || null},
-      ${hasGeo ? input.context?.lat! : null},
-      ${hasGeo ? input.context?.lng! : null},
-      ${input.context?.deviceLabel || null},
-      ${input.context?.source || 'real'}::scan_source,
-      ${JSON.stringify(input.context?.meta || {})}::jsonb,
-      ${JSON.stringify(input.rawQuery || {})}::jsonb
-    )
-  `;
+  await insertEvent({
+    uidHex: res.ok ? res.uidHex : null,
+    ctr: res.ok ? res.ctr : null,
+    cmacOk: res.ok,
+    allowlistedValue: allowlisted,
+    tagStatusValue: tagStatus,
+    resultValue: result,
+    reasonValue: resolvedReason,
+    hasGeoValue: hasGeo,
+  });
 
   return {
     status: result === 'VALID' ? 200 : 403,
