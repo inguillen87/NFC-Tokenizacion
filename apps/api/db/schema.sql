@@ -8,6 +8,10 @@ DO $$ BEGIN
   CREATE TYPE batch_status AS ENUM ('active', 'revoked');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE scan_source AS ENUM ('real', 'demo', 'imported');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 CREATE TABLE IF NOT EXISTS tenants (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   slug text NOT NULL UNIQUE,
@@ -46,6 +50,7 @@ CREATE TABLE IF NOT EXISTS events (
   batch_id uuid NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
   uid_hex text,
   sdm_read_ctr integer,
+  read_counter integer,
   cmac_ok boolean,
   allowlisted boolean,
   tag_status tag_status,
@@ -57,6 +62,13 @@ CREATE TABLE IF NOT EXISTS events (
   geo_country text,
   geo_lat double precision,
   geo_lng double precision,
+  country_code text,
+  city text,
+  lat double precision,
+  lng double precision,
+  device_label text,
+  source scan_source NOT NULL DEFAULT 'real',
+  meta jsonb NOT NULL DEFAULT '{}'::jsonb,
   raw_query jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -64,8 +76,10 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_tags_batch_uid ON tags(batch_id, uid_hex);
 CREATE INDEX IF NOT EXISTS idx_tags_scan_count ON tags(scan_count DESC);
 CREATE INDEX IF NOT EXISTS idx_events_batch_created ON events(batch_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_batch_uid_ctr ON events(batch_id, uid_hex, sdm_read_ctr);
 CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_geo_lat_lng ON events(geo_lat, geo_lng) WHERE geo_lat IS NOT NULL AND geo_lng IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_events_source_created ON events(source, created_at DESC);
 CREATE TABLE IF NOT EXISTS knowledge_articles (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   locale text NOT NULL,
