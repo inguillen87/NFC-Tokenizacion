@@ -198,6 +198,13 @@ export function MobileDemoClient({
     if (!geoState) return null;
     return haversineKm(WINERY_HQ.lat, WINERY_HQ.lng, geoState.lat, geoState.lng);
   }, [geoState]);
+  const mapWidgetUrl = useMemo(() => {
+    const originLat = WINERY_HQ.lat;
+    const originLng = WINERY_HQ.lng;
+    const destinationLat = geoState?.lat ?? WINERY_HQ.lat;
+    const destinationLng = geoState?.lng ?? WINERY_HQ.lng;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${Math.min(originLng, destinationLng) - 0.08}%2C${Math.min(originLat, destinationLat) - 0.05}%2C${Math.max(originLng, destinationLng) + 0.08}%2C${Math.max(originLat, destinationLat) + 0.05}&layer=mapnik&marker=${destinationLat}%2C${destinationLng}`;
+  }, [geoState]);
 
   useEffect(() => {
     const mapped = MODE_STATE[mode] || "VALID";
@@ -482,6 +489,15 @@ export function MobileDemoClient({
                 <p className="text-[11px] text-emerald-100">{distanceFromWinery ? `${distanceFromWinery.toFixed(1)} km` : "N/A"}</p>
               </div>
               <p className="mt-1 text-[11px] text-slate-200">{WINERY_HQ.name} → {geoState ? "Punto de lectura" : "Ubicación pendiente"}</p>
+              <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
+                <iframe
+                  title="origin-destination-map"
+                  src={mapWidgetUrl}
+                  className="h-36 w-full bg-slate-950"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
               <div className="mt-2 rounded-lg border border-white/10 bg-slate-950/70 p-2">
                 <div className="h-16 rounded bg-[linear-gradient(130deg,rgba(16,185,129,.20),rgba(14,165,233,.18),rgba(99,102,241,.12))] p-2">
                   <div className="flex h-full items-center justify-between">
