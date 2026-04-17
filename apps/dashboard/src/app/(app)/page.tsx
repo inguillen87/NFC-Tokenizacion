@@ -27,6 +27,15 @@ function inferTenantSlugFromSession(session: { role: string; email: string }) {
   return "";
 }
 
+function inferTenantSlugFromSession(session: { role: string; email: string }) {
+  if (session.role !== "tenant-admin") return "";
+  const email = (session.email || "").toLowerCase();
+  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
+  if (explicit) return explicit;
+  if (email.includes("demobodega")) return "demobodega";
+  return "";
+}
+
 async function getOverviewRows() {
   try {
     const response = await fetch(`${API_BASE}/admin/tenants?withStats=1`, {
