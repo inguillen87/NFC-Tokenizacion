@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { Button, Card } from "@product/ui";
 import { productUrls } from "@product/config";
 import { DEMO_SUPPLIER_BATCH_ID, DEMO_SUPPLIER_UIDS } from "../lib/demo-uids";
@@ -161,7 +161,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [adminEnabled, setAdminEnabled] = useState(true);
   const [adminEmail, setAdminEmail] = useState("ops@demobodega.com");
   const [adminName, setAdminName] = useState("Tenant Operations Admin");
-  const [adminPassword, setAdminPassword] = useState(generatePassword());
+  const [adminPassword, setAdminPassword] = useState("NexID!DemoA1");
 
   const [importedCount, setImportedCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
@@ -216,6 +216,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     }
     return data as Record<string, unknown>;
   }
+
+  useEffect(() => {
+    setAdminPassword((current) => (current === "NexID!DemoA1" ? generatePassword() : current));
+  }, []);
 
   function applyPreset(segment: TenantSegment) {
     setTenantSegment(segment);
@@ -381,18 +385,26 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   async function createTenantAdmin() {
     if (!adminEnabled) return null;
     if (!adminEmail.trim() || adminPassword.length < 8) throw new Error("Admin email y password(8+) requeridos.");
-
-    return run("/api/iam/users", {
-      method: "POST",
-      body: JSON.stringify({
-        email: adminEmail.trim().toLowerCase(),
-        fullName: adminName.trim() || "Tenant Admin",
-        password: adminPassword,
-        role: "tenant-admin",
-        tenantSlug: tenantSlug.trim(),
-        permissions: ["batches:write", "events:read", "analytics:read", "users:manage"],
-      }),
-    });
+    try {
+      return await run("/api/iam/users", {
+        method: "POST",
+        body: JSON.stringify({
+          email: adminEmail.trim().toLowerCase(),
+          fullName: adminName.trim() || "Tenant Admin",
+          password: adminPassword,
+          role: "tenant-admin",
+          tenantSlug: tenantSlug.trim(),
+          permissions: ["batches:write", "events:read", "analytics:read", "users:manage"],
+        }),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "tenant-admin create failed";
+      if (message.toLowerCase().includes("unauthorized")) {
+        setStatus("Tenant y batch listos. Usuario tenant-admin omitido: sesión sin permiso users:manage.");
+        return null;
+      }
+      throw error;
+    }
   }
 
   async function refreshBatchSummary() {
@@ -468,11 +480,6 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
               Antes de ejecutar: completá tenant + bid y, en supplier mode, asegurá exactamente 10 UIDs únicos sin conflictos de batch.
             </p>
           ) : null}
-        </div>
-        <div className="mt-4 grid gap-2 rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-xs text-violet-100 md:grid-cols-[1fr_auto_auto] md:items-center">
-          <p>CEO demo fast-track: carga lote real DEMO-2026-02 con las 10 UIDs del supplier TXT y deja el wizard listo para Run all.</p>
-          <button type="button" className="rounded-lg border border-violet-200/40 px-3 py-1" onClick={applyDemoPreset}>Load DEMO-2026-02 preset</button>
-          <button type="button" className="rounded-lg border border-white/25 px-3 py-1 text-slate-100" onClick={downloadManifestTemplate}>Download manifest template</button>
         </div>
 
         <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
@@ -580,10 +587,6 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           {supplierUidReady ? "Listo para importar/activar." : "Necesitás UIDs válidas (ideal: 10 únicas sin conflicto)."}
         </p>
 
-        <div className="mt-4 flex justify-between">
-          <Button variant="secondary" onClick={() => setActiveStep(2)}>Back</Button>
-          <Button disabled={!stepReady[3]} onClick={() => setActiveStep(4)}>Continue to Step 4</Button>
-        </div>
         <div className="mt-4 flex justify-between">
           <Button variant="secondary" onClick={() => setActiveStep(2)}>Back</Button>
           <Button disabled={!stepReady[3]} onClick={() => setActiveStep(4)}>Continue to Step 4</Button>
