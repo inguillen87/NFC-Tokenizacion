@@ -83,18 +83,26 @@ export default async function AnalyticsPage() {
 
   const fallbackLocale = "es-AR" as const;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
-  const translation = messages[locale] ?? messages[fallbackLocale];
+  const translation = messages[locale] || messages[fallbackLocale];
   const kpis = translation?.dashboard?.kpis || FALLBACK_KPIS;
   const analyticsData = await getAnalytics(tenantScope);
-  const mapMode = isTenantAdmin ? "tenant" : "global";
 
   return (
     <main className="space-y-8">
-      <SectionHeading eyebrow={copy.nav.analytics} title={copy.pages.analytics.title} description={copy.pages.analytics.description} />
+      <SectionHeading
+        eyebrow={copy.nav.analytics}
+        title={copy.pages.analytics.title}
+        description={copy.pages.analytics.description}
+      />
       <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
       </div>
-      <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData || undefined} mapMode={mapMode} />
+      <AnalyticsPanels
+        kpis={kpis}
+        extra={copy.analytics}
+        data={analyticsData || undefined}
+        mapMode={isTenantAdmin ? "tenant" : "global"}
+      />
     </main>
   );
 }
