@@ -88,6 +88,13 @@ export function DemoLabClient() {
   return (
     <main className="container-shell py-8 text-slate-100">
       <section className="rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.14),transparent_40%),#020617] p-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Public Demo Lab</p>
+          <div className="flex flex-wrap gap-2">
+            <a href="/" className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs text-white">← Volver al landing</a>
+            <a href="/login" className="rounded-full border border-emerald-300/35 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">Login (roles)</a>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {(["ceo", "operator", "buyer"] as Role[]).map((entry) => (
             <button

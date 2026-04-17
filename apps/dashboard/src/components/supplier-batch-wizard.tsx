@@ -311,6 +311,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   async function registerBatch() {
     if (!tenantSlug.trim() || !bid.trim()) throw new Error("Completá tenant_slug y bid en Step 1.");
     if (batchMode === "supplier" && (!isHex32(kMeta) || !isHex32(kFile))) throw new Error("K_META y K_FILE deben ser hex de 32 caracteres.");
+    await createTenantIfMissing();
     return run("/api/admin/batches/register", {
       method: "POST",
       body: JSON.stringify({

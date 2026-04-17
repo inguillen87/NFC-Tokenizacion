@@ -26,11 +26,19 @@ export async function POST(req: Request) {
     }
 
     const text = await response.text();
+    if (response.status >= 500) {
+      return NextResponse.json({
+        ok: true,
+        queued_local: true,
+        reason: "lead backend temporary failure",
+        upstream_status: response.status,
+      }, { status: 202 });
+    }
     return new NextResponse(text, {
       status: response.status,
       headers: { "Content-Type": response.headers.get("content-type") || "application/json" },
     });
   } catch {
-    return NextResponse.json({ ok: false, reason: "lead backend unavailable" }, { status: 503 });
+    return NextResponse.json({ ok: true, queued_local: true, reason: "lead backend unavailable" }, { status: 202 });
   }
 }
