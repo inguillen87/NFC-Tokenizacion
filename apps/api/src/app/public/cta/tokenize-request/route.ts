@@ -15,6 +15,7 @@ export async function POST(req: Request) {
   const ledger = {
     ledger_status: String(body.ledger_status || "simulated"),
     ledger_network: String(body.ledger_network || "not_selected"),
+    ledger_ref: String(body.ledger_ref || "") || null,
     asset_ref: String(body.asset_ref || `${bid}:${uid}`),
     anchor_hash: String(body.anchor_hash || "") || null,
     issuer_wallet: String(body.issuer_wallet || "") || null,

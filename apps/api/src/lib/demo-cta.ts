@@ -40,12 +40,15 @@ export function buildLifecycleState(bid: string, uid: string, actions: Array<Rec
     claim_source: ownershipAction ? String((ownershipAction.payload?.source as string) || "public_cta") : null,
     issuer: ownershipAction ? String((ownershipAction.payload?.issuer as string) || "nexID") : null,
     owner_reference: ownershipAction ? String((ownershipAction.payload?.owner_reference as string) || "consumer") : null,
+    claim_evidence: ownershipAction ? String((ownershipAction.payload?.claim_evidence as string) || "sun_validation") : null,
     transfer_capability: "state-only",
+    revocation_capability: "issuer-review",
   };
 
   const ledger = {
     ledger_status: tokenAction ? String((tokenAction.payload?.ledger_status as string) || "simulated") : "off",
     ledger_network: tokenAction ? String((tokenAction.payload?.ledger_network as string) || "not_selected") : "not_selected",
+    ledger_ref: tokenAction ? String((tokenAction.payload?.ledger_ref as string) || "") || null : null,
     asset_ref: tokenAction ? String((tokenAction.payload?.asset_ref as string) || `${bid}:${uid}`) : null,
     anchor_hash: tokenAction ? String((tokenAction.payload?.anchor_hash as string) || "") || null : null,
     issuer_wallet: tokenAction ? String((tokenAction.payload?.issuer_wallet as string) || "") || null : null,
@@ -56,9 +59,12 @@ export function buildLifecycleState(bid: string, uid: string, actions: Array<Rec
     { stage: "batch_created", status: "known", at: null },
     { stage: "manifest_imported", status: "known", at: null },
     { stage: "activated", status: "known", at: null },
+    { stage: "validated", status: "known", at: null },
+    { stage: "opened_or_tamper", status: "known", at: null },
     ...oldestFirst.map((entry) => ({ stage: entry.action, status: "recorded", at: entry.created_at })),
     { stage: "ownership_claimed", status: ownershipAction ? "recorded" : "pending", at: ownershipAction?.created_at || null },
     { stage: "warranty_registered", status: warrantyAction ? "recorded" : "pending", at: warrantyAction?.created_at || null },
+    { stage: "resale_or_transfer", status: "pending", at: null },
     { stage: "tokenization_requested", status: tokenAction ? "recorded" : "pending", at: tokenAction?.created_at || null },
     { stage: "ledger_anchored", status: ledger.ledger_status === "anchored" ? "recorded" : "pending", at: ledger.last_anchor_at || null },
   ];

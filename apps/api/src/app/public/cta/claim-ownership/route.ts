@@ -17,7 +17,9 @@ export async function POST(req: Request) {
     claim_source: String(body.claim_source || body.source || "public_cta"),
     issuer: String(body.issuer || "nexID"),
     owner_reference: String(body.owner_reference || body.email || body.phone || "consumer"),
+    claim_evidence: String(body.claim_evidence || body.scan_context || "sun_validation"),
     transfer_capability: "state-only",
+    revocation_capability: "issuer-review",
   };
   const saved = await recordDemoCta("claim_ownership", bid, uid, { ...body, ...ownership, claimed_at: new Date().toISOString() });
   return json({ ok: true, action: "claim_ownership", id: saved.id, created_at: saved.created_at, ownership, trace_id: traceId, share_token_status: auth.share_token_status });
