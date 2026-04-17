@@ -10,9 +10,10 @@ import { requireDashboardSession } from "../../../lib/session";
 
 const API_BASE = productUrls.api;
 
-async function getBatchRows() {
+async function getBatchRows(tenantScope = "") {
   try {
-    const response = await fetch(`${API_BASE}/admin/batches`, {
+    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
+    const response = await fetch(`${API_BASE}/admin/batches${query}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
@@ -34,14 +35,12 @@ function inferTenantScope(session: { role: string; email: string }) {
 
 export default async function BatchesPage() {
   const { locale } = await getDashboardI18n();
-  const session = await requireDashboardSession();
+  const session = await requireDashboardSession("batches:read");
   const tenantScope = inferTenantScope(session);
   const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
-  const batchRows = await getBatchRows();
-  const scopedBatchRows = tenantScope
-    ? batchRows.filter((row) => String(row.tenant_slug || "").toLowerCase() === tenantScope)
-    : batchRows;
+  const batchRows = await getBatchRows(tenantScope);
+  const scopedBatchRows = batchRows;
 
   const rows = scopedBatchRows.map((row) => {
     const quantity = Number(row.quantity || 0);
@@ -109,16 +108,6 @@ export default async function BatchesPage() {
       </Card>
       <QuickOnboardingPanel context="dashboard" />
       <DataTable title={copy.tables.batches.title} columns={[{ key: "batch", label: copy.tables.batches.batch }, { key: "type", label: copy.tables.batches.type }, { key: "status", label: copy.tables.batches.status }, { key: "quantity", label: copy.tables.batches.quantity }]} rows={rows} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
-      <Card className="p-5 text-sm text-slate-300">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Flujo recomendado (supplier real)</h2>
-        <ol className="mt-3 list-decimal space-y-2 pl-5">
-          <li>Create tenant.</li>
-          <li>Register supplier batch (con keys exactas).</li>
-          <li>Import TXT/CSV manifest (10 UIDs).</li>
-          <li>Activate imported tags (un click).</li>
-          <li>Validate supplier sample URL + open mobile preview.</li>
-        </ol>
-      </Card>
     </main>
   );
 }

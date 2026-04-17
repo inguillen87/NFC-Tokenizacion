@@ -1,4 +1,5 @@
 import { SectionHeading } from "@product/ui";
+import { messages } from "@product/config";
 import { AnalyticsPanels } from "../../../components/analytics-panels";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
@@ -76,14 +77,13 @@ async function getAnalytics(tenantScope = "") {
 }
 
 export default async function AnalyticsPage() {
-  const i18n = await getDashboardI18n();
-  const locale = i18n.locale;
+  const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
   const tenantScope = inferTenantScope(session);
   const isTenantAdmin = session.role === "tenant-admin";
   const fallbackLocale = "es-AR" as const;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
-  const translatedKpis = i18n && typeof i18n === "object" && "t" in i18n ? i18n.t?.dashboard?.kpis : null;
+  const translatedKpis = messages[locale]?.dashboard?.kpis || null;
   const kpis = translatedKpis || FALLBACK_KPIS;
   const analyticsData = await getAnalytics(tenantScope);
 
