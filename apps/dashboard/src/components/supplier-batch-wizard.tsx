@@ -326,12 +326,62 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setStatus(`UIDs detectados: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
   }
 
+
+  function parseRawUidText() {
+    const parsed = parseUidLines(rawUidText || "");
+    setUids(parsed);
+    setDuplicateCount(parsed.length - new Set(parsed).size);
+    setBatchMismatchCount(0);
+    setStatus(`UIDs detectados desde texto: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
+  }
+
+
+  function applyDemoPreset() {
+    setTenantSlug("demobodega");
+    setTenantName("Demo Bodega");
+    setBatchMode("supplier");
+    setBid(DEMO_SUPPLIER_BATCH_ID);
+    setChipModel("NTAG 424 DNA TagTamper");
+    setSku("wine-secure");
+    setQuantity("10");
+    setKMeta("c2a462e6ab434828153d73ce440704ac");
+    setKFile("bfce6c576540c04c840f1cfd457bf213");
+    setUids([...DEMO_SUPPLIER_UIDS]);
+    setRawUidText(DEMO_SUPPLIER_UIDS.join("\n"));
+    setDuplicateCount(0);
+    setBatchMismatchCount(0);
+    setStatus("Preset DEMO-2026-02 cargado: tenant + keys + 10 UIDs source-of-truth.");
+  }
+
+  function downloadManifestTemplate() {
+    const header = "batch_id,uid_hex\n";
+    const rows = (uids.length ? uids : DEMO_SUPPLIER_UIDS).map((uid) => `${bid || DEMO_SUPPLIER_BATCH_ID},${uid}`).join("\n");
+    const csv = `${header}${rows}\n`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${bid || DEMO_SUPPLIER_BATCH_ID}-manifest-template.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function createTenantIfMissing() {
     if (!tenantSlug.trim() || !tenantName.trim()) throw new Error("Completá tenant slug y tenant name.");
     await run("/api/admin/tenants", {
       method: "POST",
       body: JSON.stringify({ slug: tenantSlug.trim().toLowerCase(), name: tenantName.trim() }),
     }).catch(() => null);
+  }
+
+  async function refreshBatchSummary() {
+    if (!bid.trim()) return;
+    const data = await run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/summary`);
+    if (data.batch && typeof data.batch === "object") {
+      setBatchSummary(data.batch as BatchSummary);
+    }
   }
 
   async function registerBatch() {
@@ -475,6 +525,11 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             <Button disabled={pending || !onboardingReady} onClick={() => void runAll()}>{copy.quickAction}</Button>
             <p className="text-xs text-cyan-100/90">Ideal para preparar 10 tags de prueba y luego escalar al pedido de fábrica.</p>
           </div>
+          {!onboardingReady ? (
+            <p className="mt-2 text-xs text-amber-100/90">
+              Antes de ejecutar: completá tenant + bid y, en supplier mode, asegurá exactamente 10 UIDs únicos sin conflictos de batch.
+            </p>
+          ) : null}
         </div>
 
         <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
@@ -493,6 +548,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             </button>
           ))}
         </div>
+        <p className="mt-2 text-xs text-slate-400">Wizard lineal: completá cada paso para habilitar el siguiente.</p>
       </Card>
 
       <Card className={`p-6 ${activeStep === 1 ? "" : "hidden"}`}>
@@ -675,6 +731,20 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
       <Card className="p-6">
         <p className="text-sm text-slate-300">{status}</p>
+        {batchSummary ? (
+          <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200 md:grid-cols-2">
+            <p>Batch: <b>{batchSummary.bid}</b></p>
+            <p>Tenant: <b>{batchSummary.tenant_slug}</b></p>
+            <p>Chip: <b>{batchSummary.chip_model || "-"}</b></p>
+            <p>SKU/Profile: <b>{batchSummary.sku || "-"}</b></p>
+            <p>Requested qty: <b>{batchSummary.requested_quantity}</b></p>
+            <p>Imported tags: <b>{batchSummary.imported_tags}</b></p>
+            <p>Active tags: <b>{batchSummary.active_tags}</b></p>
+            <p>Inactive tags: <b>{batchSummary.inactive_tags}</b></p>
+            <p>Meta key loaded: <b>{batchSummary.has_meta_key ? "yes" : "no"}</b></p>
+            <p>File key loaded: <b>{batchSummary.has_file_key ? "yes" : "no"}</b></p>
+          </div>
+        ) : null}
         <pre className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-4 text-xs text-slate-200">{responseText}</pre>
       </Card>
       <Card className="sticky bottom-3 z-10 border border-cyan-300/25 bg-slate-950/95 p-4 backdrop-blur">
