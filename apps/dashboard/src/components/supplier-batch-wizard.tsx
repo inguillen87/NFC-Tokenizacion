@@ -336,17 +336,6 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setQuantity(String(parsed.length || quantity));
     setStatus(`UIDs detectados: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
   }
-
-
-  function parseRawUidText() {
-    const parsed = parseUidLines(rawUidText || "");
-    setUids(parsed);
-    setDuplicateCount(parsed.length - new Set(parsed).size);
-    setBatchMismatchCount(0);
-    setStatus(`UIDs detectados desde texto: ${parsed.length}. Duplicados: ${parsed.length - new Set(parsed).size}.`);
-  }
-
-
   function applyDemoPreset() {
     setTenantSlug("demobodega");
     setTenantName("Demo Bodega");
@@ -460,12 +449,6 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       }
       throw error;
     }
-  }
-
-  async function refreshBatchSummary() {
-    if (!bid.trim()) return;
-    const data = await run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/summary`);
-    if (data.batch && typeof data.batch === "object") setBatchSummary(data.batch as BatchSummary);
   }
 
   async function runAll() {
