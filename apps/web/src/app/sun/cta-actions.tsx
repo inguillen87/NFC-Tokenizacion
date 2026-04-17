@@ -104,6 +104,11 @@ export function CtaActions({ bid, uid }: Props) {
         <div className="rounded-xl border border-emerald-300/30 bg-slate-950/90 p-3 text-xs text-slate-200">
           <p className="font-semibold text-emerald-100">Blockchain-ready · tokenización opcional</p>
           <p className="mt-1 text-slate-300">No es un flujo crypto-first. Captura oportunidad comercial + registra TOKENIZATION_REQUESTED.</p>
+          <ul className="mt-2 list-disc pl-4 text-[11px] text-slate-300">
+            <li>Uso enterprise: provenance anclable, warranty ledger y ownership transfer.</li>
+            <li>Infra opcional: smart contracts / blockchain solo cuando hay ROI claro.</li>
+            <li>Se mantiene el core: autenticidad, trazabilidad y anti-fraude.</li>
+          </ul>
           <input
             value={leadEmail}
             onChange={(event) => setLeadEmail(event.target.value)}
