@@ -216,10 +216,6 @@ async function forward(req: Request, path: string[]) {
     return demoAdminResponse(req.method, path, body || "", req.url);
   }
 
-  if (!response.ok && demoSession) {
-    return demoAdminResponse(req.method, path, body || "");
-  }
-
   const text = await response.text();
   return new NextResponse(text, { status: response.status, headers: { "Content-Type": response.headers.get("content-type") || "application/json" } });
 }

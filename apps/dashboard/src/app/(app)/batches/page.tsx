@@ -6,6 +6,7 @@ import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { QuickOnboardingPanel } from "../../../components/quick-onboarding-panel";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
+import { requireDashboardSession } from "../../../lib/session";
 
 const API_BASE = productUrls.api;
 
@@ -22,12 +23,27 @@ async function getBatchRows() {
   }
 }
 
+function inferTenantScope(session: { role: string; email: string }) {
+  if (session.role !== "tenant-admin") return "";
+  const email = session.email.toLowerCase();
+  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
+  if (explicit) return explicit;
+  if (email.includes("demobodega")) return "demobodega";
+  return "";
+}
+
 export default async function BatchesPage() {
   const { locale } = await getDashboardI18n();
+  const session = await requireDashboardSession();
+  const tenantScope = inferTenantScope(session);
+  const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
   const batchRows = await getBatchRows();
+  const scopedBatchRows = tenantScope
+    ? batchRows.filter((row) => String(row.tenant_slug || "").toLowerCase() === tenantScope)
+    : batchRows;
 
-  const rows = batchRows.map((row) => {
+  const rows = scopedBatchRows.map((row) => {
     const quantity = Number(row.quantity || 0);
     const active = Number(row.active_tags || 0);
     const inactive = Number(row.inactive_tags || 0);
@@ -45,12 +61,15 @@ export default async function BatchesPage() {
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.batches} title={copy.pages.batches.title} description={copy.pages.batches.description} />
+      <Card className="p-4 text-sm text-slate-300">
+        Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
+      </Card>
       <ModuleAudienceHero
         ceo={{ eyebrow: "CEO / Investor read", summary: "Batches muestran capacidad de emisión y control del inventario autenticable a escala.", decision: "Decidís qué líneas, regiones o partners tienen capacidad lista para crecer o requieren intervención.", cta: "Contalo como la capa donde el negocio se transforma en unidades emitibles y monetizables." }}
         operator={{ eyebrow: "Operator / Engineer read", summary: "Batches es el punto donde se crean, activan, revocan e importan lotes para operación real.", decision: "Decidís qué lote activar, bloquear, importar o auditar según incidentes o rollout.", cta: "Leelo como el corazón operativo de emisión y lifecycle." }}
         buyer={{ eyebrow: "Buyer / Client read", summary: "Batches demuestra que la solución no es artesanal: puede desplegarse por campañas, productos y mercados completos.", decision: "Decidís si el sistema escala desde piloto a rollout masivo sin perder control.", cta: "Mostralo cuando quieras hablar de implementación real y no solo de demo." }}
       />
-      <Card className="p-5 text-sm text-slate-300">
+      {!isTenantAdmin ? <Card className="p-5 text-sm text-slate-300">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Elegí modo de operación</h2>
         <p className="mt-2 text-xs text-slate-400">Separado en 2 flujos para evitar confusión: lote interno (nexID genera) vs lote supplier (proveedor ya programó).</p>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -66,6 +85,26 @@ export default async function BatchesPage() {
             <p className="mt-2 text-xs text-slate-300">Para tags programadas por proveedor. K_META_BATCH y K_FILE_BATCH obligatorias.</p>
             <Link href="/batches/supplier" className="mt-3 inline-block rounded-lg border border-amber-300/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">Open supplier wizard</Link>
           </div>
+        </div>
+      </Card> : null}
+      <Card className="p-5 text-sm text-slate-300">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Wizard lineal recomendado (1 → 7)</h2>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {[
+            "1) Elegir/crear tenant",
+            "2) Registrar batch proveedor",
+            "3) Cargar keys del batch",
+            "4) Importar TXT/CSV de UIDs",
+            "5) Activar tags importadas",
+            "6) Validar URL /sun",
+            "7) Abrir mobile preview pública",
+          ].map((item) => (
+            <div key={item} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs text-slate-200">{item}</div>
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/batches/supplier" className="rounded-lg border border-amber-300/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">Abrir supplier wizard</Link>
+          <Link href="/onboarding" className="rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Abrir onboarding guiado</Link>
         </div>
       </Card>
       <QuickOnboardingPanel context="dashboard" />

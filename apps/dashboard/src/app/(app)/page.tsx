@@ -165,7 +165,7 @@ export default async function DashboardHome() {
 
         <div>
           <p className="mb-2 text-xs text-slate-400">{labels.mapTitle} · {labels.mapSubtitle}</p>
-          <DemoOpsMap points={mapPoints} />
+          <DemoOpsMap points={mapPoints} mode={isTenantAdmin ? "tenant" : "global"} />
         </div>
       </div>
 

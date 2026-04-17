@@ -33,6 +33,9 @@ function wantsHtml(req: Request, url: URL) {
 
 function buildTroubleshooting(reason: string, bid: string) {
   const normalized = reason.toLowerCase();
+  if (normalized === "sun_ok" || normalized.includes("ok")) {
+    return null;
+  }
   if (normalized.includes("unknown batch")) {
     return {
       title: "Batch no registrado en este ambiente",
@@ -73,11 +76,33 @@ function buildTroubleshooting(reason: string, bid: string) {
   };
 }
 
+function resolveTrustState(status: string, reason: string) {
+  const normalizedStatus = status.toUpperCase();
+  const normalizedReason = reason.toLowerCase();
+  if (normalizedStatus === "REPLAY_SUSPECT" || normalizedReason.includes("replay")) {
+    return { key: "REPLAY_SUSPECT", badge: "Replay detectado", title: "URL copiada o reutilizada", tone: "#f97316", summary: "Escaneá nuevamente la etiqueta física para validar autenticidad." };
+  }
+  if (normalizedStatus === "OPENED" || normalizedReason.includes("opened")) {
+    return { key: "OPENED", badge: "Apertura detectada", title: "Producto abierto", tone: "#f59e0b", summary: "La cápsula o el estado de apertura indican uso previo." };
+  }
+  if (normalizedStatus === "CLAIMED" || normalizedReason.includes("claimed")) {
+    return { key: "CLAIMED", badge: "Ownership activo", title: "Producto autenticado y reclamado", tone: "#22c55e", summary: "Este artículo ya tiene ownership registrado por un cliente." };
+  }
+  if (normalizedStatus === "TAMPER_RISK" || normalizedReason.includes("tamper")) {
+    return { key: "TAMPER_RISK", badge: "Riesgo tamper", title: "Riesgo de manipulación", tone: "#ef4444", summary: "Se detectaron señales de posible manipulación en la etiqueta." };
+  }
+  if (normalizedStatus === "VALID") {
+    return { key: "VALID", badge: "Producto auténtico", title: "Autenticidad confirmada", tone: "#22c55e", summary: "La etiqueta NFC y la firma SUN validaron correctamente." };
+  }
+  return { key: normalizedStatus || "INVALID", badge: `Estado ${normalizedStatus || "INVALID"}`, title: "Validación no concluyente", tone: "#f97316", summary: "No se pudo confirmar estado final. Revisá onboarding y parámetros SUN." };
+}
+
 function renderSunHtml(input: { bid: string; picc_data: string; enc: string; cmac: string; result: Awaited<ReturnType<typeof processSunScan>> }) {
   const status = input.result.body.result || (input.result.body.ok ? "VALID" : "INVALID");
-  const tone = input.result.body.ok ? "#22c55e" : "#f97316";
-  const trust = input.result.body.ok ? "Autenticidad confirmada" : `Estado: ${status}`;
   const reason = input.result.body.reason || "Sin observaciones adicionales";
+  const trustState = resolveTrustState(status, reason);
+  const tone = trustState.tone;
+  const trust = trustState.badge;
   const troubleshooting = buildTroubleshooting(reason, input.bid);
   const uid = input.result.body.uid || "N/A";
   const ctr = typeof input.result.body.ctr === "number" ? String(input.result.body.ctr) : "N/A";
@@ -97,6 +122,7 @@ function renderSunHtml(input: { bid: string; picc_data: string; enc: string; cma
 <title>NexID · Wine Trust Passport</title>
 <style>
 body{margin:0;background:#020617;color:#e2e8f0;font-family:Inter,system-ui,sans-serif} .wrap{max-width:680px;margin:0 auto;padding:22px}
+.device{max-width:420px;margin:0 auto;border:1px solid rgba(148,163,184,.28);border-radius:28px;padding:14px;background:linear-gradient(180deg,#020617,#020617 36%,#030b1e)}
 .hero{border:1px solid rgba(148,163,184,.25);border-radius:18px;padding:16px;background:radial-gradient(circle at top,#0f172a,#020617)}
 .chip{display:inline-block;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:4px 10px;font-size:11px;letter-spacing:.08em}
 .ok{background:rgba(34,197,94,.16);color:#bbf7d0;border-color:rgba(34,197,94,.35)} .warn{background:rgba(249,115,22,.16);color:#fdba74;border-color:rgba(249,115,22,.35)}
@@ -107,11 +133,15 @@ body{margin:0;background:#020617;color:#e2e8f0;font-family:Inter,system-ui,sans-
 .foot{margin-top:12px;font-size:11px;color:#94a3b8}
 .hint{margin-top:12px;border:1px solid rgba(251,191,36,.35);border-radius:14px;padding:12px;background:rgba(251,191,36,.08)}
 .hint li{margin:6px 0;font-size:12px;color:#fef3c7}
+.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.actions button{border:1px solid rgba(148,163,184,.3);border-radius:10px;background:#071229;color:#dbeafe;padding:10px 8px;font-size:12px}
+.actions button.primary{border-color:rgba(34,211,238,.5);background:rgba(6,182,212,.16);color:#a5f3fc}
 </style></head><body><main class="wrap">
+<div class="device">
 <section class="hero">
   <span class="chip ${input.result.body.ok ? "ok" : "warn"}">${trust}</span>
   <h1 style="margin:10px 0 6px;font-size:24px">NexID Wine Trust Passport</h1>
-  <p style="margin:0;color:#93c5fd">Tokenización + trazabilidad antifraude + anti apertura por unidad.</p>
+  <p style="margin:0;color:#93c5fd">${trustState.title}. ${trustState.summary}</p>
   <div class="kpi">
     <div class="card"><small>BID</small><div>${input.bid}</div></div>
     <div class="card"><small>UID</small><div>${uid}</div></div>
@@ -127,11 +157,20 @@ body{margin:0;background:#020617;color:#e2e8f0;font-family:Inter,system-ui,sans-
 <li>Control anti-falsificación con SUN/CMAC y serialización por UID.</li>
 <li>Estado antifraude: <b style="color:${tone}">${status}</b> · ${reason}</li>
 </ul></section>
-<section class="hint">
+${troubleshooting ? `<section class="hint">
   <h3 style="margin:0 0 6px;color:#fde68a">${troubleshooting.title}</h3>
   <ul style="margin:0;padding-left:18px">
     ${troubleshooting.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}
   </ul>
+</section>` : ""}
+<section class="section">
+  <h3 style="margin:0 0 8px">Acciones de confianza</h3>
+  <div class="actions">
+    <button class="primary" data-cta="claim-ownership">Activar ownership</button>
+    <button data-cta="register-warranty">Registrar garantía</button>
+    <button data-cta="provenance">Ver provenance</button>
+    <button data-cta="tokenize-request">Tokenización opcional</button>
+  </div>
 </section>
 <p class="foot">Raw params · picc_data=${input.picc_data.slice(0, 12)}... · enc=${input.enc.slice(0, 12)}... · cmac=${input.cmac.slice(0, 8)}...</p>
 <script>
@@ -189,9 +228,36 @@ body{margin:0;background:#020617;color:#e2e8f0;font-family:Inter,system-ui,sans-
     },
     { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 },
   );
+
+  const ctaButtons = Array.from(document.querySelectorAll("[data-cta]"));
+  ctaButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const action = button.getAttribute("data-cta");
+      if (!action) return;
+      button.setAttribute("disabled", "true");
+      try {
+        const response = await fetch("/public/cta/" + action, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            bid: ${JSON.stringify(input.bid)},
+            uid: ${JSON.stringify(eventUid || "")},
+            status: ${JSON.stringify(status)},
+            source: "sun_mobile_preview",
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        button.textContent = data?.ok ? "Hecho ✓" : "Intentar de nuevo";
+      } catch {
+        button.textContent = "Intentar de nuevo";
+      } finally {
+        setTimeout(() => button.removeAttribute("disabled"), 900);
+      }
+    });
+  });
 })();
 </script>
-</main></body></html>`;
+</div></main></body></html>`;
 }
 
 async function dispatchValidScanWebhook(payload: Record<string, unknown>) {
