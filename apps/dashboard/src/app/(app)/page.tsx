@@ -220,7 +220,7 @@ export default async function DashboardHome() {
               { title: copy.pages.tags.title, description: copy.pages.tags.description, href: "/tags", status: copy.statuses.active, tone: "green" as const },
               { title: copy.pages.events.title, description: copy.pages.events.description, href: "/events", status: copy.statuses.active, tone: "green" as const },
               { title: copy.pages.analytics.title, description: copy.pages.analytics.description, href: "/analytics", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.leads.title, description: copy.pages.leads.description, href: "/leads-tickets", status: copy.statuses.active, tone: "green" as const },
+              { title: copy.pages.leadsTickets.title, description: copy.pages.leadsTickets.description, href: "/leads-tickets", status: copy.statuses.active, tone: "green" as const },
             ]
           : [
               { title: copy.pages.tenants.title, description: copy.pages.tenants.description, href: "/tenants", status: copy.statuses.active, tone: "green" as const },
