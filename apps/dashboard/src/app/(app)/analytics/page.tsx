@@ -117,3 +117,4 @@ export default async function AnalyticsPage() {
     );
   }
 }
+        <AnalyticsPanels kpis={t.dashboard.kpis} extra={copy.analytics} data={analyticsData || undefined} mapMode={isTenantAdmin ? "tenant" : "global"} />
