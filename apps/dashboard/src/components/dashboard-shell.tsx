@@ -72,13 +72,14 @@ function DashboardShellInner({
 
   const activeKey = pathnameToNavKey(pathname);
   const forbidden = !roleAccess[role].includes(activeKey);
-  const isDemoMode = currentPermissions.includes("*") || currentLabel.toLowerCase().includes("demo");
+  const isDemoMode = currentPermissions.includes("*");
+  const canAccessDemoLab = role === "super-admin" || isDemoMode;
   const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
   const mobileQuickLinks = [
     { href: "/", label: locale === "en" ? "Home" : "Inicio" },
-    { href: "/demo-lab", label: "Demo Lab" },
     { href: "/batches", label: locale === "en" ? "Batches" : "Lotes" },
     { href: "/events", label: locale === "en" ? "Events" : "Eventos" },
+    ...(canAccessDemoLab ? [{ href: "/demo-lab", label: "Demo Lab" }] : [{ href: "/analytics", label: locale === "en" ? "Analytics" : "Analítica" }]),
   ];
 
   const items = useMemo(
@@ -202,7 +203,7 @@ function DashboardShellInner({
               <p>Your current role does not have access to this module.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link href="/" className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs text-slate-100">Back to overview</Link>
-                <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100">Open demo-safe module</Link>
+                {canAccessDemoLab ? <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100">Open demo-safe module</Link> : null}
               </div>
             </div>
           ) : children}

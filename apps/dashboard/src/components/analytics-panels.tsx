@@ -43,6 +43,7 @@ type AnalyticsPanelsProps = {
     batchStatus?: Array<{ name: string; value: number }>;
     geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }>;
   };
+  mapMode?: "demo" | "tenant" | "global";
 };
 
 const fallbackScans = [
@@ -61,7 +62,7 @@ const fallbackBatchStatus = [
   { name: "Revoked", value: 10 },
 ];
 
-export function AnalyticsPanels({ kpis, extra, data }: AnalyticsPanelsProps) {
+export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: AnalyticsPanelsProps) {
   const api = data?.kpis || {};
   const trend = data?.trend?.length ? data.trend : fallbackScans;
   const batchStatus = data?.batchStatus?.length ? data.batchStatus : fallbackBatchStatus;
@@ -113,7 +114,7 @@ export function AnalyticsPanels({ kpis, extra, data }: AnalyticsPanelsProps) {
         </Card>
       </div>
 
-      <DemoOpsMap points={(data?.geoPoints || []).map((point) => ({
+      <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({
         city: point.city,
         country: point.country || "--",
         lat: point.lat,
