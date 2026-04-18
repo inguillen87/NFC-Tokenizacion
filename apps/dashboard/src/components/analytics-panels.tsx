@@ -1,7 +1,7 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { OpsPanel, StatCard, StatusChip } from "@product/ui";
+import { OpsPanel, StatCard, StatusChip, WorldMapPlaceholder } from "@product/ui";
 import { DemoOpsMap } from "./demo-ops-map";
 
 type AnalyticsPanelsProps = {
@@ -84,6 +84,44 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
     { label: "Device anomalies", value: deviceSignals.filter((item) => item.risk >= 8).length, max: Math.max(deviceSignals.length, 1) },
   ];
   const hasOperationalData = scansTotal > 0 || trend.length > 0 || feed.length > 0 || products.length > 0 || tagJourney.length > 0;
+  const journeyMapPoints = tagJourney.flatMap((item) => {
+    const originPoint = item.origin.lat != null && item.origin.lng != null
+      ? [{
+        city: item.origin.city || "Origin",
+        country: item.origin.country || "--",
+        lat: Number(item.origin.lat),
+        lng: Number(item.origin.lng),
+        scans: item.taps,
+        risk: 0,
+        status: "ORIGIN",
+        source: "tag_origin",
+      }]
+      : [];
+    const currentPoint = item.current.lat != null && item.current.lng != null
+      ? [{
+        city: item.current.city || "Current",
+        country: item.current.country || "--",
+        lat: Number(item.current.lat),
+        lng: Number(item.current.lng),
+        scans: item.taps,
+        risk: item.taps > 20 ? 0 : 1,
+        status: "CURRENT",
+        source: "last_verified",
+      }]
+      : [];
+    return [...originPoint, ...currentPoint];
+  });
+  const journeyRoutes = tagJourney
+    .filter((item) => item.origin.lat != null && item.origin.lng != null && item.current.lat != null && item.current.lng != null)
+    .slice(0, 24)
+    .map((item) => ({
+      fromLat: Number(item.origin.lat),
+      fromLng: Number(item.origin.lng),
+      toLat: Number(item.current.lat),
+      toLng: Number(item.current.lng),
+      label: item.uid,
+      tone: item.taps > 20 ? "info" as const : "warn" as const,
+    }));
 
   if (!hasOperationalData) {
     return (
@@ -218,6 +256,16 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       </div>
 
       <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({ city: point.city, country: point.country || "--", lat: point.lat, lng: point.lng, scans: point.scans || 1, risk: point.risk || 0 }))} />
+      <OpsPanel title="Journey map (tenant premium taps)" subtitle="Mapa interactivo de origen de bodega vs última ubicación verificada por UID, con rutas animadas.">
+        {journeyMapPoints.length ? (
+          <WorldMapPlaceholder
+            title="Recorrido de activos premium"
+            subtitle="Cada ruta muestra origen inicial y último tap verificado para clientes del tenant."
+            points={journeyMapPoints}
+            routes={journeyRoutes}
+          />
+        ) : <p className="text-sm text-slate-400">Sin coordenadas suficientes para dibujar journeys todavía.</p>}
+      </OpsPanel>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <OpsPanel title="Live tap feed" subtitle="Actividad reciente y contexto operativo real.">

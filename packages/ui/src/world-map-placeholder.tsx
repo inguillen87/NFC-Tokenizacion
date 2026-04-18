@@ -40,12 +40,14 @@ export function WorldMapPlaceholder({
   points = [],
   onPointSelect,
   metadataRows,
+  routes = [],
 }: {
   title?: string;
   subtitle?: string;
   points?: GeoPoint[];
   onPointSelect?: (point: GeoPoint) => void;
   metadataRows?: (point: GeoPoint) => Array<{ label: string; value: string }>;
+  routes?: Array<{ fromLat: number; fromLng: number; toLat: number; toLng: number; label?: string; tone?: "info" | "warn" }>;
 }) {
   const safePoints = points;
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -90,6 +92,17 @@ export function WorldMapPlaceholder({
   const projectedPoints = useMemo(
     () => windowedPoints.map((point, idx) => ({ id: `${point.city}-${point.lat}-${point.lng}-${idx}`, point, pos: project(point.lat, point.lng) })),
     [windowedPoints]
+  );
+  const projectedRoutes = useMemo(
+    () =>
+      routes.map((route, idx) => ({
+        id: `${route.fromLat}-${route.fromLng}-${route.toLat}-${route.toLng}-${idx}`,
+        from: project(route.fromLat, route.fromLng),
+        to: project(route.toLat, route.toLng),
+        label: route.label,
+        tone: route.tone || "info",
+      })),
+    [routes]
   );
 
   const activePoint = projectedPoints.find((item) => item.id === activeId) || projectedPoints[0];
@@ -178,6 +191,24 @@ export function WorldMapPlaceholder({
               <path d="M848 117l40-20 56 8 30 20-12 25-45 13-38-7-23-20z" />
             </g>
           </svg>
+          {projectedRoutes.length ? (
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full opacity-75" aria-hidden>
+              {projectedRoutes.map((route) => (
+                <line
+                  key={route.id}
+                  x1={route.from.x}
+                  y1={route.from.y}
+                  x2={route.to.x}
+                  y2={route.to.y}
+                  stroke={route.tone === "warn" ? "rgba(251,113,133,0.9)" : "rgba(103,232,249,0.85)"}
+                  strokeWidth="0.35"
+                  strokeDasharray="1.3 1.3"
+                >
+                  <animate attributeName="stroke-dashoffset" from="0" to="-6" dur="0.7s" repeatCount="indefinite" />
+                </line>
+              ))}
+            </svg>
+          ) : null}
 
           {projectedPoints.map((item) => {
             const isActive = activePoint?.id === item.id;

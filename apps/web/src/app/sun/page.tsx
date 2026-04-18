@@ -1,7 +1,7 @@
 import { CtaActions } from "./cta-actions";
 import { OnboardDemoButton } from "./onboard-demo-button";
 import { productUrls } from "@product/config";
-import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail } from "@product/ui";
+import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail, WorldMapPlaceholder } from "@product/ui";
 
 function apiBase() {
   return productUrls.api;
@@ -16,8 +16,10 @@ type SunContract = {
     origin?: string | null;
     firstVerified?: { at?: string | null; city?: string | null; country?: string | null };
     lastVerifiedLocation?: { at?: string | null; city?: string | null; country?: string | null; result?: string | null };
-    timelineSummary?: Array<{ at?: string | null; result?: string | null; city?: string | null; country?: string | null; device?: string | null }>;
+    timelineSummary?: Array<{ at?: string | null; result?: string | null; city?: string | null; country?: string | null; device?: string | null; lat?: number | null; lng?: number | null }>;
   };
+  iot?: { wineryLocation?: string | null; wineryCoordinates?: { lat?: number | null; lng?: number | null } | null };
+  tapContext?: { city?: string | null; country?: string | null; lat?: number | null; lng?: number | null };
   tokenization?: { status?: string | null; network?: string | null; txHash?: string | null; tokenId?: string | null };
   cta?: { claimOwnership?: boolean; registerWarranty?: boolean; provenance?: boolean; tokenize?: boolean };
   troubleshooting?: string[];
@@ -46,6 +48,49 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const isValid = result.status?.tone === "good";
   const troubleshooting = result.troubleshooting || [];
   const canAutoOnboard = String(result.status?.reason || "").toLowerCase().includes("unknown batch") && /^DEMO-[A-Z0-9-]{3,40}$/.test(bid);
+  const timelinePoints = (result.provenance?.timelineSummary || [])
+    .filter((item) => typeof item.lat === "number" && typeof item.lng === "number")
+    .map((item) => ({
+      city: item.city || "Unknown city",
+      country: item.country || "--",
+      lat: Number(item.lat),
+      lng: Number(item.lng),
+      scans: 1,
+      risk: String(item.result || "").toLowerCase().includes("replay") || String(item.result || "").toLowerCase().includes("tamper") ? 1 : 0,
+      status: item.result || "REVIEW",
+      lastSeen: item.at || undefined,
+      source: "tap_timeline",
+    }));
+  const wineryPoint = result.iot?.wineryCoordinates?.lat != null && result.iot?.wineryCoordinates?.lng != null
+    ? [{
+      city: result.product?.winery || "Bodega",
+      country: result.provenance?.firstVerified?.country || "AR",
+      lat: Number(result.iot.wineryCoordinates.lat),
+      lng: Number(result.iot.wineryCoordinates.lng),
+      scans: 1,
+      risk: 0,
+      status: "ORIGIN",
+      source: "winery_origin",
+    }]
+    : [];
+  const currentTapPoint = result.tapContext?.lat != null && result.tapContext?.lng != null
+    ? [{
+      city: result.tapContext.city || "Tap",
+      country: result.tapContext.country || "--",
+      lat: Number(result.tapContext.lat),
+      lng: Number(result.tapContext.lng),
+      scans: 1,
+      risk: isValid ? 0 : 1,
+      status: result.status?.code || "REVIEW",
+      source: "current_mobile_tap",
+    }]
+    : [];
+  const mapPoints = [...wineryPoint, ...timelinePoints, ...currentTapPoint];
+  const mapRoutes = [
+    ...(wineryPoint.length && timelinePoints.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: timelinePoints[timelinePoints.length - 1].lat, toLng: timelinePoints[timelinePoints.length - 1].lng, label: "Bodega → primeros taps", tone: "info" as const }] : []),
+    ...(timelinePoints.length > 1 ? timelinePoints.slice(1).map((point, idx) => ({ fromLat: timelinePoints[idx].lat, fromLng: timelinePoints[idx].lng, toLat: point.lat, toLng: point.lng, tone: point.risk > 0 ? "warn" as const : "info" as const })) : []),
+    ...(timelinePoints.length && currentTapPoint.length ? [{ fromLat: timelinePoints[0].lat, fromLng: timelinePoints[0].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Último evento → tap actual", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
+  ];
 
   const toneClass = result.status?.tone === "good"
     ? "text-emerald-300 border-emerald-300/30 bg-emerald-500/10"
@@ -139,6 +184,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
           ) : <EmptyState title="Sin timeline disponible" description="Aún no hay verificaciones para construir el resumen de provenance." className="mt-2" />}
         </section>
+        <section className="mt-4 rounded-xl border border-cyan-300/20 bg-slate-950/60 p-3">
+          <p className="text-xs uppercase tracking-wider text-slate-400">Wine journey map</p>
+          {mapPoints.length ? (
+            <div className="mt-2">
+              <WorldMapPlaceholder
+                title="Mapa interactivo del recorrido"
+                subtitle="Origen de bodega, taps históricos y tap móvil actual (cuando hay geolocalización disponible)."
+                points={mapPoints}
+                routes={mapRoutes}
+              />
+            </div>
+          ) : <EmptyState title="Mapa no disponible todavía" description="No se recibió lat/lng en eventos o tap actual. Reintentá con un tap real en dispositivo móvil." className="mt-2" />}
+        </section>
 
         <section className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
           <p className="text-xs uppercase tracking-wider text-slate-400">Tokenization</p>
@@ -164,6 +222,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           <p className="text-sm font-semibold text-cyan-100">Passport actions</p>
           <p className="mt-1 text-xs text-cyan-50">Ownership, warranty, provenance y tokenización opcional.</p>
           <CtaActions bid={bid} uid={uid} />
+          <div className="mt-3 grid gap-2 text-[11px] text-cyan-100 sm:grid-cols-2">
+            <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 hover:bg-cyan-500/20" href={`/sun?${query.toString()}&view=html`} target="_blank" rel="noreferrer">Abrir SUN HTML interactivo</a>
+            <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 hover:bg-cyan-500/20" href={`/api/public-cta/provenance?bid=${encodeURIComponent(bid)}&uid=${encodeURIComponent(uid)}`} target="_blank" rel="noreferrer">Probar endpoint de provenance</a>
+          </div>
         </section>
       ) : (
         <p className="mt-4 text-xs text-amber-200">No CTA available yet: missing bid/uid in SUN result.</p>
