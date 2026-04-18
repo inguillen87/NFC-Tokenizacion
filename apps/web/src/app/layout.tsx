@@ -42,9 +42,12 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: "nexID",
     icons: {
       icon: [
+        { url: "/favicon.ico", type: "image/x-icon" },
+        { url: "/nexid-favicon.svg", type: "image/svg+xml" },
         { url: "/nexid-mark-64.png", sizes: "64x64", type: "image/png" },
         { url: "/nexid-mark-256.png", sizes: "256x256", type: "image/png" },
       ],
+      shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
       apple: [{ url: "/nexid-mark-light-512.png", sizes: "512x512", type: "image/png" }],
     },
   };
