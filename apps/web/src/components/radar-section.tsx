@@ -138,7 +138,7 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
     }, 4200);
 
     const onScenario = (event: Event) => {
-      const custom = event as CustomEvent<{ detail?: { mapKey?: string; vertical?: Vertical; label?: string; status?: Status } }>;
+      const custom = event as CustomEvent<{ mapKey?: string; vertical?: Vertical; label?: string; status?: Status }>;
       const point = safePoint(custom.detail?.mapKey);
       const status = custom.detail?.status || "valid";
       const at = new Date().toLocaleTimeString("en-GB");
