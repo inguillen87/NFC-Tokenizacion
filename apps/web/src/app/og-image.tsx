@@ -3,7 +3,25 @@ import { ImageResponse } from "next/og";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OgImage() {
+export default function OgImage({
+  searchParams,
+}: {
+  searchParams?: { locale?: string };
+}) {
+  const locale = String(searchParams?.locale || "es-AR");
+  const title =
+    locale === "en"
+      ? "Tap · Verify · Trust"
+      : locale === "pt-BR"
+      ? "Toque · Verifique · Confie"
+      : "Tocá · Verificá · Confiá";
+  const subtitle =
+    locale === "en"
+      ? "NFC anti-fraud + premium traceability for brands."
+      : locale === "pt-BR"
+      ? "Antifraude NFC + rastreabilidade premium para marcas."
+      : "Antifraude NFC + trazabilidad premium para marcas.";
+
   return new ImageResponse(
     (
       <div
@@ -21,8 +39,8 @@ export default function OgImage() {
       >
         <div style={{ fontSize: 28, letterSpacing: 2, textTransform: "uppercase", color: "#67e8f9" }}>nexID Web</div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 1.02 }}>Tap · Verify · Trust</div>
-          <p style={{ marginTop: 18, fontSize: 32, color: "#cbd5e1" }}>Antifraude NFC + trazabilidad premium para marcas.</p>
+          <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 1.02 }}>{title}</div>
+          <p style={{ marginTop: 18, fontSize: 32, color: "#cbd5e1" }}>{subtitle}</p>
         </div>
         <div style={{ fontSize: 24, color: "#94a3b8" }}>nexid.lat</div>
       </div>

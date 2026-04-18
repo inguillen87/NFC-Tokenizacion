@@ -3,7 +3,25 @@ import { ImageResponse } from "next/og";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OgImage() {
+export default function OgImage({
+  searchParams,
+}: {
+  searchParams?: { locale?: string };
+}) {
+  const locale = String(searchParams?.locale || "es-AR");
+  const title =
+    locale === "en"
+      ? "Control Center"
+      : locale === "pt-BR"
+      ? "Centro de Controle"
+      : "Centro de Control";
+  const subtitle =
+    locale === "en"
+      ? "Multi-tenant operations in real time."
+      : locale === "pt-BR"
+      ? "Operação multi-tenant em tempo real."
+      : "Operación multi-tenant en tiempo real.";
+
   return new ImageResponse(
     (
       <div
@@ -21,8 +39,8 @@ export default function OgImage() {
       >
         <div style={{ fontSize: 28, letterSpacing: 2, textTransform: "uppercase", color: "#67e8f9" }}>nexID Dashboard</div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 1.02 }}>Control Center</div>
-          <p style={{ marginTop: 18, fontSize: 32, color: "#cbd5e1" }}>Operación multi-tenant en tiempo real.</p>
+          <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 1.02 }}>{title}</div>
+          <p style={{ marginTop: 18, fontSize: 32, color: "#cbd5e1" }}>{subtitle}</p>
         </div>
         <div style={{ fontSize: 24, color: "#94a3b8" }}>app.nexid.lat</div>
       </div>
