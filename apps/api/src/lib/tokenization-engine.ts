@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { spawn } from "node:child_process";
 import { sql } from "./db";
 
 type AnchorInput = {
@@ -34,6 +35,45 @@ async function runExternalExecutor(payload: Record<string, unknown>) {
   return response.json().catch(() => null) as Promise<Record<string, unknown> | null>;
 }
 
+async function runLocalPolygonScript(payload: Record<string, unknown>) {
+  const enabled = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
+  if (!enabled) return null;
+  const uid = String(payload.uid_hex || "").trim();
+  if (!uid) return null;
+
+  const recipient = String(payload.issuer_wallet || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
+  const tokenUri = String(payload.token_uri || "").trim();
+  if (!recipient || !tokenUri) return null;
+
+  const scriptPath = new URL("../../scripts/mint-on-valid-tap.mjs", import.meta.url);
+  const args = [
+    scriptPath.pathname,
+    `--uid=${uid}`,
+    `--to=${recipient}`,
+    `--token_uri=${tokenUri}`,
+    `--asset_ref=${String(payload.asset_ref || "")}`,
+  ];
+
+  return await new Promise<Record<string, unknown> | null>((resolve, reject) => {
+    const child = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (buf) => { stdout += String(buf); });
+    child.stderr.on("data", (buf) => { stderr += String(buf); });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code !== 0) return reject(new Error(stderr.trim() || `local_minter_exit_${code}`));
+      const line = stdout.trim().split("\n").filter(Boolean).at(-1);
+      if (!line) return resolve(null);
+      try {
+        resolve(JSON.parse(line) as Record<string, unknown>);
+      } catch {
+        reject(new Error("local_minter_invalid_json"));
+      }
+    });
+  });
+}
+
 export async function anchorTokenizationRequest(input: AnchorInput) {
   const rows = await sql/*sql*/`
     SELECT id, bid, uid_hex, status, network, issuer_wallet, attempt_count
@@ -50,13 +90,23 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
   const processor = input.processor || "tokenization_engine";
 
   try {
-    const external = await runExternalExecutor({
+    const tokenUri = `ipfs://${(process.env.TOKENIZATION_METADATA_CID_PREFIX || "nexid-metadata")}/${existing.bid}/${existing.uid_hex}.json`;
+    const assetRef = `${existing.bid}:${existing.uid_hex}`;
+    const externalInput = {
       request_id: existing.id,
       bid: existing.bid,
       uid_hex: existing.uid_hex,
       network,
       issuer_wallet: issuerWallet,
-    });
+      token_uri: tokenUri,
+      asset_ref: assetRef,
+      chip_uid_hash: `sha256:${createHash("sha256").update(existing.uid_hex).digest("hex")}`,
+    };
+
+    const localPolygonMint = network.startsWith("polygon")
+      ? await runLocalPolygonScript(externalInput)
+      : null;
+    const external = localPolygonMint || await runExternalExecutor(externalInput);
 
     const txHash = String(external?.tx_hash || buildSimulatedTxHash(existing.id, existing.uid_hex));
     const tokenId = String(external?.token_id || buildTokenId(existing.uid_hex));

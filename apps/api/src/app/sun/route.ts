@@ -5,6 +5,7 @@ import { json } from '../../lib/http';
 import { processSunScan } from '../../lib/sun-service';
 import { createDemoShareToken } from '../../lib/demo-share';
 import { sql } from '../../lib/db';
+import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
@@ -476,8 +477,54 @@ async function dispatchValidScanWebhook(payload: Record<string, unknown>) {
   }).catch(() => null);
 }
 
+async function queueAutoTokenizationForValidTap(params: { bid: string; uid: string; traceId: string }) {
+  const enabled = String(process.env.SUN_AUTO_TOKENIZE_ON_VALID_TAP || "false").toLowerCase() === "true";
+  if (!enabled) return null;
+
+  const row = (await sql/*sql*/`
+    SELECT tr.id, tr.status
+    FROM tokenization_requests tr
+    WHERE tr.bid = ${params.bid}
+      AND tr.uid_hex = ${params.uid}
+      AND tr.status IN ('pending', 'processing', 'anchored')
+    ORDER BY tr.requested_at DESC
+    LIMIT 1
+  `)[0];
+  if (row?.status === "anchored") return { ok: true, deduplicated: true, status: "anchored" };
+  if (row?.id) return await anchorTokenizationRequest({ requestId: String(row.id), processor: "sun_auto_tokenization" });
+
+  const batch = (await sql/*sql*/`
+    SELECT b.id, b.tenant_id
+    FROM batches b
+    WHERE b.bid = ${params.bid}
+    LIMIT 1
+  `)[0];
+
+  const inserted = (await sql/*sql*/`
+    INSERT INTO tokenization_requests (
+      tenant_id, batch_id, bid, uid_hex, status, network, asset_ref, requested_by, next_attempt_at, meta
+    ) VALUES (
+      ${batch?.tenant_id || null},
+      ${batch?.id || null},
+      ${params.bid},
+      ${params.uid},
+      'pending',
+      'polygon-amoy',
+      ${`${params.bid}:${params.uid}`},
+      'sun_auto_valid_tap',
+      now(),
+      ${JSON.stringify({ trace_id: params.traceId, source: "sun_valid_tap_auto_mint" })}::jsonb
+    )
+    RETURNING id
+  `)[0];
+
+  if (!inserted?.id) return null;
+  return await anchorTokenizationRequest({ requestId: String(inserted.id), processor: "sun_auto_tokenization" });
+}
+
 export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
+  const traceId = req.headers.get("x-nexid-trace-id") || `sun_${Date.now().toString(36)}`;
   const bid = url.searchParams.get('bid') || '';
   const picc_data = url.searchParams.get('picc_data') || '';
   const enc = url.searchParams.get('enc') || '';
@@ -540,6 +587,10 @@ export async function GET(req: Request): Promise<Response> {
       lng: Number.isFinite(geoLng) ? geoLng : null,
     },
   });
+
+  if (result.body.ok && uid) {
+    await queueAutoTokenizationForValidTap({ bid, uid, traceId }).catch(() => null);
+  }
 
   if (result.body.ok) {
     void dispatchValidScanWebhook({ event: 'tag.scan.valid', bid, uid: result.body.uid, counter: result.body.ctr, ip, userAgent: ua, geoCity, geoCountry, geoLat: Number.isFinite(geoLat) ? geoLat : null, geoLng: Number.isFinite(geoLng) ? geoLng : null, ts: new Date().toISOString() });
