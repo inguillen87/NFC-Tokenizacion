@@ -23,14 +23,7 @@ type EventRow = {
 };
 
 async function getLiveEvents(tenantScope = "") {
-  if (!(process.env.ADMIN_API_KEY || "").trim()) {
-    const demoRows: EventRow[] = [
-      { id: "evt-local-001", tenant_slug: "demobodega", bid: "WINE-2026-PILOT-10", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", country_code: "AR", city: "Mendoza", created_at: new Date().toISOString(), source: "live", device_label: "Android NFC" },
-      { id: "evt-local-002", tenant_slug: "demobodega", bid: "WINE-2026-PILOT-10", result: "REPLAY_SUSPECT", reason: "replay_suspect", uid_hex: "04A1B2C3D4", country_code: "AR", city: "Buenos Aires", created_at: new Date().toISOString(), source: "live", device_label: "iOS Safari" },
-      { id: "evt-local-003", tenant_slug: "demoevents", bid: "EVENT-2026-01", result: "VALID", reason: "sun_ok", uid_hex: "0411223344", country_code: "BR", city: "São Paulo", created_at: new Date().toISOString(), source: "live", device_label: "Android NFC" },
-    ];
-    return tenantScope ? demoRows.filter((row) => row.tenant_slug === tenantScope) : demoRows;
-  }
+  if (!(process.env.ADMIN_API_KEY || "").trim()) return [] as EventRow[];
   try {
     const query = tenantScope ? `?limit=120&tenant=${encodeURIComponent(tenantScope)}` : "?limit=120";
     const response = await fetch(`${API_BASE}/admin/events${query}`, {
@@ -43,15 +36,6 @@ async function getLiveEvents(tenantScope = "") {
   } catch {
     return [] as EventRow[];
   }
-}
-
-function inferTenantScope(session: { role: string; email: string }) {
-  if (session.role !== "tenant-admin") return "";
-  const email = session.email.toLowerCase();
-  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
-  if (explicit) return explicit;
-  if (email.includes("demobodega")) return "demobodega";
-  return "";
 }
 
 function toUiRows(rows: EventRow[]) {
@@ -80,7 +64,7 @@ function toUiRows(rows: EventRow[]) {
 export default async function EventsPage() {
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
-  const tenantScope = inferTenantScope(session);
+  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
   const liveRows = await getLiveEvents(tenantScope);
