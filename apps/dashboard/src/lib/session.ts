@@ -19,6 +19,19 @@ export type DashboardSession = {
   expiresAt?: string;
 };
 
+function demoFallbackSession(): DashboardSession {
+  return {
+    id: "demo-tenant-admin-demobodega",
+    email: "admin@demobodega.demo",
+    role: "tenant-admin",
+    tenantId: "demo-tenant-demobodega",
+    tenantSlug: "demobodega",
+    label: "tenant-admin demo",
+    permissions: ["*"],
+    mfaVerified: true,
+  };
+}
+
 function parseDemoToken(token: string): DashboardSession | null {
   if (!token.startsWith("demo.")) return null;
   const encoded = token.slice("demo.".length);
@@ -44,7 +57,10 @@ function parseDemoToken(token: string): DashboardSession | null {
 export async function getDashboardSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
-  if (!token) return null;
+  if (!token) {
+    if (process.env.ENABLE_PUBLIC_DEMO_SESSION === "1") return demoFallbackSession();
+    return null;
+  }
   const demoSession = parseDemoToken(token);
   if (demoSession) return demoSession;
   const res = await fetch(`${API_BASE}/auth/session`, {

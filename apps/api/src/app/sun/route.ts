@@ -50,7 +50,7 @@ type TimelineEvent = {
   stage?: string | null;
 };
 
-const DEMO_PASSPORT_CATALOG: Record<string, {
+const BID_PASSPORT_PRESETS: Record<string, {
   name: string;
   winery: string;
   region: string;
@@ -142,6 +142,36 @@ function resolveTrustState(status: string, reason: string) {
     return { code: 'VALID', label: 'Producto auténtico', summary: 'Firma SUN validada correctamente.', tone: 'good' as const };
   }
   return { code: normalizedStatus || 'INVALID', label: 'Validación no concluyente', summary: 'No fue posible confirmar autenticidad final.', tone: 'warn' as const };
+}
+
+function summarizeUserAgent(ua: string) {
+  const normalized = ua.toLowerCase();
+  const os = normalized.includes("iphone") || normalized.includes("ipad")
+    ? "iOS"
+    : normalized.includes("android")
+      ? "Android"
+      : normalized.includes("windows")
+        ? "Windows"
+        : normalized.includes("mac os") || normalized.includes("macintosh")
+          ? "macOS"
+          : "Unknown OS";
+  const browser = normalized.includes("edg/")
+    ? "Edge"
+    : normalized.includes("samsungbrowser")
+      ? "Samsung Internet"
+      : normalized.includes("chrome/")
+        ? "Chrome"
+        : normalized.includes("safari/")
+          ? "Safari"
+          : normalized.includes("firefox/")
+            ? "Firefox"
+            : "Unknown Browser";
+  const device = normalized.includes("mobile") || normalized.includes("iphone") || normalized.includes("android")
+    ? "Mobile"
+    : normalized.includes("ipad") || normalized.includes("tablet")
+      ? "Tablet"
+      : "Desktop";
+  return { os, browser, device };
 }
 
 async function getPassportSnapshot(bid: string, uid: string | undefined): Promise<PassportSnapshot> {
@@ -258,22 +288,26 @@ function buildPublicContract(params: {
   passport: PassportSnapshot;
   timeline: TimelineEvent[];
   raw: { picc_data: string; enc: string; cmac: string };
+  tap: { userAgent: string; city: string | null; country: string | null; lat: number | null; lng: number | null };
 }) {
   const status = params.result.result || (params.result.ok ? 'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
   const trust = resolveTrustState(status, reason);
   const troubleshooting = buildTroubleshooting(reason, params.bid);
-  const demoFallback = DEMO_PASSPORT_CATALOG[params.bid];
-  const fallbackName = demoFallback?.name || "Vino autenticado";
-  const fallbackWinery = demoFallback?.winery || "Bodega verificada";
-  const fallbackRegion = demoFallback?.region || "Mendoza, AR";
-  const fallbackVarietal = demoFallback?.varietal || "Blend";
-  const fallbackVintage = demoFallback?.vintage || "2023";
-  const fallbackHarvestYear = demoFallback?.harvestYear || null;
-  const fallbackBarrelMonths = demoFallback?.barrelMonths || null;
-  const fallbackStorage = demoFallback?.storage || null;
-  const wineryLocation = demoFallback?.wineryLocation || null;
+  const preset = BID_PASSPORT_PRESETS[params.bid];
+  const fallbackName = preset?.name || `NexID Verified Asset · ${params.bid}`;
+  const fallbackWinery = preset?.winery || "Verified winery";
+  const fallbackRegion = preset?.region || "Origin region";
+  const fallbackVarietal = preset?.varietal || "Varietal pending";
+  const fallbackVintage = preset?.vintage || new Date().getUTCFullYear().toString();
+  const fallbackHarvestYear = preset?.harvestYear || null;
+  const fallbackBarrelMonths = preset?.barrelMonths || null;
+  const fallbackStorage = preset?.storage || null;
+  const wineryLocation = preset?.wineryLocation || null;
   const sensorHistory = buildDemoSensorHistory(params.timeline, fallbackStorage, params.passport?.barrel_months || fallbackBarrelMonths);
+  const avgTemp = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
+  const avgHumidity = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.humidityPct || 0), 0) / sensorHistory.length) : null;
+  const ua = summarizeUserAgent(params.tap.userAgent);
 
   return {
     ok: Boolean(params.result.ok),
@@ -329,15 +363,24 @@ function buildPublicContract(params: {
     },
     iot: {
       wineryLocation,
-      altitude: demoFallback?.altitude || null,
-      oakType: demoFallback?.oakType || null,
+      altitude: preset?.altitude || null,
+      oakType: preset?.oakType || null,
       sensorSnapshot: {
-        cellarTemperature: demoFallback ? "15.8°C" : null,
-        humidity: demoFallback ? "68%" : null,
-        lightExposure: demoFallback ? "Low / protected" : null,
-        transitShock: demoFallback ? "No critical shocks detected" : null,
+        cellarTemperature: avgTemp != null ? `${avgTemp.toFixed(1)}°C` : null,
+        humidity: avgHumidity != null ? `${avgHumidity.toFixed(0)}%` : null,
+        lightExposure: "Low / protected",
+        transitShock: sensorHistory.some((item) => item.alert) ? "Potential handling alert detected" : "No critical shocks detected",
       },
       sensorHistory,
+    },
+    tapContext: {
+      os: ua.os,
+      browser: ua.browser,
+      deviceType: ua.device,
+      city: params.tap.city,
+      country: params.tap.country,
+      lat: params.tap.lat,
+      lng: params.tap.lng,
     },
     cta: {
       claimOwnership: Boolean(params.uid),
@@ -370,6 +413,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <section class="card"><h3 style="margin:0 0 6px">Provenance (honesto)</h3><p>Origen: <b>${contract.provenance.origin || '-'}</b></p><p>First verified: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>Last verified location: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">IoT & cellar signals</h3><p>Bodega: <b>${contract.iot.wineryLocation || 'No disponible'}</b></p><p>Altitud: <b>${contract.iot.altitude || '-'}</b> · Barrica: <b>${contract.iot.oakType || '-'}</b></p><p>Temperatura bodega: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humedad: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Luz: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transporte: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">Sensor timeline (wine lifecycle)</h3><ul style="margin:0;padding-left:18px">${contract.iot.sensorHistory.map((item) => `<li>${item.at || 'N/A'} · ${item.stage} · ${item.temperatureC}°C · ${item.humidityPct}% HR · Barrica ${item.barrelAgeMonths ?? '-'} meses${item.alert ? ` · ⚠ ${item.alert}` : ''}</li>`).join('')}</ul></section>
+  <section class="card"><h3 style="margin:0 0 6px">Tap device intelligence</h3><p>SO: <b>${contract.tapContext.os}</b> · Browser: <b>${contract.tapContext.browser}</b> · Device: <b>${contract.tapContext.deviceType}</b></p><p>Ubicación del tap: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Timeline summary</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">Tokenization</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Acciones</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button data-cta="claim-ownership">Activar ownership</button><button data-cta="register-warranty">Registrar garantía</button><button data-cta="provenance">Ver provenance</button><button data-cta="tokenize-request">Tokenización opcional</button></div></section>
@@ -456,7 +500,22 @@ export async function GET(req: Request): Promise<Response> {
   const ctr = typeof result.body.ctr === 'number' ? result.body.ctr : null;
   const passport = await getPassportSnapshot(bid, uid || undefined).catch(() => null);
   const timeline = await getTimelineSummary(bid, uid || undefined).catch(() => [] as TimelineEvent[]);
-  const contract = buildPublicContract({ bid, uid, ctr, result: result.body, passport, timeline, raw: { picc_data, enc, cmac } });
+  const contract = buildPublicContract({
+    bid,
+    uid,
+    ctr,
+    result: result.body,
+    passport,
+    timeline,
+    raw: { picc_data, enc, cmac },
+    tap: {
+      userAgent: ua,
+      city: geoCity,
+      country: geoCountry,
+      lat: Number.isFinite(geoLat) ? geoLat : null,
+      lng: Number.isFinite(geoLng) ? geoLng : null,
+    },
+  });
 
   if (result.body.ok) {
     void dispatchValidScanWebhook({ event: 'tag.scan.valid', bid, uid: result.body.uid, counter: result.body.ctr, ip, userAgent: ua, geoCity, geoCountry, geoLat: Number.isFinite(geoLat) ? geoLat : null, geoLng: Number.isFinite(geoLng) ? geoLng : null, ts: new Date().toISOString() });

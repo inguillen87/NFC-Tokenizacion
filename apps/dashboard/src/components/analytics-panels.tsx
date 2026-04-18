@@ -59,6 +59,11 @@ function DeviceBucket({ title, items }: { title: string; items: Array<{ label: s
   );
 }
 
+function pct(value: number, total: number) {
+  if (!total) return "0%";
+  return `${((value / total) * 100).toFixed(1)}%`;
+}
+
 export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: AnalyticsPanelsProps) {
   const api = data?.kpis || {};
   const trend = data?.trend || [];
@@ -69,6 +74,15 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
   const products = data?.products || [];
   const tagJourney = data?.tagJourney || [];
   const devices = data?.devices;
+  const scansTotal = Number(api.scans || 0);
+  const riskSignals = Number(api.duplicates || 0) + Number(api.tamper || 0);
+  const journeyCoverage = tagJourney.length ? Math.min(100, (tagJourney.length / Math.max(products.length, 1)) * 100) : 0;
+  const riskRadar = [
+    { label: "Replay / duplicates", value: Number(api.duplicates || 0), max: Math.max(scansTotal, 1) },
+    { label: "Tamper alerts", value: Number(api.tamper || 0), max: Math.max(scansTotal, 1) },
+    { label: "Geo dispersion", value: Number(api.geoRegions || 0), max: 20 },
+    { label: "Device anomalies", value: deviceSignals.filter((item) => item.risk >= 8).length, max: Math.max(deviceSignals.length, 1) },
+  ];
 
   return (
     <div className="space-y-6">
@@ -82,6 +96,31 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         <StatCard label={extra.resellerPerformance} value={`USD ${(api.resellerPerformance ?? 0).toLocaleString()}`} delta={extra.resellerPerformanceDelta} tone="good" />
         <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
       </div>
+
+      <OpsPanel title="Operational storytelling board" subtitle="Lectura ejecutiva multi-tenant para operaciones, riesgo y trazabilidad comercial.">
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Operational throughput</p>
+            <p className="mt-1 text-2xl font-semibold text-cyan-200">{api.scans ?? 0}</p>
+            <p className="text-xs text-slate-400">Taps totales en el scope actual.</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Trust posture</p>
+            <p className="mt-1 text-2xl font-semibold text-emerald-300">{(api.validRate ?? 0).toFixed(1)}%</p>
+            <p className="text-xs text-slate-400">Validación autenticada sobre taps.</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Risk density</p>
+            <p className="mt-1 text-2xl font-semibold text-amber-200">{pct(riskSignals, scansTotal)}</p>
+            <p className="text-xs text-slate-400">{riskSignals} señales de riesgo (dup + tamper).</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Journey coverage</p>
+            <p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage.toFixed(1)}%</p>
+            <p className="text-xs text-slate-400">UIDs con historia de origen/destino visible.</p>
+          </div>
+        </div>
+      </OpsPanel>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <OpsPanel title={kpis.trendTitle} subtitle="Volumen y señales de riesgo en el rango seleccionado.">
@@ -173,6 +212,26 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
+        <OpsPanel title="Risk radar (operational)" subtitle="Semáforo rápido por dimensión crítica del tenant.">
+          <div className="space-y-3">
+            {riskRadar.map((item) => {
+              const ratio = Math.max(0, Math.min(100, (item.value / Math.max(item.max, 1)) * 100));
+              const tone = ratio >= 40 ? "bg-rose-500/70" : ratio >= 20 ? "bg-amber-400/70" : "bg-emerald-400/70";
+              return (
+                <div key={item.label}>
+                  <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
+                    <span>{item.label}</span>
+                    <span>{item.value} · {ratio.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-800">
+                    <div className={`h-2 rounded-full ${tone}`} style={{ width: `${ratio}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </OpsPanel>
+
         <OpsPanel title="Device intelligence" subtitle="Modelos y combinaciones con mayor riesgo relativo.">
           <div className="space-y-2">
             {deviceSignals.map((device) => (
@@ -198,6 +257,26 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           </div>
         </OpsPanel>
       </div>
+
+      <OpsPanel title="Traceability lane by UID" subtitle="Journey visual para storytelling comercial y auditoría operacional por activo.">
+        <div className="space-y-3">
+          {tagJourney.slice(0, 8).map((item) => (
+            <div key={`lane-${item.uid}`} className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-white">{item.uid}</p>
+                <StatusChip label={`${item.taps} taps`} tone={item.taps > 20 ? "good" : "neutral"} />
+              </div>
+              <div className="mt-2 flex items-center gap-2 text-slate-300">
+                <span className="rounded bg-emerald-500/20 px-2 py-1 text-[11px]">{item.origin.city}, {item.origin.country}</span>
+                <span className="text-slate-500">→</span>
+                <span className="rounded bg-cyan-500/20 px-2 py-1 text-[11px]">{item.current.city}, {item.current.country}</span>
+                <span className="ml-auto text-slate-400">{item.lastDevice}</span>
+              </div>
+            </div>
+          ))}
+          {!tagJourney.length ? <p className="text-sm text-slate-400">Sin journeys para construir lane visual.</p> : null}
+        </div>
+      </OpsPanel>
     </div>
   );
 }
