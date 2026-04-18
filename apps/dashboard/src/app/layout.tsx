@@ -41,13 +41,13 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: localizedTitle,
       description: "Multi-tenant operations dashboard",
-      images: [{ url: "/icon", width: 512, height: 512, alt: "nexID Dashboard" }],
+      images: [{ url: "/og-image", width: 1200, height: 630, alt: "nexID Dashboard" }],
     },
     twitter: {
       card: "summary_large_image",
       title: localizedTitle,
       description: "Multi-tenant operations dashboard",
-      images: ["/icon"],
+      images: ["/twitter-image"],
     },
   };
 }

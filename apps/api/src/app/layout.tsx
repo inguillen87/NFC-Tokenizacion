@@ -17,13 +17,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "nexID API · SUN + Tokenization",
     description: "NFC SUN validation and admin operations API",
-    images: [{ url: "/icon", width: 512, height: 512, alt: "nexID API" }],
+    images: [{ url: "/og-image", width: 1200, height: 630, alt: "nexID API" }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "nexID API · SUN + Tokenization",
     description: "NFC SUN validation and admin operations API",
-    images: ["/icon"],
+    images: ["/twitter-image"],
   },
 };
 
