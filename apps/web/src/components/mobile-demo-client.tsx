@@ -434,6 +434,16 @@ export function MobileDemoClient({
               ) : (
                 <p className="mt-1 text-[11px] text-slate-300">{geoError || "Esperando permiso de ubicación del dispositivo..."}</p>
               )}
+              <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
+                <iframe
+                  title="geo-trace-mini-map"
+                  src={mapWidgetUrl}
+                  className="h-28 w-full bg-slate-950"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+              <p className="mt-1 text-[10px] text-slate-400">Vista rápida del punto de tap sobre mapa para demo comercial.</p>
             </div>
           </Card>
 
