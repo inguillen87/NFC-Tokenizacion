@@ -317,6 +317,9 @@ function buildPublicContract(params: {
   const avgTemp = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
   const avgHumidity = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.humidityPct || 0), 0) / sensorHistory.length) : null;
   const ua = summarizeUserAgent(params.tap.userAgent);
+  const trustPenalty = trust.code === "VALID" ? 0 : trust.code === "REPLAY_SUSPECT" ? 35 : 20;
+  const sensorPenalty = sensorHistory.some((item) => item.alert) ? 10 : 0;
+  const qualityScore = Math.max(0, Math.min(100, 92 - trustPenalty - sensorPenalty));
 
   return {
     ok: Boolean(params.result.ok),
@@ -391,6 +394,10 @@ function buildPublicContract(params: {
       lat: params.tap.lat,
       lng: params.tap.lng,
     },
+    quality: {
+      score: qualityScore,
+      tier: qualityScore >= 85 ? "Premium" : qualityScore >= 65 ? "Monitored" : "At Risk",
+    },
     cta: {
       claimOwnership: Boolean(params.uid),
       registerWarranty: Boolean(params.uid),
@@ -417,7 +424,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
   <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600}.subtitle{margin:0;color:#9fb5d9;font-size:13px}</style></head><body><main class="wrap">
-  <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">Digital Product Passport</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span></div></section>
+  <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">Digital Product Passport</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip">Quality ${contract.quality.score}/100 · ${contract.quality.tier}</span></div></section>
   <section class="card"><h3 style="margin:0 0 6px">Product identity</h3><p><b>${contract.product.name || 'Producto no perfilado'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Cosecha ${contract.product.harvestYear || '-'} · Barrica ${contract.product.barrelMonths || '-'} meses</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Provenance (honesto)</h3><p>Origen: <b>${contract.provenance.origin || '-'}</b></p><p>First verified: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>Last verified location: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">IoT & cellar signals</h3><p>Bodega: <b>${contract.iot.wineryLocation || 'No disponible'}</b></p><p>Altitud: <b>${contract.iot.altitude || '-'}</b> · Barrica: <b>${contract.iot.oakType || '-'}</b></p><p>Temperatura bodega: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humedad: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Luz: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transporte: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
