@@ -30,6 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: localizedTitle,
     description: siteConfig.description,
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://nexid.lat"),
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
@@ -49,6 +50,17 @@ export async function generateMetadata(): Promise<Metadata> {
       ],
       shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
       apple: [{ url: "/nexid-mark-light-512.png", sizes: "512x512", type: "image/png" }],
+    },
+    openGraph: {
+      title: localizedTitle,
+      description: siteConfig.description,
+      images: [{ url: "/icon", width: 512, height: 512, alt: "nexID" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: localizedTitle,
+      description: siteConfig.description,
+      images: ["/icon"],
     },
   };
 }

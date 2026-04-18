@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 export const metadata: Metadata = {
   title: "Identity Gateway API",
   description: "NFC SUN validation and admin operations API",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat"),
   icons: {
     icon: [
       { url: "/favicon.ico", type: "image/x-icon" },
@@ -12,6 +13,17 @@ export const metadata: Metadata = {
     ],
     shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
     apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
+  },
+  openGraph: {
+    title: "nexID API · SUN + Tokenization",
+    description: "NFC SUN validation and admin operations API",
+    images: [{ url: "/icon", width: 512, height: 512, alt: "nexID API" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "nexID API · SUN + Tokenization",
+    description: "NFC SUN validation and admin operations API",
+    images: ["/icon"],
   },
 };
 
