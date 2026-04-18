@@ -10,6 +10,8 @@ export type DashboardSession = {
   userId?: string;
   email: string;
   role: UserRole;
+  tenantId?: string | null;
+  tenantSlug?: string | null;
   label: string;
   permissions: string[];
   mfaVerified: boolean;
@@ -28,6 +30,8 @@ function parseDemoToken(token: string): DashboardSession | null {
       id: `demo-${data.role}-${data.email}`,
       email: data.email,
       role: data.role,
+      tenantId: data.role === "tenant-admin" ? "demo-tenant-demobodega" : null,
+      tenantSlug: data.role === "tenant-admin" ? "demobodega" : null,
       label: `${data.role} demo`,
       permissions: ["*"],
       mfaVerified: true,
