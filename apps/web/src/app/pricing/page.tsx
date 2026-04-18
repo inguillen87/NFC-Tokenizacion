@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BackLink } from "../../components/back-link";
 import { Badge, Button, Card, SectionHeading } from "@product/ui";
@@ -8,6 +9,22 @@ import { ArrowRight, BadgeDollarSign, CheckCircle2, ShieldCheck, Sparkles } from
 
 function Info({ text }: { text: string }) {
   return <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-cyan-300/40 text-xs text-cyan-200" title={text}>i</span>;
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getWebI18n();
+  return {
+    title: "Pricing · nexID",
+    openGraph: {
+      title: "Pricing · nexID",
+      images: [{ url: `/og-image?surface=pricing&campaign=reseller&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Pricing · nexID",
+      images: [`/twitter-image?surface=pricing&campaign=reseller&locale=${encodeURIComponent(locale)}`],
+    },
+  };
 }
 
 export default async function PricingPage() {

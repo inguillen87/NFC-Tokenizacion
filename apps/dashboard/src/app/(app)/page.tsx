@@ -1,11 +1,11 @@
 import { Badge, Card, SectionHeading, StatusChip } from "@product/ui";
-import { DemoOpsMap } from "../../components/demo-ops-map";
 import Link from "next/link";
 import { AdminActionForms } from "../../components/admin-action-forms";
 import { AnalyticsPanels } from "../../components/analytics-panels";
 import { DataTable } from "../../components/data-table";
 import { ModuleGrid } from "../../components/module-grid";
 import { MultirubroOpsPanel } from "../../components/multirubro-ops-panel";
+import { RealtimeOpsMonitor } from "../../components/realtime-ops-monitor";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
@@ -39,7 +39,24 @@ async function getLiveEvents() {
       cache: "no-store",
     });
     if (!response.ok) return [] as Array<Record<string, unknown>>;
-    return response.json();
+    const payload = await response.json().catch(() => null) as { rows?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null;
+    if (!payload) return [] as Array<Record<string, unknown>>;
+    if (Array.isArray(payload)) return payload;
+    return Array.isArray(payload.rows) ? payload.rows : [] as Array<Record<string, unknown>>;
+  } catch {
+    return [] as Array<Record<string, unknown>>;
+  }
+}
+
+async function getTokenizationRows() {
+  try {
+    const response = await fetch(`${API_BASE}/admin/tokenization/requests?limit=30`, {
+      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return [] as Array<Record<string, unknown>>;
+    const payload = await response.json().catch(() => ({})) as { rows?: Array<Record<string, unknown>> };
+    return payload.rows || [];
   } catch {
     return [] as Array<Record<string, unknown>>;
   }
@@ -108,8 +125,11 @@ export default async function DashboardHome() {
     ? overviewRaw.filter((row: Record<string, unknown>) => String(row.slug || "").toLowerCase() === tenantScope)
     : overviewRaw;
 
+  const tenantFromRow = (row: Record<string, unknown>) =>
+    String(row.tenant_slug || row.tenantSlug || row.tenant_id || row.tenantId || "").toLowerCase();
+
   const scopedLiveEvents = tenantScope
-    ? liveEvents.filter((row: Record<string, unknown>) => String(row.tenant_slug || "").toLowerCase() === tenantScope)
+    ? liveEvents.filter((row: Record<string, unknown>) => tenantFromRow(row) === tenantScope)
     : liveEvents;
   const scopedTokenizationRows = tenantScope
     ? tokenizationRows.filter((row: Record<string, unknown>) => String(row.tenant_slug || "").toLowerCase() === tenantScope)
@@ -128,17 +148,6 @@ export default async function DashboardHome() {
     };
   });
 
-  const mapPoints = scopedLiveEvents
-    .filter((row: Record<string, unknown>) => Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng)))
-    .slice(0, 10)
-    .map((row: Record<string, unknown>) => ({
-      city: String(row.city || row.reason || "Unknown"),
-      country: String(row.country_code || "--"),
-      lat: Number(row.lat),
-      lng: Number(row.lng),
-      scans: 1,
-      risk: String(row.result || "VALID") === "VALID" ? 0 : 1,
-    }));
   const successfulTaps = scopedLiveEvents.filter((event) => String(event.result || "").toUpperCase() === "VALID").length;
   const failedTaps = scopedLiveEvents.length - successfulTaps;
   const tokenizationByStatus: Record<string, number> = {};
@@ -167,34 +176,43 @@ export default async function DashboardHome() {
       <AnalyticsPanels kpis={kpis} extra={copy.analytics} />
       <MultirubroOpsPanel />
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card className="p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.liveFeed}</h2>
-            <Badge tone="cyan">{labels.mission}</Badge>
-          </div>
-          <div className="mt-4 space-y-2">
-            {scopedLiveEvents.slice(0, 8).map((event: Record<string, unknown>) => {
-              const result = String(event.result || "VALID");
-              const tone = result === "VALID" ? "text-emerald-300" : "text-rose-300";
-              return (
-                <div key={String(event.id)} className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm">
-                  <p className={`font-semibold ${tone}`}>{result}</p>
-                  <p className="mt-1 text-slate-300">
-                    {String(event.tenant_slug || "-")} · {String(event.bid || "-")} · {String(event.uid_hex || "-")}
-                  </p>
-                </div>
-              );
-            })}
-            {!scopedLiveEvents.length ? <p className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">No hay eventos recientes en el alcance actual. Probá escanear un tag activo o ajustá el tenant operativo.</p> : null}
-          </div>
-        </Card>
+      <RealtimeOpsMonitor
+        initialEvents={scopedLiveEvents}
+        tenantScope={tenantScope}
+        mode={isTenantAdmin ? "tenant" : "global"}
+        labels={labels}
+      />
 
-        <div>
-          <p className="mb-2 text-xs text-slate-400">{labels.mapTitle} · {labels.mapSubtitle}</p>
-          <DemoOpsMap points={mapPoints} mode={isTenantAdmin ? "tenant" : "global"} />
+      <Card className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Tap simulation & Polygon status</h2>
+          <Badge tone="cyan">Simulación SUN + tokenización</Badge>
         </div>
-      </div>
+        <p className="mt-2 text-xs text-slate-400">Comparativa rápida de taps válidos/invalidos y estado de transacciones de tokenización en Polygon Amoy.</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Taps exitosos<br /><b className="text-base text-emerald-300">{successfulTaps}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Taps fallidos<br /><b className="text-base text-rose-300">{failedTaps}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Minted / anchored<br /><b className="text-base text-cyan-200">{Number(tokenizationByStatus.anchored || 0)}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Pending / failed<br /><b className="text-base text-amber-200">{Number(tokenizationByStatus.pending || 0) + Number(tokenizationByStatus.failed || 0)}</b></div>
+        </div>
+        <div className="mt-4 grid gap-2">
+          {scopedTokenizationRows.slice(0, 8).map((row: Record<string, unknown>) => {
+            const status = String(row.status || "unknown").toLowerCase();
+            const tone = status === "anchored" ? "good" : status === "failed" ? "risk" : status === "processing" ? "warn" : "neutral";
+            return (
+              <div key={String(row.id)} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusChip label={status} tone={tone} />
+                  <span>{String(row.bid || "-")} · {String(row.uid_hex || "-")}</span>
+                  <span className="text-slate-400">{String(row.network || "polygon-amoy")}</span>
+                </div>
+                <p className="mt-1 break-all text-slate-400">Tx: {String(row.tx_hash || "-")} · Token: {String(row.token_id || "-")}</p>
+              </div>
+            );
+          })}
+          {!scopedTokenizationRows.length ? <p className="rounded-xl border border-dashed border-white/15 bg-slate-900/40 p-3 text-xs text-slate-400">Sin requests de tokenización en el alcance actual. Podés usar el modo simulación (`POST /sun/simulate`) para poblar esta vista.</p> : null}
+        </div>
+      </Card>
 
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

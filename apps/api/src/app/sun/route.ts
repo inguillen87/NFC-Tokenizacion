@@ -430,15 +430,35 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const timelineHtml = timeline.length
     ? timeline.map((item) => `<li>${item.at || 'N/A'} · ${item.result || '-'} · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
     : '<li>Sin eventos de timeline disponibles.</li>';
+  const tapLat = contract.tapContext.lat;
+  const tapLng = contract.tapContext.lng;
+  const wineryLat = contract.iot.wineryCoordinates?.lat ?? tapLat ?? -33.0086;
+  const wineryLng = contract.iot.wineryCoordinates?.lng ?? tapLng ?? -68.7794;
+  const destinationLat = tapLat ?? wineryLat;
+  const destinationLng = tapLng ?? wineryLng;
+  const bbox = [
+    Math.min(wineryLng, destinationLng) - 0.08,
+    Math.min(wineryLat, destinationLat) - 0.05,
+    Math.max(wineryLng, destinationLng) + 0.08,
+    Math.max(wineryLat, destinationLat) + 0.05,
+  ];
+  const mapEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox[0]}%2C${bbox[1]}%2C${bbox[2]}%2C${bbox[3]}&layer=mapnik&marker=${destinationLat}%2C${destinationLng}`;
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-icon" />
   <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600}.subtitle{margin:0;color:#9fb5d9;font-size:13px}</style></head><body><main class="wrap">
   <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">Digital Product Passport</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip">Quality ${contract.quality.score}/100 · ${contract.quality.tier}</span></div></section>
   <section class="card"><h3 style="margin:0 0 6px">Product identity</h3><p><b>${contract.product.name || 'Producto no perfilado'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Cosecha ${contract.product.harvestYear || '-'} · Barrica ${contract.product.barrelMonths || '-'} meses</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Provenance (honesto)</h3><p>Origen: <b>${contract.provenance.origin || '-'}</b></p><p>First verified: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>Last verified location: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">IoT & cellar signals</h3><p>Bodega: <b>${contract.iot.wineryLocation || 'No disponible'}</b></p><p>Altitud: <b>${contract.iot.altitude || '-'}</b> · Barrica: <b>${contract.iot.oakType || '-'}</b></p><p>Temperatura bodega: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humedad: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Luz: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transporte: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">Sensor timeline (wine lifecycle)</h3><ul style="margin:0;padding-left:18px;display:grid;gap:6px">${contract.iot.sensorHistory.map((item) => `<li>${item.at || 'N/A'} · <b>${item.stage}</b> · ${item.temperatureC}°C · ${item.humidityPct}% HR · Barrica ${item.barrelAgeMonths ?? '-'} meses${item.alert ? ` · ⚠ ${item.alert}` : ''}</li>`).join('')}</ul></section>
-  <section class="card"><h3 style="margin:0 0 6px">Tap device intelligence</h3><p>SO: <b>${contract.tapContext.os}</b> · Browser: <b>${contract.tapContext.browser}</b> · Device: <b>${contract.tapContext.deviceType}</b></p><p>Ubicación del tap: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p></section>
+  <section class="card"><h3 style="margin:0 0 6px">Tap device intelligence</h3><p>SO: <b>${contract.tapContext.os}</b> · Browser: <b>${contract.tapContext.browser}</b> · Device: <b>${contract.tapContext.deviceType}</b></p><p>Ubicación del tap: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p>
+  <div style="margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:12px;overflow:hidden;background:#020617">
+    <iframe title="sun-tap-map" src="${mapEmbed}" loading="lazy" style="display:block;width:100%;height:180px;border:0"></iframe>
+  </div>
+  <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">Mapa de lectura: ${contract.iot.wineryLocation || 'Origen'} → punto de tap.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Timeline summary</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">Tokenization</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Acciones</h3><p class="subtitle" style="margin-bottom:10px">Flujos certificados para consumidor, postventa y trazabilidad digital.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button data-cta="claim-ownership">✓ Activar ownership</button><button data-cta="register-warranty">🛡 Registrar garantía</button><button data-cta="provenance">📍 Ver provenance</button><button data-cta="tokenize-request">⛓ Tokenización opcional</button></div></section>

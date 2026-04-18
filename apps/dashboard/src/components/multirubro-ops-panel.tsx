@@ -88,6 +88,52 @@ export function MultirubroOpsPanel() {
     void loadData();
   }
 
+  function exportPdfReport() {
+    if (typeof window === "undefined") return;
+    const summaryRows = [
+      ["Taps totales", String(tapsTotal)],
+      ["Originales", String(originals)],
+      ["Clones", String(clones)],
+      ["Gas wallet (POL)", Number(wallet?.balancePol || 0).toFixed(3)],
+      ["Security alerts", String(Number(security?.summary?.repeatedInvalidUid || 0) + Number(security?.summary?.geoVelocityAlerts || 0))],
+      ["Reporte generado", new Date().toLocaleString("es-AR")],
+    ];
+    const topGeoRows = points.slice(0, 8).map((point) => `<tr><td>${point.city}</td><td>${point.country}</td><td>${point.scans}</td><td>${point.status}</td></tr>`).join("");
+    const topAlerts = [
+      ...(security?.repeatedInvalidUid || []).slice(0, 5).map((item) => `UID ${item.uidHex}: ${item.count} inválidos (${item.severity})`),
+      ...(security?.geoVelocityAlerts || []).slice(0, 5).map((item) => `UID ${item.uidHex}: ${item.fromCountry} → ${item.toCountry} (${item.severity})`),
+    ];
+    const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Nexid Ops Report</title>
+      <style>
+        body{font-family:Inter,Arial,sans-serif;padding:24px;color:#0f172a}
+        h1,h2{margin:0 0 10px}
+        .card{border:1px solid #cbd5e1;border-radius:12px;padding:14px;margin:12px 0}
+        table{width:100%;border-collapse:collapse}
+        th,td{border:1px solid #cbd5e1;padding:8px;text-align:left;font-size:12px}
+        .muted{color:#475569;font-size:12px}
+      </style></head><body>
+      <h1>Nexid · Reporte operativo</h1>
+      <p class="muted">Snapshot multirubro para exportación PDF.</p>
+      <section class="card"><h2>KPIs</h2><table><tbody>${summaryRows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</tbody></table></section>
+      <section class="card"><h2>Geo hubs (top)</h2>
+        ${points.length ? `<table><thead><tr><th>Ciudad</th><th>País</th><th>Scans</th><th>Status</th></tr></thead><tbody>${topGeoRows}</tbody></table>` : `<p class="muted">Sin hubs visibles para esta ventana.</p>`}
+      </section>
+      <section class="card"><h2>Alertas críticas</h2>
+        ${topAlerts.length ? `<ul>${topAlerts.map((row) => `<li>${row}</li>`).join("")}</ul>` : `<p class="muted">Sin alertas críticas en la ventana actual.</p>`}
+      </section>
+    </body></html>`;
+    const popup = window.open("", "_blank", "noopener,noreferrer,width=980,height=760");
+    if (!popup) {
+      window.print();
+      return;
+    }
+    popup.document.open();
+    popup.document.write(html);
+    popup.document.close();
+    popup.focus();
+    popup.print();
+  }
+
   return (
     <OpsPanel title="Nexid Dashboard · Multirubro" subtitle="Business Intelligence para Vinos, Cosmética, Documentos y Semillas (dark premium + data refresh).">
       <div className="grid gap-3 md:grid-cols-4">
@@ -136,7 +182,7 @@ export function MultirubroOpsPanel() {
             <button onClick={() => void handleMassMint()} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">
               {busy ? "Ejecutando mint..." : "Mint Masivo (control calidad OK)"}
             </button>
-            <button onClick={() => window.print()} className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">Exportar reporte PDF</button>
+            <button onClick={exportPdfReport} className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">Exportar reporte PDF</button>
             <StatusChip label={wallet?.mode || "simulated"} tone={wallet?.mode === "live" ? "good" : "warn"} />
           </div>
           {mintStatus ? <p className="mt-2 text-xs text-slate-300">{mintStatus}</p> : null}
