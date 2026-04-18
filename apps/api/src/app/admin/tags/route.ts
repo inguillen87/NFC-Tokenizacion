@@ -13,6 +13,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const { tenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
   const query = (searchParams.get("q") || "").trim();
+  const format = (searchParams.get("format") || "json").toLowerCase();
   const offset = Math.max(Number(searchParams.get("offset") || 0), 0);
   const limit = Math.min(Math.max(Number(searchParams.get("limit") || 200), 1), 1000);
 
@@ -142,6 +143,61 @@ export async function GET(req: Request) {
       tokenId: row.tokenization_token_id ? String(row.tokenization_token_id) : null,
     },
   }));
+
+  if (format === "csv") {
+    const header = [
+      "uidHex",
+      "bid",
+      "tenantSlug",
+      "productName",
+      "winery",
+      "region",
+      "vintage",
+      "tagStatus",
+      "lastResult",
+      "scanCount",
+      "firstSeenAt",
+      "lastSeenAt",
+      "lastCity",
+      "lastCountry",
+      "tokenizationStatus",
+      "tokenizationNetwork",
+      "tokenizationTxHash",
+      "tokenizationTokenId",
+    ];
+    const escapeCsv = (value: unknown) => `"${String(value ?? "").replace(/"/g, "\"\"")}"`;
+    const body = [
+      header.join(","),
+      ...data.map((row) => [
+        escapeCsv(row.uidHex),
+        escapeCsv(row.bid),
+        escapeCsv(row.tenantSlug),
+        escapeCsv(row.product.name),
+        escapeCsv(row.product.winery),
+        escapeCsv(row.product.region),
+        escapeCsv(row.product.vintage),
+        escapeCsv(row.status.tag),
+        escapeCsv(row.status.lastResult),
+        escapeCsv(row.scans.count),
+        escapeCsv(row.scans.firstSeenAt || ""),
+        escapeCsv(row.scans.lastSeenAt || ""),
+        escapeCsv(row.lastVerifiedLocation.city),
+        escapeCsv(row.lastVerifiedLocation.country),
+        escapeCsv(row.tokenization.status),
+        escapeCsv(row.tokenization.network),
+        escapeCsv(row.tokenization.txHash || ""),
+        escapeCsv(row.tokenization.tokenId || ""),
+      ].join(",")),
+    ].join("\n");
+    const filename = `tags-${tenant || "global"}-${range}.csv`;
+    return new Response(body, {
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  }
 
   return json({
     scope: {

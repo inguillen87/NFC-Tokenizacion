@@ -91,6 +91,11 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   const hasNext = offset + rows.length < totalRows;
   const previousPage = pageParams(query, Math.max(page - 1, 1));
   const nextPage = pageParams(query, page + 1);
+  const csvParams = new URLSearchParams(params);
+  csvParams.set("offset", "0");
+  csvParams.set("limit", "1000");
+  csvParams.set("format", "csv");
+  const csvUrl = `/api/admin/tags?${csvParams.toString()}`;
   const copy = dashboardContent[locale];
 
   return (
@@ -123,6 +128,16 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
           <button className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
         </form>
         <p className="mt-3 text-xs text-slate-400">Scope: <b className="text-slate-200">{tenantScope || "global"}</b> · Source: <b className="text-slate-200">{source}</b> · Total: <b className="text-slate-200">{totalRows}</b> · Page: <b className="text-slate-200">{page}</b></p>
+        {(process.env.ADMIN_API_KEY || "").trim() ? (
+          <a
+            className="mt-3 inline-flex rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-500/20"
+            href={csvUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Export CSV (máx 1000 filas)
+          </a>
+        ) : null}
       </Card>
 
       <Card className="p-5">
