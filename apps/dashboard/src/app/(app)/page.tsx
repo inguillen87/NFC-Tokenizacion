@@ -1,11 +1,11 @@
 import { Badge, Card, SectionHeading, StatusChip } from "@product/ui";
-import { DemoOpsMap } from "../../components/demo-ops-map";
 import Link from "next/link";
 import { AdminActionForms } from "../../components/admin-action-forms";
 import { AnalyticsPanels } from "../../components/analytics-panels";
 import { DataTable } from "../../components/data-table";
 import { ModuleGrid } from "../../components/module-grid";
 import { MultirubroOpsPanel } from "../../components/multirubro-ops-panel";
+import { RealtimeOpsMonitor } from "../../components/realtime-ops-monitor";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
@@ -134,21 +134,6 @@ export default async function DashboardHome() {
     };
   });
 
-  const mapPoints = scopedLiveEvents
-    .filter((row: Record<string, unknown>) => {
-      const lat = Number(row.lat ?? (row.location as { lat?: number } | undefined)?.lat);
-      const lng = Number(row.lng ?? (row.location as { lng?: number } | undefined)?.lng);
-      return Number.isFinite(lat) && Number.isFinite(lng);
-    })
-    .slice(0, 10)
-    .map((row: Record<string, unknown>) => ({
-      city: String(row.city || (row.location as { city?: string } | undefined)?.city || row.reason || "Unknown"),
-      country: String(row.country_code || (row.location as { country?: string } | undefined)?.country || "--"),
-      lat: Number(row.lat ?? (row.location as { lat?: number } | undefined)?.lat),
-      lng: Number(row.lng ?? (row.location as { lng?: number } | undefined)?.lng),
-      scans: 1,
-      risk: String(row.result || "VALID") === "VALID" ? 0 : 1,
-    }));
   const successfulTaps = scopedLiveEvents.filter((event) => String(event.result || "").toUpperCase() === "VALID").length;
   const failedTaps = scopedLiveEvents.length - successfulTaps;
   const tokenizationByStatus: Record<string, number> = {};
@@ -177,34 +162,12 @@ export default async function DashboardHome() {
       <AnalyticsPanels kpis={kpis} extra={copy.analytics} />
       <MultirubroOpsPanel />
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card className="p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.liveFeed}</h2>
-            <Badge tone="cyan">{labels.mission}</Badge>
-          </div>
-          <div className="mt-4 space-y-2">
-            {scopedLiveEvents.slice(0, 8).map((event: Record<string, unknown>) => {
-              const result = String(event.result || "VALID");
-              const tone = result === "VALID" ? "text-emerald-300" : "text-rose-300";
-              return (
-                <div key={String(event.id)} className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm">
-              <p className={`font-semibold ${tone}`}>{result}</p>
-              <p className="mt-1 text-slate-300">
-                    {String(event.tenant_slug || event.tenantSlug || "-")} · {String(event.bid || "-")} · {String(event.uid_hex || event.uidHex || "-")}
-              </p>
-            </div>
-          );
-            })}
-            {!scopedLiveEvents.length ? <p className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">No hay eventos recientes en el alcance actual. Probá escanear un tag activo o ajustá el tenant operativo.</p> : null}
-          </div>
-        </Card>
-
-        <div>
-          <p className="mb-2 text-xs text-slate-400">{labels.mapTitle} · {labels.mapSubtitle}</p>
-          <DemoOpsMap points={mapPoints} mode={isTenantAdmin ? "tenant" : "global"} />
-        </div>
-      </div>
+      <RealtimeOpsMonitor
+        initialEvents={scopedLiveEvents}
+        tenantScope={tenantScope}
+        mode={isTenantAdmin ? "tenant" : "global"}
+        labels={labels}
+      />
 
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
