@@ -6,21 +6,34 @@ export const contentType = "image/png";
 export default function OgImage({
   searchParams,
 }: {
-  searchParams?: { locale?: string };
+  searchParams?: { locale?: string; surface?: string };
 }) {
   const locale = String(searchParams?.locale || "es-AR");
-  const title =
-    locale === "en"
-      ? "Tap · Verify · Trust"
+  const surface = String(searchParams?.surface || "home");
+  const copy =
+    surface === "sun"
+      ? locale === "en"
+        ? { title: "SUN Product Passport", subtitle: "Verify authenticity, provenance and lifecycle in one tap." }
+        : locale === "pt-BR"
+        ? { title: "Passaporte SUN", subtitle: "Verifique autenticidade, proveniência e ciclo de vida em um toque." }
+        : { title: "Passport SUN", subtitle: "Verificá autenticidad, provenance y lifecycle en un toque." }
+      : surface === "pricing"
+      ? locale === "en"
+        ? { title: "Pricing by Risk", subtitle: "Basic vs Secure vs Enterprise with clear rollout economics." }
+        : locale === "pt-BR"
+        ? { title: "Pricing por Risco", subtitle: "Basic vs Secure vs Enterprise com economia clara de rollout." }
+        : { title: "Pricing por Riesgo", subtitle: "Basic vs Secure vs Enterprise con economía clara de rollout." }
+      : surface === "demo-lab"
+      ? locale === "en"
+        ? { title: "Demo Lab", subtitle: "Live storytelling for operators, buyers and investors." }
+        : locale === "pt-BR"
+        ? { title: "Demo Lab", subtitle: "Storytelling ao vivo para operadores, compradores e investidores." }
+        : { title: "Demo Lab", subtitle: "Storytelling en vivo para operadores, buyers e inversores." }
+      : locale === "en"
+      ? { title: "Tap · Verify · Trust", subtitle: "NFC anti-fraud + premium traceability for brands." }
       : locale === "pt-BR"
-      ? "Toque · Verifique · Confie"
-      : "Tocá · Verificá · Confiá";
-  const subtitle =
-    locale === "en"
-      ? "NFC anti-fraud + premium traceability for brands."
-      : locale === "pt-BR"
-      ? "Antifraude NFC + rastreabilidade premium para marcas."
-      : "Antifraude NFC + trazabilidad premium para marcas.";
+      ? { title: "Toque · Verifique · Confie", subtitle: "Antifraude NFC + rastreabilidade premium para marcas." }
+      : { title: "Tocá · Verificá · Confiá", subtitle: "Antifraude NFC + trazabilidad premium para marcas." };
 
   return new ImageResponse(
     (
@@ -39,8 +52,8 @@ export default function OgImage({
       >
         <div style={{ fontSize: 28, letterSpacing: 2, textTransform: "uppercase", color: "#67e8f9" }}>nexID Web</div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 1.02 }}>{title}</div>
-          <p style={{ marginTop: 18, fontSize: 32, color: "#cbd5e1" }}>{subtitle}</p>
+          <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 1.02 }}>{copy.title}</div>
+          <p style={{ marginTop: 18, fontSize: 32, color: "#cbd5e1" }}>{copy.subtitle}</p>
         </div>
         <div style={{ fontSize: 24, color: "#94a3b8" }}>nexid.lat</div>
       </div>

@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import { CtaActions } from "./cta-actions";
 import { OnboardDemoButton } from "./onboard-demo-button";
 import { productUrls } from "@product/config";
 import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail, WorldMapPlaceholder } from "@product/ui";
+import { getWebI18n } from "../../lib/locale";
 
 function apiBase() {
   return productUrls.api;
@@ -30,6 +32,22 @@ function fmtDate(value?: string | null) {
   if (!value) return "N/A";
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? "N/A" : d.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" });
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getWebI18n();
+  return {
+    title: "SUN Passport · nexID",
+    openGraph: {
+      title: "SUN Passport · nexID",
+      images: [{ url: `/og-image?surface=sun&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "SUN Passport · nexID",
+      images: [`/twitter-image?surface=sun&locale=${encodeURIComponent(locale)}`],
+    },
+  };
 }
 
 export default async function SunPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
