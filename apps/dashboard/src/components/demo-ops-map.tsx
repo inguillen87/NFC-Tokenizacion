@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { EmptyState, FilterBar, WorldMapPlaceholder } from "@product/ui";
+import { RealOpsMap } from "./real-ops-map";
 
 type MapPoint = {
   city: string;
@@ -156,14 +157,12 @@ export function DemoOpsMap({
       )}
 
       <div className="mt-3">
-        {playablePoints.length > 0 ? (
+        {playablePoints.length === 0 ? (
+          <EmptyState title="Sin hubs visibles" description="Probá cambiar país, scope o tipo de evento." className="border-dashed px-4 py-10 text-center text-sm text-slate-400" />
+        ) : mode === "demo" ? (
           <WorldMapPlaceholder
             title="Global verification map"
-            subtitle={mode === "demo"
-              ? "Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
-              : mode === "tenant"
-                ? "Fuente: eventos del tenant activo con geolocalización y estado operativo."
-                : "Fuente: eventos operativos multi-tenant consolidados por estado y geografía."}
+            subtitle="Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
             points={playablePoints}
             metadataRows={(point) => [
               { label: "Pack/vertical", value: point.vertical || "-" },
@@ -171,7 +170,10 @@ export function DemoOpsMap({
             ]}
           />
         ) : (
-          <EmptyState title="Sin hubs visibles" description="Probá cambiar país, scope o tipo de evento." className="border-dashed px-4 py-10 text-center text-sm text-slate-400" />
+          <RealOpsMap
+            points={playablePoints}
+            scopeLabel={mode === "tenant" ? "tenant operativo activo" : "multi-tenant operacional"}
+          />
         )}
       </div>
 
