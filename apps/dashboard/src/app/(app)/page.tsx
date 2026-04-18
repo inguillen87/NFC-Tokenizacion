@@ -62,20 +62,6 @@ async function getTokenizationRows() {
   }
 }
 
-async function getTokenizationRows() {
-  try {
-    const response = await fetch(`${API_BASE}/admin/tokenization/requests?limit=30`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
-    if (!response.ok) return [] as Array<Record<string, unknown>>;
-    const payload = await response.json().catch(() => ({})) as { rows?: Array<Record<string, unknown>> };
-    return payload.rows || [];
-  } catch {
-    return [] as Array<Record<string, unknown>>;
-  }
-}
-
 function resolveTenantStatus(scans: number, duplicates: number, tamper: number) {
   if (scans === 0) return "pending";
   const riskRatio = scans > 0 ? (duplicates + tamper) / scans : 0;
@@ -182,37 +168,6 @@ export default async function DashboardHome() {
         mode={isTenantAdmin ? "tenant" : "global"}
         labels={labels}
       />
-
-      <Card className="p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Tap simulation & Polygon status</h2>
-          <Badge tone="cyan">Simulación SUN + tokenización</Badge>
-        </div>
-        <p className="mt-2 text-xs text-slate-400">Comparativa rápida de taps válidos/invalidos y estado de transacciones de tokenización en Polygon Amoy.</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Taps exitosos<br /><b className="text-base text-emerald-300">{successfulTaps}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Taps fallidos<br /><b className="text-base text-rose-300">{failedTaps}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Minted / anchored<br /><b className="text-base text-cyan-200">{Number(tokenizationByStatus.anchored || 0)}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Pending / failed<br /><b className="text-base text-amber-200">{Number(tokenizationByStatus.pending || 0) + Number(tokenizationByStatus.failed || 0)}</b></div>
-        </div>
-        <div className="mt-4 grid gap-2">
-          {scopedTokenizationRows.slice(0, 8).map((row: Record<string, unknown>) => {
-            const status = String(row.status || "unknown").toLowerCase();
-            const tone = status === "anchored" ? "good" : status === "failed" ? "risk" : status === "processing" ? "warn" : "neutral";
-            return (
-              <div key={String(row.id)} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusChip label={status} tone={tone} />
-                  <span>{String(row.bid || "-")} · {String(row.uid_hex || "-")}</span>
-                  <span className="text-slate-400">{String(row.network || "polygon-amoy")}</span>
-                </div>
-                <p className="mt-1 break-all text-slate-400">Tx: {String(row.tx_hash || "-")} · Token: {String(row.token_id || "-")}</p>
-              </div>
-            );
-          })}
-          {!scopedTokenizationRows.length ? <p className="rounded-xl border border-dashed border-white/15 bg-slate-900/40 p-3 text-xs text-slate-400">Sin requests de tokenización en el alcance actual. Podés usar el modo simulación (`POST /sun/simulate`) para poblar esta vista.</p> : null}
-        </div>
-      </Card>
 
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

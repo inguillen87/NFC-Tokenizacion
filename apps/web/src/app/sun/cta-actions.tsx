@@ -4,6 +4,8 @@ import { useState } from "react";
 
 type Props = { bid: string; uid: string };
 type LeadIntent = "tokenization_optional";
+type ActionState = "idle" | "loading" | "success" | "error";
+type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokenization";
 type ProvenanceResponse = {
   ok?: boolean;
   reason?: string;
@@ -29,24 +31,56 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
 export function CtaActions({ bid, uid }: Props) {
   const [status, setStatus] = useState<string>("");
   const [pending, setPending] = useState(false);
+  const [actionStates, setActionStates] = useState<Record<ActionKey, ActionState>>({
+    claimOwnership: "idle",
+    registerWarranty: "idle",
+    provenance: "idle",
+    tokenization: "idle",
+  });
+  const [actionError, setActionError] = useState<string>("");
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [leadEmail, setLeadEmail] = useState("");
   const [leadSaved, setLeadSaved] = useState(false);
   const [leadIntent, setLeadIntent] = useState<LeadIntent>("tokenization_optional");
   const [provenance, setProvenance] = useState<ProvenanceResponse | null>(null);
 
-  const trigger = async (path: string, method: "POST" | "GET") => {
+  function normalizeReason(data: { reason?: string }) {
+    const reason = String(data.reason || "").toLowerCase();
+    if (reason.includes("share") || reason.includes("token")) {
+      return "Acción no disponible en este enlace. Abrí el SUN desde un link firmado o escaneá nuevamente.";
+    }
+    return data.reason || "No se pudo completar la acción. Reintentá en unos segundos.";
+  }
+
+  const trigger = async (path: string, method: "POST" | "GET", actionKey: ActionKey) => {
     setPending(true);
+    setActionError("");
+    setActionStates((current) => ({ ...current, [actionKey]: "loading" }));
     const data = await call(path, method, { bid, uid });
     setStatus(JSON.stringify(data));
+    const ok = Boolean((data as { ok?: boolean }).ok);
+    setActionStates((current) => ({ ...current, [actionKey]: ok ? "success" : "error" }));
+    if (!ok) {
+      setActionError(normalizeReason(data as { reason?: string }));
+    }
     if (method === "GET" && path.includes("provenance")) setProvenance(data as ProvenanceResponse);
     setPending(false);
   };
+
+  function getButtonLabel(idleLabel: string, actionKey: ActionKey) {
+    const state = actionStates[actionKey];
+    if (state === "loading") return "Procesando...";
+    if (state === "success") return "Hecho ✓";
+    if (state === "error") return "Error";
+    return idleLabel;
+  }
 
   async function saveTokenizationLead() {
     if (!leadEmail.trim()) return;
     setPending(true);
     setLeadSaved(false);
+    setActionError("");
+    setActionStates((current) => ({ ...current, tokenization: "loading" }));
     const leadPayload = {
       name: "SUN visitor",
       email: leadEmail.trim(),
@@ -66,26 +100,34 @@ export function CtaActions({ bid, uid }: Props) {
     });
     setStatus(JSON.stringify({ lead, tokenization }));
     setPending(false);
-    setLeadSaved(Boolean((lead as { ok?: boolean }).ok && (tokenization as { ok?: boolean }).ok));
+    const ok = Boolean((lead as { ok?: boolean }).ok && (tokenization as { ok?: boolean }).ok);
+    setLeadSaved(ok);
+    setActionStates((current) => ({ ...current, tokenization: ok ? "success" : "error" }));
+    if (!ok) {
+      const reason = normalizeReason(tokenization as { reason?: string }) || normalizeReason(lead as { reason?: string });
+      setActionError(reason);
+    }
   }
 
   return (
     <div className="mt-4 space-y-2">
       <div className="grid gap-2 text-xs md:grid-cols-2">
-        <button onClick={() => void trigger("/api/public-cta/claim-ownership", "POST")} className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-left text-cyan-100">✅ Activar ownership</button>
-        <button onClick={() => void trigger("/api/public-cta/register-warranty", "POST")} className="rounded-xl border border-violet-300/40 bg-violet-500/10 px-3 py-2 text-left text-violet-100">🛡️ Registrar garantía</button>
-        <button onClick={() => void trigger("/api/public-cta/provenance", "GET")} className="rounded-xl border border-amber-300/40 bg-amber-500/10 px-3 py-2 text-left text-amber-100">📜 Ver provenance</button>
+        <button onClick={() => void trigger("/api/public-cta/claim-ownership", "POST", "claimOwnership")} className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-left text-cyan-100">{getButtonLabel("✅ Activar ownership", "claimOwnership")}</button>
+        <button onClick={() => void trigger("/api/public-cta/register-warranty", "POST", "registerWarranty")} className="rounded-xl border border-violet-300/40 bg-violet-500/10 px-3 py-2 text-left text-violet-100">{getButtonLabel("🛡️ Registrar garantía", "registerWarranty")}</button>
+        <button onClick={() => void trigger("/api/public-cta/provenance", "GET", "provenance")} className="rounded-xl border border-amber-300/40 bg-amber-500/10 px-3 py-2 text-left text-amber-100">{getButtonLabel("📜 Ver provenance", "provenance")}</button>
         <button
           onClick={() => {
             setLeadIntent("tokenization_optional");
+            setActionStates((current) => ({ ...current, tokenization: "idle" }));
             setShowTokenModal(true);
           }}
           className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-2 text-left text-emerald-100"
         >
-          ✨ Tokenización opcional
+          {getButtonLabel("✨ Tokenización opcional", "tokenization")}
         </button>
       </div>
       {pending ? <p className="text-xs text-cyan-200">Ejecutando acción...</p> : null}
+      {actionError ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-xs text-rose-100">{actionError}</p> : null}
       {provenance?.timeline?.length ? (
         <div className="rounded border border-white/10 bg-slate-950/50 p-2 text-[11px] text-slate-200">
           <p className="mb-1 text-cyan-100">Lifecycle timeline (enterprise)</p>
@@ -116,7 +158,7 @@ export function CtaActions({ bid, uid }: Props) {
             className="mt-2 w-full rounded border border-white/10 bg-slate-900 px-2 py-1 text-white"
           />
           <div className="mt-2 flex gap-2">
-            <button onClick={() => void saveTokenizationLead()} className="rounded border border-emerald-300/40 bg-emerald-500/10 px-3 py-1 text-emerald-100">Guardar interés</button>
+            <button onClick={() => void saveTokenizationLead()} className="rounded border border-emerald-300/40 bg-emerald-500/10 px-3 py-1 text-emerald-100">{getButtonLabel("Guardar interés", "tokenization")}</button>
             <button onClick={() => setShowTokenModal(false)} className="rounded border border-white/20 px-3 py-1 text-white">Cerrar</button>
           </div>
           {leadSaved ? <p className="mt-2 text-emerald-300">Interés guardado en pipeline comercial.</p> : null}
