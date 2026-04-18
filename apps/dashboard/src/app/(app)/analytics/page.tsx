@@ -160,6 +160,32 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <button type="submit" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100">Apply analytics scope</button>
         </form>
       </div>
+      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+        <form className="grid gap-3 md:grid-cols-5">
+          <select name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
+            <option value="24h">24h</option>
+            <option value="7d">7d</option>
+            <option value="30d">30d</option>
+          </select>
+          {session.role !== "tenant-admin" ? (
+            <select name="source" defaultValue={source} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
+              <option value="all">all</option>
+              <option value="real">real</option>
+              <option value="demo">demo</option>
+              <option value="imported">imported</option>
+            </select>
+          ) : (
+            <input type="hidden" name="source" value="real" />
+          )}
+          {session.role !== "tenant-admin" ? (
+            <input name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          ) : (
+            <input type="hidden" name="tenant" value={tenantScope} />
+          )}
+          <input name="country" defaultValue={country} placeholder="country (AR, BR, US...)" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <button type="submit" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100">Apply analytics scope</button>
+        </form>
+      </div>
       <AnalyticsPanels
         kpis={kpis}
         extra={copy.analytics}
