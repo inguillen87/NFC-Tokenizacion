@@ -12,6 +12,8 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const { tenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const query = (searchParams.get("q") || "").trim();
+  const offset = Math.max(Number(searchParams.get("offset") || 0), 0);
   const limit = Math.min(Math.max(Number(searchParams.get("limit") || 200), 1), 1000);
 
   const rows = await sql/*sql*/`
@@ -57,8 +59,57 @@ export async function GET(req: Request) {
     ) tok ON TRUE
     WHERE (${tenant} = '' OR tn.slug = ${tenant})
       AND (${country} = '' OR COALESCE(last_evt.country_code, '') = ${country})
+      AND (
+        ${query} = ''
+        OR t.uid_hex ILIKE ${`%${query}%`}
+        OR b.bid ILIKE ${`%${query}%`}
+        OR COALESCE(tp.product_name, tp.sku, '') ILIKE ${`%${query}%`}
+        OR COALESCE(tp.winery, '') ILIKE ${`%${query}%`}
+        OR COALESCE(tp.region, '') ILIKE ${`%${query}%`}
+      )
     ORDER BY COALESCE(t.last_seen_at, t.created_at) DESC
+    OFFSET ${offset}
     LIMIT ${limit}
+  `;
+
+  const totalsRows = await sql/*sql*/`
+    SELECT
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE t.status = 'active')::int AS active_tags,
+      COUNT(*) FILTER (WHERE t.status <> 'active')::int AS non_active_tags,
+      COUNT(*) FILTER (WHERE tok.status = 'minted')::int AS minted_tags,
+      COUNT(*) FILTER (WHERE tok.status IS NULL OR tok.status = 'none')::int AS pending_tokenization
+    FROM tags t
+    JOIN batches b ON b.id = t.batch_id
+    JOIN tenants tn ON tn.id = b.tenant_id
+    LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
+    LEFT JOIN LATERAL (
+      SELECT e.country_code
+      FROM events e
+      WHERE e.batch_id = t.batch_id
+        AND e.uid_hex = t.uid_hex
+        AND (${source} = '' OR e.source = ${source}::scan_source)
+        AND e.created_at >= now() - ${rangeSql}::interval
+      ORDER BY e.created_at DESC
+      LIMIT 1
+    ) last_evt ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT tr.status
+      FROM tokenization_requests tr
+      WHERE tr.batch_id = t.batch_id AND tr.uid_hex = t.uid_hex
+      ORDER BY tr.requested_at DESC
+      LIMIT 1
+    ) tok ON TRUE
+    WHERE (${tenant} = '' OR tn.slug = ${tenant})
+      AND (${country} = '' OR COALESCE(last_evt.country_code, '') = ${country})
+      AND (
+        ${query} = ''
+        OR t.uid_hex ILIKE ${`%${query}%`}
+        OR b.bid ILIKE ${`%${query}%`}
+        OR COALESCE(tp.product_name, tp.sku, '') ILIKE ${`%${query}%`}
+        OR COALESCE(tp.winery, '') ILIKE ${`%${query}%`}
+        OR COALESCE(tp.region, '') ILIKE ${`%${query}%`}
+      )
   `;
 
   const data = (rows as Array<Record<string, unknown>>).map((row) => ({
@@ -98,7 +149,11 @@ export async function GET(req: Request) {
       source: source || "all",
       range,
       country: country || "all",
+      query,
+      offset,
+      limit,
     },
+    totals: totalsRows[0] || { total: 0, active_tags: 0, non_active_tags: 0, minted_tags: 0, pending_tokenization: 0 },
     rows: data,
   });
 }

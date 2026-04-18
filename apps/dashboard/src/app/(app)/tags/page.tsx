@@ -18,19 +18,30 @@ type TagRow = {
   tokenization: { status: string; network: string; txHash: string | null; tokenId: string | null };
 };
 
-async function getTags(params: URLSearchParams): Promise<TagRow[]> {
-  if (!(process.env.ADMIN_API_KEY || "").trim()) return [];
+type TagsResponse = {
+  rows: TagRow[];
+  totals?: {
+    total?: number;
+    active_tags?: number;
+    non_active_tags?: number;
+    minted_tags?: number;
+    pending_tokenization?: number;
+  };
+};
+
+async function getTags(params: URLSearchParams): Promise<TagsResponse> {
+  if (!(process.env.ADMIN_API_KEY || "").trim()) return { rows: [] };
   const query = params.toString() ? `?${params.toString()}` : "";
   try {
     const response = await fetch(`${API_BASE}/admin/tags${query}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
-    if (!response.ok) return [];
-    const data = await response.json() as { rows?: TagRow[] };
-    return data.rows || [];
+    if (!response.ok) return { rows: [] };
+    const data = await response.json() as TagsResponse;
+    return { rows: data.rows || [], totals: data.totals || {} };
   } catch {
-    return [];
+    return { rows: [] };
   }
 }
 
@@ -38,6 +49,16 @@ function formatDate(value: string | null) {
   if (!value) return "-";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function pageParams(query: Record<string, string | undefined>, nextPage: number) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (!value) continue;
+    params.set(key, value);
+  }
+  params.set("page", String(nextPage));
+  return params;
 }
 
 export default async function TagsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -49,20 +70,27 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   const range = (query.range || "30d") as "24h" | "7d" | "30d";
   const country = query.country || "";
   const text = (query.q || "").toLowerCase().trim();
+  const page = Math.max(Number(query.page || 1), 1);
+  const pageSize = 100;
+  const offset = (page - 1) * pageSize;
 
   const params = new URLSearchParams();
   if (tenantScope) params.set("tenant", tenantScope);
   if (source !== "all") params.set("source", source);
   if (range) params.set("range", range);
   if (country) params.set("country", country.toUpperCase());
-  params.set("limit", "500");
+  if (text) params.set("q", text);
+  params.set("limit", String(pageSize));
+  params.set("offset", String(offset));
 
-  const rows = await getTags(params);
-  const filtered = rows.filter((row) => {
-    if (!text) return true;
-    const haystack = [row.uidHex, row.bid, row.product.name, row.product.winery, row.product.region, row.status.tag, row.tokenization.status, row.lastVerifiedLocation.city, row.lastVerifiedLocation.country].join(" ").toLowerCase();
-    return haystack.includes(text);
-  });
+  const data = await getTags(params);
+  const rows = data.rows;
+  const totals = data.totals || {};
+  const totalRows = Number(totals.total || 0);
+  const hasPrevious = page > 1;
+  const hasNext = offset + rows.length < totalRows;
+  const previousPage = pageParams(query, Math.max(page - 1, 1));
+  const nextPage = pageParams(query, page + 1);
   const copy = dashboardContent[locale];
 
   return (
@@ -75,20 +103,36 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
       />
 
       <Card className="p-5">
-        <form className="grid gap-3 md:grid-cols-5">
+        <form className="grid gap-3 md:grid-cols-6">
           <input name="q" defaultValue={query.q || ""} placeholder="UID / BID / producto / status" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
           <select name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
             <option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option>
           </select>
+          {session.role !== "tenant-admin" ? (
+            <select name="source" defaultValue={source} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
+              <option value="all">all</option>
+              <option value="real">real</option>
+              <option value="simulated">simulated</option>
+            </select>
+          ) : (
+            <input type="hidden" name="source" value="real" />
+          )}
           {session.role !== "tenant-admin" ? <input name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input type="hidden" name="tenant" value={tenantScope} />}
           <input name="country" defaultValue={country} placeholder="country (AR, BR...)" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <input type="hidden" name="page" value="1" />
           <button className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
         </form>
-        <p className="mt-3 text-xs text-slate-400">Scope: <b className="text-slate-200">{tenantScope || "global"}</b> · Source: <b className="text-slate-200">{source}</b> · Rows: <b className="text-slate-200">{filtered.length}</b></p>
+        <p className="mt-3 text-xs text-slate-400">Scope: <b className="text-slate-200">{tenantScope || "global"}</b> · Source: <b className="text-slate-200">{source}</b> · Total: <b className="text-slate-200">{totalRows}</b> · Page: <b className="text-slate-200">{page}</b></p>
       </Card>
 
       <Card className="p-5">
-        {!filtered.length ? (
+        <div className="mb-4 grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-200">Active tags<br /><b className="text-base text-emerald-300">{Number(totals.active_tags || 0)}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-200">Non-active tags<br /><b className="text-base text-amber-200">{Number(totals.non_active_tags || 0)}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-200">Minted<br /><b className="text-base text-cyan-200">{Number(totals.minted_tags || 0)}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-200">Pending tokenization<br /><b className="text-base text-slate-100">{Number(totals.pending_tokenization || 0)}</b></div>
+        </div>
+        {!rows.length ? (
           <p className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-400">No hay tags reales para este scope/filtro.</p>
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-white/10">
@@ -99,7 +143,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row) => (
+                {rows.map((row) => (
                   <tr key={`${row.bid}-${row.uidHex}`} className="border-b border-white/5 text-slate-200">
                     <td className="px-3 py-2"><Link href={`/tags/${encodeURIComponent(row.uidHex)}?tenant=${encodeURIComponent(row.tenantSlug)}&range=${encodeURIComponent(range)}&source=${encodeURIComponent(source)}`} className="text-cyan-200 hover:text-cyan-100">{row.uidHex}</Link></td>
                     <td className="px-3 py-2">{row.bid}</td>
@@ -115,6 +159,10 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
             </table>
           </div>
         )}
+        <div className="mt-4 flex items-center justify-between text-xs text-slate-300">
+          {hasPrevious ? <Link className="rounded-lg border border-white/15 px-3 py-1.5 hover:bg-white/5" href={`/tags?${previousPage.toString()}`}>← Página anterior</Link> : <span />}
+          {hasNext ? <Link className="rounded-lg border border-white/15 px-3 py-1.5 hover:bg-white/5" href={`/tags?${nextPage.toString()}`}>Página siguiente →</Link> : <span />}
+        </div>
       </Card>
     </main>
   );

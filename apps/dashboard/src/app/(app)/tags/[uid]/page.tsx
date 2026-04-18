@@ -57,20 +57,32 @@ export default async function TagPassportPage({ params, searchParams }: { params
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : String(query.tenant || "");
   const source = session.role === "tenant-admin" ? "real" : String(query.source || "all");
   const range = String(query.range || "30d");
+  const country = String(query.country || "");
 
   const apiParams = new URLSearchParams();
   if (tenantScope) apiParams.set("tenant", tenantScope);
   if (source !== "all") apiParams.set("source", source);
   apiParams.set("range", range);
+  if (country) apiParams.set("country", country.toUpperCase());
 
   const data = await getPassport(uid, apiParams);
   const passport = data?.passport;
   const timeline = data?.timeline || [];
+  const suspiciousCount = timeline.filter((event) => event.result !== "ok").length;
+  const uniqueCountries = new Set(timeline.map((event) => event.location.country).filter(Boolean)).size;
 
   return (
     <main className="space-y-6">
       <SectionHeading eyebrow="Asset passport" title={uid} description="Identidad, provenance, verificaciones y estado de tokenización del activo físico." />
       <div><Link href="/tags" className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5">← Volver a tags</Link></div>
+      <Card className="p-4">
+        <div className="grid gap-3 text-xs text-slate-300 md:grid-cols-4">
+          <p>Scope tenant: <b className="text-slate-100">{tenantScope || "global"}</b></p>
+          <p>Source: <b className="text-slate-100">{source}</b></p>
+          <p>Range: <b className="text-slate-100">{range}</b></p>
+          <p>Country: <b className="text-slate-100">{country || "all"}</b></p>
+        </div>
+      </Card>
 
       {!passport ? <Card className="p-5 text-sm text-amber-100">No encontramos passport para este UID en el scope seleccionado.</Card> : (
         <>
@@ -103,6 +115,11 @@ export default async function TagPassportPage({ params, searchParams }: { params
 
           <Card className="p-5">
             <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Verification timeline</h2>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Events in range<br /><b className="text-base text-slate-100">{timeline.length}</b></div>
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Risk / non-ok events<br /><b className="text-base text-amber-200">{suspiciousCount}</b></div>
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Unique countries<br /><b className="text-base text-cyan-200">{uniqueCountries}</b></div>
+            </div>
             {!timeline.length ? <p className="mt-3 text-sm text-slate-400">Sin eventos todavía.</p> : (
               <div className="mt-3 overflow-x-auto rounded-2xl border border-white/10">
                 <table className="w-full min-w-[1080px] text-left text-xs">
