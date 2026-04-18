@@ -176,6 +176,74 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       ],
     });
   }
+  if (method === "GET" && normalized === "tokenization/requests") {
+    return NextResponse.json({
+      ok: true,
+      rows: [
+        {
+          id: "tok-demo-001",
+          tenant_slug: "demobodega",
+          bid: "DEMO-2026-02",
+          uid_hex: "04A1B2C3D4",
+          status: "anchored",
+          network: "polygon-amoy",
+          tx_hash: "0xabc123demo",
+          token_id: "8841",
+          requested_at: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
+        },
+        {
+          id: "tok-demo-002",
+          tenant_slug: "demobodega",
+          bid: "DEMO-2026-02",
+          uid_hex: "04FFEEDDCC",
+          status: "pending",
+          network: "polygon-amoy",
+          tx_hash: null,
+          token_id: null,
+          requested_at: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
+        },
+      ],
+    });
+  }
+  if (method === "POST" && normalized === "tokenization/requests") {
+    return NextResponse.json({
+      ok: true,
+      status: "anchored",
+      request_id: "tok-demo-002",
+      tx_hash: "0xanchoredemo",
+      token_id: "9901",
+      network: "polygon-amoy",
+    });
+  }
+  if (method === "GET" && normalized === "security-alerts") {
+    return NextResponse.json({
+      ok: true,
+      scope: { tenant: tenantFilter || "demobodega", hours: 24 },
+      summary: { repeatedInvalidUid: 1, geoVelocityAlerts: 1 },
+      repeatedInvalidUid: [
+        { uidHex: "04F1E2D3C4", count: 3, lastSeen: new Date(Date.now() - 15 * 60 * 1000).toISOString(), severity: "high" },
+      ],
+      geoVelocityAlerts: [
+        {
+          uidHex: "04A1B2C3D4",
+          fromCountry: "AR",
+          toCountry: "BR",
+          fromAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
+          toAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+          severity: "critical",
+        },
+      ],
+    });
+  }
+  if (method === "GET" && normalized === "polygon/wallet") {
+    return NextResponse.json({
+      ok: true,
+      network: "polygon-amoy",
+      wallet: "0xDemoWallet",
+      balancePol: 4.321,
+      mode: "simulated",
+    });
+  }
   if (method === "GET" && normalized.startsWith("tags/") && normalized.endsWith("/passport")) {
     const uid = normalized.split("/")[1] || "04A1B2C3D4";
     return NextResponse.json({

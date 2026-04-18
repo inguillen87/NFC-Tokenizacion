@@ -589,7 +589,24 @@ export async function GET(req: Request): Promise<Response> {
   });
 
   if (result.body.ok && uid) {
-    await queueAutoTokenizationForValidTap({ bid, uid, traceId }).catch(() => null);
+    const autoMint = await queueAutoTokenizationForValidTap({ bid, uid, traceId }).catch((error) => ({
+      ok: false,
+      reason: error instanceof Error ? error.message : "auto_tokenization_failed",
+      status: "failed",
+    }));
+    if (autoMint && typeof autoMint === "object" && "ok" in autoMint) {
+      if (autoMint.ok === false) {
+        const mintReason = "reason" in autoMint ? String(autoMint.reason || "unknown_error") : "unknown_error";
+        contract.tokenization.status = "mint_failed";
+        contract.troubleshooting = [
+          ...contract.troubleshooting,
+          `Tokenización automática falló (${mintReason}).`,
+          "Revisá balance de gas, RPC de Polygon y clave minter en variables de entorno.",
+        ];
+      } else if (autoMint.ok === true && "status" in autoMint && String(autoMint.status || "") === "anchored") {
+        contract.tokenization.status = "minted";
+      }
+    }
   }
 
   if (result.body.ok) {
