@@ -1,4 +1,4 @@
-import { Card, SectionHeading } from "@product/ui";
+import { Card, SectionHeading, StatusChip } from "@product/ui";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
@@ -8,104 +8,114 @@ import { requireDashboardSession } from "../../../lib/session";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
 type EventRow = {
-  id: string | number;
-  tenant_slug?: string;
-  bid?: string;
-  result?: string;
-  reason?: string;
-  uid_hex?: string;
-  country_code?: string;
-  city?: string;
-  created_at?: string;
-  source?: string;
-  device_label?: string;
-  meta?: Record<string, unknown>;
+  id: number;
+  tenantSlug: string;
+  bid: string;
+  uidHex: string;
+  result: string;
+  reason: string;
+  source: string;
+  readCounter: number;
+  createdAt: string;
+  location: { city: string; country: string; lat: number | null; lng: number | null };
+  device: { label: string; os: string; browser: string; deviceType: string; timezone: string; mobile: boolean };
 };
 
-async function getLiveEvents(tenantScope = "") {
-  if (!(process.env.ADMIN_API_KEY || "").trim()) return [] as EventRow[];
+async function getLiveEvents(params: URLSearchParams): Promise<EventRow[]> {
+  if (!(process.env.ADMIN_API_KEY || "").trim()) return [];
   try {
-    const query = tenantScope ? `?limit=120&tenant=${encodeURIComponent(tenantScope)}` : "?limit=120";
+    const query = params.toString() ? `?${params.toString()}` : "";
     const response = await fetch(`${API_BASE}/admin/events${query}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
-    if (!response.ok) return [] as EventRow[];
-    const data = await response.json().catch(() => []);
-    return Array.isArray(data) ? (data as EventRow[]) : [];
+    if (!response.ok) return [];
+    const data = await response.json().catch(() => ({ rows: [] }));
+    return Array.isArray(data?.rows) ? (data.rows as EventRow[]) : [];
   } catch {
-    return [] as EventRow[];
+    return [];
   }
 }
 
-function toUiRows(rows: EventRow[]) {
-  return rows.map((row) => {
-    const created = row.created_at ? new Date(row.created_at) : null;
-    const sunContext = row.meta && typeof row.meta === "object" ? (row.meta as { sun_context?: Record<string, unknown> }).sun_context : null;
-    const timezone = sunContext && typeof sunContext === "object"
-      ? String((sunContext.client as { timezone?: unknown } | undefined)?.timezone || "")
-      : "";
-    const mobileFlag = sunContext && typeof sunContext === "object"
-      ? Boolean((sunContext.client as { mobile?: unknown } | undefined)?.mobile)
-      : false;
-
-    return {
-      tenant: String(row.tenant_slug || "-"),
-      result: String(row.result || "-"),
-      status: String(row.result || "").toUpperCase() === "VALID" ? "active" : "risk",
-      geo: [row.country_code || "", row.city || ""].filter(Boolean).join(" · ") || "--",
-      time: created ? created.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "--:--",
-      source: String(row.source || "real"),
-      device: [row.device_label || "", timezone, mobileFlag ? "mobile" : ""].filter(Boolean).join(" · ") || "n/a",
-    };
-  });
-}
-
-export default async function EventsPage() {
+export default async function EventsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
+  const query = await searchParams;
+  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : String(query.tenant || "");
   const isTenantAdmin = session.role === "tenant-admin";
+  const source = isTenantAdmin ? "real" : String(query.source || "all");
+  const range = String(query.range || "30d");
+
+  const params = new URLSearchParams();
+  if (tenantScope) params.set("tenant", tenantScope);
+  if (query.uid) params.set("uid", String(query.uid).toUpperCase());
+  if (query.bid) params.set("bid", String(query.bid));
+  if (query.result) params.set("result", String(query.result).toUpperCase());
+  if (source !== "all") params.set("source", source);
+  if (range) params.set("range", range);
+  params.set("limit", "250");
+
   const copy = dashboardContent[locale];
-  const liveRows = await getLiveEvents(tenantScope);
-  const rows = toUiRows(liveRows);
-  const validCount = rows.filter((item) => item.status === "active").length;
-  const riskCount = rows.filter((item) => item.status === "risk").length;
+  const liveRows = await getLiveEvents(params);
+  const validCount = liveRows.filter((item) => item.result === "VALID").length;
+  const riskCount = liveRows.filter((item) => item.result !== "VALID").length;
+
+  const rows = liveRows.map((row) => ({
+    tenant: row.tenantSlug || "-",
+    uid: row.uidHex,
+    bid: row.bid,
+    result: row.result,
+    status: row.result === "VALID" ? "active" : "risk",
+    geo: `${row.location.city}, ${row.location.country}`,
+    device: `${row.device.os} · ${row.device.browser}`,
+    deviceType: row.device.deviceType,
+    timezone: row.device.timezone,
+    source: row.source,
+    reason: row.reason || "-",
+    time: new Date(row.createdAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }),
+  }));
 
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.events} title={copy.pages.events.title} description={copy.pages.events.description} />
       <ModuleAudienceHero
-        ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Vista ejecutiva del tenant con actividad real y alertas de autenticidad." : "Events muestran actividad real, alertas y evidencia de que la plataforma protege operaciones activas.", decision: isTenantAdmin ? "Decidís dónde reforzar operación del tenant y priorizar mitigación de riesgo." : "Decidís qué cuentas o verticales tienen mayor tracción o mayor riesgo operacional.", cta: "Usalo como feed vivo para probar que el sistema ya está operando y generando valor." }}
-        operator={{ eyebrow: "Operator / Engineer read", summary: "Events es la consola para revisar autenticaciones, replay, tamper y comportamiento en tiempo casi real.", decision: "Decidís dónde investigar anomalías, ajustar reglas y priorizar incident response.", cta: isTenantAdmin ? "Scope actual: solo tu tenant operativo." : "Conectalo mentalmente con Analytics, Ops Map y API Keys." }}
-        buyer={{ eyebrow: "Buyer / Client read", summary: "Events demuestra que el sistema no solo promete: detecta riesgos y confirma autenticidad en escenarios reales.", decision: "Decidís si esta visibilidad mejora confianza y control en tu operación o canal.", cta: "Mostralo después del mobile preview para cerrar con evidencia operacional." }}
+        ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Vista ejecutiva del tenant con actividad real y alertas de autenticidad." : "Events muestran actividad real, alertas y evidencia de protección operacional.", decision: "Priorizás mitigación de riesgo con evidencia real por tap.", cta: "Úsalo como feed vivo para operación y auditoría." }}
+        operator={{ eyebrow: "Operator / Engineer read", summary: "Consola cruda para revisar autenticaciones, replay, tamper y contexto de dispositivo.", decision: "Investigás anomalías por UID/BID/resultado y contexto técnico.", cta: isTenantAdmin ? "Scope actual: solo tu tenant." : "Scope configurable multi-tenant." }}
+        buyer={{ eyebrow: "Buyer / Client read", summary: "Demuestra que la plataforma detecta señales reales en calle.", decision: "Validás nivel de control y trazabilidad operativa.", cta: "Cerrar conversación con evidencia verificable." }}
       />
+
       <Card className="p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{isTenantAdmin ? "Estado operativo del tenant" : "Estado operativo global"}</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">Eventos visibles<br /><b className="text-xl text-white">{rows.length}</b></div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">Valid<br /><b className="text-xl text-emerald-300">{validCount}</b></div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">Riesgo<br /><b className="text-xl text-rose-300">{riskCount}</b></div>
+        <form className="grid gap-3 md:grid-cols-6">
+          <input name="uid" defaultValue={query.uid || ""} placeholder="UID" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <input name="bid" defaultValue={query.bid || ""} placeholder="BID" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <input name="result" defaultValue={query.result || ""} placeholder="VALID / TAMPER..." className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <select name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200"><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select>
+          {!isTenantAdmin ? <input name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input type="hidden" name="tenant" value={tenantScope} />}
+          <button className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
+        </form>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
+          <StatusChip label={`Events ${liveRows.length}`} tone="neutral" />
+          <StatusChip label={`Valid ${validCount}`} tone="good" />
+          <StatusChip label={`Risk ${riskCount}`} tone="risk" />
+          <StatusChip label={`Scope ${tenantScope || "global"}`} tone="neutral" />
         </div>
       </Card>
-      <Card className="p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Cómo leer este feed</h2>
-        <div className="mt-3 grid gap-3 text-sm text-slate-300 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><b className="text-white">valid</b><br />Autenticidad y flujo esperado.</div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><b className="text-white">replay_suspect</b><br />URL copiada o posible clonación/replay.</div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><b className="text-white">invalid/tamper</b><br />Apertura o manipulación sospechosa.</div>
-        </div>
-      </Card>
+
       <DataTable
         title={copy.tables.events.title}
         columns={[
           ...(!isTenantAdmin ? [{ key: "tenant", label: copy.tables.events.tenant }] : []),
+          { key: "uid", label: "UID" },
+          { key: "bid", label: "BID" },
           { key: "result", label: copy.tables.events.result },
           { key: "status", label: copy.tables.events.status },
           { key: "geo", label: copy.tables.events.geo },
-          { key: "time", label: copy.tables.events.time },
+          { key: "device", label: "OS/Browser" },
+          { key: "deviceType", label: "Device type" },
+          { key: "timezone", label: "Timezone" },
           { key: "source", label: "Source" },
-          { key: "device", label: "Device context" },
+          { key: "reason", label: "Reason" },
+          { key: "time", label: copy.tables.events.time },
         ]}
         rows={rows}
         filterKey="status"

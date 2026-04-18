@@ -11,6 +11,7 @@ type AnalyticsPayload = {
     tenant: string;
     source: "real" | "demo" | "imported" | "all";
     range: "24h" | "7d" | "30d";
+    country?: string;
   };
   kpis: {
     scans: number;
@@ -23,6 +24,32 @@ type AnalyticsPayload = {
     geoRegions: number;
     resellerPerformance: number;
   };
+  geography?: {
+    countries?: Array<{ country: string; scans: number; risk: number }>;
+    cities?: Array<{ city: string; country: string; lat: number | null; lng: number | null; scans: number; risk: number; lastSeen: string | null }>;
+  };
+  devices?: {
+    os?: Array<{ label: string; count: number }>;
+    browser?: Array<{ label: string; count: number }>;
+    deviceType?: Array<{ label: string; count: number }>;
+    timezones?: Array<{ label: string; count: number }>;
+    mobileShare?: number;
+  };
+  feed?: Array<{ id: number; uidHex: string; bid: string; result: string; city: string; country: string; device: string; createdAt: string }>;
+  products?: Array<{
+    uidHex: string;
+    bid: string;
+    productName: string;
+    winery: string;
+    region: string;
+    vintage: string;
+    scanCount: number;
+    firstSeenAt: string | null;
+    lastSeenAt: string | null;
+    lastVerifiedCity: string;
+    lastVerifiedCountry: string;
+    tokenization: { status: string; network: string; txHash: string | null; tokenId: string | null };
+  }>;
   trend: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
   batchStatus: Array<{ name: string; value: number }>;
   geoPoints: Array<{ city: string; country: string; scans: number; risk: number; lat: number; lng: number }>;
@@ -59,55 +86,7 @@ async function getAnalytics({
   source?: "real" | "demo" | "imported" | "all";
   range?: "24h" | "7d" | "30d";
 }): Promise<AnalyticsPayload | null> {
-  if (!(process.env.ADMIN_API_KEY || "").trim()) {
-    return {
-      scope: { tenant: tenantScope || "global", source, range },
-      kpis: {
-        scans: 1240,
-        validRate: 97.9,
-        invalidRate: 2.1,
-        duplicates: 23,
-        tamper: 7,
-        activeBatches: 2,
-        activeTenants: tenantScope ? 1 : 4,
-        geoRegions: 3,
-        resellerPerformance: 18200,
-      },
-      trend: [
-        { day: "Mon", scans: 120, duplicates: 2, tamper: 1 },
-        { day: "Tue", scans: 150, duplicates: 3, tamper: 0 },
-        { day: "Wed", scans: 170, duplicates: 4, tamper: 1 },
-        { day: "Thu", scans: 190, duplicates: 2, tamper: 1 },
-        { day: "Fri", scans: 210, duplicates: 5, tamper: 2 },
-        { day: "Sat", scans: 230, duplicates: 4, tamper: 1 },
-        { day: "Sun", scans: 170, duplicates: 3, tamper: 1 },
-      ],
-      batchStatus: [
-        { name: "Active", value: 2 },
-        { name: "Pending", value: 1 },
-        { name: "Revoked", value: 0 },
-      ],
-      geoPoints: [
-        { city: "Mendoza", country: "AR", scans: 220, risk: 0, lat: -32.8895, lng: -68.8458 },
-        { city: "Buenos Aires", country: "AR", scans: 180, risk: 1, lat: -34.6037, lng: -58.3816 },
-      ],
-      deviceSignals: [
-        { device: "iPhone Safari", scans: 220, countries: 3, validRate: 98.1, risk: 4 },
-        { device: "Android Chrome", scans: 180, countries: 4, validRate: 96.7, risk: 8 },
-      ],
-      tagJourney: [
-        {
-          uid: "04A1B2C3D4E5F6",
-          taps: 9,
-          firstSeenAt: new Date().toISOString(),
-          lastSeenAt: new Date().toISOString(),
-          origin: { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458 },
-          current: { city: "São Paulo", country: "BR", lat: -23.5505, lng: -46.6333 },
-          lastDevice: "iPhone Safari",
-        },
-      ],
-    };
-  }
+  if (!(process.env.ADMIN_API_KEY || "").trim()) return null;
   try {
     const queryParams = new URLSearchParams();
     if (tenantScope) queryParams.set("tenant", tenantScope);
