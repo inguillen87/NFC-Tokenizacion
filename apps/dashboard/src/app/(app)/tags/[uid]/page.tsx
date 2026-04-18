@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { Card, SectionHeading, StatusChip } from "@product/ui";
 import { requireDashboardSession } from "../../../../lib/session";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+import { getServerOrigin } from "../../../../lib/server-origin";
 
 type PassportResponse = {
   ok: boolean;
@@ -34,14 +33,10 @@ function formatDate(value: string | null | undefined) {
   return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" });
 }
 
-async function getPassport(uid: string, params: URLSearchParams) {
-  if (!(process.env.ADMIN_API_KEY || "").trim()) return null;
+async function getPassport(origin: string, uid: string, params: URLSearchParams) {
   const query = params.toString() ? `?${params.toString()}` : "";
   try {
-    const response = await fetch(`${API_BASE}/admin/tags/${encodeURIComponent(uid)}/passport${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetch(`${origin}/api/admin/tags/${encodeURIComponent(uid)}/passport${query}`, { cache: "no-store" });
     if (!response.ok) return null;
     return await response.json() as PassportResponse;
   } catch {
@@ -51,6 +46,7 @@ async function getPassport(uid: string, params: URLSearchParams) {
 
 export default async function TagPassportPage({ params, searchParams }: { params: Promise<{ uid: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const session = await requireDashboardSession();
+  const origin = await getServerOrigin();
   const resolvedParams = await params;
   const query = await searchParams;
   const uid = decodeURIComponent(resolvedParams.uid || "").toUpperCase();
@@ -65,7 +61,7 @@ export default async function TagPassportPage({ params, searchParams }: { params
   apiParams.set("range", range);
   if (country) apiParams.set("country", country.toUpperCase());
 
-  const data = await getPassport(uid, apiParams);
+  const data = await getPassport(origin, uid, apiParams);
   const passport = data?.passport;
   const timeline = data?.timeline || [];
   const suspiciousCount = timeline.filter((event) => event.result !== "ok").length;

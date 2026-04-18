@@ -4,8 +4,7 @@ import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+import { getServerOrigin } from "../../../lib/server-origin";
 
 type TagRow = {
   uidHex: string;
@@ -29,14 +28,10 @@ type TagsResponse = {
   };
 };
 
-async function getTags(params: URLSearchParams): Promise<TagsResponse> {
-  if (!(process.env.ADMIN_API_KEY || "").trim()) return { rows: [] };
+async function getTags(origin: string, params: URLSearchParams): Promise<TagsResponse> {
   const query = params.toString() ? `?${params.toString()}` : "";
   try {
-    const response = await fetch(`${API_BASE}/admin/tags${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetch(`${origin}/api/admin/tags${query}`, { cache: "no-store" });
     if (!response.ok) return { rows: [] };
     const data = await response.json() as TagsResponse;
     return { rows: data.rows || [], totals: data.totals || {} };
@@ -64,6 +59,7 @@ function pageParams(query: Record<string, string | undefined>, nextPage: number)
 export default async function TagsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
+  const origin = await getServerOrigin();
   const query = await searchParams;
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : String(query.tenant || "");
   const source = session.role === "tenant-admin" ? "real" : (query.source || "all");
@@ -83,7 +79,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   params.set("limit", String(pageSize));
   params.set("offset", String(offset));
 
-  const data = await getTags(params);
+  const data = await getTags(origin, params);
   const rows = data.rows;
   const totals = data.totals || {};
   const totalRows = Number(totals.total || 0);
@@ -128,16 +124,14 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
           <button className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
         </form>
         <p className="mt-3 text-xs text-slate-400">Scope: <b className="text-slate-200">{tenantScope || "global"}</b> · Source: <b className="text-slate-200">{source}</b> · Total: <b className="text-slate-200">{totalRows}</b> · Page: <b className="text-slate-200">{page}</b></p>
-        {(process.env.ADMIN_API_KEY || "").trim() ? (
-          <a
-            className="mt-3 inline-flex rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-500/20"
-            href={csvUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Export CSV (máx 1000 filas)
-          </a>
-        ) : null}
+        <a
+          className="mt-3 inline-flex rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-500/20"
+          href={csvUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Export CSV (máx 1000 filas)
+        </a>
       </Card>
 
       <Card className="p-5">

@@ -4,8 +4,8 @@ import { AnalyticsPanels } from "../../../components/analytics-panels";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
+import { getServerOrigin } from "../../../lib/server-origin";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 type AnalyticsPayload = {
   scope?: {
     tenant: string;
@@ -78,25 +78,23 @@ const FALLBACK_KPIS = {
 };
 
 async function getAnalytics({
+  origin,
   tenantScope = "",
   source = "all",
   range = "30d",
 }: {
+  origin: string;
   tenantScope?: string;
   source?: "real" | "demo" | "imported" | "all";
   range?: "24h" | "7d" | "30d";
 }): Promise<AnalyticsPayload | null> {
-  if (!(process.env.ADMIN_API_KEY || "").trim()) return null;
   try {
     const queryParams = new URLSearchParams();
     if (tenantScope) queryParams.set("tenant", tenantScope);
     if (source && source !== "all") queryParams.set("source", source);
     if (range) queryParams.set("range", range);
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
-    const response = await fetch(`${API_BASE}/admin/analytics${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetch(`${origin}/api/admin/analytics${query}`, { cache: "no-store" });
     if (!response.ok) return null;
     return response.json();
   } catch {
@@ -111,12 +109,13 @@ export default async function AnalyticsPage() {
   const isTenantAdmin = session.role === "tenant-admin";
   const source = isTenantAdmin ? "real" : "all";
   const range = "30d" as const;
+  const origin = await getServerOrigin();
 
   const fallbackLocale = "es-AR" as const;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
   const translation = messages[locale] || messages[fallbackLocale];
   const kpis = translation?.dashboard?.kpis || FALLBACK_KPIS;
-  const analyticsData = await getAnalytics({ tenantScope, source, range });
+  const analyticsData = await getAnalytics({ origin, tenantScope, source, range });
   const mapMode = isTenantAdmin ? "tenant" : "global";
 
   return (
