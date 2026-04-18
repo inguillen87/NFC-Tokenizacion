@@ -17,12 +17,12 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Pricing · nexID",
     openGraph: {
       title: "Pricing · nexID",
-      images: [{ url: `/og-image?surface=pricing&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
+      images: [{ url: `/og-image?surface=pricing&campaign=reseller&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       title: "Pricing · nexID",
-      images: [`/twitter-image?surface=pricing&locale=${encodeURIComponent(locale)}`],
+      images: [`/twitter-image?surface=pricing&campaign=reseller&locale=${encodeURIComponent(locale)}`],
     },
   };
 }

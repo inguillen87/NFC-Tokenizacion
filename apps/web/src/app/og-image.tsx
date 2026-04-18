@@ -6,10 +6,27 @@ export const contentType = "image/png";
 export default function OgImage({
   searchParams,
 }: {
-  searchParams?: { locale?: string; surface?: string };
+  searchParams?: { locale?: string; surface?: string; campaign?: string };
 }) {
   const locale = String(searchParams?.locale || "es-AR");
   const surface = String(searchParams?.surface || "home");
+  const campaign = String(searchParams?.campaign || "default");
+  const campaignBadge =
+    campaign === "reseller"
+      ? "Campaign · Reseller"
+      : campaign === "investor"
+      ? "Campaign · Investor"
+      : campaign === "enterprise"
+      ? "Campaign · Enterprise"
+      : "Campaign · Core";
+  const background =
+    campaign === "reseller"
+      ? "radial-gradient(circle at 18% 16%, rgba(168,85,247,.24), transparent 42%), linear-gradient(160deg,#020617,#1e1b4b)"
+      : campaign === "investor"
+      ? "radial-gradient(circle at 18% 16%, rgba(251,191,36,.22), transparent 42%), linear-gradient(160deg,#020617,#1f2937)"
+      : campaign === "enterprise"
+      ? "radial-gradient(circle at 18% 16%, rgba(34,197,94,.22), transparent 42%), linear-gradient(160deg,#020617,#0f172a)"
+      : "radial-gradient(circle at 18% 16%, rgba(34,211,238,.22), transparent 42%), linear-gradient(160deg,#020617,#0b1e47)";
   const copy =
     surface === "sun"
       ? locale === "en"
@@ -45,12 +62,15 @@ export default function OgImage({
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "52px 64px",
-          background: "radial-gradient(circle at 18% 16%, rgba(34,211,238,.22), transparent 42%), linear-gradient(160deg,#020617,#0b1e47)",
+          background,
           color: "#e2e8f0",
           fontFamily: "Inter, system-ui, sans-serif",
         }}
       >
-        <div style={{ fontSize: 28, letterSpacing: 2, textTransform: "uppercase", color: "#67e8f9" }}>nexID Web</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 28, letterSpacing: 2, textTransform: "uppercase", color: "#67e8f9" }}>nexID Web</div>
+          <div style={{ fontSize: 20, color: "#cbd5e1" }}>{campaignBadge}</div>
+        </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 72, fontWeight: 800, lineHeight: 1.02 }}>{copy.title}</div>
           <p style={{ marginTop: 18, fontSize: 32, color: "#cbd5e1" }}>{copy.subtitle}</p>
