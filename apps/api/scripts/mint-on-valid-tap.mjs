@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { ethers } from "ethers";
 
 const abi = [
   "function mintWithChipHash(address to, string chipUidHash, string tokenUri, string assetRef) external returns (uint256)",
@@ -17,8 +16,10 @@ function required(name, value) {
   return value;
 }
 
-function hashUid(uidHex) {
-  return `sha256:${createHash("sha256").update(String(uidHex || "").trim().toUpperCase()).digest("hex")}`;
+function hashUid(uidHex, salt = "") {
+  const normalizedUid = String(uidHex || "").trim().toUpperCase();
+  const normalizedSalt = String(salt || process.env.TOKENIZATION_UID_SALT || "").trim();
+  return `sha256:${createHash("sha256").update(`${normalizedUid}:${normalizedSalt}`).digest("hex")}`;
 }
 
 async function main() {
@@ -27,11 +28,19 @@ async function main() {
   const contractAddress = required("POLYGON_CONTRACT_ADDRESS", process.env.POLYGON_CONTRACT_ADDRESS || "");
 
   const uidHex = required("uid", getArg("uid"));
+  const salt = getArg("uid_salt", process.env.TOKENIZATION_UID_SALT || "");
   const to = required("to", getArg("to", process.env.POLYGON_DEFAULT_RECIPIENT || ""));
   const tokenUri = required("token_uri", getArg("token_uri"));
   const assetRef = getArg("asset_ref", `nexid:${uidHex}`);
 
-  const chipUidHash = hashUid(uidHex);
+  let ethers;
+  try {
+    ({ ethers } = await import("ethers"));
+  } catch {
+    throw new Error("ethers_not_installed: run `npm install ethers` in apps/api runtime");
+  }
+
+  const chipUidHash = hashUid(uidHex, salt);
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const wallet = new ethers.Wallet(privateKey, provider);
   const contract = new ethers.Contract(contractAddress, abi, wallet);

@@ -55,7 +55,12 @@ Variables:
 
 - `SUN_AUTO_TOKENIZE_ON_VALID_TAP=true` para encolar automáticamente cuando SUN es válido.
 - `TOKENIZATION_USE_LOCAL_MINTER=true` para usar script local `mint-on-valid-tap.mjs`.
+- `TOKENIZATION_UID_SALT=<random>` para hashear UID con sal privada (mejor privacidad y anti-correlación).
 - si no está habilitado el script local, queda la ruta de `TOKENIZATION_EXECUTOR_URL`.
+
+Plantilla de variables lista para copiar:
+
+- `apps/api/.env.tokenization.example`
 
 ## 4) Buenas prácticas
 
@@ -63,3 +68,27 @@ Variables:
 - Guardar solo hashes del UID o de identificadores de producto.
 - Guardar metadata descentralizada (IPFS/Arweave) y actualizar trazabilidad vía punteros URI.
 - Para gasless UX, siguiente paso recomendado: ERC-2771 (meta-transactions).
+
+## 5) Dónde guardar imágenes / metadata premium
+
+Recomendado para producción:
+
+- IPFS pinning con **Pinata** o **NFT.Storage**.
+- Estructura por activo: `ipfs://<CID>/<bid>/<uid>.json`.
+- JSON metadata mínimo:
+  - `name`, `description`, `image`
+  - `attributes` (bodega, región, vintage, lote, estado autenticidad)
+  - `external_url` al SUN passport.
+
+Script helper para preparar metadata JSON local antes de pinnear:
+
+```bash
+node apps/api/scripts/build-token-metadata.mjs \
+  --bid=DEMO-2026-02 \
+  --uid=04AABBCC1122 \
+  --image=ipfs://CID/images/product.jpg \
+  --passport_url=https://nexid.lat/sun?... \
+  --winery="Demo Bodega" \
+  --region="Valle de Uco" \
+  --vintage=2022
+```

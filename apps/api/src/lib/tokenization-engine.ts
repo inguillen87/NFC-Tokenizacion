@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
 import { sql } from "./db";
+import { buildChipUidHash } from "./tokenization-hash";
 
 type AnchorInput = {
   requestId: string;
@@ -100,7 +101,7 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
       issuer_wallet: issuerWallet,
       token_uri: tokenUri,
       asset_ref: assetRef,
-      chip_uid_hash: `sha256:${createHash("sha256").update(existing.uid_hex).digest("hex")}`,
+      chip_uid_hash: buildChipUidHash(existing.uid_hex),
     };
 
     const localPolygonMint = network.startsWith("polygon")
