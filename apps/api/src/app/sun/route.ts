@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { json } from '../../lib/http';
 import { processSunScan } from '../../lib/sun-service';
 import { createDemoShareToken } from '../../lib/demo-share';
+import { sql } from '../../lib/db';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
@@ -96,6 +97,60 @@ function resolveTrustState(status: string, reason: string) {
     return { key: "VALID", badge: "Producto auténtico", title: "Autenticidad confirmada", tone: "#22c55e", summary: "La etiqueta NFC y la firma SUN validaron correctamente." };
   }
   return { key: normalizedStatus || "INVALID", badge: `Estado ${normalizedStatus || "INVALID"}`, title: "Validación no concluyente", tone: "#f97316", summary: "No se pudo confirmar estado final. Revisá onboarding y parámetros SUN." };
+}
+
+async function getPassportSnapshot(bid: string, uid: string | undefined) {
+  if (!uid) return null;
+  const rows = await sql/*sql*/`
+    SELECT
+      tp.product_name,
+      tp.sku,
+      tp.winery,
+      tp.region,
+      tp.grape_varietal,
+      tp.vintage,
+      tp.harvest_year,
+      tp.barrel_months,
+      tp.temperature_storage,
+      first_evt.created_at AS first_verified_at,
+      first_evt.city AS first_city,
+      first_evt.country_code AS first_country,
+      last_evt.created_at AS last_verified_at,
+      last_evt.city AS last_city,
+      last_evt.country_code AS last_country,
+      last_evt.result AS last_result,
+      tok.status AS tokenization_status,
+      tok.network AS tokenization_network,
+      tok.tx_hash AS tokenization_tx_hash,
+      tok.token_id AS tokenization_token_id
+    FROM tags t
+    JOIN batches b ON b.id = t.batch_id
+    LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
+    LEFT JOIN LATERAL (
+      SELECT created_at, city, country_code
+      FROM events e
+      WHERE e.batch_id = t.batch_id AND e.uid_hex = t.uid_hex
+      ORDER BY created_at ASC
+      LIMIT 1
+    ) first_evt ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT created_at, city, country_code, result
+      FROM events e
+      WHERE e.batch_id = t.batch_id AND e.uid_hex = t.uid_hex
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) last_evt ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT status, network, tx_hash, token_id
+      FROM tokenization_requests tr
+      WHERE tr.batch_id = t.batch_id AND tr.uid_hex = t.uid_hex
+      ORDER BY requested_at DESC
+      LIMIT 1
+    ) tok ON TRUE
+    WHERE b.bid = ${bid} AND t.uid_hex = ${uid}
+    LIMIT 1
+  `;
+  return rows[0] || null;
 }
 
 function renderSunHtml(input: { bid: string; picc_data: string; enc: string; cmac: string; result: Awaited<ReturnType<typeof processSunScan>> }) {
@@ -361,6 +416,50 @@ export async function GET(req: Request): Promise<Response> {
     };
   }
 
+  const passport = await getPassportSnapshot(bid, result.body.uid).catch(() => null);
+  const enrichedBody = {
+    ...result.body,
+    passport: passport
+      ? {
+          identity: {
+            bid,
+            uid: result.body.uid || null,
+            readCounter: typeof result.body.ctr === "number" ? result.body.ctr : null,
+          },
+          product: {
+            name: passport.product_name || passport.sku || null,
+            winery: passport.winery || null,
+            region: passport.region || null,
+            varietal: passport.grape_varietal || null,
+            vintage: passport.vintage || null,
+            harvestYear: passport.harvest_year || null,
+            barrelMonths: passport.barrel_months || null,
+            storage: passport.temperature_storage || null,
+          },
+          provenance: {
+            origin: passport.region || passport.winery || null,
+            firstVerified: {
+              at: passport.first_verified_at || null,
+              city: passport.first_city || null,
+              country: passport.first_country || null,
+            },
+            lastVerifiedLocation: {
+              at: passport.last_verified_at || null,
+              city: passport.last_city || null,
+              country: passport.last_country || null,
+              result: passport.last_result || null,
+            },
+          },
+          tokenization: {
+            status: passport.tokenization_status || "none",
+            network: passport.tokenization_network || null,
+            txHash: passport.tokenization_tx_hash || null,
+            tokenId: passport.tokenization_token_id || null,
+          },
+        }
+      : null,
+  };
+
   if (result.body.ok) {
     void dispatchValidScanWebhook({
       event: 'tag.scan.valid',
@@ -382,5 +481,5 @@ export async function GET(req: Request): Promise<Response> {
       headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
     });
   }
-  return json(result.body, result.status);
+  return json(enrichedBody, result.status);
 }

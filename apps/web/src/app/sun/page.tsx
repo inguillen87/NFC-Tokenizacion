@@ -47,6 +47,26 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           "Si persiste, inspeccioná eventos y claves del lote.",
         ];
   const canAutoOnboard = reason.toLowerCase().includes("unknown batch") && /^DEMO-[A-Z0-9-]{3,40}$/.test(bid);
+  const passport = result.passport as
+    | {
+        product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null };
+        provenance?: {
+          origin?: string | null;
+          firstVerified?: { at?: string | null; city?: string | null; country?: string | null };
+          lastVerifiedLocation?: { at?: string | null; city?: string | null; country?: string | null; result?: string | null };
+        };
+        tokenization?: { status?: string | null; network?: string | null; txHash?: string | null; tokenId?: string | null };
+      }
+    | null;
+
+  const firstVerified = passport?.provenance?.firstVerified;
+  const lastVerified = passport?.provenance?.lastVerifiedLocation;
+  const formatDate = (value?: string | null) => {
+    if (!value) return "N/A";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "N/A";
+    return date.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" });
+  };
 
   return (
     <main className="container-shell py-10 text-slate-100">
@@ -104,6 +124,33 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </article>
             ))}
           </div>
+        </section>
+
+        <section className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
+          <p className="text-sm font-semibold text-cyan-100">Digital Product Passport</p>
+          {!passport ? (
+            <p className="mt-2 text-xs text-slate-300">Sin passport completo todavía para este UID/BID. El sistema mostrará origen, primera verificación y última ubicación verificada cuando haya datos.</p>
+          ) : (
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <article className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                <p className="text-xs uppercase tracking-wider text-slate-400">Product identity</p>
+                <p className="mt-2 text-sm text-white">{passport.product?.name || "Producto no perfilado"}</p>
+                <p className="mt-1 text-xs text-slate-300">{passport.product?.winery || "-"} · {passport.product?.region || "-"}</p>
+                <p className="mt-1 text-xs text-slate-400">Varietal: {passport.product?.varietal || "-"} · Vintage: {passport.product?.vintage || "-"}</p>
+              </article>
+              <article className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
+                <p className="text-xs uppercase tracking-wider text-slate-400">Provenance (honest)</p>
+                <p className="mt-2 text-xs text-slate-300">Origin: <b>{passport.provenance?.origin || "-"}</b></p>
+                <p className="mt-1 text-xs text-slate-300">First verified: <b>{formatDate(firstVerified?.at)} · {firstVerified?.city || "-"}, {firstVerified?.country || "-"}</b></p>
+                <p className="mt-1 text-xs text-slate-300">Last verified location: <b>{formatDate(lastVerified?.at)} · {lastVerified?.city || "-"}, {lastVerified?.country || "-"}</b></p>
+              </article>
+              <article className="rounded-lg border border-white/10 bg-slate-900/60 p-3 md:col-span-2">
+                <p className="text-xs uppercase tracking-wider text-slate-400">Tokenization</p>
+                <p className="mt-2 text-xs text-slate-300">Status: <b>{passport.tokenization?.status || "none"}</b> · Network: <b>{passport.tokenization?.network || "-"}</b></p>
+                <p className="mt-1 break-all text-xs text-slate-400">Tx: {passport.tokenization?.txHash || "-"} · Token ID: {passport.tokenization?.tokenId || "-"}</p>
+              </article>
+            </div>
+          )}
         </section>
 
         <pre className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">{JSON.stringify(result, null, 2)}</pre>

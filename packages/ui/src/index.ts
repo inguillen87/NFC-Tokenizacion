@@ -5,6 +5,8 @@ export * from "./stat-card";
 export * from "./section-heading";
 export * from "./sidebar";
 export * from "./world-map-placeholder";
+export * from "./ops-panel";
+export * from "./status-chip";
 
 export * from "./locale-switcher";
 

@@ -18,15 +18,6 @@ const FALLBACK_KPIS = {
   tamper: "Tamper alerts",
 };
 
-function resolveTenantScopeFromSession(session: { role: string; email: string }) {
-  if (session.role !== "tenant-admin") return "";
-  const email = (session.email || "").toLowerCase();
-  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
-  if (explicit) return explicit;
-  if (email.includes("demobodega")) return "demobodega";
-  return "";
-}
-
 async function getOverviewRows() {
   try {
     const response = await fetch(`${API_BASE}/admin/tenants?withStats=1`, {
@@ -70,7 +61,7 @@ export default async function DashboardHome() {
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
   const publicMobileBase = `${productUrls.web}/demo-lab/mobile`;
   const session = await requireDashboardSession();
-  const tenantScope = resolveTenantScopeFromSession(session);
+  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const isTenantAdmin = session.role === "tenant-admin";
   const [overviewRaw, liveEvents]: [Array<Record<string, unknown>>, Array<Record<string, unknown>>] = await Promise.all([getOverviewRows(), getLiveEvents()]);
 
