@@ -4,19 +4,10 @@ import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import Link from "next/link";
 
-function inferTenantScope(session: { role: string; email: string }) {
-  if (session.role !== "tenant-admin") return "";
-  const email = session.email.toLowerCase();
-  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
-  if (explicit) return explicit;
-  if (email.includes("demobodega")) return "demobodega";
-  return "";
-}
-
 export default async function OnboardingPage() {
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
-  const tenantScope = inferTenantScope(session);
+  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const isTenantAdmin = session.role === "tenant-admin";
 
   const onboardingTitle = isTenantAdmin ? "Tenant Batch Onboarding" : "Supplier Batch Onboarding";

@@ -25,6 +25,12 @@ function findDemoProfile(email: string, password: string) {
   return getAccessProfiles().find((profile) => profile.email.trim().toLowerCase() === normalizedEmail && profile.password === password);
 }
 
+function useSecureCookie(req: Request) {
+  const proto = req.headers.get("x-forwarded-proto");
+  if (proto) return proto.toLowerCase() === "https";
+  return process.env.NODE_ENV === "production";
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const submitted = safeParseJson(body) as { email?: string; password?: string } | null;
@@ -51,7 +57,7 @@ export async function POST(req: Request) {
       response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(demoProfile.email, demoProfile.role), {
         httpOnly: true,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        secure: useSecureCookie(req),
         path: "/",
         maxAge: 60 * 60 * 12,
       });
@@ -75,7 +81,7 @@ export async function POST(req: Request) {
       response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(demoProfile.email, demoProfile.role), {
         httpOnly: true,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        secure: useSecureCookie(req),
         path: "/",
         maxAge: 60 * 60 * 12,
       });
@@ -92,7 +98,7 @@ export async function POST(req: Request) {
   response.cookies.set(DASHBOARD_SESSION_COOKIE, data.sessionToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: useSecureCookie(req),
     path: "/",
     maxAge: 60 * 60 * 12,
   });
