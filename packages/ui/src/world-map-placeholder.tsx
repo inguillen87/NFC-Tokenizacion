@@ -34,24 +34,20 @@ function project(lat: number, lng: number) {
   return { x, y };
 }
 
-const defaultPoints: GeoPoint[] = [
-  { city: "Mendoza", country: "AR", scans: 4200, risk: 42, lat: -32.8895, lng: -68.8458 },
-  { city: "São Paulo", country: "BR", scans: 3800, risk: 35, lat: -23.5558, lng: -46.6396 },
-  { city: "New York", country: "US", scans: 2400, risk: 18, lat: 40.7128, lng: -74.006 },
-  { city: "London", country: "UK", scans: 1900, risk: 16, lat: 51.5072, lng: -0.1276 },
-  { city: "Tokyo", country: "JP", scans: 2200, risk: 20, lat: 35.6764, lng: 139.65 },
-];
-
 export function WorldMapPlaceholder({
   title = "Global scan footprint",
   subtitle = "Mapa operativo de autenticaciones, riesgo y cobertura multi-tenant.",
-  points = defaultPoints,
+  points = [],
+  onPointSelect,
+  metadataRows,
 }: {
   title?: string;
   subtitle?: string;
   points?: GeoPoint[];
+  onPointSelect?: (point: GeoPoint) => void;
+  metadataRows?: (point: GeoPoint) => Array<{ label: string; value: string }>;
 }) {
-  const safePoints = points.length > 0 ? points : defaultPoints;
+  const safePoints = points;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [metricMode, setMetricMode] = useState<MetricMode>("scans");
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
@@ -196,7 +192,10 @@ export function WorldMapPlaceholder({
                 style={{ left: `${item.pos.x}%`, top: `${item.pos.y}%` }}
                 onMouseEnter={() => setActiveId(item.id)}
                 onFocus={() => setActiveId(item.id)}
-                onClick={() => setActiveId(item.id)}
+                onClick={() => {
+                  setActiveId(item.id);
+                  onPointSelect?.(item.point);
+                }}
               >
                 <span className={`absolute inline-flex h-7 w-7 rounded-full ${isActive ? "animate-ping" : ""} bg-cyan-300/40`} />
                 <span className={`relative inline-block rounded-full ${tone}`} style={{ width: size, height: size }} />
@@ -216,6 +215,9 @@ export function WorldMapPlaceholder({
               <p className="text-slate-300">Status: {normalizeStatus(activePoint.point.status)}</p>
               {activePoint.point.source ? <p className="text-slate-400">Source: {activePoint.point.source}</p> : null}
               {activePoint.point.lastSeen ? <p className="text-slate-400">Last seen: {activePoint.point.lastSeen}</p> : null}
+              {(metadataRows?.(activePoint.point) || []).map((row) => (
+                <p key={row.label} className="text-slate-400">{row.label}: {row.value}</p>
+              ))}
             </div>
           ) : null}
         </div>
