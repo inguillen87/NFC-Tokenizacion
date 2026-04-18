@@ -83,6 +83,41 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
     { label: "Geo dispersion", value: Number(api.geoRegions || 0), max: 20 },
     { label: "Device anomalies", value: deviceSignals.filter((item) => item.risk >= 8).length, max: Math.max(deviceSignals.length, 1) },
   ];
+  const hasOperationalData = scansTotal > 0 || trend.length > 0 || feed.length > 0 || products.length > 0 || tagJourney.length > 0;
+
+  if (!hasOperationalData) {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label={kpis.scans} value={String(api.scans ?? 0)} delta={kpis.scansDelta} tone="good" />
+          <StatCard label={kpis.validInvalid} value={`${api.validRate ?? 0} / ${api.invalidRate ?? 0}`} delta={kpis.validInvalidDelta} tone="good" />
+          <StatCard label={kpis.duplicates} value={String(api.duplicates ?? 0)} delta={kpis.duplicatesDelta} tone="warn" />
+          <StatCard label={kpis.tamper} value={String(api.tamper ?? 0)} delta={kpis.tamperDelta} tone="warn" />
+          <StatCard label={extra.activeBatches} value={String(api.activeBatches ?? 0)} delta={extra.activeBatchesDelta} tone="good" />
+          <StatCard label={extra.activeTenants} value={String(api.activeTenants ?? 0)} delta={extra.activeTenantsDelta} tone="good" />
+          <StatCard label={extra.resellerPerformance} value={`USD ${(api.resellerPerformance ?? 0).toLocaleString()}`} delta={extra.resellerPerformanceDelta} tone="good" />
+          <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
+        </div>
+
+        <OpsPanel title="Operational storytelling board" subtitle="Lectura ejecutiva multi-tenant para operaciones, riesgo y trazabilidad comercial.">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Operational throughput</p><p className="mt-1 text-2xl font-semibold text-cyan-200">{api.scans ?? 0}</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Trust posture</p><p className="mt-1 text-2xl font-semibold text-emerald-300">{(api.validRate ?? 0).toFixed(1)}%</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Risk density</p><p className="mt-1 text-2xl font-semibold text-amber-200">{pct(riskSignals, scansTotal)}</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Journey coverage</p><p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage.toFixed(1)}%</p></div>
+          </div>
+        </OpsPanel>
+
+        <OpsPanel title="No operational data yet" subtitle="Todavía no hay escaneos reales en el scope elegido.">
+          <ul className="space-y-2 text-sm text-slate-300">
+            <li>• Confirmá tenant/source/rango/country en filtros.</li>
+            <li>• Validá que existan eventos SUN reales para este tenant.</li>
+            <li>• Si estás onboardeando, escaneá 1-2 NFC activos para inicializar el feed.</li>
+          </ul>
+        </OpsPanel>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
