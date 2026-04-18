@@ -33,12 +33,13 @@ async function forward(action: string, method: "GET" | "POST", bid: string, uid:
   if (!UID_HEX_RE.test(uid)) return NextResponse.json({ ok: false, reason: "invalid uid format", trace_id: trace }, { status: 400 });
 
   const share = safeBuildShare(bid, uid);
-  if (!("token" in share)) {
+  if (!("token" in share) || !share.token) {
     return NextResponse.json({ ok: false, reason: share.reason, trace_id: trace }, { status: 500 });
   }
+  const shareToken = share.token;
 
   const url = new URL(`${productUrls.api}/public/cta/${action}`);
-  url.searchParams.set("share", share.token);
+  url.searchParams.set("share", shareToken);
   if (method === "GET") {
     url.searchParams.set("bid", bid);
     url.searchParams.set("uid", uid);
