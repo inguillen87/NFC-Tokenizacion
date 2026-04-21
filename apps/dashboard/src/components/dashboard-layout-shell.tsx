@@ -28,7 +28,7 @@ export function DashboardLayoutShell({ children }: { children: ReactNode }) {
               <Link href="/demo-lab" className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100 hover:bg-cyan-500/20">
                 Open Demo Lab
               </Link>
-              <Link href="/login" className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300 hover:text-white">
+              <Link href="/logout" className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300 hover:text-white">
                 Logout
               </Link>
             </div>

@@ -31,11 +31,8 @@ export async function seedDemoPack(options: SeedOptions = {}) {
     throw new Error(`unknown pack: ${packKey}`);
   }
 
-  const metaHex = process.env.DEMO_BODEGA_META_KEY_HEX;
-  const fileHex = process.env.DEMO_BODEGA_FILE_KEY_HEX;
-  if (!metaHex || !fileHex) {
-    throw new Error("DEMO_BODEGA_META_KEY_HEX and DEMO_BODEGA_FILE_KEY_HEX are required");
-  }
+  const metaHex = process.env.DEMO_BODEGA_META_KEY_HEX || "00112233445566778899AABBCCDDEEFF";
+  const fileHex = process.env.DEMO_BODEGA_FILE_KEY_HEX || "FFEEDDCCBBAA99887766554433221100";
 
   const manifestCsv = await fs.readFile(pack.manifestPath, "utf8");
   const rows = parseManifest(manifestCsv);
@@ -71,5 +68,5 @@ export async function seedDemoPack(options: SeedOptions = {}) {
     if (result[0]?.inserted) inserted += 1;
   }
 
-  return { ok: true, pack: packKey, bid, imported: rows.length, inserted };
+  return { ok: true, pack: packKey, bid, imported: rows.length, inserted, uids: rows.map((row) => row.uid_hex).slice(0, 10) };
 }
