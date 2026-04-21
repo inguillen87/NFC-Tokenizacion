@@ -9,6 +9,13 @@ function apiBase() {
   return productUrls.api;
 }
 
+const KNOWN_ORIGIN_COORDS: Array<{ match: RegExp; lat: number; lng: number }> = [
+  { match: /(mendoza|valle de uco|finca altamira)/i, lat: -33.2095, lng: -69.1211 },
+  { match: /(san rafael)/i, lat: -34.6177, lng: -68.3301 },
+  { match: /(cafayate|salta)/i, lat: -26.0729, lng: -65.9761 },
+  { match: /(patagonia|rio negro)/i, lat: -39.033, lng: -67.583 },
+];
+
 type SunContract = {
   ok?: boolean;
   status?: { code?: string; label?: string; tone?: "good" | "warn" | "risk"; summary?: string; reason?: string };
@@ -32,6 +39,12 @@ function fmtDate(value?: string | null) {
   if (!value) return "N/A";
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? "N/A" : d.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function resolveOriginCoordinates(input: Array<string | null | undefined>) {
+  const blob = input.filter(Boolean).join(" · ");
+  const match = KNOWN_ORIGIN_COORDS.find((item) => item.match.test(blob));
+  return match ? { lat: match.lat, lng: match.lng } : null;
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -79,12 +92,22 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       lastSeen: item.at || undefined,
       source: "tap_timeline",
     }));
-  const wineryPoint = result.iot?.wineryCoordinates?.lat != null && result.iot?.wineryCoordinates?.lng != null
+  const resolvedOriginCoords = result.iot?.wineryCoordinates?.lat != null && result.iot?.wineryCoordinates?.lng != null
+    ? { lat: Number(result.iot.wineryCoordinates.lat), lng: Number(result.iot.wineryCoordinates.lng) }
+    : resolveOriginCoordinates([
+      result.iot?.wineryLocation,
+      result.product?.winery,
+      result.product?.region,
+      result.provenance?.origin,
+      result.provenance?.firstVerified?.city,
+      result.provenance?.firstVerified?.country,
+    ]);
+  const wineryPoint = resolvedOriginCoords
     ? [{
       city: result.product?.winery || "Bodega",
       country: result.provenance?.firstVerified?.country || "AR",
-      lat: Number(result.iot.wineryCoordinates.lat),
-      lng: Number(result.iot.wineryCoordinates.lng),
+      lat: Number(resolvedOriginCoords.lat),
+      lng: Number(resolvedOriginCoords.lng),
       scans: 1,
       risk: 0,
       status: "ORIGIN",
@@ -104,10 +127,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     }]
     : [];
   const mapPoints = [...wineryPoint, ...timelinePoints, ...currentTapPoint];
+  const orderedTimelinePoints = [...timelinePoints].reverse();
   const mapRoutes = [
-    ...(wineryPoint.length && timelinePoints.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: timelinePoints[timelinePoints.length - 1].lat, toLng: timelinePoints[timelinePoints.length - 1].lng, label: "Bodega → primeros taps", tone: "info" as const }] : []),
-    ...(timelinePoints.length > 1 ? timelinePoints.slice(1).map((point, idx) => ({ fromLat: timelinePoints[idx].lat, fromLng: timelinePoints[idx].lng, toLat: point.lat, toLng: point.lng, tone: point.risk > 0 ? "warn" as const : "info" as const })) : []),
-    ...(timelinePoints.length && currentTapPoint.length ? [{ fromLat: timelinePoints[0].lat, fromLng: timelinePoints[0].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Último evento → tap actual", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
+    ...(wineryPoint.length && orderedTimelinePoints.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: orderedTimelinePoints[0].lat, toLng: orderedTimelinePoints[0].lng, label: "Origen de bodega → primer evento registrado", tone: "info" as const }] : []),
+    ...(orderedTimelinePoints.length > 1 ? orderedTimelinePoints.slice(1).map((point, idx) => ({ fromLat: orderedTimelinePoints[idx].lat, fromLng: orderedTimelinePoints[idx].lng, toLat: point.lat, toLng: point.lng, tone: point.risk > 0 ? "warn" as const : "info" as const })) : []),
+    ...(orderedTimelinePoints.length && currentTapPoint.length ? [{ fromLat: orderedTimelinePoints[orderedTimelinePoints.length - 1].lat, fromLng: orderedTimelinePoints[orderedTimelinePoints.length - 1].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Último evento → tap actual", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
   ];
 
   const toneClass = result.status?.tone === "good"

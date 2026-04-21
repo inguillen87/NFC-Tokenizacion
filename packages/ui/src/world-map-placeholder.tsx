@@ -53,6 +53,7 @@ export function WorldMapPlaceholder({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [metricMode, setMetricMode] = useState<MetricMode>("scans");
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
+  const [expanded, setExpanded] = useState(false);
 
   const parseEventTime = (value?: string) => {
     if (!value) return Date.now();
@@ -168,10 +169,13 @@ export function WorldMapPlaceholder({
         >
           Reset filters
         </button>
+        <button type="button" onClick={() => setExpanded((current) => !current)} className="rounded-lg border border-indigo-300/30 bg-indigo-500/10 px-3 py-1 text-indigo-100">
+          {expanded ? "Compact view" : "Expand map"}
+        </button>
       </div>
 
-      <div className="worldmap-shell mt-4 grid h-[21rem] place-items-center rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_45%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.16),transparent_40%),#020617] md:h-[25rem]">
-        <div className="worldmap-canvas relative h-[18rem] w-full max-w-5xl overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-950/95 shadow-[inset_0_0_80px_rgba(2,6,23,0.85)] md:h-[21rem]">
+      <div className={`worldmap-shell mt-4 grid place-items-center rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_45%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.16),transparent_40%),#020617] ${expanded ? "h-[27rem] md:h-[34rem]" : "h-[21rem] md:h-[25rem]"}`}>
+        <div className={`worldmap-canvas relative w-full max-w-5xl overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-950/95 shadow-[inset_0_0_80px_rgba(2,6,23,0.85)] ${expanded ? "h-[24rem] md:h-[30rem]" : "h-[18rem] md:h-[21rem]"}`}>
           <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
           <div className="absolute inset-0" style={{ backgroundImage: heatBackground }} />
 
@@ -276,6 +280,16 @@ export function WorldMapPlaceholder({
           </div>
         ))}
       </div>
+      {projectedRoutes.length ? (
+        <div className="mt-3 rounded-lg border border-indigo-300/20 bg-indigo-500/5 px-3 py-2 text-[11px] text-indigo-100">
+          <p className="font-semibold">Journey legs</p>
+          <ul className="mt-1 list-disc space-y-1 pl-4 text-indigo-100/90">
+            {projectedRoutes.slice(0, 6).map((route) => (
+              <li key={route.id}>{route.label || `Segment ${route.id.slice(0, 8)}`}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="mt-3 grid gap-2 text-[11px] md:grid-cols-3">
         <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-200">AUTH_OK · tráfico normal</div>

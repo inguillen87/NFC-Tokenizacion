@@ -11,7 +11,9 @@ type CallResponse = {
   reason?: string;
   _httpStatus?: number;
   _httpOk?: boolean;
+  _traceId?: string | null;
 };
+type LastRequest = { path: string; method: "POST" | "GET"; actionKey: ActionKey };
 type ProvenanceResponse = {
   ok?: boolean;
   reason?: string;
@@ -32,7 +34,12 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
     body: method === "POST" ? JSON.stringify(payload || {}) : undefined,
   });
   const parsed = await res.json().catch(() => ({ ok: false, reason: "invalid json" }));
-  return { ...(parsed as Record<string, unknown>), _httpStatus: res.status, _httpOk: res.ok };
+  return {
+    ...(parsed as Record<string, unknown>),
+    _httpStatus: res.status,
+    _httpOk: res.ok,
+    _traceId: res.headers.get("x-nexid-trace-id"),
+  };
 }
 
 export function CtaActions({ bid, uid }: Props) {
@@ -51,6 +58,8 @@ export function CtaActions({ bid, uid }: Props) {
   const [leadIntent, setLeadIntent] = useState<LeadIntent>("tokenization_optional");
   const [provenance, setProvenance] = useState<ProvenanceResponse | null>(null);
   const [lastActionMessage, setLastActionMessage] = useState("");
+  const [lastTraceId, setLastTraceId] = useState<string>("");
+  const [lastRequest, setLastRequest] = useState<LastRequest | null>(null);
 
   useEffect(() => {
     const hasSuccess = Object.values(actionStates).some((item) => item === "success");
@@ -67,10 +76,13 @@ export function CtaActions({ bid, uid }: Props) {
     return () => clearTimeout(timeout);
   }, [actionStates]);
 
-  function normalizeReason(data: { reason?: string }) {
+  function normalizeReason(data: { reason?: string; _httpStatus?: number }) {
     const reason = String(data.reason || "").toLowerCase();
     if (reason.includes("share") || reason.includes("token")) {
       return "Acción no disponible en este enlace. Abrí el SUN desde un link firmado o escaneá nuevamente.";
+    }
+    if ((data._httpStatus || 0) >= 500) {
+      return "El servicio está con demora temporal. Probá reintentar en unos segundos.";
     }
     return data.reason || "No se pudo completar la acción. Reintentá en unos segundos.";
   }
@@ -80,9 +92,12 @@ export function CtaActions({ bid, uid }: Props) {
     setPending(true);
     setActionError("");
     setLastActionMessage("");
+    setLastTraceId("");
     setActionStates((current) => ({ ...current, [actionKey]: "loading" }));
+    setLastRequest({ path, method, actionKey });
     const data = await call(path, method, { bid, uid });
     setStatus(JSON.stringify(data));
+    if (data._traceId) setLastTraceId(data._traceId);
     const ok = Boolean(data.ok && data._httpOk);
     setActionStates((current) => ({ ...current, [actionKey]: ok ? "success" : "error" }));
     if (!ok) {
@@ -108,6 +123,7 @@ export function CtaActions({ bid, uid }: Props) {
     setLeadSaved(false);
     setActionError("");
     setLastActionMessage("");
+    setLastTraceId("");
     setActionStates((current) => ({ ...current, tokenization: "loading" }));
     const leadPayload = {
       name: "SUN visitor",
@@ -127,6 +143,7 @@ export function CtaActions({ bid, uid }: Props) {
       ledger_network: "not_selected",
     });
     setStatus(JSON.stringify({ lead, tokenization }));
+    if ((tokenization as CallResponse)._traceId) setLastTraceId(String((tokenization as CallResponse)._traceId));
     setPending(false);
     const ok = Boolean((lead as CallResponse).ok && (lead as CallResponse)._httpOk && (tokenization as CallResponse).ok && (tokenization as CallResponse)._httpOk);
     setLeadSaved(ok);
@@ -137,6 +154,11 @@ export function CtaActions({ bid, uid }: Props) {
     } else {
       setLastActionMessage("Interés registrado y tokenización solicitada.");
     }
+  }
+
+  function retryLastAction() {
+    if (!lastRequest || pending) return;
+    void trigger(lastRequest.path, lastRequest.method, lastRequest.actionKey);
   }
 
   return (
@@ -161,6 +183,12 @@ export function CtaActions({ bid, uid }: Props) {
       {pending ? <p className="text-xs text-cyan-200" aria-live="polite">Ejecutando acción...</p> : null}
       {lastActionMessage ? <p className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">{lastActionMessage}</p> : null}
       {actionError ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-xs text-rose-100" aria-live="assertive">{actionError}</p> : null}
+      {lastTraceId ? <p className="text-[11px] text-slate-400">trace_id: <span className="font-mono">{lastTraceId}</span></p> : null}
+      {actionError && lastRequest ? (
+        <button onClick={retryLastAction} disabled={pending} className="rounded border border-white/20 px-2 py-1 text-[11px] text-white disabled:cursor-not-allowed disabled:opacity-60">
+          Reintentar última acción
+        </button>
+      ) : null}
       {provenance?.timeline?.length ? (
         <div className="rounded border border-white/10 bg-slate-950/50 p-2 text-[11px] text-slate-200">
           <p className="mb-1 text-cyan-100">Lifecycle timeline (enterprise)</p>

@@ -392,8 +392,20 @@ async function forward(req: Request, path: string[]) {
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
   const demoSession = isDemoSession(req);
+  const allowDemoFallback = String(process.env.DASHBOARD_ALLOW_DEMO_FALLBACK || "").toLowerCase() === "true";
 
-  if (demoSession || !hasAdminKey) {
+  if (!hasAdminKey && (!demoSession || !allowDemoFallback)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        reason: "ADMIN_API_KEY missing. Real tenant data is disabled until admin API auth is configured.",
+        hint: "Set ADMIN_API_KEY and (optional) DASHBOARD_ALLOW_DEMO_FALLBACK=true only for demo sessions.",
+      },
+      { status: 503 },
+    );
+  }
+
+  if (demoSession && allowDemoFallback) {
     return demoAdminResponse(req.method, path, body || "", req.url);
   }
 
@@ -408,10 +420,10 @@ async function forward(req: Request, path: string[]) {
   });
 
   if (response.status === 401) {
-    return demoAdminResponse(req.method, path, body || "", req.url);
+    return NextResponse.json({ ok: false, reason: "Unauthorized admin API key." }, { status: 401 });
   }
 
-  if (!response.ok && demoSession) {
+  if (!response.ok && demoSession && allowDemoFallback) {
     return demoAdminResponse(req.method, path, body || "", req.url);
   }
 
