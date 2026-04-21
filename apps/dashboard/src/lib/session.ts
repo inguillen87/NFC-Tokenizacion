@@ -23,7 +23,7 @@ export type DashboardSession = {
 function demoFallbackSession(): DashboardSession {
   return {
     id: "demo-tenant-admin-demobodega",
-    email: "admin@demobodega.demo",
+    email: "demobodega@nexid.lat",
     role: "tenant-admin",
     tenantId: "demo-tenant-demobodega",
     tenantSlug: "demobodega",

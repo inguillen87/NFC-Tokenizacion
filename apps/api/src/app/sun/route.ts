@@ -448,9 +448,10 @@ function buildPublicContract(params: {
 
 function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareToken: string | null) {
   const tone = contract.status.tone === 'good' ? '#22c55e' : contract.status.tone === 'risk' ? '#ef4444' : '#f59e0b';
+  const isReplay = contract.status.code === "REPLAY_SUSPECT";
   const timeline = contract.provenance.timelineSummary;
   const timelineHtml = timeline.length
-    ? timeline.map((item) => `<li>${item.at || 'N/A'} · ${item.result || '-'} · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
+    ? timeline.map((item) => `<li>${item.at || 'N/A'} · <b>${item.result || '-'}</b> · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
     : '<li>Sin eventos de timeline disponibles.</li>';
   const tapLat = contract.tapContext.lat;
   const tapLng = contract.tapContext.lng;
@@ -470,8 +471,9 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-icon" />
-  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600}.subtitle{margin:0;color:#9fb5d9;font-size:13px}</style></head><body><main class="wrap">
+  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600}button:disabled{opacity:.45;cursor:not-allowed}.subtitle{margin:0;color:#9fb5d9;font-size:13px}</style></head><body><main class="wrap">
   <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">Digital Product Passport</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip">Quality ${contract.quality.score}/100 · ${contract.quality.tier}</span></div></section>
+  <section class="card"><h3 style="margin:0 0 6px">Qué hacer ahora</h3><p class="subtitle">${isReplay ? "1) No cerrar venta todavía. 2) Pedir nuevo tap físico (link fresco). 3) Revalidar y recién ahí activar ownership/garantía/tokenización." : "1) Validación consistente. 2) Activá ownership/garantía si aplica. 3) Opcional: tokenizá para anclaje on-chain."}</p><div class="chips"><span class="chip">${isReplay ? "Estado comercial: HOLD" : "Estado comercial: OK"}</span><span class="chip">${isReplay ? "Riesgo: replay sospechoso" : "Riesgo: controlado"}</span><span class="chip">Tenant view sync: Dashboard → Analytics/Events/Tags</span></div></section>
   <section class="card"><h3 style="margin:0 0 6px">Product identity</h3><p><b>${contract.product.name || 'Producto no perfilado'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Cosecha ${contract.product.harvestYear || '-'} · Barrica ${contract.product.barrelMonths || '-'} meses</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Provenance (honesto)</h3><p>Origen: <b>${contract.provenance.origin || '-'}</b></p><p>First verified: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>Last verified location: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">IoT & cellar signals</h3><p>Bodega: <b>${contract.iot.wineryLocation || 'No disponible'}</b></p><p>Altitud: <b>${contract.iot.altitude || '-'}</b> · Barrica: <b>${contract.iot.oakType || '-'}</b></p><p>Temperatura bodega: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humedad: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Luz: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transporte: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
@@ -482,8 +484,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   </div>
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">Mapa de lectura: ${contract.iot.wineryLocation || 'Origen'} → punto de tap.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Timeline summary</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
-  <section class="card"><h3 style="margin:0 0 6px">Tokenization</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p></section>
-  <section class="card"><h3 style="margin:0 0 6px">Acciones</h3><p class="subtitle" style="margin-bottom:10px">Flujos certificados para consumidor, postventa y trazabilidad digital.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button data-cta="claim-ownership">✓ Activar ownership</button><button data-cta="register-warranty">🛡 Registrar garantía</button><button data-cta="provenance">📍 Ver provenance</button><button data-cta="tokenize-request">⛓ Tokenización opcional</button></div><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">Listo para ejecutar acciones firmadas.</p></section>
+  <section class="card"><h3 style="margin:0 0 6px">Tokenization</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p><p style="margin-top:8px;font-size:12px;color:${isReplay ? "#fca5a5" : "#a7f3d0"}">${isReplay ? "Replay detectado: la tokenización queda bloqueada hasta un nuevo tap físico válido." : "Podés solicitar tokenización opcional cuando la validación sea consistente."}</p></section>
+  <section class="card"><h3 style="margin:0 0 6px">Acciones</h3><p class="subtitle" style="margin-bottom:10px">Flujos certificados para consumidor, postventa y trazabilidad digital.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ Activar ownership</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 Registrar garantía</button><button type="button" data-cta="provenance">📍 Ver provenance</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ Tokenización opcional</button></div><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? "Replay activo: acciones comerciales bloqueadas hasta nuevo tap." : "Listo para ejecutar acciones firmadas."}</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Modo demo sin share token firmado: CTAs habilitadas con fallback seguro para BID DEMO-*.</p>'}</section>
   <section class="card"><details><summary>Technical details</summary><p>BID: ${contract.identity.bid} · UID: ${contract.identity.uid || 'N/A'} · Read counter: ${contract.identity.readCounter ?? 'N/A'}</p><p>Raw: picc ${contract.technical.raw.piccDataPrefix} · enc ${contract.technical.raw.encPrefix} · cmac ${contract.technical.raw.cmacPrefix}</p><p>Troubleshooting: ${contract.troubleshooting.join(' | ') || 'Sin alertas'}</p></details></section>
 <script>
 (() => {
@@ -494,15 +496,16 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   ctaButtons.forEach((button) => {
     button.addEventListener('click', async () => {
       const action = button.getAttribute('data-cta');
-      if (!action || !share || !uid) return;
+      if (!action || !uid || button.disabled) return;
       const statusNode = document.getElementById('cta-status');
       const originalLabel = button.textContent || action;
       button.disabled = true;
       button.textContent = 'Procesando...';
       if (statusNode) statusNode.textContent = 'Ejecutando ' + action + '...';
+      const shareQuery = share ? '&share=' + encodeURIComponent(share) : '';
       const endpoint = action === 'provenance'
-        ? '/public/cta/provenance?bid=' + encodeURIComponent(bid) + '&uid=' + encodeURIComponent(uid) + '&share=' + encodeURIComponent(share)
-        : '/public/cta/' + action + '?share=' + encodeURIComponent(share);
+        ? '/public/cta/provenance?bid=' + encodeURIComponent(bid) + '&uid=' + encodeURIComponent(uid) + shareQuery
+        : '/public/cta/' + action + '?' + (share ? 'share=' + encodeURIComponent(share) : '');
       try {
         const res = await fetch(endpoint, action === 'provenance' ? { method: 'GET', cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bid, uid, source: 'sun_mobile_preview' }) });
         const payload = await res.json().catch(() => ({}));
