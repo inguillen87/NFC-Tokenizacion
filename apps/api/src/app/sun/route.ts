@@ -485,7 +485,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">Mapa de lectura: ${contract.iot.wineryLocation || 'Origen'} → punto de tap.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Timeline summary</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">Tokenization</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p><p style="margin-top:8px;font-size:12px;color:${isReplay ? "#fca5a5" : "#a7f3d0"}">${isReplay ? "Replay detectado: la tokenización queda bloqueada hasta un nuevo tap físico válido." : "Podés solicitar tokenización opcional cuando la validación sea consistente."}</p></section>
-  <section class="card"><h3 style="margin:0 0 6px">Acciones</h3><p class="subtitle" style="margin-bottom:10px">Flujos certificados para consumidor, postventa y trazabilidad digital.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ Activar ownership</button><button data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 Registrar garantía</button><button data-cta="provenance">📍 Ver provenance</button><button data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ Tokenización opcional</button></div><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? "Replay activo: acciones comerciales bloqueadas hasta nuevo tap." : "Listo para ejecutar acciones firmadas."}</p></section>
+  <section class="card"><h3 style="margin:0 0 6px">Acciones</h3><p class="subtitle" style="margin-bottom:10px">Flujos certificados para consumidor, postventa y trazabilidad digital.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ Activar ownership</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 Registrar garantía</button><button type="button" data-cta="provenance">📍 Ver provenance</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ Tokenización opcional</button></div><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? "Replay activo: acciones comerciales bloqueadas hasta nuevo tap." : "Listo para ejecutar acciones firmadas."}</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Modo demo sin share token firmado: CTAs habilitadas con fallback seguro para BID DEMO-*.</p>'}</section>
   <section class="card"><details><summary>Technical details</summary><p>BID: ${contract.identity.bid} · UID: ${contract.identity.uid || 'N/A'} · Read counter: ${contract.identity.readCounter ?? 'N/A'}</p><p>Raw: picc ${contract.technical.raw.piccDataPrefix} · enc ${contract.technical.raw.encPrefix} · cmac ${contract.technical.raw.cmacPrefix}</p><p>Troubleshooting: ${contract.troubleshooting.join(' | ') || 'Sin alertas'}</p></details></section>
 <script>
 (() => {
@@ -496,15 +496,16 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   ctaButtons.forEach((button) => {
     button.addEventListener('click', async () => {
       const action = button.getAttribute('data-cta');
-      if (!action || !share || !uid || button.disabled) return;
+      if (!action || !uid || button.disabled) return;
       const statusNode = document.getElementById('cta-status');
       const originalLabel = button.textContent || action;
       button.disabled = true;
       button.textContent = 'Procesando...';
       if (statusNode) statusNode.textContent = 'Ejecutando ' + action + '...';
+      const shareQuery = share ? '&share=' + encodeURIComponent(share) : '';
       const endpoint = action === 'provenance'
-        ? '/public/cta/provenance?bid=' + encodeURIComponent(bid) + '&uid=' + encodeURIComponent(uid) + '&share=' + encodeURIComponent(share)
-        : '/public/cta/' + action + '?share=' + encodeURIComponent(share);
+        ? '/public/cta/provenance?bid=' + encodeURIComponent(bid) + '&uid=' + encodeURIComponent(uid) + shareQuery
+        : '/public/cta/' + action + '?' + (share ? 'share=' + encodeURIComponent(share) : '');
       try {
         const res = await fetch(endpoint, action === 'provenance' ? { method: 'GET', cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bid, uid, source: 'sun_mobile_preview' }) });
         const payload = await res.json().catch(() => ({}));

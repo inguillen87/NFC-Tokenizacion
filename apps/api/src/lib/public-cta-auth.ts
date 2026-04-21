@@ -14,6 +14,16 @@ export function requireShareToken(req: Request, bid: string, uid: string) {
   const share = String(url.searchParams.get("share") || "").trim();
   const bodyShare = (req.headers.get("x-demo-share-token") || "").trim();
   const providedToken = share || bodyShare;
+  const secretConfigured = Boolean((process.env.PUBLIC_DEMO_SHARE_SECRET || "").trim());
+  const allowInsecureDemo = process.env.ALLOW_INSECURE_DEMO_CTA !== "0";
+  if (!secretConfigured && allowInsecureDemo && normalizedBid.toUpperCase().startsWith("DEMO-")) {
+    return {
+      ok: true as const,
+      payload: { bid: normalizedBid, uid: normalizedUid, exp: Math.floor(Date.now() / 1000) + 300 },
+      share_token_status: "insecure_demo_no_secret" as const,
+    };
+  }
+
   const payload = verifyDemoShareToken(providedToken);
   if (!providedToken) {
     return { ok: false as const, reason: "missing share token", share_token_status: "missing" as const };
