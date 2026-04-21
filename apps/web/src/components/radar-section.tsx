@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
+import { Card, SectionHeading, WorldMapRealtime } from "@product/ui";
 import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
 
@@ -138,7 +138,7 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
     }, 4200);
 
     const onScenario = (event: Event) => {
-      const custom = event as CustomEvent<{ detail?: { mapKey?: string; vertical?: Vertical; label?: string; status?: Status } }>;
+      const custom = event as CustomEvent<{ mapKey?: string; vertical?: Vertical; label?: string; status?: Status }>;
       const point = safePoint(custom.detail?.mapKey);
       const status = custom.detail?.status || "valid";
       const at = new Date().toLocaleTimeString("en-GB");
@@ -190,7 +190,7 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
           </div>
 
           <div className="relative z-10 mt-4">
-            <WorldMapPlaceholder
+            <WorldMapRealtime
               title={radar.mapCaption}
               subtitle={txt.geoTitle}
               points={pulses.map((ev) => ({
