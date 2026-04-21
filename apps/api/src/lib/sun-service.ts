@@ -23,6 +23,49 @@ export async function processSunScan(input: {
   rawQuery?: Record<string, string>;
   context?: ScanContext;
 }) {
+  async function logUnassignedAttempt(reason: string) {
+    try {
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS sun_scan_attempts (
+          id bigserial PRIMARY KEY,
+          bid text NOT NULL,
+          result text NOT NULL,
+          reason text,
+          ip inet,
+          user_agent text,
+          geo_city text,
+          geo_country text,
+          geo_lat double precision,
+          geo_lng double precision,
+          source text NOT NULL DEFAULT 'real',
+          raw_query jsonb,
+          meta jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`
+        INSERT INTO sun_scan_attempts (
+          bid, result, reason, ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, source, raw_query, meta
+        ) VALUES (
+          ${input.bid},
+          'UNASSIGNED_ATTEMPT',
+          ${reason},
+          ${input.context?.ip || null},
+          ${input.context?.userAgent || null},
+          ${input.context?.city || null},
+          ${input.context?.countryCode || null},
+          ${Number.isFinite(input.context?.lat) ? input.context?.lat! : null},
+          ${Number.isFinite(input.context?.lng) ? input.context?.lng! : null},
+          ${input.context?.source || 'real'},
+          ${JSON.stringify(input.rawQuery || {})}::jsonb,
+          ${JSON.stringify({ warning: 'batch_not_found_or_revoked', context: input.context?.meta || {} })}::jsonb
+        )
+      `;
+    } catch {
+      // best effort logging for unknown/revoked batch attempts
+    }
+  }
+
   async function insertEvent(payload: {
     uidHex: string | null;
     ctr: number | null;
@@ -116,8 +159,14 @@ export async function processSunScan(input: {
     LIMIT 1
   `;
   const batch = batchRows[0];
-  if (!batch) return { status: 404, body: { ok: false, reason: 'unknown batch' } };
-  if (batch.status === 'revoked') return { status: 403, body: { ok: false, reason: 'batch revoked' } };
+  if (!batch) {
+    await logUnassignedAttempt('unknown batch');
+    return { status: 404, body: { ok: false, reason: 'unknown batch' } };
+  }
+  if (batch.status === 'revoked') {
+    await logUnassignedAttempt('batch revoked');
+    return { status: 403, body: { ok: false, reason: 'batch revoked' } };
+  }
 
   const kMeta = decryptKey16(batch.meta_key_ct).toString('hex').toUpperCase();
   const kFile = decryptKey16(batch.file_key_ct).toString('hex').toUpperCase();

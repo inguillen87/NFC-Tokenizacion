@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { DASHBOARD_SESSION_COOKIE } from "../../../../lib/session";
+import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "../../../../lib/session";
 import { getDashboardSession } from "../../../../lib/session";
 import { proxyToApi } from "../../../../lib/api-proxy";
 
@@ -26,6 +26,29 @@ export async function GET() {
     });
   }
   const response = NextResponse.json(data || { ok: false }, { status: upstream.status });
+  if (data?.session?.email && data?.session?.role) {
+    const snapshot = Buffer.from(
+      JSON.stringify({
+        id: data.session.id || `${data.session.role}-${data.session.email}`,
+        email: data.session.email,
+        role: data.session.role,
+        tenantId: data.session.tenantId || null,
+        tenantSlug: data.session.tenantSlug || null,
+        label: data.session.label || `${data.session.role} session`,
+        permissions: Array.isArray(data.session.permissions) ? data.session.permissions : ["*"],
+        mfaVerified: Boolean(data.session.mfaVerified),
+        expiresAt: new Date(Date.now() + 60 * 60 * 12 * 1000).toISOString(),
+      }),
+      "utf8",
+    ).toString("base64url");
+    response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, snapshot, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 12,
+    });
+  }
   if (data?.rotatedSessionToken) {
     response.cookies.set(DASHBOARD_SESSION_COOKIE, data.rotatedSessionToken, {
       httpOnly: true,
@@ -35,6 +58,9 @@ export async function GET() {
       maxAge: 60 * 60 * 12,
     });
   }
-  if (!upstream.ok) response.cookies.delete(DASHBOARD_SESSION_COOKIE);
+  if (upstream.status === 401 || upstream.status === 403) {
+    response.cookies.delete(DASHBOARD_SESSION_COOKIE);
+    response.cookies.delete(DASHBOARD_SESSION_SNAPSHOT_COOKIE);
+  }
   return response;
 }

@@ -28,9 +28,17 @@ export function getAccessProfiles(): AccessProfile[] {
       key: "tenant-admin",
       role: "tenant-admin",
       label: "Tenant Admin DemoBodega",
-      email: read(process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL, "admin.demobodega@nexid.lat"),
+      email: read(process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL, "demobodega@nexid.lat"),
       password: read(process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD, "DemoBodega2026"),
       note: "Admin de ejemplo para operar lotes, tags y manifest del tenant demo.",
+    },
+    {
+      key: "tenant-admin-alias",
+      role: "tenant-admin",
+      label: "Tenant Admin DemoBodega (alias)",
+      email: "admin.demobodega@nexid.lat",
+      password: read(process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD, "DemoBodega2026"),
+      note: "Alias legacy para compatibilidad de accesos demo existentes.",
     },
     {
       key: "reseller",

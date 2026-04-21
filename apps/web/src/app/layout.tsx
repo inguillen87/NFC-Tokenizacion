@@ -30,6 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: localizedTitle,
     description: siteConfig.description,
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://nexid.lat"),
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
@@ -42,10 +43,24 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: "nexID",
     icons: {
       icon: [
+        { url: "/favicon.ico", type: "image/x-icon" },
+        { url: "/nexid-favicon.svg", type: "image/svg+xml" },
         { url: "/nexid-mark-64.png", sizes: "64x64", type: "image/png" },
         { url: "/nexid-mark-256.png", sizes: "256x256", type: "image/png" },
       ],
+      shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
       apple: [{ url: "/nexid-mark-light-512.png", sizes: "512x512", type: "image/png" }],
+    },
+    openGraph: {
+      title: localizedTitle,
+      description: siteConfig.description,
+      images: [{ url: `/og-image?locale=${encodeURIComponent(locale)}&surface=home&campaign=default`, width: 1200, height: 630, alt: "nexID" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: localizedTitle,
+      description: siteConfig.description,
+      images: [`/twitter-image?locale=${encodeURIComponent(locale)}&surface=home&campaign=default`],
     },
   };
 }
