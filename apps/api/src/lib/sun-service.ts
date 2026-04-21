@@ -1,6 +1,7 @@
 import { sql } from './db';
 import { decryptKey16 } from './keys';
 import { verifySun } from './crypto/sdm';
+import { publishRealtimeEvent } from './realtime-events';
 
 export type ScanContext = {
   ip?: string | null;
@@ -76,6 +77,22 @@ export async function processSunScan(input: {
     reasonValue: string | null;
     hasGeoValue: boolean;
   }) {
+    const emitRealtime = () => {
+      publishRealtimeEvent({
+        tenant_slug: (batch as { tenant_slug?: string }).tenant_slug || undefined,
+        bid: input.bid,
+        uid_hex: payload.uidHex || undefined,
+        result: payload.resultValue,
+        reason: payload.reasonValue || undefined,
+        city: input.context?.city || null,
+        country_code: input.context?.countryCode || null,
+        lat: payload.hasGeoValue ? input.context?.lat || null : null,
+        lng: payload.hasGeoValue ? input.context?.lng || null : null,
+        source: input.context?.source || 'real',
+        created_at: new Date().toISOString(),
+      });
+    };
+
     const commonValues = [
       batch.tenant_id,
       batch.id,
@@ -119,6 +136,7 @@ export async function processSunScan(input: {
           ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
         )
       `;
+      emitRealtime();
       return;
     } catch (error) {
       if (!isMissingColumnError(error)) throw error;
@@ -136,6 +154,7 @@ export async function processSunScan(input: {
           ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
         )
       `;
+      emitRealtime();
       return;
     } catch (error) {
       if (!isMissingColumnError(error)) throw error;
@@ -150,11 +169,13 @@ export async function processSunScan(input: {
         ${commonValues[9]}, ${commonValues[10]}, ${commonValues[22]}::jsonb
       )
     `;
+    emitRealtime();
   }
 
   const batchRows = await sql/*sql*/`
-    SELECT b.id, b.tenant_id, b.status, b.meta_key_ct, b.file_key_ct
+    SELECT b.id, b.tenant_id, t.slug AS tenant_slug, b.status, b.meta_key_ct, b.file_key_ct
     FROM batches b
+    LEFT JOIN tenants t ON t.id = b.tenant_id
     WHERE b.bid = ${input.bid}
     LIMIT 1
   `;
