@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CtaActions } from "./cta-actions";
 import { OnboardDemoButton } from "./onboard-demo-button";
 import { productUrls } from "@product/config";
-import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail, WorldMapPlaceholder } from "@product/ui";
+import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail, WorldMapRealtime } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 
 function apiBase() {
@@ -341,7 +341,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           <p className="text-xs uppercase tracking-wider text-slate-400">Wine journey map</p>
           {mapPoints.length ? (
             <div className="mt-2">
-              <WorldMapPlaceholder
+              <WorldMapRealtime
                 title="Mapa interactivo del recorrido"
                 subtitle="Origen de bodega, taps históricos y tap móvil actual (cuando hay geolocalización disponible)."
                 points={mapPoints}

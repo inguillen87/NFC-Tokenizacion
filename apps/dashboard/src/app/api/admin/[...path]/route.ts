@@ -389,6 +389,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
 
 async function forward(req: Request, path: string[]) {
   const normalizedPath = path.join("/");
+  const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "security-alerts" || normalizedPath === "tokenization/requests");
   const target = `${API_BASE}/admin/${path.join("/")}${new URL(req.url).search}`;
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
@@ -456,11 +457,19 @@ async function forward(req: Request, path: string[]) {
     return unavailable("Unauthorized admin API key.");
   }
 
+  if (response.status >= 500 && criticalGet) {
+    return unavailable(`Admin upstream error (${response.status}).`);
+  }
+
   if (!response.ok && demoSession && allowDemoFallback) {
     return demoAdminResponse(req.method, path, body || "", req.url);
   }
 
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
   const text = await response.text();
+  if (criticalGet && (!contentType.includes("application/json") || !safeParseJson(text))) {
+    return unavailable("Admin upstream returned invalid payload.");
+  }
   return new NextResponse(text, { status: response.status, headers: { "Content-Type": response.headers.get("content-type") || "application/json" } });
 }
 

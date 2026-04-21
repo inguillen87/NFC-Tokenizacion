@@ -1,7 +1,7 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { OpsPanel, StatCard, StatusChip, WorldMapPlaceholder } from "@product/ui";
+import { OpsPanel, StatCard, StatusChip, WorldMapRealtime } from "@product/ui";
 import { DemoOpsMap } from "./demo-ops-map";
 
 type AnalyticsPanelsProps = {
@@ -254,31 +254,6 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         </OpsPanel>
       </div>
 
-      <OpsPanel title="Operational storytelling board" subtitle="Lectura ejecutiva multi-tenant para operaciones, riesgo y trazabilidad comercial.">
-        <div className="grid gap-3 md:grid-cols-4">
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Operational throughput</p>
-            <p className="mt-1 text-2xl font-semibold text-cyan-200">{api.scans ?? 0}</p>
-            <p className="text-xs text-slate-400">Taps totales en el scope actual.</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Trust posture</p>
-            <p className="mt-1 text-2xl font-semibold text-emerald-300">{(api.validRate ?? 0).toFixed(1)}%</p>
-            <p className="text-xs text-slate-400">Validación autenticada sobre taps.</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Risk density</p>
-            <p className="mt-1 text-2xl font-semibold text-amber-200">{pct(riskSignals, scansTotal)}</p>
-            <p className="text-xs text-slate-400">{riskSignals} señales de riesgo (dup + tamper).</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Journey coverage</p>
-            <p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage.toFixed(1)}%</p>
-            <p className="text-xs text-slate-400">UIDs con historia de origen/destino visible.</p>
-          </div>
-        </div>
-      </OpsPanel>
-
       <div className="grid gap-6 xl:grid-cols-2">
         <OpsPanel title="Geographic hotspots" subtitle="Países y ciudades con mayor actividad y riesgo.">
           <div className="grid gap-3 md:grid-cols-2">
@@ -305,7 +280,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({ city: point.city, country: point.country || "--", lat: point.lat, lng: point.lng, scans: point.scans || 1, risk: point.risk || 0 }))} />
       <OpsPanel title="Journey map (tenant premium taps)" subtitle="Mapa interactivo de origen de bodega vs última ubicación verificada por UID, con rutas animadas.">
         {journeyMapPoints.length ? (
-          <WorldMapPlaceholder
+          <WorldMapRealtime
             title="Recorrido de activos premium"
             subtitle="Cada ruta muestra origen inicial y último tap verificado para clientes del tenant."
             points={journeyMapPoints}

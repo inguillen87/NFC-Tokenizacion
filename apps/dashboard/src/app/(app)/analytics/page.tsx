@@ -118,18 +118,14 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
   const fallbackLocale = "es-AR" as const;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
-  const translation = messages[locale] || messages[fallbackLocale];
+  const translation = messages[locale] ?? messages[fallbackLocale];
   const kpis = translation?.dashboard?.kpis || FALLBACK_KPIS;
   const analyticsData = await getAnalytics({ origin, tenantScope, source, range, country });
   const mapMode = isTenantAdmin ? "tenant" : "global";
 
   return (
     <main className="space-y-8">
-      <SectionHeading
-        eyebrow={copy.nav.analytics}
-        title={copy.pages.analytics.title}
-        description={copy.pages.analytics.description}
-      />
+      <SectionHeading eyebrow={copy.nav.analytics} title={copy.pages.analytics.title} description={copy.pages.analytics.description} />
       <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
         <span className="ml-2">Fuente: <b className="text-white">{source}</b> · Rango: <b className="text-white">{range}</b> · Country: <b className="text-white">{country || "all"}</b>.</span>
@@ -160,38 +156,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <button type="submit" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100">Apply analytics scope</button>
         </form>
       </div>
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
-        <form className="grid gap-3 md:grid-cols-5">
-          <select name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
-            <option value="24h">24h</option>
-            <option value="7d">7d</option>
-            <option value="30d">30d</option>
-          </select>
-          {session.role !== "tenant-admin" ? (
-            <select name="source" defaultValue={source} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
-              <option value="all">all</option>
-              <option value="real">real</option>
-              <option value="demo">demo</option>
-              <option value="imported">imported</option>
-            </select>
-          ) : (
-            <input type="hidden" name="source" value="real" />
-          )}
-          {session.role !== "tenant-admin" ? (
-            <input name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          ) : (
-            <input type="hidden" name="tenant" value={tenantScope} />
-          )}
-          <input name="country" defaultValue={country} placeholder="country (AR, BR, US...)" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <button type="submit" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100">Apply analytics scope</button>
-        </form>
-      </div>
-      <AnalyticsPanels
-        kpis={kpis}
-        extra={copy.analytics}
-        data={analyticsData || undefined}
-        mapMode={isTenantAdmin ? "tenant" : "global"}
-      />
+      <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData || undefined} mapMode={mapMode} />
     </main>
   );
 }

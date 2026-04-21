@@ -663,6 +663,21 @@ export async function GET(req: Request): Promise<Response> {
     },
   });
 
+  if (!contract.provenance.timelineSummary.length) {
+    contract.provenance.timelineSummary = [
+      {
+        at: new Date().toISOString(),
+        result: contract.status.code || "REVIEW",
+        city: geoCity || "Unknown",
+        country: geoCountry || "--",
+        device: `${contract.tapContext.os} · ${contract.tapContext.browser}`,
+        lat: Number.isFinite(geoLat) ? geoLat : null,
+        lng: Number.isFinite(geoLng) ? geoLng : null,
+        stage: "current_tap",
+      },
+    ];
+  }
+
   if (result.body.ok && uid) {
     const autoMint = await queueAutoTokenizationForValidTap({ bid, uid, traceId }).catch((error) => ({
       ok: false,
@@ -687,6 +702,9 @@ export async function GET(req: Request): Promise<Response> {
   if ((contract.tokenization.status === "none" || !contract.tokenization.status) && ctaTimeline.some((item) => String(item.result || "").includes("TOKENIZE_REQUEST"))) {
     contract.tokenization.status = "requested";
     contract.tokenization.network = contract.tokenization.network || "polygon-amoy";
+  }
+  if ((contract.tokenization.status === "none" || !contract.tokenization.status) && contract.status.code === "REPLAY_SUSPECT") {
+    contract.tokenization.status = "blocked_replay";
   }
 
   if (result.body.ok) {

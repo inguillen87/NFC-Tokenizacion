@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { EmptyState, FilterBar, WorldMapPlaceholder } from "@product/ui";
+import { EmptyState, FilterBar, WorldMapRealtime } from "@product/ui";
 import { RealOpsMap } from "./real-ops-map";
 
 type MapPoint = {
@@ -160,7 +160,7 @@ export function DemoOpsMap({
         {playablePoints.length === 0 ? (
           <EmptyState title="Sin hubs visibles" description="Probá cambiar país, scope o tipo de evento." className="border-dashed px-4 py-10 text-center text-sm text-slate-400" />
         ) : mode === "demo" ? (
-          <WorldMapPlaceholder
+          <WorldMapRealtime
             title="Global verification map"
             subtitle="Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
             points={playablePoints}

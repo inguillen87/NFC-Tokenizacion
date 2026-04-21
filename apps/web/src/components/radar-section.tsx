@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
+import { Card, SectionHeading, WorldMapRealtime } from "@product/ui";
 import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
 
@@ -190,7 +190,7 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
           </div>
 
           <div className="relative z-10 mt-4">
-            <WorldMapPlaceholder
+            <WorldMapRealtime
               title={radar.mapCaption}
               subtitle={txt.geoTitle}
               points={pulses.map((ev) => ({

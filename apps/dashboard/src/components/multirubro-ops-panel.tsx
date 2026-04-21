@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { OpsPanel, StatusChip, WorldMapPlaceholder } from "@product/ui";
+import { OpsPanel, StatusChip, WorldMapRealtime } from "@product/ui";
 
 type AnalyticsPayload = {
   ok?: boolean;
@@ -214,7 +214,7 @@ export function MultirubroOpsPanel() {
       ) : null}
 
       <div className="mt-4">
-        <WorldMapPlaceholder title="Heatmap de taps en tiempo real" subtitle="Mercados grises, zonas de fraude y expansión comercial por geolocalización." points={points} initialExpanded />
+        <WorldMapRealtime title="Heatmap de taps en tiempo real" subtitle="Mercados grises, zonas de fraude y expansión comercial por geolocalización." points={points} initialExpanded />
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">

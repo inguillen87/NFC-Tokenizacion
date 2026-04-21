@@ -85,7 +85,7 @@ export async function getDashboardSession() {
     cache: "no-store",
   }).catch(() => null);
   if (!res) return snapshot;
-  if (res.status === 401 || res.status === 403) return null;
+  if (res.status === 401 || res.status === 403) return snapshot || null;
   if (!res.ok) return snapshot;
   const data = await res.json().catch(() => null) as { ok?: boolean; session?: DashboardSession } | null;
   if (!data?.ok || !data.session) return snapshot;
