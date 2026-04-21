@@ -34,27 +34,26 @@ function project(lat: number, lng: number) {
   return { x, y };
 }
 
-const defaultPoints: GeoPoint[] = [
-  { city: "Mendoza", country: "AR", scans: 4200, risk: 42, lat: -32.8895, lng: -68.8458 },
-  { city: "São Paulo", country: "BR", scans: 3800, risk: 35, lat: -23.5558, lng: -46.6396 },
-  { city: "New York", country: "US", scans: 2400, risk: 18, lat: 40.7128, lng: -74.006 },
-  { city: "London", country: "UK", scans: 1900, risk: 16, lat: 51.5072, lng: -0.1276 },
-  { city: "Tokyo", country: "JP", scans: 2200, risk: 20, lat: 35.6764, lng: 139.65 },
-];
-
 export function WorldMapPlaceholder({
   title = "Global scan footprint",
   subtitle = "Mapa operativo de autenticaciones, riesgo y cobertura multi-tenant.",
-  points = defaultPoints,
+  points = [],
+  onPointSelect,
+  metadataRows,
+  routes = [],
 }: {
   title?: string;
   subtitle?: string;
   points?: GeoPoint[];
+  onPointSelect?: (point: GeoPoint) => void;
+  metadataRows?: (point: GeoPoint) => Array<{ label: string; value: string }>;
+  routes?: Array<{ fromLat: number; fromLng: number; toLat: number; toLng: number; label?: string; tone?: "info" | "warn" }>;
 }) {
-  const safePoints = points.length > 0 ? points : defaultPoints;
+  const safePoints = points;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [metricMode, setMetricMode] = useState<MetricMode>("scans");
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
+  const [expanded, setExpanded] = useState(false);
 
   const parseEventTime = (value?: string) => {
     if (!value) return Date.now();
@@ -94,6 +93,17 @@ export function WorldMapPlaceholder({
   const projectedPoints = useMemo(
     () => windowedPoints.map((point, idx) => ({ id: `${point.city}-${point.lat}-${point.lng}-${idx}`, point, pos: project(point.lat, point.lng) })),
     [windowedPoints]
+  );
+  const projectedRoutes = useMemo(
+    () =>
+      routes.map((route, idx) => ({
+        id: `${route.fromLat}-${route.fromLng}-${route.toLat}-${route.toLng}-${idx}`,
+        from: project(route.fromLat, route.fromLng),
+        to: project(route.toLat, route.toLng),
+        label: route.label,
+        tone: route.tone || "info",
+      })),
+    [routes]
   );
 
   const activePoint = projectedPoints.find((item) => item.id === activeId) || projectedPoints[0];
@@ -159,10 +169,13 @@ export function WorldMapPlaceholder({
         >
           Reset filters
         </button>
+        <button type="button" onClick={() => setExpanded((current) => !current)} className="rounded-lg border border-indigo-300/30 bg-indigo-500/10 px-3 py-1 text-indigo-100">
+          {expanded ? "Compact view" : "Expand map"}
+        </button>
       </div>
 
-      <div className="worldmap-shell mt-4 grid h-[21rem] place-items-center rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_45%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.16),transparent_40%),#020617] md:h-[25rem]">
-        <div className="worldmap-canvas relative h-[18rem] w-full max-w-5xl overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-950/95 shadow-[inset_0_0_80px_rgba(2,6,23,0.85)] md:h-[21rem]">
+      <div className={`worldmap-shell mt-4 grid place-items-center rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.16),transparent_45%),radial-gradient(circle_at_80%_70%,rgba(59,130,246,0.16),transparent_40%),#020617] ${expanded ? "h-[27rem] md:h-[34rem]" : "h-[21rem] md:h-[25rem]"}`}>
+        <div className={`worldmap-canvas relative w-full max-w-5xl overflow-hidden rounded-[1.25rem] border border-white/10 bg-slate-950/95 shadow-[inset_0_0_80px_rgba(2,6,23,0.85)] ${expanded ? "h-[24rem] md:h-[30rem]" : "h-[18rem] md:h-[21rem]"}`}>
           <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
           <div className="absolute inset-0" style={{ backgroundImage: heatBackground }} />
 
@@ -182,6 +195,24 @@ export function WorldMapPlaceholder({
               <path d="M848 117l40-20 56 8 30 20-12 25-45 13-38-7-23-20z" />
             </g>
           </svg>
+          {projectedRoutes.length ? (
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full opacity-75" aria-hidden>
+              {projectedRoutes.map((route) => (
+                <line
+                  key={route.id}
+                  x1={route.from.x}
+                  y1={route.from.y}
+                  x2={route.to.x}
+                  y2={route.to.y}
+                  stroke={route.tone === "warn" ? "rgba(251,113,133,0.9)" : "rgba(103,232,249,0.85)"}
+                  strokeWidth="0.35"
+                  strokeDasharray="1.3 1.3"
+                >
+                  <animate attributeName="stroke-dashoffset" from="0" to="-6" dur="0.7s" repeatCount="indefinite" />
+                </line>
+              ))}
+            </svg>
+          ) : null}
 
           {projectedPoints.map((item) => {
             const isActive = activePoint?.id === item.id;
@@ -196,7 +227,10 @@ export function WorldMapPlaceholder({
                 style={{ left: `${item.pos.x}%`, top: `${item.pos.y}%` }}
                 onMouseEnter={() => setActiveId(item.id)}
                 onFocus={() => setActiveId(item.id)}
-                onClick={() => setActiveId(item.id)}
+                onClick={() => {
+                  setActiveId(item.id);
+                  onPointSelect?.(item.point);
+                }}
               >
                 <span className={`absolute inline-flex h-7 w-7 rounded-full ${isActive ? "animate-ping" : ""} bg-cyan-300/40`} />
                 <span className={`relative inline-block rounded-full ${tone}`} style={{ width: size, height: size }} />
@@ -216,6 +250,9 @@ export function WorldMapPlaceholder({
               <p className="text-slate-300">Status: {normalizeStatus(activePoint.point.status)}</p>
               {activePoint.point.source ? <p className="text-slate-400">Source: {activePoint.point.source}</p> : null}
               {activePoint.point.lastSeen ? <p className="text-slate-400">Last seen: {activePoint.point.lastSeen}</p> : null}
+              {(metadataRows?.(activePoint.point) || []).map((row) => (
+                <p key={row.label} className="text-slate-400">{row.label}: {row.value}</p>
+              ))}
             </div>
           ) : null}
         </div>
@@ -243,6 +280,16 @@ export function WorldMapPlaceholder({
           </div>
         ))}
       </div>
+      {projectedRoutes.length ? (
+        <div className="mt-3 rounded-lg border border-indigo-300/20 bg-indigo-500/5 px-3 py-2 text-[11px] text-indigo-100">
+          <p className="font-semibold">Journey legs</p>
+          <ul className="mt-1 list-disc space-y-1 pl-4 text-indigo-100/90">
+            {projectedRoutes.slice(0, 6).map((route) => (
+              <li key={route.id}>{route.label || `Segment ${route.id.slice(0, 8)}`}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="mt-3 grid gap-2 text-[11px] md:grid-cols-3">
         <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-200">AUTH_OK · tráfico normal</div>

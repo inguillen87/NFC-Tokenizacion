@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { WorldMapPlaceholder } from "@product/ui";
+import { EmptyState, FilterBar, WorldMapPlaceholder } from "@product/ui";
+import { RealOpsMap } from "./real-ops-map";
 
 type MapPoint = {
   city: string;
@@ -123,23 +124,25 @@ export function DemoOpsMap({
         </div>
       </div>
 
-      <div className={`mt-3 grid gap-2 ${mode === "demo" ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-        <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={eventFilter} onChange={(event) => setEventFilter(event.target.value as EventFilter)}>
-          <option value="all">Todos los eventos</option>
-          <option value="clean">AUTH OK</option>
-          <option value="risk">Solo riesgo</option>
-        </select>
-        <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
-          {countries.map((item) => (
-            <option key={item} value={item}>{item}</option>
-          ))}
-        </select>
-        {mode === "demo" ? (
-          <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={scope} onChange={(event) => setScope(event.target.value as ScopeFilter)}>
-            <option value="selected">Solo demo seleccionado</option>
-            <option value="all">Todo el tráfico demo</option>
+      <div className="mt-3">
+        <FilterBar contentClassName={mode === "demo" ? "md:grid-cols-3" : "md:grid-cols-2"}>
+          <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={eventFilter} onChange={(event) => setEventFilter(event.target.value as EventFilter)}>
+            <option value="all">Todos los eventos</option>
+            <option value="clean">AUTH OK</option>
+            <option value="risk">Solo riesgo</option>
           </select>
-        ) : null}
+          <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
+            {countries.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </select>
+          {mode === "demo" ? (
+            <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={scope} onChange={(event) => setScope(event.target.value as ScopeFilter)}>
+              <option value="selected">Solo demo seleccionado</option>
+              <option value="all">Todo el tráfico demo</option>
+            </select>
+          ) : <div />}
+        </FilterBar>
       </div>
 
       {mode === "demo" ? (
@@ -154,20 +157,23 @@ export function DemoOpsMap({
       )}
 
       <div className="mt-3">
-        {playablePoints.length > 0 ? (
+        {playablePoints.length === 0 ? (
+          <EmptyState title="Sin hubs visibles" description="Probá cambiar país, scope o tipo de evento." className="border-dashed px-4 py-10 text-center text-sm text-slate-400" />
+        ) : mode === "demo" ? (
           <WorldMapPlaceholder
             title="Global verification map"
-            subtitle={mode === "demo"
-              ? "Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
-              : mode === "tenant"
-                ? "Fuente: eventos del tenant activo con geolocalización y estado operativo."
-                : "Fuente: eventos operativos multi-tenant consolidados por estado y geografía."}
+            subtitle="Fuente: eventos live/simulados consolidados por tenant + vertical + estado, con scope entre demo elegido y tráfico global."
             points={playablePoints}
+            metadataRows={(point) => [
+              { label: "Pack/vertical", value: point.vertical || "-" },
+              { label: "Mode", value: mode },
+            ]}
           />
         ) : (
-          <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/60 px-4 py-10 text-center text-sm text-slate-400">
-            No hay hubs visibles con el filtro actual. Probá cambiar país, scope o tipo de evento.
-          </div>
+          <RealOpsMap
+            points={playablePoints}
+            scopeLabel={mode === "tenant" ? "tenant operativo activo" : "multi-tenant operacional"}
+          />
         )}
       </div>
 
