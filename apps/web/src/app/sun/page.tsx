@@ -139,18 +139,77 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : result.status?.tone === "risk"
       ? "text-rose-300 border-rose-300/30 bg-rose-500/10"
       : "text-amber-300 border-amber-300/30 bg-amber-500/10";
+  const securityTone = isValid ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-rose-300/20 bg-rose-500/10 text-rose-100";
+  const riskSignals = (result.provenance?.timelineSummary || []).filter((item) => {
+    const verdict = String(item.result || "").toLowerCase();
+    return verdict.includes("replay") || verdict.includes("tamper") || verdict.includes("risk");
+  }).length;
+  const trustScore = Math.max(
+    0,
+    Math.min(
+      100,
+      (isValid ? 92 : 48)
+      - Math.min(30, riskSignals * 7)
+      + (result.tokenization?.status ? 4 : 0)
+      + ((result.identity?.scanCount || 0) > 3 ? 2 : 0),
+    ),
+  );
+  const trustTone =
+    trustScore >= 85 ? "text-emerald-200" : trustScore >= 65 ? "text-amber-200" : "text-rose-200";
+  const timelineCount = result.provenance?.timelineSummary?.length || 0;
+  const timelineCities = new Set((result.provenance?.timelineSummary || []).map((item) => `${item.city || "Unknown"}|${item.country || "--"}`)).size;
+  const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
+  const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
+  const statusHeadline = result.status?.tone === "good"
+    ? "Autenticidad verificada"
+    : result.status?.tone === "risk"
+      ? "Se detectaron señales de riesgo"
+      : "Validación en revisión";
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 text-slate-100 sm:py-10">
       <section className="rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.15),transparent_40%),#020617] p-4 shadow-[0_24px_70px_rgba(2,6,23,.7)] sm:p-6">
         <h1 className="text-xl font-semibold sm:text-2xl">NexID Product Passport</h1>
         <p className="mt-2 text-xs text-slate-300 sm:text-sm">Experiencia pública mobile-first tras el tap NFC: autenticidad, provenance y trazabilidad verificable.</p>
+        <section className="mt-3 rounded-2xl border border-cyan-300/25 bg-gradient-to-r from-cyan-500/10 via-indigo-500/10 to-emerald-500/10 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-base font-semibold text-white">{result.product?.name || "Producto premium"}</p>
+            <p className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-100">
+              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300" />
+              Passport live view
+            </p>
+          </div>
+          <p className="mt-1 text-xs text-slate-300">{result.product?.winery || "Bodega"} · {result.product?.region || "Región no informada"} · {result.product?.varietal || "Blend"}</p>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <span className={`rounded-full border px-2 py-0.5 ${toneClass}`}>{result.status?.label || "VALIDACIÓN"}</span>
+            <span className={`rounded-full border px-2 py-0.5 ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>Trust {trustScore}</span>
+            <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-slate-200">Scans {result.identity?.scanCount ?? "-"}</span>
+            <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-slate-200">Token {String(result.tokenization?.status || "none").toUpperCase()}</span>
+          </div>
+        </section>
 
         <section className="mt-4 grid gap-3 sm:grid-cols-2">
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-4 sm:col-span-2">
+          <article className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-4 sm:col-span-2">
             <p className="text-xs uppercase tracking-wider text-slate-400">Authenticity status</p>
-            <p className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${toneClass}`}>{result.status?.label || "Validación"}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className={`inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${toneClass}`}>{result.status?.label || "Validación"}</p>
+              <p className="text-sm font-semibold text-white">{statusIcon} {statusHeadline}</p>
+            </div>
             <p className="mt-2 text-xs text-slate-300 sm:text-sm">{result.status?.summary || "Sin resumen disponible."}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
+                <p className="uppercase tracking-[0.12em] text-slate-400">Integridad</p>
+                <p className="mt-1">{isValid ? "Consistente" : "Requiere validación manual"}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
+                <p className="uppercase tracking-[0.12em] text-slate-400">Provenance</p>
+                <p className="mt-1">{timelineCount ? `${timelineCount} eventos históricos` : "Sin eventos históricos"}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
+                <p className="uppercase tracking-[0.12em] text-slate-400">Ledger</p>
+                <p className="mt-1">{result.tokenization?.status ? `Token ${String(result.tokenization.status).toUpperCase()}` : "Sin token activo"}</p>
+              </div>
+            </div>
           </article>
           <article className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
             <p className="text-xs uppercase tracking-wider text-slate-400">BID</p>
@@ -159,6 +218,58 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           <article className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
             <p className="text-xs uppercase tracking-wider text-slate-400">UID</p>
             <p className="mt-2 break-all text-sm text-white">{uid || "(missing)"}</p>
+          </article>
+        </section>
+        <section className="mt-3 flex flex-wrap gap-2 text-[11px]">
+          <a href="#sun-timeline" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100 hover:bg-cyan-500/20">Ir a timeline</a>
+          <a href="#sun-map" className="rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1 text-indigo-100 hover:bg-indigo-500/20">Ir al mapa</a>
+          <a href="#sun-actions" className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-emerald-100 hover:bg-emerald-500/20">Ir a acciones</a>
+        </section>
+        <section className="mt-3 grid gap-2 sm:grid-cols-4">
+          <article className={`rounded-xl border p-3 text-xs ${securityTone}`}>
+            <p className="uppercase tracking-[0.12em] opacity-80">Security</p>
+            <p className="mt-1 text-sm font-semibold">{isValid ? "Tap confiable" : "Revisar tap"}</p>
+          </article>
+          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
+            <p className="uppercase tracking-[0.12em] text-slate-400">Scan count</p>
+            <p className="mt-1 text-sm font-semibold text-white">{result.identity?.scanCount ?? "-"}</p>
+          </article>
+          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
+            <p className="uppercase tracking-[0.12em] text-slate-400">Read counter</p>
+            <p className="mt-1 text-sm font-semibold text-white">{result.identity?.readCounter ?? "-"}</p>
+          </article>
+          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
+            <p className="uppercase tracking-[0.12em] text-slate-400">Tokenization</p>
+            <p className="mt-1 text-sm font-semibold text-white">{String(result.tokenization?.status || "none").toUpperCase()}</p>
+          </article>
+        </section>
+        <section className="mt-3 rounded-xl border border-cyan-300/20 bg-slate-950/70 p-3">
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <p className="uppercase tracking-[0.12em] text-slate-300">Trust score</p>
+            <p className={`font-semibold ${trustTone}`}>{trustScore}/100</p>
+          </div>
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-800">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${trustScore >= 85 ? "bg-emerald-400" : trustScore >= 65 ? "bg-amber-300" : "bg-rose-400"}`}
+              style={{ width: `${trustScore}%` }}
+            />
+          </div>
+          <p className="mt-2 text-[11px] text-slate-400">
+            Score compuesto con estado SUN, señales de riesgo en timeline, tokenización y consistencia de escaneos.
+          </p>
+        </section>
+        <section className="mt-3 grid gap-2 sm:grid-cols-3">
+          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
+            <p className="uppercase tracking-[0.12em] text-slate-400">Eventos timeline</p>
+            <p className="mt-1 text-base font-semibold text-cyan-100">{timelineCount}</p>
+          </article>
+          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
+            <p className="uppercase tracking-[0.12em] text-slate-400">Ciudades verificadas</p>
+            <p className="mt-1 text-base font-semibold text-indigo-100">{timelineCities}</p>
+          </article>
+          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
+            <p className="uppercase tracking-[0.12em] text-slate-400">Último evento</p>
+            <p className="mt-1 text-sm font-semibold text-emerald-100">{fmtDate(lastEventAt)}</p>
           </article>
         </section>
 
@@ -211,7 +322,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </article>
         </section>
 
-        <section className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <section id="sun-timeline" className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
           <p className="text-xs uppercase tracking-wider text-slate-400">Provenance timeline summary</p>
           {result.provenance?.timelineSummary?.length ? (
             <div className="mt-2">
@@ -226,7 +337,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
           ) : <EmptyState title="Sin timeline disponible" description="Aún no hay verificaciones para construir el resumen de provenance." className="mt-2" />}
         </section>
-        <section className="mt-4 rounded-xl border border-cyan-300/20 bg-slate-950/60 p-3">
+        <section id="sun-map" className="mt-4 rounded-xl border border-cyan-300/20 bg-slate-950/60 p-3">
           <p className="text-xs uppercase tracking-wider text-slate-400">Wine journey map</p>
           {mapPoints.length ? (
             <div className="mt-2">
@@ -260,7 +371,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       </section>
 
       {result.cta?.claimOwnership && bid && uid ? (
-        <section className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4">
+        <section id="sun-actions" className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4">
           <p className="text-sm font-semibold text-cyan-100">Passport actions</p>
           <p className="mt-1 text-xs text-cyan-50">Ownership, warranty, provenance y tokenización opcional.</p>
           <CtaActions bid={bid} uid={uid} />
