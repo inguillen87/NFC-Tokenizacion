@@ -674,7 +674,17 @@ export default async function GlossaryPage() {
               <PublicLinkChip
                 key={item.href}
                 href={item.href}
-                variant={item.tone === "neutral" ? "slate" : item.tone}
+                variant={
+                  item.tone === "neutral"
+                    ? "slate"
+                    : item.tone === "approved"
+                      ? "emerald"
+                      : item.tone === "avoid"
+                        ? "amber"
+                        : item.tone === "say"
+                          ? "cyan"
+                          : "slate"
+                }
                 className="uppercase tracking-[0.16em] font-semibold"
               >
                 {item.label}
