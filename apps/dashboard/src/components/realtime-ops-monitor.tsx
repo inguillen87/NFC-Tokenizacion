@@ -48,6 +48,7 @@ export function RealtimeOpsMonitor({
   const [connected, setConnected] = useState(false);
   const [lastUpdateAt, setLastUpdateAt] = useState<string>(new Date().toISOString());
   const [latestEventId, setLatestEventId] = useState<string>("");
+  const [selectedTenant, setSelectedTenant] = useState<string>("all");
 
   useEffect(() => {
     const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
@@ -81,21 +82,32 @@ export function RealtimeOpsMonitor({
     };
   }, [tenantScope]);
 
-  const mapPoints = useMemo(
-    () => events.map(toMapPoint).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng)).slice(0, 40),
+  const tenantOptions = useMemo(
+    () =>
+      [...new Set(events.map((event) => String(event.tenant_slug || event.tenantSlug || "unknown")))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
     [events]
   );
+  const visibleEvents = useMemo(
+    () => (selectedTenant === "all" ? events : events.filter((event) => String(event.tenant_slug || event.tenantSlug || "unknown") === selectedTenant)),
+    [events, selectedTenant]
+  );
+  const mapPoints = useMemo(
+    () => visibleEvents.map(toMapPoint).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng)).slice(0, 40),
+    [visibleEvents]
+  );
   const liveMetrics = useMemo(() => {
-    const valid = events.filter((item) => String(item.result || "").toUpperCase() === "VALID").length;
-    const risk = Math.max(0, events.length - valid);
-    const uniqueTags = new Set(events.map((item) => String(item.uid_hex || item.uidHex || ""))).size;
-    const uniqueCities = new Set(events.map((item) => String(item.city || (item.location as { city?: string } | undefined)?.city || "Unknown"))).size;
+    const valid = visibleEvents.filter((item) => String(item.result || "").toUpperCase() === "VALID").length;
+    const risk = Math.max(0, visibleEvents.length - valid);
+    const uniqueTags = new Set(visibleEvents.map((item) => String(item.uid_hex || item.uidHex || ""))).size;
+    const uniqueCities = new Set(visibleEvents.map((item) => String(item.city || (item.location as { city?: string } | undefined)?.city || "Unknown"))).size;
     return { valid, risk, uniqueTags, uniqueCities };
-  }, [events]);
+  }, [visibleEvents]);
   const realtimePulse = useMemo(() => {
     const now = Date.now();
     const fiveMinutesAgo = now - 5 * 60 * 1000;
-    const recent = events.filter((event) => {
+    const recent = visibleEvents.filter((event) => {
       const at = new Date(String(event.created_at || event.createdAt || "")).getTime();
       return Number.isFinite(at) && at >= fiveMinutesAgo;
     });
@@ -113,7 +125,7 @@ export function RealtimeOpsMonitor({
       .sort((a, b) => b.taps - a.taps)
       .slice(0, 4);
     return { recentCount: recent.length, tapsPerMinute, topTenants };
-  }, [events]);
+  }, [visibleEvents]);
 
   function timeAgo(value: unknown) {
     const d = new Date(String(value || ""));
@@ -130,6 +142,20 @@ export function RealtimeOpsMonitor({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.liveFeed}</h2>
           <div className="flex items-center gap-2">
+            <label className="sr-only" htmlFor="tenant-live-filter">Filtrar tenant</label>
+            <select
+              id="tenant-live-filter"
+              value={selectedTenant}
+              onChange={(event) => setSelectedTenant(event.target.value)}
+              className="rounded border border-white/20 bg-slate-900 px-2 py-1 text-[11px] text-slate-100"
+            >
+              <option value="all">Todos los tenants</option>
+              {tenantOptions.map((tenant) => (
+                <option key={tenant} value={tenant}>
+                  {tenant}
+                </option>
+              ))}
+            </select>
             <Badge tone="cyan">{labels.mission}</Badge>
             <Badge tone={connected ? "green" : "amber"}>{connected ? "Live stream" : "Reconnecting..."}</Badge>
           </div>
@@ -178,8 +204,11 @@ export function RealtimeOpsMonitor({
             {!realtimePulse.topTenants.length ? <p className="text-slate-400">Sin actividad reciente por tenant.</p> : null}
           </div>
         </div>
+        <p className="mt-2 text-[11px] text-slate-400">
+          Scope activo: <span className="font-mono text-slate-200">{selectedTenant === "all" ? "todos los tenants" : selectedTenant}</span>
+        </p>
         <div className="mt-4 space-y-2">
-          {events.slice(0, 10).map((event) => {
+          {visibleEvents.slice(0, 10).map((event) => {
             const result = String(event.result || "VALID");
             const tone = result === "VALID" ? "text-emerald-300" : "text-rose-300";
             const eventId = String(event.id || event.uid_hex || event.uidHex || event.created_at || "");
@@ -199,7 +228,7 @@ export function RealtimeOpsMonitor({
               </div>
             );
           })}
-          {!events.length ? <p className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">Sin eventos aún en el stream activo.</p> : null}
+          {!visibleEvents.length ? <p className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">Sin eventos aún en el stream activo para este tenant.</p> : null}
         </div>
       </Card>
 
