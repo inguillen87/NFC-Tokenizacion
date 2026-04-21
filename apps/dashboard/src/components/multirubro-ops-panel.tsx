@@ -214,7 +214,7 @@ export function MultirubroOpsPanel() {
       ) : null}
 
       <div className="mt-4">
-        <WorldMapPlaceholder title="Heatmap de taps en tiempo real" subtitle="Mercados grises, zonas de fraude y expansión comercial por geolocalización." points={points} />
+        <WorldMapPlaceholder title="Heatmap de taps en tiempo real" subtitle="Mercados grises, zonas de fraude y expansión comercial por geolocalización." points={points} initialExpanded />
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">

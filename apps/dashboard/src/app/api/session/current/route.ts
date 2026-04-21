@@ -58,7 +58,7 @@ export async function GET() {
       maxAge: 60 * 60 * 12,
     });
   }
-  if (!upstream.ok) {
+  if (upstream.status === 401 || upstream.status === 403) {
     response.cookies.delete(DASHBOARD_SESSION_COOKIE);
     response.cookies.delete(DASHBOARD_SESSION_SNAPSHOT_COOKIE);
   }

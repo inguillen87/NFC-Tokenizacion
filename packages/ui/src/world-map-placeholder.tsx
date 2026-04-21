@@ -41,6 +41,7 @@ export function WorldMapPlaceholder({
   onPointSelect,
   metadataRows,
   routes = [],
+  initialExpanded = false,
 }: {
   title?: string;
   subtitle?: string;
@@ -48,12 +49,13 @@ export function WorldMapPlaceholder({
   onPointSelect?: (point: GeoPoint) => void;
   metadataRows?: (point: GeoPoint) => Array<{ label: string; value: string }>;
   routes?: Array<{ fromLat: number; fromLng: number; toLat: number; toLng: number; label?: string; tone?: "info" | "warn" }>;
+  initialExpanded?: boolean;
 }) {
   const safePoints = points;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [metricMode, setMetricMode] = useState<MetricMode>("scans");
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(initialExpanded);
 
   const parseEventTime = (value?: string) => {
     if (!value) return Date.now();

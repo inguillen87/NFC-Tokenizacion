@@ -6,6 +6,7 @@ import { processSunScan } from '../../lib/sun-service';
 import { createDemoShareToken } from '../../lib/demo-share';
 import { sql } from '../../lib/db';
 import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
+import { buildLifecycleState, listDemoCta } from '../../lib/demo-cta';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
@@ -273,6 +274,27 @@ async function getTimelineSummary(bid: string, uid: string | undefined): Promise
   });
 }
 
+async function getCtaTimelineSummary(bid: string, uid: string | undefined): Promise<TimelineEvent[]> {
+  if (!uid) return [];
+  const actions = await listDemoCta(bid, uid);
+  if (!actions.length) return [];
+  const lifecycle = buildLifecycleState(bid, uid, actions);
+  return lifecycle.timeline
+    .filter((item) => item.status === "recorded" && item.at)
+    .map((item) => ({
+      at: item.at || null,
+      result: `CTA_${String(item.stage || "").toUpperCase()}`,
+      city: null,
+      country: null,
+      device: "public_cta",
+      lat: null,
+      lng: null,
+      sensorTempC: null,
+      sensorHumidity: null,
+      stage: item.stage || null,
+    }));
+}
+
 function buildDemoSensorHistory(timeline: TimelineEvent[], fallbackStorage: string | null, barrelMonths: number | null) {
   const baselineTemp = Number((fallbackStorage || "").replace(/[^\d.]/g, "")) || 16;
   const baselineHumidity = 68;
@@ -461,7 +483,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">Mapa de lectura: ${contract.iot.wineryLocation || 'Origen'} → punto de tap.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">Timeline summary</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">Tokenization</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p></section>
-  <section class="card"><h3 style="margin:0 0 6px">Acciones</h3><p class="subtitle" style="margin-bottom:10px">Flujos certificados para consumidor, postventa y trazabilidad digital.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button data-cta="claim-ownership">✓ Activar ownership</button><button data-cta="register-warranty">🛡 Registrar garantía</button><button data-cta="provenance">📍 Ver provenance</button><button data-cta="tokenize-request">⛓ Tokenización opcional</button></div></section>
+  <section class="card"><h3 style="margin:0 0 6px">Acciones</h3><p class="subtitle" style="margin-bottom:10px">Flujos certificados para consumidor, postventa y trazabilidad digital.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button data-cta="claim-ownership">✓ Activar ownership</button><button data-cta="register-warranty">🛡 Registrar garantía</button><button data-cta="provenance">📍 Ver provenance</button><button data-cta="tokenize-request">⛓ Tokenización opcional</button></div><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">Listo para ejecutar acciones firmadas.</p></section>
   <section class="card"><details><summary>Technical details</summary><p>BID: ${contract.identity.bid} · UID: ${contract.identity.uid || 'N/A'} · Read counter: ${contract.identity.readCounter ?? 'N/A'}</p><p>Raw: picc ${contract.technical.raw.piccDataPrefix} · enc ${contract.technical.raw.encPrefix} · cmac ${contract.technical.raw.cmacPrefix}</p><p>Troubleshooting: ${contract.troubleshooting.join(' | ') || 'Sin alertas'}</p></details></section>
 <script>
 (() => {
@@ -473,11 +495,40 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     button.addEventListener('click', async () => {
       const action = button.getAttribute('data-cta');
       if (!action || !share || !uid) return;
+      const statusNode = document.getElementById('cta-status');
+      const originalLabel = button.textContent || action;
+      button.disabled = true;
+      button.textContent = 'Procesando...';
+      if (statusNode) statusNode.textContent = 'Ejecutando ' + action + '...';
       const endpoint = action === 'provenance'
         ? '/public/cta/provenance?bid=' + encodeURIComponent(bid) + '&uid=' + encodeURIComponent(uid) + '&share=' + encodeURIComponent(share)
         : '/public/cta/' + action + '?share=' + encodeURIComponent(share);
-      await fetch(endpoint, action === 'provenance' ? { method: 'GET', cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bid, uid, source: 'sun_mobile_preview' }) }).catch(() => null);
-      button.textContent = 'Hecho ✓';
+      try {
+        const res = await fetch(endpoint, action === 'provenance' ? { method: 'GET', cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bid, uid, source: 'sun_mobile_preview' }) });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload?.ok) {
+          const reason = payload?.reason || ('HTTP ' + res.status);
+          button.textContent = 'Error';
+          if (statusNode) statusNode.textContent = action + ' falló: ' + reason;
+          return;
+        }
+        button.textContent = 'Hecho ✓';
+        if (statusNode) statusNode.textContent = action + ' ejecutado correctamente.';
+        if (action === 'provenance') {
+          const timeline = Array.isArray(payload?.timeline) ? payload.timeline.length : 0;
+          if (statusNode) statusNode.textContent = 'Provenance actualizado (' + timeline + ' eventos).';
+        }
+      } catch {
+        button.textContent = 'Error';
+        if (statusNode) statusNode.textContent = 'Error de red en ' + action + '. Reintentá.';
+      } finally {
+        button.disabled = false;
+        if (button.textContent === 'Error') {
+          setTimeout(() => {
+            button.textContent = originalLabel;
+          }, 2000);
+        }
+      }
     });
   });
 })();
@@ -591,13 +642,17 @@ export async function GET(req: Request): Promise<Response> {
   const ctr = typeof result.body.ctr === 'number' ? result.body.ctr : null;
   const passport = await getPassportSnapshot(bid, uid || undefined).catch(() => null);
   const timeline = await getTimelineSummary(bid, uid || undefined).catch(() => [] as TimelineEvent[]);
+  const ctaTimeline = await getCtaTimelineSummary(bid, uid || undefined).catch(() => [] as TimelineEvent[]);
+  const mergedTimeline = [...timeline, ...ctaTimeline]
+    .sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
+    .slice(0, 8);
   const contract = buildPublicContract({
     bid,
     uid,
     ctr,
     result: result.body,
     passport,
-    timeline,
+    timeline: mergedTimeline,
     raw: { picc_data, enc, cmac },
     tap: {
       userAgent: ua,
@@ -627,6 +682,11 @@ export async function GET(req: Request): Promise<Response> {
         contract.tokenization.status = "minted";
       }
     }
+  }
+
+  if ((contract.tokenization.status === "none" || !contract.tokenization.status) && ctaTimeline.some((item) => String(item.result || "").includes("TOKENIZE_REQUEST"))) {
+    contract.tokenization.status = "requested";
+    contract.tokenization.network = contract.tokenization.network || "polygon-amoy";
   }
 
   if (result.body.ok) {

@@ -32,10 +32,10 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(process.env.NEXT_PUBLIC_DASHBOARD_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.nexid.lat"),
     icons: {
       icon: [
-        { url: "/favicon.ico", type: "image/x-icon" },
         { url: "/logo-mark.svg", type: "image/svg+xml" },
+        { url: "/favicon.ico", type: "image/x-icon" },
       ],
-      shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
+      shortcut: [{ url: "/logo-mark.svg", type: "image/svg+xml" }],
       apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
     },
     openGraph: {

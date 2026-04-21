@@ -12,6 +12,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const { tenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const eventSource = source === "real" || source === "demo" || source === "imported" ? source : "";
   const bid = searchParams.get("bid") || "";
   const uid = (searchParams.get("uid") || "").toUpperCase();
   const result = (searchParams.get("result") || "").toUpperCase();
@@ -19,6 +20,7 @@ export async function GET(req: Request) {
 
   const safeLimit = Math.min(Math.max(limit, 1), 500);
   let rows: unknown[] = [];
+  let attemptRows: unknown[] = [];
   try {
     rows = tenant
       ? await sql/*sql*/`
@@ -33,7 +35,7 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${source} = '' OR e.source = ${source}::scan_source)
+          AND (${eventSource} = '' OR e.source = ${eventSource}::scan_source)
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -51,7 +53,7 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${source} = '' OR e.source = ${source}::scan_source)
+          AND (${eventSource} = '' OR e.source = ${eventSource}::scan_source)
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -68,7 +70,7 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${source} = '' OR e.source = ${source}::scan_source)
+          AND (${eventSource} = '' OR e.source = ${eventSource}::scan_source)
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -83,7 +85,7 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${source} = '' OR e.source = ${source}::scan_source)
+          AND (${eventSource} = '' OR e.source = ${eventSource}::scan_source)
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -91,7 +93,38 @@ export async function GET(req: Request) {
       `;
   }
 
-  const normalized = (rows as Array<Record<string, unknown>>).map((row) => {
+  if (source === "" || source === "attempt") {
+    try {
+      attemptRows = await sql/*sql*/`
+        SELECT
+          a.id, a.result, a.reason, NULL::text AS uid_hex, a.created_at, a.geo_city AS city, a.geo_country AS country_code, a.geo_lat AS lat, a.geo_lng AS lng,
+          NULL::integer AS read_counter, a.source, NULL::text AS device_label, a.user_agent, a.meta,
+          a.bid,
+          CASE
+            WHEN ${tenant} = 'demobodega' AND a.bid ILIKE 'DEMO-%' THEN 'demobodega'
+            ELSE 'unassigned'
+          END AS tenant_slug
+        FROM sun_scan_attempts a
+        WHERE (${bid} = '' OR a.bid = ${bid})
+          AND (
+            ${tenant} = ''
+            OR (${tenant} = 'demobodega' AND a.bid ILIKE 'DEMO-%')
+          )
+          AND (${country} = '' OR COALESCE(NULLIF(a.geo_country, ''), '--') = ${country})
+          AND a.created_at >= now() - ${rangeSql}::interval
+        ORDER BY a.created_at DESC
+        LIMIT ${safeLimit}
+      `;
+    } catch {
+      attemptRows = [];
+    }
+  }
+
+  const combinedRows = [...(rows as Array<Record<string, unknown>>), ...(attemptRows as Array<Record<string, unknown>>)]
+    .sort((a, b) => new Date(String(b.created_at || "")).getTime() - new Date(String(a.created_at || "")).getTime())
+    .slice(0, safeLimit);
+
+  const normalized = combinedRows.map((row) => {
     const sunClient = (row.meta && typeof row.meta === "object"
       ? (row.meta as { sun_context?: { client?: Record<string, unknown> } }).sun_context?.client
       : null) || {};
