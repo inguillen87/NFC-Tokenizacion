@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Card } from "@product/ui";
+import Link from "next/link";
 import { DemoOpsMap } from "./demo-ops-map";
 
 type EventRow = Record<string, unknown>;
@@ -126,6 +127,28 @@ export function RealtimeOpsMonitor({
       .slice(0, 4);
     return { recentCount: recent.length, tapsPerMinute, topTenants };
   }, [visibleEvents]);
+  const minuteBars = useMemo(() => {
+    const now = Date.now();
+    const buckets = Array.from({ length: 10 }, (_, index) => {
+      const minuteStart = now - (9 - index) * 60_000;
+      return { minuteStart, count: 0 };
+    });
+    visibleEvents.forEach((event) => {
+      const at = new Date(String(event.created_at || event.createdAt || "")).getTime();
+      if (!Number.isFinite(at)) return;
+      const diffMinutes = Math.floor((now - at) / 60_000);
+      const bucketIndex = 9 - diffMinutes;
+      if (bucketIndex < 0 || bucketIndex > 9) return;
+      buckets[bucketIndex].count += 1;
+    });
+    const max = Math.max(1, ...buckets.map((bucket) => bucket.count));
+    return buckets.map((bucket, index) => ({
+      key: `${bucket.minuteStart}-${index}`,
+      label: new Date(bucket.minuteStart).toLocaleTimeString("es-AR", { minute: "2-digit", second: "2-digit" }),
+      count: bucket.count,
+      height: Math.max(8, Math.round((bucket.count / max) * 52)),
+    }));
+  }, [visibleEvents]);
 
   function timeAgo(value: unknown) {
     const d = new Date(String(value || ""));
@@ -207,6 +230,37 @@ export function RealtimeOpsMonitor({
         <p className="mt-2 text-[11px] text-slate-400">
           Scope activo: <span className="font-mono text-slate-200">{selectedTenant === "all" ? "todos los tenants" : selectedTenant}</span>
         </p>
+        {selectedTenant !== "all" ? (
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <Link href={`/tenants/${encodeURIComponent(selectedTenant)}`} className="rounded border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100 hover:bg-cyan-500/20">
+              Ver tenant
+            </Link>
+            <Link href={`/events?tenant=${encodeURIComponent(selectedTenant)}`} className="rounded border border-indigo-300/30 bg-indigo-500/10 px-2 py-1 text-indigo-100 hover:bg-indigo-500/20">
+              Abrir eventos filtrados
+            </Link>
+            <Link href={`/tags?tenant=${encodeURIComponent(selectedTenant)}`} className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100 hover:bg-emerald-500/20">
+              Ver tags del tenant
+            </Link>
+          </div>
+        ) : null}
+        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs">
+          <div className="flex items-center justify-between">
+            <p className="font-semibold uppercase tracking-[0.12em] text-slate-200">Momentum taps (10m)</p>
+            <p className="text-[11px] text-slate-400">barras por minuto</p>
+          </div>
+          <div className="mt-2 flex items-end gap-1">
+            {minuteBars.map((bar) => (
+              <div key={bar.key} className="group flex-1">
+                <div
+                  style={{ height: `${bar.height}px` }}
+                  className={`w-full rounded-t bg-gradient-to-t transition-all duration-500 ${bar.count ? "from-cyan-500/30 to-cyan-300/80" : "from-slate-700/40 to-slate-600/40"}`}
+                  title={`${bar.label} · ${bar.count} taps`}
+                />
+                <p className="mt-1 truncate text-center text-[9px] text-slate-500">{bar.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="mt-4 space-y-2">
           {visibleEvents.slice(0, 10).map((event) => {
             const result = String(event.result || "VALID");
