@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button, Card } from "@product/ui";
 import { postAdmin } from "../lib/api";
-import { DEMO_SUPPLIER_UID_TEXT } from "../lib/demo-uids";
+import { DEMO_SUPPLIER_BATCH_ID, DEMO_SUPPLIER_UID_TEXT } from "../lib/demo-uids";
 
 type Role = "super-admin" | "tenant-admin" | "reseller" | "viewer";
 
@@ -160,21 +160,21 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
   const [batch, setBatch] = useState({
     tenantId: "demobodega",
-    batchId: "DEMO-2026-02",
+    batchId: DEMO_SUPPLIER_BATCH_ID,
     sku: "",
     quantity: "10",
     chipModel: "NTAG 424 DNA TT",
     kMetaHex: "",
     kFileHex: "",
   });
-  const [manifest, setManifest] = useState({ batchId: "DEMO-2026-02", csv: DEMO_SUPPLIER_UID_TEXT, activateImported: true });
-  const [activation, setActivation] = useState({ batchId: "DEMO-2026-02", count: "", uids: "" });
+  const [manifest, setManifest] = useState({ batchId: DEMO_SUPPLIER_BATCH_ID, csv: DEMO_SUPPLIER_UID_TEXT, activateImported: true });
+  const [activation, setActivation] = useState({ batchId: DEMO_SUPPLIER_BATCH_ID, count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
   const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
   const [pilot, setPilot] = useState({
     tenantName: "Bodega Andes Pilot",
     tenantSlug: "bodega-andes-pilot",
-    batchId: "WINE-2026-PILOT-10",
+    batchId: DEMO_SUPPLIER_BATCH_ID,
     userEmail: "ops@bodega-andes.com",
     userPassword: "Nexid!2026",
     userName: "Ops Bodega Andes",
@@ -534,7 +534,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             <textarea
               disabled={!canEdit}
               className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
-              placeholder="https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=...&enc=...&cmac=..."
+              placeholder={`https://api.nexid.lat/sun?v=1&bid=${DEMO_SUPPLIER_BATCH_ID}&picc_data=...&enc=...&cmac=...`}
               value={urlValidation.sampleUrl}
               onChange={(event) => setUrlValidation({ sampleUrl: event.target.value })}
             />
