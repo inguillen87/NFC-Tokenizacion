@@ -27,6 +27,8 @@ export type SessionRecord = {
   email: string;
   label: string;
   role: "super-admin" | "tenant-admin" | "reseller" | "viewer";
+  tenantId: string | null;
+  tenantSlug: string | null;
   permissions: string[];
   mfaVerified: boolean;
   expiresAt: string;
@@ -204,10 +206,12 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
   const parsed = parseSessionCookie(cookieValue);
   if (!parsed) return null;
   const rows = await sql/*sql*/`
-    SELECT s.id, s.user_id, s.session_token_hash, s.role::text AS role, s.permissions, s.mfa_verified, s.expires_at, s.last_seen_at, s.revoked_at,
+    SELECT s.id, s.user_id, s.session_token_hash, s.role::text AS role, s.tenant_id, s.permissions, s.mfa_verified, s.expires_at, s.last_seen_at, s.revoked_at,
+      tn.slug AS tenant_slug,
       u.email, COALESCE(u.full_name, split_part(u.email, '@', 1)) AS label
     FROM auth_sessions s
     JOIN users u ON u.id = s.user_id
+    LEFT JOIN tenants tn ON tn.id = s.tenant_id
     WHERE s.id = ${parsed.sessionId}::uuid
     LIMIT 1
   `;
@@ -235,6 +239,8 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
     email: String(session.email),
     label: String(session.label),
     role: normalizeRole(String(session.role)),
+    tenantId: session.tenant_id ? String(session.tenant_id) : null,
+    tenantSlug: session.tenant_slug ? String(session.tenant_slug) : null,
     permissions: parsePermissions(session.permissions),
     mfaVerified: Boolean(session.mfa_verified),
     rotatedCookieValue,
