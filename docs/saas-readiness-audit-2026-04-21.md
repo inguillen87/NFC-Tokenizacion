@@ -56,6 +56,13 @@ Construir una plataforma unificada donde convivan, sobre el mismo contrato de da
 - Integrar eventos físicos (replay, incidentes, activaciones, tokenización) con pipeline comercial.
 - Entregable: vistas unificadas por account (operación + revenue + soporte).
 
+
+## Avance aplicado en este ciclo (2026-04-21)
+
+- Se reemplazó el enfoque in-process-only por **realtime distribuido con Postgres LISTEN/NOTIFY** para evitar polling como camino principal.
+- Se fijó el tenant/batch canónico (`demobodega` / `DEMO-2026-02`) con 10 tags físicos de referencia para mantener consistencia demo-operación.
+- Se definió el brief de ejecución fullstack en `docs/fullstack-execution-brief-2026-04-21.md` para alinear producto, operaciones y go-to-market en una sola hoja de ruta ejecutable.
+
 ## KPI de salida a venta
 
 - **Consistencia demo:** 100% de endpoints críticos responden con corpus canónico.

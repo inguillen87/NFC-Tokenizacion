@@ -53,11 +53,10 @@ export async function GET(req: Request): Promise<Response> {
 
       send("snapshot", { rows: await fetchRows(searchParams) });
 
-      const unsubscribe = onRealtimeEvent(async (payload) => {
+      const unsubscribe = onRealtimeEvent((payload) => {
         const tenant = String(searchParams.get("tenant") || "").trim().toLowerCase();
         if (tenant && String(payload.tenant_slug || "").toLowerCase() !== tenant) return;
         send("event", payload);
-        send("snapshot", { rows: await fetchRows(searchParams) });
       });
 
       const heartbeat = setInterval(() => {
