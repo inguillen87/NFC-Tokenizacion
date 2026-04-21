@@ -28,15 +28,6 @@ function parseMeta(raw: unknown, key: string) {
   return match?.[1] || "";
 }
 
-function inferTenantScope(session: { role: string; email: string }) {
-  if (session.role !== "tenant-admin") return "";
-  const email = session.email.toLowerCase();
-  const explicit = email.match(/(?:admin|ops|tenant)[._-]([a-z0-9-]+)/)?.[1];
-  if (explicit) return explicit;
-  if (email.includes("demobodega")) return "demobodega";
-  return "";
-}
-
 function leadTenant(lead: Record<string, unknown>) {
   return (parseMeta(lead.message, "tenant") || parseMeta(lead.notes, "tenant") || String(lead.tenant_slug || "")).toLowerCase();
 }
@@ -51,7 +42,7 @@ export default async function LeadsTicketsPage({
   const sessionFilter = String(query.session || "").trim().toLowerCase();
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
-  const tenantScope = inferTenantScope(session);
+  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
 

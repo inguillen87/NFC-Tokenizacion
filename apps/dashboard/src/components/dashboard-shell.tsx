@@ -155,10 +155,10 @@ function DashboardShellInner({
         </nav>
         {isDemoMode ? (
           <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs">
-            <p className="font-semibold uppercase tracking-[0.12em] text-cyan-200">Demo fast lane</p>
+            <p className="font-semibold uppercase tracking-[0.12em] text-cyan-200">Ops quick tools</p>
             <div className="mt-2 grid gap-2">
-              <Link href="/demo-lab/encode" className="rounded-lg border border-cyan-300/25 bg-slate-950/40 px-2.5 py-2 text-cyan-100">Encode simulation</Link>
-              <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/25 bg-slate-950/40 px-2.5 py-2 text-cyan-100">Mobile scan mock</a>
+              <Link href="/demo-lab/encode" className="rounded-lg border border-cyan-300/25 bg-slate-950/40 px-2.5 py-2 text-cyan-100">Encode URL template</Link>
+              <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/25 bg-slate-950/40 px-2.5 py-2 text-cyan-100">Open mobile scan view</a>
             </div>
           </div>
         ) : null}
@@ -188,9 +188,9 @@ function DashboardShellInner({
           {isDemoMode ? (
             <div className="demo-mode-banner mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">Demo mode active · safe fallback enabled</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">Sandbox tools enabled · production-safe scope</p>
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-slate-950/40 px-3 py-1.5 text-cyan-100">Open Demo Lab</Link>
+                  <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-slate-950/40 px-3 py-1.5 text-cyan-100">Open Operations Lab</Link>
                   <Link href="/batches" className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-slate-200">Batch Ops</Link>
                 </div>
               </div>
