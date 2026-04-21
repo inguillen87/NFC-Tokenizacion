@@ -388,39 +388,72 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
 }
 
 async function forward(req: Request, path: string[]) {
+  const normalizedPath = path.join("/");
   const target = `${API_BASE}/admin/${path.join("/")}${new URL(req.url).search}`;
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
   const demoSession = isDemoSession(req);
   const allowDemoFallback = String(process.env.DASHBOARD_ALLOW_DEMO_FALLBACK || "").toLowerCase() === "true";
 
-  if (!hasAdminKey && (!demoSession || !allowDemoFallback)) {
-    return NextResponse.json(
-      {
+  const unavailable = (reason: string) => {
+    if (req.method === "GET" && normalizedPath === "analytics") {
+      return NextResponse.json({
         ok: false,
-        reason: "ADMIN_API_KEY missing. Real tenant data is disabled until admin API auth is configured.",
-        hint: "Set ADMIN_API_KEY and (optional) DASHBOARD_ALLOW_DEMO_FALLBACK=true only for demo sessions.",
-      },
-      { status: 503 },
-    );
+        reason,
+        scope: { source: "unavailable", tenant: "unknown", range: "24h", country: "all" },
+        kpis: { scans: 0, validRate: 0, invalidRate: 0, duplicates: 0, tamper: 0, activeBatches: 0, activeTenants: 0, geoRegions: 0, resellerPerformance: 0 },
+        geography: { countries: [], cities: [] },
+        devices: { os: [], browser: [], deviceType: [], timezones: [], mobileShare: 0 },
+        feed: [],
+        trend: [],
+        batchStatus: [],
+        geoPoints: [],
+        deviceSignals: [],
+        tagJourney: [],
+        products: [],
+      });
+    }
+    if (req.method === "GET" && normalizedPath === "security-alerts") {
+      return NextResponse.json({
+        ok: false,
+        reason,
+        scope: { source: "unavailable", hours: 24 },
+        summary: { repeatedInvalidUid: 0, geoVelocityAlerts: 0 },
+        repeatedInvalidUid: [],
+        geoVelocityAlerts: [],
+      });
+    }
+    if (req.method === "GET" && normalizedPath === "tokenization/requests") {
+      return NextResponse.json({ ok: false, reason, rows: [] });
+    }
+    return NextResponse.json({ ok: false, reason }, { status: 503 });
+  };
+
+  if (!hasAdminKey && (!demoSession || !allowDemoFallback)) {
+    return unavailable("ADMIN_API_KEY missing. Real tenant data is disabled until admin API auth is configured.");
   }
 
   if (demoSession && allowDemoFallback) {
     return demoAdminResponse(req.method, path, body || "", req.url);
   }
 
-  const response = await fetch(target, {
-    method: req.method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}`,
-    },
-    body,
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(target, {
+      method: req.method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}`,
+      },
+      body,
+      cache: "no-store",
+    });
+  } catch {
+    return unavailable("Admin upstream unreachable.");
+  }
 
   if (response.status === 401) {
-    return NextResponse.json({ ok: false, reason: "Unauthorized admin API key." }, { status: 401 });
+    return unavailable("Unauthorized admin API key.");
   }
 
   if (!response.ok && demoSession && allowDemoFallback) {

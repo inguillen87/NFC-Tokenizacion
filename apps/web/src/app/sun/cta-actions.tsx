@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = { bid: string; uid: string };
 type LeadIntent = "tokenization_optional";
@@ -22,6 +22,11 @@ type ProvenanceResponse = {
   timeline?: Array<{ stage?: string; status?: string; at?: string | null }>;
   commercial_signals?: Record<string, unknown>;
 };
+
+function normalizeUnknownError(error: unknown) {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return "No se pudo completar la acción por un problema de conexión. Reintentá en unos segundos.";
+}
 
 async function call(path: string, method: "POST" | "GET", payload: Record<string, unknown> | null): Promise<CallResponse> {
   const url = new URL(path, window.location.origin);
@@ -60,6 +65,53 @@ export function CtaActions({ bid, uid }: Props) {
   const [lastActionMessage, setLastActionMessage] = useState("");
   const [lastTraceId, setLastTraceId] = useState<string>("");
   const [lastRequest, setLastRequest] = useState<LastRequest | null>(null);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
+  const tokenModalRef = useRef<HTMLDivElement | null>(null);
+  const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail.trim());
+  const actionMeta: Record<Exclude<ActionKey, "tokenization">, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
+    claimOwnership: {
+      title: "Activar ownership",
+      subtitle: "Asociá el activo digital al comprador actual.",
+      icon: "✅",
+      path: "/api/public-cta/claim-ownership",
+      method: "POST",
+      tone: "border-cyan-300/40 bg-cyan-500/10 text-cyan-100",
+    },
+    registerWarranty: {
+      title: "Registrar garantía",
+      subtitle: "Guardá cobertura y fecha de activación de postventa.",
+      icon: "🛡️",
+      path: "/api/public-cta/register-warranty",
+      method: "POST",
+      tone: "border-violet-300/40 bg-violet-500/10 text-violet-100",
+    },
+    provenance: {
+      title: "Ver provenance",
+      subtitle: "Consultá timeline y señales comerciales del producto.",
+      icon: "📜",
+      path: "/api/public-cta/provenance",
+      method: "GET",
+      tone: "border-amber-300/40 bg-amber-500/10 text-amber-100",
+    },
+  };
+
+  function renderStateBadge(actionKey: ActionKey) {
+    const state = actionStates[actionKey];
+    if (state === "loading") return <span className="rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">Procesando...</span>;
+    if (state === "success") return <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">Hecho ✓</span>;
+    if (state === "error") return <span className="rounded-full border border-rose-300/40 bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-100">Error</span>;
+    return <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">Listo</span>;
+  }
+
+  function cardStateClass(actionKey: ActionKey) {
+    const state = actionStates[actionKey];
+    if (state === "loading") return "ring-1 ring-cyan-300/60 shadow-[0_0_0_1px_rgba(34,211,238,0.25)]";
+    if (state === "success") return "ring-1 ring-emerald-300/45 shadow-[0_0_0_1px_rgba(52,211,153,0.2)]";
+    if (state === "error") return "ring-1 ring-rose-300/45 shadow-[0_0_0_1px_rgba(251,113,133,0.2)]";
+    return "ring-0";
+  }
 
   useEffect(() => {
     const hasSuccess = Object.values(actionStates).some((item) => item === "success");
@@ -75,6 +127,35 @@ export function CtaActions({ bid, uid }: Props) {
     }, 5000);
     return () => clearTimeout(timeout);
   }, [actionStates]);
+
+  useEffect(() => {
+    if (!showTokenModal) return;
+    previousFocusedElementRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    emailInputRef.current?.focus();
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowTokenModal(false);
+      if (event.key !== "Tab") return;
+      const focusable = tokenModalRef.current?.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+      );
+      if (!focusable || !focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => {
+      window.removeEventListener("keydown", onEscape);
+      (previousFocusedElementRef.current || tokenActionButtonRef.current)?.focus();
+    };
+  }, [showTokenModal]);
 
   function normalizeReason(data: { reason?: string; _httpStatus?: number }) {
     const reason = String(data.reason || "").toLowerCase();
@@ -95,18 +176,25 @@ export function CtaActions({ bid, uid }: Props) {
     setLastTraceId("");
     setActionStates((current) => ({ ...current, [actionKey]: "loading" }));
     setLastRequest({ path, method, actionKey });
-    const data = await call(path, method, { bid, uid });
-    setStatus(JSON.stringify(data));
-    if (data._traceId) setLastTraceId(data._traceId);
-    const ok = Boolean(data.ok && data._httpOk);
-    setActionStates((current) => ({ ...current, [actionKey]: ok ? "success" : "error" }));
-    if (!ok) {
-      setActionError(normalizeReason(data));
-    } else {
-      setLastActionMessage("Acción completada correctamente.");
+    try {
+      const data = await call(path, method, { bid, uid });
+      setStatus(JSON.stringify(data));
+      if (data._traceId) setLastTraceId(data._traceId);
+      const ok = Boolean(data.ok && data._httpOk);
+      setActionStates((current) => ({ ...current, [actionKey]: ok ? "success" : "error" }));
+      if (!ok) {
+        setActionError(normalizeReason(data));
+      } else {
+        setLastActionMessage("Acción completada correctamente.");
+      }
+      if (method === "GET" && path.includes("provenance")) setProvenance(data as ProvenanceResponse);
+    } catch (error) {
+      setActionStates((current) => ({ ...current, [actionKey]: "error" }));
+      setActionError(normalizeUnknownError(error));
+      setStatus(JSON.stringify({ ok: false, reason: normalizeUnknownError(error) }));
+    } finally {
+      setPending(false);
     }
-    if (method === "GET" && path.includes("provenance")) setProvenance(data as ProvenanceResponse);
-    setPending(false);
   };
 
   function getButtonLabel(idleLabel: string, actionKey: ActionKey) {
@@ -118,41 +206,48 @@ export function CtaActions({ bid, uid }: Props) {
   }
 
   async function saveTokenizationLead() {
-    if (!leadEmail.trim() || actionStates.tokenization === "loading") return;
+    if (!leadEmail.trim() || !isEmailValid || actionStates.tokenization === "loading") return;
     setPending(true);
     setLeadSaved(false);
     setActionError("");
     setLastActionMessage("");
     setLastTraceId("");
     setActionStates((current) => ({ ...current, tokenization: "loading" }));
-    const leadPayload = {
-      name: "SUN visitor",
-      email: leadEmail.trim(),
-      source: "sun_validation_center",
-      vertical: "premium",
-      role: "buyer",
-      message: `Tokenization optional CTA from SUN page [bid=${bid}] [uid=${uid}] [intent=${leadIntent}]`,
-      notes: `commercial_signal=tokenization_optional | bid=${bid} | uid=${uid}`,
-    };
-    const lead = await call("/api/leads", "POST", leadPayload);
-    const tokenization = await call("/api/public-cta/tokenize-request", "POST", {
-      bid,
-      uid,
-      claim_source: "sun_cta_modal",
-      ledger_status: "simulated",
-      ledger_network: "not_selected",
-    });
-    setStatus(JSON.stringify({ lead, tokenization }));
-    if ((tokenization as CallResponse)._traceId) setLastTraceId(String((tokenization as CallResponse)._traceId));
-    setPending(false);
-    const ok = Boolean((lead as CallResponse).ok && (lead as CallResponse)._httpOk && (tokenization as CallResponse).ok && (tokenization as CallResponse)._httpOk);
-    setLeadSaved(ok);
-    setActionStates((current) => ({ ...current, tokenization: ok ? "success" : "error" }));
-    if (!ok) {
-      const reason = normalizeReason(tokenization as CallResponse) || normalizeReason(lead as CallResponse);
-      setActionError(reason);
-    } else {
-      setLastActionMessage("Interés registrado y tokenización solicitada.");
+    try {
+      const leadPayload = {
+        name: "SUN visitor",
+        email: leadEmail.trim(),
+        source: "sun_validation_center",
+        vertical: "premium",
+        role: "buyer",
+        message: `Tokenization optional CTA from SUN page [bid=${bid}] [uid=${uid}] [intent=${leadIntent}]`,
+        notes: `commercial_signal=tokenization_optional | bid=${bid} | uid=${uid}`,
+      };
+      const lead = await call("/api/leads", "POST", leadPayload);
+      const tokenization = await call("/api/public-cta/tokenize-request", "POST", {
+        bid,
+        uid,
+        claim_source: "sun_cta_modal",
+        ledger_status: "simulated",
+        ledger_network: "not_selected",
+      });
+      setStatus(JSON.stringify({ lead, tokenization }));
+      if ((tokenization as CallResponse)._traceId) setLastTraceId(String((tokenization as CallResponse)._traceId));
+      const ok = Boolean((lead as CallResponse).ok && (lead as CallResponse)._httpOk && (tokenization as CallResponse).ok && (tokenization as CallResponse)._httpOk);
+      setLeadSaved(ok);
+      setActionStates((current) => ({ ...current, tokenization: ok ? "success" : "error" }));
+      if (!ok) {
+        const reason = normalizeReason(tokenization as CallResponse) || normalizeReason(lead as CallResponse);
+        setActionError(reason);
+      } else {
+        setLastActionMessage("Interés registrado y tokenización solicitada.");
+      }
+    } catch (error) {
+      setActionStates((current) => ({ ...current, tokenization: "error" }));
+      setActionError(normalizeUnknownError(error));
+      setStatus(JSON.stringify({ ok: false, reason: normalizeUnknownError(error) }));
+    } finally {
+      setPending(false);
     }
   }
 
@@ -164,19 +259,38 @@ export function CtaActions({ bid, uid }: Props) {
   return (
     <div className="mt-4 space-y-2">
       <div className="grid gap-2 text-xs md:grid-cols-2">
-        <button disabled={pending} onClick={() => void trigger("/api/public-cta/claim-ownership", "POST", "claimOwnership")} className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-left text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60">{getButtonLabel("✅ Activar ownership", "claimOwnership")}</button>
-        <button disabled={pending} onClick={() => void trigger("/api/public-cta/register-warranty", "POST", "registerWarranty")} className="rounded-xl border border-violet-300/40 bg-violet-500/10 px-3 py-2 text-left text-violet-100 disabled:cursor-not-allowed disabled:opacity-60">{getButtonLabel("🛡️ Registrar garantía", "registerWarranty")}</button>
-        <button disabled={pending} onClick={() => void trigger("/api/public-cta/provenance", "GET", "provenance")} className="rounded-xl border border-amber-300/40 bg-amber-500/10 px-3 py-2 text-left text-amber-100 disabled:cursor-not-allowed disabled:opacity-60">{getButtonLabel("📜 Ver provenance", "provenance")}</button>
+        {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).map((key) => {
+          const item = actionMeta[key];
+          return (
+            <button
+              key={key}
+              disabled={pending}
+              onClick={() => void trigger(item.path, item.method, key)}
+              className={`rounded-xl border px-3 py-3 text-left transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} ${cardStateClass(key)}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold">{item.icon} {item.title}{actionStates[key] === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-200" /> : null}</p>
+                {renderStateBadge(key)}
+              </div>
+              <p className="mt-1 text-[11px] opacity-90">{item.subtitle}</p>
+            </button>
+          );
+        })}
         <button
+          ref={tokenActionButtonRef}
           disabled={pending}
           onClick={() => {
             setLeadIntent("tokenization_optional");
             setActionStates((current) => ({ ...current, tokenization: "idle" }));
             setShowTokenModal(true);
           }}
-          className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-2 text-left text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className={`rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-3 text-left text-emerald-100 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${cardStateClass("tokenization")}`}
         >
-          {getButtonLabel("✨ Tokenización opcional", "tokenization")}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold">✨ Tokenización opcional{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
+            {renderStateBadge("tokenization")}
+          </div>
+          <p className="mt-1 text-[11px] text-emerald-50/80">Lead comercial + request de tokenización en un solo paso.</p>
         </button>
       </div>
       <p className="text-[11px] text-slate-300">Tip: estas acciones pueden tardar unos segundos en sincronizarse con backend.</p>
@@ -204,8 +318,8 @@ export function CtaActions({ bid, uid }: Props) {
       ) : null}
       {status ? <pre className="overflow-x-auto rounded border border-white/10 bg-slate-950/70 p-2 text-[11px] text-slate-200">{status}</pre> : null}
       {showTokenModal ? (
-        <div className="rounded-xl border border-emerald-300/30 bg-slate-950/90 p-3 text-xs text-slate-200">
-          <p className="font-semibold text-emerald-100">Blockchain-ready · tokenización opcional</p>
+        <div ref={tokenModalRef} role="dialog" aria-modal="true" aria-labelledby="sun-token-modal-title" className="rounded-xl border border-emerald-300/30 bg-slate-950/90 p-3 text-xs text-slate-200">
+          <p id="sun-token-modal-title" className="font-semibold text-emerald-100">Blockchain-ready · tokenización opcional</p>
           <p className="mt-1 text-slate-300">No es un flujo crypto-first. Captura oportunidad comercial + registra TOKENIZATION_REQUESTED.</p>
           <ul className="mt-2 list-disc pl-4 text-[11px] text-slate-300">
             <li>Uso enterprise: provenance anclable, warranty ledger y ownership transfer.</li>
@@ -213,13 +327,16 @@ export function CtaActions({ bid, uid }: Props) {
             <li>Se mantiene el core: autenticidad, trazabilidad y anti-fraude.</li>
           </ul>
           <input
+            ref={emailInputRef}
             value={leadEmail}
             onChange={(event) => setLeadEmail(event.target.value)}
             placeholder="Email de contacto"
+            aria-invalid={Boolean(leadEmail.trim()) && !isEmailValid}
             className="mt-2 w-full rounded border border-white/10 bg-slate-900 px-2 py-1 text-white"
           />
+          {leadEmail.trim() && !isEmailValid ? <p className="mt-1 text-[11px] text-rose-300">Ingresá un email válido para guardar el interés.</p> : null}
           <div className="mt-2 flex gap-2">
-            <button disabled={pending || !leadEmail.trim()} onClick={() => void saveTokenizationLead()} className="rounded border border-emerald-300/40 bg-emerald-500/10 px-3 py-1 text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60">{getButtonLabel("Guardar interés", "tokenization")}</button>
+            <button disabled={pending || !leadEmail.trim() || !isEmailValid} onClick={() => void saveTokenizationLead()} className="rounded border border-emerald-300/40 bg-emerald-500/10 px-3 py-1 text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60">{getButtonLabel("Guardar interés", "tokenization")}</button>
             <button onClick={() => setShowTokenModal(false)} className="rounded border border-white/20 px-3 py-1 text-white">Cerrar</button>
           </div>
           {leadSaved ? <p className="mt-2 text-emerald-300">Interés guardado en pipeline comercial.</p> : null}

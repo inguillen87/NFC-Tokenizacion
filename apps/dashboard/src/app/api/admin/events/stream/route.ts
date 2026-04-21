@@ -12,11 +12,15 @@ function toEventPayload(raw: unknown) {
 async function fetchRows(search: URLSearchParams) {
   const upstream = new URL(`${API_BASE}/admin/events`);
   search.forEach((value, key) => upstream.searchParams.set(key, value));
+  const abort = new AbortController();
+  const timeout = setTimeout(() => abort.abort(), 4500);
   const response = await fetch(upstream.toString(), {
     headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
     cache: "no-store",
-  });
-  if (!response.ok) return { rows: [] as unknown[] };
+    signal: abort.signal,
+  }).catch(() => null);
+  clearTimeout(timeout);
+  if (!response?.ok) return { rows: [] as unknown[] };
   const data = await response.json().catch(() => null);
   return toEventPayload(data);
 }

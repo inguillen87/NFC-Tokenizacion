@@ -47,6 +47,7 @@ export function RealtimeOpsMonitor({
   const [events, setEvents] = useState<EventRow[]>(initialEvents);
   const [connected, setConnected] = useState(false);
   const [lastUpdateAt, setLastUpdateAt] = useState<string>(new Date().toISOString());
+  const [latestEventId, setLatestEventId] = useState<string>("");
 
   useEffect(() => {
     const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
@@ -62,6 +63,9 @@ export function RealtimeOpsMonitor({
       try {
         const payload = JSON.parse(event.data) as { rows?: EventRow[] };
         if (Array.isArray(payload.rows)) {
+          const incomingFirst = payload.rows[0];
+          const incomingId = incomingFirst ? String(incomingFirst.id || incomingFirst.uid_hex || incomingFirst.created_at || "") : "";
+          if (incomingId && incomingId !== latestEventId) setLatestEventId(incomingId);
           setEvents(payload.rows);
           setLastUpdateAt(new Date().toISOString());
         }
@@ -81,6 +85,44 @@ export function RealtimeOpsMonitor({
     () => events.map(toMapPoint).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng)).slice(0, 40),
     [events]
   );
+  const liveMetrics = useMemo(() => {
+    const valid = events.filter((item) => String(item.result || "").toUpperCase() === "VALID").length;
+    const risk = Math.max(0, events.length - valid);
+    const uniqueTags = new Set(events.map((item) => String(item.uid_hex || item.uidHex || ""))).size;
+    const uniqueCities = new Set(events.map((item) => String(item.city || (item.location as { city?: string } | undefined)?.city || "Unknown"))).size;
+    return { valid, risk, uniqueTags, uniqueCities };
+  }, [events]);
+  const realtimePulse = useMemo(() => {
+    const now = Date.now();
+    const fiveMinutesAgo = now - 5 * 60 * 1000;
+    const recent = events.filter((event) => {
+      const at = new Date(String(event.created_at || event.createdAt || "")).getTime();
+      return Number.isFinite(at) && at >= fiveMinutesAgo;
+    });
+    const tapsPerMinute = Math.round((recent.length / 5) * 10) / 10;
+    const byTenant = new Map<string, { taps: number; risk: number }>();
+    recent.forEach((event) => {
+      const tenant = String(event.tenant_slug || event.tenantSlug || "unknown");
+      const current = byTenant.get(tenant) || { taps: 0, risk: 0 };
+      current.taps += 1;
+      if (String(event.result || "").toUpperCase() !== "VALID") current.risk += 1;
+      byTenant.set(tenant, current);
+    });
+    const topTenants = [...byTenant.entries()]
+      .map(([tenant, stats]) => ({ tenant, ...stats }))
+      .sort((a, b) => b.taps - a.taps)
+      .slice(0, 4);
+    return { recentCount: recent.length, tapsPerMinute, topTenants };
+  }, [events]);
+
+  function timeAgo(value: unknown) {
+    const d = new Date(String(value || ""));
+    if (Number.isNaN(d.getTime())) return "justo ahora";
+    const sec = Math.max(1, Math.round((Date.now() - d.getTime()) / 1000));
+    if (sec < 60) return `hace ${sec}s`;
+    if (sec < 3600) return `hace ${Math.round(sec / 60)}m`;
+    return `hace ${Math.round(sec / 3600)}h`;
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -93,13 +135,64 @@ export function RealtimeOpsMonitor({
           </div>
         </div>
         <p className="mt-2 text-[11px] text-slate-400">Última actualización: {new Date(lastUpdateAt).toLocaleTimeString("es-AR")}</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs text-emerald-100">
+            <p className="uppercase tracking-[0.12em] text-emerald-200/80">Taps válidos</p>
+            <p className="mt-1 text-xl font-semibold">{liveMetrics.valid}</p>
+          </div>
+          <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-xs text-rose-100">
+            <p className="uppercase tracking-[0.12em] text-rose-200/80">Taps con riesgo</p>
+            <p className="mt-1 text-xl font-semibold">{liveMetrics.risk}</p>
+          </div>
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-xs text-cyan-100">
+            <p className="uppercase tracking-[0.12em] text-cyan-200/80">UIDs activas</p>
+            <p className="mt-1 text-xl font-semibold">{liveMetrics.uniqueTags}</p>
+          </div>
+          <div className="rounded-xl border border-indigo-300/25 bg-indigo-500/10 p-3 text-xs text-indigo-100">
+            <p className="uppercase tracking-[0.12em] text-indigo-200/80">Ciudades activas</p>
+            <p className="mt-1 text-xl font-semibold">{liveMetrics.uniqueCities}</p>
+          </div>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="rounded-xl border border-fuchsia-300/25 bg-fuchsia-500/10 p-3 text-xs text-fuchsia-100">
+            <p className="uppercase tracking-[0.12em] text-fuchsia-200/80">Taps últimos 5m</p>
+            <p className="mt-1 text-xl font-semibold">{realtimePulse.recentCount}</p>
+          </div>
+          <div className="rounded-xl border border-sky-300/25 bg-sky-500/10 p-3 text-xs text-sky-100">
+            <p className="uppercase tracking-[0.12em] text-sky-200/80">Velocidad (TPM)</p>
+            <p className="mt-1 text-xl font-semibold">{realtimePulse.tapsPerMinute}</p>
+          </div>
+        </div>
+        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs">
+          <p className="font-semibold uppercase tracking-[0.12em] text-slate-200">Tenants activos (últimos 5m)</p>
+          <div className="mt-2 space-y-1.5">
+            {realtimePulse.topTenants.map((tenant) => (
+              <div key={tenant.tenant} className="flex items-center justify-between rounded border border-white/10 bg-slate-950/50 px-2 py-1">
+                <p className="font-mono text-[11px] text-slate-200">{tenant.tenant}</p>
+                <p className="text-[11px] text-slate-300">
+                  taps <span className="font-semibold text-cyan-200">{tenant.taps}</span> · riesgo{" "}
+                  <span className={tenant.risk ? "font-semibold text-rose-300" : "font-semibold text-emerald-300"}>{tenant.risk}</span>
+                </p>
+              </div>
+            ))}
+            {!realtimePulse.topTenants.length ? <p className="text-slate-400">Sin actividad reciente por tenant.</p> : null}
+          </div>
+        </div>
         <div className="mt-4 space-y-2">
           {events.slice(0, 10).map((event) => {
             const result = String(event.result || "VALID");
             const tone = result === "VALID" ? "text-emerald-300" : "text-rose-300";
+            const eventId = String(event.id || event.uid_hex || event.uidHex || event.created_at || "");
+            const isLatest = latestEventId && eventId === latestEventId;
             return (
-              <div key={String(event.id)} className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm">
-                <p className={`font-semibold ${tone}`}>{result}</p>
+              <div key={eventId || String(event.id)} className={`rounded-xl border bg-slate-900/70 p-3 text-sm transition ${isLatest ? "border-cyan-300/40 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]" : "border-white/10"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className={`font-semibold ${tone}`}>{result}</p>
+                  <div className="flex items-center gap-2 text-[10px]">
+                    {isLatest ? <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-cyan-300" /> : null}
+                    <span className="text-slate-400">{timeAgo(event.created_at || event.createdAt)}</span>
+                  </div>
+                </div>
                 <p className="mt-1 text-slate-300">
                   {String(event.tenant_slug || event.tenantSlug || "-")} · {String(event.bid || "-")} · {String(event.uid_hex || event.uidHex || "-")}
                 </p>

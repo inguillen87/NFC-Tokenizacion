@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { DASHBOARD_SESSION_COOKIE } from "../../../../lib/session";
+import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "../../../../lib/session";
 import { getAccessProfiles } from "../../../../lib/access-profiles";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
@@ -29,6 +29,21 @@ function useSecureCookie(req: Request) {
   const proto = req.headers.get("x-forwarded-proto");
   if (proto) return proto.toLowerCase() === "https";
   return process.env.NODE_ENV === "production";
+}
+
+function buildSnapshot(email: string, role: string, label?: string, permissions?: string[]) {
+  return Buffer.from(
+    JSON.stringify({
+      id: `${role}-${email}`,
+      email,
+      role,
+      label: label || `${role} session`,
+      permissions: permissions || ["*"],
+      mfaVerified: true,
+      expiresAt: new Date(Date.now() + 60 * 60 * 12 * 1000).toISOString(),
+    }),
+    "utf8",
+  ).toString("base64url");
 }
 
 export async function POST(req: Request) {
@@ -61,6 +76,13 @@ export async function POST(req: Request) {
         path: "/",
         maxAge: 60 * 60 * 12,
       });
+      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (demo mode)`, ["*"]), {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: useSecureCookie(req),
+        path: "/",
+        maxAge: 60 * 60 * 12,
+      });
       return response;
     }
     return NextResponse.json({ ok: false, reason: "auth upstream unavailable" }, { status: 502 });
@@ -85,6 +107,13 @@ export async function POST(req: Request) {
         path: "/",
         maxAge: 60 * 60 * 12,
       });
+      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (demo mode)`, ["*"]), {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: useSecureCookie(req),
+        path: "/",
+        maxAge: 60 * 60 * 12,
+      });
       return response;
     }
     const status = upstream.status === 401 || upstream.status === 403 ? upstream.status : 502;
@@ -96,6 +125,13 @@ export async function POST(req: Request) {
 
   const response = NextResponse.json({ ok: true, email: data.email, role: data.role, label: data.label, permissions: data.permissions, mfaRequired: false });
   response.cookies.set(DASHBOARD_SESSION_COOKIE, data.sessionToken, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: useSecureCookie(req),
+    path: "/",
+    maxAge: 60 * 60 * 12,
+  });
+  response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(String(data.email || submittedEmail || ""), String(data.role || "viewer"), String(data.label || ""), Array.isArray(data.permissions) ? data.permissions : ["*"]), {
     httpOnly: true,
     sameSite: "lax",
     secure: useSecureCookie(req),

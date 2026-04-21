@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { UserRole } from "./dashboard-content";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
+export const DASHBOARD_SESSION_SNAPSHOT_COOKIE = "nexid_dashboard_session_snapshot";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
 export type DashboardSession = {
@@ -54,9 +55,25 @@ function parseDemoToken(token: string): DashboardSession | null {
   }
 }
 
+function parseSnapshot(raw?: string): DashboardSession | null {
+  if (!raw) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as DashboardSession & { expiresAt?: string };
+    if (!payload?.email || !payload?.role || !payload?.id) return null;
+    if (payload.expiresAt) {
+      const expMs = Date.parse(payload.expiresAt);
+      if (!Number.isNaN(expMs) && expMs < Date.now()) return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 export async function getDashboardSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
+  const snapshot = parseSnapshot(cookieStore.get(DASHBOARD_SESSION_SNAPSHOT_COOKIE)?.value);
   if (!token) {
     if (process.env.ENABLE_PUBLIC_DEMO_SESSION === "1") return demoFallbackSession();
     return null;
@@ -67,9 +84,11 @@ export async function getDashboardSession() {
     headers: { authorization: `Bearer ${token}` },
     cache: "no-store",
   }).catch(() => null);
-  if (!res?.ok) return null;
+  if (!res) return snapshot;
+  if (res.status === 401 || res.status === 403) return null;
+  if (!res.ok) return snapshot;
   const data = await res.json().catch(() => null) as { ok?: boolean; session?: DashboardSession } | null;
-  if (!data?.ok || !data.session) return null;
+  if (!data?.ok || !data.session) return snapshot;
   return data.session;
 }
 

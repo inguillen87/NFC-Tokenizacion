@@ -4,21 +4,27 @@ import { useEffect, useMemo, useState } from "react";
 import { OpsPanel, StatusChip, WorldMapPlaceholder } from "@product/ui";
 
 type AnalyticsPayload = {
+  ok?: boolean;
+  reason?: string;
   kpis?: { scans?: number; validRate?: number };
   geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }>;
 };
 
 type SecurityPayload = {
+  ok?: boolean;
+  reason?: string;
   summary?: { repeatedInvalidUid?: number; geoVelocityAlerts?: number };
   repeatedInvalidUid?: Array<{ uidHex: string; count: number; severity: string }>;
   geoVelocityAlerts?: Array<{ uidHex: string; fromCountry: string; toCountry: string; severity: string }>;
 };
 
 type TokenizationPayload = {
+  ok?: boolean;
+  reason?: string;
   rows?: Array<{ id: string; bid: string; uid_hex: string; status: string; network?: string; tx_hash?: string | null; token_id?: string | null }>;
 };
 
-type WalletPayload = { balancePol?: number; mode?: string; warning?: string };
+type WalletPayload = { ok?: boolean; reason?: string; balancePol?: number; mode?: string; warning?: string };
 
 const METADATA_TEMPLATES = [
   { vertical: "Vinos", fields: ["Nota de cata", "Temperatura de guarda", "Barrica / cosecha"] },
@@ -34,24 +40,76 @@ export function MultirubroOpsPanel() {
   const [wallet, setWallet] = useState<WalletPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [mintStatus, setMintStatus] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [lastSyncAt, setLastSyncAt] = useState<string>("");
+  const [streamOnline, setStreamOnline] = useState(false);
+
+  async function fetchJson<T>(url: string): Promise<T | null> {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      const payload = await response.json().catch(() => null);
+      if (!payload) {
+        return null;
+      }
+      if (!response.ok && typeof payload === "object") {
+        return { ...(payload as object), ok: false } as T;
+      }
+      return payload as T;
+    } catch {
+      return null;
+    }
+  }
 
   async function loadData() {
     const [a, s, t, w] = await Promise.all([
-      fetch("/api/admin/analytics?range=24h", { cache: "no-store" }).then((res) => res.json()).catch(() => null),
-      fetch("/api/admin/security-alerts?hours=24", { cache: "no-store" }).then((res) => res.json()).catch(() => null),
-      fetch("/api/admin/tokenization/requests?limit=20", { cache: "no-store" }).then((res) => res.json()).catch(() => null),
-      fetch("/api/admin/polygon/wallet", { cache: "no-store" }).then((res) => res.json()).catch(() => null),
+      fetchJson<AnalyticsPayload>("/api/admin/analytics?range=24h"),
+      fetchJson<SecurityPayload>("/api/admin/security-alerts?hours=24"),
+      fetchJson<TokenizationPayload>("/api/admin/tokenization/requests?limit=20"),
+      fetchJson<WalletPayload>("/api/admin/polygon/wallet"),
     ]);
+    const nextWarnings = [a?.reason, s?.reason, t?.reason, w?.reason].filter(Boolean) as string[];
+    setWarnings(Array.from(new Set(nextWarnings)));
     setAnalytics(a);
     setSecurity(s);
     setTokenization(t);
     setWallet(w);
+    setLastSyncAt(new Date().toISOString());
   }
 
   useEffect(() => {
     void loadData();
     const timer = setInterval(() => void loadData(), 20_000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let reconnectTimer: number | null = null;
+    let stream: EventSource | null = null;
+
+    const connect = () => {
+      if (!active || typeof window === "undefined") return;
+      stream = new EventSource("/api/admin/events/stream?limit=8");
+      setStreamOnline(true);
+      stream.addEventListener("snapshot", () => {
+        if (!active) return;
+        void loadData();
+      });
+      stream.onerror = () => {
+        setStreamOnline(false);
+        if (stream) stream.close();
+        if (!active) return;
+        reconnectTimer = window.setTimeout(connect, 7000);
+      };
+    };
+
+    connect();
+    return () => {
+      active = false;
+      setStreamOnline(false);
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      if (stream) stream.close();
+    };
   }, []);
 
   const tapsTotal = Number(analytics?.kpis?.scans || 0);
@@ -142,6 +200,18 @@ export function MultirubroOpsPanel() {
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Gas wallet Polygon<br /><b className="text-amber-200">{Number(wallet?.balancePol || 0).toFixed(3)} POL</b></div>
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Security alerts<br /><b className="text-rose-200">{Number(security?.summary?.repeatedInvalidUid || 0) + Number(security?.summary?.geoVelocityAlerts || 0)}</b></div>
       </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+        <StatusChip label={streamOnline ? "stream online" : "stream reconnecting"} tone={streamOnline ? "good" : "warn"} />
+        <span className="text-slate-400">Última sync: {lastSyncAt ? new Date(lastSyncAt).toLocaleTimeString("es-AR") : "—"}</span>
+      </div>
+      {warnings.length ? (
+        <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          <p className="font-semibold">Operación degradada (datos reales incompletos)</p>
+          <ul className="mt-1 list-disc pl-4">
+            {warnings.slice(0, 3).map((warning) => <li key={warning}>{warning}</li>)}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="mt-4">
         <WorldMapPlaceholder title="Heatmap de taps en tiempo real" subtitle="Mercados grises, zonas de fraude y expansión comercial por geolocalización." points={points} />

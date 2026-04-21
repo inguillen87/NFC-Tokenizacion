@@ -64,10 +64,20 @@ async function getTokenizationRows() {
 
 function resolveTenantStatus(scans: number, duplicates: number, tamper: number) {
   if (scans === 0) return "pending";
-  const riskRatio = scans > 0 ? (duplicates + tamper) / scans : 0;
-  if (tamper > 5 || riskRatio > 0.06) return "risk";
-  if (duplicates > 0 || tamper > 0) return "healthy";
+  if (scans < 25) return "pending";
+  const riskSignals = duplicates + tamper * 1.8;
+  const riskRatio = scans > 0 ? riskSignals / scans : 0;
+  if (tamper >= 3 || riskRatio > 0.16) return "risk";
+  if (riskRatio > 0.08) return "healthy";
   return "active";
+}
+
+function buildTenantRiskScore(scans: number, duplicates: number, tamper: number) {
+  if (scans <= 0) return 0;
+  const duplicateRatio = duplicates / scans;
+  const tamperRatio = tamper / scans;
+  const weighted = duplicateRatio * 45 + tamperRatio * 55;
+  return Math.max(0, Math.min(100, Math.round(weighted * 100)));
 }
 
 export default async function DashboardHome() {
@@ -125,9 +135,11 @@ export default async function DashboardHome() {
     const scans = Number(row.scans || 0);
     const duplicates = Number(row.duplicates || 0);
     const tamper = Number(row.tamper || 0);
+    const riskScore = buildTenantRiskScore(scans, duplicates, tamper);
     return {
       tenant: String(row.name || row.slug || "-"),
       status: resolveTenantStatus(scans, duplicates, tamper),
+      riskScore: `${riskScore}%`,
       scans: scans.toLocaleString(),
       duplicates: duplicates.toLocaleString(),
       tamper: tamper.toLocaleString(),
@@ -268,6 +280,7 @@ export default async function DashboardHome() {
         columns={[
           { key: "tenant", label: copy.tables.tenants.tenant },
           { key: "status", label: copy.tables.tenants.status },
+          { key: "riskScore", label: "Risk score" },
           { key: "scans", label: kpis.scans },
           { key: "duplicates", label: kpis.duplicates },
           { key: "tamper", label: kpis.tamper },
