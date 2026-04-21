@@ -1,4 +1,4 @@
-import { Badge, BrandDot, Button, Card, SectionHeading, WorldMapPlaceholder } from "@product/ui";
+import { Badge, BrandDot, Button, Card, SectionHeading, WorldMapRealtime } from "@product/ui";
 import Link from "next/link";
 import { HeroScene } from "./hero-scene";
 
@@ -324,7 +324,7 @@ export function RoiCredibilitySection({ content }: { content: Content }) {
           <ul className="mt-6 space-y-3 text-sm text-slate-300">
             {content.credibility.items.map((item) => <li key={item}>• {item}</li>)}
           </ul>
-          <div className="mt-6"><WorldMapPlaceholder /></div>
+          <div className="mt-6"><WorldMapRealtime /></div>
         </Card>
       </div>
     </section>

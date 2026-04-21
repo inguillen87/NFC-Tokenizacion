@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DASHBOARD_SESSION_COOKIE } from "../../lib/session";
+import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "../../lib/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
@@ -11,5 +11,6 @@ export async function GET(req: Request) {
   }
   const response = NextResponse.redirect(new URL("/login", req.url));
   response.cookies.delete(DASHBOARD_SESSION_COOKIE);
+  response.cookies.delete(DASHBOARD_SESSION_SNAPSHOT_COOKIE);
   return response;
 }

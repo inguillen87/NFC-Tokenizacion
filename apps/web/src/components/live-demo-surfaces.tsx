@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, WorldMapPlaceholder } from "@product/ui";
+import { Card, WorldMapRealtime } from "@product/ui";
 import { ProductExitLink } from "./product-exit-link";
 
 type LiveEvent = {
@@ -99,7 +99,7 @@ export function LiveDemoSurfaces() {
         <Card className="p-4"><p className="text-xs uppercase tracking-[0.14em] text-slate-400">Latency</p><p className="mt-2 text-2xl font-semibold text-cyan-300">{latency}ms</p></Card>
       </div>
 
-      <WorldMapPlaceholder title="Global live scans" subtitle="Real demo events from seeded tenant and simulated taps." points={points} />
+      <WorldMapRealtime title="Global live scans" subtitle="Real demo events from seeded tenant and simulated taps." points={points} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="demo-live-card p-5">
