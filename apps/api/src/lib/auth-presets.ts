@@ -16,29 +16,29 @@ function read(value: string | undefined, fallback: string) {
 export function getAuthPresets(): Preset[] {
   return [
     {
-      email: read(process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL, "inguillen@nexid.lat"),
-      password: read(process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD, "Marcelog2026"),
+      email: read(process.env.SUPER_ADMIN_EMAIL || process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL, "inguillen@nexid.lat"),
+      password: read(process.env.SUPER_ADMIN_PASSWORD || process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD, "Marcelog2026"),
       role: "super_admin",
       fullName: "Ignacio Guillen",
       permissions: ["users:manage", "tenants:write", "batches:write", "analytics:read", "events:read"],
     },
     {
-      email: read(process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL, "admin.demobodega@nexid.lat"),
-      password: read(process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD, "DemoBodega2026"),
+      email: read(process.env.TENANT_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL, "demobodega@nexid.lat"),
+      password: read(process.env.TENANT_ADMIN_PASSWORD || process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD, "DemoBodega2026"),
       role: "tenant_admin",
       fullName: "DemoBodega Admin",
       permissions: ["users:manage", "batches:write", "analytics:read", "events:read"],
     },
     {
-      email: read(process.env.NEXT_PUBLIC_RESELLER_EMAIL, "partner.demo@nexid.lat"),
-      password: read(process.env.NEXT_PUBLIC_RESELLER_PASSWORD, "NexidPartner2026"),
+      email: read(process.env.RESELLER_EMAIL || process.env.NEXT_PUBLIC_RESELLER_EMAIL, "partner.demo@nexid.lat"),
+      password: read(process.env.RESELLER_PASSWORD || process.env.NEXT_PUBLIC_RESELLER_PASSWORD, "NexidPartner2026"),
       role: "reseller",
       fullName: "Partner Demo",
       permissions: ["batches:write", "analytics:read", "events:read"],
     },
     {
-      email: read(process.env.NEXT_PUBLIC_GENERIC_DEMO_EMAIL, "demo@nexid.lat"),
-      password: read(process.env.NEXT_PUBLIC_GENERIC_DEMO_PASSWORD, "NexidDemo2026"),
+      email: read(process.env.GENERIC_DEMO_EMAIL || process.env.NEXT_PUBLIC_GENERIC_DEMO_EMAIL, "demo@nexid.lat"),
+      password: read(process.env.GENERIC_DEMO_PASSWORD || process.env.NEXT_PUBLIC_GENERIC_DEMO_PASSWORD, "NexidDemo2026"),
       role: "viewer",
       fullName: "Generic Demo",
       permissions: ["analytics:read", "events:read"],

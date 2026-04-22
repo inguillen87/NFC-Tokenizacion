@@ -17,7 +17,8 @@
     "demo:demobodega": "node scripts/demo-demobodega.mjs",
     "demo:seed": "node scripts/demo-demobodega.mjs",
     "contracts:compile": "hardhat compile",
-    "contracts:deploy:amoy": "hardhat run scripts/deploy-nexid-amoy.mjs --network amoy"
+    "contracts:deploy:amoy": "hardhat run scripts/deploy-nexid-amoy.mjs --network amoy",
+    "bootstrap:tenant": "node scripts/bootstrap-enterprise-tenant.mjs"
   },
   "dependencies": {
     "next": "^15.0.0",
