@@ -45,14 +45,19 @@ test('app router does not mix dynamic slug names for same route template', () =>
 
   const dirs = walk(appRoot);
   const byTemplate = new Map();
+  const examplesByTemplate = new Map();
 
   for (const rel of dirs) {
     const { template, params } = templateFromRoute(rel);
     if (!byTemplate.has(template)) byTemplate.set(template, new Map());
+    if (!examplesByTemplate.has(template)) examplesByTemplate.set(template, new Map());
     const slotMap = byTemplate.get(template);
+    const exampleSlotMap = examplesByTemplate.get(template);
 
     for (const { depth, name } of params) {
       if (!slotMap.has(depth)) slotMap.set(depth, new Set());
+      if (!exampleSlotMap.has(depth)) exampleSlotMap.set(depth, new Map());
+      if (!exampleSlotMap.get(depth).has(name)) exampleSlotMap.get(depth).set(name, rel);
       slotMap.get(depth).add(name);
     }
   }
@@ -61,7 +66,11 @@ test('app router does not mix dynamic slug names for same route template', () =>
   for (const [template, slotMap] of byTemplate.entries()) {
     for (const [depth, names] of slotMap.entries()) {
       if (names.size > 1) {
-        conflicts.push({ template, depth, names: [...names].sort() });
+        const nameList = [...names].sort();
+        const examples = nameList
+          .map((name) => `${name}=>${examplesByTemplate.get(template).get(depth).get(name)}`)
+          .join(' | ');
+        conflicts.push({ template, depth, names: nameList, examples });
       }
     }
   }
@@ -70,7 +79,7 @@ test('app router does not mix dynamic slug names for same route template', () =>
     conflicts.length,
     0,
     `Found mixed dynamic segment names:\n${conflicts
-      .map((c) => `- template=${c.template} depth=${c.depth} names=${c.names.join(', ')}`)
+      .map((c) => `- template=${c.template} depth=${c.depth} names=${c.names.join(', ')} examples=${c.examples}`)
       .join('\n')}`,
   );
 });
