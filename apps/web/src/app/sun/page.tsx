@@ -18,7 +18,17 @@ const KNOWN_ORIGIN_COORDS: Array<{ match: RegExp; lat: number; lng: number }> = 
 
 type SunContract = {
   ok?: boolean;
-  status?: { code?: string; label?: string; tone?: "good" | "warn" | "risk"; summary?: string; reason?: string };
+  status?: {
+    code?: string;
+    label?: string;
+    tone?: "good" | "warn" | "risk";
+    summary?: string;
+    reason?: string;
+    productState?: string | null;
+    tamperSupported?: boolean;
+    tamperStatus?: "CLOSED" | "OPENED" | "UNKNOWN" | string;
+    tamperReason?: string | null;
+  };
   identity?: { bid?: string | null; uid?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null };
   product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null };
   provenance?: {

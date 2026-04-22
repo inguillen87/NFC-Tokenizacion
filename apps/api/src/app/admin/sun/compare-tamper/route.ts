@@ -5,7 +5,7 @@ import { checkAdmin } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { processSunScan } from "../../../../lib/sun-service";
 
-type CompareBody = { before_url?: string; after_url?: string };
+type CompareBody = { before_url?: string; after_url?: string; closed_url?: string; opened_url?: string };
 
 function parseSunUrl(rawUrl: string) {
   const parsed = new URL(rawUrl);
@@ -36,9 +36,9 @@ export async function POST(req: Request) {
   if (auth) return auth;
 
   const body = (await req.json().catch(() => ({}))) as CompareBody;
-  const beforeUrl = String(body.before_url || "").trim();
-  const afterUrl = String(body.after_url || "").trim();
-  if (!beforeUrl || !afterUrl) return json({ ok: false, reason: "before_url and after_url required" }, 400);
+  const beforeUrl = String(body.before_url || body.closed_url || "").trim();
+  const afterUrl = String(body.after_url || body.opened_url || "").trim();
+  if (!beforeUrl || !afterUrl) return json({ ok: false, reason: "closed_url/opened_url required" }, 400);
 
   let beforeInput: ReturnType<typeof parseSunUrl>;
   let afterInput: ReturnType<typeof parseSunUrl>;
@@ -63,39 +63,33 @@ export async function POST(req: Request) {
   const encDiff = diffHex(beforeInput.encHex, afterInput.encHex);
   const possibleOffset = sdmDiff[0]?.offset ?? encDiff[0]?.offset ?? null;
 
+  const piccDiff = diffHex(String(before.picc_plain_hex || ""), String(after.picc_plain_hex || ""));
+  const sameUid = Boolean(before.uid && after.uid && String(before.uid) === String(after.uid));
+  const confidence = possibleOffset == null ? "low" : sdmDiff.length <= 2 ? "medium" : "high";
+  const recommendation = possibleOffset == null
+    ? "No stable TagTamper status candidate detected. Need more samples."
+    : `Candidate offset ${possibleOffset} detected. Validate with multi-sample compare before saving parser.`;
   return json({
     ok: true,
-    comparison: {
-      SAME_UID: Boolean(before.uid && after.uid && String(before.uid) === String(after.uid)),
-      COUNTER_INCREASED: Number(after.ctr || -1) > Number(before.ctr || -1),
-      ENC_CHANGED: encDiff.length > 0,
-      POSSIBLE_TAMPER_FIELD_FOUND: possibleOffset != null,
-      detected_closed_value: before.tamper_raw_value || null,
-      detected_open_value: after.tamper_raw_value || null,
-      recommended_tamper_status_offset: possibleOffset,
-      recommended_mapping: possibleOffset != null
-        ? { closed: [sdmDiff[0]?.before || encDiff[0]?.before || "00"], opened: [sdmDiff[0]?.after || encDiff[0]?.after || "01"] }
-        : null,
-      message: possibleOffset == null
-        ? "No TagTamper signal detected in current payload. Supplier may not have encoded TagTamper status, or physical loop may not have been broken."
-        : "Potential tamper signal found. Configure batch parser and retest.",
-    },
-    changed_bytes: {
-      decrypted_sdm: sdmDiff,
-      enc: encDiff,
-      picc_data: diffHex(beforeInput.piccDataHex, afterInput.piccDataHex),
-    },
-    before: {
-      result: before.result || null,
-      uid: before.uid || null,
-      ctr: before.ctr ?? null,
-      tamper_status: before.tamper_status || "UNKNOWN",
-    },
-    after: {
-      result: after.result || null,
-      uid: after.uid || null,
-      ctr: after.ctr ?? null,
-      tamper_status: after.tamper_status || "UNKNOWN",
+    same_uid: sameUid,
+    closed_counter: Number(before.ctr ?? -1) >= 0 ? Number(before.ctr) : null,
+    opened_counter: Number(after.ctr ?? -1) >= 0 ? Number(after.ctr) : null,
+    picc_changed_bytes: piccDiff,
+    enc_changed_bytes: sdmDiff,
+    possible_tamper_candidates: possibleOffset == null
+      ? []
+      : [{
+        offset: possibleOffset,
+        closed_value: sdmDiff[0]?.before || encDiff[0]?.before || null,
+        opened_value: sdmDiff[0]?.after || encDiff[0]?.after || null,
+      }],
+    recommendation,
+    confidence,
+    validation: {
+      closed_result: before.result || null,
+      opened_result: after.result || null,
+      closed_tamper_status: before.tamper_status || "UNKNOWN",
+      opened_tamper_status: after.tamper_status || "UNKNOWN",
     },
   });
 }

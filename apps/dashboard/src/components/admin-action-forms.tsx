@@ -259,11 +259,12 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     if (!beforeUrl || !afterUrl) return;
     setPending(true);
     try {
-      const compare = await postAdmin<unknown>("/admin/sun/compare-tamper", { before_url: beforeUrl, after_url: afterUrl });
+      const compare = await postAdmin<unknown>("/admin/sun/compare-tamper", { closed_url: beforeUrl, opened_url: afterUrl });
       const payload = (compare || {}) as ActionPayload;
       setLastResponse(payload);
       setSummary(buildSummary(payload));
-      setStatus("Tamper compare complete");
+      const recommendation = String(payload.recommendation || "");
+      setStatus(recommendation.includes("Need more samples") ? "Tamper compare complete · Need more samples" : "Tamper compare complete");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Tamper compare failed");
       setSummary([]);

@@ -26,7 +26,7 @@ type TamperProfile = {
   tamper_status_length: number | null;
   tamper_closed_values: string[];
   tamper_open_values: string[];
-  tamper_unknown_policy: "UNKNOWN" | "CLOSED_BY_DEFAULT" | "DO_NOT_DISPLAY";
+  tamper_unknown_policy: "UNKNOWN" | "DO_NOT_DISPLAY";
   tamper_notes: string;
 };
 
@@ -50,7 +50,7 @@ function resolveTamperProfile(raw: unknown): TamperProfile {
     tamper_status_length: Number.isInteger(lengthRaw) && lengthRaw > 0 ? lengthRaw : 1,
     tamper_closed_values: closed,
     tamper_open_values: opened,
-    tamper_unknown_policy: (["UNKNOWN", "CLOSED_BY_DEFAULT", "DO_NOT_DISPLAY"].includes(unknownPolicyRaw) ? unknownPolicyRaw : "UNKNOWN") as TamperProfile["tamper_unknown_policy"],
+    tamper_unknown_policy: (["UNKNOWN", "DO_NOT_DISPLAY"].includes(unknownPolicyRaw) ? unknownPolicyRaw : "UNKNOWN") as TamperProfile["tamper_unknown_policy"],
     tamper_notes: String(cfg.tamper_notes || cfg.notes || ""),
   };
 }
@@ -132,16 +132,6 @@ function resolveTamperSignal(input: { rawQuery?: Record<string, string>; meta?: 
         opened: normalized === "opened",
         tamper: true,
         raw: String(candidate),
-      };
-    }
-  }
-  if (input.tagTamperEnabled && typeof input.encPlainHex === "string" && /^[0-9a-f]{2,}$/i.test(input.encPlainHex)) {
-    const statusByte = Number.parseInt(input.encPlainHex.slice(0, 2), 16);
-    if (Number.isFinite(statusByte) && statusByte !== 0) {
-      return {
-        opened: (statusByte & 0x01) === 0x01,
-        tamper: true,
-        raw: `enc_plain_status_byte:${input.encPlainHex.slice(0, 2).toUpperCase()}`,
       };
     }
   }
@@ -413,12 +403,8 @@ export async function processSunScan(input: {
     if (!tagTamperEnabled) return "UNKNOWN" as const;
     if (tamperConfigured && configuredStatusHex && tamperProfile.tamper_open_values.includes(configuredStatusHex)) return "OPENED" as const;
     if (tamperConfigured && configuredStatusHex && tamperProfile.tamper_closed_values.includes(configuredStatusHex)) return "CLOSED" as const;
-    if (!tamperConfigured) {
-      if (tamperProfile.tamper_unknown_policy === "CLOSED_BY_DEFAULT") return "CLOSED" as const;
-      return "UNKNOWN" as const;
-    }
+    if (!tamperConfigured) return "UNKNOWN" as const;
     if (!configuredStatusHex) {
-      if (tamperProfile.tamper_unknown_policy === "CLOSED_BY_DEFAULT") return "CLOSED" as const;
       return "UNKNOWN" as const;
     }
     return "UNKNOWN" as const;
@@ -478,6 +464,7 @@ export async function processSunScan(input: {
       bid: input.bid,
       uid: res.ok ? res.uidHex : undefined,
       ctr: res.ok ? res.ctr : undefined,
+      picc_plain_hex: res.ok ? res.piccPlainHex : undefined,
       enc_plain_hex: res.ok ? res.encPlainHex : undefined,
       allowlisted,
       tag_status: tagStatus,

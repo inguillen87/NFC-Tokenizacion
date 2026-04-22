@@ -13,7 +13,7 @@ type TamperConfigBody = {
   tamper_status_length?: number | null;
   tamper_closed_values?: Array<string | number>;
   tamper_open_values?: Array<string | number>;
-  tamper_unknown_policy?: "UNKNOWN" | "CLOSED_BY_DEFAULT" | "DO_NOT_DISPLAY";
+  tamper_unknown_policy?: "UNKNOWN" | "DO_NOT_DISPLAY";
   tamper_notes?: string | null;
 };
 
@@ -37,7 +37,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
     tamper_status_length: Number.isInteger(Number(body.tamper_status_length)) ? Number(body.tamper_status_length) : 1,
     tamper_closed_values: Array.isArray(body.tamper_closed_values) ? body.tamper_closed_values.map((v) => String(v).trim().toUpperCase()).filter(Boolean) : [],
     tamper_open_values: Array.isArray(body.tamper_open_values) ? body.tamper_open_values.map((v) => String(v).trim().toUpperCase()).filter(Boolean) : [],
-    tamper_unknown_policy: ["UNKNOWN", "CLOSED_BY_DEFAULT", "DO_NOT_DISPLAY"].includes(String(body.tamper_unknown_policy || "")) ? body.tamper_unknown_policy : "UNKNOWN",
+    tamper_unknown_policy: ["UNKNOWN", "DO_NOT_DISPLAY"].includes(String(body.tamper_unknown_policy || "")) ? body.tamper_unknown_policy : "UNKNOWN",
     tamper_notes: body.tamper_notes ? String(body.tamper_notes) : null,
   };
 
