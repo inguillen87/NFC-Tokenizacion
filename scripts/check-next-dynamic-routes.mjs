@@ -3,7 +3,7 @@ import { readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const repoRoot = process.cwd();
-const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build', '.git']);
+const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build', '.git', '.vercel']);
 const DYNAMIC_SEGMENT = /^\[\.\.\.?[^\]/]+\]$|^\[[^\]/]+\]$/;
 
 function safeListDirs(dir) {
