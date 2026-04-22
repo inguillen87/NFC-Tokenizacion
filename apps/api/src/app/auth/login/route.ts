@@ -8,9 +8,25 @@ import { verifyPassword } from '../../../lib/password';
 import { auditAuthEvent, createSession, getAuthUserByEmail, normalizeRole, verifyTotpCode } from '../../../lib/iam';
 import { getRequestMeta } from '../../../lib/request-meta';
 
+function normalizeLoginEmail(rawEmail: string) {
+  const normalized = String(rawEmail || '').trim().toLowerCase();
+  if (!normalized) return '';
+  if (normalized.includes('@')) return normalized;
+
+  const aliases: Record<string, string | undefined> = {
+    'superadmin': process.env.SUPER_ADMIN_EMAIL || process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'inguillen@nexid.lat',
+    'super-admin': process.env.SUPER_ADMIN_EMAIL || process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'inguillen@nexid.lat',
+    'bodegaadmin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'demobodega@nexid.lat',
+    'bodega-admin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'demobodega@nexid.lat',
+    'tenantadmin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'demobodega@nexid.lat',
+    'tenant-admin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'demobodega@nexid.lat',
+  };
+  return String(aliases[normalized] || normalized).trim().toLowerCase();
+}
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({})) as { email?: string; password?: string; mfaCode?: string; };
-  const email = String(body.email || '').trim().toLowerCase();
+  const email = normalizeLoginEmail(String(body.email || ''));
   const password = String(body.password || '').trim();
   const mfaCode = String(body.mfaCode || '').trim();
   if (!email || !password) return json({ ok: false, reason: 'email and password required' }, 400);
