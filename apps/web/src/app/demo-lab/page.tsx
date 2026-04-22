@@ -8,7 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Demo Lab · nexID",
     openGraph: {
       title: "Demo Lab · nexID",
-      images: [{ url: `/og-image?surface=demo-lab&campaign=investor&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
+      images: [{ url: `/opengraph-image?surface=demo-lab&campaign=investor&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
