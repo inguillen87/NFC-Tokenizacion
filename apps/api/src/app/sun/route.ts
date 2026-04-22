@@ -14,6 +14,21 @@ const rateMap = new Map<string, { count: number; start: number }>();
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 const HEX_RE = /^[0-9A-F]+$/i;
 
+const SUN_PIPELINE_TIMEOUT_MS = Number(process.env.SUN_PIPELINE_TIMEOUT_MS || 8000);
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}_timeout`)), ms);
+    promise.then((value) => {
+      clearTimeout(timer);
+      resolve(value);
+    }).catch((error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
+}
+
 function sanitizePublicErrorReason(raw: string) {
   const normalized = String(raw || "").toLowerCase();
   if (!normalized) return "sun_processing_error";
@@ -772,7 +787,7 @@ export async function GET(req: Request): Promise<Response> {
 
   let result: SunResult;
   try {
-    result = await processSunScan({
+    result = await withTimeout(processSunScan({
       bid,
       piccDataHex: picc_data,
       encHex: enc,
@@ -787,7 +802,7 @@ export async function GET(req: Request): Promise<Response> {
         lng: Number.isFinite(geoLng) ? geoLng : null,
         source: 'real',
       },
-    });
+    }), SUN_PIPELINE_TIMEOUT_MS, "sun_pipeline");
   } catch (error) {
     const internalReason = error instanceof Error ? error.message : 'sun_processing_error';
     result = { status: 200, body: { ok: false, reason: sanitizePublicErrorReason(internalReason) } };
@@ -797,9 +812,9 @@ export async function GET(req: Request): Promise<Response> {
   const uid = result.body.uid || null;
   const eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
   const ctr = typeof result.body.ctr === 'number' ? result.body.ctr : null;
-  const passport = await getPassportSnapshot(bid, uid || undefined).catch(() => null);
-  const timeline = await getTimelineSummary(bid, uid || undefined).catch(() => [] as TimelineEvent[]);
-  const ctaTimeline = await getCtaTimelineSummary(bid, uid || undefined).catch(() => [] as TimelineEvent[]);
+  const passport = await withTimeout(getPassportSnapshot(bid, uid || undefined), 2500, "sun_passport_snapshot").catch(() => null);
+  const timeline = await withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]);
+  const ctaTimeline = await withTimeout(getCtaTimelineSummary(bid, uid || undefined), 2500, "sun_cta_timeline").catch(() => [] as TimelineEvent[]);
   const mergedTimeline = [...timeline, ...ctaTimeline]
     .sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
     .slice(0, 8);
