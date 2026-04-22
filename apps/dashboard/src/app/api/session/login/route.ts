@@ -5,6 +5,7 @@ import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "../
 import { getAccessProfiles } from "../../../../lib/access-profiles";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+const AUTH_UPSTREAM_TIMEOUT_MS = Number(process.env.AUTH_UPSTREAM_TIMEOUT_MS || 8000);
 
 function safeParseJson(text: string) {
   if (!text) return null;
@@ -51,12 +52,16 @@ export async function POST(req: Request) {
   const submitted = safeParseJson(body) as { email?: string; password?: string } | null;
   const submittedEmail = (submitted?.email || "").trim();
   const submittedPassword = submitted?.password || "";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AUTH_UPSTREAM_TIMEOUT_MS);
   const upstream = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "user-agent": req.headers.get("user-agent") || "dashboard" },
     body,
     cache: "no-store",
+    signal: controller.signal,
   }).catch(() => null);
+  clearTimeout(timeout);
 
   const demoProfile = findDemoProfile(submittedEmail, submittedPassword);
   if (!upstream) {
