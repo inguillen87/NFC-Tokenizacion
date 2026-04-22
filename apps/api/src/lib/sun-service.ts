@@ -76,9 +76,10 @@ export async function processSunScan(input: {
     resultValue: string;
     reasonValue: string | null;
     hasGeoValue: boolean;
-  }) {
-    const emitRealtime = () => {
+  }): Promise<number | null> {
+    const emitRealtime = (eventId?: number | null) => {
       publishRealtimeEvent({
+        id: eventId || undefined,
         tenant_slug: (batch as { tenant_slug?: string }).tenant_slug || undefined,
         bid: input.bid,
         uid_hex: payload.uidHex || undefined,
@@ -125,7 +126,7 @@ export async function processSunScan(input: {
     };
 
     try {
-      await sql/*sql*/`
+      const inserted = await sql/*sql*/`
         INSERT INTO events (
           tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, reason,
           ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
@@ -135,15 +136,17 @@ export async function processSunScan(input: {
           ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
           ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
         )
+        RETURNING id
       `;
-      emitRealtime();
-      return;
+      const eventId = Number((inserted?.[0] as { id?: number } | undefined)?.id || 0) || null;
+      emitRealtime(eventId);
+      return eventId;
     } catch (error) {
       if (!isMissingColumnError(error)) throw error;
     }
 
     try {
-      await sql/*sql*/`
+      const inserted = await sql/*sql*/`
         INSERT INTO events (
           tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
           ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
@@ -153,14 +156,16 @@ export async function processSunScan(input: {
           ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
           ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
         )
+        RETURNING id
       `;
-      emitRealtime();
-      return;
+      const eventId = Number((inserted?.[0] as { id?: number } | undefined)?.id || 0) || null;
+      emitRealtime(eventId);
+      return eventId;
     } catch (error) {
       if (!isMissingColumnError(error)) throw error;
     }
 
-    await sql/*sql*/`
+    const inserted = await sql/*sql*/`
       INSERT INTO events (
         tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
         ip, user_agent, raw_query
@@ -168,8 +173,11 @@ export async function processSunScan(input: {
         ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
         ${commonValues[9]}, ${commonValues[10]}, ${commonValues[22]}::jsonb
       )
+      RETURNING id
     `;
-    emitRealtime();
+    const eventId = Number((inserted?.[0] as { id?: number } | undefined)?.id || 0) || null;
+    emitRealtime(eventId);
+    return eventId;
   }
 
   const batchRows = await sql/*sql*/`
@@ -254,7 +262,7 @@ export async function processSunScan(input: {
 
   const hasGeo = Number.isFinite(input.context?.lat) && Number.isFinite(input.context?.lng);
 
-  await insertEvent({
+  const eventId = await insertEvent({
     uidHex: res.ok ? res.uidHex : null,
     ctr: res.ok ? res.ctr : null,
     cmacOk: res.ok,
@@ -277,6 +285,7 @@ export async function processSunScan(input: {
       allowlisted,
       tag_status: tagStatus,
       reason: resolvedReason || undefined,
+      event_id: eventId || undefined,
     },
   };
 }

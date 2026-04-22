@@ -10,7 +10,9 @@ function fallbackStream(message: string) {
       controller.enqueue(encoder.encode('event: snapshot\ndata: {"rows":[]}\n\n'));
       controller.enqueue(encoder.encode(`event: warning\ndata: ${JSON.stringify({ reason: message })}\n\n`));
       const heartbeat = setInterval(() => {
-        controller.enqueue(encoder.encode(`: ping ${Date.now()}\n\n`));
+        const now = Date.now();
+        controller.enqueue(encoder.encode(`: ping ${now}\n\n`));
+        controller.enqueue(encoder.encode(`event: heartbeat\ndata: ${JSON.stringify({ id: `hb-${now}`, ts: now })}\n\n`));
       }, 15000);
       setTimeout(() => {
         clearInterval(heartbeat);

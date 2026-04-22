@@ -782,6 +782,7 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   const uid = result.body.uid || null;
+  const eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
   const ctr = typeof result.body.ctr === 'number' ? result.body.ctr : null;
   const passport = await getPassportSnapshot(bid, uid || undefined).catch(() => null);
   const timeline = await getTimelineSummary(bid, uid || undefined).catch(() => [] as TimelineEvent[]);
@@ -854,6 +855,20 @@ export async function GET(req: Request): Promise<Response> {
     void dispatchValidScanWebhook({ event: 'tag.scan.valid', bid, uid: result.body.uid, counter: result.body.ctr, ip, userAgent: ua, geoCity, geoCountry, geoLat: Number.isFinite(geoLat) ? geoLat : null, geoLng: Number.isFinite(geoLng) ? geoLng : null, ts: new Date().toISOString() });
   }
 
+  const maskedUid = uid ? `${String(uid).slice(0, 4)}***${String(uid).slice(-4)}` : null;
+  const verdict = String(contract.status.code || result.body.result || "UNKNOWN");
+  console.info("[sun_scan]", JSON.stringify({
+    traceId,
+    route: "/sun",
+    bid,
+    uidMasked: maskedUid,
+    verdict,
+    eventId,
+    status: result.status,
+    tenant: bid.startsWith("DEMO-") ? "demobodega" : "unknown",
+    createdAt: new Date().toISOString(),
+  }));
+
   if (wantsHtml(req, url)) {
     const shareToken = uid
       ? (() => {
@@ -867,9 +882,16 @@ export async function GET(req: Request): Promise<Response> {
       : null;
     return new Response(renderSunHtml(contract, shareToken, locale), {
       status: result.status,
-      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-nexid-trace-id': traceId,
+      },
     });
   }
 
-  return json(contract, result.status);
+  const response = json(contract, result.status);
+  response.headers.set("x-nexid-trace-id", traceId);
+  if (eventId) response.headers.set("x-nexid-event-id", String(eventId));
+  return response;
 }
