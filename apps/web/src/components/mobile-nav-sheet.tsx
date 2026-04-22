@@ -87,7 +87,15 @@ export function MobileNavSheet({
             </div>
 
             <nav className="mt-4 grid flex-1 auto-rows-min content-start gap-2 overflow-y-auto pb-2">
-              {items.map((item) => (
+              <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Navegación principal</p>
+              {items.slice(0, 5).map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className="flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition-colors hover:border-cyan-300/30 hover:bg-cyan-500/10">
+                  {item.label}
+                </Link>
+              ))}
+
+              <p className="mt-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Recursos y accesos</p>
+              {items.slice(5).map((item) => (
                 <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className="flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-100 transition-colors hover:border-cyan-300/30 hover:bg-cyan-500/10">
                   {item.label}
                 </Link>

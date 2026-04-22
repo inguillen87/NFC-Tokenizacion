@@ -214,9 +214,13 @@ export default async function HomePage() {
     { label: content.nav.pricing, href: "/pricing" },
     { label: content.nav.reseller, href: "/resellers" },
     { label: content.nav.docs, href: "/docs" },
+    { label: labels.quickDemoLab, href: productExitHref.demoLab },
+    { label: labels.quickInvestor, href: productExitHref.investorSnapshot },
+    { label: labels.quickAudiences, href: "/audiences" },
+    { label: labels.quickGlossary, href: "/glossary" },
     { label: labels.quickStack, href: "/stack" },
     { label: labels.quickFaq, href: "/docs#faq" },
-    { label: labels.quickDemoLab, href: productExitHref.demoLab },
+    { label: labels.sunCta, href: "/sun" },
   ];
 
   return (
