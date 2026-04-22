@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readdirSync, statSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const appRoot = path.resolve(__dirname, '../src/app');
+
+function walk(dir, rel = '') {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  let results = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const name = entry.name;
+    if (name.startsWith('_') || name === 'node_modules') continue;
+    const childRel = rel ? `${rel}/${name}` : name;
+    results.push(childRel);
+    results = results.concat(walk(path.join(dir, name), childRel));
+  }
+  return results;
+}
+
+function normalize(segment) {
+  const match = segment.match(/^\[(.+)\]$/);
+  if (!match) return { key: segment, param: null };
+  return { key: '[]', param: match[1] };
+}
+
+function templateFromRoute(route) {
+  const segs = route.split('/');
+  const parts = [];
+  const params = [];
+  for (const seg of segs) {
+    const { key, param } = normalize(seg);
+    parts.push(key);
+    if (param) params.push({ depth: parts.length - 1, name: param });
+  }
+  return { template: parts.join('/'), params };
+}
+
+test('app router does not mix dynamic slug names for same route template', () => {
+  assert.equal(statSync(appRoot).isDirectory(), true, `missing app root: ${appRoot}`);
+
+  const dirs = walk(appRoot);
+  const byTemplate = new Map();
+
+  for (const rel of dirs) {
+    const { template, params } = templateFromRoute(rel);
+    if (!byTemplate.has(template)) byTemplate.set(template, new Map());
+    const slotMap = byTemplate.get(template);
+
+    for (const { depth, name } of params) {
+      if (!slotMap.has(depth)) slotMap.set(depth, new Set());
+      slotMap.get(depth).add(name);
+    }
+  }
+
+  const conflicts = [];
+  for (const [template, slotMap] of byTemplate.entries()) {
+    for (const [depth, names] of slotMap.entries()) {
+      if (names.size > 1) {
+        conflicts.push({ template, depth, names: [...names].sort() });
+      }
+    }
+  }
+
+  assert.equal(
+    conflicts.length,
+    0,
+    `Found mixed dynamic segment names:\n${conflicts
+      .map((c) => `- template=${c.template} depth=${c.depth} names=${c.names.join(', ')}`)
+      .join('\n')}`,
+  );
+});

@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
+import { computeRiskScore } from "../../../../lib/risk-score";
 
 const API_BASE = productUrls.api;
 const DEMO_BATCH = {
@@ -29,7 +30,7 @@ function safeParseJson(text: string) {
 
 function demoAdminResponse(method: string, path: string[], body: string, reqUrl?: string) {
   const normalized = path.join("/");
-  const url = new URL(reqUrl || `http://localhost/admin/${normalized}`);
+  const url = new URL(reqUrl || `${API_BASE}/admin/${normalized}`);
   const payload = safeParseJson(body);
   const tenantFilter = (url.searchParams.get("tenant") || "").trim().toLowerCase();
   const parseUidRows = (raw: unknown) => {
@@ -59,8 +60,8 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   }
   if (method === "GET" && normalized === "tenants") {
     const rows = [
-      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1 },
-      { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0 },
+      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: computeRiskScore({ replayRate: 0.02, invalidRate: 0.04, tamperRate: 0.01, revokedTapRate: 0.0, geoAnomalyRate: 0.02 }) },
+      { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0, risk_score: computeRiskScore({ replayRate: 0.03, invalidRate: 0.05, tamperRate: 0.0, revokedTapRate: 0.0, geoAnomalyRate: 0.01 }) },
     ];
     return NextResponse.json(rows);
   }
@@ -80,18 +81,31 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       const scans = 40 + index * 6;
       return { day, scans, duplicates: Math.max(1, Math.floor(scans * 0.08)), tamper: Math.max(0, Math.floor(scans * 0.03)) };
     });
+    const scans = trend.reduce((acc, row) => acc + row.scans, 0);
+    const duplicates = trend.reduce((acc, row) => acc + row.duplicates, 0);
+    const tamper = trend.reduce((acc, row) => acc + row.tamper, 0);
+    const invalid = duplicates + tamper;
+    const valid = Math.max(scans - invalid, 0);
+    const riskScore = computeRiskScore({
+      replayRate: scans ? duplicates / scans : 0,
+      invalidRate: scans ? invalid / scans : 0,
+      tamperRate: scans ? tamper / scans : 0,
+      revokedTapRate: 0,
+      geoAnomalyRate: 0.02,
+    });
     return NextResponse.json({
       scope: { tenant: tenantFilter || "demobodega", source: "real", range: "30d", country: "all" },
       kpis: {
-        scans: 512,
-        validRate: 92.4,
-        invalidRate: 7.6,
-        duplicates: 31,
-        tamper: 9,
+        scans,
+        validRate: scans ? Number(((valid / scans) * 100).toFixed(1)) : 0,
+        invalidRate: scans ? Number(((invalid / scans) * 100).toFixed(1)) : 0,
+        duplicates,
+        tamper,
         activeBatches: 4,
         activeTenants: 1,
         geoRegions: 6,
         resellerPerformance: 88,
+        riskScore: Number(riskScore.toFixed(1)),
       },
       geography: {
         countries: [
