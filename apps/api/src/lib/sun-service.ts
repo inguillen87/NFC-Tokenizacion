@@ -342,6 +342,7 @@ export async function processSunScan(input: {
   }
 
   const tagTamperEnabled = /tag.?tamper|tamper|tt/i.test(JSON.stringify((batch as { sdm_config?: unknown }).sdm_config || {}));
+  const requireTamperEvidence = tagTamperEnabled && String(process.env.TAGTAMPER_REQUIRE_EVIDENCE || "1") !== "0";
   const encStatusByteHex = res.ok && typeof res.encPlainHex === "string" && /^[0-9a-f]{2,}$/i.test(res.encPlainHex)
     ? res.encPlainHex.slice(0, 2).toUpperCase()
     : null;
@@ -354,6 +355,8 @@ export async function processSunScan(input: {
 
   let result = !res.ok
     ? 'INVALID'
+    : requireTamperEvidence && !tamperSignal.raw
+      ? 'TAMPER_UNVERIFIED'
     : tamperSignal.opened
       ? 'OPENED'
       : tamperSignal.tamper
@@ -368,6 +371,8 @@ export async function processSunScan(input: {
 
   const successReason = tamperSignal.opened
     ? `tagtamper_opened:${tamperSignal.raw || 'signal'}`
+    : requireTamperEvidence && !tamperSignal.raw
+      ? 'tagtamper_unverified_signal_missing'
     : tamperSignal.tamper
       ? `tagtamper_alert:${tamperSignal.raw || 'signal'}`
       : replaySuspect
@@ -405,6 +410,7 @@ export async function processSunScan(input: {
       tamper_opened: tamperSignal.opened,
       tamper_risk: tamperSignal.tamper,
       tag_tamper_config_detected: tagTamperEnabled,
+      tag_tamper_evidence_required: requireTamperEvidence,
       enc_plain_status_byte: encStatusByteHex || undefined,
       reason: resolvedReason || undefined,
       event_id: eventId || undefined,

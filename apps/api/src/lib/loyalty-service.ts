@@ -6,7 +6,7 @@ type TapEligibility = {
   reason: "awarded" | "blocked_validation" | "cooldown" | "already_awarded";
 };
 
-const BLOCKED_RESULTS = new Set(["REPLAY_SUSPECT", "INVALID", "NOT_ACTIVE", "NOT_REGISTERED", "TAMPER", "REVOKED", "BROKEN"]);
+const BLOCKED_RESULTS = new Set(["REPLAY_SUSPECT", "INVALID", "NOT_ACTIVE", "NOT_REGISTERED", "TAMPER", "TAMPER_RISK", "TAMPER_UNVERIFIED", "OPENED", "REVOKED", "BROKEN"]);
 
 export async function getTapEvent(eventId: string) {
   const rows = await sql/*sql*/`

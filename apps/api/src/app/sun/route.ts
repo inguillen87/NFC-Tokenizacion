@@ -286,6 +286,9 @@ function resolveTrustState(status: string, reason: string) {
   if (normalizedStatus === 'TAMPER_RISK' || normalizedReason.includes('tamper')) {
     return { code: 'TAMPER_RISK', label: 'Riesgo de manipulación', summary: 'Se detectaron señales de posible manipulación.', tone: 'risk' as const };
   }
+  if (normalizedStatus === 'TAMPER_UNVERIFIED' || normalizedReason.includes('unverified_signal_missing')) {
+    return { code: 'TAMPER_UNVERIFIED', label: 'TagTamper sin evidencia', summary: 'Faltan señales TT explícitas (URL/NDEF) para certificar integridad del sello.', tone: 'risk' as const };
+  }
   if (normalizedStatus === 'VALID') {
     return { code: 'VALID', label: 'Producto auténtico', summary: 'Firma SUN validada correctamente.', tone: 'good' as const };
   }
