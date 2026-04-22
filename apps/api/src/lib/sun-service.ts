@@ -16,6 +16,91 @@ export type ScanContext = {
   forceResult?: string;
 };
 
+type TamperState = "opened" | "tamper" | "closed" | null;
+
+function normalizeTamperValue(input: unknown): TamperState {
+  const raw = String(input ?? "").trim().toLowerCase();
+  if (!raw) return null;
+  if (["open", "opened", "broken", "breach", "open_loop", "loop_open", "open-circuit"].includes(raw)) return "opened";
+  if (["ttperm_open", "ttcurr_open", "perm_open", "curr_open"].includes(raw)) return "opened";
+  if (["tamper", "tampered", "alert", "alarm", "loop_alert", "suspicious"].includes(raw)) return "tamper";
+  if (["ttperm_close", "ttcurr_close", "perm_close", "curr_close"].includes(raw)) return "closed";
+  if (["0", "00", "false", "closed", "sealed", "intact", "ok", "clean", "normal"].includes(raw)) return "closed";
+  if (["1", "true"].includes(raw)) return "tamper";
+  if (/^0b[01]{1,8}$/i.test(raw)) {
+    const numeric = Number.parseInt(raw.slice(2), 2);
+    return numeric === 0 ? "closed" : (numeric & 0b1) === 1 ? "opened" : "tamper";
+  }
+  if (/^[0-9a-f]{2}$/i.test(raw)) {
+    const numeric = Number.parseInt(raw, 16);
+    if (Number.isFinite(numeric)) return numeric === 0 ? "closed" : (numeric & 0x01) === 0x01 ? "opened" : "tamper";
+  }
+  return null;
+}
+
+function resolveTamperSignal(input: { rawQuery?: Record<string, string>; meta?: Record<string, unknown> }) {
+  const query = input.rawQuery || {};
+  const nestedMeta = input.meta || {};
+  const nfcMeta = typeof nestedMeta.nfc === "object" && nestedMeta.nfc ? (nestedMeta.nfc as Record<string, unknown>) : {};
+  const candidates = [
+    query.tt_status,
+    query.ttstatus,
+    query.tt_state,
+    query.tts,
+    query.tt,
+    query.tt_hex,
+    query.tt_status_hex,
+    query.tamper_status,
+    query.tamper_state,
+    query.tamper_loop,
+    query.loop_status,
+    query.loop,
+    query.tamper,
+    query.ttpermstatus,
+    query.ttcurrstatus,
+    query.tt_perm_status,
+    query.tt_curr_status,
+    query.ttperm,
+    query.ttcurr,
+    query.opened,
+    query.open,
+    query.seal_status,
+    query.seal,
+    query.integrity,
+    input.meta?.tt_status,
+    input.meta?.ttstate,
+    input.meta?.tt,
+    input.meta?.tamper_state,
+    input.meta?.tamper_status,
+    input.meta?.tamper,
+    input.meta?.ttpermstatus,
+    input.meta?.ttcurrstatus,
+    input.meta?.tt_perm_status,
+    input.meta?.tt_curr_status,
+    input.meta?.opened,
+    input.meta?.seal_status,
+    nfcMeta.tt_status,
+    nfcMeta.tamper_status,
+    nfcMeta.tamper,
+    nfcMeta.ttpermstatus,
+    nfcMeta.ttcurrstatus,
+    nfcMeta.tt_perm_status,
+    nfcMeta.tt_curr_status,
+    nfcMeta.opened,
+  ];
+  for (const candidate of candidates) {
+    const normalized = normalizeTamperValue(candidate);
+    if (normalized && normalized !== "closed") {
+      return {
+        opened: normalized === "opened",
+        tamper: normalized !== "closed",
+        raw: String(candidate),
+      };
+    }
+  }
+  return { opened: false, tamper: false, raw: null as string | null };
+}
+
 export async function processSunScan(input: {
   bid: string;
   piccDataHex: string;
@@ -246,8 +331,14 @@ export async function processSunScan(input: {
     }
   }
 
+  const tamperSignal = resolveTamperSignal({ rawQuery: input.rawQuery, meta: input.context?.meta });
+
   let result = !res.ok
     ? 'INVALID'
+    : tamperSignal.opened
+      ? 'OPENED'
+      : tamperSignal.tamper
+        ? 'TAMPER_RISK'
     : replaySuspect
       ? 'REPLAY_SUSPECT'
       : !allowlisted
@@ -256,7 +347,13 @@ export async function processSunScan(input: {
         ? 'NOT_ACTIVE'
         : 'VALID';
 
-  const successReason = replaySuspect ? 'copied URL / replay suspected' : null;
+  const successReason = tamperSignal.opened
+    ? `tagtamper_opened:${tamperSignal.raw || 'signal'}`
+    : tamperSignal.tamper
+      ? `tagtamper_alert:${tamperSignal.raw || 'signal'}`
+      : replaySuspect
+        ? 'copied URL / replay suspected'
+        : null;
   const resolvedReason = !res.ok ? res.reason : successReason;
 
   if (input.context?.forceResult) result = input.context.forceResult;
@@ -285,6 +382,9 @@ export async function processSunScan(input: {
       enc_plain_hex: res.ok ? res.encPlainHex : undefined,
       allowlisted,
       tag_status: tagStatus,
+      tamper_signal: tamperSignal.raw || undefined,
+      tamper_opened: tamperSignal.opened,
+      tamper_risk: tamperSignal.tamper,
       reason: resolvedReason || undefined,
       event_id: eventId || undefined,
     },
