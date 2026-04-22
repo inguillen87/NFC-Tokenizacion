@@ -49,6 +49,7 @@ export default async function HomePage() {
       rolloutPricing: "See rollout pricing",
       mobileCtaDemo: "Book demo",
       mobileCtaDocs: "Docs",
+      mobileCtaLogin: "Sign in",
       intentTitle: "Choose your path",
       intentCards: [
         { title: "Use it in my company", body: "See rollout, chip profiles and operating model.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
@@ -95,6 +96,7 @@ export default async function HomePage() {
       rolloutPricing: "Ver pricing rollout",
       mobileCtaDemo: "Agendar demo",
       mobileCtaDocs: "Docs",
+      mobileCtaLogin: "Entrar",
       intentTitle: "Escolha seu caminho",
       intentCards: [
         { title: "Usar na minha empresa", body: "Veja rollout, perfis de chip e operação.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
@@ -140,6 +142,7 @@ export default async function HomePage() {
       rolloutPricing: "Ver pricing rollout",
       mobileCtaDemo: "Agendar demo",
       mobileCtaDocs: "Docs",
+      mobileCtaLogin: "Ingresar",
       intentTitle: "Elegí tu camino",
       intentCards: [
         { title: "Usarlo en mi empresa", body: "Mirá rollout, perfiles de chip y modelo operativo.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
@@ -204,6 +207,8 @@ export default async function HomePage() {
         ],
       };
 
+  const loginHref = `${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`;
+
   const mobileNavItems = [
     { label: content.nav.product, href: "/" },
     { label: content.nav.pricing, href: "/pricing" },
@@ -211,14 +216,16 @@ export default async function HomePage() {
     { label: content.nav.docs, href: "/docs" },
     { label: labels.quickStack, href: "/stack" },
     { label: labels.quickFaq, href: "/docs#faq" },
+    { label: labels.quickDemoLab, href: productExitHref.demoLab },
   ];
 
   return (
     <main>
-      <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl">
-        <div className="container-shell header-main-row flex h-24 items-center justify-between gap-6 lg:h-28">
+      <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
+        <div className="container-shell header-main-row flex h-20 items-center justify-between gap-3 sm:h-24 lg:h-28">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand" />
+            <BrandLockup size={56} variant="ripple" theme="dark" className="hero-brand site-main-brand sm:hidden" />
+            <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand hidden sm:inline-flex" />
           </Link>
 
           <nav className="hidden gap-6 text-sm md:flex site-nav">
@@ -231,13 +238,23 @@ export default async function HomePage() {
           </nav>
 
           <div className="header-actions flex items-center gap-2">
-            <MobileNavSheet items={mobileNavItems} />
-            <LocaleSwitcher value={locale} options={[...locales]} />
-            <ThemeToggle />
+            <MobileNavSheet
+              items={mobileNavItems}
+              loginHref={loginHref}
+              loginLabel={content.nav.cta}
+              primaryCtaHref="/?contact=demo#contact-modal"
+              primaryCtaLabel={labels.mobileCtaDemo}
+            />
+            <div className="hidden md:inline-flex">
+              <LocaleSwitcher value={locale} options={[...locales]} />
+            </div>
+            <div className="hidden md:inline-flex">
+              <ThemeToggle />
+            </div>
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`} className="hidden sm:inline-flex">
+            <a href={loginHref} className="hidden sm:inline-flex">
               <Button variant="secondary">{content.nav.cta}</Button>
             </a>
           </div>
@@ -246,7 +263,7 @@ export default async function HomePage() {
 
 
 
-      <section className="container-shell quick-links-section py-3">
+      <section className="container-shell quick-links-section hidden py-3 md:block">
         <div className="quick-links-wrap rounded-xl border border-white/10 bg-slate-900/55 p-2 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_18px_45px_rgba(8,15,30,0.35)]">
           <div className="quick-links-scroll flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs">
             <span className="inline-flex items-center gap-1 px-2 py-1 font-semibold text-cyan-300"><Sparkles className="h-3.5 w-3.5" />{labels.quickNavTitle}</span>
@@ -257,6 +274,14 @@ export default async function HomePage() {
             <PublicLinkChip href="/audiences" variant="violet" className="quick-link-chip">{labels.quickAudiences}</PublicLinkChip>
             <PublicLinkChip href={productExitHref.demoLab} variant="amber" icon={<CirclePlay className="h-3.5 w-3.5" />} className="quick-link-chip">{labels.quickDemoLab}</PublicLinkChip>
           </div>
+        </div>
+      </section>
+
+      <section className="container-shell pb-2 md:hidden">
+        <div className="grid grid-cols-3 gap-2">
+          <Link href="/docs" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
+          <Link href="/pricing" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-medium text-slate-100">{content.nav.pricing}</Link>
+          <Link href="/?contact=demo#contact-modal" className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-center text-xs font-medium text-cyan-100">{labels.mobileCtaDemo}</Link>
         </div>
       </section>
 
@@ -387,10 +412,11 @@ export default async function HomePage() {
         </div>
       </footer>
 
-      <div className="fixed inset-x-0 bottom-3 z-40 px-4 pb-[max(env(safe-area-inset-bottom),0px)] md:hidden">
-        <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
-          <Link href="/docs" className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center text-sm font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
-          <Link href="/?contact=demo#contact-modal" className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-3 text-sm font-medium text-cyan-100">{labels.mobileCtaDemo}<ArrowRight className="h-4 w-4" /></Link>
+      <div className="fixed inset-x-0 bottom-3 z-40 px-3 pb-[max(env(safe-area-inset-bottom),0px)] md:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-3 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
+          <Link href="/docs" className="flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center text-xs font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
+          <Link href="/?contact=demo#contact-modal" className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-xs font-medium text-cyan-100">{labels.mobileCtaDemo}<ArrowRight className="h-4 w-4" /></Link>
+          <a href={loginHref} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-xs font-semibold text-emerald-100">{labels.mobileCtaLogin}</a>
         </div>
       </div>
       <PwaInstallPrompt />
