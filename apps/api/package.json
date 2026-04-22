@@ -16,8 +16,12 @@
     "prisma:seed": "node prisma/seed.mjs",
     "demo:demobodega": "node scripts/demo-demobodega.mjs",
     "demo:seed": "node scripts/demo-demobodega.mjs",
+    "test:loyalty": "node --test tests/loyalty-rules.test.mjs",
     "contracts:compile": "hardhat compile",
-    "contracts:deploy:amoy": "hardhat run scripts/deploy-nexid-amoy.mjs --network amoy"
+    "contracts:deploy:amoy": "hardhat run scripts/deploy-nexid-amoy.mjs --network amoy",
+    "bootstrap:tenant": "node scripts/bootstrap-enterprise-tenant.mjs",
+    "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
+    "test:sun": "node --test tests/sun-error-sanitization.test.mjs"
   },
   "dependencies": {
     "next": "^15.0.0",
