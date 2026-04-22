@@ -14,6 +14,18 @@ const rateMap = new Map<string, { count: number; start: number }>();
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 const HEX_RE = /^[0-9A-F]+$/i;
 
+function sanitizePublicErrorReason(raw: string) {
+  const normalized = String(raw || "").toLowerCase();
+  if (!normalized) return "sun_processing_error";
+  if (normalized.includes("database_url") || normalized.includes("connect") || normalized.includes("neon")) {
+    return "sun_processing_temporarily_unavailable";
+  }
+  if (normalized.includes("polygon") || normalized.includes("rpc") || normalized.includes("tokenization")) {
+    return "tokenization_temporarily_unavailable";
+  }
+  return "sun_processing_error";
+}
+
 type SunResult = Awaited<ReturnType<typeof processSunScan>>;
 
 type PassportSnapshot = {
@@ -777,8 +789,9 @@ export async function GET(req: Request): Promise<Response> {
       },
     });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'sun_processing_error';
-    result = { status: 200, body: { ok: false, reason: `sun_processing_error: ${reason}` } };
+    const internalReason = error instanceof Error ? error.message : 'sun_processing_error';
+    result = { status: 200, body: { ok: false, reason: sanitizePublicErrorReason(internalReason) } };
+    console.error("[sun_scan_error]", JSON.stringify({ traceId, bid, reason: internalReason }));
   }
 
   const uid = result.body.uid || null;
@@ -834,7 +847,7 @@ export async function GET(req: Request): Promise<Response> {
         contract.tokenization.status = "mint_failed";
         contract.troubleshooting = [
           ...contract.troubleshooting,
-          `Tokenización automática falló (${mintReason}).`,
+          `Tokenización automática falló (${sanitizePublicErrorReason(mintReason)}).`,
           "Revisá balance de gas, RPC de Polygon y clave minter en variables de entorno.",
         ];
       } else if (autoMint.ok === true && "status" in autoMint && String(autoMint.status || "") === "anchored") {
