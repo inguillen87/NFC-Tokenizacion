@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { OpsPanel, StatusChip, WorldMapRealtime } from "@product/ui";
 
 type AnalyticsPayload = {
@@ -43,6 +43,8 @@ export function MultirubroOpsPanel() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [lastSyncAt, setLastSyncAt] = useState<string>("");
   const [streamOnline, setStreamOnline] = useState(false);
+  const streamOnlineRef = useRef(false);
+  const [demoActionStatus, setDemoActionStatus] = useState("");
 
   async function fetchJson<T>(url: string): Promise<T | null> {
     try {
@@ -78,7 +80,9 @@ export function MultirubroOpsPanel() {
 
   useEffect(() => {
     void loadData();
-    const timer = setInterval(() => void loadData(), 20_000);
+    const timer = setInterval(() => {
+      if (!streamOnlineRef.current) void loadData();
+    }, 60_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -91,12 +95,14 @@ export function MultirubroOpsPanel() {
       if (!active || typeof window === "undefined") return;
       stream = new EventSource("/api/admin/events/stream?limit=8");
       setStreamOnline(true);
+      streamOnlineRef.current = true;
       stream.addEventListener("snapshot", () => {
         if (!active) return;
         void loadData();
       });
       stream.onerror = () => {
         setStreamOnline(false);
+        streamOnlineRef.current = false;
         if (stream) stream.close();
         if (!active) return;
         reconnectTimer = window.setTimeout(connect, 7000);
@@ -107,6 +113,7 @@ export function MultirubroOpsPanel() {
     return () => {
       active = false;
       setStreamOnline(false);
+      streamOnlineRef.current = false;
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
       if (stream) stream.close();
     };
@@ -129,6 +136,22 @@ export function MultirubroOpsPanel() {
     () => (tokenization?.rows || []).find((row) => String(row.status || "").toLowerCase() === "pending"),
     [tokenization?.rows]
   );
+
+
+  async function runDemoAction(path: string, success: string) {
+    setBusy(true);
+    setDemoActionStatus("");
+    const response = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store" })
+      .then((r) => r.json())
+      .catch(() => ({ ok: false, reason: "network_error" }));
+    setBusy(false);
+    if (!response?.ok) {
+      setDemoActionStatus(`Demo action failed: ${String(response?.reason || "unknown_error")}`);
+      return;
+    }
+    setDemoActionStatus(success);
+    void loadData();
+  }
 
   async function handleMassMint() {
     if (!pendingMint?.id) {
@@ -216,6 +239,18 @@ export function MultirubroOpsPanel() {
       <div className="mt-4">
         <WorldMapRealtime title="Heatmap de taps en tiempo real" subtitle="Mercados grises, zonas de fraude y expansión comercial por geolocalización." points={points} initialExpanded />
       </div>
+      {!points.length ? (
+        <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
+          <p className="font-semibold">Sin puntos en el heatmap todavía.</p>
+          <p className="mt-1 text-cyan-50/90">Podés generar actividad demo para validar KPI, feed y mapa en menos de 30s.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button onClick={() => void runDemoAction('/api/internal/demo/seed', 'Seed demo ejecutada correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Seed demo</button>
+            <button onClick={() => void runDemoAction('/api/internal/demo/generate-live-scans', 'Scans demo generados.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Generate live scans</button>
+            <button onClick={() => void runDemoAction('/api/internal/demo/simulate-tap', 'Tap simulado correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Simulate tap</button>
+          </div>
+          {demoActionStatus ? <p className="mt-2 text-[11px] text-cyan-100">{demoActionStatus}</p> : null}
+        </div>
+      ) : null}
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">

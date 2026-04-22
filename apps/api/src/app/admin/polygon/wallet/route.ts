@@ -11,15 +11,16 @@ export async function GET(req: Request): Promise<Response> {
   const rpcUrl = String(process.env.POLYGON_RPC_URL || "").trim();
   const walletAddress = String(process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
   const simulated = Number(process.env.POLYGON_SIM_GAS_AVAILABLE || "0");
+  const mode = String(process.env.TOKENIZATION_MODE || "simulated").trim().toLowerCase();
 
-  if (!rpcUrl || !walletAddress) {
+  if (mode === "simulated" || !rpcUrl || !walletAddress) {
     return json({
       ok: true,
       network: "polygon-amoy",
       wallet: walletAddress || null,
       balancePol: simulated || 0,
       mode: "simulated",
-      warning: "POLYGON_RPC_URL or POLYGON_DEFAULT_RECIPIENT missing",
+      warning: mode === "simulated" ? "TOKENIZATION_MODE=simulated" : "POLYGON_RPC_URL or POLYGON_DEFAULT_RECIPIENT missing",
     });
   }
 
@@ -38,7 +39,7 @@ export async function GET(req: Request): Promise<Response> {
       network: "polygon-amoy",
       wallet: walletAddress,
       balancePol: Number(balance.toFixed(6)),
-      mode: "live",
+      mode: "polygon",
     });
   } catch (error) {
     return json({
