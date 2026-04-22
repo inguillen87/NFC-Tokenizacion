@@ -425,6 +425,10 @@ export async function processSunScan(input: {
   })();
   let result = !res.ok
     ? 'INVALID'
+    : tamperSignal.opened
+      ? 'OPENED'
+      : tamperSignal.tamper
+        ? 'TAMPER_RISK'
     : replaySuspect
       ? 'REPLAY_SUSPECT'
       : !allowlisted
