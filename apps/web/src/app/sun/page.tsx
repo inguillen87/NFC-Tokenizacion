@@ -18,7 +18,17 @@ const KNOWN_ORIGIN_COORDS: Array<{ match: RegExp; lat: number; lng: number }> = 
 
 type SunContract = {
   ok?: boolean;
-  status?: { code?: string; label?: string; tone?: "good" | "warn" | "risk"; summary?: string; reason?: string };
+  status?: {
+    code?: string;
+    label?: string;
+    tone?: "good" | "warn" | "risk";
+    summary?: string;
+    reason?: string;
+    productState?: string | null;
+    tamperSupported?: boolean;
+    tamperStatus?: "CLOSED" | "OPENED" | "UNKNOWN" | string;
+    tamperReason?: string | null;
+  };
   identity?: { bid?: string | null; uid?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null };
   product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null };
   provenance?: {
@@ -53,7 +63,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "SUN Passport · nexID",
     openGraph: {
       title: "SUN Passport · nexID",
-      images: [{ url: `/og-image?surface=sun&campaign=enterprise&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
+      images: [{ url: `/opengraph-image?surface=sun&campaign=enterprise&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
@@ -160,11 +170,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const timelineCities = new Set((result.provenance?.timelineSummary || []).map((item) => `${item.city || "Unknown"}|${item.country || "--"}`)).size;
   const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
   const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
-  const statusHeadline = result.status?.tone === "good"
-    ? "Autenticidad verificada"
-    : result.status?.tone === "risk"
-      ? "Se detectaron señales de riesgo"
-      : "Validación en revisión";
+  const productState = String(result.status?.productState || "").toUpperCase();
+  const statusHeadline = productState === "VALID_CLOSED"
+    ? "Producto auténtico. Sello intacto."
+    : productState === "VALID_OPENED" || productState === "TAMPER_RISK"
+      ? "Producto auténtico, pero el sello fue abierto."
+      : productState === "VALID_UNKNOWN_TAMPER"
+        ? "Producto auténtico. Estado de apertura no disponible para este lote."
+        : result.status?.code === "REPLAY_SUSPECT"
+          ? "URL reutilizada. Escaneá físicamente la etiqueta para generar una nueva lectura."
+          : result.status?.tone === "good"
+            ? "Autenticidad verificada"
+            : result.status?.tone === "risk"
+              ? "Se detectaron señales de riesgo"
+              : "Validación en revisión";
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 text-slate-100 sm:py-10">
@@ -199,7 +218,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
                 <p className="uppercase tracking-[0.12em] text-slate-400">Integridad</p>
-                <p className="mt-1">{isValid ? "Consistente" : "Requiere validación manual"}</p>
+                <p className="mt-1">
+                  {productState === "VALID_OPENED" || productState === "TAMPER_RISK"
+                    ? "Producto auténtico, pero el sello fue abierto"
+                    : productState === "VALID_UNKNOWN_TAMPER"
+                      ? "TagTamper chip is present, but open/closed status is not configured or not present in the current SUN/SDM payload."
+                      : isValid ? "Consistente" : "Requiere validación manual"}
+                </p>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
                 <p className="uppercase tracking-[0.12em] text-slate-400">Provenance</p>
@@ -373,18 +398,24 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       {result.cta?.claimOwnership && bid && uid ? (
         <section id="sun-actions" className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4">
           <p className="text-sm font-semibold text-cyan-100">Passport actions</p>
-          <p className="mt-1 text-xs text-cyan-50">Ownership, warranty, provenance y tokenización opcional.</p>
+          <p className="mt-1 text-xs text-cyan-50">Crear mi NexID Passport, guardar este producto y sumar puntos con esta marca.</p>
           <CtaActions bid={bid} uid={uid} />
           <div className="mt-3 grid gap-2 text-[11px] text-cyan-100 sm:grid-cols-2">
             <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 hover:bg-cyan-500/20" href={`/sun?${query.toString()}&view=html`} target="_blank" rel="noreferrer">Abrir SUN HTML interactivo</a>
             <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 hover:bg-cyan-500/20" href={`/api/public-cta/provenance?bid=${encodeURIComponent(bid)}&uid=${encodeURIComponent(uid)}`} target="_blank" rel="noreferrer">Probar endpoint de provenance</a>
           </div>
+          <p className="mt-2 text-[11px] text-cyan-100/80">Nota comercial: este flujo usa <b>request-to-buy</b> (no checkout directo).</p>
         </section>
       ) : (
         <p className="mt-4 text-xs text-amber-200">No CTA available yet: missing bid/uid in SUN result.</p>
       )}
 
-      {!isValid ? <p className="mt-2 text-[11px] text-slate-400">Nota: esta pantalla muestra “last verified location”; no representa tracking en tiempo real.</p> : null}
+      {!isValid ? (
+        <section className="mt-2 rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-[11px] text-rose-100">
+          Señal de seguridad: si el resultado indica replay o tamper, las acciones de ownership pueden quedar bloqueadas hasta revisión manual.
+          <p className="mt-1 text-rose-50/80">Nota: esta pantalla muestra “last verified location”; no representa tracking en tiempo real.</p>
+        </section>
+      ) : null}
     </main>
   );
 }
