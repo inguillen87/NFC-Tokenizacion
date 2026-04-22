@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -81,5 +81,21 @@ test('app router does not mix dynamic slug names for same route template', () =>
     `Found mixed dynamic segment names:\n${conflicts
       .map((c) => `- template=${c.template} depth=${c.depth} names=${c.names.join(', ')} examples=${c.examples}`)
       .join('\n')}`,
+  );
+});
+
+test('consumer redemption cancel route uses /consumer/redemptions and legacy rewards path is absent', () => {
+  const canonicalPath = path.join(appRoot, 'consumer', 'redemptions', '[redemptionId]', 'cancel', 'route.ts');
+  const legacyPath = path.join(appRoot, 'consumer', 'rewards', '[redemptionId]');
+
+  assert.equal(
+    existsSync(canonicalPath),
+    true,
+    `expected canonical redemption route to exist: ${canonicalPath}`,
+  );
+  assert.equal(
+    existsSync(legacyPath),
+    false,
+    `legacy conflicting route directory must not exist: ${legacyPath}`,
   );
 });
