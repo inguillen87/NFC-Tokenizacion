@@ -342,6 +342,9 @@ export async function processSunScan(input: {
   }
 
   const tagTamperEnabled = /tag.?tamper|tamper|tt/i.test(JSON.stringify((batch as { sdm_config?: unknown }).sdm_config || {}));
+  const encStatusByteHex = res.ok && typeof res.encPlainHex === "string" && /^[0-9a-f]{2,}$/i.test(res.encPlainHex)
+    ? res.encPlainHex.slice(0, 2).toUpperCase()
+    : null;
   const tamperSignal = resolveTamperSignal({
     rawQuery: input.rawQuery,
     meta: input.context?.meta,
@@ -401,6 +404,8 @@ export async function processSunScan(input: {
       tamper_signal: tamperSignal.raw || undefined,
       tamper_opened: tamperSignal.opened,
       tamper_risk: tamperSignal.tamper,
+      tag_tamper_config_detected: tagTamperEnabled,
+      enc_plain_status_byte: encStatusByteHex || undefined,
       reason: resolvedReason || undefined,
       event_id: eventId || undefined,
     },
