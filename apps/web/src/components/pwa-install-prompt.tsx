@@ -71,7 +71,7 @@ export function PwaInstallPrompt() {
   };
 
   return (
-    <div className="pwa-install-card fixed inset-x-0 bottom-[6.5rem] z-40 mx-auto w-[min(94vw,30rem)] rounded-2xl border border-cyan-300/25 bg-slate-950/90 p-3 shadow-[0_16px_40px_rgba(8,15,30,0.55)] backdrop-blur-xl md:bottom-4 md:right-4 md:left-auto">
+    <div className="pwa-install-card fixed inset-x-0 bottom-[11rem] z-40 mx-auto w-[min(94vw,30rem)] rounded-2xl border border-cyan-300/25 bg-slate-950/90 p-3 shadow-[0_16px_40px_rgba(8,15,30,0.55)] backdrop-blur-xl md:bottom-4 md:right-4 md:left-auto">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-xs uppercase tracking-[0.14em] text-cyan-300">Install app</p>

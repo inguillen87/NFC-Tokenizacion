@@ -214,9 +214,13 @@ export default async function HomePage() {
     { label: content.nav.pricing, href: "/pricing" },
     { label: content.nav.reseller, href: "/resellers" },
     { label: content.nav.docs, href: "/docs" },
+    { label: labels.quickDemoLab, href: productExitHref.demoLab },
+    { label: labels.quickInvestor, href: productExitHref.investorSnapshot },
+    { label: labels.quickAudiences, href: "/audiences" },
+    { label: labels.quickGlossary, href: "/glossary" },
     { label: labels.quickStack, href: "/stack" },
     { label: labels.quickFaq, href: "/docs#faq" },
-    { label: labels.quickDemoLab, href: productExitHref.demoLab },
+    { label: labels.sunCta, href: "/sun" },
   ];
 
   return (
@@ -245,10 +249,10 @@ export default async function HomePage() {
               primaryCtaHref="/?contact=demo#contact-modal"
               primaryCtaLabel={labels.mobileCtaDemo}
             />
-            <div className="hidden min-[380px]:inline-flex">
+            <div className="hidden md:inline-flex">
               <LocaleSwitcher value={locale} options={[...locales]} />
             </div>
-            <div className="hidden min-[420px]:inline-flex">
+            <div className="hidden md:inline-flex">
               <ThemeToggle />
             </div>
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
@@ -263,7 +267,7 @@ export default async function HomePage() {
 
 
 
-      <section className="container-shell quick-links-section py-3">
+      <section className="container-shell quick-links-section hidden py-3 md:block">
         <div className="quick-links-wrap rounded-xl border border-white/10 bg-slate-900/55 p-2 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_18px_45px_rgba(8,15,30,0.35)]">
           <div className="quick-links-scroll flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs">
             <span className="inline-flex items-center gap-1 px-2 py-1 font-semibold text-cyan-300"><Sparkles className="h-3.5 w-3.5" />{labels.quickNavTitle}</span>
@@ -274,6 +278,14 @@ export default async function HomePage() {
             <PublicLinkChip href="/audiences" variant="violet" className="quick-link-chip">{labels.quickAudiences}</PublicLinkChip>
             <PublicLinkChip href={productExitHref.demoLab} variant="amber" icon={<CirclePlay className="h-3.5 w-3.5" />} className="quick-link-chip">{labels.quickDemoLab}</PublicLinkChip>
           </div>
+        </div>
+      </section>
+
+      <section className="container-shell pb-2 md:hidden">
+        <div className="grid grid-cols-3 gap-2">
+          <Link href="/docs" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
+          <Link href="/pricing" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-medium text-slate-100">{content.nav.pricing}</Link>
+          <Link href="/?contact=demo#contact-modal" className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-center text-xs font-medium text-cyan-100">{labels.mobileCtaDemo}</Link>
         </div>
       </section>
 
