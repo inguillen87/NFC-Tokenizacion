@@ -204,6 +204,8 @@ export default async function HomePage() {
         ],
       };
 
+  const loginHref = `${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`;
+
   const mobileNavItems = [
     { label: content.nav.product, href: "/" },
     { label: content.nav.pricing, href: "/pricing" },
@@ -211,6 +213,7 @@ export default async function HomePage() {
     { label: content.nav.docs, href: "/docs" },
     { label: labels.quickStack, href: "/stack" },
     { label: labels.quickFaq, href: "/docs#faq" },
+    { label: labels.quickDemoLab, href: productExitHref.demoLab },
   ];
 
   return (
@@ -231,13 +234,13 @@ export default async function HomePage() {
           </nav>
 
           <div className="header-actions flex items-center gap-2">
-            <MobileNavSheet items={mobileNavItems} />
+            <MobileNavSheet items={mobileNavItems} loginHref={loginHref} loginLabel={content.nav.cta} />
             <LocaleSwitcher value={locale} options={[...locales]} />
             <ThemeToggle />
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
-            <a href={`${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`} className="hidden sm:inline-flex">
+            <a href={loginHref} className="hidden sm:inline-flex">
               <Button variant="secondary">{content.nav.cta}</Button>
             </a>
           </div>
