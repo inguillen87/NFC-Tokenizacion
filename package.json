@@ -20,7 +20,8 @@
     "db:seed": "npm run db:seed --workspace=api",
     "db:reset:local": "npm run db:reset:local --workspace=api",
     "demo:demobodega": "npm run demo:demobodega --workspace=api",
-    "demo:seed": "npm run demo:seed --workspace=api"
+    "demo:seed": "npm run demo:seed --workspace=api",
+    "check:routes": "node scripts/check-next-dynamic-routes.mjs"
   },
   "packageManager": "npm@10.9.0",
   "engines": {
