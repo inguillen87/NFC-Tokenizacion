@@ -16,6 +16,7 @@ type Props = {
 };
 
 export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAction, registerLabel, forgotLabel, inviteLabel, profiles }: Props) {
+  const LOGIN_TIMEOUT_MS = 10_000;
   const firstAvailable = profiles.find((profile) => profile.available) || profiles[0];
   const [email, setEmail] = useState(firstAvailable?.email || "");
   const [password, setPassword] = useState(firstAvailable?.password || "");
@@ -35,17 +36,23 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
   async function submit() {
     setPending(true);
     setStatus("");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS);
     const res = await fetch("/api/session/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, mfaCode }),
+      signal: controller.signal,
     }).catch(() => null);
+    clearTimeout(timeout);
     const data = await res?.json().catch(() => null);
     if (!res?.ok) {
       if (data?.mfaRequired) {
         setStatus("Ingresá tu código MFA de 6 dígitos para continuar.");
       } else if (res?.status && res.status >= 500) {
         setStatus("Servicio de autenticación temporalmente no disponible. Usá un preset demo para ingresar igual.");
+      } else if (!res) {
+        setStatus("El login tardó demasiado o no hubo respuesta. Reintentá en unos segundos.");
       } else {
         setStatus(data?.reason || "Credenciales inválidas.");
       }
