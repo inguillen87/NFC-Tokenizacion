@@ -39,11 +39,26 @@ type StreamEventPayload = {
   id?: string | number;
   result?: string;
   reason?: string;
+  uid_hex?: string;
+  bid?: string;
+  tenant_slug?: string;
   city?: string;
   country_code?: string;
   lat?: number | string | null;
   lng?: number | string | null;
   created_at?: string;
+};
+
+type LiveFeedItem = {
+  id: string;
+  at: string;
+  result: string;
+  reason: string;
+  uid: string;
+  bid: string;
+  tenant: string;
+  city: string;
+  country: string;
 };
 
 const METADATA_TEMPLATES = [
@@ -72,6 +87,21 @@ export function MultirubroOpsPanel() {
   const [demoActionStatus, setDemoActionStatus] = useState("");
   const [botQuestion, setBotQuestion] = useState("explicame el riesgo actual");
   const [botAnswer, setBotAnswer] = useState("");
+  const [liveFeed, setLiveFeed] = useState<LiveFeedItem[]>([]);
+
+  function normalizeFeedItem(payload: StreamEventPayload): LiveFeedItem {
+    return {
+      id: String(payload.id || `${payload.created_at || Date.now()}-${payload.uid_hex || "evt"}`),
+      at: String(payload.created_at || new Date().toISOString()),
+      result: String(payload.result || "UNKNOWN"),
+      reason: String(payload.reason || "n/a"),
+      uid: String(payload.uid_hex || "—"),
+      bid: String(payload.bid || "—"),
+      tenant: String(payload.tenant_slug || "—"),
+      city: String(payload.city || "Unknown"),
+      country: String(payload.country_code || "--"),
+    };
+  }
 
   function applyIncomingEvent(payload: StreamEventPayload) {
     const lat = Number(payload.lat);
@@ -220,11 +250,61 @@ export function MultirubroOpsPanel() {
         streamOnlineRef.current = true;
         bumpStaleTimer();
       };
-      stream.addEventListener("snapshot", () => {
+      stream.addEventListener("snapshot", (event) => {
         if (!active) return;
         setLastEventAt(new Date().toISOString());
         bumpStaleTimer();
         void loadData();
+        try {
+          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as { rows?: StreamEventPayload[] };
+          const rows = Array.isArray(payload.rows) ? payload.rows : [];
+          setLiveFeed(rows.slice(0, 12).map(normalizeFeedItem));
+        } catch {
+          setLiveFeed([]);
+        }
+      });
+      stream.addEventListener("heartbeat", () => {
+        if (!active) return;
+        setLastEventAt(new Date().toISOString());
+        setStreamState("connected");
+        bumpStaleTimer();
+      });
+      stream.addEventListener("warning", (event) => {
+        if (!active) return;
+        try {
+          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as { reason?: string };
+          if (payload.reason) setWarnings((prev) => Array.from(new Set([...prev, payload.reason!])));
+        } catch {
+          setWarnings((prev) => Array.from(new Set([...prev, "stream_warning"])));
+        }
+      });
+      stream.addEventListener("event", (event) => {
+        if (!active) return;
+        setLastEventAt(new Date().toISOString());
+        setStreamState("connected");
+        bumpStaleTimer();
+        try {
+          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as StreamEventPayload;
+          applyIncomingEvent(payload);
+          const item = normalizeFeedItem(payload);
+          setLiveFeed((prev) => [item, ...prev.filter((row) => row.id !== item.id)].slice(0, 12));
+        } catch {
+          // ignore malformed payload; reconciliation fetch below will refresh state
+        }
+        const now = Date.now();
+        if (now - eventRefreshGateRef.current > 2000) {
+          eventRefreshGateRef.current = now;
+          void loadData();
+        }
+        if (typeof window !== "undefined") {
+          const pulse = document.getElementById("nexid-live-pulse");
+          if (pulse) {
+            pulse.animate(
+              [{ transform: "scale(1)", opacity: 0.8 }, { transform: "scale(1.5)", opacity: 0 }],
+              { duration: 500, easing: "ease-out" },
+            );
+          }
+        }
       });
       stream.addEventListener("heartbeat", () => {
         if (!active) return;
@@ -491,6 +571,24 @@ export function MultirubroOpsPanel() {
           <button onClick={runBotAnalysis} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Analizar</button>
         </div>
         {botAnswer ? <p className="mt-2 rounded-lg border border-cyan-300/20 bg-cyan-500/5 px-3 py-2 text-xs text-cyan-100">{botAnswer}</p> : null}
+      </div>
+
+      <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/60 p-3">
+        <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Live event feed</p>
+        <div className="mt-2 space-y-2">
+          {liveFeed.length ? liveFeed.map((item) => (
+            <div key={item.id} className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold text-cyan-200">{item.result}</span>
+                <span className="text-slate-400">{new Date(item.at).toLocaleTimeString("es-AR")}</span>
+              </div>
+              <p className="mt-1 text-slate-300">{item.reason}</p>
+              <p className="mt-1 text-slate-500">Tenant {item.tenant} · BID {item.bid} · UID {item.uid} · {item.city}/{item.country}</p>
+            </div>
+          )) : (
+            <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">Sin eventos en vivo todavía para esta sesión.</p>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
