@@ -75,9 +75,9 @@ test('app router does not mix dynamic slug names for same route template', () =>
     }
   }
 
-  assert.equal(
-    conflicts.length,
-    0,
+  assert.deepEqual(
+    conflicts,
+    [],
     `Found mixed dynamic segment names:\n${conflicts
       .map((c) => `- template=${c.template} depth=${c.depth} names=${c.names.join(', ')} examples=${c.examples}`)
       .join('\n')}`,
