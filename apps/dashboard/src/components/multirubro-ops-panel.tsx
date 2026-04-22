@@ -47,6 +47,9 @@ type StreamEventPayload = {
   lat?: number | string | null;
   lng?: number | string | null;
   created_at?: string;
+  stream_sent_at?: string;
+  stream_latency_ms?: number | null;
+  request_id?: string;
 };
 
 type LiveFeedItem = {
@@ -59,6 +62,8 @@ type LiveFeedItem = {
   tenant: string;
   city: string;
   country: string;
+  streamLatencyMs: number | null;
+  requestId: string;
 };
 
 const METADATA_TEMPLATES = [
@@ -100,6 +105,8 @@ export function MultirubroOpsPanel() {
       tenant: String(payload.tenant_slug || "—"),
       city: String(payload.city || "Unknown"),
       country: String(payload.country_code || "--"),
+      streamLatencyMs: Number.isFinite(Number(payload.stream_latency_ms)) ? Number(payload.stream_latency_ms) : null,
+      requestId: String(payload.request_id || "n/a"),
     };
   }
 
@@ -462,6 +469,7 @@ export function MultirubroOpsPanel() {
         <span className="text-slate-500">
           Pipeline: {diagnostics?.freshness?.streamState || "unknown"} · eventos {Number(diagnostics?.counters?.eventsTotal || 0)}
         </span>
+        <span className="text-slate-500">Risk {Number(diagnostics?.counters?.riskEvents || 0)} · Replay {Number(diagnostics?.counters?.replayEvents || 0)}</span>
       </div>
       {warnings.length ? (
         <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
@@ -544,6 +552,7 @@ export function MultirubroOpsPanel() {
               </div>
               <p className="mt-1 text-slate-300">{item.reason}</p>
               <p className="mt-1 text-slate-500">Tenant {item.tenant} · BID {item.bid} · UID {item.uid} · {item.city}/{item.country}</p>
+              <p className="mt-1 text-[11px] text-slate-500">trace {item.requestId} · latency {item.streamLatencyMs == null ? "n/a" : `${item.streamLatencyMs}ms`}</p>
             </div>
           )) : (
             <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">Sin eventos en vivo todavía para esta sesión.</p>
