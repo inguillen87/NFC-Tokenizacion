@@ -33,17 +33,20 @@ export async function getActiveProgram(tenantId: string) {
   return rows[0] || null;
 }
 
-export async function getOrCreateMember(input: { tenantId: string; programId: string; eventId: string; locale?: string; email?: string | null; displayName?: string | null; country?: string | null }) {
+export async function getOrCreateMember(input: { tenantId: string; programId: string; eventId: string; memberKey: string; consumerId?: string | null; locale?: string; email?: string | null; phone?: string | null; displayName?: string | null; country?: string | null }) {
   const rows = await sql/*sql*/`
-    INSERT INTO loyalty_members (tenant_id, program_id, event_id, preferred_locale, email, display_name, country, status, first_tap_at, last_tap_at)
-    VALUES (${input.tenantId}, ${input.programId}, ${input.eventId}, ${input.locale || "es-AR"}, ${input.email || null}, ${input.displayName || null}, ${input.country || null}, ${input.email ? "enrolled" : "anonymous"}, now(), now())
-    ON CONFLICT (program_id, event_id)
+    INSERT INTO loyalty_members (tenant_id, program_id, event_id, member_key, consumer_id, preferred_locale, email, phone, display_name, country, status, first_tap_at, last_tap_at)
+    VALUES (${input.tenantId}, ${input.programId}, ${input.eventId}, ${input.memberKey}, ${input.consumerId || null}, ${input.locale || "es-AR"}, ${input.email || null}, ${input.phone || null}, ${input.displayName || null}, ${input.country || null}, ${input.email || input.phone || input.consumerId ? "enrolled" : "anonymous"}, now(), now())
+    ON CONFLICT (program_id, member_key)
     DO UPDATE SET
+      event_id = EXCLUDED.event_id,
+      consumer_id = COALESCE(EXCLUDED.consumer_id, loyalty_members.consumer_id),
       preferred_locale = EXCLUDED.preferred_locale,
       email = COALESCE(EXCLUDED.email, loyalty_members.email),
+      phone = COALESCE(EXCLUDED.phone, loyalty_members.phone),
       display_name = COALESCE(EXCLUDED.display_name, loyalty_members.display_name),
       country = COALESCE(EXCLUDED.country, loyalty_members.country),
-      status = CASE WHEN EXCLUDED.email IS NOT NULL THEN 'enrolled'::loyalty_member_status ELSE loyalty_members.status END,
+      status = CASE WHEN EXCLUDED.email IS NOT NULL OR EXCLUDED.phone IS NOT NULL OR EXCLUDED.consumer_id IS NOT NULL THEN 'enrolled'::loyalty_member_status ELSE loyalty_members.status END,
       updated_at = now(),
       last_tap_at = now()
     RETURNING *
@@ -104,7 +107,7 @@ export async function awardPoints(input: { tenantId: string; programId: string; 
   return { awarded: true, duplicate: false, entry: inserted[0] };
 }
 
-export async function claimTapPoints(input: { eventId: string; locale?: string }) {
+export async function claimTapPoints(input: { eventId: string; memberKey?: string; consumerId?: string | null; email?: string | null; phone?: string | null; locale?: string }) {
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false, status: 404, error: "event_not_found" as const };
 
@@ -115,7 +118,11 @@ export async function claimTapPoints(input: { eventId: string; locale?: string }
     tenantId: event.tenant_id,
     programId: program.id,
     eventId: String(event.id),
+    memberKey: input.memberKey || `event:${event.id}` ,
+    consumerId: input.consumerId || null,
     locale: input.locale || "es-AR",
+    email: input.email || null,
+    phone: input.phone || null,
     country: event.country_code || null,
   });
 
@@ -177,7 +184,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
   `;
   if (reward.stock_remaining !== null && !stockRows[0]) return { ok: false, status: 409, error: "out_of_stock" as const };
 
-  const spendIdem = `redeem:${reward.id}:member:${input.memberId}`;
+  const spendIdem = `redeem:${reward.id}:member:${input.memberId}:event:${event.id}`;
   const spend = await awardPoints({
     tenantId: event.tenant_id,
     programId: reward.program_id,
