@@ -8,7 +8,7 @@ import { sql } from "../../../../../lib/db";
 type TamperConfigBody = {
   tagtamper_enabled?: boolean;
   tamper_status_enabled?: boolean;
-  tamper_status_source?: "enc" | "picc_data" | "decrypted_sdm" | "none";
+  tamper_status_source?: "enc_decrypted" | "picc_data_decrypted" | "none" | "enc" | "picc_data" | "decrypted_sdm";
   tamper_status_offset?: number | null;
   tamper_status_length?: number | null;
   tamper_closed_values?: Array<string | number>;
@@ -25,9 +25,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
   const body = (await req.json().catch(() => ({}))) as TamperConfigBody;
   if (!bid) return json({ ok: false, reason: "bid required" }, 400);
 
-  const source = ["enc", "picc_data", "decrypted_sdm", "none"].includes(String(body.tamper_status_source || ""))
-    ? body.tamper_status_source
-    : "none";
+  const sourceInput = String(body.tamper_status_source || "none").toLowerCase();
+  const source = sourceInput === "enc" || sourceInput === "decrypted_sdm" || sourceInput === "enc_decrypted"
+    ? "enc_decrypted"
+    : sourceInput === "picc_data" || sourceInput === "picc_data_decrypted"
+      ? "picc_data_decrypted"
+      : "none";
 
   const nextConfig = {
     tagtamper_enabled: Boolean(body.tagtamper_enabled),

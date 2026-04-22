@@ -72,6 +72,7 @@ export async function POST(req: Request) {
   return json({
     ok: true,
     same_uid: sameUid,
+    uid_hex: sameUid ? String(before.uid || "") : null,
     closed_counter: Number(before.ctr ?? -1) >= 0 ? Number(before.ctr) : null,
     opened_counter: Number(after.ctr ?? -1) >= 0 ? Number(after.ctr) : null,
     picc_changed_bytes: piccDiff,

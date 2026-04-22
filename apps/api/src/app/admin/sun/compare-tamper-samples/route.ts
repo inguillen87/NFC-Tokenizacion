@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
   const stableClosedBytes: Array<{ offset: number; value: string }> = [];
   const stableOpenedBytes: Array<{ offset: number; value: string }> = [];
-  const candidateOffsets: Array<{ offset: number; closed_value: string; opened_value: string }> = [];
+  const candidateOffsets: Array<{ source: "enc_decrypted"; offset: number; closed_values: string[]; opened_values: string[]; confidence: "HIGH" | "MEDIUM" }> = [];
 
   for (const [offset, values] of closedMap.entries()) {
     if (values.size === 1) stableClosedBytes.push({ offset, value: Array.from(values)[0] });
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
   for (const [offset, closedValue] of stableClosedByOffset.entries()) {
     const openedValue = stableOpenedByOffset.get(offset);
     if (openedValue && openedValue !== closedValue) {
-      candidateOffsets.push({ offset, closed_value: closedValue, opened_value: openedValue });
+      candidateOffsets.push({ source: "enc_decrypted", offset, closed_values: [closedValue], opened_values: [openedValue], confidence: "HIGH" });
     }
   }
 
@@ -90,12 +90,15 @@ export async function POST(req: Request) {
     candidate_offsets: candidateOffsets,
     recommended_config: candidateOffsets[0]
       ? {
-        tamper_status_source: "decrypted_sdm",
+        tamper_status_source: "enc_decrypted",
         tamper_status_offset: candidateOffsets[0].offset,
         tamper_status_length: 1,
-        tamper_closed_values: [candidateOffsets[0].closed_value],
-        tamper_open_values: [candidateOffsets[0].opened_value],
+        tamper_closed_values: candidateOffsets[0].closed_values,
+        tamper_open_values: candidateOffsets[0].opened_values,
       }
       : null,
+    recommendation: candidateOffsets.length
+      ? "Stable offset candidates found across closed/opened sample groups."
+      : "No electronic TagTamper signal detected in the decrypted payload. Supplier may not have included open/closed status, or the physical loop was not broken correctly.",
   });
 }

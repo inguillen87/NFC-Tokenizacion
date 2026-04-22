@@ -284,6 +284,9 @@ function resolveTrustState(status: string, reason: string, productState?: string
   if (normalizedProductState === "VALID_OPENED" || normalizedProductState === "TAMPER_RISK" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
     return { code: 'OPENED', label: 'Producto abierto', summary: 'Producto auténtico, pero el sello fue abierto.', tone: 'warn' as const };
   }
+  if (normalizedProductState === "VALID_MANUAL_OPENED") {
+    return { code: 'MANUAL_OPENED', label: 'Apertura registrada', summary: 'Producto auténtico. Sello marcado como abierto por operador.', tone: 'warn' as const };
+  }
   if (normalizedProductState === "VALID_UNKNOWN_TAMPER") {
     return { code: 'VALID_UNKNOWN_TAMPER', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Estado de apertura no disponible para este lote.', tone: 'good' as const };
   }
@@ -512,9 +515,11 @@ function buildPublicContract(params: {
       tone: trust.tone,
       summary: trust.summary,
       reason,
+      authStatus: params.result.auth_status || status,
       productState: params.result.product_state || null,
       tamperSupported: Boolean(params.result.tamper_supported),
       tamperStatus: params.result.tamper_status || "UNKNOWN",
+      tamperSource: params.result.tamper_source || "unavailable",
       tamperReason: params.result.tamper_reason || null,
     },
     identity: {
@@ -609,6 +614,30 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const copy = getSunCopy(locale);
   const tone = contract.status.tone === 'good' ? '#22c55e' : contract.status.tone === 'risk' ? '#ef4444' : '#f59e0b';
   const isReplay = contract.status.code === "REPLAY_SUSPECT";
+  const productState = String(contract.status.productState || "").toUpperCase();
+  const authPanelMessage = isReplay
+    ? copy.authReplay
+    : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
+      ? "Producto auténtico. Sello marcado como abierto por operador."
+      : productState === "VALID_OPENED" || contract.status.code === "OPENED"
+      ? "Authentic tag, but seal was opened."
+      : productState === "VALID_UNKNOWN_TAMPER"
+        ? "Authenticity confirmed. Open/closed status is not available for this batch configuration."
+        : copy.authOk;
+  const commercialStateLabel = isReplay
+    ? "Commercial state: HOLD"
+    : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
+      ? "Commercial state: DEMO_OPENED"
+      : productState === "VALID_OPENED" || contract.status.code === "OPENED"
+      ? "Commercial state: REVIEW"
+      : "Commercial state: OK";
+  const riskStateLabel = isReplay
+    ? "Risk: replay suspect"
+    : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
+      ? "Risk: manual opened"
+      : productState === "VALID_OPENED" || contract.status.code === "OPENED"
+      ? "Risk: tamper/opened"
+      : "Risk: controlled";
   const timeline = contract.provenance.timelineSummary;
   const timelineHtml = timeline.length
     ? timeline.map((item) => `<li>${item.at || 'N/A'} · <b>${item.result || '-'}</b> · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
@@ -633,7 +662,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <link rel="apple-touch-icon" href="/apple-icon" />
   <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:10px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.subtitle{color:#334155}.chip{color:#334155;border-color:#cbd5e1}button{background:#f8fafc;color:#0f172a}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
   <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ? "pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${isReplay ? copy.authReplay : copy.authOk}</p><div class="chips"><span class="chip">${isReplay ? "Commercial state: HOLD" : "Commercial state: OK"}</span><span class="chip">${isReplay ? "Risk: replay suspect" : "Risk: controlled"}</span><span class="chip">Dashboard sync: Analytics · Events · Tags</span></div></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">Dashboard sync: Analytics · Events · Tags</span></div></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.identityPanel}</h3><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Harvest ${contract.product.harvestYear || '-'} · Barrel ${contract.product.barrelMonths || '-'} months</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.provenancePanel}</h3><p>Origin: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.iotPanel}</h3><p>Winery: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>Altitude: <b>${contract.iot.altitude || '-'}</b> · Oak: <b>${contract.iot.oakType || '-'}</b></p><p>Cellar temp: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humidity: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Light: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transit: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>

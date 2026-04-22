@@ -21,7 +21,7 @@ type TamperProfile = {
   chip_model: string;
   tagtamper_enabled: boolean;
   tamper_status_enabled: boolean;
-  tamper_status_source: "enc" | "picc_data" | "decrypted_sdm" | "none";
+  tamper_status_source: "enc_decrypted" | "picc_data_decrypted" | "none";
   tamper_status_offset: number | null;
   tamper_status_length: number | null;
   tamper_closed_values: string[];
@@ -33,7 +33,11 @@ type TamperProfile = {
 function resolveTamperProfile(raw: unknown): TamperProfile {
   const cfg = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
   const sourceRaw = String(cfg.tamper_status_source || "none").toLowerCase();
-  const source = (["enc", "picc_data", "decrypted_sdm", "none"].includes(sourceRaw) ? sourceRaw : "none") as TamperProfile["tamper_status_source"];
+  const source = (() => {
+    if (sourceRaw === "enc" || sourceRaw === "decrypted_sdm" || sourceRaw === "enc_decrypted") return "enc_decrypted";
+    if (sourceRaw === "picc_data" || sourceRaw === "picc_data_decrypted") return "picc_data_decrypted";
+    return "none";
+  })() as TamperProfile["tamper_status_source"];
   const closedRaw = Array.isArray(cfg.tamper_closed_values) ? cfg.tamper_closed_values : [];
   const openedRaw = Array.isArray(cfg.tamper_open_values) ? cfg.tamper_open_values : [];
   const closed = closedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
@@ -146,6 +150,33 @@ export async function processSunScan(input: {
   rawQuery?: Record<string, string>;
   context?: ScanContext;
 }) {
+  async function getManualTamperOverride(uidHex: string | null) {
+    if (!uidHex) return null;
+    try {
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS tag_manual_tamper_overrides (
+          id bigserial PRIMARY KEY,
+          batch_id uuid NOT NULL,
+          uid_hex text NOT NULL,
+          tamper_status text NOT NULL,
+          reason text,
+          evidence_note text,
+          source text NOT NULL DEFAULT 'operator',
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE (batch_id, uid_hex)
+        )
+      `;
+      const rows = await sql/*sql*/`
+        SELECT tamper_status, reason, evidence_note, source
+        FROM tag_manual_tamper_overrides
+        WHERE batch_id = ${batch.id} AND uid_hex = ${uidHex}
+        LIMIT 1
+      `;
+      return rows[0] || null;
+    } catch {
+      return null;
+    }
+  }
   async function logUnassignedAttempt(reason: string) {
     try {
       await sql/*sql*/`
@@ -385,11 +416,11 @@ export async function processSunScan(input: {
     const offset = tamperProfile.tamper_status_offset ?? 0;
     const len = tamperProfile.tamper_status_length ?? 1;
     const expectedEnd = offset * 2 + len * 2;
-    if ((tamperProfile.tamper_status_source === "enc" || tamperProfile.tamper_status_source === "decrypted_sdm") && res.ok && typeof res.encPlainHex === "string" && res.encPlainHex.length >= expectedEnd) {
+    if (tamperProfile.tamper_status_source === "enc_decrypted" && res.ok && typeof res.encPlainHex === "string" && res.encPlainHex.length >= expectedEnd) {
       return res.encPlainHex.slice(offset * 2, expectedEnd).toUpperCase();
     }
-    if (tamperProfile.tamper_status_source === "picc_data" && typeof input.piccDataHex === "string" && input.piccDataHex.length >= expectedEnd) {
-      return input.piccDataHex.slice(offset * 2, expectedEnd).toUpperCase();
+    if (tamperProfile.tamper_status_source === "picc_data_decrypted" && res.ok && typeof res.piccPlainHex === "string" && res.piccPlainHex.length >= expectedEnd) {
+      return res.piccPlainHex.slice(offset * 2, expectedEnd).toUpperCase();
     }
     return null;
   })();
@@ -409,7 +440,7 @@ export async function processSunScan(input: {
     }
     return "UNKNOWN" as const;
   })();
-  let result = !res.ok
+  const authStatus = !res.ok
     ? 'INVALID'
     : tamperSignal.opened
       ? 'OPENED'
@@ -418,12 +449,19 @@ export async function processSunScan(input: {
     : replaySuspect
       ? 'REPLAY_SUSPECT'
       : !allowlisted
-      ? 'NOT_REGISTERED'
-      : tagStatus !== 'active'
-        ? 'NOT_ACTIVE'
-        : 'VALID';
+        ? 'NOT_REGISTERED'
+        : tagStatus !== 'active'
+          ? 'NOT_ACTIVE'
+          : 'VALID';
+  let result = authStatus;
+  const manualTamper = await getManualTamperOverride(res.ok ? res.uidHex : null);
+  const manualOpened = String(manualTamper?.tamper_status || "").toUpperCase() === "MANUAL_OPENED" || String(manualTamper?.tamper_status || "").toUpperCase() === "OPENED";
+  const resolvedTamperStatus = manualOpened ? "MANUAL_OPENED" as const : tamperStatus;
+  const tamperSource = manualOpened ? "manual" as const : (tamperConfigured ? "electronic" as const : "unavailable" as const);
 
-  const successReason = tamperStatus === "OPENED"
+  const successReason = manualOpened
+    ? `manual_tamper_opened:${String(manualTamper?.reason || "operator_override")}`
+    : tamperStatus === "OPENED"
     ? `tagtamper_opened:${configuredStatusHex || tamperSignal.raw || 'signal'}`
     : requireTamperEvidence && !tamperConfigured
       ? 'tagtamper_unconfigured'
@@ -434,10 +472,11 @@ export async function processSunScan(input: {
         : null;
   const resolvedReason = !res.ok ? res.reason : successReason;
   const productState = (() => {
-    if (!res.ok || result === "INVALID") return "INVALID" as const;
+    if (!res.ok || authStatus === "INVALID") return "INVALID" as const;
     if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT" as const;
-    if (tamperStatus === "OPENED") return "VALID_OPENED" as const;
-    if (tamperStatus === "CLOSED") return "VALID_CLOSED" as const;
+    if (resolvedTamperStatus === "MANUAL_OPENED") return "VALID_MANUAL_OPENED" as const;
+    if (resolvedTamperStatus === "OPENED") return "VALID_OPENED" as const;
+    if (resolvedTamperStatus === "CLOSED") return "VALID_CLOSED" as const;
     return "VALID_UNKNOWN_TAMPER" as const;
   })();
 
@@ -461,6 +500,7 @@ export async function processSunScan(input: {
     body: {
       ok: result === 'VALID',
       result,
+      auth_status: authStatus,
       bid: input.bid,
       uid: res.ok ? res.uidHex : undefined,
       ctr: res.ok ? res.ctr : undefined,
@@ -473,11 +513,14 @@ export async function processSunScan(input: {
       tamper_risk: tamperSignal.tamper,
       tamper_supported: tagTamperEnabled,
       tamper_configured: tamperConfigured,
-      tamper_status: tamperStatus,
+      tamper_status: resolvedTamperStatus,
+      tamper_source: tamperSource,
       tamper_raw_value: configuredStatusHex || null,
-      tamper_reason: tamperStatus === "UNKNOWN"
+      tamper_reason: manualOpened
+        ? "Producto auténtico. Sello marcado como abierto por operador."
+        : resolvedTamperStatus === "UNKNOWN"
         ? "Authenticity confirmed. Tamper status not available for this batch configuration."
-        : tamperStatus === "OPENED"
+        : resolvedTamperStatus === "OPENED"
           ? "Authentic tag, but seal appears opened."
           : undefined,
       product_state: productState,

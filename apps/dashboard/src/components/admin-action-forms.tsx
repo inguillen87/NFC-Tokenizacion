@@ -173,9 +173,11 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
   const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
   const [inspectUrl, setInspectUrl] = useState("");
   const [tamperCompare, setTamperCompare] = useState({ beforeUrl: "", afterUrl: "" });
+  const [tamperSamples, setTamperSamples] = useState({ closedUrls: "", openedUrls: "" });
+  const [manualOpened, setManualOpened] = useState({ batchId: DEMO_SUPPLIER_BATCH_ID, uidHex: "", reason: "physical seal broken during demo", note: "" });
   const [tamperConfig, setTamperConfig] = useState({
     bid: DEMO_SUPPLIER_BATCH_ID,
-    source: "decrypted_sdm",
+    source: "enc_decrypted",
     offset: "0",
     length: "1",
     closed: "00",
@@ -599,6 +601,30 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
                 <Button disabled={pending || !canEdit || !tamperCompare.beforeUrl.trim() || !tamperCompare.afterUrl.trim()} variant="secondary" onClick={() => void compareTamperUrls()}>
                   Compare before/after tamper
                 </Button>
+                <textarea
+                  disabled={!canEdit}
+                  className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
+                  placeholder="Closed URLs (one per line)"
+                  value={tamperSamples.closedUrls}
+                  onChange={(event) => setTamperSamples((prev) => ({ ...prev, closedUrls: event.target.value }))}
+                />
+                <textarea
+                  disabled={!canEdit}
+                  className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
+                  placeholder="Opened URLs (one per line)"
+                  value={tamperSamples.openedUrls}
+                  onChange={(event) => setTamperSamples((prev) => ({ ...prev, openedUrls: event.target.value }))}
+                />
+                <Button
+                  disabled={pending || !canEdit || !tamperSamples.closedUrls.trim() || !tamperSamples.openedUrls.trim()}
+                  variant="secondary"
+                  onClick={() => submit("/admin/sun/compare-tamper-samples", {
+                    closed_urls: tamperSamples.closedUrls.split(/\r?\n/).map((v) => v.trim()).filter(Boolean),
+                    opened_urls: tamperSamples.openedUrls.split(/\r?\n/).map((v) => v.trim()).filter(Boolean),
+                  })}
+                >
+                  Compare multi-sample tamper
+                </Button>
               </div>
             </div>
             <div className="rounded-xl border border-indigo-300/20 bg-indigo-500/5 p-3">
@@ -618,7 +644,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
               <p className="text-xs font-semibold text-emerald-100">TagTamper parser config</p>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
                 <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.bid} onChange={(e) => setTamperConfig((v) => ({ ...v, bid: e.target.value }))} placeholder="batch bid" />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.source} onChange={(e) => setTamperConfig((v) => ({ ...v, source: e.target.value }))} placeholder="source: decrypted_sdm" />
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.source} onChange={(e) => setTamperConfig((v) => ({ ...v, source: e.target.value }))} placeholder="source: enc_decrypted" />
                 <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.offset} onChange={(e) => setTamperConfig((v) => ({ ...v, offset: e.target.value }))} placeholder="offset" />
                 <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.length} onChange={(e) => setTamperConfig((v) => ({ ...v, length: e.target.value }))} placeholder="length" />
                 <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.closed} onChange={(e) => setTamperConfig((v) => ({ ...v, closed: e.target.value }))} placeholder="closed values, comma separated" />
@@ -644,6 +670,29 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             <div className="rounded-xl border border-fuchsia-300/20 bg-fuchsia-500/5 p-3 text-xs text-fuchsia-100">
               <p className="font-semibold">Supplier TagTamper Requirements</p>
               <p className="mt-1 whitespace-pre-wrap">- Is TagTamper open/closed status included in SUN/SDM payload?\n- Where is it located?\n- Which byte/field indicates open vs closed?\n- Can you send before/after URLs from the same tag?\n- Can you confirm production batches include this field?</p>
+            </div>
+            <div className="rounded-xl border border-rose-300/20 bg-rose-500/5 p-3">
+              <p className="text-xs font-semibold text-rose-100">Manual opened fallback (demo/evidence)</p>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={manualOpened.batchId} onChange={(e) => setManualOpened((v) => ({ ...v, batchId: e.target.value }))} placeholder="batch id" />
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={manualOpened.uidHex} onChange={(e) => setManualOpened((v) => ({ ...v, uidHex: e.target.value }))} placeholder="uid hex" />
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs md:col-span-2" value={manualOpened.reason} onChange={(e) => setManualOpened((v) => ({ ...v, reason: e.target.value }))} placeholder="reason" />
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs md:col-span-2" value={manualOpened.note} onChange={(e) => setManualOpened((v) => ({ ...v, note: e.target.value }))} placeholder="evidence note" />
+              </div>
+              <Button
+                disabled={pending || !canEdit || !manualOpened.batchId.trim() || !manualOpened.uidHex.trim()}
+                className="mt-2"
+                variant="secondary"
+                onClick={() => submit("/admin/tags/mark-opened", {
+                  batch_id: manualOpened.batchId.trim(),
+                  uid_hex: manualOpened.uidHex.trim().toUpperCase(),
+                  reason: manualOpened.reason,
+                  evidence_note: manualOpened.note,
+                  source: "operator",
+                })}
+              >
+                Mark UID as manual opened
+              </Button>
             </div>
           </div>
         </Card>

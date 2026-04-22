@@ -172,11 +172,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
   const productState = String(result.status?.productState || "").toUpperCase();
   const statusHeadline = productState === "VALID_CLOSED"
-    ? "Producto auténtico. Sello intacto."
+    ? "Autenticidad confirmada. Sello intacto."
+    : productState === "VALID_MANUAL_OPENED"
+      ? "Autenticidad confirmada. Sello marcado como abierto por operador."
     : productState === "VALID_OPENED" || productState === "TAMPER_RISK"
-      ? "Producto auténtico, pero el sello fue abierto."
-      : productState === "VALID_UNKNOWN_TAMPER"
-        ? "Producto auténtico. Estado de apertura no disponible para este lote."
+      ? "Autenticidad confirmada. Sello abierto."
+    : productState === "VALID_UNKNOWN_TAMPER"
+        ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
         : result.status?.code === "REPLAY_SUSPECT"
           ? "URL reutilizada. Escaneá físicamente la etiqueta para generar una nueva lectura."
           : result.status?.tone === "good"
@@ -220,9 +222,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <p className="uppercase tracking-[0.12em] text-slate-400">Integridad</p>
                 <p className="mt-1">
                   {productState === "VALID_OPENED" || productState === "TAMPER_RISK"
-                    ? "Producto auténtico, pero el sello fue abierto"
+                    ? "Autenticidad confirmada. Sello abierto."
+                    : productState === "VALID_MANUAL_OPENED"
+                      ? "Autenticidad confirmada. Sello marcado como abierto por operador."
                     : productState === "VALID_UNKNOWN_TAMPER"
-                      ? "TagTamper chip is present, but open/closed status is not configured or not present in the current SUN/SDM payload."
+                      ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
                       : isValid ? "Consistente" : "Requiere validación manual"}
                 </p>
               </div>

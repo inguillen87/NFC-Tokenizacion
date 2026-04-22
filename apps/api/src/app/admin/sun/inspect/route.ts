@@ -9,9 +9,11 @@ type InspectBody = { url?: string };
 
 function bytesTable(hex: string) {
   const normalized = String(hex || "").replace(/[^0-9a-f]/gi, "").toUpperCase();
-  const rows: Array<{ offset: number; hex: string }> = [];
+  const rows: Array<{ offset: number; hex: string; bin: string; meaning: string }> = [];
   for (let i = 0; i + 2 <= normalized.length; i += 2) {
-    rows.push({ offset: i / 2, hex: normalized.slice(i, i + 2) });
+    const hexByte = normalized.slice(i, i + 2);
+    const value = Number.parseInt(hexByte, 16);
+    rows.push({ offset: i / 2, hex: hexByte, bin: Number.isFinite(value) ? value.toString(2).padStart(8, "0") : "00000000", meaning: "unknown" });
   }
   return rows;
 }
@@ -57,27 +59,28 @@ export async function POST(req: Request) {
 
   const uidHex = String(bodyResult.uid || "");
   const readCounter = Number(bodyResult.ctr ?? -1);
-  const replayStatus = bodyResult.result === "REPLAY_SUSPECT" ? "REPLAY_SUSPECT" : "NO_REPLAY";
+  const replayStatus = bodyResult.auth_status === "REPLAY_SUSPECT" || bodyResult.result === "REPLAY_SUSPECT" ? "REPLAY_SUSPECT" : "NO_REPLAY";
   return json({
     ok: true,
     bid,
     uid_hex: uidHex || null,
     read_counter: Number.isFinite(readCounter) && readCounter >= 0 ? readCounter : null,
-    auth_status: bodyResult.ok === true ? "VALID_AUTH" : "INVALID_AUTH",
+    auth_status: bodyResult.auth_status || (bodyResult.ok === true ? "VALID" : "INVALID"),
     replay_status: replayStatus,
     picc_data_raw: piccDataHex,
     picc_data_decrypted_hex: bodyResult.picc_plain_hex || null,
-    picc_data_bytes_table: bytesTable(String(bodyResult.picc_plain_hex || "")),
+    picc_data_bytes: bytesTable(String(bodyResult.picc_plain_hex || "")),
     enc_raw: encHex,
     enc_decrypted_hex: bodyResult.enc_plain_hex || null,
-    enc_bytes_table: bytesTable(String(bodyResult.enc_plain_hex || "")),
+    enc_bytes: bytesTable(String(bodyResult.enc_plain_hex || "")),
     cmac: cmacHex,
     validation_result: bodyResult.result || null,
     tamper_supported: bodyResult.tamper_supported ?? false,
     tamper_configured: bodyResult.tamper_configured ?? false,
     tamper_status: bodyResult.tamper_status || "UNKNOWN",
+    encPlainStatusByte: bodyResult.enc_plain_status_byte || null,
     tamper_raw_value: bodyResult.tamper_raw_value ?? null,
-    notes: bodyResult.tamper_reason || "No secrets exposed (keys omitted).",
+    notes: [bodyResult.tamper_reason || "No secrets exposed (keys omitted)."].filter(Boolean),
     parser_config: {
       source: bodyResult.tamper_status_source || "none",
       offset: bodyResult.tamper_status_offset ?? null,
