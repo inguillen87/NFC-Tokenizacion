@@ -76,6 +76,7 @@ async function runLocalPolygonScript(payload: Record<string, unknown>) {
 }
 
 export async function anchorTokenizationRequest(input: AnchorInput) {
+  const tokenizationMode = String(process.env.TOKENIZATION_MODE || "simulated").trim().toLowerCase();
   const rows = await sql/*sql*/`
     SELECT id, bid, uid_hex, status, network, issuer_wallet, attempt_count
     FROM tokenization_requests
@@ -104,10 +105,12 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
       chip_uid_hash: buildChipUidHash(existing.uid_hex),
     };
 
-    const localPolygonMint = network.startsWith("polygon")
+    const localPolygonMint = tokenizationMode === "polygon" && network.startsWith("polygon")
       ? await runLocalPolygonScript(externalInput)
       : null;
-    const external = localPolygonMint || await runExternalExecutor(externalInput);
+    const external = tokenizationMode === "polygon"
+      ? (localPolygonMint || await runExternalExecutor(externalInput))
+      : null;
 
     const txHash = String(external?.tx_hash || buildSimulatedTxHash(existing.id, existing.uid_hex));
     const tokenId = String(external?.token_id || buildTokenId(existing.uid_hex));
@@ -126,7 +129,7 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
           processed_at = now(),
           last_error = NULL,
           attempt_count = attempt_count + 1,
-          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, anchored_at: new Date().toISOString() })}::jsonb
+          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, anchored_at: new Date().toISOString(), tokenization_mode: tokenizationMode })}::jsonb
       WHERE id = ${existing.id}::uuid
     `;
 
