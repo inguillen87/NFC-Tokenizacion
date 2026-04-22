@@ -4,15 +4,19 @@ import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 
-export async function POST(req: Request, { params }: { params: Promise<{ redemptionId: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ rewardId: string }> }) {
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
-  const { redemptionId } = await params;
+  const { rewardId } = await params;
+  const body = await req.json().catch(() => ({}));
+  const redemptionId = String(body.redemptionId || "").trim();
+  if (!redemptionId) return json({ ok: false, error: "redemptionId_required" }, 400);
 
   const claimRows = await sql/*sql*/`
     UPDATE consumer_reward_claims
     SET status = 'cancelled', updated_at = now()
     WHERE id = ${redemptionId}
+      AND reward_id = ${rewardId}
       AND consumer_id = ${consumer.id}
       AND status = 'claimed'
     RETURNING *
