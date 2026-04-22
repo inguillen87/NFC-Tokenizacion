@@ -7,6 +7,7 @@ import { createDemoShareToken } from '../../lib/demo-share';
 import { sql } from '../../lib/db';
 import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
 import { buildLifecycleState, listDemoCta } from '../../lib/demo-cta';
+import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
@@ -877,6 +878,7 @@ export async function GET(req: Request): Promise<Response> {
       lng: Number.isFinite(geoLng) ? geoLng : null,
     },
   });
+  (contract as Record<string, unknown>).trace_id = traceId;
 
   if (!contract.provenance.timelineSummary.length) {
     contract.provenance.timelineSummary = [
@@ -928,6 +930,26 @@ export async function GET(req: Request): Promise<Response> {
 
   const maskedUid = uid ? `${String(uid).slice(0, 4)}***${String(uid).slice(-4)}` : null;
   const verdict = String(contract.status.code || result.body.result || "UNKNOWN");
+  const diagnosticId = await insertSunDiagnostic({
+    trace_id: traceId,
+    tool_type: "sun_scan",
+    bid,
+    uid_hex: uid || null,
+    uid_masked: maskedUid,
+    read_counter: typeof ctr === "number" ? ctr : null,
+    auth_status: String((result.body as { auth_status?: string }).auth_status || result.body.result || "UNKNOWN"),
+    replay_status: verdict === "REPLAY_SUSPECT" ? "REPLAY_SUSPECT" : "NO_REPLAY",
+    product_state: (result.body as { product_state?: string }).product_state || null,
+    tamper_status: (result.body as { tamper_status?: string }).tamper_status || null,
+    tamper_signal: (result.body as { tamper_signal?: string }).tamper_signal || null,
+    tamper_opened: Boolean((result.body as { tamper_opened?: boolean }).tamper_opened),
+    tamper_risk: Boolean((result.body as { tamper_risk?: boolean }).tamper_risk),
+    tagtamper_config_detected: Boolean((result.body as { tag_tamper_config_detected?: boolean }).tag_tamper_config_detected),
+    enc_plain_status_byte: (result.body as { enc_plain_status_byte?: string }).enc_plain_status_byte || null,
+    request_json: { bid, picc_data, enc, cmac },
+    result_json: { contract, raw_result: result.body },
+    notes: [`trace:${traceId}`],
+  });
   console.info("[sun_scan]", JSON.stringify({
     traceId,
     route: "/sun",
@@ -940,10 +962,12 @@ export async function GET(req: Request): Promise<Response> {
     tagTamperConfigDetected: Boolean((result.body as { tag_tamper_config_detected?: boolean }).tag_tamper_config_detected),
     encPlainStatusByte: (result.body as { enc_plain_status_byte?: string }).enc_plain_status_byte || null,
     eventId,
+    diagnosticId,
     status: result.status,
     tenant: bid.startsWith("DEMO-") ? "demobodega" : "unknown",
     createdAt: new Date().toISOString(),
   }));
+  if (diagnosticId) (contract as Record<string, unknown>).diagnostic_id = diagnosticId;
 
   if (wantsHtml(req, url)) {
     const shareToken = uid
@@ -968,6 +992,7 @@ export async function GET(req: Request): Promise<Response> {
 
   const response = json(contract, result.status);
   response.headers.set("x-nexid-trace-id", traceId);
+  if (diagnosticId) response.headers.set("x-nexid-diagnostic-id", String(diagnosticId));
   if (eventId) response.headers.set("x-nexid-event-id", String(eventId));
   return response;
 }

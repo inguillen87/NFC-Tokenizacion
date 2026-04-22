@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { checkAdmin } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { processSunScan } from "../../../../lib/sun-service";
+import { insertSunDiagnostic } from "../../../../lib/sun-diagnostics";
 
 type InspectBody = { url?: string };
 
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
   if (auth) return auth;
 
   const body = (await req.json().catch(() => ({}))) as InspectBody;
+  const traceId = `sun_${Date.now().toString(36)}_inspect`;
   const rawUrl = String(body.url || "").trim();
   if (!rawUrl) return json({ ok: false, reason: "url required" }, 400);
 
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
   const uidHex = String(bodyResult.uid || "");
   const readCounter = Number(bodyResult.ctr ?? -1);
   const replayStatus = bodyResult.auth_status === "REPLAY_SUSPECT" || bodyResult.result === "REPLAY_SUSPECT" ? "REPLAY_SUSPECT" : "NO_REPLAY";
-  return json({
+  const payload = {
     ok: true,
     bid,
     uid_hex: uidHex || null,
@@ -88,5 +90,20 @@ export async function POST(req: Request) {
       closed_values: bodyResult.tamper_closed_values || [],
       open_values: bodyResult.tamper_open_values || [],
     },
-  }, 200);
+  };
+  const diagnosticId = await insertSunDiagnostic({
+    trace_id: traceId,
+    tool_type: "inspect",
+    bid,
+    uid_hex: uidHex || null,
+    read_counter: Number.isFinite(readCounter) && readCounter >= 0 ? readCounter : null,
+    auth_status: String(payload.auth_status || "UNKNOWN"),
+    replay_status: replayStatus,
+    tamper_status: String(payload.tamper_status || "UNKNOWN"),
+    enc_plain_status_byte: String(payload.encPlainStatusByte || "") || null,
+    request_json: body,
+    result_json: payload,
+    notes: payload.notes || [],
+  });
+  return json({ ok: true, diagnostic_id: diagnosticId, trace_id: traceId, result: payload }, 200);
 }
