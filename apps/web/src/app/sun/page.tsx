@@ -53,7 +53,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "SUN Passport · nexID",
     openGraph: {
       title: "SUN Passport · nexID",
-      images: [{ url: `/og-image?surface=sun&campaign=enterprise&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
+      images: [{ url: `/opengraph-image?surface=sun&campaign=enterprise&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
