@@ -16,6 +16,17 @@ const KNOWN_ORIGIN_COORDS: Array<{ match: RegExp; lat: number; lng: number }> = 
   { match: /(patagonia|rio negro)/i, lat: -39.033, lng: -67.583 },
 ];
 
+type ProductState =
+  | "VALID_CLOSED"
+  | "VALID_OPENED"
+  | "VALID_UNKNOWN_TAMPER"
+  | "VALID_MANUAL_OPENED"
+  | "REPLAY_SUSPECT"
+  | "INVALID"
+  | "UNKNOWN_BATCH"
+  | "NOT_REGISTERED"
+  | "NOT_ACTIVE";
+
 type SunContract = {
   ok?: boolean;
   status?: {
@@ -24,8 +35,8 @@ type SunContract = {
     tone?: "good" | "warn" | "risk";
     summary?: string;
     reason?: string;
-    productState?: string | null;
-    product_state?: string | null;
+    productState?: ProductState | string | null;
+    product_state?: ProductState | string | null;
     tamperSupported?: boolean;
     tamperStatus?: "CLOSED" | "OPENED" | "UNKNOWN" | string;
     tamperReason?: string | null;
@@ -175,7 +186,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const statusHeadline = productState === "VALID_CLOSED"
     ? "Autenticidad confirmada. Sello intacto."
     : productState === "VALID_MANUAL_OPENED"
-      ? "Autenticidad confirmada. Sello marcado como abierto por operador."
+      ? "Producto auténtico. Sello abierto."
     : productState === "VALID_OPENED"
       ? "Autenticidad confirmada. Sello abierto."
     : productState === "VALID_UNKNOWN_TAMPER"
@@ -225,7 +236,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   {productState === "VALID_OPENED"
                     ? "Autenticidad confirmada. Sello abierto."
                     : productState === "VALID_MANUAL_OPENED"
-                      ? "Autenticidad confirmada. Sello marcado como abierto por operador."
+                      ? "Producto auténtico. Sello abierto."
                     : productState === "VALID_UNKNOWN_TAMPER"
                       ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
                       : isValid ? "Consistente" : "Requiere validación manual"}
