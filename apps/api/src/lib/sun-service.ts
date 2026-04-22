@@ -90,7 +90,7 @@ function resolveTamperSignal(input: { rawQuery?: Record<string, string>; meta?: 
   ];
   for (const candidate of candidates) {
     const normalized = normalizeTamperValue(candidate);
-    if (normalized && normalized !== "closed") {
+    if (normalized === "opened" || normalized === "tamper") {
       return {
         opened: normalized === "opened",
         tamper: true,
