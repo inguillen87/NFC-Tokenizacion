@@ -50,6 +50,8 @@ type StreamEventPayload = {
   stream_sent_at?: string;
   stream_latency_ms?: number | null;
   request_id?: string;
+  stream_request_id?: string;
+  origin_trace_id?: string | null;
 };
 
 type LiveFeedItem = {
@@ -106,7 +108,7 @@ export function MultirubroOpsPanel() {
       city: String(payload.city || "Unknown"),
       country: String(payload.country_code || "--"),
       streamLatencyMs: Number.isFinite(Number(payload.stream_latency_ms)) ? Number(payload.stream_latency_ms) : null,
-      requestId: String(payload.request_id || "n/a"),
+      requestId: String(payload.origin_trace_id || payload.request_id || payload.stream_request_id || "n/a"),
     };
   }
 

@@ -764,7 +764,7 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
 
 export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  const traceId = req.headers.get("x-nexid-trace-id") || `sun_${Date.now().toString(36)}`;
+  const traceId = req.headers.get("x-nexid-trace-id") || req.headers.get("x-request-id") || `sun_${Date.now().toString(36)}`;
   const bid = url.searchParams.get('bid') || '';
   const picc_data = url.searchParams.get('picc_data') || '';
   const enc = url.searchParams.get('enc') || '';
@@ -801,6 +801,10 @@ export async function GET(req: Request): Promise<Response> {
         lat: Number.isFinite(geoLat) ? geoLat : null,
         lng: Number.isFinite(geoLng) ? geoLng : null,
         source: 'real',
+        meta: {
+          trace_id: traceId,
+          request_id: req.headers.get('x-request-id') || null,
+        },
       },
     }), SUN_PIPELINE_TIMEOUT_MS, "sun_pipeline");
   } catch (error) {

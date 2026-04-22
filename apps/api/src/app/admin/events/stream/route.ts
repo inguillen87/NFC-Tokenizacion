@@ -125,10 +125,10 @@ export async function GET(req: Request): Promise<Response> {
       };
 
       try {
-        send("connected", { id: `connected-${Date.now()}`, requestId, ts: new Date().toISOString() });
-        send("snapshot", { id: `snapshot-${Date.now()}`, requestId, rows: await fetchRows(searchParams) });
+        send("connected", { id: `connected-${Date.now()}`, stream_request_id: requestId, ts: new Date().toISOString() });
+        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, rows: await fetchRows(searchParams) });
       } catch {
-        send("warning", { id: `warning-${Date.now()}`, requestId, reason: "snapshot_unavailable" });
+        send("warning", { id: `warning-${Date.now()}`, stream_request_id: requestId, reason: "snapshot_unavailable" });
       }
 
       const unsubscribe = onRealtimeEvent((payload) => {
@@ -148,6 +148,8 @@ export async function GET(req: Request): Promise<Response> {
           ...payload,
           stream_sent_at: emittedAt.toISOString(),
           stream_latency_ms: streamLatencyMs,
+          stream_request_id: requestId,
+          origin_trace_id: typeof payload.trace_id === "string" && payload.trace_id ? payload.trace_id : null,
           request_id: requestId,
         });
       });
@@ -155,7 +157,7 @@ export async function GET(req: Request): Promise<Response> {
       const heartbeat = setInterval(() => {
         const now = Date.now();
         controller.enqueue(encoder.encode(`: ping ${now}\n\n`));
-        send("heartbeat", { id: `hb-${now}`, ts: now, requestId });
+        send("heartbeat", { id: `hb-${now}`, ts: now, stream_request_id: requestId });
       }, 15000);
 
       const onAbort = () => shutdown();

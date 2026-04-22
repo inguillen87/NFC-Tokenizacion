@@ -91,6 +91,7 @@ export async function processSunScan(input: {
         lng: payload.hasGeoValue ? input.context?.lng || null : null,
         source: input.context?.source || 'real',
         created_at: new Date().toISOString(),
+        trace_id: typeof input.context?.meta?.trace_id === 'string' ? String(input.context.meta.trace_id) : null,
       });
     };
 
