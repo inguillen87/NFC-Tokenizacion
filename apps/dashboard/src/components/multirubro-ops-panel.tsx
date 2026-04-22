@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { OpsPanel, StatusChip, WorldMapRealtime } from "@product/ui";
+import { motion } from "framer-motion";
+import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from "recharts";
 
 type AnalyticsPayload = {
   ok?: boolean;
   reason?: string;
   kpis?: { scans?: number; validRate?: number };
-  geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }>;
+  geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }> ;
+  trend?: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
 };
 
 type SecurityPayload = {
@@ -45,6 +48,8 @@ export function MultirubroOpsPanel() {
   const [streamOnline, setStreamOnline] = useState(false);
   const streamOnlineRef = useRef(false);
   const [demoActionStatus, setDemoActionStatus] = useState("");
+  const [botQuestion, setBotQuestion] = useState("explicame el riesgo actual");
+  const [botAnswer, setBotAnswer] = useState("");
 
   async function fetchJson<T>(url: string): Promise<T | null> {
     try {
@@ -215,14 +220,32 @@ export function MultirubroOpsPanel() {
     popup.print();
   }
 
+
+  function runBotAnalysis() {
+    const q = botQuestion.toLowerCase();
+    const replay = Number(security?.summary?.repeatedInvalidUid || 0);
+    const geo = Number(security?.summary?.geoVelocityAlerts || 0);
+    const riskRate = tapsTotal ? (((replay + geo) / tapsTotal) * 100).toFixed(1) : "0.0";
+    const ts = lastSyncAt ? new Date(lastSyncAt).toLocaleString("es-AR") : "sin sync";
+    if (q.includes("riesgo")) {
+      setBotAnswer(`Riesgo actual ${riskRate}% (replay:${replay}, geo-alerts:${geo}). Frescura: ${ts}. Siguiente paso: revisar Events filtrando REPLAY_SUSPECT y abrir ticket crítico si supera 5%.`);
+      return;
+    }
+    if (q.includes("replay")) {
+      setBotAnswer(`Se detectaron ${replay} replays en la ventana. Recomendado: validar sample URLs y ejecutar simulate-tap para confirmar pipeline de detección.`);
+      return;
+    }
+    setBotAnswer(`Scope tenant/demo. Última sync: ${ts}. KPI clave: scans ${tapsTotal}, validRate ${validRate}%.`);
+  }
+
   return (
     <OpsPanel title="Nexid Dashboard · Multirubro" subtitle="Business Intelligence para Vinos, Cosmética, Documentos y Semillas (dark premium + data refresh).">
-      <div className="grid gap-3 md:grid-cols-4">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="grid gap-3 md:grid-cols-4">
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Taps totales<br /><b className="text-cyan-200">{tapsTotal}</b></div>
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Originales vs Clones<br /><b className="text-emerald-200">{originals}</b> / <b className="text-rose-200">{clones}</b></div>
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Gas wallet Polygon<br /><b className="text-amber-200">{Number(wallet?.balancePol || 0).toFixed(3)} POL</b></div>
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Security alerts<br /><b className="text-rose-200">{Number(security?.summary?.repeatedInvalidUid || 0) + Number(security?.summary?.geoVelocityAlerts || 0)}</b></div>
-      </div>
+      </motion.div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
         <StatusChip label={streamOnline ? "stream online" : "stream reconnecting"} tone={streamOnline ? "good" : "warn"} />
         <span className="text-slate-400">Última sync: {lastSyncAt ? new Date(lastSyncAt).toLocaleTimeString("es-AR") : "—"}</span>
@@ -251,6 +274,51 @@ export function MultirubroOpsPanel() {
           {demoActionStatus ? <p className="mt-2 text-[11px] text-cyan-100">{demoActionStatus}</p> : null}
         </div>
       ) : null}
+
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Scans vs duplicados (trend)</p>
+          <div className="mt-2 h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={analytics?.trend || []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="day" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="scans" stroke="#22d3ee" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="duplicates" stroke="#f59e0b" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Tamper / duplicados por día</p>
+          <div className="mt-2 h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={analytics?.trend || []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="day" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="duplicates" fill="#f59e0b" radius={[4,4,0,0]} />
+                <Bar dataKey="tamper" fill="#ef4444" radius={[4,4,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/60 p-3">
+        <p className="text-xs uppercase tracking-[0.14em] text-slate-400">BotIA operativo (tenant scope)</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <input value={botQuestion} onChange={(e) => setBotQuestion(e.target.value)} className="min-w-[260px] flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-100" />
+          <button onClick={runBotAnalysis} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Analizar</button>
+        </div>
+        {botAnswer ? <p className="mt-2 rounded-lg border border-cyan-300/20 bg-cyan-500/5 px-3 py-2 text-xs text-cyan-100">{botAnswer}</p> : null}
+      </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
