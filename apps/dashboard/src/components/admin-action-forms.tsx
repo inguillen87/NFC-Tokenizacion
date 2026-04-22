@@ -171,6 +171,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
   const [activation, setActivation] = useState({ batchId: DEMO_SUPPLIER_BATCH_ID, count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
   const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
+  const [tamperCompare, setTamperCompare] = useState({ beforeUrl: "", afterUrl: "" });
   const [pilot, setPilot] = useState({
     tenantName: "Bodega Andes Pilot",
     tenantSlug: "bodega-andes-pilot",
@@ -212,7 +213,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
     importManifest: "Imports supplier UID manifests into an existing batch (CSV with columns or plain UID text list), verifies batch_id alignment when provided, and can leave tags active on arrival when supplier-coded tags arrive ready to use.",
     activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
-    validateSampleUrl: "Validates a supplier SUN URL and returns a human-readable trust state (VALID, NOT_REGISTERED, NOT_ACTIVE, INVALID, REPLAY_SUSPECT, UNKNOWN_BATCH).",
+    validateSampleUrl: "Validates a supplier SUN URL and returns trust/auth + replay + tamper fields (when configured).",
   };
 
   async function copyValue(value: string) {
@@ -237,6 +238,50 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
       setLastResponse(null);
       setSummary([]);
       setStatus(error instanceof Error ? error.message : "Request failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function compareTamperUrls() {
+    if (!canEdit) return;
+    const beforeUrl = tamperCompare.beforeUrl.trim();
+    const afterUrl = tamperCompare.afterUrl.trim();
+    if (!beforeUrl || !afterUrl) return;
+    setPending(true);
+    try {
+      const [beforeRes, afterRes] = await Promise.all([
+        postAdmin<unknown>("/admin/sun/validate", { url: beforeUrl }),
+        postAdmin<unknown>("/admin/sun/validate", { url: afterUrl }),
+      ]);
+      const before = (beforeRes || {}) as ActionPayload;
+      const after = (afterRes || {}) as ActionPayload;
+      const beforeCtr = Number(before.ctr || 0);
+      const afterCtr = Number(after.ctr || 0);
+      const beforeEnc = String(before.enc_plain_hex || "");
+      const afterEnc = String(after.enc_plain_hex || "");
+      const recommendation = (() => {
+        if (String(after.tamper_status || "").toUpperCase() === "OPENED" || Boolean(after.tamper_opened) || Boolean(after.tamper_risk)) return "Tamper status detected correctly";
+        if (beforeEnc && afterEnc && beforeEnc !== afterEnc) return "Payload changes but tamper parser not configured";
+        return "No tamper signal detected";
+      })();
+      const payload: ActionPayload = {
+        before_result: before.result || before.human_status || "UNKNOWN",
+        after_result: after.result || after.human_status || "UNKNOWN",
+        uid_match: String(before.uid || "") && String(before.uid || "") === String(after.uid || ""),
+        counter_diff: Number.isFinite(beforeCtr) && Number.isFinite(afterCtr) ? afterCtr - beforeCtr : null,
+        enc_diff: beforeEnc && afterEnc ? beforeEnc !== afterEnc : null,
+        tamper_status_before: before.tamper_status || "UNKNOWN",
+        tamper_status_after: after.tamper_status || "UNKNOWN",
+        recommendation,
+      };
+      setLastResponse(payload);
+      setSummary(buildSummary(payload));
+      setStatus(`Tamper compare complete · ${recommendation}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Tamper compare failed");
+      setSummary([]);
+      setLastResponse(null);
     } finally {
       setPending(false);
     }
@@ -539,7 +584,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
               onChange={(event) => setUrlValidation({ sampleUrl: event.target.value })}
             />
             <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">
-              Expected trust states: VALID · NOT_REGISTERED · NOT_ACTIVE · INVALID · REPLAY_SUSPECT · UNKNOWN_BATCH
+              Expected trust/product states: VALID_CLOSED · VALID_OPENED · TAMPER_RISK · TAMPER_UNVERIFIED · REPLAY_SUSPECT · INVALID
             </div>
             <Button
               disabled={pending || !canEdit || !urlValidation.sampleUrl.trim()}
@@ -547,6 +592,28 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             >
               Validate sample URL
             </Button>
+            <div className="rounded-xl border border-amber-300/20 bg-amber-500/5 p-3">
+              <p className="text-xs font-semibold text-amber-100">Compare before/after tamper URLs</p>
+              <div className="mt-2 grid gap-2">
+                <textarea
+                  disabled={!canEdit}
+                  className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
+                  placeholder="URL before breaking loop"
+                  value={tamperCompare.beforeUrl}
+                  onChange={(event) => setTamperCompare((prev) => ({ ...prev, beforeUrl: event.target.value }))}
+                />
+                <textarea
+                  disabled={!canEdit}
+                  className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
+                  placeholder="URL after breaking loop"
+                  value={tamperCompare.afterUrl}
+                  onChange={(event) => setTamperCompare((prev) => ({ ...prev, afterUrl: event.target.value }))}
+                />
+                <Button disabled={pending || !canEdit || !tamperCompare.beforeUrl.trim() || !tamperCompare.afterUrl.trim()} variant="secondary" onClick={() => void compareTamperUrls()}>
+                  Compare before/after tamper
+                </Button>
+              </div>
+            </div>
           </div>
         </Card>
       </div>

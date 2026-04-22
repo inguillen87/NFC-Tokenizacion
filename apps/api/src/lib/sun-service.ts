@@ -17,6 +17,36 @@ export type ScanContext = {
 };
 
 type TamperState = "opened" | "tamper" | "closed" | null;
+type TamperProfile = {
+  chip_model: string;
+  tagtamper_enabled: boolean;
+  tamper_status_enabled: boolean;
+  tamper_status_source: "enc" | "picc_data" | "none";
+  tamper_status_offset: number | null;
+  tamper_status_mapping: { closed: string[]; opened: string[] };
+  notes: string;
+};
+
+function resolveTamperProfile(raw: unknown): TamperProfile {
+  const cfg = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
+  const sourceRaw = String(cfg.tamper_status_source || "none").toLowerCase();
+  const source = (["enc", "picc_data", "none"].includes(sourceRaw) ? sourceRaw : "none") as "enc" | "picc_data" | "none";
+  const mapping = typeof cfg.tamper_status_mapping === "object" && cfg.tamper_status_mapping
+    ? (cfg.tamper_status_mapping as Record<string, unknown>)
+    : {};
+  const closed = Array.isArray(mapping.closed) ? mapping.closed.map((x) => String(x).trim().toUpperCase()).filter(Boolean) : [];
+  const opened = Array.isArray(mapping.opened) ? mapping.opened.map((x) => String(x).trim().toUpperCase()).filter(Boolean) : [];
+  const offsetRaw = Number(cfg.tamper_status_offset);
+  return {
+    chip_model: String(cfg.chip_model || "unknown"),
+    tagtamper_enabled: Boolean(cfg.tagtamper_enabled ?? cfg.tamper_status_enabled ?? false),
+    tamper_status_enabled: Boolean(cfg.tamper_status_enabled ?? cfg.tagtamper_enabled ?? false),
+    tamper_status_source: source,
+    tamper_status_offset: Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : null,
+    tamper_status_mapping: { closed, opened },
+    notes: String(cfg.notes || ""),
+  };
+}
 
 function normalizeTamperValue(input: unknown): TamperState {
   const raw = String(input ?? "").trim().toLowerCase();
@@ -341,7 +371,8 @@ export async function processSunScan(input: {
     }
   }
 
-  const tagTamperEnabled = /tag.?tamper|tamper|tt/i.test(JSON.stringify((batch as { sdm_config?: unknown }).sdm_config || {}));
+  const tamperProfile = resolveTamperProfile((batch as { sdm_config?: unknown }).sdm_config || {});
+  const tagTamperEnabled = tamperProfile.tagtamper_enabled || /tag.?tamper|tamper|tt/i.test(JSON.stringify((batch as { sdm_config?: unknown }).sdm_config || {}));
   const requireTamperEvidence = tagTamperEnabled && String(process.env.TAGTAMPER_REQUIRE_EVIDENCE || "1") !== "0";
   const encStatusByteHex = res.ok && typeof res.encPlainHex === "string" && /^[0-9a-f]{2,}$/i.test(res.encPlainHex)
     ? res.encPlainHex.slice(0, 2).toUpperCase()
@@ -352,7 +383,26 @@ export async function processSunScan(input: {
     encPlainHex: res.ok ? res.encPlainHex : undefined,
     tagTamperEnabled,
   });
-
+  const configuredStatusHex = (() => {
+    if (!tamperProfile.tamper_status_enabled || tamperProfile.tamper_status_source === "none") return null;
+    const offset = tamperProfile.tamper_status_offset ?? 0;
+    if (tamperProfile.tamper_status_source === "enc" && res.ok && typeof res.encPlainHex === "string" && res.encPlainHex.length >= (offset * 2 + 2)) {
+      return res.encPlainHex.slice(offset * 2, offset * 2 + 2).toUpperCase();
+    }
+    if (tamperProfile.tamper_status_source === "picc_data" && typeof input.piccDataHex === "string" && input.piccDataHex.length >= (offset * 2 + 2)) {
+      return input.piccDataHex.slice(offset * 2, offset * 2 + 2).toUpperCase();
+    }
+    return null;
+  })();
+  const tamperStatus = (() => {
+    if (!tagTamperEnabled || !tamperProfile.tamper_status_enabled || tamperProfile.tamper_status_source === "none") return "UNKNOWN" as const;
+    if (tamperSignal.opened) return "OPENED" as const;
+    if (configuredStatusHex && tamperProfile.tamper_status_mapping.opened.includes(configuredStatusHex)) return "OPENED" as const;
+    if (configuredStatusHex && tamperProfile.tamper_status_mapping.closed.includes(configuredStatusHex)) return "CLOSED" as const;
+    if (configuredStatusHex === "00") return "CLOSED" as const;
+    if (configuredStatusHex) return "OPENED" as const;
+    return "UNKNOWN" as const;
+  })();
   let result = !res.ok
     ? 'INVALID'
     : requireTamperEvidence && !tamperSignal.raw
@@ -379,6 +429,14 @@ export async function processSunScan(input: {
         ? 'copied URL / replay suspected'
         : null;
   const resolvedReason = !res.ok ? res.reason : successReason;
+  const productState = (() => {
+    if (!res.ok || result === "INVALID") return "INVALID" as const;
+    if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT" as const;
+    if (tamperStatus === "OPENED") return "VALID_OPENED" as const;
+    if (result === "TAMPER_RISK" || result === "OPENED") return "TAMPER_RISK" as const;
+    if (tamperStatus === "CLOSED") return "VALID_CLOSED" as const;
+    return "VALID_CLOSED" as const;
+  })();
 
   if (input.context?.forceResult) result = input.context.forceResult;
 
@@ -409,9 +467,17 @@ export async function processSunScan(input: {
       tamper_signal: tamperSignal.raw || undefined,
       tamper_opened: tamperSignal.opened,
       tamper_risk: tamperSignal.tamper,
+      tamper_supported: tagTamperEnabled && tamperProfile.tamper_status_enabled,
+      tamper_status: tamperStatus,
+      tamper_reason: tamperStatus === "UNKNOWN" ? "Tamper status not available in this batch configuration." : undefined,
+      product_state: productState,
       tag_tamper_config_detected: tagTamperEnabled,
       tag_tamper_evidence_required: requireTamperEvidence,
       enc_plain_status_byte: encStatusByteHex || undefined,
+      tamper_status_source: tamperProfile.tamper_status_source,
+      tamper_status_offset: tamperProfile.tamper_status_offset ?? undefined,
+      tamper_status_mapping: tamperProfile.tamper_status_mapping,
+      chip_model: tamperProfile.chip_model,
       reason: resolvedReason || undefined,
       event_id: eventId || undefined,
     },

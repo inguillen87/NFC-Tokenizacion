@@ -162,6 +162,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
   const statusHeadline = result.status?.tone === "good"
     ? "Autenticidad verificada"
+    : result.status?.code === "OPENED"
+      ? "Etiqueta auténtica, sello abierto"
     : result.status?.tone === "risk"
       ? "Se detectaron señales de riesgo"
       : "Validación en revisión";
@@ -199,7 +201,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
                 <p className="uppercase tracking-[0.12em] text-slate-400">Integridad</p>
-                <p className="mt-1">{isValid ? "Consistente" : "Requiere validación manual"}</p>
+                <p className="mt-1">{result.status?.code === "OPENED" ? "Auténtico, pero el envase fue abierto" : isValid ? "Consistente" : "Requiere validación manual"}</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
                 <p className="uppercase tracking-[0.12em] text-slate-400">Provenance</p>

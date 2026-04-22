@@ -511,6 +511,10 @@ function buildPublicContract(params: {
       tone: trust.tone,
       summary: trust.summary,
       reason,
+      productState: params.result.product_state || null,
+      tamperSupported: Boolean(params.result.tamper_supported),
+      tamperStatus: params.result.tamper_status || "UNKNOWN",
+      tamperReason: params.result.tamper_reason || null,
     },
     identity: {
       bid: params.bid,
@@ -553,6 +557,8 @@ function buildPublicContract(params: {
     trustSignals: {
       antiReplay: trust.code !== 'REPLAY_SUSPECT',
       tamperRisk: trust.code === 'TAMPER_RISK',
+      tamperStatus: params.result.tamper_status || "UNKNOWN",
+      tamperSupported: Boolean(params.result.tamper_supported),
       lastEventResult: params.passport?.last_result || null,
     },
     iot: {
