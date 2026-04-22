@@ -72,24 +72,24 @@ export function CtaActions({ bid, uid }: Props) {
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail.trim());
   const actionMeta: Record<Exclude<ActionKey, "tokenization">, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
     claimOwnership: {
-      title: "Activar ownership",
-      subtitle: "Asociá el activo digital al comprador actual.",
+      title: "Crear mi NexID Passport",
+      subtitle: "Asociá el activo digital a tu identidad de comprador.",
       icon: "✅",
       path: "/api/public-cta/claim-ownership",
       method: "POST",
       tone: "border-cyan-300/40 bg-cyan-500/10 text-cyan-100",
     },
     registerWarranty: {
-      title: "Registrar garantía",
-      subtitle: "Guardá cobertura y fecha de activación de postventa.",
+      title: "Guardar este producto",
+      subtitle: "Registrá cobertura y fecha de activación de postventa.",
       icon: "🛡️",
       path: "/api/public-cta/register-warranty",
       method: "POST",
       tone: "border-violet-300/40 bg-violet-500/10 text-violet-100",
     },
     provenance: {
-      title: "Ver provenance",
-      subtitle: "Consultá timeline y señales comerciales del producto.",
+      title: "Sumar puntos con esta marca",
+      subtitle: "Consultá timeline y señales para loyalty por marca.",
       icon: "📜",
       path: "/api/public-cta/provenance",
       method: "GET",
