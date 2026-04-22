@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const nav = [
   ["/me", "Inicio"],
+  ["/me/passport", "Passport"],
   ["/me/products", "Productos"],
   ["/me/taps", "Taps"],
   ["/me/rewards", "Rewards"],
