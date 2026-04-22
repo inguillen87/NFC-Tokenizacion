@@ -156,6 +156,14 @@ function getSunCopy(locale: SunLocale) {
       ctaProvenance: "Ver proveniência",
       ctaTokenize: "Tokenização opcional",
       quality: "Qualidade",
+      authReplay: "Replay detectado: solicite um novo toque físico antes de ownership/garantia/tokenização.",
+      authOk: "Autenticação concluída. Você pode continuar com ownership, garantia, proveniência e tokenização opcional.",
+      statusReady: "Pronto para executar CTAs seguras.",
+      statusReplay: "Replay ativo: ações comerciais bloqueadas até novo toque.",
+      timelineEmpty: "Sem eventos ainda. Faça um novo tap para gerar histórico.",
+      achievementTitle: "Conquistas",
+      achievementFirst: "Primeira autenticação",
+      achievementProv: "Proveniência revisada",
     } as const;
   }
   if (locale === "en") {
@@ -181,6 +189,14 @@ function getSunCopy(locale: SunLocale) {
       ctaProvenance: "View provenance",
       ctaTokenize: "Optional tokenization",
       quality: "Quality",
+      authReplay: "Replay detected: request a fresh physical tap before ownership/warranty/tokenization.",
+      authOk: "Authentication complete. You can continue with ownership, warranty, provenance and optional tokenization.",
+      statusReady: "Ready to execute secure CTAs.",
+      statusReplay: "Replay active: commercial actions blocked until a fresh tap.",
+      timelineEmpty: "No events yet. Perform a new tap to generate history.",
+      achievementTitle: "Achievements",
+      achievementFirst: "First authentication",
+      achievementProv: "Provenance reviewed",
     } as const;
   }
   return {
@@ -205,6 +221,14 @@ function getSunCopy(locale: SunLocale) {
     ctaProvenance: "Ver provenance",
     ctaTokenize: "Tokenización opcional",
     quality: "Calidad",
+    authReplay: "Replay detectado: pedí un nuevo tap físico antes de ownership/garantía/tokenización.",
+    authOk: "Autenticación completada. Podés seguir con ownership, garantía, provenance y tokenización opcional.",
+    statusReady: "Listo para ejecutar CTAs seguras.",
+    statusReplay: "Replay activo: acciones comerciales bloqueadas hasta nuevo tap.",
+    timelineEmpty: "Sin eventos todavía. Hacé un nuevo tap para generar historial.",
+    achievementTitle: "Logros",
+    achievementFirst: "Primera autenticación",
+    achievementProv: "Provenance revisado",
   } as const;
 }
 
@@ -551,7 +575,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const timeline = contract.provenance.timelineSummary;
   const timelineHtml = timeline.length
     ? timeline.map((item) => `<li>${item.at || 'N/A'} · <b>${item.result || '-'}</b> · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
-    : '<li>No timeline events available.</li>';
+    : `<li>${copy.timelineEmpty}</li>`;
   const tapLat = contract.tapContext.lat;
   const tapLng = contract.tapContext.lng;
   const wineryLat = contract.iot.wineryCoordinates?.lat ?? tapLat ?? -33.0086;
@@ -570,9 +594,9 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-icon" />
-  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:10px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:10px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.subtitle{color:#334155}.chip{color:#334155;border-color:#cbd5e1}button{background:#f8fafc;color:#0f172a}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
   <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ? "pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${isReplay ? "Replay detected: ask for a fresh physical tap before ownership/warranty/tokenization." : "Authentication completed. You can continue with ownership, warranty, provenance and optional tokenization."}</p><div class="chips"><span class="chip">${isReplay ? "Commercial state: HOLD" : "Commercial state: OK"}</span><span class="chip">${isReplay ? "Risk: replay suspect" : "Risk: controlled"}</span><span class="chip">Dashboard sync: Analytics · Events · Tags</span></div></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${isReplay ? copy.authReplay : copy.authOk}</p><div class="chips"><span class="chip">${isReplay ? "Commercial state: HOLD" : "Commercial state: OK"}</span><span class="chip">${isReplay ? "Risk: replay suspect" : "Risk: controlled"}</span><span class="chip">Dashboard sync: Analytics · Events · Tags</span></div></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.identityPanel}</h3><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Harvest ${contract.product.harvestYear || '-'} · Barrel ${contract.product.barrelMonths || '-'} months</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.provenancePanel}</h3><p>Origin: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.iotPanel}</h3><p>Winery: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>Altitude: <b>${contract.iot.altitude || '-'}</b> · Oak: <b>${contract.iot.oakType || '-'}</b></p><p>Cellar temp: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humidity: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Light: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transit: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
@@ -583,7 +607,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${contract.iot.wineryLocation || 'Origin'} → tap point.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.actionsPanel}</h3><p class="subtitle" style="margin-bottom:10px">Consumer, warranty and traceability workflows.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? "Replay active: commercial actions blocked until a fresh tap." : "Ready to execute secure CTAs."}</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Demo mode: unsigned share fallback enabled for DEMO-* batches.</p>'}</section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.achievementTitle}</h3><div class="chips"><span class="chip">🏅 ${copy.achievementFirst}: ${contract.identity.scanCount > 0 ? "✓" : "-"}</span><span class="chip">📍 ${copy.achievementProv}: ${contract.provenance.timelineSummary.length > 0 ? "✓" : "-"}</span></div></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.actionsPanel}</h3><p class="subtitle" style="margin-bottom:10px">Consumer, warranty and traceability workflows.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? copy.statusReplay : copy.statusReady}</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Demo mode: unsigned share fallback enabled for DEMO-* batches.</p>'}</section>
   <section class="card"><details><summary>${copy.technicalPanel}</summary><p>BID: ${contract.identity.bid} · UID: ${contract.identity.uid || 'N/A'} · Read counter: ${contract.identity.readCounter ?? 'N/A'}</p><p>Raw: picc ${contract.technical.raw.piccDataPrefix} · enc ${contract.technical.raw.encPrefix} · cmac ${contract.technical.raw.cmacPrefix}</p><p>Troubleshooting: ${contract.troubleshooting.join(' | ') || 'No alerts'}</p></details></section>
 <script>
 (() => {
