@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { checkAdmin } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
-import { json } from "../../../../lib/http";
+import { randomUUID } from "node:crypto";
 
 type CountRow = { total?: number; latest?: string | null; replay?: number; risk?: number };
 
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
+  const requestId = req.headers.get("x-request-id") || req.headers.get("x-nexid-request-id") || randomUUID();
   const tenant = String(searchParams.get("tenant") || "").trim().toLowerCase();
 
   const eventRows = tenant
@@ -107,8 +108,9 @@ export async function GET(req: Request) {
         ? "stale"
         : "delayed";
 
-  return json({
+  return new Response(JSON.stringify({
     ok: true,
+    requestId,
     scope: { tenant: tenant || "global" },
     counters: {
       eventsTotal: Number(events.total || 0),
@@ -126,5 +128,11 @@ export async function GET(req: Request) {
       streamState,
     },
     generatedAt: new Date(now).toISOString(),
+  }, null, 2), {
+    status: 200,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "x-nexid-request-id": requestId,
+    },
   });
 }
