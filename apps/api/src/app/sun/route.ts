@@ -282,7 +282,7 @@ function resolveTrustState(status: string, reason: string, productState?: string
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay')) {
     return { code: 'REPLAY_SUSPECT', label: 'Replay detectado', summary: 'Payload reutilizado. Pedí nuevo tap físico.', tone: 'warn' as const };
   }
-  if (normalizedProductState === "VALID_OPENED" || normalizedProductState === "TAMPER_RISK" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
+  if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
     return { code: 'OPENED', label: 'Producto abierto', summary: 'Producto auténtico, pero el sello fue abierto.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_MANUAL_OPENED") {
