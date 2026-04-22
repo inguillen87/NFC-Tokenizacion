@@ -306,46 +306,6 @@ export function MultirubroOpsPanel() {
           }
         }
       });
-      stream.addEventListener("heartbeat", () => {
-        if (!active) return;
-        setLastEventAt(new Date().toISOString());
-        setStreamState("connected");
-        bumpStaleTimer();
-      });
-      stream.addEventListener("warning", (event) => {
-        if (!active) return;
-        try {
-          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as { reason?: string };
-          if (payload.reason) setWarnings((prev) => Array.from(new Set([...prev, payload.reason!])));
-        } catch {
-          setWarnings((prev) => Array.from(new Set([...prev, "stream_warning"])));
-        }
-      });
-      stream.addEventListener("event", (event) => {
-        if (!active) return;
-        setLastEventAt(new Date().toISOString());
-        setStreamState("connected");
-        bumpStaleTimer();
-        try {
-          applyIncomingEvent(JSON.parse(String((event as MessageEvent).data || "{}")) as StreamEventPayload);
-        } catch {
-          // ignore malformed payload; reconciliation fetch below will refresh state
-        }
-        const now = Date.now();
-        if (now - eventRefreshGateRef.current > 2000) {
-          eventRefreshGateRef.current = now;
-          void loadData();
-        }
-        if (typeof window !== "undefined") {
-          const pulse = document.getElementById("nexid-live-pulse");
-          if (pulse) {
-            pulse.animate(
-              [{ transform: "scale(1)", opacity: 0.8 }, { transform: "scale(1.5)", opacity: 0 }],
-              { duration: 500, easing: "ease-out" },
-            );
-          }
-        }
-      });
       stream.onerror = () => {
         setStreamOnline(false);
         setStreamState("reconnecting");

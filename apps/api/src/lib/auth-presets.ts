@@ -23,8 +23,8 @@ export function getAuthPresets(): Preset[] {
       permissions: ["users:manage", "tenants:write", "batches:write", "analytics:read", "events:read"],
     },
     {
-      email: read(process.env.TENANT_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL, "demobodega@nexid.lat"),
-      password: read(process.env.TENANT_ADMIN_PASSWORD || process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD, "DemoBodega2026"),
+      email: read(process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL, "demobodega@nexid.lat"),
+      password: read(process.env.TENANT_ADMIN_PASSWORD || process.env.BODEGA_ADMIN_PASSWORD || process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD, "DemoBodega2026"),
       role: "tenant_admin",
       fullName: "DemoBodega Admin",
       permissions: ["users:manage", "batches:write", "analytics:read", "events:read"],
@@ -46,6 +46,16 @@ export function getAuthPresets(): Preset[] {
   ];
 }
 
+async function resolveDemoTenantId(sql: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any>) {
+  const preferred = read(process.env.DEMO_TENANT_SLUG || process.env.DEMO_BODEGA_SLUG, "demobodega");
+  const candidates = [preferred, "demobodega", "demo-bodega"];
+  for (const slug of candidates) {
+    const rows = await sql`SELECT id FROM tenants WHERE slug = ${slug} LIMIT 1`;
+    if (rows[0]?.id) return rows[0].id as string;
+  }
+  return null;
+}
+
 export async function ensurePresetUser(sql: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any>, email: string) {
   const preset = getAuthPresets().find((item) => item.email.toLowerCase() === email.toLowerCase());
   if (!preset) return null;
@@ -59,9 +69,12 @@ export async function ensurePresetUser(sql: (strings: TemplateStringsArray, ...v
     await sql`INSERT INTO password_credentials (user_id, password_hash) VALUES (${userId}::uuid, ${hashPassword(preset.password)})`;
   }
 
-  const membershipRows = await sql`SELECT id FROM memberships WHERE user_id = ${userId}::uuid AND tenant_id IS NULL AND role = ${preset.role}::membership_role LIMIT 1`;
+  const tenantIdForMembership = preset.role === "tenant_admin" ? await resolveDemoTenantId(sql) : null;
+  const membershipRows = await sql`SELECT id, tenant_id FROM memberships WHERE user_id = ${userId}::uuid AND role = ${preset.role}::membership_role ORDER BY created_at ASC LIMIT 1`;
   if (!membershipRows[0]) {
-    await sql`INSERT INTO memberships (user_id, tenant_id, role) VALUES (${userId}::uuid, NULL, ${preset.role}::membership_role)`;
+    await sql`INSERT INTO memberships (user_id, tenant_id, role) VALUES (${userId}::uuid, ${tenantIdForMembership}::uuid, ${preset.role}::membership_role)`;
+  } else if (preset.role === "tenant_admin" && tenantIdForMembership && !membershipRows[0].tenant_id) {
+    await sql`UPDATE memberships SET tenant_id = ${tenantIdForMembership}::uuid, updated_at = now() WHERE id = ${membershipRows[0].id}::uuid`;
   }
 
   for (const entry of preset.permissions) {
