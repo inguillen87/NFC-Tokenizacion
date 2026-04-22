@@ -274,22 +274,23 @@ function buildTroubleshooting(reason: string, bid: string) {
   return ['Revisá onboarding del batch.', 'Confirmá UID importado/activo.', 'Auditar eventos y llaves en dashboard.'];
 }
 
-function resolveTrustState(status: string, reason: string) {
+function resolveTrustState(status: string, reason: string, productState?: string | null) {
   const normalizedStatus = status.toUpperCase();
   const normalizedReason = reason.toLowerCase();
+  const normalizedProductState = String(productState || "").toUpperCase();
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay')) {
     return { code: 'REPLAY_SUSPECT', label: 'Replay detectado', summary: 'Payload reutilizado. Pedí nuevo tap físico.', tone: 'warn' as const };
   }
-  if (normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
-    return { code: 'OPENED', label: 'Producto abierto', summary: 'Se detectó estado de apertura en el flujo.', tone: 'warn' as const };
+  if (normalizedProductState === "VALID_OPENED" || normalizedProductState === "TAMPER_RISK" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
+    return { code: 'OPENED', label: 'Producto abierto', summary: 'Producto auténtico, pero el sello fue abierto.', tone: 'warn' as const };
+  }
+  if (normalizedProductState === "VALID_UNKNOWN_TAMPER") {
+    return { code: 'VALID_UNKNOWN_TAMPER', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Estado de apertura no disponible para este lote.', tone: 'good' as const };
   }
   if (normalizedStatus === 'TAMPER_RISK' || normalizedReason.includes('tamper')) {
     return { code: 'TAMPER_RISK', label: 'Riesgo de manipulación', summary: 'Se detectaron señales de posible manipulación.', tone: 'risk' as const };
   }
-  if (normalizedStatus === 'TAMPER_UNVERIFIED' || normalizedReason.includes('unverified_signal_missing')) {
-    return { code: 'TAMPER_UNVERIFIED', label: 'TagTamper sin evidencia', summary: 'Faltan señales TT explícitas (URL/NDEF) para certificar integridad del sello.', tone: 'risk' as const };
-  }
-  if (normalizedStatus === 'VALID') {
+  if (normalizedProductState === "VALID_CLOSED" || normalizedStatus === 'VALID') {
     return { code: 'VALID', label: 'Producto auténtico', summary: 'Firma SUN validada correctamente.', tone: 'good' as const };
   }
   return { code: normalizedStatus || 'INVALID', label: 'Validación no concluyente', summary: 'No fue posible confirmar autenticidad final.', tone: 'warn' as const };
@@ -481,7 +482,7 @@ function buildPublicContract(params: {
 }) {
   const status = params.result.result || (params.result.ok ? 'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
-  const trust = resolveTrustState(status, reason);
+  const trust = resolveTrustState(status, reason, params.result.product_state || null);
   const troubleshooting = buildTroubleshooting(reason, params.bid);
   const preset = BID_PASSPORT_PRESETS[params.bid];
   const fallbackName = preset?.name || `NexID Verified Asset · ${params.bid}`;

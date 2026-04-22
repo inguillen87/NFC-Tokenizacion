@@ -147,6 +147,11 @@ export function DemoLabClient() {
             <div className="mt-4 rounded-lg border border-violet-300/25 bg-violet-500/10 p-3 text-xs text-violet-100">
               Recommended CTA: {activeCopy.cta}
             </div>
+            <div className="mt-3 rounded-lg border border-amber-300/25 bg-amber-500/10 p-3 text-xs text-amber-100">
+              <p className="font-semibold">TagTamper demo lane</p>
+              <p className="mt-1">1) Scan before opening · 2) Break/open loop · 3) Scan after opening · 4) Compare URLs · 5) Configure tamper parser offset/value mapping · 6) Re-open mobile preview and verify OPENED state.</p>
+              <p className="mt-1 text-amber-200/90">If tamper cannot be detected: Current batch validates authenticity and replay protection, but does not expose electronic TagTamper status. Ask supplier to include TagTamper status in the SDM payload.</p>
+            </div>
           </article>
 
           <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
