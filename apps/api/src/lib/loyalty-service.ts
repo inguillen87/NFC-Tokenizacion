@@ -206,3 +206,59 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
   `;
   return { ok: true, status: 200, redemption: redemptionRows[0] };
 }
+
+
+export async function getLoyaltyMemberById(input: { memberId: string; tenantId?: string | null }) {
+  const rows = await sql/*sql*/`
+    SELECT m.id, m.tenant_id, m.program_id, m.consumer_id, m.email, m.phone, m.display_name, m.country, m.preferred_locale,
+           m.status, m.points_balance, m.lifetime_points, m.first_tap_at, m.last_tap_at, m.consent_json, m.profile_json,
+           p.name AS program_name, p.points_name
+    FROM loyalty_members m
+    JOIN loyalty_programs p ON p.id = m.program_id
+    WHERE m.id = ${input.memberId}
+      AND (${input.tenantId || null}::uuid IS NULL OR m.tenant_id = ${input.tenantId || null}::uuid)
+    LIMIT 1
+  `;
+  return rows[0] || null;
+}
+
+export async function updateLoyaltyMemberPreferences(input: {
+  memberId: string;
+  tenantId?: string | null;
+  preferredLocale?: string | null;
+  displayName?: string | null;
+  country?: string | null;
+  consent?: Record<string, unknown> | null;
+  profilePatch?: Record<string, unknown> | null;
+}) {
+  const rows = await sql/*sql*/`
+    UPDATE loyalty_members
+    SET preferred_locale = COALESCE(${input.preferredLocale || null}, preferred_locale),
+        display_name = COALESCE(${input.displayName || null}, display_name),
+        country = COALESCE(${input.country || null}, country),
+        consent_json = CASE WHEN ${input.consent ? JSON.stringify(input.consent) : null}::jsonb IS NULL THEN consent_json ELSE consent_json || ${input.consent ? JSON.stringify(input.consent) : null}::jsonb END,
+        profile_json = CASE WHEN ${input.profilePatch ? JSON.stringify(input.profilePatch) : null}::jsonb IS NULL THEN profile_json ELSE profile_json || ${input.profilePatch ? JSON.stringify(input.profilePatch) : null}::jsonb END,
+        updated_at = now()
+    WHERE id = ${input.memberId}
+      AND (${input.tenantId || null}::uuid IS NULL OR tenant_id = ${input.tenantId || null}::uuid)
+    RETURNING *
+  `;
+  return rows[0] || null;
+}
+
+export async function requestLoyaltyMemberDataDeletion(input: { memberId: string; tenantId?: string | null; reason?: string | null }) {
+  const rows = await sql/*sql*/`
+    UPDATE loyalty_members
+    SET status = 'deleted',
+        email = NULL,
+        phone = NULL,
+        display_name = NULL,
+        consent_json = jsonb_set(consent_json, '{dataDeletionRequestedAt}', to_jsonb(now()::text), true),
+        profile_json = COALESCE(profile_json, '{}'::jsonb) || jsonb_build_object('deletionReason', ${input.reason || null}, 'deletionRequestedAt', now()::text),
+        updated_at = now()
+    WHERE id = ${input.memberId}
+      AND (${input.tenantId || null}::uuid IS NULL OR tenant_id = ${input.tenantId || null}::uuid)
+    RETURNING id, status, updated_at
+  `;
+  return rows[0] || null;
+}
