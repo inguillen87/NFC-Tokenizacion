@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { DEMO_CANONICAL_BATCH_ID, DEMO_TENANT_SLUG, DEMO_WINE_ITEM_ID } from "@product/config";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -39,7 +40,7 @@ const roleCopy: Record<Role, { title: string; focus: string; cta: string }> = {
 };
 
 const feedByBeat: Record<Beat, string[]> = {
-  0: ["Batch DEMO-2026-02 listo para piloto.", "Tag profile secure cargado.", "Route map inicializado."],
+  0: [`Batch ${DEMO_CANONICAL_BATCH_ID} listo para piloto.`, "Tag profile secure cargado.", "Route map inicializado."],
   1: ["SUN scan validado.", "Autenticidad confirmada para UID.", "Consumer trust score sube."],
   2: ["Replay/tamper signal detectado.", "Riesgo marcado para revisión.", "Equipo de operaciones notificado."],
   3: ["Ownership claim registrado.", "Warranty activada.", "Tokenization optional lead creado."],
@@ -81,7 +82,7 @@ export function DemoLabClient() {
   const kpis = kpisByRole[role];
   const mobileMode = beatToMode[beat];
   const mobileUrl = useMemo(
-    () => `/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&locale=es-AR&demoMode=${mobileMode}&bid=DEMO-2026-02`,
+    () => `/demo-lab/mobile/${DEMO_TENANT_SLUG}/${DEMO_WINE_ITEM_ID}?pack=wine-secure&locale=es-AR&demoMode=${mobileMode}&bid=${DEMO_CANONICAL_BATCH_ID}`,
     [mobileMode],
   );
 
