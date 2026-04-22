@@ -44,6 +44,17 @@ function sanitizePublicErrorReason(raw: string) {
 
 type SunResult = Awaited<ReturnType<typeof processSunScan>>;
 
+type ProductState =
+  | "VALID_CLOSED"
+  | "VALID_OPENED"
+  | "VALID_UNKNOWN_TAMPER"
+  | "VALID_MANUAL_OPENED"
+  | "REPLAY_SUSPECT"
+  | "INVALID"
+  | "UNKNOWN_BATCH"
+  | "NOT_REGISTERED"
+  | "NOT_ACTIVE";
+
 type PassportSnapshot = {
   product_name: string | null;
   sku: string | null;
@@ -275,14 +286,14 @@ function buildTroubleshooting(reason: string, bid: string) {
   return ['Revisá onboarding del batch.', 'Confirmá UID importado/activo.', 'Auditar eventos y llaves en dashboard.'];
 }
 
-function resolveTrustState(status: string, reason: string, productState?: string | null) {
+function resolveTrustState(status: string, reason: string, productState?: ProductState | string | null) {
   const normalizedStatus = status.toUpperCase();
   const normalizedReason = reason.toLowerCase();
   const normalizedProductState = String(productState || "").toUpperCase();
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay')) {
     return { code: 'REPLAY_SUSPECT', label: 'Replay detectado', summary: 'Payload reutilizado. Pedí nuevo tap físico.', tone: 'warn' as const };
   }
-  if (normalizedProductState === "VALID_OPENED" || normalizedProductState === "TAMPER_RISK" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
+  if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
     return { code: 'OPENED', label: 'Producto abierto', summary: 'Producto auténtico, pero el sello fue abierto.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_MANUAL_OPENED") {
@@ -619,7 +630,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const authPanelMessage = isReplay
     ? copy.authReplay
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
-      ? "Producto auténtico. Sello marcado como abierto por operador."
+      ? "Producto auténtico. Sello abierto."
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Authentic tag, but seal was opened."
       : productState === "VALID_UNKNOWN_TAMPER"
