@@ -22,7 +22,8 @@
     "demo:demobodega": "npm run demo:demobodega --workspace=api",
     "demo:seed": "npm run demo:seed --workspace=api",
     "check:routes": "node scripts/check-next-dynamic-routes.mjs",
-    "verify:routes": "npm run check:routes && npm run test:routes --workspace=api"
+    "verify:routes": "npm run check:routes && npm run test:routes --workspace=api",
+    "check:placeholders": "node scripts/check-no-placeholders.mjs"
   },
   "packageManager": "npm@10.9.0",
   "engines": {

@@ -4,8 +4,17 @@ export const dynamic = "force-dynamic";
 import { checkAdmin } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { onRealtimeEvent } from "../../../../lib/realtime-events";
+import { randomUUID } from "node:crypto";
 
 type EventRow = Record<string, unknown>;
+
+function inferRiskLevel(result: string) {
+  const normalized = String(result || "").toUpperCase();
+  if (normalized === "VALID" || normalized === "TAP_VALID") return "none";
+  if (normalized === "REPLAY_SUSPECT" || normalized === "TAMPER" || normalized === "TAMPERED") return "high";
+  if (normalized === "INVALID" || normalized === "NOT_REGISTERED" || normalized === "NOT_ACTIVE" || normalized === "REVOKED") return "medium";
+  return "low";
+}
 
 function resolveWindow(search: URLSearchParams) {
   const raw = String(search.get("window") || "24h").toLowerCase();
@@ -44,7 +53,17 @@ async function fetchRows(search: URLSearchParams): Promise<EventRow[]> {
         FROM events e
         WHERE (SELECT slug FROM tenants t WHERE t.id = e.tenant_id LIMIT 1) = ${tenant}
           AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
-          AND (${risk} = '' OR UPPER(COALESCE(e.reason, '')) LIKE '%' || ${risk} || '%')
+          AND (
+            ${risk} = ''
+            OR (
+              CASE
+                WHEN UPPER(e.result) IN ('VALID', 'TAP_VALID') THEN 'NONE'
+                WHEN UPPER(e.result) IN ('REPLAY_SUSPECT', 'TAMPER', 'TAMPERED') THEN 'HIGH'
+                WHEN UPPER(e.result) IN ('INVALID', 'NOT_REGISTERED', 'NOT_ACTIVE', 'REVOKED') THEN 'MEDIUM'
+                ELSE 'LOW'
+              END
+            ) = ${risk}
+          )
           AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
         ORDER BY created_at DESC
         LIMIT ${limit}
@@ -54,7 +73,17 @@ async function fetchRows(search: URLSearchParams): Promise<EventRow[]> {
                (SELECT slug FROM tenants t WHERE t.id = e.tenant_id LIMIT 1) AS tenant_slug
         FROM events e
         WHERE (${verdict} = '' OR UPPER(e.result) = ${verdict})
-          AND (${risk} = '' OR UPPER(COALESCE(e.reason, '')) LIKE '%' || ${risk} || '%')
+          AND (
+            ${risk} = ''
+            OR (
+              CASE
+                WHEN UPPER(e.result) IN ('VALID', 'TAP_VALID') THEN 'NONE'
+                WHEN UPPER(e.result) IN ('REPLAY_SUSPECT', 'TAMPER', 'TAMPERED') THEN 'HIGH'
+                WHEN UPPER(e.result) IN ('INVALID', 'NOT_REGISTERED', 'NOT_ACTIVE', 'REVOKED') THEN 'MEDIUM'
+                ELSE 'LOW'
+              END
+            ) = ${risk}
+          )
           AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
         ORDER BY created_at DESC
         LIMIT ${limit}
@@ -67,6 +96,7 @@ export async function GET(req: Request): Promise<Response> {
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
+  const requestId = req.headers.get("x-request-id") || req.headers.get("x-nexid-request-id") || randomUUID();
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -94,25 +124,38 @@ export async function GET(req: Request): Promise<Response> {
         controller.close();
       };
 
-      send("snapshot", { rows: await fetchRows(searchParams) });
+      try {
+        send("connected", { id: `connected-${Date.now()}`, requestId, ts: new Date().toISOString() });
+        send("snapshot", { id: `snapshot-${Date.now()}`, requestId, rows: await fetchRows(searchParams) });
+      } catch {
+        send("warning", { id: `warning-${Date.now()}`, requestId, reason: "snapshot_unavailable" });
+      }
 
       const unsubscribe = onRealtimeEvent((payload) => {
         if (tenant && String(payload.tenant_slug || "").toLowerCase() !== tenant) return;
         if (verdict && String(payload.result || "").toUpperCase() !== verdict) return;
-        if (risk && !String(payload.reason || "").toUpperCase().includes(risk)) return;
+        if (risk && inferRiskLevel(String(payload.result || "")) !== risk.toLowerCase()) return;
         if (windowMs) {
           const createdAt = new Date(String(payload.created_at || Date.now()));
           if (Number.isNaN(createdAt.getTime())) return;
           const lowerBound = new Date(Date.now() - windowMs);
           if (createdAt < lowerBound) return;
         }
-        send("event", payload);
+        const emittedAt = new Date();
+        const createdAtMs = payload.created_at ? new Date(String(payload.created_at)).getTime() : NaN;
+        const streamLatencyMs = Number.isFinite(createdAtMs) ? Math.max(0, emittedAt.getTime() - createdAtMs) : null;
+        send("event", {
+          ...payload,
+          stream_sent_at: emittedAt.toISOString(),
+          stream_latency_ms: streamLatencyMs,
+          request_id: requestId,
+        });
       });
 
       const heartbeat = setInterval(() => {
         const now = Date.now();
         controller.enqueue(encoder.encode(`: ping ${now}\n\n`));
-        send("heartbeat", { id: `hb-${now}`, ts: now });
+        send("heartbeat", { id: `hb-${now}`, ts: now, requestId });
       }, 15000);
 
       const onAbort = () => shutdown();
@@ -136,6 +179,7 @@ export async function GET(req: Request): Promise<Response> {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "x-nexid-request-id": requestId,
     },
   });
 }
