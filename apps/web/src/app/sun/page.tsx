@@ -160,11 +160,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const timelineCities = new Set((result.provenance?.timelineSummary || []).map((item) => `${item.city || "Unknown"}|${item.country || "--"}`)).size;
   const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
   const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
-  const statusHeadline = result.status?.tone === "good"
-    ? "Autenticidad verificada"
-    : result.status?.tone === "risk"
-      ? "Se detectaron señales de riesgo"
-      : "Validación en revisión";
+  const productState = String(result.status?.productState || "").toUpperCase();
+  const statusHeadline = productState === "VALID_CLOSED"
+    ? "Producto auténtico. Sello intacto."
+    : productState === "VALID_OPENED" || productState === "TAMPER_RISK"
+      ? "Producto auténtico, pero el sello fue abierto."
+      : productState === "VALID_UNKNOWN_TAMPER"
+        ? "Producto auténtico. Estado de apertura no disponible para este lote."
+        : result.status?.code === "REPLAY_SUSPECT"
+          ? "URL reutilizada. Escaneá físicamente la etiqueta para generar una nueva lectura."
+          : result.status?.tone === "good"
+            ? "Autenticidad verificada"
+            : result.status?.tone === "risk"
+              ? "Se detectaron señales de riesgo"
+              : "Validación en revisión";
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 text-slate-100 sm:py-10">
@@ -199,7 +208,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
                 <p className="uppercase tracking-[0.12em] text-slate-400">Integridad</p>
-                <p className="mt-1">{isValid ? "Consistente" : "Requiere validación manual"}</p>
+                <p className="mt-1">
+                  {productState === "VALID_OPENED" || productState === "TAMPER_RISK"
+                    ? "Producto auténtico, pero el sello fue abierto"
+                    : productState === "VALID_UNKNOWN_TAMPER"
+                      ? "TagTamper chip is present, but open/closed status is not configured or not present in the current SUN/SDM payload."
+                      : isValid ? "Consistente" : "Requiere validación manual"}
+                </p>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
                 <p className="uppercase tracking-[0.12em] text-slate-400">Provenance</p>

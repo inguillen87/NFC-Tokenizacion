@@ -171,6 +171,16 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
   const [activation, setActivation] = useState({ batchId: DEMO_SUPPLIER_BATCH_ID, count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
   const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
+  const [inspectUrl, setInspectUrl] = useState("");
+  const [tamperCompare, setTamperCompare] = useState({ beforeUrl: "", afterUrl: "" });
+  const [tamperConfig, setTamperConfig] = useState({
+    bid: DEMO_SUPPLIER_BATCH_ID,
+    source: "decrypted_sdm",
+    offset: "0",
+    length: "1",
+    closed: "00",
+    opened: "01",
+  });
   const [pilot, setPilot] = useState({
     tenantName: "Bodega Andes Pilot",
     tenantSlug: "bodega-andes-pilot",
@@ -212,7 +222,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
     importManifest: "Imports supplier UID manifests into an existing batch (CSV with columns or plain UID text list), verifies batch_id alignment when provided, and can leave tags active on arrival when supplier-coded tags arrive ready to use.",
     activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
-    validateSampleUrl: "Validates a supplier SUN URL and returns a human-readable trust state (VALID, NOT_REGISTERED, NOT_ACTIVE, INVALID, REPLAY_SUSPECT, UNKNOWN_BATCH).",
+    validateSampleUrl: "Validates a supplier SUN URL and returns trust/auth + replay + tamper fields (when configured).",
   };
 
   async function copyValue(value: string) {
@@ -237,6 +247,27 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
       setLastResponse(null);
       setSummary([]);
       setStatus(error instanceof Error ? error.message : "Request failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function compareTamperUrls() {
+    if (!canEdit) return;
+    const beforeUrl = tamperCompare.beforeUrl.trim();
+    const afterUrl = tamperCompare.afterUrl.trim();
+    if (!beforeUrl || !afterUrl) return;
+    setPending(true);
+    try {
+      const compare = await postAdmin<unknown>("/admin/sun/compare-tamper", { before_url: beforeUrl, after_url: afterUrl });
+      const payload = (compare || {}) as ActionPayload;
+      setLastResponse(payload);
+      setSummary(buildSummary(payload));
+      setStatus("Tamper compare complete");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Tamper compare failed");
+      setSummary([]);
+      setLastResponse(null);
     } finally {
       setPending(false);
     }
@@ -539,7 +570,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
               onChange={(event) => setUrlValidation({ sampleUrl: event.target.value })}
             />
             <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">
-              Expected trust states: VALID · NOT_REGISTERED · NOT_ACTIVE · INVALID · REPLAY_SUSPECT · UNKNOWN_BATCH
+              Expected trust/product states: VALID_CLOSED · VALID_OPENED · TAMPER_RISK · TAMPER_UNVERIFIED · REPLAY_SUSPECT · INVALID
             </div>
             <Button
               disabled={pending || !canEdit || !urlValidation.sampleUrl.trim()}
@@ -547,6 +578,72 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             >
               Validate sample URL
             </Button>
+            <div className="rounded-xl border border-amber-300/20 bg-amber-500/5 p-3">
+              <p className="text-xs font-semibold text-amber-100">Compare before/after tamper URLs</p>
+              <div className="mt-2 grid gap-2">
+                <textarea
+                  disabled={!canEdit}
+                  className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
+                  placeholder="URL before breaking loop"
+                  value={tamperCompare.beforeUrl}
+                  onChange={(event) => setTamperCompare((prev) => ({ ...prev, beforeUrl: event.target.value }))}
+                />
+                <textarea
+                  disabled={!canEdit}
+                  className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
+                  placeholder="URL after breaking loop"
+                  value={tamperCompare.afterUrl}
+                  onChange={(event) => setTamperCompare((prev) => ({ ...prev, afterUrl: event.target.value }))}
+                />
+                <Button disabled={pending || !canEdit || !tamperCompare.beforeUrl.trim() || !tamperCompare.afterUrl.trim()} variant="secondary" onClick={() => void compareTamperUrls()}>
+                  Compare before/after tamper
+                </Button>
+              </div>
+            </div>
+            <div className="rounded-xl border border-indigo-300/20 bg-indigo-500/5 p-3">
+              <p className="text-xs font-semibold text-indigo-100">Inspect SUN URL (super-admin diagnostics)</p>
+              <textarea
+                disabled={!canEdit}
+                className="mt-2 min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
+                placeholder="Full /sun URL for parsed payload + decrypted byte offsets"
+                value={inspectUrl}
+                onChange={(event) => setInspectUrl(event.target.value)}
+              />
+              <Button disabled={pending || !canEdit || !inspectUrl.trim()} className="mt-2" variant="secondary" onClick={() => submit("/admin/sun/inspect", { url: inspectUrl })}>
+                Inspect URL payload
+              </Button>
+            </div>
+            <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/5 p-3">
+              <p className="text-xs font-semibold text-emerald-100">TagTamper parser config</p>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.bid} onChange={(e) => setTamperConfig((v) => ({ ...v, bid: e.target.value }))} placeholder="batch bid" />
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.source} onChange={(e) => setTamperConfig((v) => ({ ...v, source: e.target.value }))} placeholder="source: decrypted_sdm" />
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.offset} onChange={(e) => setTamperConfig((v) => ({ ...v, offset: e.target.value }))} placeholder="offset" />
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.length} onChange={(e) => setTamperConfig((v) => ({ ...v, length: e.target.value }))} placeholder="length" />
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.closed} onChange={(e) => setTamperConfig((v) => ({ ...v, closed: e.target.value }))} placeholder="closed values, comma separated" />
+                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.opened} onChange={(e) => setTamperConfig((v) => ({ ...v, opened: e.target.value }))} placeholder="open values, comma separated" />
+              </div>
+              <Button
+                disabled={pending || !canEdit || !tamperConfig.bid.trim()}
+                className="mt-2"
+                variant="secondary"
+                onClick={() => submit(`/admin/batches/${tamperConfig.bid.trim()}/tamper-config`, {
+                  tagtamper_enabled: true,
+                  tamper_status_enabled: true,
+                  tamper_status_source: tamperConfig.source,
+                  tamper_status_offset: Number(tamperConfig.offset || 0),
+                  tamper_status_length: Number(tamperConfig.length || 1),
+                  tamper_closed_values: tamperConfig.closed.split(",").map((v) => v.trim()).filter(Boolean),
+                  tamper_open_values: tamperConfig.opened.split(",").map((v) => v.trim()).filter(Boolean),
+                })}
+              >
+                Save tamper parser config
+              </Button>
+            </div>
+            <div className="rounded-xl border border-fuchsia-300/20 bg-fuchsia-500/5 p-3 text-xs text-fuchsia-100">
+              <p className="font-semibold">Supplier TagTamper Requirements</p>
+              <p className="mt-1 whitespace-pre-wrap">- Is TagTamper open/closed status included in SUN/SDM payload?\n- Where is it located?\n- Which byte/field indicates open vs closed?\n- Can you send before/after URLs from the same tag?\n- Can you confirm production batches include this field?</p>
+            </div>
           </div>
         </Card>
       </div>
