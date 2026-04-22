@@ -35,6 +35,17 @@ type DiagnosticsPayload = {
   freshness?: { latestAt?: string | null; ageMs?: number | null; streamState?: string };
 };
 
+type StreamEventPayload = {
+  id?: string | number;
+  result?: string;
+  reason?: string;
+  city?: string;
+  country_code?: string;
+  lat?: number | string | null;
+  lng?: number | string | null;
+  created_at?: string;
+};
+
 const METADATA_TEMPLATES = [
   { vertical: "Vinos", fields: ["Nota de cata", "Temperatura de guarda", "Barrica / cosecha"] },
   { vertical: "Cosmética", fields: ["INCI", "Lote cosmético", "Fecha sugerida de uso"] },
@@ -61,6 +72,74 @@ export function MultirubroOpsPanel() {
   const [demoActionStatus, setDemoActionStatus] = useState("");
   const [botQuestion, setBotQuestion] = useState("explicame el riesgo actual");
   const [botAnswer, setBotAnswer] = useState("");
+
+  function applyIncomingEvent(payload: StreamEventPayload) {
+    const lat = Number(payload.lat);
+    const lng = Number(payload.lng);
+    const hasGeo = Number.isFinite(lat) && Number.isFinite(lng);
+    const createdAt = payload.created_at || new Date().toISOString();
+    const result = String(payload.result || "").toUpperCase();
+    const isValid = result === "VALID" || result === "TAP_VALID";
+    const isReplay = String(payload.reason || "").toLowerCase().includes("replay");
+    const isInvalidLike = !isValid;
+
+    setAnalytics((prev) => {
+      if (!prev) return prev;
+      const scans = Number(prev.kpis?.scans || 0) + 1;
+      const previousValidRate = Number(prev.kpis?.validRate || 0);
+      const previousValidCount = Math.round((previousValidRate / 100) * Number(prev.kpis?.scans || 0));
+      const nextValidCount = previousValidCount + (isValid ? 1 : 0);
+      const nextValidRate = scans > 0 ? Number(((nextValidCount / scans) * 100).toFixed(1)) : previousValidRate;
+
+      const trend = [...(prev.trend || [])];
+      const day = createdAt.slice(0, 10);
+      if (trend.length) {
+        const last = trend[trend.length - 1];
+        if (last.day === day) {
+          last.scans += 1;
+          if (isInvalidLike) last.duplicates += 1;
+          if (String(payload.reason || "").toLowerCase().includes("tamper")) last.tamper += 1;
+        } else {
+          trend.push({ day, scans: 1, duplicates: isInvalidLike ? 1 : 0, tamper: String(payload.reason || "").toLowerCase().includes("tamper") ? 1 : 0 });
+        }
+      } else {
+        trend.push({ day, scans: 1, duplicates: isInvalidLike ? 1 : 0, tamper: String(payload.reason || "").toLowerCase().includes("tamper") ? 1 : 0 });
+      }
+
+      const geoPoints = [...(prev.geoPoints || [])];
+      if (hasGeo) {
+        const city = String(payload.city || "Unknown");
+        const country = String(payload.country_code || "--");
+        const existing = geoPoints.find((point) => point.city === city && (point.country || "--") === country);
+        if (existing) {
+          existing.scans = Number(existing.scans || 0) + 1;
+          if (isInvalidLike) existing.risk = Number(existing.risk || 0) + 1;
+        } else {
+          geoPoints.unshift({ city, country, scans: 1, risk: isInvalidLike ? 1 : 0, lat, lng });
+        }
+      }
+
+      return {
+        ...prev,
+        kpis: { ...(prev.kpis || {}), scans, validRate: nextValidRate },
+        trend: trend.slice(-30),
+        geoPoints,
+      };
+    });
+
+    if (isReplay) {
+      setSecurity((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          summary: {
+            ...(prev.summary || {}),
+            repeatedInvalidUid: Number(prev.summary?.repeatedInvalidUid || 0) + 1,
+          },
+        };
+      });
+    }
+  }
 
   async function fetchJson<T>(url: string): Promise<T | null> {
     try {
@@ -167,6 +246,11 @@ export function MultirubroOpsPanel() {
         setLastEventAt(new Date().toISOString());
         setStreamState("connected");
         bumpStaleTimer();
+        try {
+          applyIncomingEvent(JSON.parse(String((event as MessageEvent).data || "{}")) as StreamEventPayload);
+        } catch {
+          // ignore malformed payload; reconciliation fetch below will refresh state
+        }
         const now = Date.now();
         if (now - eventRefreshGateRef.current > 2000) {
           eventRefreshGateRef.current = now;
