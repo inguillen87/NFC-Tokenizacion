@@ -12,7 +12,7 @@
     "dev:api": "npm run dev --workspace=api",
     "build:web": "npm run build --workspace=web",
     "build:dashboard": "npm run build --workspace=dashboard",
-    "build:api": "npm run build --workspace=api",
+    "build:api": "npm run verify:routes && npm run build --workspace=api",
     "typecheck:dashboard": "npm run typecheck --workspace=dashboard",
     "build": "npm run build --workspaces --if-present",
     "db:new": "npm run db:new --workspace=api --",
@@ -20,7 +20,9 @@
     "db:seed": "npm run db:seed --workspace=api",
     "db:reset:local": "npm run db:reset:local --workspace=api",
     "demo:demobodega": "npm run demo:demobodega --workspace=api",
-    "demo:seed": "npm run demo:seed --workspace=api"
+    "demo:seed": "npm run demo:seed --workspace=api",
+    "check:routes": "node scripts/check-next-dynamic-routes.mjs",
+    "verify:routes": "npm run check:routes && npm run test:routes --workspace=api"
   },
   "packageManager": "npm@10.9.0",
   "engines": {
