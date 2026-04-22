@@ -34,6 +34,22 @@ export async function GET(req: Request) {
         FROM events
       `;
 
+  const throughputRows = tenant
+    ? await sql/*sql*/`
+        SELECT
+          COUNT(*) FILTER (WHERE e.created_at >= now() - interval '1 minute')::int AS events_1m,
+          COUNT(*) FILTER (WHERE e.created_at >= now() - interval '5 minutes')::int AS events_5m
+        FROM events e
+        JOIN tenants t ON t.id = e.tenant_id
+        WHERE t.slug = ${tenant}
+      `
+    : await sql/*sql*/`
+        SELECT
+          COUNT(*) FILTER (WHERE created_at >= now() - interval '1 minute')::int AS events_1m,
+          COUNT(*) FILTER (WHERE created_at >= now() - interval '5 minutes')::int AS events_5m
+        FROM events
+      `;
+
   let attemptRows: CountRow[] = [];
   try {
     attemptRows = tenant
@@ -53,6 +69,7 @@ export async function GET(req: Request) {
   }
 
   const events = (eventRows?.[0] || {}) as CountRow;
+  const throughput = (throughputRows?.[0] || {}) as { events_1m?: number; events_5m?: number };
   const attempts = (attemptRows?.[0] || {}) as CountRow;
   const latestEventAt = events.latest ? new Date(events.latest) : null;
   const latestAttemptAt = attempts.latest ? new Date(attempts.latest) : null;
@@ -75,6 +92,8 @@ export async function GET(req: Request) {
     scope: { tenant: tenant || "global" },
     counters: {
       eventsTotal: Number(events.total || 0),
+      events1m: Number(throughput.events_1m || 0),
+      events5m: Number(throughput.events_5m || 0),
       replayEvents: Number(events.replay || 0),
       riskEvents: Number(events.risk || 0),
       unassignedAttempts: Number(attempts.total || 0),

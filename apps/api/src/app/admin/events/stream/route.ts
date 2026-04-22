@@ -113,13 +113,21 @@ export async function GET(req: Request): Promise<Response> {
           const lowerBound = new Date(Date.now() - windowMs);
           if (createdAt < lowerBound) return;
         }
-        send("event", payload);
+        const emittedAt = new Date();
+        const createdAtMs = payload.created_at ? new Date(String(payload.created_at)).getTime() : NaN;
+        const streamLatencyMs = Number.isFinite(createdAtMs) ? Math.max(0, emittedAt.getTime() - createdAtMs) : null;
+        send("event", {
+          ...payload,
+          stream_sent_at: emittedAt.toISOString(),
+          stream_latency_ms: streamLatencyMs,
+          request_id: requestId,
+        });
       });
 
       const heartbeat = setInterval(() => {
         const now = Date.now();
         controller.enqueue(encoder.encode(`: ping ${now}\n\n`));
-        send("heartbeat", { id: `hb-${now}`, ts: now });
+        send("heartbeat", { id: `hb-${now}`, ts: now, requestId });
       }, 15000);
 
       const onAbort = () => shutdown();
