@@ -3,7 +3,7 @@ import { aes128CbcDecrypt, aes128CbcEncrypt, aesCmac, bufToHex, hexToBuf, trunca
 type NodeBuf = Buffer<ArrayBufferLike>;
 
 export type SunVerifyResult =
-  | { ok: true; uidHex: string; ctr: number; encPlainHex?: string }
+  | { ok: true; uidHex: string; ctr: number; encPlainHex?: string; piccPlainHex?: string }
   | { ok: false; reason: string };
 
 export function verifySun(params: {
@@ -52,7 +52,7 @@ export function verifySun(params: {
     encPlainHex = bufToHex(encPlain);
   }
 
-  return { ok: true, uidHex: bufToHex(uid), ctr, encPlainHex };
+  return { ok: true, uidHex: bufToHex(uid), ctr, encPlainHex, piccPlainHex: bufToHex(picc) };
 }
 
 
