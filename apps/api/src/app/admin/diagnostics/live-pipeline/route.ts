@@ -20,7 +20,17 @@ export async function GET(req: Request) {
           COUNT(e.id)::int AS total,
           MAX(e.created_at)::text AS latest,
           COUNT(*) FILTER (WHERE e.result IN ('REPLAY_SUSPECT', 'DUPLICATE'))::int AS replay,
-          COUNT(*) FILTER (WHERE e.result IN ('INVALID', 'TAMPER', 'NOT_REGISTERED', 'NOT_ACTIVE'))::int AS risk
+          COUNT(*) FILTER (
+            WHERE e.result IN (
+              'INVALID',
+              'TAMPER',
+              'TAMPERED',
+              'BROKEN',
+              'NOT_REGISTERED',
+              'NOT_ACTIVE',
+              'REVOKED'
+            )
+          )::int AS risk
         FROM events e
         JOIN tenants t ON t.id = e.tenant_id
         WHERE t.slug = ${tenant}
@@ -30,7 +40,17 @@ export async function GET(req: Request) {
           COUNT(id)::int AS total,
           MAX(created_at)::text AS latest,
           COUNT(*) FILTER (WHERE result IN ('REPLAY_SUSPECT', 'DUPLICATE'))::int AS replay,
-          COUNT(*) FILTER (WHERE result IN ('INVALID', 'TAMPER', 'NOT_REGISTERED', 'NOT_ACTIVE'))::int AS risk
+          COUNT(*) FILTER (
+            WHERE result IN (
+              'INVALID',
+              'TAMPER',
+              'TAMPERED',
+              'BROKEN',
+              'NOT_REGISTERED',
+              'NOT_ACTIVE',
+              'REVOKED'
+            )
+          )::int AS risk
         FROM events
       `;
 
