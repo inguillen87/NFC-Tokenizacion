@@ -75,10 +75,11 @@ export async function GET(req: Request) {
       ? sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
-          COUNT(*) FILTER (WHERE e.result = 'INVALID')::int AS invalid,
-          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
+          COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+          COUNT(*) FILTER (WHERE e.verdict IN ('tampered', 'not_registered', 'not_active') OR e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked,
           COUNT(DISTINCT b.id)::int AS active_batches,
           COUNT(DISTINCT tn.id)::int AS active_tenants
         FROM tenants tn
@@ -91,10 +92,11 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
-          COUNT(*) FILTER (WHERE e.result = 'INVALID')::int AS invalid,
-          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID')::int AS valid,
+          COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
+          COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+          COUNT(*) FILTER (WHERE e.verdict IN ('tampered', 'not_registered', 'not_active') OR e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked,
           COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'active')::int AS active_batches,
           COUNT(DISTINCT tn.id)::int AS active_tenants
         FROM batches b
@@ -107,8 +109,9 @@ export async function GET(req: Request) {
       ? sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper
+          COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+          COUNT(*) FILTER (WHERE e.verdict IN ('tampered', 'not_registered', 'not_active') OR e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked
         FROM events e
         JOIN batches b ON b.id = e.batch_id
         JOIN tenants tn ON tn.id = b.tenant_id
@@ -122,8 +125,9 @@ export async function GET(req: Request) {
       : sql/*sql*/`
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper
+          COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+          COUNT(*) FILTER (WHERE e.verdict IN ('tampered', 'not_registered', 'not_active') OR e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source = ${source}::scan_source)

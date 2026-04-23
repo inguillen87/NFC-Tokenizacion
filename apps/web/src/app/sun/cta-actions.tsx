@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 type Props = { bid: string; uid: string };
 type LeadIntent = "tokenization_optional";
 type ActionState = "idle" | "loading" | "success" | "error";
-type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokenization";
+type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokenization" | "report";
 type CallResponse = {
   ok?: boolean;
   reason?: string;
@@ -55,6 +55,7 @@ export function CtaActions({ bid, uid }: Props) {
     registerWarranty: "idle",
     provenance: "idle",
     tokenization: "idle",
+    report: "idle",
   });
   const [actionError, setActionError] = useState<string>("");
   const [showTokenModal, setShowTokenModal] = useState(false);
@@ -70,9 +71,9 @@ export function CtaActions({ bid, uid }: Props) {
   const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail.trim());
-  const actionMeta: Record<Exclude<ActionKey, "tokenization">, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
+  const actionMeta: Record<string, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
     claimOwnership: {
-      title: "Crear mi NexID Passport",
+      title: "Activar ownership",
       subtitle: "Asociá el activo digital a tu identidad de comprador.",
       icon: "✅",
       path: "/api/public-cta/claim-ownership",
@@ -80,7 +81,7 @@ export function CtaActions({ bid, uid }: Props) {
       tone: "border-cyan-300/40 bg-cyan-500/10 text-cyan-100",
     },
     registerWarranty: {
-      title: "Guardar este producto",
+      title: "Registrar garantía",
       subtitle: "Registrá cobertura y fecha de activación de postventa.",
       icon: "🛡️",
       path: "/api/public-cta/register-warranty",
@@ -88,13 +89,21 @@ export function CtaActions({ bid, uid }: Props) {
       tone: "border-violet-300/40 bg-violet-500/10 text-violet-100",
     },
     provenance: {
-      title: "Sumar puntos con esta marca",
-      subtitle: "Consultá timeline y señales para loyalty por marca.",
+      title: "Ver provenance",
+      subtitle: "Consultá timeline y señales de la marca.",
       icon: "📜",
       path: "/api/public-cta/provenance",
       method: "GET",
       tone: "border-amber-300/40 bg-amber-500/10 text-amber-100",
     },
+    report: {
+      title: "Reportar problema",
+      subtitle: "Crea un ticket o repórtalo como defectuoso/roto.",
+      icon: "⚠️",
+      path: "/api/public-cta/report-problem",
+      method: "POST",
+      tone: "border-rose-300/40 bg-rose-500/10 text-rose-100",
+    }
   };
 
   function renderStateBadge(actionKey: ActionKey) {
@@ -269,7 +278,7 @@ export function CtaActions({ bid, uid }: Props) {
               className={`rounded-xl border px-3 py-3 text-left transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} ${cardStateClass(key)}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold">{item.icon} {item.title}{actionStates[key] === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-200" /> : null}</p>
+                <p className="text-sm font-semibold">{item.icon} {key === "report" ? "Reportar problema" : item.title}{actionStates[key] === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-200" /> : null}</p>
                 {renderStateBadge(key)}
               </div>
               <p className="mt-1 text-[11px] opacity-90">{item.subtitle}</p>
