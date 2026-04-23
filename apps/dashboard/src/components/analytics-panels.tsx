@@ -28,7 +28,7 @@ type AnalyticsPanelsProps = {
     geoDistributionDelta: string;
   };
   data?: {
-    kpis?: { scans?: number; validRate?: number; invalidRate?: number; duplicates?: number; tamper?: number; activeBatches?: number; activeTenants?: number; geoRegions?: number; resellerPerformance?: number };
+    kpis?: { scans?: number; validRate?: number; invalidRate?: number; duplicates?: number; tamper?: number; activeBatches?: number; activeTenants?: number; geoRegions?: number; resellerPerformance?: number; riskScore?: number };
     trend?: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
     batchStatus?: Array<{ name: string; value: number }>;
     geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }>;
@@ -86,7 +86,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
   const aiSummary = [
     `Se registraron ${scansTotal} taps en el scope actual, con ${(api.validRate ?? 0).toFixed(1)}% de validación.`,
     `Las señales de riesgo (duplicados + tamper) son ${riskSignals} (${pct(riskSignals, Math.max(scansTotal, 1))}).`,
-    `La cobertura de journey trazable alcanza ${journeyCoverage.toFixed(1)}% en ${tagJourney.length} UIDs.`,
+    `Risk Score calculado para este periodo: ${api.riskScore || 0}/100.`,
     `Prioridad sugerida: ${riskSignals > 0 ? "investigar outliers de riesgo y reforzar onboarding operativo" : "escalar escaneos reales y ampliar cobertura comercial del pasaporte digital"}.`,
   ];
   const hasOperationalData = scansTotal > 0 || trend.length > 0 || feed.length > 0 || products.length > 0 || tagJourney.length > 0;

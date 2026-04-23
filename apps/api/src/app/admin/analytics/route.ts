@@ -675,17 +675,33 @@ export async function GET(req: Request) {
   if (mobileCount > 0) addBucket(deviceTypeBuckets, normalizeDeviceType({ mobile: true }), mobileCount);
   if (desktopCount > 0) addBucket(deviceTypeBuckets, normalizeDeviceType({ mobile: false }), desktopCount);
 
+  const scansTotal = Number(overview.scans || 0);
+  const duplicates = Number(overview.duplicates || 0);
+  const tamper = Number(overview.tamper || 0);
+  const invalid = Number(overview.invalid || 0);
+  const revoked = Number((overview as Record<string, number>).revoked || 0);
+
+  const riskScore = scansTotal > 0
+    ? Math.max(0, Math.min(100, Math.round(
+        ((duplicates / scansTotal) * 45) +
+        ((invalid / scansTotal) * 25) +
+        ((tamper / scansTotal) * 50) +
+        ((revoked / scansTotal) * 35)
+      )))
+    : 0;
+
   return json({
     kpis: {
-      scans: Number(overview.scans || 0),
+      scans: scansTotal,
       validRate,
       invalidRate,
-      duplicates: Number(overview.duplicates || 0),
-      tamper: Number(overview.tamper || 0),
+      duplicates,
+      tamper,
       activeBatches: Number(overview.active_batches || 0),
       activeTenants: Number(overview.active_tenants || 0),
       geoRegions: geoPoints.length,
       resellerPerformance: Number((overview.scans || 0) * 1.8),
+      riskScore,
     },
     scope: {
       tenant: tenant || "global",

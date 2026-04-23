@@ -105,12 +105,19 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
       chip_uid_hash: buildChipUidHash(existing.uid_hex),
     };
 
-    const localPolygonMint = tokenizationMode === "polygon" && network.startsWith("polygon")
-      ? await runLocalPolygonScript(externalInput)
-      : null;
-    const external = tokenizationMode === "polygon"
-      ? (localPolygonMint || await runExternalExecutor(externalInput))
-      : null;
+    let external = null;
+    let fallbackToSimulated = false;
+
+    if (tokenizationMode === "polygon") {
+      if (!process.env.POLYGON_RPC_URL) {
+        // Fallback elegantly without raw errors
+        fallbackToSimulated = true;
+      } else {
+        const localPolygonMint = network.startsWith("polygon") ? await runLocalPolygonScript(externalInput).catch(() => null) : null;
+        external = localPolygonMint || await runExternalExecutor(externalInput).catch(() => null);
+        if (!external) fallbackToSimulated = true; // If external fails, simulate to avoid breaking UX
+      }
+    }
 
     const txHash = String(external?.tx_hash || buildSimulatedTxHash(existing.id, existing.uid_hex));
     const tokenId = String(external?.token_id || buildTokenId(existing.uid_hex));

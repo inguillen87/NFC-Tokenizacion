@@ -4,6 +4,7 @@ import { AdminActionForms } from "../../components/admin-action-forms";
 import { AnalyticsPanels } from "../../components/analytics-panels";
 import { DataTable } from "../../components/data-table";
 import { ModuleGrid } from "../../components/module-grid";
+import { MultirubroOpsPanel } from "../../components/multirubro-ops-panel";
 import { RealtimeOpsMonitor } from "../../components/realtime-ops-monitor";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
@@ -171,6 +172,7 @@ export default async function DashboardHome() {
       <SectionHeading eyebrow={copy.nav.overview} title={copy.pages.overview.title} description={copy.pages.overview.description} />
 
       <AnalyticsPanels kpis={kpis} extra={copy.analytics} />
+      <MultirubroOpsPanel />
 
       <RealtimeOpsMonitor
         initialEvents={scopedLiveEvents}
