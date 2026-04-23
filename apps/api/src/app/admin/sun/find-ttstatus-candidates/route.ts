@@ -1,0 +1,120 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+import { checkAdmin } from "../../../../lib/auth";
+import { json } from "../../../../lib/http";
+import { processSunScan } from "../../../../lib/sun-service";
+
+type Body = { closed_urls?: string[]; opened_urls?: string[] };
+
+type ParsedSun = { bid: string; piccDataHex: string; encHex: string; cmacHex: string; rawQuery: Record<string, string> };
+
+const TT_PATTERNS = new Set(["4343", "4F4F", "4F43", "4949"]);
+const DEFAULT_CLOSED_URLS = [
+  "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=C650B885D7146CE79800AA4475B3983F&enc=D9733A024311EA99DF7AA27E522AFEEB&cmac=E1632E17C28D27DB",
+  "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=05240F98A659A5FE258137FACAB89381&enc=0AC5A52BBFC082B47788BB7344B9D7A2&cmac=33C4649C557F1399",
+];
+const DEFAULT_OPENED_URLS = [
+  "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=63AA1132C2A88A880A9D129C03213CE2&enc=B266D136B436B2EC9B882B5ED893FDFA&cmac=DB5B4652ED29D9F6",
+  "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=A96EDF3F1A8CEDA46D59BC8614423DB7&enc=7F6A23FA69873EAF2FB58F5CC1C46831&cmac=4A3AA7DEB4904D17",
+];
+
+function parseSunUrl(rawUrl: string): ParsedSun {
+  const parsed = new URL(rawUrl);
+  return {
+    bid: String(parsed.searchParams.get("bid") || "").trim(),
+    piccDataHex: String(parsed.searchParams.get("picc_data") || "").trim(),
+    encHex: String(parsed.searchParams.get("enc") || "").trim(),
+    cmacHex: String(parsed.searchParams.get("cmac") || "").trim(),
+    rawQuery: Object.fromEntries(parsed.searchParams.entries()),
+  };
+}
+
+function bytesAtOffset(hex: string, offset: number) {
+  const normalized = String(hex || "").toUpperCase();
+  const start = offset * 2;
+  if (normalized.length < start + 4) return "";
+  return normalized.slice(start, start + 4);
+}
+
+export async function POST(req: Request) {
+  const auth = checkAdmin(req);
+  if (auth) return auth;
+
+  const body = (await req.json().catch(() => ({}))) as Body;
+  const closedUrls = Array.isArray(body.closed_urls) && body.closed_urls.length ? body.closed_urls.filter(Boolean) : DEFAULT_CLOSED_URLS;
+  const openedUrls = Array.isArray(body.opened_urls) && body.opened_urls.length ? body.opened_urls.filter(Boolean) : DEFAULT_OPENED_URLS;
+
+  const inspectMany = async (urls: string[], label: string) => Promise.all(urls.map(async (url, index) => {
+    const parsed = parseSunUrl(url);
+    return processSunScan({
+      ...parsed,
+      context: { source: "imported", deviceLabel: `admin_find_ttstatus_${label}_${index}`, meta: { inspectedFrom: "admin.sun.find_ttstatus_candidates" } },
+    });
+  }));
+
+  const [closedResults, openedResults] = await Promise.all([inspectMany(closedUrls, "closed"), inspectMany(openedUrls, "opened")]);
+  const closedBodies = closedResults.map((entry) => entry.body as Record<string, unknown>);
+  const openedBodies = openedResults.map((entry) => entry.body as Record<string, unknown>);
+  const closedUids = Array.from(new Set(closedBodies.map((x) => String(x.uid || "")).filter(Boolean)));
+  const openedUids = Array.from(new Set(openedBodies.map((x) => String(x.uid || "")).filter(Boolean)));
+  if (closedUids.length !== 1 || openedUids.length !== 1 || closedUids[0] !== openedUids[0]) {
+    return json({
+      ok: false,
+      reason: "closed_urls and opened_urls must belong to the same UID",
+      closed_uids: closedUids,
+      opened_uids: openedUids,
+    }, 400);
+  }
+
+  const uniqueClosed = new Set(closedUrls).size;
+  const uniqueOpened = new Set(openedUrls).size;
+  if (uniqueClosed <= 2 || uniqueOpened <= 2) {
+    return json({
+      ok: true,
+      uid_hex: closedUids[0] || null,
+      closed_count: closedBodies.length,
+      opened_count: openedBodies.length,
+      candidate_offsets: [],
+      recommendation: "Only 2 unique closed and 2 unique opened samples available. More samples recommended.",
+    });
+  }
+
+  const closedHexes = closedBodies.map((x) => String(x.enc_plain_hex || "")).filter(Boolean);
+  const openedHexes = openedBodies.map((x) => String(x.enc_plain_hex || "")).filter(Boolean);
+  const maxLen = Math.max(...closedHexes.map((h) => h.length), ...openedHexes.map((h) => h.length), 0);
+  const maxOffset = Math.floor(maxLen / 2) - 2;
+
+  const candidates: Array<{
+    offset: number;
+    closed_values: string[];
+    opened_values: string[];
+    confidence: "HIGH" | "MEDIUM" | "LOW";
+    source: "enc_decrypted";
+  }> = [];
+
+  for (let offset = 0; offset <= maxOffset; offset += 1) {
+    const closedValues = Array.from(new Set(closedHexes.map((hex) => bytesAtOffset(hex, offset)).filter(Boolean)));
+    const openedValues = Array.from(new Set(openedHexes.map((hex) => bytesAtOffset(hex, offset)).filter(Boolean)));
+    if (!closedValues.length || !openedValues.length) continue;
+    if (!closedValues.every((value) => TT_PATTERNS.has(value)) || !openedValues.every((value) => TT_PATTERNS.has(value))) continue;
+    const closedHasClosedSignal = closedValues.includes("4343");
+    const openedHasOpenSignal = openedValues.includes("4F4F") || openedValues.includes("4F43");
+    if (!closedHasClosedSignal || !openedHasOpenSignal) continue;
+    const confidence = closedValues.length === 1 && openedValues.length === 1 ? "HIGH" : closedValues.length <= 2 && openedValues.length <= 2 ? "MEDIUM" : "LOW";
+    if (confidence === "HIGH") {
+      candidates.push({ offset, closed_values: closedValues, opened_values: openedValues, confidence, source: "enc_decrypted" });
+    }
+  }
+
+  return json({
+    ok: true,
+    uid_hex: closedUids[0] || null,
+    closed_count: closedBodies.length,
+    opened_count: openedBodies.length,
+    candidate_offsets: candidates,
+    recommendation: candidates.length
+      ? "TTStatus candidate offsets found. Configure ttstatus_offset using the highest confidence candidate."
+      : "No TTStatus pattern found in decrypted payload. Supplier may not have mirrored TTStatus into SDMENCFileData, or the physical loop was not broken correctly.",
+  });
+}
