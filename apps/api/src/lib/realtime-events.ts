@@ -71,7 +71,7 @@ async function startPgListener() {
       if (envelope.source && envelope.source === INSTANCE_ID) return;
       store.emitter.emit("event", envelope.payload);
     });
-    await client.query(`LISTEN ${CHANNEL}`);
+    await client.query(`LISTEN "${CHANNEL}"`);
     store.started = true;
   })().catch(() => {
     store.started = false;
@@ -89,7 +89,7 @@ function publishDistributed(payload: RealtimeEventPayload) {
   // notify through postgres to reach all running instances without polling
   const store = getStore();
   store.publishPool = store.publishPool || new Pool({ connectionString: process.env.DATABASE_URL!, max: 1 });
-  void store.publishPool.query(`SELECT pg_notify('${CHANNEL}', $1)`, [envelope]).catch(() => null);
+  void store.publishPool.query("SELECT pg_notify($1, $2)", [CHANNEL, envelope]).catch(() => null);
 }
 
 export function publishRealtimeEvent(payload: RealtimeEventPayload) {
