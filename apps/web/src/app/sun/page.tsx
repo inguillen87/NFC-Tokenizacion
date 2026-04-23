@@ -222,6 +222,35 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
         </section>
 
+        {isValid ? (
+          <section className="mt-4 rounded-xl border border-indigo-300/30 bg-[radial-gradient(ellipse_at_bottom,rgba(99,102,241,0.15),transparent_60%)] p-4 shadow-lg sm:p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">NexID Rewards</p>
+                <p className="mt-1 text-sm font-medium text-white">Desbloqueá beneficios exclusivos</p>
+              </div>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-200">🎁</span>
+            </div>
+            <p className="mt-2 text-xs text-indigo-100/70">Al verificar este producto ganás acceso a puntos, sorteos y experiencias VIP organizadas por la marca.</p>
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              <button className="rounded-lg border border-indigo-300/40 bg-indigo-500/20 px-3 py-2.5 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/30">
+                Inscribirme al Club
+              </button>
+              <button className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10">
+                Ver recompensas
+              </button>
+            </div>
+          </section>
+        ) : productState === "REPLAY_SUSPECT" || productState === "VALID_OPENED" || productState === "VALID_MANUAL_OPENED" ? (
+           <section className="mt-4 rounded-xl border border-amber-300/30 bg-amber-500/10 p-4 shadow-lg sm:p-5">
+             <div className="flex items-center gap-2">
+               <span className="text-amber-200">⚠️</span>
+               <p className="text-xs font-bold uppercase tracking-widest text-amber-300">Recompensas bloqueadas</p>
+             </div>
+             <p className="mt-1 text-xs text-amber-100/80">Este tap no califica para sumar puntos o beneficios por medidas de seguridad antifraude.</p>
+           </section>
+        ) : null}
+
         <section className="mt-4 grid gap-3 sm:grid-cols-2">
           <article className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-4 sm:col-span-2">
             <p className="text-xs uppercase tracking-wider text-slate-400">Authenticity status</p>

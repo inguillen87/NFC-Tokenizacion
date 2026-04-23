@@ -79,5 +79,31 @@ export async function seedDemoPack(options: SeedOptions = {}) {
     }
   }
 
+  // Phase 8: Seed Loyalty Vertical Template for Demo Bodega ("Club Terroir")
+  await sql`
+    INSERT INTO loyalty_programs (tenant_id, name, vertical, status, points_name)
+    VALUES (${tenant.id}, 'Club Terroir', 'winery', 'active', 'Uvas')
+    ON CONFLICT DO NOTHING
+  `;
+  const program = (await sql`SELECT id FROM loyalty_programs WHERE tenant_id = ${tenant.id} LIMIT 1`)[0];
+
+  if (program) {
+    await sql`
+      INSERT INTO badges (tenant_id, program_id, code, name, description, icon, rarity)
+      VALUES
+        (${tenant.id}, ${program.id}, 'MALBEC_LOVER', 'Malbec Lover', 'Has escaneado tu primer Malbec Gran Reserva auténtico.', '🍷', 'rare'),
+        (${tenant.id}, ${program.id}, 'MENDOZA_EXPLORER', 'Valle de Uco Explorer', 'Estás descubriendo el terroir de Mendoza.', '🏔️', 'common')
+      ON CONFLICT DO NOTHING
+    `;
+
+    await sql`
+      INSERT INTO rewards (tenant_id, program_id, code, title, description, type, points_cost, status)
+      VALUES
+        (${tenant.id}, ${program.id}, 'TASTING_UPGRADE', 'Upgrade de degustación', 'Accedé a una copa de añada histórica durante tu visita.', 'TASTING', 100, 'active'),
+        (${tenant.id}, ${program.id}, 'DISCOUNT_10', '10% Off próxima compra', 'Válido en la tienda online oficial.', 'DISCOUNT', 50, 'active')
+      ON CONFLICT DO NOTHING
+    `;
+  }
+
   return { ok: true, pack: packKey, bid, imported: rows.length, inserted, uids: rows.map((row) => row.uid_hex).slice(0, 10) };
 }

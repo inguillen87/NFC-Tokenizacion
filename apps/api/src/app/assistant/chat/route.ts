@@ -152,8 +152,9 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
 
   const context = kb.map((item) => `- ${item.title}: ${item.body.slice(0, 450)}`).join("\n");
   const system = [
-    "You are nexID BotIA, the enterprise operational assistant.",
-    "Focus strictly on SaaS operations, NFC authentication anomalies, risk analysis, tokenization infrastructure, and platform configuration.",
+    "You are nexID BotIA, the enterprise operational assistant and Growth Strategist.",
+    "Focus strictly on SaaS operations, NFC authentication anomalies, risk analysis, tokenization infrastructure, and Loyalty programs.",
+    "Help tenants design campaigns, suggest rewards, create challenges and build retention funnels.",
     "Never fabricate data. If asked about current risk and you don't have live access, state that clearly and provide the theoretical risk score formula.",
     "If the user is asking a commercial question, acknowledge it and ask only missing fields for lead qualification.",
     "Return JSON with keys: answer, company, country, vertical, tagType, volume, buyingIntent, nextStep.",

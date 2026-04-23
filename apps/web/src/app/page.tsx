@@ -8,7 +8,6 @@ import {
   PlansSection,
   ResellerSection,
 } from "../components/landing-sections";
-import { CalculatorSection } from "../components/calculator-section";
 import { RadarSection } from "../components/radar-section";
 import { InteractiveDemoSection } from "../components/interactive-demo-section";
 import { SalesChatWidget } from "../components/sales-chat-widget";
@@ -314,30 +313,11 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="container-shell pb-6">
-        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-5 md:p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-emerald-200">{labels.investorTitle}</p>
-          <p className="mt-2 text-sm text-slate-100">{labels.investorBody}</p>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {labels.investorCards.map((item) => (
-              <div key={item} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-200">
-                {item}
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <PublicLinkChip href={productExitHref.investorSnapshot} variant="amber">{labels.investorCta}</PublicLinkChip>
-            <PublicLinkChip href="/sun" variant="emerald">{labels.sunCta}</PublicLinkChip>
-          </div>
-        </div>
-      </section>
-
       <RadarSection radar={content.radar} locale={locale} />
       <InteractiveDemoSection locale={locale} />
 
       <PlansSection content={content} />
       <EventsTagPositioningSection locale={locale} />
-      <CalculatorSection calculator={content.calculator} locale={locale} />
 
       <ResellerSection content={content} />
       <BulletSection eyebrow={content.identity.eyebrow} title={content.identity.title} description={content.identity.description} bullets={content.identity.bullets} />

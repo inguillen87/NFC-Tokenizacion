@@ -9,7 +9,7 @@ import { productUrls, type AppLocale } from "@product/config";
 import type { UserRole } from "../lib/dashboard-content";
 import { roleAccess } from "../lib/dashboard-content";
 
-type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "events" | "resellers" | "leadsTickets" | "subscriptions" | "apiKeys";
+type NavKey = "overview" | "tenants" | "batches" | "tags" | "analytics" | "events" | "resellers" | "leadsTickets" | "loyalty" | "experiences" | "campaigns" | "subscriptions" | "apiKeys";
 
 
 function pathnameToNavKey(pathname: string): NavKey {

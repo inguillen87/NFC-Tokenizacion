@@ -25,6 +25,9 @@ type DashboardContent = {
     events: string;
     resellers: string;
     leadsTickets: string;
+    loyalty: string;
+    experiences: string;
+    campaigns: string;
     subscriptions: string;
     apiKeys: string;
   };
@@ -37,6 +40,9 @@ type DashboardContent = {
     events: { title: string; description: string };
     resellers: { title: string; description: string };
     leadsTickets: { title: string; description: string };
+    loyalty: { title: string; description: string };
+    experiences: { title: string; description: string };
+    campaigns: { title: string; description: string };
     subscriptions: { title: string; description: string };
     apiKeys: { title: string; description: string };
   };
@@ -77,16 +83,16 @@ type DashboardContent = {
 };
 
 export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> = {
-  "super-admin": ["overview", "tenants", "batches", "tags", "analytics", "events", "resellers", "leadsTickets", "subscriptions", "apiKeys"],
-  "tenant-admin": ["overview", "batches", "tags", "analytics", "events", "leadsTickets", "subscriptions", "apiKeys"],
-  reseller: ["overview", "batches", "analytics", "events", "resellers", "subscriptions"],
+  "super-admin": ["overview", "tenants", "batches", "tags", "analytics", "events", "resellers", "leadsTickets", "loyalty", "subscriptions", "apiKeys"],
+  "tenant-admin": ["overview", "batches", "tags", "analytics", "events", "leadsTickets", "loyalty", "experiences", "campaigns", "subscriptions", "apiKeys"],
+  reseller: ["overview", "batches", "analytics", "events", "resellers", "loyalty", "subscriptions"],
   viewer: ["overview", "analytics", "events"],
 };
 
 export const dashboardContent: Record<AppLocale, DashboardContent> = {
   "es-AR": {
     shell: { subtitle: "Control multi-tenant enterprise", search: "Buscar...", role: "Rol", logout: "Salir", apiConnected: "API conectada", loading: "Cargando...", empty: "Sin resultados", all: "Todos", refresh: "Actualizar", openModule: "Abrir módulo", ready: "Listo." },
-    nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", leadsTickets: "Leads & Tickets", subscriptions: "Suscripciones", apiKeys: "API Keys" },
+    nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Fidelización", experiences: "Experiencias", campaigns: "Campañas", subscriptions: "Suscripciones", apiKeys: "API Keys" },
     pages: {
       overview: { title: "Overview operativo", description: "KPIs críticos de autenticación, fraude y operación de lotes." },
       tenants: { title: "Gestión de tenants", description: "Clientes, planes y estado operativo por tenant." },
@@ -96,6 +102,9 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       events: { title: "Eventos", description: "Tabla de eventos con búsqueda, filtros y estados." },
       resellers: { title: "Canal reseller", description: "Rendimiento por partner, pipeline y subclientes." },
       leadsTickets: { title: "Leads & Tickets", description: "Inbox comercial y soporte capturado desde asistente + formularios." },
+      loyalty: { title: "Loyalty Studio", description: "Configuración del programa de puntos, beneficios y reglas anti-fraude." },
+      experiences: { title: "Experiencias", description: "Agenda de visitas, catas y eventos vinculados al programa." },
+      campaigns: { title: "Campañas BotIA", description: "Segmentos de crecimiento impulsados por IA para miembros activos." },
       subscriptions: { title: "Suscripciones", description: "Planes activos, renovación y expansión de ingresos." },
       apiKeys: { title: "Developer settings", description: "Gestión de API keys y políticas de rotación." },
     },
@@ -136,7 +145,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
   },
   "pt-BR": {
     shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "API conectada", loading: "Carregando...", empty: "Sem resultados", all: "Todos", refresh: "Atualizar", openModule: "Abrir módulo", ready: "Pronto." },
-    nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", leadsTickets: "Leads & Tickets", subscriptions: "Assinaturas", apiKeys: "API Keys" },
+    nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", leadsTickets: "Leads & Tickets", loyalty: "Fidelidade", experiences: "Experiências", campaigns: "Campanhas", subscriptions: "Assinaturas", apiKeys: "API Keys" },
     pages: {
       overview: { title: "Overview operacional", description: "KPIs críticos de autenticação, fraude e lotes." },
       tenants: { title: "Gestão de tenants", description: "Clientes, planos e estado operacional por tenant." },
@@ -146,6 +155,9 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       events: { title: "Eventos", description: "Tabela com busca, filtros e estados." },
       resellers: { title: "Canal revendedor", description: "Performance de parceiros e subclientes." },
       leadsTickets: { title: "Leads & Tickets", description: "Inbox comercial e suporte vindo do assistente e formulários." },
+      loyalty: { title: "Loyalty Studio", description: "Configuração do programa de pontos, benefícios e regras." },
+      experiences: { title: "Experiências", description: "Agenda de visitas, eventos e catas." },
+      campaigns: { title: "Campanhas BotIA", description: "Segmentos de crescimento impulsionados por IA." },
       subscriptions: { title: "Assinaturas", description: "Planos ativos, renovação e expansão." },
       apiKeys: { title: "Developer settings", description: "Gestão de API keys e rotação." },
     },
@@ -186,7 +198,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
   },
   en: {
     shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "API connected", loading: "Loading...", empty: "No results", all: "All", refresh: "Refresh", openModule: "Open module", ready: "Ready." },
-    nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", leadsTickets: "Leads & Tickets", subscriptions: "Subscriptions", apiKeys: "API Keys" },
+    nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Loyalty Studio", experiences: "Experiences", campaigns: "Campaigns", subscriptions: "Subscriptions", apiKeys: "API Keys" },
     pages: {
       overview: { title: "Operational overview", description: "Critical authentication, fraud and batch KPIs." },
       tenants: { title: "Tenant management", description: "Customers, plans and operating health by tenant." },
@@ -196,6 +208,9 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       events: { title: "Events", description: "Searchable event table with filters and status badges." },
       resellers: { title: "Reseller channel", description: "Partner performance, pipeline and sub-clients." },
       leadsTickets: { title: "Leads & Tickets", description: "Commercial + support inbox captured from assistant and forms." },
+      loyalty: { title: "Loyalty Studio", description: "Points program setup, benefits and anti-fraud rules." },
+      experiences: { title: "Experiences", description: "Agenda for visits, tastings and program events." },
+      campaigns: { title: "BotIA Campaigns", description: "AI-driven growth segments for active members." },
       subscriptions: { title: "Subscriptions", description: "Active plans, renewal and revenue expansion." },
       apiKeys: { title: "Developer settings", description: "API key management and rotation policies." },
     },
