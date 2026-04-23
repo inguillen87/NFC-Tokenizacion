@@ -44,6 +44,18 @@ function sanitizePublicErrorReason(raw: string) {
 
 type SunResult = Awaited<ReturnType<typeof processSunScan>>;
 
+type ProductState =
+  | "VALID_CLOSED"
+  | "VALID_OPENED"
+  | "VALID_OPENED_PREVIOUSLY"
+  | "VALID_UNKNOWN_TAMPER"
+  | "VALID_MANUAL_OPENED"
+  | "REPLAY_SUSPECT"
+  | "INVALID"
+  | "UNKNOWN_BATCH"
+  | "NOT_REGISTERED"
+  | "NOT_ACTIVE";
+
 type PassportSnapshot = {
   product_name: string | null;
   sku: string | null;
