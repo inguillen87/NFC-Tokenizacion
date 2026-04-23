@@ -47,6 +47,7 @@ type SunResult = Awaited<ReturnType<typeof processSunScan>>;
 type ProductState =
   | "VALID_CLOSED"
   | "VALID_OPENED"
+  | "VALID_OPENED_PREVIOUSLY"
   | "VALID_UNKNOWN_TAMPER"
   | "VALID_MANUAL_OPENED"
   | "REPLAY_SUSPECT"
@@ -286,18 +287,18 @@ function buildTroubleshooting(reason: string, bid: string) {
   return ['Revisá onboarding del batch.', 'Confirmá UID importado/activo.', 'Auditar eventos y llaves en dashboard.'];
 }
 
-function resolveTrustState(status: string, reason: string, productState?: string | null) {
+function resolveTrustState(status: string, reason: string, productState?: ProductState | string | null) {
   const normalizedStatus = status.toUpperCase();
   const normalizedReason = reason.toLowerCase();
   const normalizedProductState = String(productState || "").toUpperCase();
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay')) {
     return { code: 'REPLAY_SUSPECT', label: 'Replay detectado', summary: 'Payload reutilizado. Pedí nuevo tap físico.', tone: 'warn' as const };
   }
-  if (normalizedProductState === "VALID_OPENED" || normalizedProductState === "TAMPER_RISK" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
-    return { code: 'OPENED', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. Sello abierto.', tone: 'warn' as const };
+  if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
+    return { code: 'OPENED', label: 'Producto abierto', summary: 'Producto auténtico, pero el sello fue abierto.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_OPENED_PREVIOUSLY") {
-    return { code: 'OPENED_PREVIOUSLY', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. El sello fue abierto anteriormente.', tone: 'warn' as const };
+    return { code: 'OPENED_PREVIOUSLY', label: 'Sello abierto anteriormente', summary: 'Autenticidad confirmada. El sello fue abierto anteriormente.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_MANUAL_OPENED") {
     return { code: 'MANUAL_OPENED', label: 'Apertura registrada', summary: 'Producto auténtico. Sello marcado como abierto por operador.', tone: 'warn' as const };
@@ -633,7 +634,9 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const authPanelMessage = isReplay
     ? copy.authReplay
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
-      ? "Producto auténtico. Sello marcado como abierto por operador."
+      ? "Producto auténtico. Sello abierto."
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+      ? "Autenticidad confirmada. El sello fue abierto anteriormente."
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Authentic tag, but seal was opened."
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
@@ -645,6 +648,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     ? "Commercial state: HOLD"
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
       ? "Commercial state: DEMO_OPENED"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+      ? "Commercial state: REVIEW_HISTORY"
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Commercial state: REVIEW"
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
@@ -654,6 +659,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     ? "Risk: replay suspect"
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
       ? "Risk: manual opened"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+      ? "Risk: opened previously"
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Risk: tamper/opened"
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
@@ -966,7 +973,14 @@ export async function GET(req: Request): Promise<Response> {
     tamper_risk: Boolean((result.body as { tamper_risk?: boolean }).tamper_risk),
     tagtamper_config_detected: Boolean((result.body as { tag_tamper_config_detected?: boolean }).tag_tamper_config_detected),
     enc_plain_status_byte: (result.body as { enc_plain_status_byte?: string }).enc_plain_status_byte || null,
-    request_json: { bid, picc_data, enc, cmac },
+    request_json: {
+      bid,
+      picc_data,
+      enc,
+      cmac,
+      ttstatus_candidate_offsets: (result.body as { ttstatus_candidate_offsets?: unknown }).ttstatus_candidate_offsets || null,
+      ttstatus_recommendation: (result.body as { ttstatus_recommendation?: string }).ttstatus_recommendation || null,
+    },
     result_json: { contract, raw_result: result.body },
     notes: [`trace:${traceId}`],
   });
@@ -981,6 +995,11 @@ export async function GET(req: Request): Promise<Response> {
     tamperRisk: Boolean((result.body as { tamper_risk?: boolean }).tamper_risk),
     tagTamperConfigDetected: Boolean((result.body as { tag_tamper_config_detected?: boolean }).tag_tamper_config_detected),
     encPlainStatusByte: (result.body as { enc_plain_status_byte?: string }).enc_plain_status_byte || null,
+    ttstatusRaw: (result.body as { ttstatus_raw?: string }).ttstatus_raw || null,
+    ttPermStatus: (result.body as { tt_perm_status?: string }).tt_perm_status || null,
+    ttCurrStatus: (result.body as { tt_curr_status?: string }).tt_curr_status || null,
+    ttstatusCandidates: (result.body as { ttstatus_candidate_offsets?: unknown }).ttstatus_candidate_offsets || null,
+    ttstatusRecommendation: (result.body as { ttstatus_recommendation?: string }).ttstatus_recommendation || null,
     eventId,
     diagnosticId,
     status: result.status,

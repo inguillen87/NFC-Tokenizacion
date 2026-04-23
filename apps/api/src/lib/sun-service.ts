@@ -21,6 +21,12 @@ type TamperState = "opened" | "tamper" | "closed" | null;
 type TamperProfile = {
   chip_model: string;
   tagtamper_enabled: boolean;
+  ttstatus_enabled: boolean;
+  ttstatus_source: "enc_decrypted" | "picc_data_decrypted" | "none";
+  ttstatus_offset: number | null;
+  ttstatus_length: number;
+  ttstatus_plain_or_encrypted: "plain" | "encrypted";
+  ttstatus_notes: string;
   tamper_status_enabled: boolean;
   tamper_status_source: "enc_decrypted" | "picc_data_decrypted" | "none";
   tamper_status_offset: number | null;
@@ -37,6 +43,50 @@ type TamperProfile = {
   ttstatus_notes: string | null;
 };
 
+export type ParsedTTStatus = {
+  raw: string;
+  perm: "CLOSED" | "OPENED" | "INVALID" | "UNKNOWN";
+  current: "CLOSED" | "OPENED" | "INVALID" | "UNKNOWN";
+  product_state: "VALID_CLOSED" | "VALID_OPENED" | "VALID_OPENED_PREVIOUSLY" | "VALID_UNKNOWN_TAMPER" | "TAMPER_RISK";
+  reason?: string;
+};
+
+function decodeTTByte(byteHex: string): ParsedTTStatus["perm"] {
+  const normalized = String(byteHex || "").toUpperCase();
+  if (normalized === "43") return "CLOSED";
+  if (normalized === "4F") return "OPENED";
+  if (normalized === "49") return "INVALID";
+  return "UNKNOWN";
+}
+
+export function parseTTStatusFromDecryptedPayload(payloadHex: string, offset: number): ParsedTTStatus {
+  const normalized = String(payloadHex || "").replace(/[^0-9a-f]/gi, "").toUpperCase();
+  const base = Number.isInteger(offset) && offset >= 0 ? offset * 2 : 0;
+  const raw = normalized.slice(base, base + 4);
+  const permByte = raw.slice(0, 2);
+  const currentByte = raw.slice(2, 4);
+  const perm = decodeTTByte(permByte);
+  const current = decodeTTByte(currentByte);
+  if (raw === "4343") return { raw, perm, current, product_state: "VALID_CLOSED" };
+  if (raw === "4F4F") return { raw, perm, current, product_state: "VALID_OPENED" };
+  if (raw === "4F43") return { raw, perm, current, product_state: "VALID_OPENED_PREVIOUSLY" };
+  if (raw === "434F") return { raw, perm, current, product_state: "TAMPER_RISK", reason: "TTStatus inconsistente (434F)." };
+  if (raw === "4949") return { raw, perm, current, product_state: "VALID_UNKNOWN_TAMPER", reason: "TTStatus invalid/not enabled." };
+  return { raw: raw || "NONE", perm, current, product_state: "VALID_UNKNOWN_TAMPER", reason: "TTStatus not recognized." };
+}
+
+function findTTStatusCandidatesInPayload(payloadHex: string) {
+  const normalized = String(payloadHex || "").replace(/[^0-9a-f]/gi, "").toUpperCase();
+  const hits: Array<{ offset: number; raw: string }> = [];
+  for (let i = 0; i + 4 <= normalized.length; i += 2) {
+    const raw = normalized.slice(i, i + 4);
+    if (["4343", "4F4F", "4F43", "4949"].includes(raw)) {
+      hits.push({ offset: i / 2, raw });
+    }
+  }
+  return hits;
+}
+
 function resolveTamperProfile(raw: unknown): TamperProfile {
   const cfg = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
   const sourceRaw = String(cfg.ttstatus_source || cfg.tamper_status_source || "none").toLowerCase();
@@ -49,14 +99,22 @@ function resolveTamperProfile(raw: unknown): TamperProfile {
   const openedRaw = Array.isArray(cfg.tamper_open_values) ? cfg.tamper_open_values : [];
   const closed = closedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
   const opened = openedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
-  const offsetRaw = Number(cfg.ttstatus_offset ?? cfg.tamper_status_offset);
+  const offsetRaw = Number(cfg.tamper_status_offset);
+  const ttOffsetRaw = Number(cfg.ttstatus_offset ?? cfg.tamper_status_offset);
   const lengthRaw = Number(cfg.tamper_status_length);
+  const ttLengthRaw = Number(cfg.ttstatus_length);
   const unknownPolicyRaw = String(cfg.tamper_unknown_policy || "UNKNOWN").toUpperCase();
   const isTagTamperDefault = /424|tag.?tamper|tt/i.test(String(cfg.chip_model || ""));
   return {
     chip_model: String(cfg.chip_model || "unknown"),
-    tagtamper_enabled: Boolean(cfg.tagtamper_enabled ?? isTagTamperDefault),
-    tamper_status_enabled: Boolean(cfg.tamper_status_enabled ?? cfg.ttstatus_enabled ?? false),
+    tagtamper_enabled: Boolean(cfg.tagtamper_enabled ?? /424|tag.?tamper|tt/i.test(String(cfg.chip_model || ""))),
+    ttstatus_enabled: Boolean(cfg.ttstatus_enabled ?? cfg.tamper_status_enabled ?? false),
+    ttstatus_source: source,
+    ttstatus_offset: Number.isInteger(ttOffsetRaw) && ttOffsetRaw >= 0 ? ttOffsetRaw : null,
+    ttstatus_length: Number.isInteger(ttLengthRaw) && ttLengthRaw > 0 ? ttLengthRaw : 2,
+    ttstatus_plain_or_encrypted: String(cfg.ttstatus_plain_or_encrypted || "encrypted").toLowerCase() === "plain" ? "plain" : "encrypted",
+    ttstatus_notes: String(cfg.ttstatus_notes || cfg.tamper_notes || cfg.notes || ""),
+    tamper_status_enabled: Boolean(cfg.tamper_status_enabled ?? false),
     tamper_status_source: source,
     tamper_status_offset: Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : null,
     tamper_status_length: Number.isInteger(lengthRaw) && lengthRaw > 0 ? lengthRaw : 1,
@@ -425,9 +483,25 @@ export async function processSunScan(input: {
     encPlainHex: res.ok ? res.encPlainHex : undefined,
     tagTamperEnabled,
   });
+  const ttStatusConfigured = Boolean(
+    tagTamperEnabled
+    && tamperProfile.ttstatus_enabled
+    && tamperProfile.ttstatus_source !== "none"
+    && Number.isInteger(tamperProfile.ttstatus_offset),
+  );
+  const ttPayloadHex = tamperProfile.ttstatus_source === "enc_decrypted"
+    ? (res.ok ? res.encPlainHex : "")
+    : tamperProfile.ttstatus_source === "picc_data_decrypted"
+      ? (res.ok ? res.piccPlainHex : "")
+      : "";
+  const parsedTTStatus = ttStatusConfigured && ttPayloadHex
+    ? parseTTStatusFromDecryptedPayload(ttPayloadHex, Number(tamperProfile.ttstatus_offset || 0))
+    : null;
+  const encTTCandidates = findTTStatusCandidatesInPayload(res.ok ? (res.encPlainHex || "") : "");
+  const piccTTCandidates = findTTStatusCandidatesInPayload(res.ok ? (res.piccPlainHex || "") : "");
   const configuredStatusHex = (() => {
     if (!tamperProfile.tamper_status_enabled || tamperProfile.tamper_status_source === "none") return null;
-    const offset = tamperProfile.tamper_status_offset ?? 0;
+    const offset = tamperProfile.tamper_status_offset ?? tamperProfile.ttstatus_offset ?? 0;
     const len = tamperProfile.tamper_status_length ?? 1;
     const expectedEnd = offset * 2 + len * 2;
     if (tamperProfile.tamper_status_source === "enc_decrypted" && res.ok && typeof res.encPlainHex === "string" && res.encPlainHex.length >= expectedEnd) {
@@ -445,15 +519,16 @@ export async function processSunScan(input: {
   })();
   const tamperConfigured = Boolean(
     tagTamperEnabled
-    && (tamperProfile.ttstatus_enabled || tamperProfile.tamper_status_enabled)
-    && (tamperProfile.ttstatus_source !== "none" || tamperProfile.tamper_status_source !== "none")
-    && (Number.isInteger(tamperProfile.ttstatus_offset) || Number.isInteger(tamperProfile.tamper_status_offset)),
+    && (tamperProfile.tamper_status_enabled || tamperProfile.ttstatus_enabled)
+    && (tamperProfile.tamper_status_source !== "none" || tamperProfile.ttstatus_source !== "none")
+    && (Number.isInteger(tamperProfile.tamper_status_offset) || Number.isInteger(tamperProfile.ttstatus_offset)),
   );
   const tamperStatus = (() => {
     if (!tagTamperEnabled) return "UNKNOWN" as const;
-    if (ttstatusParsed?.tamper_status === "CLOSED") return "CLOSED" as const;
-    if (ttstatusParsed?.tamper_status === "OPENED") return "OPENED" as const;
-    if (ttstatusParsed?.tamper_status === "OPENED_PREVIOUSLY") return "OPENED_PREVIOUSLY" as const;
+    if (parsedTTStatus?.product_state === "VALID_CLOSED") return "CLOSED" as const;
+    if (parsedTTStatus?.product_state === "VALID_OPENED") return "OPENED" as const;
+    if (parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY") return "OPENED_PREVIOUSLY" as const;
+    if (parsedTTStatus?.product_state === "TAMPER_RISK") return "TAMPER_RISK" as const;
     if (tamperConfigured && configuredStatusHex && tamperProfile.tamper_open_values.includes(configuredStatusHex)) return "OPENED" as const;
     if (tamperConfigured && configuredStatusHex && tamperProfile.tamper_closed_values.includes(configuredStatusHex)) return "CLOSED" as const;
     if (!tamperConfigured) return "UNKNOWN" as const;
@@ -464,6 +539,10 @@ export async function processSunScan(input: {
   })();
   const authStatus = !res.ok
     ? 'INVALID'
+    : parsedTTStatus?.product_state === "VALID_OPENED" || parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
+      ? 'OPENED'
+    : parsedTTStatus?.product_state === "TAMPER_RISK"
+      ? 'TAMPER_RISK'
     : tamperSignal.opened
       ? 'OPENED'
       : tamperSignal.tamper
@@ -483,12 +562,20 @@ export async function processSunScan(input: {
 
   const successReason = manualOpened
     ? `manual_tamper_opened:${String(manualTamper?.reason || "operator_override")}`
+    : parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
+    ? `tagtamper_opened_previously:${parsedTTStatus.raw}`
+    : parsedTTStatus?.product_state === "VALID_OPENED"
+    ? `tagtamper_opened:${parsedTTStatus.raw}`
+    : parsedTTStatus?.product_state === "TAMPER_RISK"
+    ? `tagtamper_inconsistent:${parsedTTStatus.raw}`
     : tamperStatus === "OPENED"
     ? `tagtamper_opened:${configuredStatusHex || tamperSignal.raw || 'signal'}`
     : tamperStatus === "OPENED_PREVIOUSLY"
       ? `tagtamper_opened_previously:${ttstatusParsed?.raw || configuredStatusHex || tamperSignal.raw || 'signal'}`
     : requireTamperEvidence && !tamperConfigured
       ? 'tagtamper_unconfigured'
+    : tagTamperEnabled && !ttStatusConfigured && !encTTCandidates.length && !piccTTCandidates.length
+      ? 'ttstatus_not_found_in_payload'
     : tamperSignal.tamper
       ? `tagtamper_alert:${configuredStatusHex || tamperSignal.raw || 'signal'}`
       : replaySuspect
@@ -499,6 +586,9 @@ export async function processSunScan(input: {
     if (!res.ok || authStatus === "INVALID") return "INVALID" as const;
     if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT" as const;
     if (resolvedTamperStatus === "MANUAL_OPENED") return "VALID_MANUAL_OPENED" as const;
+    if (parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY") return "VALID_OPENED_PREVIOUSLY" as const;
+    if (parsedTTStatus?.product_state === "VALID_CLOSED") return "VALID_CLOSED" as const;
+    if (parsedTTStatus?.product_state === "VALID_OPENED") return "VALID_OPENED" as const;
     if (resolvedTamperStatus === "OPENED") return "VALID_OPENED" as const;
     if (resolvedTamperStatus === "OPENED_PREVIOUSLY") return "VALID_OPENED_PREVIOUSLY" as const;
     if (resolvedTamperStatus === "CLOSED") return "VALID_CLOSED" as const;
@@ -547,6 +637,10 @@ export async function processSunScan(input: {
       ttstatus_reason: ttstatusParsed?.reason || undefined,
       tamper_reason: manualOpened
         ? "Producto auténtico. Sello marcado como abierto por operador."
+        : parsedTTStatus?.product_state === "VALID_UNKNOWN_TAMPER"
+        ? "Authenticity confirmed. Open/closed status is not available for this batch configuration."
+        : parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
+        ? "Authenticity confirmed. Seal was opened previously."
         : resolvedTamperStatus === "UNKNOWN"
         ? "Authenticity confirmed. Open/closed status is not available for this batch configuration."
         : resolvedTamperStatus === "OPENED"
@@ -566,7 +660,21 @@ export async function processSunScan(input: {
       ttstatus_offset: tamperProfile.ttstatus_offset ?? undefined,
       ttstatus_length: tamperProfile.ttstatus_length,
       ttstatus_plain_or_encrypted: tamperProfile.ttstatus_plain_or_encrypted,
+      ttstatus_raw: parsedTTStatus?.raw || undefined,
+      tt_perm_status: parsedTTStatus?.perm || undefined,
+      tt_curr_status: parsedTTStatus?.current || undefined,
       ttstatus_notes: tamperProfile.ttstatus_notes || undefined,
+      ttstatus_candidate_offsets: {
+        enc_decrypted: encTTCandidates,
+        picc_data_decrypted: piccTTCandidates,
+      },
+      ttstatus_recommendation: parsedTTStatus
+        ? `TTStatus parsed at configured offset ${tamperProfile.ttstatus_offset}.`
+        : ttStatusConfigured
+          ? "TTStatus enabled but bytes at configured offset did not match expected values (4343/4F4F/4F43/4949)."
+          : encTTCandidates.length || piccTTCandidates.length
+            ? "TTStatus-like bytes detected in payload. Configure ttstatus_offset with candidate offsets."
+            : "No TTStatus pattern found. Supplier may not have mirrored TTStatus into SDM payload.",
       tamper_closed_values: tamperProfile.tamper_closed_values,
       tamper_open_values: tamperProfile.tamper_open_values,
       tamper_unknown_policy: tamperProfile.tamper_unknown_policy,

@@ -1,9 +1,9 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { checkAdmin } from '../../../../lib/auth';
-import { json } from '../../../../lib/http';
-import { listSunDiagnostics } from '../../../../lib/sun-diagnostics';
+import { checkAdmin } from '@/lib/auth';
+import { json } from '@/lib/http';
+import { listSunDiagnostics } from '@/lib/sun-diagnostics';
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);

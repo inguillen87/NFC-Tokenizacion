@@ -3,13 +3,17 @@ export const dynamic = "force-dynamic";
 
 import { checkAdmin } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
-import { processSunScan } from "../../../../lib/sun-service";
+import { parseTTStatusFromDecryptedPayload, processSunScan } from "../../../../lib/sun-service";
 
 type Body = { closed_urls?: string[]; opened_urls?: string[] };
 
-type ParsedSun = { bid: string; piccDataHex: string; encHex: string; cmacHex: string; rawQuery: Record<string, string> };
-
-const TT_PATTERNS = new Set(["4343", "4F4F", "4F43", "4949"]);
+type ParsedSun = {
+  bid: string;
+  piccDataHex: string;
+  encHex: string;
+  cmacHex: string;
+  rawQuery: Record<string, string>;
+};
 
 function parseSunUrl(rawUrl: string): ParsedSun {
   const parsed = new URL(rawUrl);
@@ -22,11 +26,8 @@ function parseSunUrl(rawUrl: string): ParsedSun {
   };
 }
 
-function bytesAtOffset(hex: string, offset: number) {
-  const normalized = String(hex || "").toUpperCase();
-  const start = offset * 2;
-  if (normalized.length < start + 4) return "";
-  return normalized.slice(start, start + 4);
+function looksLikeTTStatus(raw: string) {
+  return ["4343", "4F4F", "4F43", "4949"].includes(raw.toUpperCase());
 }
 
 export async function POST(req: Request) {
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
     const parsed = parseSunUrl(url);
     return processSunScan({
       ...parsed,
-      context: { source: "imported", deviceLabel: `admin_find_ttstatus_${label}_${index}`, meta: { inspectedFrom: "admin.sun.find_ttstatus_candidates" } },
+      context: { source: "imported", deviceLabel: `admin_find_ttstatus_${label}_${index}`, meta: { comparedFrom: "admin.sun.find_ttstatus_candidates" } },
     });
   }));
 
@@ -50,38 +51,47 @@ export async function POST(req: Request) {
   const closedBodies = closedResults.map((entry) => entry.body as Record<string, unknown>);
   const openedBodies = openedResults.map((entry) => entry.body as Record<string, unknown>);
 
-  const closedHexes = closedBodies.map((x) => String(x.enc_plain_hex || "")).filter(Boolean);
-  const openedHexes = openedBodies.map((x) => String(x.enc_plain_hex || "")).filter(Boolean);
-  const maxLen = Math.max(...closedHexes.map((h) => h.length), ...openedHexes.map((h) => h.length), 0);
-  const maxOffset = Math.floor(maxLen / 2) - 2;
-
+  const sources: Array<"enc_decrypted" | "picc_data_decrypted"> = ["enc_decrypted", "picc_data_decrypted"];
   const candidates: Array<{
+    source: "enc_decrypted" | "picc_data_decrypted";
     offset: number;
     closed_values: string[];
     opened_values: string[];
-    confidence: "HIGH" | "MEDIUM" | "LOW";
-    source: "enc_decrypted";
+    confidence: "HIGH" | "MEDIUM";
   }> = [];
 
-  for (let offset = 0; offset <= maxOffset; offset += 1) {
-    const closedValues = Array.from(new Set(closedHexes.map((hex) => bytesAtOffset(hex, offset)).filter(Boolean)));
-    const openedValues = Array.from(new Set(openedHexes.map((hex) => bytesAtOffset(hex, offset)).filter(Boolean)));
-    if (!closedValues.length || !openedValues.length) continue;
-    if (!closedValues.every((value) => TT_PATTERNS.has(value)) || !openedValues.every((value) => TT_PATTERNS.has(value))) continue;
-    const closedHasClosedSignal = closedValues.includes("4343");
-    const openedHasOpenSignal = openedValues.includes("4F4F") || openedValues.includes("4F43");
-    if (!closedHasClosedSignal || !openedHasOpenSignal) continue;
-    const confidence = closedValues.length === 1 && openedValues.length === 1 ? "HIGH" : closedValues.length <= 2 && openedValues.length <= 2 ? "MEDIUM" : "LOW";
-    candidates.push({ offset, closed_values: closedValues, opened_values: openedValues, confidence, source: "enc_decrypted" });
+  for (const source of sources) {
+    const closedHexes = closedBodies.map((x) => String(source === "enc_decrypted" ? (x.enc_plain_hex || "") : (x.picc_plain_hex || ""))).filter((hex) => hex.length >= 4);
+    const openedHexes = openedBodies.map((x) => String(source === "enc_decrypted" ? (x.enc_plain_hex || "") : (x.picc_plain_hex || ""))).filter((hex) => hex.length >= 4);
+    if (!closedHexes.length || !openedHexes.length) continue;
+
+    const minLen = Math.min(
+      ...closedHexes.map((h) => h.length),
+      ...openedHexes.map((h) => h.length),
+    );
+    for (let i = 0; i + 4 <= minLen; i += 2) {
+      const offset = i / 2;
+      const closedParsed = closedHexes.map((hex) => parseTTStatusFromDecryptedPayload(hex, offset).raw.toUpperCase());
+      const openedParsed = openedHexes.map((hex) => parseTTStatusFromDecryptedPayload(hex, offset).raw.toUpperCase());
+      const closedAllClosed = closedParsed.every((raw) => raw === "4343");
+      const openedAllOpen = openedParsed.every((raw) => raw === "4F4F" || raw === "4F43");
+      const closedKnown = closedParsed.every((raw) => looksLikeTTStatus(raw));
+      const openedKnown = openedParsed.every((raw) => looksLikeTTStatus(raw));
+      if (closedAllClosed && openedAllOpen) {
+        candidates.push({ source, offset, closed_values: Array.from(new Set(closedParsed)), opened_values: Array.from(new Set(openedParsed)), confidence: "HIGH" });
+      } else if (closedKnown && openedKnown && closedParsed.some((raw) => raw === "4343") && openedParsed.some((raw) => raw === "4F4F" || raw === "4F43")) {
+        candidates.push({ source, offset, closed_values: Array.from(new Set(closedParsed)), opened_values: Array.from(new Set(openedParsed)), confidence: "MEDIUM" });
+      }
+    }
   }
 
   return json({
     ok: true,
-    closed_count: closedBodies.length,
-    opened_count: openedBodies.length,
+    closed_count: closedUrls.length,
+    opened_count: openedUrls.length,
     candidate_offsets: candidates,
     recommendation: candidates.length
-      ? "TTStatus candidate offsets found. Configure ttstatus_offset using the highest confidence candidate."
+      ? "TTStatus candidate offsets found. Configure ttstatus_source + ttstatus_offset in batch config."
       : "No TTStatus pattern found. Supplier may not have mirrored TTStatus into SDMENCFileData.",
   });
 }

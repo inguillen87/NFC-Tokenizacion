@@ -7,6 +7,12 @@ import { sql } from "../../../../../lib/db";
 
 type TamperConfigBody = {
   tagtamper_enabled?: boolean;
+  ttstatus_enabled?: boolean;
+  ttstatus_source?: "enc_decrypted" | "picc_data_decrypted" | "none" | "enc" | "picc_data" | "decrypted_sdm";
+  ttstatus_offset?: number | null;
+  ttstatus_length?: number | null;
+  ttstatus_plain_or_encrypted?: "plain" | "encrypted";
+  ttstatus_notes?: string | null;
   tamper_status_enabled?: boolean;
   tamper_status_source?: "enc_decrypted" | "picc_data_decrypted" | "none" | "enc" | "picc_data" | "decrypted_sdm";
   tamper_status_offset?: number | null;
@@ -38,10 +44,16 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
       : "none";
 
   const nextConfig = {
-    tagtamper_enabled: body.tagtamper_enabled == null ? true : Boolean(body.tagtamper_enabled),
-    tamper_status_enabled: Boolean(body.tamper_status_enabled ?? body.ttstatus_enabled),
+    tagtamper_enabled: Boolean(body.tagtamper_enabled),
+    ttstatus_enabled: Boolean(body.ttstatus_enabled ?? body.tamper_status_enabled),
+    ttstatus_source: source,
+    ttstatus_offset: Number.isInteger(Number(body.ttstatus_offset)) ? Number(body.ttstatus_offset) : null,
+    ttstatus_length: 2,
+    ttstatus_plain_or_encrypted: String(body.ttstatus_plain_or_encrypted || "encrypted").toLowerCase() === "plain" ? "plain" : "encrypted",
+    ttstatus_notes: body.ttstatus_notes ? String(body.ttstatus_notes) : null,
+    tamper_status_enabled: Boolean(body.tamper_status_enabled),
     tamper_status_source: source,
-    tamper_status_offset: Number.isInteger(Number(body.ttstatus_offset ?? body.tamper_status_offset)) ? Number(body.ttstatus_offset ?? body.tamper_status_offset) : null,
+    tamper_status_offset: Number.isInteger(Number(body.tamper_status_offset)) ? Number(body.tamper_status_offset) : (Number.isInteger(Number(body.ttstatus_offset)) ? Number(body.ttstatus_offset) : null),
     tamper_status_length: Number.isInteger(Number(body.tamper_status_length)) ? Number(body.tamper_status_length) : 1,
     tamper_closed_values: Array.isArray(body.tamper_closed_values) ? body.tamper_closed_values.map((v) => String(v).trim().toUpperCase()).filter(Boolean) : [],
     tamper_open_values: Array.isArray(body.tamper_open_values) ? body.tamper_open_values.map((v) => String(v).trim().toUpperCase()).filter(Boolean) : [],
