@@ -32,13 +32,7 @@ export default async function ResellersPage() {
 
   return (
     <main className="space-y-8">
-      <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description="CRM lite: leads, tickets y pedidos para super admin." />
-      <ModuleAudienceHero
-        ceo={{ eyebrow: "CEO / Investor read", summary: "Resellers y CRM lite muestran pipeline, canal y señales de revenue en expansión.", decision: "Decidís qué partners escalar, qué cuentas priorizar y dónde hay conversión real.", cta: "Usalo para mostrar que la plataforma no solo autentica: también abre distribución y negocio." }}
-        operator={{ eyebrow: "Operator / Engineer read", summary: "Esta vista conecta soporte comercial con ejecución: leads, tickets y pedidos operativos en el mismo control plane.", decision: "Decidís cómo coordinar onboarding, incidencias y abastecimiento con el canal reseller.", cta: "Leelo como puente entre operación interna y red comercial externa." }}
-        buyer={{ eyebrow: "Buyer / Client read", summary: "White-label / Resellers demuestra que la experiencia puede desplegarse en múltiples marcas, geografías y equipos.", decision: "Decidís si esto puede crecer en tu red comercial o cadena de distribución.", cta: "Mostralo como prueba de escalabilidad comercial más allá del caso demo inicial." }}
-      />
-
+      <SectionHeading eyebrow={copy.nav.resellers} title={copy.pages.resellers.title} description={copy.pages.resellers.description} />
       <DataTable
         title="Leads inbox ⓘ"
         columns={[{ key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "volume", label: "Volume" }]}

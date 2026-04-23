@@ -41,7 +41,7 @@ export async function seedDemoPack(options: SeedOptions = {}) {
   const bid = (options.forceBid || rows[0]?.batch_id || pack.batchId || "DEMO-2026-02").trim();
   const tenantSlug = "demobodega";
 
-  await sql`INSERT INTO tenants (slug, name, root_key_ct) VALUES (${tenantSlug}, 'Demo Bodega', 'demo-root-key') ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name`;
+  await sql`INSERT INTO tenants (slug, name, type, status, root_key_ct) VALUES (${tenantSlug}, 'Demo Bodega', 'winery', 'active', 'demo-root-key') ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, type = 'winery', status = 'active'`;
   const tenant = (await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`)[0];
 
   const metaCt = encryptKey16(Buffer.from(metaHex, "hex"));
@@ -63,9 +63,46 @@ export async function seedDemoPack(options: SeedOptions = {}) {
       VALUES (${batch.id}, ${row.uid_hex}, 'active')
       ON CONFLICT (batch_id, uid_hex)
       DO UPDATE SET status='active'
-      RETURNING xmax = 0 AS inserted
+      RETURNING id, xmax = 0 AS inserted
     `;
     if (result[0]?.inserted) inserted += 1;
+    const tagId = result[0]?.id;
+
+    if (tagId) {
+      await sql`
+        INSERT INTO product_passports (
+          tenant_id, batch_id, tag_id, product_name, varietal, vintage, alcohol, barrel_aging, harvest, region, winery_name
+        ) VALUES (
+          ${tenant.id}, ${batch.id}, ${tagId}, 'Gran Reserva Malbec', 'Malbec', '2022', '14.5%', '12 meses', '2022', 'Valle de Uco, Mendoza', 'Finca Altamira'
+        ) ON CONFLICT DO NOTHING
+      `;
+    }
+  }
+
+  // Phase 8: Seed Loyalty Vertical Template for Demo Bodega ("Club Terroir")
+  await sql`
+    INSERT INTO loyalty_programs (tenant_id, name, vertical, status, points_name)
+    VALUES (${tenant.id}, 'Club Terroir', 'winery', 'active', 'Uvas')
+    ON CONFLICT DO NOTHING
+  `;
+  const program = (await sql`SELECT id FROM loyalty_programs WHERE tenant_id = ${tenant.id} LIMIT 1`)[0];
+
+  if (program) {
+    await sql`
+      INSERT INTO badges (tenant_id, program_id, code, name, description, icon, rarity)
+      VALUES
+        (${tenant.id}, ${program.id}, 'MALBEC_LOVER', 'Malbec Lover', 'Has escaneado tu primer Malbec Gran Reserva auténtico.', '🍷', 'rare'),
+        (${tenant.id}, ${program.id}, 'MENDOZA_EXPLORER', 'Valle de Uco Explorer', 'Estás descubriendo el terroir de Mendoza.', '🏔️', 'common')
+      ON CONFLICT DO NOTHING
+    `;
+
+    await sql`
+      INSERT INTO rewards (tenant_id, program_id, code, title, description, type, points_cost, status)
+      VALUES
+        (${tenant.id}, ${program.id}, 'TASTING_UPGRADE', 'Upgrade de degustación', 'Accedé a una copa de añada histórica durante tu visita.', 'TASTING', 100, 'active'),
+        (${tenant.id}, ${program.id}, 'DISCOUNT_10', '10% Off próxima compra', 'Válido en la tienda online oficial.', 'DISCOUNT', 50, 'active')
+      ON CONFLICT DO NOTHING
+    `;
   }
 
   return { ok: true, pack: packKey, bid, imported: rows.length, inserted, uids: rows.map((row) => row.uid_hex).slice(0, 10) };

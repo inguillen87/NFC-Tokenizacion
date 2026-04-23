@@ -77,8 +77,35 @@ export function RealtimeOpsMonitor({
     };
     source.addEventListener("snapshot", onSnapshot as EventListener);
 
+    const onEvent = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as EventRow;
+        if (payload) {
+          const incomingId = String(payload.id || payload.uid_hex || payload.created_at || "");
+          setLatestEventId((prev) => {
+            if (incomingId && incomingId !== prev) {
+              setEvents((prevEvents) => {
+                // Ensure no duplicates based on ID (if ID is available and valid)
+                if (payload.id && prevEvents.some((e) => e.id === payload.id)) {
+                  return prevEvents;
+                }
+                return [payload, ...prevEvents].slice(0, 40); // Keep max 40 to avoid memory leak
+              });
+              setLastUpdateAt(new Date().toISOString());
+              return incomingId;
+            }
+            return prev;
+          });
+        }
+      } catch {
+        // ignore malformed chunk
+      }
+    };
+    source.addEventListener("event", onEvent as EventListener);
+
     return () => {
       source.removeEventListener("snapshot", onSnapshot as EventListener);
+      source.removeEventListener("event", onEvent as EventListener);
       source.close();
     };
   }, [tenantScope]);

@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { AppLocale } from "@product/config";
 import { ProductExitLink } from "./product-exit-link";
@@ -22,28 +22,43 @@ function metaByKey(key: string): Omit<PackMeta, "key" | "tag"> {
   return { simulates: "Luxury item authentication and ownership story.", audience: "luxury brands and activation partners" };
 }
 
-function readPacks() {
+async function readPacks() {
   const base = path.resolve(process.cwd(), 'public', 'demo');
-  if (!fs.existsSync(base)) return [] as PackMeta[];
-  const dirs = fs.readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory());
-  return dirs
-    .map((d) => {
-      const manifest = path.join(base, d.name, 'manifest.csv');
-      if (!fs.existsSync(manifest)) return null;
-      const lines = fs.readFileSync(manifest, 'utf8').trim().split('\n');
-      const headers = lines[0]?.split(',').map((h) => h.trim()) || [];
-      const first = (lines[1] || '').split(',').map((v) => v.trim());
-      const row = Object.fromEntries(headers.map((h, i) => [h, first[i] || '']));
-      const meta = metaByKey(d.name);
-      return { key: d.name, tag: String(row.ic_type || 'UNKNOWN'), ...meta };
+
+  try {
+    const stats = await fs.stat(base);
+    if (!stats.isDirectory()) return [] as PackMeta[];
+  } catch {
+    return [] as PackMeta[];
+  }
+
+  const dirs = (await fs.readdir(base, { withFileTypes: true })).filter((d) => d.isDirectory());
+
+  const packs = await Promise.all(
+    dirs.map(async (d) => {
+      const manifestPath = path.join(base, d.name, 'manifest.csv');
+      try {
+        const content = await fs.readFile(manifestPath, 'utf8');
+        const lines = content.trim().split('\n');
+        const headers = lines[0]?.split(',').map((h) => h.trim()) || [];
+        const first = (lines[1] || '').split(',').map((v) => v.trim());
+        const row = Object.fromEntries(headers.map((h, i) => [h, first[i] || '']));
+        const meta = metaByKey(d.name);
+        return { key: d.name, tag: String(row.ic_type || 'UNKNOWN'), ...meta };
+      } catch {
+        return null;
+      }
     })
+  );
+
+  return packs
     .filter((x): x is PackMeta => Boolean(x))
     .sort((a, b) => a.key.localeCompare(b.key));
 }
 
-export function VerticalDemoLibrary({ locale }: { locale: Locale }) {
+export async function VerticalDemoLibrary({ locale }: { locale: Locale }) {
   const t = COPY[locale];
-  const packs = readPacks();
+  const packs = await readPacks();
 
   return (
     <section className="container-shell py-12 space-y-4">

@@ -626,18 +626,32 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           </button>
         </div>
 
-        <textarea className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" value={rawUidText} onChange={(event) => setRawUidText(event.target.value)} placeholder="1 UID por línea" />
-        <button type="button" className="mt-2 rounded-lg border border-white/15 px-3 py-1 text-xs text-slate-100" onClick={parseRawUidText}>Parse pasted TXT</button>
-        <input type="file" accept=".txt,.csv,text/plain,text/csv" className="mt-3 block w-full text-sm text-slate-200" onChange={(event) => void onUidFile(event)} />
+        <textarea className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white transition-colors focus:border-cyan-400/50 focus:bg-slate-900/80" value={rawUidText} onChange={(event) => setRawUidText(event.target.value)} placeholder="Pegá aquí tu lista de UIDs (1 por línea o separados por coma)..." />
 
-        <p className="mt-2 text-xs text-slate-400">Rows parsed: {uids.length} · Unique: {uniqueUidCount} · Duplicates: {duplicateCount} · Batch mismatch: {batchMismatchCount}</p>
-        <p className={`mt-2 text-xs ${supplierUidReady ? "text-emerald-200" : "text-amber-200"}`}>
-          {supplierUidReady ? "Listo para importar/activar." : "Necesitás UIDs válidas (ideal: 10 únicas sin conflicto)."}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-500/20" onClick={parseRawUidText}>Analizar texto copiado</button>
+          <span className="text-xs text-slate-500">o subí un archivo:</span>
+          <input type="file" accept=".txt,.csv,text/plain,text/csv" className="block w-full max-w-[240px] text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-white/20" onChange={(event) => void onUidFile(event)} />
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3">
+          <div className="flex-1 text-xs">
+            <p className="text-slate-400">Total analizado: <span className="font-semibold text-white">{uids.length}</span></p>
+            <p className="text-slate-400">Únicos válidos: <span className="font-semibold text-emerald-300">{uniqueUidCount}</span></p>
+          </div>
+          <div className="flex-1 text-xs">
+            <p className="text-slate-400">Duplicados ignorados: <span className="font-semibold text-amber-300">{duplicateCount}</span></p>
+            <p className="text-slate-400">Conflictos con lote: <span className="font-semibold text-rose-300">{batchMismatchCount}</span></p>
+          </div>
+        </div>
+
+        <p className={`mt-3 text-sm font-medium ${supplierUidReady ? "text-emerald-300" : "text-amber-300"}`}>
+          {supplierUidReady ? "✓ Archivo validado y listo para importar." : "⚠ Necesitás cargar UIDs válidas (se recomiendan al menos 10)."}
         </p>
 
-        <div className="mt-4 flex justify-between">
-          <Button variant="secondary" onClick={() => setActiveStep(2)}>Back</Button>
-          <Button disabled={!stepReady[3]} onClick={() => setActiveStep(4)}>Continue to Step 4</Button>
+        <div className="mt-6 flex justify-between">
+          <Button variant="secondary" onClick={() => setActiveStep(2)}>Atrás</Button>
+          <Button disabled={!stepReady[3]} onClick={() => setActiveStep(4)}>Siguiente paso: Activar</Button>
         </div>
       </Card>
 

@@ -49,7 +49,7 @@ export default async function LeadsTicketsPage({
   const [leads, tickets, orders] = await Promise.all([
     adminGet("/admin/leads"),
     adminGet("/admin/tickets"),
-    adminGet("/admin/orders"),
+    adminGet("/admin/consumer-portal/order-requests"),
   ]);
 
   const leadsArray = Array.isArray(leads) ? leads as Array<Record<string, unknown>> : [];
@@ -111,11 +111,6 @@ export default async function LeadsTicketsPage({
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.leadsTickets} title={copy.pages.leadsTickets.title} description={copy.pages.leadsTickets.description} />
-      <ModuleAudienceHero
-        ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Leads & Tickets del tenant: demanda, soporte y señal comercial en una sola vista." : "Leads & Tickets muestra demanda, soporte y señal comercial en un mismo tablero.", decision: "Decidís si el pipeline está sano, si el interés se convierte y si soporte acompaña crecimiento.", cta: "Usalo para mostrar que la plataforma también mueve negocio, no solo autenticación." }}
-        operator={{ eyebrow: "Operator / Engineer read", summary: "Esta vista mezcla input comercial y soporte para que la operación responda con contexto.", decision: "Decidís dónde priorizar onboarding, resolver incidencias y coordinar abastecimiento o activación.", cta: "Leelo como mesa de control entre customer success, ops y soporte." }}
-        buyer={{ eyebrow: "Buyer / Client read", summary: "Leads & Tickets demuestra que la experiencia sigue viva después de venderse: onboarding, soporte y pedidos tienen continuidad.", decision: "Decidís si la solución viene acompañada por operación y atención real, no solo software." , cta: "Mostralo como evidencia de una plataforma lista para implementación y soporte continuo." }}
-      />
       <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
       </section>
