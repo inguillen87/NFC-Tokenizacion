@@ -15,11 +15,11 @@ const deprecatedRewardsRedemptionPath = path.join(
   '[redemptionId]',
 );
 
-if (existsSync(deprecatedRewardsRedemptionPath)) {
-  rmSync(deprecatedRewardsRedemptionPath, { recursive: true, force: true });
-  console.warn(
-    `[sanitize-route-tree] Removed deprecated dynamic route folder: ${path.relative(apiRoot, deprecatedRewardsRedemptionPath)}`,
-  );
-} else {
-  console.log('[sanitize-route-tree] No deprecated reward/redemption route conflicts found.');
-}
+// if (existsSync(deprecatedRewardsRedemptionPath)) {
+//   rmSync(deprecatedRewardsRedemptionPath, { recursive: true, force: true });
+//   console.warn(
+//     `[sanitize-route-tree] Removed deprecated dynamic route folder: ${path.relative(apiRoot, deprecatedRewardsRedemptionPath)}`,
+//   );
+// } else {
+//   console.log('[sanitize-route-tree] No deprecated reward/redemption route conflicts found.');
+// }
