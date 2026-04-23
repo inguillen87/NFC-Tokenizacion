@@ -5,7 +5,7 @@ export type ParsedTTStatus = {
   perm: TTStatusState;
   current: TTStatusState;
   product_state: "VALID_CLOSED" | "VALID_OPENED" | "VALID_OPENED_PREVIOUSLY" | "VALID_UNKNOWN_TAMPER";
-  tamper_status: "CLOSED" | "OPENED" | "OPENED_PREVIOUSLY" | "UNKNOWN";
+  tamper_status: "CLOSED" | "OPENED" | "OPENED_PREVIOUSLY" | "INVALID" | "UNKNOWN";
   tamper_risk: boolean;
   reason?: string;
 };
@@ -59,6 +59,7 @@ export function parseTTStatusFromDecryptedPayload(payloadHex: string, offset: nu
     return parsed;
   }
   if (raw === "4949") {
+    parsed.tamper_status = "INVALID";
     parsed.reason = "TTStatus invalid/not enabled";
     return parsed;
   }

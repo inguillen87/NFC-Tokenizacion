@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { checkAdmin } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
-import { parseTTStatusFromDecryptedPayload, processSunScan } from "../../../../lib/sun-service";
+import { processSunScan } from "../../../../lib/sun-service";
 import { insertSunDiagnostic } from "../../../../lib/sun-diagnostics";
 
 type InspectBody = { url?: string };
@@ -91,9 +91,10 @@ export async function POST(req: Request) {
       source: bodyResult.tamper_status_source || "none",
       offset: bodyResult.tamper_status_offset ?? null,
       length: bodyResult.tamper_status_length ?? null,
-      ttstatus_source: bodyResult.ttstatus_source || bodyResult.tamper_status_source || "none",
-      ttstatus_offset: bodyResult.ttstatus_offset ?? bodyResult.tamper_status_offset ?? null,
-      ttstatus_length: bodyResult.ttstatus_length ?? 2,
+      ttstatus_enabled: bodyResult.ttstatus_enabled ?? false,
+      ttstatus_source: bodyResult.ttstatus_source || "none",
+      ttstatus_offset: bodyResult.ttstatus_offset ?? null,
+      ttstatus_length: bodyResult.ttstatus_length ?? null,
       closed_values: bodyResult.tamper_closed_values || [],
       open_values: bodyResult.tamper_open_values || [],
     },
@@ -106,27 +107,16 @@ export async function POST(req: Request) {
     recommendation: bodyResult.ttstatus_raw
       ? "TTStatus parsed from configured offset."
       : "TTStatus not parsed. Confirm ttstatus_enabled, source, and offset for this batch.",
-  };
-  const ttOffset = Number(payload.parser_config.ttstatus_offset);
-  const parsedTT = Number.isInteger(ttOffset) && ttOffset >= 0 && payload.enc_decrypted_hex
-    ? parseTTStatusFromDecryptedPayload(String(payload.enc_decrypted_hex), ttOffset)
-    : null;
-  const bytesAtOffset = Number.isInteger(ttOffset) && ttOffset >= 0 && payload.enc_decrypted_hex
-    ? String(payload.enc_decrypted_hex).toUpperCase().slice(ttOffset * 2, ttOffset * 2 + 4)
-    : null;
-  const enhancedPayload = {
-    ...payload,
-    configured_ttstatus_offset: payload.parser_config.ttstatus_offset,
-    bytes_at_offset: bytesAtOffset,
-    parsed_ttstatus: parsedTT || (bodyResult.ttstatus_raw ? {
-      raw: bodyResult.ttstatus_raw,
-      perm: bodyResult.tt_perm_status || "UNKNOWN",
-      current: bodyResult.tt_curr_status || "UNKNOWN",
-      product_state: bodyResult.product_state || "VALID_UNKNOWN_TAMPER",
-    } : null),
-    recommendation: parsedTT
-      ? `TTStatus detected at offset ${ttOffset}: ${parsedTT.raw}`
-      : "No TTStatus parsed from decrypted payload. Verify ttstatus_offset and supplier SDM mirror config.",
+    ttstatus_patterns_found: (() => {
+      const patterns = ["4343", "4F4F", "4F43", "4949"] as const;
+      const matches: string[] = [];
+      const piccHex = String(bodyResult.picc_plain_hex || "").toUpperCase();
+      const encHex = String(bodyResult.enc_plain_hex || "").toUpperCase();
+      for (const pattern of patterns) {
+        if (piccHex.includes(pattern) || encHex.includes(pattern)) matches.push(pattern);
+      }
+      return matches;
+    })(),
   };
   const diagnosticId = await insertSunDiagnostic({
     trace_id: traceId,
@@ -139,8 +129,8 @@ export async function POST(req: Request) {
     tamper_status: String(payload.tamper_status || "UNKNOWN"),
     enc_plain_status_byte: String(payload.encPlainStatusByte || "") || null,
     request_json: body,
-    result_json: enhancedPayload,
-    notes: enhancedPayload.notes || [],
+    result_json: payload,
+    notes: payload.notes || [],
   });
-  return json({ ok: true, diagnostic_id: diagnosticId, trace_id: traceId, result: enhancedPayload }, 200);
+  return json({ ok: true, diagnostic_id: diagnosticId, trace_id: traceId, result: payload }, 200);
 }

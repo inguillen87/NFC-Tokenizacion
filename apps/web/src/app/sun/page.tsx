@@ -36,8 +36,7 @@ type SunContract = {
     tone?: "good" | "warn" | "risk";
     summary?: string;
     reason?: string;
-    productState?: ProductState | string | null;
-    product_state?: ProductState | string | null;
+    productState?: string | null;
     tamperSupported?: boolean;
     tamperStatus?: "CLOSED" | "OPENED" | "UNKNOWN" | string;
     tamperReason?: string | null;
@@ -183,14 +182,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const timelineCities = new Set((result.provenance?.timelineSummary || []).map((item) => `${item.city || "Unknown"}|${item.country || "--"}`)).size;
   const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
   const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
-  const productState = String(result.status?.productState || result.status?.product_state || "").toUpperCase();
+  const productState = String(result.status?.productState || "").toUpperCase();
   const statusHeadline = productState === "VALID_CLOSED"
     ? "Autenticidad confirmada. Sello intacto."
-    : productState === "VALID_OPENED_PREVIOUSLY"
-      ? "Autenticidad confirmada. El sello fue abierto anteriormente."
     : productState === "VALID_MANUAL_OPENED"
-      ? "Autenticidad confirmada. Sello abierto."
-    : productState === "VALID_OPENED"
+      ? "Autenticidad confirmada. Sello marcado como abierto por operador."
+    : productState === "VALID_OPENED" || productState === "TAMPER_RISK"
       ? "Autenticidad confirmada. Sello abierto."
     : productState === "VALID_UNKNOWN_TAMPER"
         ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
@@ -236,12 +233,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
                 <p className="uppercase tracking-[0.12em] text-slate-400">Integridad</p>
                 <p className="mt-1">
-                  {productState === "VALID_OPENED"
+                  {productState === "VALID_OPENED" || productState === "TAMPER_RISK"
                     ? "Autenticidad confirmada. Sello abierto."
-                    : productState === "VALID_OPENED_PREVIOUSLY"
-                      ? "Autenticidad confirmada. El sello fue abierto anteriormente."
                     : productState === "VALID_MANUAL_OPENED"
-                      ? "Autenticidad confirmada. Sello abierto."
+                      ? "Autenticidad confirmada. Sello marcado como abierto por operador."
                     : productState === "VALID_UNKNOWN_TAMPER"
                       ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
                       : isValid ? "Consistente" : "Requiere validación manual"}
