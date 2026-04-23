@@ -1,4 +1,5 @@
 import { sql } from './db';
+import { randomUUID } from 'node:crypto';
 import { decryptKey16 } from './keys';
 import { verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
@@ -16,6 +17,7 @@ export type ScanContext = {
   source?: 'real' | 'demo' | 'imported';
   meta?: Record<string, unknown>;
   forceResult?: string;
+  requestId?: string;
 };
 
 type TamperState = "opened" | "tamper" | "closed" | null;
@@ -293,6 +295,11 @@ export async function processSunScan(input: {
       reason: payload.reasonValue,
       meta: input.context?.meta || {},
       traceId: typeof input.context?.meta?.trace_id === 'string' ? String(input.context.meta.trace_id) : null,
+      ip: input.context?.ip,
+      geoCity: input.context?.city,
+      geoCountry: input.context?.countryCode,
+      deviceLabel: input.context?.deviceLabel,
+      rawQuery: input.rawQuery,
     });
   }
 
@@ -477,6 +484,9 @@ export async function processSunScan(input: {
 
   const hasGeo = Number.isFinite(input.context?.lat) && Number.isFinite(input.context?.lng);
 
+  const requestId = input.context?.requestId || randomUUID();
+  input.context = { ...input.context, requestId };
+
   const eventId = await insertEvent({
     uidHex: res.ok ? res.uidHex : null,
     ctr: res.ok ? res.ctr : null,
@@ -492,6 +502,7 @@ export async function processSunScan(input: {
     status: result === 'VALID' ? 200 : 403,
     body: {
       ok: result === 'VALID',
+      request_id: requestId,
       result,
       auth_status: authStatus,
       bid: input.bid,

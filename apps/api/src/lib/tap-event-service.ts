@@ -33,6 +33,11 @@ export type TapEventPayload = {
   reason?: string | null;
   meta?: Record<string, unknown>;
   traceId?: string | null;
+  ip?: string | null;
+  geoCity?: string | null;
+  geoCountry?: string | null;
+  deviceLabel?: string | null;
+  rawQuery?: Record<string, unknown>;
 };
 
 export async function recordTapEvent(payload: TapEventPayload): Promise<number | null> {
@@ -45,11 +50,13 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
       INSERT INTO events (
         tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, reason,
         user_agent, city, country_code, lat, lng, source, meta, tenant_slug, tag_id, bid, event_type, verdict, risk_level,
-        picc_data_hash, cmac_hash, raw_url_hash, ip_hash, geo_precision, product_name
+        picc_data_hash, cmac_hash, raw_url_hash, ip_hash, geo_precision, product_name,
+        ip, geo_city, geo_country, device_label, raw_query
       ) VALUES (
         ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr || payload.readCounter || null}, ${payload.readCounter || null}, ${payload.cmacOk || null}, ${payload.allowlisted || null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
         ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${payload.lat || null}, ${payload.lng || null}, ${sourceStr}::scan_source, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::event_type, ${payload.verdict}, ${payload.riskLevel}::risk_level,
-        ${payload.piccDataHash || null}, ${payload.cmacHash || null}, ${payload.rawUrlHash || null}, ${payload.ipHash || null}, ${payload.geoPrecision || 'none'}::geo_precision, ${payload.productName || null}
+        ${payload.piccDataHash || null}, ${payload.cmacHash || null}, ${payload.rawUrlHash || null}, ${payload.ipHash || null}, ${payload.geoPrecision || 'none'}::geo_precision, ${payload.productName || null},
+        ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${payload.rawQuery || null}::jsonb
       )
       RETURNING id
     `;
