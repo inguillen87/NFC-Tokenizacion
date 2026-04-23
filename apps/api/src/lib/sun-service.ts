@@ -18,6 +18,26 @@ export type ScanContext = {
 };
 
 type TamperState = "opened" | "tamper" | "closed" | null;
+type TTStatusProductState =
+  | "VALID_CLOSED"
+  | "VALID_OPENED"
+  | "VALID_OPENED_PREVIOUSLY"
+  | "VALID_UNKNOWN_TAMPER";
+
+type ProductState =
+  | "VALID_CLOSED"
+  | "VALID_OPENED"
+  | "VALID_OPENED_PREVIOUSLY"
+  | "VALID_UNKNOWN_TAMPER"
+  | "VALID_MANUAL_OPENED"
+  | "TAMPER_RISK"
+  | "REPLAY_SUSPECT"
+  | "INVALID"
+  | "NOT_REGISTERED"
+  | "NOT_ACTIVE"
+  | "UNKNOWN_BATCH"
+  | "MALFORMED_URL";
+
 type TamperProfile = {
   chip_model: string;
   tagtamper_enabled: boolean;
@@ -502,14 +522,20 @@ export async function processSunScan(input: {
         ? 'copied URL / replay suspected'
         : null;
   const resolvedReason = !res.ok ? res.reason : successReason;
-  const productState = (() => {
-    if (!res.ok || authStatus === "INVALID") return "INVALID" as const;
-    if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT" as const;
-    if (resolvedTamperStatus === "MANUAL_OPENED") return "VALID_MANUAL_OPENED" as const;
-    if (resolvedTamperStatus === "OPENED") return "VALID_OPENED" as const;
-    if (resolvedTamperStatus === "OPENED_PREVIOUSLY") return "VALID_OPENED_PREVIOUSLY" as const;
-    if (resolvedTamperStatus === "CLOSED") return "VALID_CLOSED" as const;
-    return "VALID_UNKNOWN_TAMPER" as const;
+  const ttState = (ttstatusParsed?.product_state || null) as TTStatusProductState | null;
+  const authValid = res.ok && authStatus === "VALID";
+  const productState: ProductState = (() => {
+    if (!res.ok || authStatus === "INVALID") return "INVALID";
+    if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT";
+    if (ttState === "VALID_OPENED" || ttState === "VALID_OPENED_PREVIOUSLY") return ttState;
+    if (ttState === "VALID_CLOSED") return "VALID_CLOSED";
+    if (manualOpened || resolvedTamperStatus === "MANUAL_OPENED") return "VALID_MANUAL_OPENED";
+    if (resolvedTamperStatus === "OPENED") return "VALID_OPENED";
+    if (resolvedTamperStatus === "OPENED_PREVIOUSLY") return "VALID_OPENED_PREVIOUSLY";
+    if (resolvedTamperStatus === "CLOSED") return "VALID_CLOSED";
+    if (tamperSignal.tamper && requireTamperEvidence && !tamperConfigured) return "TAMPER_RISK";
+    if (authValid) return "VALID_UNKNOWN_TAMPER";
+    return "INVALID";
   })();
 
   if (input.context?.forceResult) result = input.context.forceResult;
