@@ -21,6 +21,11 @@ type TamperConfigBody = {
   tamper_open_values?: Array<string | number>;
   tamper_unknown_policy?: "UNKNOWN" | "DO_NOT_DISPLAY";
   tamper_notes?: string | null;
+  ttstatus_enabled?: boolean;
+  ttstatus_source?: "enc_decrypted" | "picc_data_decrypted" | "none" | "enc" | "picc_data" | "decrypted_sdm";
+  ttstatus_offset?: number | null;
+  ttstatus_plain_or_encrypted?: "plain" | "encrypted";
+  ttstatus_notes?: string | null;
 };
 
 export async function PATCH(req: Request, context: { params: Promise<{ bid: string }> }) {
@@ -31,7 +36,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
   const body = (await req.json().catch(() => ({}))) as TamperConfigBody;
   if (!bid) return json({ ok: false, reason: "bid required" }, 400);
 
-  const sourceInput = String(body.tamper_status_source || "none").toLowerCase();
+  const sourceInput = String(body.ttstatus_source || body.tamper_status_source || "none").toLowerCase();
   const source = sourceInput === "enc" || sourceInput === "decrypted_sdm" || sourceInput === "enc_decrypted"
     ? "enc_decrypted"
     : sourceInput === "picc_data" || sourceInput === "picc_data_decrypted"
@@ -54,6 +59,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
     tamper_open_values: Array.isArray(body.tamper_open_values) ? body.tamper_open_values.map((v) => String(v).trim().toUpperCase()).filter(Boolean) : [],
     tamper_unknown_policy: ["UNKNOWN", "DO_NOT_DISPLAY"].includes(String(body.tamper_unknown_policy || "")) ? body.tamper_unknown_policy : "UNKNOWN",
     tamper_notes: body.tamper_notes ? String(body.tamper_notes) : null,
+    ttstatus_enabled: Boolean(body.ttstatus_enabled ?? body.tamper_status_enabled),
+    ttstatus_source: source,
+    ttstatus_offset: Number.isInteger(Number(body.ttstatus_offset ?? body.tamper_status_offset)) ? Number(body.ttstatus_offset ?? body.tamper_status_offset) : null,
+    ttstatus_length: 2,
+    ttstatus_plain_or_encrypted: String(body.ttstatus_plain_or_encrypted || "encrypted").toLowerCase() === "plain" ? "plain" : "encrypted",
+    ttstatus_notes: body.ttstatus_notes ? String(body.ttstatus_notes) : null,
   };
 
   const updated = await sql/*sql*/`

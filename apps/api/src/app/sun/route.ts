@@ -310,7 +310,7 @@ function resolveTrustState(status: string, reason: string, productState?: Produc
     return { code: 'TAMPER_RISK', label: 'Riesgo de manipulación', summary: 'Se detectaron señales de posible manipulación.', tone: 'risk' as const };
   }
   if (normalizedProductState === "VALID_CLOSED" || normalizedStatus === 'VALID') {
-    return { code: 'VALID', label: 'Producto auténtico', summary: 'Firma SUN validada correctamente.', tone: 'good' as const };
+    return { code: 'VALID', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. Sello intacto.', tone: 'good' as const };
   }
   return { code: normalizedStatus || 'INVALID', label: 'Validación no concluyente', summary: 'No fue posible confirmar autenticidad final.', tone: 'warn' as const };
 }
@@ -639,6 +639,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       ? "Autenticidad confirmada. El sello fue abierto anteriormente."
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Authentic tag, but seal was opened."
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+        ? "Autenticidad confirmada. El sello fue abierto anteriormente."
       : productState === "VALID_UNKNOWN_TAMPER"
         ? "Authenticity confirmed. Open/closed status is not available for this batch configuration."
         : copy.authOk;
@@ -650,6 +652,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       ? "Commercial state: REVIEW_HISTORY"
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Commercial state: REVIEW"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+        ? "Commercial state: REVIEW_PREVIOUSLY_OPENED"
       : "Commercial state: OK";
   const riskStateLabel = isReplay
     ? "Risk: replay suspect"
@@ -659,6 +663,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       ? "Risk: opened previously"
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Risk: tamper/opened"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+        ? "Risk: opened previously"
       : "Risk: controlled";
   const timeline = contract.provenance.timelineSummary;
   const timelineHtml = timeline.length
