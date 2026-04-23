@@ -183,6 +183,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
   const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
   const productState = String(result.status?.productState || "").toUpperCase();
+  const pulseClass = isValid ? "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" : productState === "REPLAY_SUSPECT" ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]" : "bg-rose-300 shadow-[0_0_8px_rgba(253,164,175,0.8)]";
   const statusHeadline = productState === "VALID_CLOSED"
     ? "Producto auténtico. Sello intacto."
     : productState === "VALID_MANUAL_OPENED"
@@ -208,7 +209,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-base font-semibold text-white">{result.product?.name || "Producto premium"}</p>
             <p className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-100">
-              <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300" />
+              <span className={`inline-flex h-1.5 w-1.5 animate-pulse rounded-full ${pulseClass}`} />
               Passport live view
             </p>
           </div>
