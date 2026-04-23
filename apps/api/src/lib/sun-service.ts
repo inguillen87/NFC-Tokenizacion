@@ -489,7 +489,7 @@ export async function processSunScan(input: {
     ? 'INVALID'
     : parsedTTStatus?.product_state === "VALID_OPENED" || parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
       ? 'OPENED'
-    : parsedTTStatus?.product_state === ("TAMPER_RISK" as string) // type assertion since it might not be in TTStatusProductState
+    : parsedTTStatus?.product_state === "VALID_UNKNOWN_TAMPER"
       ? 'TAMPER_RISK'
     : tamperSignal.opened
       ? 'OPENED'
