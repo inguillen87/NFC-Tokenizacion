@@ -209,286 +209,128 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               ? "Se detectaron señales de riesgo"
               : "Validación en revisión";
 
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6 text-slate-100 sm:py-10">
-      <section className="rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.15),transparent_40%),#020617] p-4 shadow-[0_24px_70px_rgba(2,6,23,.7)] sm:p-6">
-        <h1 className="text-xl font-semibold sm:text-2xl">NexID Product Passport</h1>
-        <p className="mt-2 text-xs text-slate-300 sm:text-sm">Experiencia pública mobile-first tras el tap NFC: autenticidad, provenance y trazabilidad verificable.</p>
-        <section className="mt-3 rounded-2xl border border-cyan-300/25 bg-gradient-to-r from-cyan-500/10 via-indigo-500/10 to-emerald-500/10 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-base font-semibold text-white">{result.product?.name || "Producto premium"}</p>
-            <p className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-100">
-              <span className={`inline-flex h-1.5 w-1.5 animate-pulse rounded-full ${pulseClass}`} />
-              Passport live view
-            </p>
-          </div>
-          <p className="mt-1 text-xs text-slate-300">{result.product?.winery || "Bodega"} · {result.product?.region || "Región no informada"} · {result.product?.varietal || "Blend"}</p>
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-            <span className={`rounded-full border px-2 py-0.5 ${toneClass}`}>{result.status?.label || "VALIDACIÓN"}</span>
-            <span className={`rounded-full border px-2 py-0.5 ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>Trust {trustScore}</span>
-            <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-slate-200">Scans {result.identity?.scanCount ?? "-"}</span>
-            <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-slate-200">Token {String(result.tokenization?.status || "none").toUpperCase()}</span>
-          </div>
-        </section>
+    <main className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center py-6 px-4 font-sans relative overflow-hidden">
+      {/* Dynamic Background */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
 
-        {isValid ? (
-          <section className="mt-4 rounded-xl border border-indigo-300/30 bg-[radial-gradient(ellipse_at_bottom,rgba(99,102,241,0.15),transparent_60%)] p-4 shadow-lg sm:p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">{loyaltyData?.program?.name || "NexID Rewards"}</p>
-                <p className="mt-1 text-sm font-medium text-white">Desbloqueá beneficios exclusivos</p>
-              </div>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-200">🎁</span>
+      <div className="w-full max-w-[375px] z-10 space-y-4">
+         {/* Trust Header */}
+         <div className="flex items-center justify-between px-2 mb-2">
+            <div className="flex items-center gap-2">
+               <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_12px_rgba(34,211,238,0.4)]">
+                  <span className="text-[10px] font-bold text-white">NX</span>
+               </div>
+               <span className="text-xs font-bold tracking-widest text-white uppercase">nexID Verified</span>
             </div>
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-900 border border-slate-800">
+               <span className={`w-1.5 h-1.5 rounded-full ${pulseClass}`}></span>
+               <span className="text-[9px] font-bold text-slate-400 uppercase">Live Tap</span>
+            </div>
+         </div>
 
-            <p className="mt-2 text-xs text-indigo-100/70">Al verificar este producto ganás acceso a puntos, sorteos y experiencias VIP organizadas por la marca.</p>
+         {/* Hero Product Card */}
+         <div className="rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+            {/* Verdict Glow */}
+            <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl opacity-30 ${trustTone === "text-emerald-200" ? "bg-emerald-500" : trustTone === "text-amber-200" ? "bg-amber-500" : "bg-red-500"}`}></div>
 
-            {loyaltyData?.rewards && loyaltyData.rewards.length > 0 ? (
-              <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                {loyaltyData.rewards.map((reward: any) => (
-                  <div key={reward.id} className="w-48 shrink-0 snap-start rounded-xl border border-white/10 bg-slate-900/80 p-3">
-                    <p className="text-xs font-semibold text-white">{reward.title}</p>
-                    <p className="mt-1 text-[10px] text-slate-400 line-clamp-2">{reward.description}</p>
-                    <p className="mt-2 text-xs font-bold text-indigo-300">{reward.points_cost} Pts</p>
+            <div className="rounded-[1.75rem] border border-white/5 bg-slate-950 p-6 relative z-10 text-center">
+               <div className="w-24 h-24 mx-auto mb-4 bg-slate-900 rounded-full border-[4px] border-slate-800 flex items-center justify-center text-4xl shadow-inner relative">
+                  {trustTone === "text-emerald-200" ? "🍷" : trustTone === "text-amber-200" ? "⚠️" : "❌"}
+
+                  {/* Floating Trust Badge */}
+                  <div className={`absolute -bottom-2 -right-2 px-2 py-0.5 rounded-full border text-[9px] font-bold shadow-lg ${trustTone === "text-emerald-200" ? "border-emerald-500/30 bg-emerald-500/20 text-emerald-300" : trustTone === "text-amber-200" ? "border-amber-500/30 bg-amber-500/20 text-amber-300" : "border-red-500/30 bg-red-500/20 text-red-300"}`}>
+                     {trustScore}
                   </div>
-                ))}
-              </div>
-            ) : null}
+               </div>
 
-            <div className="mt-4 grid gap-2 md:grid-cols-2">
-              <form action={`/api/mobile/passport/${result.identity?.eventId || "latest"}/loyalty/enroll`} method="POST" target="_blank">
-                <button type="submit" className="w-full rounded-lg border border-indigo-300/40 bg-indigo-500/20 px-3 py-2.5 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/30 hover:scale-[1.02] active:scale-95">
-                  Inscribirme al Club
-                </button>
-              </form>
-              <form action={`/api/mobile/passport/${result.identity?.eventId || "latest"}/loyalty/claim-tap`} method="POST" target="_blank">
-                <button type="submit" className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10 hover:scale-[1.02] active:scale-95">
-                  Reclamar puntos 🎉
-                </button>
-              </form>
+               <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-1">{result.product?.winery || "Bodega Premium"}</p>
+               <h1 className="text-xl font-bold text-white leading-tight mb-2">{result.product?.name || "Producto Verificado"}</h1>
+               <p className="text-xs text-slate-500">{result.product?.region || "Mendoza, Argentina"} · {result.product?.varietal || "Blend"}</p>
+
+               <div className="mt-6 inline-flex flex-col items-center justify-center">
+                  <span className={`text-xs font-bold uppercase tracking-widest ${trustTone === "text-emerald-200" ? "text-emerald-400" : trustTone === "text-amber-200" ? "text-amber-400" : "text-red-400"}`}>
+                     {result.status?.label || "AUTÉNTICO"}
+                  </span>
+                  <span className="text-[10px] text-slate-500 mt-1">Tap #{result.identity?.scanCount ?? 1}</span>
+               </div>
             </div>
-          </section>
-        ) : productState === "REPLAY_SUSPECT" || productState === "VALID_OPENED" || productState === "VALID_MANUAL_OPENED" ? (
-           <section className="mt-4 rounded-xl border border-amber-300/30 bg-amber-500/10 p-4 shadow-lg sm:p-5">
-             <div className="flex items-center gap-2">
-               <span className="text-amber-200">⚠️</span>
-               <p className="text-xs font-bold uppercase tracking-widest text-amber-300">Recompensas bloqueadas</p>
+         </div>
+
+
+         {/* Loyalty & Experiences Mini-app (Consumer Network) */}
+         {trustTone === "text-emerald-200" && (
+             <div className="rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-5 mt-4">
+                <div className="flex justify-between items-start mb-4">
+                   <div>
+                      <h3 className="text-sm font-bold text-white">Club Terroir</h3>
+                      <p className="text-[10px] text-indigo-300 uppercase tracking-widest mt-1">PROGRAMA DE LEALTAD</p>
+                   </div>
+                   <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center shadow-inner">
+                      <span className="text-lg">🍇</span>
+                   </div>
+                </div>
+
+                <div className="space-y-3 mb-4">
+                   <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
+                         <span className="text-emerald-400 font-bold text-xs">+10</span>
+                      </div>
+                      <p className="text-xs text-slate-300">Puntos disponibles por escanear este producto auténtico.</p>
+                   </div>
+                   <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shrink-0">
+                         <span className="text-amber-400 text-sm">🎫</span>
+                      </div>
+                      <p className="text-xs text-slate-300">Desbloquea reservas prioritarias para visitas a la bodega.</p>
+                   </div>
+                </div>
+
+                <a href="/me" className="block w-full py-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-100 text-center text-sm font-bold transition-colors shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                   Unirme al Club y Sumar Puntos
+                </a>
              </div>
-             <p className="mt-1 text-xs text-amber-100/80">Este tap no califica para sumar puntos o beneficios por medidas de seguridad antifraude.</p>
-           </section>
-        ) : null}
-
-        <section className="mt-4 grid gap-3 sm:grid-cols-2">
-          <article className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-4 sm:col-span-2">
-            <p className="text-xs uppercase tracking-wider text-slate-400">Authenticity status</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <p className={`inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold ${toneClass}`}>{result.status?.label || "Validación"}</p>
-              <p className="text-sm font-semibold text-white">{statusIcon} {statusHeadline}</p>
+         )}
+   {/* Actions / Passport Banner */}
+         {trustTone === "text-emerald-200" ? (
+            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 mt-4 text-center">
+               <h3 className="text-sm font-bold text-white mb-2">Crear mi NexID Passport</h3>
+               <p className="text-xs text-cyan-200/70 mb-4">Guardá este producto en tu colección, sumá puntos y accedé a recompensas exclusivas.</p>
+               <a href="/me" className="block w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-cyan-950 text-sm font-bold transition-colors">
+                  Guardar Producto
+               </a>
             </div>
-            <p className="mt-2 text-xs text-slate-300 sm:text-sm">{result.status?.summary || "Sin resumen disponible."}</p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
-                <p className="uppercase tracking-[0.12em] text-slate-400">Integridad</p>
-                <p className="mt-1">
-                  {productState === "VALID_OPENED"
-                    ? "Producto auténtico, pero el sello fue abierto."
-                    : productState === "VALID_MANUAL_OPENED"
-                      ? "Autenticidad confirmada. Sello marcado como abierto por operador."
-                    : productState === "VALID_UNKNOWN_TAMPER"
-                      ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
-                      : isValid ? "Consistente" : "Requiere validación manual"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
-                <p className="uppercase tracking-[0.12em] text-slate-400">Provenance</p>
-                <p className="mt-1">{timelineCount ? `${timelineCount} eventos históricos` : "Sin eventos históricos"}</p>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
-                <p className="uppercase tracking-[0.12em] text-slate-400">Ledger</p>
-                <p className="mt-1">{result.tokenization?.status ? `Token ${String(result.tokenization.status).toUpperCase()}` : "Sin token activo"}</p>
-              </div>
+         ) : (
+            <div className="rounded-2xl border border-red-500/30 bg-red-950/20 p-5 mt-4 text-center">
+               <h3 className="text-sm font-bold text-white mb-2">Acción Bloqueada</h3>
+               <p className="text-xs text-red-200/70 mb-4">Por seguridad, este producto no puede ser guardado en la colección ni sumar puntos.</p>
+               <button className="block w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition-colors">
+                  Reportar Problema
+               </button>
             </div>
-          </article>
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
-            <p className="text-xs uppercase tracking-wider text-slate-400">BID</p>
-            <p className="mt-2 text-sm text-white">{bid || "(missing)"}</p>
-          </article>
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
-            <p className="text-xs uppercase tracking-wider text-slate-400">UID</p>
-            <p className="mt-2 break-all text-sm text-white">{uid || "(missing)"}</p>
-          </article>
-        </section>
-        <section className="mt-3 flex flex-wrap gap-2 text-[11px]">
-          <a href="#sun-timeline" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100 hover:bg-cyan-500/20">Ir a timeline</a>
-          <a href="#sun-map" className="rounded-full border border-indigo-300/30 bg-indigo-500/10 px-3 py-1 text-indigo-100 hover:bg-indigo-500/20">Ir al mapa</a>
-          <a href="#sun-actions" className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-emerald-100 hover:bg-emerald-500/20">Ir a acciones</a>
-        </section>
-        <section className="mt-3 grid gap-2 sm:grid-cols-4">
-          <article className={`rounded-xl border p-3 text-xs ${securityTone}`}>
-            <p className="uppercase tracking-[0.12em] opacity-80">Security</p>
-            <p className="mt-1 text-sm font-semibold">{isValid ? "Tap confiable" : "Revisar tap"}</p>
-          </article>
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
-            <p className="uppercase tracking-[0.12em] text-slate-400">Scan count</p>
-            <p className="mt-1 text-sm font-semibold text-white">{result.identity?.scanCount ?? "-"}</p>
-          </article>
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
-            <p className="uppercase tracking-[0.12em] text-slate-400">Read counter</p>
-            <p className="mt-1 text-sm font-semibold text-white">{result.identity?.readCounter ?? "-"}</p>
-          </article>
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
-            <p className="uppercase tracking-[0.12em] text-slate-400">Tokenization</p>
-            <p className="mt-1 text-sm font-semibold text-white">{String(result.tokenization?.status || "none").toUpperCase()}</p>
-          </article>
-        </section>
-        <section className="mt-3 rounded-xl border border-cyan-300/20 bg-slate-950/70 p-3">
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <p className="uppercase tracking-[0.12em] text-slate-300">Trust score</p>
-            <p className={`font-semibold ${trustTone}`}>{trustScore}/100</p>
-          </div>
-          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-800">
-            <div
-              className={`h-full rounded-full transition-all duration-700 ${trustScore >= 85 ? "bg-emerald-400" : trustScore >= 65 ? "bg-amber-300" : "bg-rose-400"}`}
-              style={{ width: `${trustScore}%` }}
-            />
-          </div>
-          <p className="mt-2 text-[11px] text-slate-400">
-            Score compuesto con estado SUN, señales de riesgo en timeline, tokenización y consistencia de escaneos.
-          </p>
-        </section>
-        <section className="mt-3 grid gap-2 sm:grid-cols-3">
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
-            <p className="uppercase tracking-[0.12em] text-slate-400">Eventos timeline</p>
-            <p className="mt-1 text-base font-semibold text-cyan-100">{timelineCount}</p>
-          </article>
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
-            <p className="uppercase tracking-[0.12em] text-slate-400">Ciudades verificadas</p>
-            <p className="mt-1 text-base font-semibold text-indigo-100">{timelineCities}</p>
-          </article>
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs">
-            <p className="uppercase tracking-[0.12em] text-slate-400">Último evento</p>
-            <p className="mt-1 text-sm font-semibold text-emerald-100">{fmtDate(lastEventAt)}</p>
-          </article>
-        </section>
+         )}
 
-        {troubleshooting.length ? (
-          <section className="mt-4 rounded-xl border border-amber-300/20 bg-amber-500/10 p-4">
-            <p className="text-sm font-semibold text-amber-100">Troubleshooting guiado</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-50">{troubleshooting.map((item) => <li key={item}>{item}</li>)}</ul>
-            {canAutoOnboard ? <OnboardDemoButton bid={bid} /> : null}
-          </section>
-        ) : (
-          <section className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-4">
-            <p className="text-sm font-semibold text-emerald-100">Estado consistente</p>
-            <p className="mt-1 text-xs text-emerald-50">Producto autenticado. Podés continuar con ownership/warranty/provenance.</p>
-          </section>
-        )}
-
-        <section className="mt-4 grid gap-3 sm:grid-cols-2">
-          <article className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
-            <p className="text-xs uppercase tracking-wider text-slate-400">Product identity</p>
-            <p className="mt-2 text-sm font-semibold text-white">{result.product?.name || "Producto no perfilado"}</p>
-            <div className="mt-2">
-              <KeyValueSpec
-                columns={1}
-                items={[
-                  { label: "Bodega/Región", value: `${result.product?.winery || "-"} · ${result.product?.region || "-"}` },
-                  { label: "Varietal/Vintage", value: `${result.product?.varietal || "-"} · ${result.product?.vintage || "-"}` },
-                ]}
-              />
+         {/* Technical Spec */}
+         <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 mt-4">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Trazabilidad Técnica</h4>
+            <div className="space-y-3">
+               <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-xs text-slate-500">Tag UID</span>
+                  <span className="text-xs font-mono text-slate-300">{result.identity?.uid?.substring(0, 14)}...</span>
+               </div>
+               <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-xs text-slate-500">Batch ID</span>
+                  <span className="text-xs font-mono text-slate-300">{result.identity?.bid || "N/A"}</span>
+               </div>
+               <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500">Token Blockchain</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold uppercase">{String(result.tokenization?.status || "none")}</span>
+               </div>
             </div>
-          </article>
+         </div>
 
-          <article className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
-            <p className="text-xs uppercase tracking-wider text-slate-400">Origin</p>
-            <p className="mt-2 text-sm text-white">{result.provenance?.origin || "-"}</p>
-            <p className="mt-2 text-xs text-slate-300">Harvest year: <b>{result.product?.harvestYear ?? "-"}</b> · Barrel months: <b>{result.product?.barrelMonths ?? "-"}</b></p>
-            <p className="mt-1 text-xs text-slate-300">Storage: <b>{result.product?.storage || "-"}</b></p>
-          </article>
-
-          <article className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
-            <p className="text-xs uppercase tracking-wider text-slate-400">First verified</p>
-            <p className="mt-2 text-xs text-slate-300"><b>{fmtDate(result.provenance?.firstVerified?.at)}</b></p>
-            <p className="text-xs text-slate-400">{result.provenance?.firstVerified?.city || "-"}, {result.provenance?.firstVerified?.country || "-"}</p>
-          </article>
-
-          <article className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
-            <p className="text-xs uppercase tracking-wider text-slate-400">Last verified location</p>
-            <p className="mt-2 text-xs text-slate-300"><b>{fmtDate(result.provenance?.lastVerifiedLocation?.at)}</b></p>
-            <p className="text-xs text-slate-400">{result.provenance?.lastVerifiedLocation?.city || "-"}, {result.provenance?.lastVerifiedLocation?.country || "-"}</p>
-            <p className="text-xs text-slate-500">Resultado: {result.provenance?.lastVerifiedLocation?.result || "-"}</p>
-          </article>
-        </section>
-
-        <section id="sun-timeline" className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-400">Provenance timeline summary</p>
-          {result.provenance?.timelineSummary?.length ? (
-            <div className="mt-2">
-              <TimelineRail
-                items={result.provenance.timelineSummary.map((item, idx) => ({
-                  id: `${item.at || idx}-${idx}`,
-                  title: `${item.result || "-"} · ${fmtDate(item.at || null)}`,
-                  subtitle: `${item.city || "-"}, ${item.country || "-"}`,
-                  meta: item.device || "Unknown device",
-                }))}
-              />
-            </div>
-          ) : <EmptyState title="Sin timeline disponible" description="Aún no hay verificaciones para construir el resumen de provenance." className="mt-2" />}
-        </section>
-        <section id="sun-map" className="mt-4 rounded-xl border border-cyan-300/20 bg-slate-950/60 p-3">
-          <p className="text-xs uppercase tracking-wider text-slate-400">Wine journey map</p>
-          {mapPoints.length ? (
-            <div className="mt-2">
-              <WorldMapRealtime
-                title="Mapa interactivo del recorrido"
-                subtitle="Origen de bodega, taps históricos y tap móvil actual (cuando hay geolocalización disponible)."
-                points={mapPoints}
-                routes={mapRoutes}
-              />
-            </div>
-          ) : <EmptyState title="Mapa no disponible todavía" description="No se recibió lat/lng en eventos o tap actual. Reintentá con un tap real en dispositivo móvil." className="mt-2" />}
-        </section>
-
-        <section className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-400">Tokenization</p>
-          <p className="mt-2 text-xs text-slate-300">Status: <b>{result.tokenization?.status || "none"}</b> · Network: <b>{result.tokenization?.network || "-"}</b></p>
-          <p className="mt-1 break-all text-xs text-slate-500">Token ID: {result.tokenization?.tokenId || "-"} · Tx: {result.tokenization?.txHash || "-"}</p>
-        </section>
-
-        <section className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-400">Technical</p>
-          <p className="mt-2 text-xs text-slate-300">UID: <b>{uid || "N/A"}</b> · BID: <b>{bid || "N/A"}</b> · Read counter: <b>{result.identity?.readCounter ?? "N/A"}</b></p>
-          <details className="mt-2 rounded-lg border border-white/10 bg-slate-900/70 p-2 text-xs text-slate-300">
-            <summary className="cursor-pointer text-slate-200">Technical details (raw diagnostics)</summary>
-            <p className="mt-2">picc_data: <DeviceSignatureBadge label={result.technical?.raw?.piccDataPrefix || "-"} /></p>
-            <p>enc: <DeviceSignatureBadge label={result.technical?.raw?.encPrefix || "-"} /></p>
-            <p>cmac: <DeviceSignatureBadge label={result.technical?.raw?.cmacPrefix || "-"} /></p>
-            <pre className="mt-2 overflow-x-auto rounded border border-white/10 bg-slate-950/60 p-2">{JSON.stringify(result, null, 2)}</pre>
-          </details>
-        </section>
-      </section>
-
-      {result.cta?.claimOwnership && bid && uid ? (
-        <section id="sun-actions" className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4">
-          <p className="text-sm font-semibold text-cyan-100">Passport actions</p>
-          <p className="mt-1 text-xs text-cyan-50">Crear mi NexID Passport, guardar este producto y sumar puntos con esta marca.</p>
-          <CtaActions bid={bid} uid={uid} />
-          <div className="mt-3 grid gap-2 text-[11px] text-cyan-100 sm:grid-cols-2">
-            <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 hover:bg-cyan-500/20" href={`/sun?${query.toString()}&view=html`} target="_blank" rel="noreferrer">Abrir SUN HTML interactivo</a>
-            <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 hover:bg-cyan-500/20" href={`/api/public-cta/provenance?bid=${encodeURIComponent(bid)}&uid=${encodeURIComponent(uid)}`} target="_blank" rel="noreferrer">Probar endpoint de provenance</a>
-          </div>
-          <p className="mt-2 text-[11px] text-cyan-100/80">Nota comercial: este flujo usa <b>request-to-buy</b> (no checkout directo).</p>
-        </section>
-      ) : (
-        <p className="mt-4 text-xs text-amber-200">No CTA available yet: missing bid/uid in SUN result.</p>
-      )}
-
-      {!isValid ? (
-        <section className="mt-2 rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-[11px] text-rose-100">
-          Señal de seguridad: si el resultado indica replay o tamper, las acciones de ownership pueden quedar bloqueadas hasta revisión manual.
-          <p className="mt-1 text-rose-50/80">Nota: esta pantalla muestra “last verified location”; no representa tracking en tiempo real.</p>
-        </section>
-      ) : null}
+      </div>
     </main>
   );
 }

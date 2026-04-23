@@ -122,7 +122,7 @@ export function CardsSection({ content }: { content: Content }) {
       <SectionHeading eyebrow={content.what.eyebrow} title={content.what.title} description={content.what.description} />
       <div className="mt-10 grid gap-6 lg:grid-cols-3">
         {content.what.cards.map((card) => (
-          <Card key={card.title} className="animate-card-shift p-6">
+          <Card key={card.title} className="animate-card-shift p-6 backdrop-blur-xl border border-white/5 bg-slate-900/60 shadow-xl hover:border-cyan-500/30 transition-colors group">
             <div className="text-base font-semibold text-white">{card.title}</div>
             <p className="mt-3 text-sm leading-7 text-slate-400">{card.body}</p>
           </Card>
@@ -194,7 +194,7 @@ export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
 
   return (
     <section className="container-shell py-16">
-      <Card className="p-6 md:p-8">
+      <Card className="p-6 md:p-8 backdrop-blur-xl border border-white/5 bg-slate-900/60 shadow-2xl">
         <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.intro} />
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4">
@@ -276,7 +276,7 @@ export function UseCasesSection({ content }: { content: Content }) {
       <SectionHeading eyebrow={content.useCases.eyebrow} title={content.useCases.title} description={content.useCases.description} />
       <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {content.useCases.cards.map((item) => (
-          <Card key={item.title} className="animate-card-shift p-6">
+          <Card key={item.title} className="animate-card-shift p-6 backdrop-blur-xl border border-white/5 bg-slate-900/60 shadow-xl hover:border-cyan-500/30 transition-colors group">
             <div className="text-base font-semibold text-white">{item.title}</div>
             <p className="mt-3 text-sm leading-7 text-slate-400">{item.body}</p>
           </Card>
@@ -292,7 +292,7 @@ export function ResellerSection({ content }: { content: Content }) {
       <SectionHeading eyebrow={content.reseller.eyebrow} title={content.reseller.title} description={content.reseller.description} />
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         {content.reseller.cards.map((item) => (
-          <Card key={item.title} className="animate-card-shift p-6">
+          <Card key={item.title} className="animate-card-shift p-6 backdrop-blur-xl border border-white/5 bg-slate-900/60 shadow-xl hover:border-cyan-500/30 transition-colors group">
             <div className="text-lg font-bold text-white">{item.title}</div>
             <p className="mt-3 text-sm leading-7 text-slate-400">{item.body}</p>
           </Card>
