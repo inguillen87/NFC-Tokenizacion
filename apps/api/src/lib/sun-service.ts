@@ -464,6 +464,10 @@ export async function processSunScan(input: {
   })();
   const authStatus = !res.ok
     ? 'INVALID'
+    : tamperSignal.opened
+      ? 'OPENED'
+      : tamperSignal.tamper
+        ? 'TAMPER_RISK'
     : replaySuspect
       ? 'REPLAY_SUSPECT'
       : !allowlisted
