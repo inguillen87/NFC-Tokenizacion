@@ -80,6 +80,16 @@ export async function evaluateLoyaltyForTap(input: { eventId: string; memberId: 
   return { award: true, reason: "awarded" };
 }
 
+export async function loyaltyFraudGuard(input: { eventId: string; result: string; uidHex: string; tenantId: string }) {
+  const isSuspicious = BLOCKED_RESULTS.has(input.result.toUpperCase());
+  if (isSuspicious) {
+    await sql`
+      INSERT INTO audit_logs (tenant_id, action, entity_type, entity_id, before_json, after_json)
+      VALUES (${input.tenantId}, 'LOYALTY_FRAUD_BLOCKED', 'event', ${input.eventId}, ${JSON.stringify({ uid: input.uidHex, reason: input.result })}::jsonb, '{}'::jsonb)
+    `.catch(() => null);
+  }
+}
+
 export async function awardPoints(input: { tenantId: string; programId: string; memberId: string; tapEventId?: string; delta: number; source: string; idempotencyKey: string; reason?: string; metadata?: Record<string, unknown> }) {
   const existing = await sql/*sql*/`
     SELECT id, delta, balance_after
