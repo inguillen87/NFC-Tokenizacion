@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Pricing · nexID",
     openGraph: {
       title: "Pricing · nexID",
-      images: [{ url: `/og-image?surface=pricing&campaign=reseller&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
+      images: [{ url: `/opengraph-image?surface=pricing&campaign=reseller&locale=${encodeURIComponent(locale)}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",

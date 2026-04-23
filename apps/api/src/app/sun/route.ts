@@ -7,12 +7,40 @@ import { createDemoShareToken } from '../../lib/demo-share';
 import { sql } from '../../lib/db';
 import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
 import { buildLifecycleState, listDemoCta } from '../../lib/demo-cta';
+import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
 const rateMap = new Map<string, { count: number; start: number }>();
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 const HEX_RE = /^[0-9A-F]+$/i;
+
+const SUN_PIPELINE_TIMEOUT_MS = Number(process.env.SUN_PIPELINE_TIMEOUT_MS || 8000);
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}_timeout`)), ms);
+    promise.then((value) => {
+      clearTimeout(timer);
+      resolve(value);
+    }).catch((error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
+}
+
+function sanitizePublicErrorReason(raw: string) {
+  const normalized = String(raw || "").toLowerCase();
+  if (!normalized) return "sun_processing_error";
+  if (normalized.includes("database_url") || normalized.includes("connect") || normalized.includes("neon")) {
+    return "sun_processing_temporarily_unavailable";
+  }
+  if (normalized.includes("polygon") || normalized.includes("rpc") || normalized.includes("tokenization")) {
+    return "tokenization_temporarily_unavailable";
+  }
+  return "sun_processing_error";
+}
 
 type SunResult = Awaited<ReturnType<typeof processSunScan>>;
 
@@ -118,6 +146,120 @@ function wantsHtml(req: Request, url: URL) {
   return (req.headers.get('accept') || '').toLowerCase().includes('text/html');
 }
 
+
+
+type SunLocale = "es-AR" | "pt-BR" | "en";
+
+function detectSunLocale(country: string | null, acceptLanguage: string | null): SunLocale {
+  const c = String(country || "").trim().toUpperCase();
+  if (c === "BR") return "pt-BR";
+  if (c === "US") return "en";
+  const langs = String(acceptLanguage || "").toLowerCase();
+  if (langs.includes("pt-br") || langs.includes("pt")) return "pt-BR";
+  if (langs.includes("en-us") || langs.includes("en")) return "en";
+  return "es-AR";
+}
+
+function getSunCopy(locale: SunLocale) {
+  if (locale === "pt-BR") {
+    return {
+      lang: "pt-BR",
+      title: "Digital Product Passport",
+      actionsPanel: "Ações",
+      authPanel: "Estado de autenticação",
+      identityPanel: "Identidade do produto",
+      provenancePanel: "Proveniência",
+      timelinePanel: "Resumo de eventos",
+      tokenPanel: "Tokenização",
+      technicalPanel: "Detalhes técnicos",
+      iotPanel: "Sinais IoT e adega",
+      tapPanel: "Inteligência do dispositivo",
+      firstVerified: "Primeira verificação",
+      lastVerified: "Última verificação",
+      processing: "Processando...",
+      actionOk: "executado com sucesso.",
+      actionFail: "falhou",
+      ctaClaim: "Ativar ownership",
+      ctaWarranty: "Registrar garantia",
+      ctaProvenance: "Ver proveniência",
+      ctaTokenize: "Tokenização opcional",
+      quality: "Qualidade",
+      authReplay: "Replay detectado: solicite um novo toque físico antes de ownership/garantia/tokenização.",
+      authOk: "Autenticação concluída. Você pode continuar com ownership, garantia, proveniência e tokenização opcional.",
+      statusReady: "Pronto para executar CTAs seguras.",
+      statusReplay: "Replay ativo: ações comerciais bloqueadas até novo toque.",
+      timelineEmpty: "Sem eventos ainda. Faça um novo tap para gerar histórico.",
+      achievementTitle: "Conquistas",
+      achievementFirst: "Primeira autenticação",
+      achievementProv: "Proveniência revisada",
+    } as const;
+  }
+  if (locale === "en") {
+    return {
+      lang: "en",
+      title: "Digital Product Passport",
+      actionsPanel: "Actions",
+      authPanel: "Authentication status",
+      identityPanel: "Product identity",
+      provenancePanel: "Provenance",
+      timelinePanel: "Event timeline",
+      tokenPanel: "Tokenization",
+      technicalPanel: "Technical details",
+      iotPanel: "IoT & cellar signals",
+      tapPanel: "Tap device intelligence",
+      firstVerified: "First verified",
+      lastVerified: "Last verified",
+      processing: "Processing...",
+      actionOk: "completed successfully.",
+      actionFail: "failed",
+      ctaClaim: "Activate ownership",
+      ctaWarranty: "Register warranty",
+      ctaProvenance: "View provenance",
+      ctaTokenize: "Optional tokenization",
+      quality: "Quality",
+      authReplay: "Replay detected: request a fresh physical tap before ownership/warranty/tokenization.",
+      authOk: "Authentication complete. You can continue with ownership, warranty, provenance and optional tokenization.",
+      statusReady: "Ready to execute secure CTAs.",
+      statusReplay: "Replay active: commercial actions blocked until a fresh tap.",
+      timelineEmpty: "No events yet. Perform a new tap to generate history.",
+      achievementTitle: "Achievements",
+      achievementFirst: "First authentication",
+      achievementProv: "Provenance reviewed",
+    } as const;
+  }
+  return {
+    lang: "es",
+    title: "Digital Product Passport",
+    actionsPanel: "Acciones",
+    authPanel: "Estado de autenticación",
+    identityPanel: "Identidad del producto",
+    provenancePanel: "Provenance",
+    timelinePanel: "Resumen de eventos",
+    tokenPanel: "Tokenización",
+    technicalPanel: "Detalles técnicos",
+    iotPanel: "IoT & bodega",
+    tapPanel: "Inteligencia del dispositivo",
+    firstVerified: "Primera verificación",
+    lastVerified: "Última verificación",
+    processing: "Procesando...",
+    actionOk: "ejecutado correctamente.",
+    actionFail: "falló",
+    ctaClaim: "Activar ownership",
+    ctaWarranty: "Registrar garantía",
+    ctaProvenance: "Ver provenance",
+    ctaTokenize: "Tokenización opcional",
+    quality: "Calidad",
+    authReplay: "Replay detectado: pedí un nuevo tap físico antes de ownership/garantía/tokenización.",
+    authOk: "Autenticación completada. Podés seguir con ownership, garantía, provenance y tokenización opcional.",
+    statusReady: "Listo para ejecutar CTAs seguras.",
+    statusReplay: "Replay activo: acciones comerciales bloqueadas hasta nuevo tap.",
+    timelineEmpty: "Sin eventos todavía. Hacé un nuevo tap para generar historial.",
+    achievementTitle: "Logros",
+    achievementFirst: "Primera autenticación",
+    achievementProv: "Provenance revisado",
+  } as const;
+}
+
 function buildTroubleshooting(reason: string, bid: string) {
   const normalized = reason.toLowerCase();
   if (normalized === 'sun_ok' || normalized.includes('ok')) return [];
@@ -133,20 +275,30 @@ function buildTroubleshooting(reason: string, bid: string) {
   return ['Revisá onboarding del batch.', 'Confirmá UID importado/activo.', 'Auditar eventos y llaves en dashboard.'];
 }
 
-function resolveTrustState(status: string, reason: string) {
+function resolveTrustState(status: string, reason: string, productState?: string | null) {
   const normalizedStatus = status.toUpperCase();
   const normalizedReason = reason.toLowerCase();
+  const normalizedProductState = String(productState || "").toUpperCase();
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay')) {
-    return { code: 'REPLAY_SUSPECT', label: 'Replay detectado', summary: 'Payload reutilizado. Pedí nuevo tap físico.', tone: 'warn' as const };
+    return { code: 'REPLAY_SUSPECT', label: 'URL reutilizada', summary: 'Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
   }
-  if (normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
-    return { code: 'OPENED', label: 'Producto abierto', summary: 'Se detectó estado de apertura en el flujo.', tone: 'warn' as const };
+  if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
+    return { code: 'OPENED', label: 'Sello abierto', summary: 'Producto auténtico, pero el sello fue abierto.', tone: 'warn' as const };
+  }
+  if (normalizedProductState === "VALID_OPENED_PREVIOUSLY") {
+    return { code: 'OPENED_PREVIOUSLY', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. El sello fue abierto anteriormente.', tone: 'warn' as const };
+  }
+  if (normalizedProductState === "VALID_MANUAL_OPENED") {
+    return { code: 'MANUAL_OPENED', label: 'Apertura registrada', summary: 'Producto auténtico. Sello marcado como abierto por operador.', tone: 'warn' as const };
+  }
+  if (normalizedProductState === "VALID_UNKNOWN_TAMPER") {
+    return { code: 'VALID_UNKNOWN_TAMPER', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Estado de apertura no disponible para este lote.', tone: 'good' as const };
   }
   if (normalizedStatus === 'TAMPER_RISK' || normalizedReason.includes('tamper')) {
     return { code: 'TAMPER_RISK', label: 'Riesgo de manipulación', summary: 'Se detectaron señales de posible manipulación.', tone: 'risk' as const };
   }
-  if (normalizedStatus === 'VALID') {
-    return { code: 'VALID', label: 'Producto auténtico', summary: 'Firma SUN validada correctamente.', tone: 'good' as const };
+  if (normalizedProductState === "VALID_CLOSED" || normalizedStatus === 'VALID') {
+    return { code: 'VALID', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Sello intacto.', tone: 'good' as const };
   }
   return { code: normalizedStatus || 'INVALID', label: 'Validación no concluyente', summary: 'No fue posible confirmar autenticidad final.', tone: 'warn' as const };
 }
@@ -179,6 +331,12 @@ function summarizeUserAgent(ua: string) {
       ? "Tablet"
       : "Desktop";
   return { os, browser, device };
+}
+
+function roundCoord(value: number | null, decimals = 2) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
 }
 
 function safeDecode(value: string | null) {
@@ -331,7 +489,7 @@ function buildPublicContract(params: {
 }) {
   const status = params.result.result || (params.result.ok ? 'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
-  const trust = resolveTrustState(status, reason);
+  const trust = resolveTrustState(status, reason, params.result.product_state || null);
   const troubleshooting = buildTroubleshooting(reason, params.bid);
   const preset = BID_PASSPORT_PRESETS[params.bid];
   const fallbackName = preset?.name || `NexID Verified Asset · ${params.bid}`;
@@ -346,6 +504,8 @@ function buildPublicContract(params: {
   const sensorHistory = buildDemoSensorHistory(params.timeline, fallbackStorage, params.passport?.barrel_months || fallbackBarrelMonths);
   const avgTemp = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
   const avgHumidity = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.humidityPct || 0), 0) / sensorHistory.length) : null;
+  const timelineLatest = params.timeline[0] || null;
+  const timelineOldest = params.timeline[params.timeline.length - 1] || null;
   const ua = summarizeUserAgent(params.tap.userAgent);
   const trustPenalty = trust.code === "VALID" ? 0 : trust.code === "REPLAY_SUSPECT" ? 35 : 20;
   const sensorPenalty = sensorHistory.some((item) => item.alert) ? 10 : 0;
@@ -359,6 +519,12 @@ function buildPublicContract(params: {
       tone: trust.tone,
       summary: trust.summary,
       reason,
+      authStatus: params.result.auth_status || status,
+      productState: params.result.product_state || null,
+      tamperSupported: Boolean(params.result.tamper_supported),
+      tamperStatus: params.result.tamper_status || "UNKNOWN",
+      tamperSource: params.result.tamper_source || "unavailable",
+      tamperReason: params.result.tamper_reason || null,
     },
     identity: {
       bid: params.bid,
@@ -378,17 +544,17 @@ function buildPublicContract(params: {
       storage: params.passport?.temperature_storage || fallbackStorage,
     },
     provenance: {
-      origin: params.passport?.region || params.passport?.winery || null,
+      origin: params.passport?.region || params.passport?.winery || wineryLocation || null,
       firstVerified: {
-        at: params.passport?.first_verified_at || null,
-        city: params.passport?.first_city || null,
-        country: params.passport?.first_country || null,
+        at: params.passport?.first_verified_at || timelineOldest?.at || null,
+        city: params.passport?.first_city || timelineOldest?.city || params.tap.city || null,
+        country: params.passport?.first_country || timelineOldest?.country || params.tap.country || null,
       },
       lastVerifiedLocation: {
-        at: params.passport?.last_verified_at || null,
-        city: params.passport?.last_city || null,
-        country: params.passport?.last_country || null,
-        result: params.passport?.last_result || null,
+        at: params.passport?.last_verified_at || timelineLatest?.at || null,
+        city: params.passport?.last_city || timelineLatest?.city || params.tap.city || null,
+        country: params.passport?.last_country || timelineLatest?.country || params.tap.country || null,
+        result: params.passport?.last_result || timelineLatest?.result || null,
       },
       timelineSummary: params.timeline,
     },
@@ -401,6 +567,8 @@ function buildPublicContract(params: {
     trustSignals: {
       antiReplay: trust.code !== 'REPLAY_SUSPECT',
       tamperRisk: trust.code === 'TAMPER_RISK',
+      tamperStatus: params.result.tamper_status || "UNKNOWN",
+      tamperSupported: Boolean(params.result.tamper_supported),
       lastEventResult: params.passport?.last_result || null,
     },
     iot: {
@@ -422,8 +590,8 @@ function buildPublicContract(params: {
       deviceType: ua.device,
       city: params.tap.city,
       country: params.tap.country,
-      lat: params.tap.lat,
-      lng: params.tap.lng,
+      lat: roundCoord(params.tap.lat, 2),
+      lng: roundCoord(params.tap.lng, 2),
     },
     quality: {
       score: qualityScore,
@@ -446,13 +614,44 @@ function buildPublicContract(params: {
   };
 }
 
-function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareToken: string | null) {
+function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareToken: string | null, locale: SunLocale) {
+  const copy = getSunCopy(locale);
   const tone = contract.status.tone === 'good' ? '#22c55e' : contract.status.tone === 'risk' ? '#ef4444' : '#f59e0b';
   const isReplay = contract.status.code === "REPLAY_SUSPECT";
+  const productState = String(contract.status.productState || "").toUpperCase();
+  const authPanelMessage = isReplay
+    ? copy.authReplay
+    : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
+      ? "Producto auténtico. Sello marcado como abierto por operador."
+      : productState === "VALID_OPENED" || contract.status.code === "OPENED"
+      ? "Producto auténtico, pero el sello fue abierto."
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+        ? "Autenticidad confirmada. El sello fue abierto anteriormente."
+      : productState === "VALID_UNKNOWN_TAMPER"
+        ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
+        : copy.authOk;
+  const commercialStateLabel = isReplay
+    ? "Commercial state: HOLD"
+    : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
+      ? "Commercial state: DEMO_OPENED"
+      : productState === "VALID_OPENED" || contract.status.code === "OPENED"
+      ? "Commercial state: REVIEW"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+        ? "Commercial state: REVIEW_PREVIOUSLY_OPENED"
+      : "Commercial state: OK";
+  const riskStateLabel = isReplay
+    ? "Risk: replay suspect"
+    : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
+      ? "Risk: manual opened"
+      : productState === "VALID_OPENED" || contract.status.code === "OPENED"
+      ? "Risk: tamper/opened"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+        ? "Risk: opened previously"
+      : "Risk: controlled";
   const timeline = contract.provenance.timelineSummary;
   const timelineHtml = timeline.length
     ? timeline.map((item) => `<li>${item.at || 'N/A'} · <b>${item.result || '-'}</b> · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
-    : '<li>Sin eventos de timeline disponibles.</li>';
+    : `<li>${copy.timelineEmpty}</li>`;
   const tapLat = contract.tapContext.lat;
   const tapLng = contract.tapContext.lng;
   const wineryLat = contract.iot.wineryCoordinates?.lat ?? tapLat ?? -33.0086;
@@ -467,32 +666,47 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   ];
   const mapEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox[0]}%2C${bbox[1]}%2C${bbox[2]}%2C${bbox[3]}&layer=mapnik&marker=${destinationLat}%2C${destinationLng}`;
 
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
+  return `<!doctype html><html lang="${copy.lang}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-icon" />
-  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600}button:disabled{opacity:.45;cursor:not-allowed}.subtitle{margin:0;color:#9fb5d9;font-size:13px}</style></head><body><main class="wrap">
-  <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">Digital Product Passport</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip">Quality ${contract.quality.score}/100 · ${contract.quality.tier}</span></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">Qué hacer ahora</h3><p class="subtitle">${isReplay ? "1) No cerrar venta todavía. 2) Pedir nuevo tap físico (link fresco). 3) Revalidar y recién ahí activar ownership/garantía/tokenización." : "1) Validación consistente. 2) Activá ownership/garantía si aplica. 3) Opcional: tokenizá para anclaje on-chain."}</p><div class="chips"><span class="chip">${isReplay ? "Estado comercial: HOLD" : "Estado comercial: OK"}</span><span class="chip">${isReplay ? "Riesgo: replay sospechoso" : "Riesgo: controlado"}</span><span class="chip">Tenant view sync: Dashboard → Analytics/Events/Tags</span></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">Product identity</h3><p><b>${contract.product.name || 'Producto no perfilado'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Cosecha ${contract.product.harvestYear || '-'} · Barrica ${contract.product.barrelMonths || '-'} meses</p></section>
-  <section class="card"><h3 style="margin:0 0 6px">Provenance (honesto)</h3><p>Origen: <b>${contract.provenance.origin || '-'}</b></p><p>First verified: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>Last verified location: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
-  <section class="card"><h3 style="margin:0 0 6px">IoT & cellar signals</h3><p>Bodega: <b>${contract.iot.wineryLocation || 'No disponible'}</b></p><p>Altitud: <b>${contract.iot.altitude || '-'}</b> · Barrica: <b>${contract.iot.oakType || '-'}</b></p><p>Temperatura bodega: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humedad: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Luz: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transporte: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
-  <section class="card"><h3 style="margin:0 0 6px">Sensor timeline (wine lifecycle)</h3><ul style="margin:0;padding-left:18px;display:grid;gap:6px">${contract.iot.sensorHistory.map((item) => `<li>${item.at || 'N/A'} · <b>${item.stage}</b> · ${item.temperatureC}°C · ${item.humidityPct}% HR · Barrica ${item.barrelAgeMonths ?? '-'} meses${item.alert ? ` · ⚠ ${item.alert}` : ''}</li>`).join('')}</ul></section>
-  <section class="card"><h3 style="margin:0 0 6px">Tap device intelligence</h3><p>SO: <b>${contract.tapContext.os}</b> · Browser: <b>${contract.tapContext.browser}</b> · Device: <b>${contract.tapContext.deviceType}</b></p><p>Ubicación del tap: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p>
+  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:10px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.subtitle{color:#334155}.chip{color:#334155;border-color:#cbd5e1}button{background:#f8fafc;color:#0f172a}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ? "pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">Dashboard sync: Analytics · Events · Tags</span></div></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.identityPanel}</h3><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Harvest ${contract.product.harvestYear || '-'} · Barrel ${contract.product.barrelMonths || '-'} months</p></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.provenancePanel}</h3><p>Origin: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.iotPanel}</h3><p>Winery: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>Altitude: <b>${contract.iot.altitude || '-'}</b> · Oak: <b>${contract.iot.oakType || '-'}</b></p><p>Cellar temp: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humidity: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Light: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transit: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.tapPanel}</h3><p>OS: <b>${contract.tapContext.os}</b> · Browser: <b>${contract.tapContext.browser}</b> · Device: <b>${contract.tapContext.deviceType}</b></p><p>Tap location: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p>
   <div style="margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:12px;overflow:hidden;background:#020617">
     <iframe title="sun-tap-map" src="${mapEmbed}" loading="lazy" style="display:block;width:100%;height:180px;border:0"></iframe>
   </div>
-  <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">Mapa de lectura: ${contract.iot.wineryLocation || 'Origen'} → punto de tap.</p></section>
-  <section class="card"><h3 style="margin:0 0 6px">Timeline summary</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
-  <section class="card"><h3 style="margin:0 0 6px">Tokenization</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p><p style="margin-top:8px;font-size:12px;color:${isReplay ? "#fca5a5" : "#a7f3d0"}">${isReplay ? "Replay detectado: la tokenización queda bloqueada hasta un nuevo tap físico válido." : "Podés solicitar tokenización opcional cuando la validación sea consistente."}</p></section>
-  <section class="card"><h3 style="margin:0 0 6px">Acciones</h3><p class="subtitle" style="margin-bottom:10px">Flujos certificados para consumidor, postventa y trazabilidad digital.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ Activar ownership</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 Registrar garantía</button><button type="button" data-cta="provenance">📍 Ver provenance</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ Tokenización opcional</button></div><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? "Replay activo: acciones comerciales bloqueadas hasta nuevo tap." : "Listo para ejecutar acciones firmadas."}</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Modo demo sin share token firmado: CTAs habilitadas con fallback seguro para BID DEMO-*.</p>'}</section>
-  <section class="card"><details><summary>Technical details</summary><p>BID: ${contract.identity.bid} · UID: ${contract.identity.uid || 'N/A'} · Read counter: ${contract.identity.readCounter ?? 'N/A'}</p><p>Raw: picc ${contract.technical.raw.piccDataPrefix} · enc ${contract.technical.raw.encPrefix} · cmac ${contract.technical.raw.cmacPrefix}</p><p>Troubleshooting: ${contract.troubleshooting.join(' | ') || 'Sin alertas'}</p></details></section>
+  <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${contract.iot.wineryLocation || 'Origin'} → tap point.</p></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.achievementTitle}</h3><div class="chips"><span class="chip">🏅 ${copy.achievementFirst}: ${contract.identity.scanCount > 0 ? "✓" : "-"}</span><span class="chip">📍 ${copy.achievementProv}: ${contract.provenance.timelineSummary.length > 0 ? "✓" : "-"}</span></div></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.actionsPanel}</h3><p class="subtitle" style="margin-bottom:10px">Consumer, warranty and traceability workflows.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? copy.statusReplay : copy.statusReady}</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Demo mode: unsigned share fallback enabled for DEMO-* batches.</p>'}</section>
+  <section class="card"><details><summary>${copy.technicalPanel}</summary><p>BID: ${contract.identity.bid} · UID: ${contract.identity.uid || 'N/A'} · Read counter: ${contract.identity.readCounter ?? 'N/A'}</p><p>Raw: picc ${contract.technical.raw.piccDataPrefix} · enc ${contract.technical.raw.encPrefix} · cmac ${contract.technical.raw.cmacPrefix}</p><p>Troubleshooting: ${contract.troubleshooting.join(' | ') || 'No alerts'}</p></details></section>
 <script>
 (() => {
   const share = ${JSON.stringify(shareToken)};
   const bid = ${JSON.stringify(contract.identity.bid)};
   const uid = ${JSON.stringify(contract.identity.uid || '')};
+  const copy = ${JSON.stringify(copy)};
   const ctaButtons = Array.from(document.querySelectorAll('[data-cta]'));
+  const nfcBtn = document.getElementById('nfc-scan');
+  if (nfcBtn && 'NDEFReader' in window) {
+    nfcBtn.style.display = 'block';
+    nfcBtn.addEventListener('click', async () => {
+      const statusNode = document.getElementById('cta-status');
+      try {
+        const reader = new window.NDEFReader();
+        await reader.scan();
+        if (statusNode) statusNode.textContent = 'NFC listener activo. Acercá la etiqueta al teléfono.';
+      } catch {
+        if (statusNode) statusNode.textContent = 'No fue posible iniciar NFC en este dispositivo.';
+      }
+    });
+  }
   ctaButtons.forEach((button) => {
     button.addEventListener('click', async () => {
       const action = button.getAttribute('data-cta');
@@ -500,8 +714,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       const statusNode = document.getElementById('cta-status');
       const originalLabel = button.textContent || action;
       button.disabled = true;
-      button.textContent = 'Procesando...';
-      if (statusNode) statusNode.textContent = 'Ejecutando ' + action + '...';
+      button.textContent = copy.processing;
+      if (statusNode) statusNode.textContent = copy.processing + ' ' + action;
       const shareQuery = share ? '&share=' + encodeURIComponent(share) : '';
       const endpoint = action === 'provenance'
         ? '/public/cta/provenance?bid=' + encodeURIComponent(bid) + '&uid=' + encodeURIComponent(uid) + shareQuery
@@ -512,18 +726,18 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         if (!res.ok || !payload?.ok) {
           const reason = payload?.reason || ('HTTP ' + res.status);
           button.textContent = 'Error';
-          if (statusNode) statusNode.textContent = action + ' falló: ' + reason;
+          if (statusNode) statusNode.textContent = action + ' ' + copy.actionFail + ': ' + reason;
           return;
         }
         button.textContent = 'Hecho ✓';
-        if (statusNode) statusNode.textContent = action + ' ejecutado correctamente.';
+        if (statusNode) statusNode.textContent = action + ' ' + copy.actionOk;
         if (action === 'provenance') {
-          const timeline = Array.isArray(payload?.timeline) ? payload.timeline.length : 0;
-          if (statusNode) statusNode.textContent = 'Provenance actualizado (' + timeline + ' eventos).';
+          const timeline = Array.isArray(payload?.timeline) ? payload.timeline : [];
+          if (statusNode) statusNode.textContent = 'Provenance: ' + timeline.length + ' events loaded.';
         }
       } catch {
         button.textContent = 'Error';
-        if (statusNode) statusNode.textContent = 'Error de red en ' + action + '. Reintentá.';
+        if (statusNode) statusNode.textContent = 'Network error on ' + action;
       } finally {
         button.disabled = false;
         if (button.textContent === 'Error') {
@@ -538,6 +752,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
 </script>
 </main></body></html>`;
 }
+
 
 async function dispatchValidScanWebhook(payload: Record<string, unknown>) {
   const url = process.env.SCAN_WEBHOOK_URL;
@@ -598,7 +813,7 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
 
 export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  const traceId = req.headers.get("x-nexid-trace-id") || `sun_${Date.now().toString(36)}`;
+  const traceId = req.headers.get("x-nexid-trace-id") || req.headers.get("x-request-id") || `sun_${Date.now().toString(36)}`;
   const bid = url.searchParams.get('bid') || '';
   const picc_data = url.searchParams.get('picc_data') || '';
   const enc = url.searchParams.get('enc') || '';
@@ -610,6 +825,7 @@ export async function GET(req: Request): Promise<Response> {
   const geoCountry = req.headers.get('x-vercel-ip-country') || null;
   const geoLat = Number(req.headers.get('x-vercel-ip-latitude') || '');
   const geoLng = Number(req.headers.get('x-vercel-ip-longitude') || '');
+  const locale = detectSunLocale(geoCountry, req.headers.get('accept-language'));
 
   if (isRateLimited(ip)) return json({ ok: false, reason: 'rate_limited', limitPerMinute: RATE_LIMIT_MAX }, 429);
   if (!bid || !picc_data || !enc || !cmac) return json({ ok: false, reason: 'missing params', need: ['bid', 'picc_data', 'enc', 'cmac'] }, 400);
@@ -620,7 +836,7 @@ export async function GET(req: Request): Promise<Response> {
 
   let result: SunResult;
   try {
-    result = await processSunScan({
+    result = await withTimeout(processSunScan({
       bid,
       piccDataHex: picc_data,
       encHex: enc,
@@ -634,18 +850,24 @@ export async function GET(req: Request): Promise<Response> {
         lat: Number.isFinite(geoLat) ? geoLat : null,
         lng: Number.isFinite(geoLng) ? geoLng : null,
         source: 'real',
+        meta: {
+          trace_id: traceId,
+          request_id: req.headers.get('x-request-id') || null,
+        },
       },
-    });
+    }), SUN_PIPELINE_TIMEOUT_MS, "sun_pipeline");
   } catch (error) {
-    const reason = error instanceof Error ? error.message : 'sun_processing_error';
-    result = { status: 200, body: { ok: false, reason: `sun_processing_error: ${reason}` } };
+    const internalReason = error instanceof Error ? error.message : 'sun_processing_error';
+    result = { status: 200, body: { ok: false, reason: sanitizePublicErrorReason(internalReason) } };
+    console.error("[sun_scan_error]", JSON.stringify({ traceId, bid, reason: internalReason }));
   }
 
   const uid = result.body.uid || null;
+  const eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
   const ctr = typeof result.body.ctr === 'number' ? result.body.ctr : null;
-  const passport = await getPassportSnapshot(bid, uid || undefined).catch(() => null);
-  const timeline = await getTimelineSummary(bid, uid || undefined).catch(() => [] as TimelineEvent[]);
-  const ctaTimeline = await getCtaTimelineSummary(bid, uid || undefined).catch(() => [] as TimelineEvent[]);
+  const passport = await withTimeout(getPassportSnapshot(bid, uid || undefined), 2500, "sun_passport_snapshot").catch(() => null);
+  const timeline = await withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]);
+  const ctaTimeline = await withTimeout(getCtaTimelineSummary(bid, uid || undefined), 2500, "sun_cta_timeline").catch(() => [] as TimelineEvent[]);
   const mergedTimeline = [...timeline, ...ctaTimeline]
     .sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime())
     .slice(0, 8);
@@ -665,6 +887,7 @@ export async function GET(req: Request): Promise<Response> {
       lng: Number.isFinite(geoLng) ? geoLng : null,
     },
   });
+  (contract as Record<string, unknown>).trace_id = traceId;
 
   if (!contract.provenance.timelineSummary.length) {
     contract.provenance.timelineSummary = [
@@ -693,7 +916,7 @@ export async function GET(req: Request): Promise<Response> {
         contract.tokenization.status = "mint_failed";
         contract.troubleshooting = [
           ...contract.troubleshooting,
-          `Tokenización automática falló (${mintReason}).`,
+          `Tokenización automática falló (${sanitizePublicErrorReason(mintReason)}).`,
           "Revisá balance de gas, RPC de Polygon y clave minter en variables de entorno.",
         ];
       } else if (autoMint.ok === true && "status" in autoMint && String(autoMint.status || "") === "anchored") {
@@ -714,6 +937,47 @@ export async function GET(req: Request): Promise<Response> {
     void dispatchValidScanWebhook({ event: 'tag.scan.valid', bid, uid: result.body.uid, counter: result.body.ctr, ip, userAgent: ua, geoCity, geoCountry, geoLat: Number.isFinite(geoLat) ? geoLat : null, geoLng: Number.isFinite(geoLng) ? geoLng : null, ts: new Date().toISOString() });
   }
 
+  const maskedUid = uid ? `${String(uid).slice(0, 4)}***${String(uid).slice(-4)}` : null;
+  const verdict = String(contract.status.code || result.body.result || "UNKNOWN");
+  const diagnosticId = await insertSunDiagnostic({
+    trace_id: traceId,
+    tool_type: "sun_scan",
+    bid,
+    uid_hex: uid || null,
+    uid_masked: maskedUid,
+    read_counter: typeof ctr === "number" ? ctr : null,
+    auth_status: String((result.body as { auth_status?: string }).auth_status || result.body.result || "UNKNOWN"),
+    replay_status: verdict === "REPLAY_SUSPECT" ? "REPLAY_SUSPECT" : "NO_REPLAY",
+    product_state: (result.body as { product_state?: string }).product_state || null,
+    tamper_status: (result.body as { tamper_status?: string }).tamper_status || null,
+    tamper_signal: (result.body as { tamper_signal?: string }).tamper_signal || null,
+    tamper_opened: Boolean((result.body as { tamper_opened?: boolean }).tamper_opened),
+    tamper_risk: Boolean((result.body as { tamper_risk?: boolean }).tamper_risk),
+    tagtamper_config_detected: Boolean((result.body as { tag_tamper_config_detected?: boolean }).tag_tamper_config_detected),
+    enc_plain_status_byte: (result.body as { enc_plain_status_byte?: string }).enc_plain_status_byte || null,
+    request_json: { bid, picc_data, enc, cmac },
+    result_json: { contract, raw_result: result.body },
+    notes: [`trace:${traceId}`],
+  });
+  console.info("[sun_scan]", JSON.stringify({
+    traceId,
+    route: "/sun",
+    bid,
+    uidMasked: maskedUid,
+    verdict,
+    tamperSignal: (result.body as { tamper_signal?: string }).tamper_signal || null,
+    tamperOpened: Boolean((result.body as { tamper_opened?: boolean }).tamper_opened),
+    tamperRisk: Boolean((result.body as { tamper_risk?: boolean }).tamper_risk),
+    tagTamperConfigDetected: Boolean((result.body as { tag_tamper_config_detected?: boolean }).tag_tamper_config_detected),
+    encPlainStatusByte: (result.body as { enc_plain_status_byte?: string }).enc_plain_status_byte || null,
+    eventId,
+    diagnosticId,
+    status: result.status,
+    tenant: bid.startsWith("DEMO-") ? "demobodega" : "unknown",
+    createdAt: new Date().toISOString(),
+  }));
+  if (diagnosticId) (contract as Record<string, unknown>).diagnostic_id = diagnosticId;
+
   if (wantsHtml(req, url)) {
     const shareToken = uid
       ? (() => {
@@ -725,11 +989,19 @@ export async function GET(req: Request): Promise<Response> {
           }
         })()
       : null;
-    return new Response(renderSunHtml(contract, shareToken), {
+    return new Response(renderSunHtml(contract, shareToken, locale), {
       status: result.status,
-      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-nexid-trace-id': traceId,
+      },
     });
   }
 
-  return json(contract, result.status);
+  const response = json(contract, result.status);
+  response.headers.set("x-nexid-trace-id", traceId);
+  if (diagnosticId) response.headers.set("x-nexid-diagnostic-id", String(diagnosticId));
+  if (eventId) response.headers.set("x-nexid-event-id", String(eventId));
+  return response;
 }
