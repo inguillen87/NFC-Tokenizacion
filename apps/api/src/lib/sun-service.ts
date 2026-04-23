@@ -3,6 +3,7 @@ import { decryptKey16 } from './keys';
 import { verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
 import { parseTTStatusFromDecryptedPayload } from './ttstatus';
+import { recordTapEvent } from './tap-event-service';
 
 export type ScanContext = {
   ip?: string | null;
@@ -264,108 +265,35 @@ export async function processSunScan(input: {
     reasonValue: string | null;
     hasGeoValue: boolean;
   }): Promise<number | null> {
-    const emitRealtime = (eventId?: number | null) => {
-      publishRealtimeEvent({
-        id: eventId || undefined,
-        tenant_slug: (batch as { tenant_slug?: string }).tenant_slug || undefined,
-        bid: input.bid,
-        uid_hex: payload.uidHex || undefined,
-        result: payload.resultValue,
-        reason: payload.reasonValue || undefined,
-        city: input.context?.city || null,
-        country_code: input.context?.countryCode || null,
-        lat: payload.hasGeoValue ? input.context?.lat || null : null,
-        lng: payload.hasGeoValue ? input.context?.lng || null : null,
-        source: input.context?.source || 'real',
-        created_at: new Date().toISOString(),
-        trace_id: typeof input.context?.meta?.trace_id === 'string' ? String(input.context.meta.trace_id) : null,
-      });
-    };
+    if (!batch) return null;
+    const isReplay = payload.resultValue === 'REPLAY_SUSPECT';
+    const isInvalid = payload.resultValue !== 'VALID' && payload.resultValue !== 'TAP_VALID';
+    const riskLevelStr = payload.resultValue === 'TAMPER_RISK' || isReplay ? 'high' : isInvalid ? 'medium' : 'none';
 
-    const commonValues = [
-      batch.tenant_id,
-      batch.id,
-      payload.uidHex,
-      payload.ctr,
-      payload.cmacOk,
-      payload.allowlistedValue,
-      payload.tagStatusValue,
-      payload.resultValue,
-      payload.reasonValue,
-      input.context?.ip || null,
-      input.context?.userAgent || null,
-      input.context?.city || null,
-      input.context?.countryCode || null,
-      payload.hasGeoValue ? input.context?.lat! : null,
-      payload.hasGeoValue ? input.context?.lng! : null,
-      input.context?.city || null,
-      input.context?.countryCode || null,
-      payload.hasGeoValue ? input.context?.lat! : null,
-      payload.hasGeoValue ? input.context?.lng! : null,
-      input.context?.deviceLabel || null,
-      input.context?.source || 'real',
-      JSON.stringify(input.context?.meta || {}),
-      JSON.stringify(input.rawQuery || {}),
-    ] as const;
-
-    const isMissingColumnError = (error: unknown) => {
-      const message = error instanceof Error ? error.message.toLowerCase() : "";
-      return message.includes('column') && message.includes('does not exist');
-    };
-
-    try {
-      const inserted = await sql/*sql*/`
-        INSERT INTO events (
-          tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, reason,
-          ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
-          source, meta, raw_query
-        ) VALUES (
-          ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
-          ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
-          ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
-        )
-        RETURNING id
-      `;
-      const eventId = Number((inserted?.[0] as { id?: number } | undefined)?.id || 0) || null;
-      emitRealtime(eventId);
-      return eventId;
-    } catch (error) {
-      if (!isMissingColumnError(error)) throw error;
-    }
-
-    try {
-      const inserted = await sql/*sql*/`
-        INSERT INTO events (
-          tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
-          ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, city, country_code, lat, lng, device_label,
-          source, meta, raw_query
-        ) VALUES (
-          ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
-          ${commonValues[9]}, ${commonValues[10]}, ${commonValues[11]}, ${commonValues[12]}, ${commonValues[13]}, ${commonValues[14]}, ${commonValues[15]}, ${commonValues[16]}, ${commonValues[17]}, ${commonValues[18]}, ${commonValues[19]},
-          ${commonValues[20]}::scan_source, ${commonValues[21]}::jsonb, ${commonValues[22]}::jsonb
-        )
-        RETURNING id
-      `;
-      const eventId = Number((inserted?.[0] as { id?: number } | undefined)?.id || 0) || null;
-      emitRealtime(eventId);
-      return eventId;
-    } catch (error) {
-      if (!isMissingColumnError(error)) throw error;
-    }
-
-    const inserted = await sql/*sql*/`
-      INSERT INTO events (
-        tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
-        ip, user_agent, raw_query
-      ) VALUES (
-        ${commonValues[0]}, ${commonValues[1]}, ${commonValues[2]}, ${payload.ctr}, ${commonValues[4]}, ${commonValues[5]}, ${commonValues[6]}, ${commonValues[7]}, ${commonValues[8]},
-        ${commonValues[9]}, ${commonValues[10]}, ${commonValues[22]}::jsonb
-      )
-      RETURNING id
-    `;
-    const eventId = Number((inserted?.[0] as { id?: number } | undefined)?.id || 0) || null;
-    emitRealtime(eventId);
-    return eventId;
+    return await recordTapEvent({
+      tenantId: batch.tenant_id,
+      tenantSlug: (batch as { tenant_slug?: string }).tenant_slug || null,
+      batchId: batch.id,
+      bid: input.bid,
+      uidHex: payload.uidHex,
+      source: input.context?.source || 'real',
+      eventType: isReplay ? 'REPLAY_SUSPECT' : isInvalid ? 'TAP_INVALID' : 'TAP_VALID',
+      verdict: payload.resultValue.toLowerCase() as any,
+      riskLevel: riskLevelStr as any,
+      readCounter: payload.ctr,
+      sdmReadCtr: payload.ctr,
+      cmacOk: payload.cmacOk,
+      allowlisted: payload.allowlistedValue,
+      tagStatus: payload.tagStatusValue,
+      userAgent: input.context?.userAgent,
+      city: input.context?.city,
+      countryCode: input.context?.countryCode,
+      lat: payload.hasGeoValue ? input.context?.lat : null,
+      lng: payload.hasGeoValue ? input.context?.lng : null,
+      reason: payload.reasonValue,
+      meta: input.context?.meta || {},
+      traceId: typeof input.context?.meta?.trace_id === 'string' ? String(input.context.meta.trace_id) : null,
+    });
   }
 
   const batchRows = await sql/*sql*/`
