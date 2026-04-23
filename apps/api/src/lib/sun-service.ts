@@ -68,6 +68,18 @@ export function parseTTStatusFromDecryptedPayload(payloadHex: string, offset: nu
   return { raw: raw || "NONE", perm, current, product_state: "VALID_UNKNOWN_TAMPER", reason: "TTStatus not recognized." };
 }
 
+function findTTStatusCandidatesInPayload(payloadHex: string) {
+  const normalized = String(payloadHex || "").replace(/[^0-9a-f]/gi, "").toUpperCase();
+  const hits: Array<{ offset: number; raw: string }> = [];
+  for (let i = 0; i + 4 <= normalized.length; i += 2) {
+    const raw = normalized.slice(i, i + 4);
+    if (["4343", "4F4F", "4F43", "4949"].includes(raw)) {
+      hits.push({ offset: i / 2, raw });
+    }
+  }
+  return hits;
+}
+
 function resolveTamperProfile(raw: unknown): TamperProfile {
   const cfg = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
   const sourceRaw = String(cfg.ttstatus_source || cfg.tamper_status_source || "none").toLowerCase();
@@ -471,6 +483,8 @@ export async function processSunScan(input: {
   const parsedTTStatus = ttStatusConfigured && ttPayloadHex
     ? parseTTStatusFromDecryptedPayload(ttPayloadHex, Number(tamperProfile.ttstatus_offset || 0))
     : null;
+  const encTTCandidates = findTTStatusCandidatesInPayload(res.ok ? (res.encPlainHex || "") : "");
+  const piccTTCandidates = findTTStatusCandidatesInPayload(res.ok ? (res.piccPlainHex || "") : "");
   const configuredStatusHex = (() => {
     if (!tamperProfile.tamper_status_enabled || tamperProfile.tamper_status_source === "none") return null;
     const offset = tamperProfile.tamper_status_offset ?? tamperProfile.ttstatus_offset ?? 0;
@@ -539,6 +553,8 @@ export async function processSunScan(input: {
     ? `tagtamper_opened:${configuredStatusHex || tamperSignal.raw || 'signal'}`
     : requireTamperEvidence && !tamperConfigured
       ? 'tagtamper_unconfigured'
+    : tagTamperEnabled && !ttStatusConfigured && !encTTCandidates.length && !piccTTCandidates.length
+      ? 'ttstatus_not_found_in_payload'
     : tamperSignal.tamper
       ? `tagtamper_alert:${configuredStatusHex || tamperSignal.raw || 'signal'}`
       : replaySuspect
@@ -620,6 +636,17 @@ export async function processSunScan(input: {
       tt_perm_status: parsedTTStatus?.perm || undefined,
       tt_curr_status: parsedTTStatus?.current || undefined,
       ttstatus_notes: tamperProfile.ttstatus_notes || undefined,
+      ttstatus_candidate_offsets: {
+        enc_decrypted: encTTCandidates,
+        picc_data_decrypted: piccTTCandidates,
+      },
+      ttstatus_recommendation: parsedTTStatus
+        ? `TTStatus parsed at configured offset ${tamperProfile.ttstatus_offset}.`
+        : ttStatusConfigured
+          ? "TTStatus enabled but bytes at configured offset did not match expected values (4343/4F4F/4F43/4949)."
+          : encTTCandidates.length || piccTTCandidates.length
+            ? "TTStatus-like bytes detected in payload. Configure ttstatus_offset with candidate offsets."
+            : "No TTStatus pattern found. Supplier may not have mirrored TTStatus into SDM payload.",
       tamper_closed_values: tamperProfile.tamper_closed_values,
       tamper_open_values: tamperProfile.tamper_open_values,
       tamper_unknown_policy: tamperProfile.tamper_unknown_policy,
