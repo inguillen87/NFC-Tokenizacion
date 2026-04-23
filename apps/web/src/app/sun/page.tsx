@@ -184,15 +184,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
   const productState = String(result.status?.productState || "").toUpperCase();
   const statusHeadline = productState === "VALID_CLOSED"
-    ? "Autenticidad confirmada. Sello intacto."
+    ? "Producto auténtico. Sello intacto."
     : productState === "VALID_MANUAL_OPENED"
       ? "Autenticidad confirmada. Sello marcado como abierto por operador."
-    : productState === "VALID_OPENED" || productState === "TAMPER_RISK"
-      ? "Autenticidad confirmada. Sello abierto."
+    : productState === "VALID_OPENED"
+      ? "Producto auténtico, pero el sello fue abierto."
     : productState === "VALID_UNKNOWN_TAMPER"
         ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
         : result.status?.code === "REPLAY_SUSPECT"
-          ? "URL reutilizada. Escaneá físicamente la etiqueta para generar una nueva lectura."
+          ? "Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura."
           : result.status?.tone === "good"
             ? "Autenticidad verificada"
             : result.status?.tone === "risk"
@@ -233,8 +233,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <div className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-slate-200">
                 <p className="uppercase tracking-[0.12em] text-slate-400">Integridad</p>
                 <p className="mt-1">
-                  {productState === "VALID_OPENED" || productState === "TAMPER_RISK"
-                    ? "Autenticidad confirmada. Sello abierto."
+                  {productState === "VALID_OPENED"
+                    ? "Producto auténtico, pero el sello fue abierto."
                     : productState === "VALID_MANUAL_OPENED"
                       ? "Autenticidad confirmada. Sello marcado como abierto por operador."
                     : productState === "VALID_UNKNOWN_TAMPER"

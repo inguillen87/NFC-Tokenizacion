@@ -292,10 +292,10 @@ function resolveTrustState(status: string, reason: string, productState?: string
   const normalizedReason = reason.toLowerCase();
   const normalizedProductState = String(productState || "").toUpperCase();
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay')) {
-    return { code: 'REPLAY_SUSPECT', label: 'Replay detectado', summary: 'URL reutilizada. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
+    return { code: 'REPLAY_SUSPECT', label: 'URL reutilizada', summary: 'Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
   }
-  if (normalizedProductState === "VALID_OPENED" || normalizedProductState === "TAMPER_RISK" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
-    return { code: 'OPENED', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. Sello abierto.', tone: 'warn' as const };
+  if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
+    return { code: 'OPENED', label: 'Sello abierto', summary: 'Producto auténtico, pero el sello fue abierto.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_OPENED_PREVIOUSLY") {
     return { code: 'OPENED_PREVIOUSLY', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. El sello fue abierto anteriormente.', tone: 'warn' as const };
@@ -310,7 +310,7 @@ function resolveTrustState(status: string, reason: string, productState?: string
     return { code: 'TAMPER_RISK', label: 'Riesgo de manipulación', summary: 'Se detectaron señales de posible manipulación.', tone: 'risk' as const };
   }
   if (normalizedProductState === "VALID_CLOSED" || normalizedStatus === 'VALID') {
-    return { code: 'VALID', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. Sello intacto.', tone: 'good' as const };
+    return { code: 'VALID', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Sello intacto.', tone: 'good' as const };
   }
   return { code: normalizedStatus || 'INVALID', label: 'Validación no concluyente', summary: 'No fue posible confirmar autenticidad final.', tone: 'warn' as const };
 }
@@ -636,7 +636,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
       ? "Producto auténtico. Sello marcado como abierto por operador."
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
-      ? "Autenticidad confirmada. Sello abierto."
+      ? "Producto auténtico, pero el sello fue abierto."
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
         ? "Autenticidad confirmada. El sello fue abierto anteriormente."
       : productState === "VALID_UNKNOWN_TAMPER"

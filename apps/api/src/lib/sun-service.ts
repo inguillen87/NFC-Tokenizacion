@@ -522,7 +522,14 @@ export async function processSunScan(input: {
         ? 'copied URL / replay suspected'
         : null;
   const resolvedReason = !res.ok ? res.reason : successReason;
-  const ttState = (ttstatusParsed?.product_state || null) as TTStatusProductState | null;
+  const ttStateRaw = ttstatusParsed?.product_state;
+  const ttState: TTStatusProductState | null =
+    ttStateRaw === "VALID_CLOSED"
+    || ttStateRaw === "VALID_OPENED"
+    || ttStateRaw === "VALID_OPENED_PREVIOUSLY"
+    || ttStateRaw === "VALID_UNKNOWN_TAMPER"
+      ? ttStateRaw
+      : null;
   const authValid = res.ok && authStatus === "VALID";
   const productState: ProductState = (() => {
     if (!res.ok || authStatus === "INVALID") return "INVALID";
