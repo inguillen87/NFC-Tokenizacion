@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Card } from "@product/ui";
 
 type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consumer_duplicate";
@@ -171,6 +171,8 @@ export function MobileDemoClient({
   const [scanProgress, setScanProgress] = useState(5);
   const [geoState, setGeoState] = useState<GeoState | null>(null);
   const [geoError, setGeoError] = useState("");
+
+  const contextSyncKeyRef = useRef<string>("");
   const demoSessionId = useMemo(() => `${tenant}:${itemId}:${pack}`, [itemId, pack, tenant]);
 
   const current = STATE_COPY[consumerState];
@@ -253,6 +255,43 @@ export function MobileDemoClient({
       { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
     );
   }, []);
+
+
+  async function syncSunContext() {
+    const uid = String(activeItem.uidHex || activeItem.uid_hex || "").trim().toUpperCase();
+    if (!effectiveBid || !uid) return;
+    const syncKey = `${effectiveBid}:${uid}:${geoState?.capturedAt || "na"}:${geoError || "ok"}`;
+    if (contextSyncKeyRef.current === syncKey) return;
+    contextSyncKeyRef.current = syncKey;
+
+    const clientMeta = {
+      platform: typeof navigator !== "undefined" ? navigator.platform : "unknown",
+      browser: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+      language: typeof navigator !== "undefined" ? navigator.language : locale,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      mobile: typeof navigator !== "undefined" ? /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) : false,
+    };
+
+    await fetch("/api/sun-context", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bid: effectiveBid,
+        uid,
+        contextStatus: consumerState,
+        scannedAt: new Date().toISOString(),
+        geo: geoState
+          ? {
+              lat: geoState.lat,
+              lng: geoState.lng,
+              accuracy: geoState.accuracy ?? null,
+            }
+          : undefined,
+        client: clientMeta,
+        geoError: geoError || undefined,
+      }),
+    }).catch(() => null);
+  }
 
   function pushEvent(type: string, note: string) {
     const next = [{ type, note, at: nowIso() }, ...events].slice(0, 12);
@@ -390,6 +429,12 @@ export function MobileDemoClient({
       pushEvent("LEAD_CAPTURED", `${leadIntent} · ${leadEmail.trim()}`);
     }
   }
+
+
+  useEffect(() => {
+    if (consumerState === "AUTH_PENDING") return;
+    void syncSunContext();
+  }, [consumerState, effectiveBid, activeItem.uidHex, activeItem.uid_hex, geoState?.capturedAt, geoError]);
 
   return (
     <main className="mx-auto max-w-5xl space-y-4 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.10),transparent_38%)] p-4">
