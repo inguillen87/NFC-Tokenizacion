@@ -6,7 +6,7 @@ export type RiskInputs = {
   geoAnomalyRate: number;
 };
 
-function clamp(value: number, min = 0, max = 100) {
+export function clamp(value: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -17,6 +17,6 @@ export function computeRiskScore(input: RiskInputs) {
     input.invalidRate * 25 +
     input.tamperRate * 50 +
     input.revokedTapRate * 35 +
-    input.geoAnomalyRate * 20,
+    input.geoAnomalyRate * 20
   );
 }
