@@ -711,410 +711,220 @@ export function DemoLab() {
     await runSalesStory();
   }
 
+
   return (
-    <div id="top" className={`demo-lab space-y-4 ${textScale} ${focusMode ? "fixed inset-0 z-[90] overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,.12),transparent_32%),#020617] px-4 py-4 md:px-8" : ""}`}>
-      <Card className={`demo-lab-card p-4 text-slate-300 ${focusMode ? "sticky top-0 z-20 border-cyan-300/20 bg-slate-950/95 shadow-[0_24px_80px_rgba(2,6,23,.55)] backdrop-blur" : ""}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p>{COPY[locale].intro}</p>
-            <p className="mt-1 text-xs text-slate-400">Vertical activa: <b className="text-white">{activeVertical}</b> · Pack: <b className="text-white">{pack}</b> · Modo: <b className="text-white">{modeLabel(mode)}</b></p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setFocusMode((v) => !v)} className={`rounded-lg border px-3 py-1 text-xs ${focusMode ? "border-cyan-300/50 bg-cyan-500/10 text-cyan-100" : "border-white/20 text-white"}`}>
-              {focusMode ? "Salir fullscreen" : "Fullscreen presenter canvas"}
-            </button>
-            <button type="button" onClick={() => setPresenterMode((v) => !v)} className="rounded-lg border border-white/20 px-3 py-1 text-xs text-white">
-              {presenterMode ? "Salir modo presentador" : "Modo presentador"}
-            </button>
-            <button type="button" onClick={() => setPresenterLock((v) => !v)} className={`rounded-lg border px-3 py-1 text-xs ${presenterLock ? "border-emerald-300/50 bg-emerald-500/10 text-emerald-100" : "border-white/20 text-white"}`}>
-              {presenterLock ? "Presenter Lock activo" : "Activar Presenter Lock"}
-            </button>
-          </div>
+    <div id="top" className={`demo-lab min-h-screen text-slate-200 ${textScale} ${focusMode ? "fixed inset-0 z-[90] overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0a1a] to-black px-4 py-6 md:px-8" : "bg-transparent space-y-6"}`}>
+      {/* HEADER SECTION */}
+      <div className="mb-8 border-b border-white/10 pb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+            Demo Lab Narrative Engine
+            {presenterLock && <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-400 border border-emerald-500/30 uppercase tracking-widest">Presenter Locked</span>}
+          </h1>
+          <p className="mt-2 text-sm text-slate-400">Escalabilidad, revenue mix, mitigación de riesgo y expansión comercial.</p>
         </div>
-      </Card>
+        <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setFocusMode((v) => !v)} className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${focusMode ? "border-cyan-500 bg-cyan-500/20 text-cyan-50" : "border-slate-700 hover:bg-slate-800 text-white"}`}>
+              {focusMode ? "Exit Fullscreen" : "Enter Pitch View"}
+            </button>
+            <button type="button" onClick={() => setPresenterLock((v) => !v)} className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${presenterLock ? "border-emerald-500 bg-emerald-500/20 text-emerald-50" : "border-slate-700 hover:bg-slate-800 text-white"}`}>
+              {presenterLock ? "Unlock Controls" : "Lock for Presentation"}
+            </button>
+        </div>
+      </div>
 
-      <Card className="demo-lab-card p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold text-white">Demo Lab · flujo guiado para ventas</h2>
-            <p className="mt-1 text-sm text-slate-300">Runbook dinámico por vertical, pitch guiado y evidencia operativa lista para reuniones.</p>
+      {/* STORY PIPELINE TRACK */}
+      <div className="mb-8 grid grid-cols-4 gap-4">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/30 p-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500"></div>
+            <h3 className="font-semibold text-cyan-100">1) Product value</h3>
+            <p className="text-xs text-cyan-300 mt-1">Initial scan & authenticity</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100" onClick={() => void runMeetingStory("30s")} disabled={pending}>
-              Meeting 30s
-            </button>
-            <button type="button" className="rounded-xl border border-violet-300/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-100" onClick={() => void runMeetingStory("90s")} disabled={pending}>
-              Meeting 90s
-            </button>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 opacity-70 hover:opacity-100 transition-opacity">
+            <h3 className="font-semibold text-slate-300">2) Authentic scan</h3>
+            <p className="text-xs text-slate-500 mt-1">Consumer engagement</p>
           </div>
-        </div>
-        <div className="mt-3 grid gap-2 md:grid-cols-4">
-          <div className={`rounded-xl border p-3 text-xs ${readiness.packLoaded ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>Pack cargado</div>
-          <div className={`rounded-xl border p-3 text-xs ${readiness.manifestLoaded ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>Manifest aplicado</div>
-          <div className={`rounded-xl border p-3 text-xs ${readiness.scenarioRun ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>Escenario ejecutado</div>
-          <div className={`rounded-xl border p-3 text-xs ${readiness.mobileOpened ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>Mobile abierto</div>
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="text-xs uppercase tracking-[0.16em] text-slate-400">Narrativa</span>
-          <button type="button" className={`rounded-full border px-3 py-1 text-xs ${audienceMode === "buyer" ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/15 text-slate-300"}`} onClick={() => setAudienceMode("buyer")}>Buyer / cliente</button>
-          <button type="button" className={`rounded-full border px-3 py-1 text-xs ${audienceMode === "operator" ? "border-amber-300/40 bg-amber-500/10 text-amber-100" : "border-white/15 text-slate-300"}`} onClick={() => setAudienceMode("operator")}>Operator</button>
-          <button type="button" className={`rounded-full border px-3 py-1 text-xs ${audienceMode === "ceo" ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/15 text-slate-300"}`} onClick={() => setAudienceMode("ceo")}>CEO / ingeniero</button>
-        </div>
-        <div className="mt-3 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-          <p className="text-sm font-semibold text-white">{audienceCopy.title}</p>
-          <p className="mt-1 text-sm text-slate-300">{audienceCopy.summary}</p>
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
-            <p className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">{audienceCopy.kpiFocus}</p>
-            <p className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">{audienceCopy.commercialNext}</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 opacity-70 hover:opacity-100 transition-opacity">
+            <h3 className="font-semibold text-slate-300">3) Risk event</h3>
+            <p className="text-xs text-slate-500 mt-1">Tamper/Replay mitigation</p>
           </div>
-          <ul className="mt-3 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
-            {audienceCopy.bullets.map((bullet) => (
-              <li key={bullet} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">{bullet}</li>
-            ))}
-          </ul>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100"
-              onClick={() => {
-                if (audienceMode === "ceo") void runMeetingStory("90s");
-                if (audienceMode === "operator") setActiveSection("simulate");
-                if (audienceMode === "buyer") setMobilePreviewOpened(true);
-              }}
-            >
-              {audienceAction.primary}
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-white/15 px-3 py-2 text-xs text-slate-100"
-              onClick={() => {
-                if (audienceMode === "ceo") window.location.href = "/investor-snapshot";
-                if (audienceMode === "operator") setActiveSection("ops");
-                if (audienceMode === "buyer") setActiveSection("mobile");
-              }}
-            >
-              {audienceAction.secondary}
-            </button>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 opacity-70 hover:opacity-100 transition-opacity">
+            <h3 className="font-semibold text-slate-300">4) Ownership / loyalty</h3>
+            <p className="text-xs text-slate-500 mt-1">Post-sale CRM & tokens</p>
           </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-4">
-            <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">Map: {roleState.map}</div>
-            <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 p-3 text-xs text-amber-100">Live feed: {roleState.feed}</div>
-            <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-xs text-violet-100">Mobile: {roleState.mobile}</div>
-            <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">CTA: {roleState.cta}</div>
-          </div>
-        </div>
-        <div className="mt-4 grid gap-3 xl:grid-cols-3">
-          {(Object.entries(DEMO_EXPERIENCES) as Array<[ExperiencePresetKey, typeof DEMO_EXPERIENCES[ExperiencePresetKey]]>).map(([key, preset]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => void runExperiencePreset(key)}
-              disabled={pending}
-              className={`rounded-2xl border p-4 text-left ${selectedExperience === key ? "border-cyan-300/50 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900/70 text-slate-200"}`}
-            >
-              <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Experience preset</p>
-              <p className="mt-2 text-base font-semibold text-white">{preset.label}</p>
-              <p className="mt-2 text-xs text-slate-300">{preset.description}</p>
-              <p className="mt-3 text-[11px] text-cyan-200">{preset.packKey} · {modeLabel(preset.mode)} · {preset.playlist.length} beats</p>
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/5 p-4 text-xs text-cyan-100">
-          Preset activo: <b>{experiencePreset.label}</b>. Esto alinea pack, modo y secuencia para contar una historia consistente de producto premium, evento en vivo o credencial auditada.
-        </div>
-        <div className={`mt-3 rounded-2xl border border-violet-300/20 bg-violet-500/5 p-4 ${focusMode ? "shadow-[0_24px_90px_rgba(76,29,149,.28)] ring-1 ring-violet-300/20" : ""}`}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-violet-200">Stage mode</p>
-              <p className="mt-1 text-sm font-semibold text-white">{activeStageBeat.title}</p>
-              <p className="mt-1 text-xs text-slate-300">{activeStageBeat.speaker}</p>
-              <p className="mt-2 text-xs text-violet-200">Objetivo: {activeStageBeat.goal}</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* LEFT COLUMN: CONTROL & FEED */}
+        <div className="space-y-6">
+          <Card className="demo-lab-card border-slate-800 bg-slate-900/50 p-6 backdrop-blur shadow-xl">
+            <h2 className="text-sm font-bold tracking-widest text-slate-400 uppercase mb-4">Live Feed Context</h2>
+            <ul className="space-y-3 text-sm text-slate-200">
+              <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></span> Batch {activeBatchId || "DEMO-2026-02"} listo para piloto.</li>
+              <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span> Tag profile {pack} cargado.</li>
+              <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.8)]"></span> Route map inicializado.</li>
+            </ul>
+
+            <div className="grid grid-cols-3 gap-4 mt-6">
+               <div className="rounded-lg bg-slate-950 p-4 border border-slate-800">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider">Pipeline</p>
+                  <p className="text-lg font-bold text-white mt-1">Qualified</p>
+               </div>
+               <div className="rounded-lg bg-slate-950 p-4 border border-slate-800">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider">Risk Control</p>
+                  <p className="text-lg font-bold text-emerald-400 mt-1">Active</p>
+               </div>
+               <div className="rounded-lg bg-slate-950 p-4 border border-slate-800">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider">Expansion</p>
+                  <p className="text-lg font-bold text-violet-400 mt-1">LATAM-ready</p>
+               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className={`rounded-lg border px-3 py-1 text-xs ${stageMode ? "border-violet-300/40 bg-violet-500/10 text-violet-100" : "border-white/15 text-slate-300"}`} onClick={() => setStageMode((value) => !value)}>
-                {stageMode ? "Stage mode activo" : "Activar stage mode"}
-              </button>
-              <button type="button" className="rounded-lg border border-white/15 px-3 py-1 text-xs text-slate-300" onClick={() => setStageBeatIndex((value) => Math.max(0, value - 1))}>Anterior</button>
-              <button type="button" className="rounded-lg border border-white/15 px-3 py-1 text-xs text-slate-300" onClick={() => setStageBeatIndex((value) => Math.min(stageBeats.length - 1, value + 1))}>Siguiente</button>
+
+            <div className="mt-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-4 flex items-center justify-between">
+              <p className="text-sm text-indigo-200">Recommended CTA: Solicitar reunión de rollout enterprise</p>
+              <button className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold rounded-md transition-colors shadow-lg shadow-indigo-500/25">Action</button>
             </div>
-          </div>
-          <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-xs text-slate-300">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-semibold text-white">Auto-run cinematográfica</p>
-                <p className="mt-1 text-slate-400">Escena actual: {activeCue?.section || "setup"} · cue {autoRunCueIndex + 1}/{cinematicScript.length}</p>
+          </Card>
+
+          {!presenterLock && (
+            <Card className="demo-lab-card border-amber-500/30 bg-amber-950/20 p-6 backdrop-blur">
+              <h3 className="text-sm font-bold tracking-widest text-amber-500 uppercase mb-3">Narrative Engine Scenarios</h3>
+              <p className="text-xs text-amber-200/70 leading-relaxed mb-4">
+                Run simulated tags representing key moments in the product journey to show full-spectrum NFC value: Authenticity, Tamper-evidence, CRM/Loyalty, and Geo-Risk.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                 <button onClick={() => triggerScenario("valid")} disabled={pending} className="group bg-slate-900 border border-slate-700 hover:border-emerald-500 hover:bg-emerald-950/30 transition-colors rounded-lg p-3 text-left">
+                    <p className="text-sm font-semibold group-hover:text-emerald-400 transition-colors">1. Factory Sealed (Valid)</p>
+                    <p className="text-[10px] text-slate-500 mt-1">Standard valid authentication</p>
+                 </button>
+                 <button onClick={() => triggerScenario("tamper")} disabled={pending} className="group bg-slate-900 border border-slate-700 hover:border-red-500 hover:bg-red-950/30 transition-colors rounded-lg p-3 text-left">
+                    <p className="text-sm font-semibold group-hover:text-red-400 transition-colors">2. Broken Seal (Tampered)</p>
+                    <p className="text-[10px] text-slate-500 mt-1">Opened loop or broken tag</p>
+                 </button>
+                 <button onClick={() => triggerScenario("replay")} disabled={pending} className="group bg-slate-900 border border-slate-700 hover:border-amber-500 hover:bg-amber-950/30 transition-colors rounded-lg p-3 text-left">
+                    <p className="text-sm font-semibold group-hover:text-amber-400 transition-colors">3. Suspect Clone (Replay)</p>
+                    <p className="text-[10px] text-slate-500 mt-1">Cloned URL parameters caught</p>
+                 </button>
+                 <button onClick={() => runAction(() => call("use-pack", "POST", { pack: "wine-secure" }))} disabled={pending} className="group bg-slate-900 border border-slate-700 hover:border-cyan-500 hover:bg-cyan-950/30 transition-colors rounded-lg p-3 text-left">
+                    <p className="text-sm font-semibold group-hover:text-cyan-400 transition-colors">4. Load Enterprise Wine</p>
+                    <p className="text-[10px] text-slate-500 mt-1">Reset context to premium wine</p>
+                 </button>
               </div>
-              <button type="button" onClick={() => void runCinematicAutoRun()} disabled={pending || autoRunActive} className="rounded-lg border border-violet-300/40 bg-violet-500/10 px-3 py-2 text-xs text-violet-100 disabled:opacity-50">
-                {autoRunActive ? `Running · ${autoRunSecondsLeft}s` : "Start cinematic auto-run"}
-              </button>
-            </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-              <div className={`h-full rounded-full bg-violet-400 transition-all ${autoRunActive ? "animate-pulse" : ""}`} style={{ width: `${autoRunProgress}%` }} />
-            </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-4">
-              <div className={`rounded-xl border p-3 ${mobilePreviewOpened ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Mobile preview {mobilePreviewOpened ? "opened" : "pending"}</div>
-              <div className={`rounded-xl border p-3 ${lastTriggeredScenario !== "none" ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Scenario {lastTriggeredScenario}</div>
-              <div className={`rounded-xl border p-3 ${opsReady ? "border-amber-300/40 bg-amber-500/10 text-amber-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Ops map {opsReady ? "ready" : "waiting"}</div>
-              <div className={`rounded-xl border p-3 ${autoRunActive ? "border-violet-300/40 bg-violet-500/10 text-violet-100" : "border-white/10 bg-white/5 text-slate-300"}`}>Progress {autoRunProgress}%</div>
-            </div>
-            <p className="mt-3 text-violet-100">{autoRunNarration || "Al iniciar, el Demo Lab avanzará por beats, cambiará secciones y disparará escenarios automáticamente."}</p>
-            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cinematic log</p>
-              <ul className="mt-2 space-y-1 text-xs text-slate-200">
-                {(autoRunLog.length ? autoRunLog : ["Sin pasos ejecutados todavía."]).map((line, index) => (
-                  <li key={`${line}-${index}`} className="rounded border border-white/5 bg-white/5 px-2 py-1">{line}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-4">
-            {stageBeats.map((beat, index) => (
-              <button key={beat.title} type="button" onClick={() => setStageBeatIndex(index)} className={`rounded-xl border p-3 text-left text-xs ${stageBeatIndex === index ? "border-violet-300/50 bg-violet-500/10 text-violet-100" : "border-white/10 bg-slate-950/70 text-slate-300"}`}>
-                <p className="font-semibold text-white">Beat {index + 1}</p>
-                <p className="mt-1">{beat.title}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="mt-3 grid gap-2 md:grid-cols-4">
-          {([
-            ["setup", "1) Setup"],
-            ["simulate", "2) Simular"],
-            ["mobile", "3) Mobile / Pitch"],
-            ["ops", "4) Ops / Evidencia"],
-          ] as Array<[LabSection, string]>).map(([key, label]) => (
-            <button key={key} type="button" onClick={() => setActiveSection(key)} className={`rounded-lg border p-2 text-sm ${activeSection === key ? "border-cyan-300/60 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900 text-slate-200"}`}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          <a href="/demo" className="rounded-lg border border-white/20 px-3 py-1 text-slate-200">Página pública demo</a>
-          <a href="/demo-sandbox" className="rounded-lg border border-white/20 px-3 py-1 text-slate-200">Sandbox anónimo</a>
-          <a href="#top" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">Volver arriba</a>
-        </div>
-      </Card>
+            </Card>
+          )}
 
-      <Card className={`demo-lab-card p-4 ${activeSection === "mobile" ? "" : "hidden"}`}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-semibold text-white">Runbook vertical-aware</h3>
-            <p className="mt-1 text-sm text-slate-300">{runbook.headline}</p>
-            <p className="mt-1 text-xs text-slate-400">{runbook.summary}</p>
-          </div>
-          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3 text-xs text-cyan-100">
-            <p className="font-semibold uppercase tracking-[0.16em]">KPIs para contar</p>
-            <p className="mt-2 max-w-xs">{runbook.kpis.join(" · ")}</p>
-          </div>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {runbook.steps.map((step) => (
-            <div key={step.title} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-xs text-slate-300">
-              <p className="font-semibold text-white">{step.title}</p>
-              <p className="mt-2">{step.detail}</p>
-              <p className="mt-3 text-cyan-200">KPI foco: {step.kpi}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-xs text-emerald-300">Prueba recomendada: {runbook.proof}</p>
-        <button className="mt-3 w-full rounded-xl border border-violet-300/40 bg-violet-500/10 p-3 text-sm text-violet-100" onClick={() => void runAuto90SecondsDemo()} disabled={pending}>Iniciar pitch automático</button>
-      </Card>
-
-      <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
-        <h3 className="font-semibold text-white">Checklist “todo funcionando”</h3>
-        <p className="mt-2 text-xs text-slate-300">Para cerrar la demo completa necesitamos: pack activo, escenario corrido, mobile abierto y entorno listo para LIVE NFC.</p>
-        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <div className={`rounded-xl border p-3 text-xs ${readiness.packLoaded ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>1) Pack activo: <b>{readiness.packLoaded ? "OK" : "pendiente"}</b></div>
-          <div className={`rounded-xl border p-3 text-xs ${readiness.scenarioRun ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>2) Escenario: <b>{readiness.scenarioRun ? "OK" : "pendiente"}</b></div>
-          <div className={`rounded-xl border p-3 text-xs ${readiness.mobileOpened ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}>3) Mobile: <b>{readiness.mobileOpened ? "OK" : "pendiente"}</b></div>
-          <div className={`rounded-xl border p-3 text-xs ${liveNfcReady ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-100" : "border-amber-300/30 bg-amber-500/10 text-amber-100"}`}>4) LIVE NFC: <b>{liveNfcReady ? "listo" : "requiere dispositivo NFC + HTTPS"}</b></div>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <a className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer" onClick={() => setReadiness((state) => ({ ...state, mobileOpened: true }))}>
-            Abrir mobile ahora
-          </a>
-          <button type="button" className="rounded-lg border border-white/15 px-3 py-1 text-xs text-white" onClick={() => void navigator.clipboard?.writeText(openMobilePreviewHref)}>
-            Copiar URL mobile
-          </button>
-        </div>
-      </Card>
-
-      <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
-        <h3 className="font-semibold text-white">Demo Wizard (para reuniones)</h3>
-        <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-slate-300">
-          <li>Paso 1: elegí un pack vertical.</li>
-          <li>Paso 2: elegí modo (simulado, consumer tap, live NFC).</li>
-          <li>Paso 3: cargá pack y ejecutá escenarios.</li>
-          <li>Paso 4: abrí la vista mobile por item/tenant.</li>
-        </ol>
-      </Card>
-
-      <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-semibold text-white">Pack listo en 1 click (10 tags)</h3>
-          <button type="button" onClick={() => void applyPackReadyFlow()} disabled={pending} className="rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
-            Aplicar pack completo
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-slate-300">Esto carga pack, sube manifest de 10 UIDs y genera eventos demo para mostrar trazabilidad/antifraude sin esperar chips físicos.</p>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {DEMO_UIDS.map((uid, index) => (
-            <div key={uid} className="rounded-lg border border-white/10 bg-slate-900/70 p-2.5 text-xs text-slate-200">
-              <p className="font-semibold text-white">Tag {index + 1}</p>
-              <p className="mt-1 break-all text-slate-300">{uid}</p>
-              <button type="button" onClick={() => void navigator.clipboard?.writeText(tagPreviewLinks[index] || openMobilePreviewHref)} className="mt-2 rounded-md border border-white/15 px-2 py-1 text-[11px] text-cyan-100">
-                Copiar URL mobile
-              </button>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
-        <label className="text-xs uppercase tracking-wide text-slate-400">{COPY[locale].pick}</label>
-        <select className="demo-lab-input mt-2 w-full rounded-lg border border-white/10 bg-slate-900 p-2 text-white" value={pack} onChange={(event) => setPack(event.target.value)}>
-          {(packs.length ? packs : [{ key: "wine-secure", icType: "NTAG424DNA_TT", batchId: "DEMO-2026-02" }]).map((item) => (
-            <option key={item.key} value={item.key}>{item.key} · {item.icType}</option>
-          ))}
-        </select>
-      </Card>
-
-      <Card className={`demo-lab-card p-4 ${activeSection === "setup" ? "" : "hidden"}`}>
-        <label className="text-xs uppercase tracking-wide text-slate-400">Paso 2 · Demo mode</label>
-        <div className="mt-2 grid gap-2 md:grid-cols-3">
-          {(["simulated", "consumer_tap", "live_nfc"] as DemoMode[]).map((item) => (
-            <button key={item} className={`rounded-xl border p-3 text-left text-xs ${mode === item ? "border-cyan-300/60 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900 text-slate-200"}`} onClick={() => setMode(item)} type="button">
-              <p className="font-semibold">{modeLabel(item)}</p>
-            </button>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-slate-300">Modo activo: <b>{modeLabel(mode)}</b></p>
-        {mode === "live_nfc" && !liveNfcReady ? (
-          <p className="mt-2 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-            LIVE NFC requiere navegador compatible (Android + Chrome), HTTPS y permiso NFC. Si no, usá SIMULATED para demo comercial.
-          </p>
-        ) : null}
-      </Card>
-
-      {canShowTechnical ? (
-        <Card className={`demo-lab-card p-4 text-xs text-slate-300 ${activeSection === "setup" ? "" : "hidden"}`}>
-          <h3 className="text-sm font-semibold text-white">Live NFC panel operativo</h3>
-          <p className="mt-1">NFC: <b>{nfcSupport ? "compatible" : "no disponible"}</b> · HTTPS: <b>{hasSecureContext ? "ok" : "requerido"}</b> · GPS API: <b>{hasGeo ? "disponible" : "no disponible"}</b></p>
-          <p className="mt-1">Permiso NFC: <b>{nfcPermission}</b> · Permiso GPS: <b>{geoPermission}</b></p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100" onClick={() => void triggerScenario("valid")}>
-              Simular lectura NFC (demo)
-            </button>
-            <button type="button" className="rounded-lg border border-white/20 px-3 py-1 text-white" onClick={requestGeoForLive}>
-              Pedir geolocalización real
-            </button>
-          </div>
-          <p className="mt-2 text-amber-300">Privacidad: no se obtiene GPS real sin permiso explícito del usuario.</p>
-        </Card>
-      ) : null}
-
-      {presenterLock ? (
-        <Card className={`demo-lab-card p-5 ${activeSection === "simulate" || activeSection === "mobile" ? "" : "hidden"}`}>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-semibold text-white">Presenter Lock</h3>
-              <p className="mt-1 text-sm text-slate-300">Vista limpia para reunión: solo acciones clave, sin uploads, logs ni controles técnicos.</p>
-            </div>
-            <p className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">Sin ruido técnico</p>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            <button className="rounded-2xl border border-white/10 bg-slate-900 p-5 text-left text-white" onClick={() => runAction(() => call("use-pack", "POST", { pack })).then(() => setReadiness((state) => ({ ...state, packLoaded: true })))} disabled={pending}>
-              <p className="text-lg font-semibold">1. Load pack</p>
-              <p className="mt-2 text-sm text-slate-300">Prepará el vertical elegido y dejá el contexto listo para el pitch.</p>
-            </button>
-            <button className="rounded-2xl border border-emerald-300/30 bg-emerald-500/10 p-5 text-left text-emerald-100" onClick={() => void triggerScenario(selectedScenario)} disabled={pending}>
-              <p className="text-lg font-semibold">2. Run scenario</p>
-              <p className="mt-2 text-sm">Dispará {SCENARIOS.find((scenario) => scenario.eventType === selectedScenario)?.label || "AUTH OK"} en un clic.</p>
-            </button>
-            <a className="rounded-2xl border border-cyan-300/30 bg-cyan-500/10 p-5 text-left text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer" onClick={() => setReadiness((state) => ({ ...state, mobileOpened: true }))}>
-              <p className="text-lg font-semibold">3. Open mobile</p>
-              <p className="mt-2 text-sm">Abrí la experiencia del consumidor sin cambiar de historia ni contexto.</p>
-            </a>
-          </div>
-        </Card>
-      ) : (
-        <>
-          <div className={`grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${activeSection === "simulate" ? "" : "hidden"}`}>
-            <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-white" onClick={() => runAction(() => call("use-pack", "POST", { pack }))} disabled={pending}>Paso 3 · Load demo pack</button>
-            <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-white" onClick={() => runAction(() => call("generate-live-scans", "POST", { count: 10, mode: "mixed" }))} disabled={pending}>Generate live stream</button>
-            <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-white" onClick={() => runAction(() => call("reset", "POST"))} disabled={pending}>Reset demo</button>
-            <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-white" onClick={() => void downloadPackFile("manifest")} disabled={pending}>Download CSV manifest</button>
-            <button className="demo-lab-action rounded-xl border border-white/10 bg-slate-900 p-3 text-white" onClick={() => void downloadPackFile("seed")} disabled={pending}>Download JSON seed</button>
-            <a className="demo-lab-action rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer">Paso 4 · Open mobile preview</a>
-          </div>
-
-          <Card className={`demo-lab-card p-4 ${activeSection === "mobile" ? "" : "hidden"}`}>
-            <h3 className="text-sm font-semibold text-white">Tarjeta local de acceso para demo en celular</h3>
-            <p className="mt-1 text-xs text-slate-400">Para no romper lo que ya funcionaba, mantenemos el link directo como canal principal. Esta tarjeta SVG es un acceso visual local para reuniones sin terceros; no pretende reemplazar un QR estándar enterprise until sumemos un encoder offline dedicado.</p>
-            <div className="mt-3 flex flex-col items-center gap-3 md:flex-row md:items-start">
-              <img src={qrPreviewHref} alt="Local mobile preview access card" className="h-44 w-44 rounded-2xl border border-white/15 bg-white p-3 shadow-[0_12px_40px_rgba(15,23,42,0.35)]" />
-              <div className="text-xs text-slate-300">
-                <p className="break-all rounded-lg border border-white/10 bg-slate-900 p-2">{openMobilePreviewHref}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <a className="inline-block rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100" href={openMobilePreviewHref} target="_blank" rel="noreferrer">Abrir en esta compu</a>
-                  <button type="button" className="rounded-lg border border-white/15 px-3 py-1 text-white" onClick={() => void navigator.clipboard?.writeText(openMobilePreviewHref)}>Copiar link</button>
+          {canShowTechnical && (
+             <div className="rounded-xl border border-white/10 bg-black/50 p-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2 flex items-center justify-between">
+                   <span>Technical Event Log</span>
+                   <span className="text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> live</span>
+                </h3>
+                <div className="h-32 overflow-y-auto font-mono text-[10px] text-emerald-400/70 space-y-1">
+                   {(summary.events || []).slice(0, 8).map((e) => (
+                      <div key={e.id} className="flex gap-2 hover:bg-white/5 px-1 py-0.5 rounded transition-colors">
+                        <span className="text-slate-600 w-16">[{new Date(e.created_at || Date.now()).toLocaleTimeString()}]</span>
+                        <span className={`w-16 font-bold ${e.result === "valid" ? "text-emerald-400" : e.result === "replay_suspect" ? "text-amber-400" : "text-red-400"}`}>{e.result.toUpperCase()}</span>
+                        <span className="text-cyan-300/50 truncate w-32">{e.uid_hex || "no-uid"}</span>
+                        <span className="text-slate-500 ml-auto truncate max-w-[80px]">{e.city || "Unknown"}</span>
+                      </div>
+                   ))}
+                   {(!summary.events || summary.events.length === 0) && (
+                      <div className="text-slate-600 italic">Waiting for events...</div>
+                   )}
                 </div>
-              </div>
-            </div>
+             </div>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN: PREVIEW */}
+        <div className="h-full flex flex-col">
+          <Card className="demo-lab-card border-slate-800 bg-[#0f172a] shadow-2xl overflow-hidden flex-1 flex flex-col relative h-[800px]">
+
+             {/* Header */}
+             <div className="bg-slate-950 px-6 py-4 border-b border-slate-800 flex justify-between items-center z-10 relative">
+                <div>
+                   <h2 className="text-sm font-bold tracking-widest text-white uppercase flex items-center gap-2">
+                     <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                     </span>
+                     Mobile Preview Synced
+                   </h2>
+                   <p className="text-[10px] text-slate-500 mt-1 truncate max-w-sm">Tenant: {summary.tenant?.slug || "demo"} · Pack: {pack}</p>
+                </div>
+                <div className="flex gap-2">
+                   <span className="px-2 py-1 bg-violet-500/20 text-violet-300 text-[10px] font-bold rounded border border-violet-500/30">DEMO MODE</span>
+                </div>
+             </div>
+
+             {/* Interactive Emulated Frame */}
+             <div className="flex-1 bg-slate-900 overflow-y-auto relative p-6 custom-scrollbar flex flex-col items-center justify-center">
+
+                {/* Live Emulation Status Box */}
+                <div className="w-full max-w-[400px] rounded-xl border border-slate-700 bg-slate-800/50 p-5 mb-6 backdrop-blur">
+                   <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-widest mb-4">NFC Scan Emulation</h3>
+                   <div className="w-full bg-slate-900 rounded-full h-2 mb-2">
+                      <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full w-full animate-pulse"></div>
+                   </div>
+                   <p className="text-[10px] text-slate-400 text-right mb-4">Cryptographic handshake 100%</p>
+
+                   <div className="grid grid-cols-3 gap-2 text-center mt-2">
+                      <div className="bg-slate-900/50 rounded-lg p-2 border border-slate-700/50">
+                         <p className="text-[9px] text-slate-500 uppercase">Scan-to-ETA</p>
+                         <p className="text-sm font-bold text-white mt-1">47ms</p>
+                      </div>
+                      <div className="bg-slate-900/50 rounded-lg p-2 border border-slate-700/50">
+                         <p className="text-[9px] text-slate-500 uppercase">Fraud Shield</p>
+                         <p className="text-sm font-bold text-emerald-400 mt-1">Active</p>
+                      </div>
+                      <div className="bg-slate-900/50 rounded-lg p-2 border border-slate-700/50">
+                         <p className="text-[9px] text-slate-500 uppercase">Lead Quality</p>
+                         <p className="text-sm font-bold text-amber-400 mt-1">Pending</p>
+                      </div>
+                   </div>
+                </div>
+
+                {/* Simulated Passport Integration */}
+                <div className="relative w-[375px] h-[750px] rounded-[3rem] border-[10px] border-slate-950 bg-black shadow-2xl overflow-hidden shrink-0">
+                   {/* Hardware Frame UI Details */}
+                   <div className="absolute top-0 inset-x-0 h-6 bg-slate-950 rounded-b-2xl w-40 mx-auto z-50 flex items-center justify-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-800"></div>
+                      <div className="w-10 h-1.5 rounded-full bg-slate-800"></div>
+                   </div>
+                   <div className="absolute top-20 -left-2.5 w-1 h-8 bg-slate-800 rounded-l-md"></div>
+                   <div className="absolute top-36 -left-2.5 w-1 h-12 bg-slate-800 rounded-l-md"></div>
+                   <div className="absolute top-52 -left-2.5 w-1 h-12 bg-slate-800 rounded-l-md"></div>
+                   <div className="absolute top-36 -right-2.5 w-1 h-16 bg-slate-800 rounded-r-md"></div>
+
+                   <iframe
+                      src={openMobilePreviewHref}
+                      className="w-full h-full border-0 bg-black"
+                      title="Mobile Preview"
+                      sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                   />
+                </div>
+             </div>
+
+             {/* Footer Actions */}
+             <div className="bg-slate-950 p-4 border-t border-slate-800 flex justify-between items-center z-10 relative">
+                <div>
+                   <p className="text-xs font-bold text-white">Wine passport</p>
+                   <p className="text-[10px] text-slate-400">Autenticidad + Storytelling enológico + Loyalty</p>
+                </div>
+                <a
+                   href={openMobilePreviewHref}
+                   target="_blank"
+                   rel="noreferrer"
+                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-full border border-slate-700 transition-colors flex items-center gap-2"
+                >
+                   Open in New Tab ↗
+                </a>
+             </div>
+
           </Card>
-
-          <Card className={`demo-lab-card p-4 ${activeSection === "simulate" ? "" : "hidden"}`}>
-            <h3 className="text-sm font-semibold text-white">Simular evento (un clic)</h3>
-            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {SCENARIOS.map((scenario) => (
-                <button key={scenario.eventType} type="button" className={`rounded-xl border p-3 text-left text-xs ${selectedScenario === scenario.eventType ? "border-emerald-300/70 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900 text-slate-200"}`} onClick={() => setSelectedScenario(scenario.eventType)}>
-                  <p className="font-semibold">{scenario.label}</p>
-                  <p className="mt-1 text-[11px] text-slate-300">{scenario.description}</p>
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              <button className="w-full rounded-xl border border-emerald-300/30 bg-emerald-500/10 p-3 text-sm text-emerald-100" onClick={() => void triggerScenario(selectedScenario)} disabled={pending}>Simulate selected scenario</button>
-              <button className="w-full rounded-xl border border-violet-300/30 bg-violet-500/10 p-3 text-sm text-violet-100" onClick={() => void runAuto90SecondsDemo()} disabled={pending}>Auto demo 90s</button>
-            </div>
-          </Card>
-
-          <div className={`grid gap-3 md:grid-cols-2 ${activeSection === "simulate" ? "" : "hidden"}`}>
-            <label className="demo-lab-upload rounded-xl border border-white/10 bg-slate-900 p-3 text-white">CSV manifest uploader
-              <input type="file" accept=".csv,text/csv" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const csv = await readFile(file); await runAction(() => call("upload-manifest", "POST", { bid: activeBatchId, csv })); setReadiness((state) => ({ ...state, manifestLoaded: true })); }} />
-            </label>
-            <label className="demo-lab-upload rounded-xl border border-white/10 bg-slate-900 p-3 text-white">JSON metadata uploader
-              <input type="file" accept=".json,application/json" className="mt-2 block w-full" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const data = JSON.parse(await readFile(file)); await runAction(() => call("upload-products", "POST", { bid: activeBatchId, ...data })); setReadiness((state) => ({ ...state, manifestLoaded: true })); }} />
-            </label>
-          </div>
-        </>
-      )}
-
-      <QuickOnboardingPanel context="demo-lab" />
-
-      <div className={`grid gap-3 md:grid-cols-3 ${activeSection === "ops" ? "" : "hidden"}`}>
-        <Card className="demo-lab-card p-4 text-slate-200">Tenant: <b>{summary.tenant?.name || "-"}</b><br />Slug: {summary.tenant?.slug || "-"}</Card>
-        <Card className="demo-lab-card p-4 text-slate-200">Batch: <b>{summary.batch?.bid || "-"}</b><br />Tags: {summary.tagCount ?? 0}</Card>
-        <Card className="demo-lab-card p-4 text-slate-200">CRM lite<br />Leads: {summary.crm?.leads ?? 0} · Tickets: {summary.crm?.tickets ?? 0} · Orders: {summary.crm?.orders ?? 0}</Card>
+        </div>
       </div>
-
-      <div className={activeSection === "ops" ? "" : "hidden"}>
-        <DemoOpsMap points={points} selectedVertical={activeVertical} selectedPack={pack} />
-      </div>
-
-      <Card className={`demo-lab-card p-4 ${activeSection === "mobile" ? "" : "hidden"}`}>
-        <h3 className="text-sm font-semibold text-white">Mobile preview snapshot</h3>
-        <p className="mt-2 text-slate-300">Estado actual: <b>{latestEvent?.result || "N/A"}</b> · Item: {latestEvent?.product_name || "-"}</p>
-      </Card>
-
-      {canShowTechnical && activeSection === "ops" ? (
-        <Card className="demo-lab-card p-4">
-          <h3 className="text-sm font-semibold text-white">Recent events</h3>
-          <div className="mt-2 space-y-2 text-sm text-slate-300">{(summary.events || []).slice(0, 8).map((event) => <div key={event.id}>{event.result} · {event.product_name || event.uid_hex || "-"} · {event.vertical || "-"} · {event.city || "-"}</div>)}</div>
-        </Card>
-      ) : null}
-
-      {canShowTechnical && activeSection === "ops" ? <pre className="demo-lab-log overflow-auto rounded-xl border border-white/10 bg-slate-950 p-4 text-xs text-cyan-200">{out}</pre> : null}
     </div>
   );
 }

@@ -41,7 +41,7 @@ type SunContract = {
     tamperStatus?: "CLOSED" | "OPENED" | "UNKNOWN" | string;
     tamperReason?: string | null;
   };
-  identity?: { bid?: string | null; uid?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null; eventId?: string | null };
+  identity?: { bid?: string | null; uid?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null; eventId?: string | null; tenantSlug?: string | null };
   product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null };
   provenance?: {
     origin?: string | null;
@@ -95,6 +95,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   const response = await fetch(`${apiBase()}/sun?${query.toString()}`, { cache: "no-store" });
   const result = await response.json().catch(() => ({ ok: false, status: { label: "Invalid response", summary: "No se pudo procesar la respuesta." } })) as SunContract;
+
+  // Proactively fetch loyalty overview if we know the tenant
+  let loyaltyData = null;
+  if (result.ok && result.identity?.tenantSlug) {
+    const memKey = "anonymous"; // using anonymous mode for the public passport
+    loyaltyData = await fetch(`${apiBase()}/mobile/loyalty/overview?tenantSlug=${result.identity.tenantSlug}&memberKey=${memKey}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .catch(() => null);
+  }
 
   const bid = String(result.identity?.bid || params.bid || "");
   const uid = String(result.identity?.uid || "");
@@ -226,12 +235,26 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           <section className="mt-4 rounded-xl border border-indigo-300/30 bg-[radial-gradient(ellipse_at_bottom,rgba(99,102,241,0.15),transparent_60%)] p-4 shadow-lg sm:p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">NexID Rewards</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">{loyaltyData?.program?.name || "NexID Rewards"}</p>
                 <p className="mt-1 text-sm font-medium text-white">Desbloqueá beneficios exclusivos</p>
               </div>
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-200">🎁</span>
             </div>
+
             <p className="mt-2 text-xs text-indigo-100/70">Al verificar este producto ganás acceso a puntos, sorteos y experiencias VIP organizadas por la marca.</p>
+
+            {loyaltyData?.rewards && loyaltyData.rewards.length > 0 ? (
+              <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                {loyaltyData.rewards.map((reward: any) => (
+                  <div key={reward.id} className="w-48 shrink-0 snap-start rounded-xl border border-white/10 bg-slate-900/80 p-3">
+                    <p className="text-xs font-semibold text-white">{reward.title}</p>
+                    <p className="mt-1 text-[10px] text-slate-400 line-clamp-2">{reward.description}</p>
+                    <p className="mt-2 text-xs font-bold text-indigo-300">{reward.points_cost} Pts</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             <div className="mt-4 grid gap-2 md:grid-cols-2">
               <form action={`/api/mobile/passport/${result.identity?.eventId || "latest"}/loyalty/enroll`} method="POST" target="_blank">
                 <button type="submit" className="w-full rounded-lg border border-indigo-300/40 bg-indigo-500/20 px-3 py-2.5 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/30 hover:scale-[1.02] active:scale-95">
@@ -240,7 +263,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </form>
               <form action={`/api/mobile/passport/${result.identity?.eventId || "latest"}/loyalty/claim-tap`} method="POST" target="_blank">
                 <button type="submit" className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10 hover:scale-[1.02] active:scale-95">
-                  Reclamar puntos
+                  Reclamar puntos 🎉
                 </button>
               </form>
             </div>
