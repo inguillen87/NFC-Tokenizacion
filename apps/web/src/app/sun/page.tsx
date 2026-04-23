@@ -41,7 +41,7 @@ type SunContract = {
     tamperStatus?: "CLOSED" | "OPENED" | "UNKNOWN" | string;
     tamperReason?: string | null;
   };
-  identity?: { bid?: string | null; uid?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null };
+  identity?: { bid?: string | null; uid?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null; eventId?: string | null };
   product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null };
   provenance?: {
     origin?: string | null;
@@ -233,12 +233,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
             <p className="mt-2 text-xs text-indigo-100/70">Al verificar este producto ganás acceso a puntos, sorteos y experiencias VIP organizadas por la marca.</p>
             <div className="mt-4 grid gap-2 md:grid-cols-2">
-              <button className="rounded-lg border border-indigo-300/40 bg-indigo-500/20 px-3 py-2.5 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/30">
-                Inscribirme al Club
-              </button>
-              <button className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10">
-                Ver recompensas
-              </button>
+              <form action={`/api/mobile/passport/${result.identity?.eventId || "latest"}/loyalty/enroll`} method="POST" target="_blank">
+                <button type="submit" className="w-full rounded-lg border border-indigo-300/40 bg-indigo-500/20 px-3 py-2.5 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/30 hover:scale-[1.02] active:scale-95">
+                  Inscribirme al Club
+                </button>
+              </form>
+              <form action={`/api/mobile/passport/${result.identity?.eventId || "latest"}/loyalty/claim-tap`} method="POST" target="_blank">
+                <button type="submit" className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10 hover:scale-[1.02] active:scale-95">
+                  Reclamar puntos
+                </button>
+              </form>
             </div>
           </section>
         ) : productState === "REPLAY_SUSPECT" || productState === "VALID_OPENED" || productState === "VALID_MANUAL_OPENED" ? (

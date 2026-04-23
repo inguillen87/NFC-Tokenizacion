@@ -78,7 +78,7 @@ export function CtaActions({ bid, uid }: Props) {
       icon: "✅",
       path: "/api/public-cta/claim-ownership",
       method: "POST",
-      tone: "border-cyan-300/40 bg-cyan-500/10 text-cyan-100",
+      tone: "border-indigo-300/40 bg-indigo-500/10 text-indigo-100 transition hover:bg-indigo-500/20",
     },
     registerWarranty: {
       title: "Registrar garantía",
@@ -86,7 +86,7 @@ export function CtaActions({ bid, uid }: Props) {
       icon: "🛡️",
       path: "/api/public-cta/register-warranty",
       method: "POST",
-      tone: "border-violet-300/40 bg-violet-500/10 text-violet-100",
+      tone: "border-violet-300/40 bg-violet-500/10 text-violet-100 transition hover:bg-violet-500/20",
     },
     provenance: {
       title: "Ver provenance",
@@ -94,7 +94,7 @@ export function CtaActions({ bid, uid }: Props) {
       icon: "📜",
       path: "/api/public-cta/provenance",
       method: "GET",
-      tone: "border-amber-300/40 bg-amber-500/10 text-amber-100",
+      tone: "border-amber-300/40 bg-amber-500/10 text-amber-100 transition hover:bg-amber-500/20",
     },
     report: {
       title: "Reportar problema",
@@ -102,7 +102,7 @@ export function CtaActions({ bid, uid }: Props) {
       icon: "⚠️",
       path: "/api/public-cta/report-problem",
       method: "POST",
-      tone: "border-rose-300/40 bg-rose-500/10 text-rose-100",
+      tone: "border-rose-300/40 bg-rose-500/10 text-rose-100 transition hover:bg-rose-500/20",
     }
   };
 

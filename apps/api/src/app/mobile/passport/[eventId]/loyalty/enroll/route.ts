@@ -1,51 +1,55 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { createHash } from "node:crypto";
+import { sql } from "../../../../../../lib/db";
 import { json } from "../../../../../../lib/http";
-import { getActiveProgram, getOrCreateMember, getTapEvent } from "../../../../../../lib/loyalty-service";
-import { getConsumerFromRequest } from "../../../../../../lib/consumer-auth";
-
-function anonymousMemberKey(req: Request, eventId: string) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "no-ip";
-  const ua = req.headers.get("user-agent") || "no-ua";
-  const seed = `${eventId}:${ip}:${ua}`;
-  return `anon:${createHash("sha256").update(seed).digest("hex").slice(0, 20)}`;
-}
+import { randomUUID } from "node:crypto";
 
 export async function POST(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
-  const { eventId } = await params;
+  const eventId = (await params).eventId;
   const body = await req.json().catch(() => ({}));
-  const event = await getTapEvent(eventId);
-  if (!event) return json({ ok: false, error: "event_not_found" }, 404);
-  const program = await getActiveProgram(event.tenant_id);
-  if (!program) return json({ ok: false, error: "program_not_found" }, 404);
+  const email = String(body.email || "").trim();
+  const phone = String(body.phone || "").trim();
+  const memberKey = String(body.memberKey || req.headers.get("x-forwarded-for") || "anonymous").trim();
 
-  const consumer = await getConsumerFromRequest(req);
-  const memberKey = consumer?.id ? `consumer:${consumer.id}` : anonymousMemberKey(req, eventId);
-  const member = await getOrCreateMember({
-    tenantId: event.tenant_id,
-    programId: program.id,
-    eventId: String(event.id),
-    memberKey,
-    consumerId: consumer?.id || null,
-    locale: body.locale || consumer?.preferred_locale || "es-AR",
-    email: body.email || consumer?.email || null,
-    phone: body.phone || consumer?.phone || null,
-    displayName: body.displayName || consumer?.display_name || null,
-    country: body.country || event.country_code || null,
-  });
+  if (!email && !phone) {
+    return json({ ok: false, reason: "missing_contact" }, 400);
+  }
+
+  // Get the tap event and ensure it's valid
+  const eventRows = await sql`
+    SELECT e.id, e.tenant_id, e.uid_hex, e.result, e.batch_id, t.slug as tenant_slug
+    FROM events e
+    JOIN tenants t ON t.id = e.tenant_id
+    WHERE e.id = ${eventId}
+    LIMIT 1
+  `;
+  const event = eventRows[0];
+  if (!event) return json({ ok: false, reason: "event_not_found" }, 404);
+
+  // Replay, revoked, tampered can't enroll via this flow for security
+  if (["REPLAY_SUSPECT", "INVALID", "TAMPER_RISK", "TAMPER", "REVOKED", "NOT_REGISTERED"].includes(String(event.result).toUpperCase())) {
+    return json({ ok: false, reason: "event_security_blocked" }, 403);
+  }
+
+  const programRows = await sql`
+    SELECT id FROM loyalty_programs WHERE tenant_id = ${event.tenant_id} AND status = 'active' LIMIT 1
+  `;
+  const program = programRows[0];
+  if (!program) return json({ ok: false, reason: "no_active_program" }, 404);
+
+  // Enroll member or update if exists
+  const memberRows = await sql`
+    INSERT INTO loyalty_members (tenant_id, program_id, member_key, email, phone, status, first_tap_at, last_tap_at)
+    VALUES (${event.tenant_id}, ${program.id}, ${memberKey}, ${email || null}, ${phone || null}, 'enrolled', now(), now())
+    ON CONFLICT (program_id, email) DO UPDATE
+    SET status = 'enrolled', last_tap_at = now(), phone = COALESCE(EXCLUDED.phone, loyalty_members.phone)
+    RETURNING id, points_balance, status
+  `;
 
   return json({
     ok: true,
-    member: {
-      id: member.id,
-      status: member.status,
-      email: member.email,
-      phone: member.phone,
-      displayName: member.display_name,
-      pointsBalance: member.points_balance,
-      consent: member.consent_json,
-    },
+    message: "Enrolled successfully",
+    member: memberRows[0]
   });
 }

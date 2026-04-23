@@ -19,13 +19,37 @@ async function adminGet(path: string) {
   }
 }
 
+import { requireDashboardSession } from "../../../lib/session";
+
 export default async function LoyaltyPage() {
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
+  const session = await requireDashboardSession();
+  const isSuperadmin = session.role === "super-admin";
+
+  const portfolio = isSuperadmin ? await adminGet("/superadmin/loyalty/portfolio").then((r) => r.portfolio || []) : [];
 
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.loyalty} title={copy.pages.loyalty.title} description={copy.pages.loyalty.description} />
+
+      {isSuperadmin && portfolio.length > 0 && (
+        <section className="mb-8 rounded-2xl border border-emerald-300/20 bg-slate-900/40 p-5 md:p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-emerald-300">Superadmin: Loyalty Portfolio</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {portfolio.slice(0, 3).map((item: any) => (
+              <div key={item.program_id} className="rounded-xl border border-white/10 bg-slate-950 p-4">
+                <p className="text-sm font-semibold text-white">{item.tenant_name} · {item.program_name}</p>
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                  <span>Miembros: <b className="text-slate-200">{item.enrolled_members}</b></span>
+                  <span>Puntos: <b className="text-slate-200">{item.points_issued}</b></span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="rounded-2xl border border-emerald-300/20 bg-[radial-gradient(circle_at_top,rgba(16,185,129,.15),transparent_40%),#020617] p-5 shadow-[0_24px_70px_rgba(2,6,23,.7)] md:p-6">
         <p className="text-xs uppercase tracking-[0.16em] text-emerald-200">Loyalty Engine Activo</p>
         <p className="mt-2 text-sm text-slate-100">Configurá recompensas, puntos y niveles VIP vinculados a escaneos válidos.</p>
