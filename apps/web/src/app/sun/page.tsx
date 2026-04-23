@@ -16,6 +16,18 @@ const KNOWN_ORIGIN_COORDS: Array<{ match: RegExp; lat: number; lng: number }> = 
   { match: /(patagonia|rio negro)/i, lat: -39.033, lng: -67.583 },
 ];
 
+type ProductState =
+  | "VALID_CLOSED"
+  | "VALID_OPENED"
+  | "VALID_OPENED_PREVIOUSLY"
+  | "VALID_UNKNOWN_TAMPER"
+  | "VALID_MANUAL_OPENED"
+  | "REPLAY_SUSPECT"
+  | "INVALID"
+  | "UNKNOWN_BATCH"
+  | "NOT_REGISTERED"
+  | "NOT_ACTIVE";
+
 type SunContract = {
   ok?: boolean;
   status?: {
