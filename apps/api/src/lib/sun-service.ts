@@ -443,6 +443,8 @@ export async function processSunScan(input: {
     const payloadHex = tamperProfile.ttstatus_source === "enc_decrypted" ? String(res.encPlainHex || "") : String(res.piccPlainHex || "");
     return parseTTStatusFromDecryptedPayload(payloadHex, tamperProfile.ttstatus_offset);
   })();
+  // Backward-compatible alias used by some in-flight branches/deploys.
+  const parsedTTStatus = ttstatusParsed;
   const tamperConfigured = Boolean(
     tagTamperEnabled
     && (tamperProfile.ttstatus_enabled || tamperProfile.tamper_status_enabled)
