@@ -92,9 +92,14 @@ export async function POST(req: Request) {
       ? {
         tamper_status_source: "enc_decrypted",
         tamper_status_offset: candidateOffsets[0].offset,
-        tamper_status_length: 1,
+        tamper_status_length: 2,
         tamper_closed_values: candidateOffsets[0].closed_values,
         tamper_open_values: candidateOffsets[0].opened_values,
+        ttstatus_enabled: true,
+        ttstatus_source: "enc_decrypted",
+        ttstatus_offset: candidateOffsets[0].offset,
+        ttstatus_length: 2,
+        ttstatus_plain_or_encrypted: "encrypted",
       }
       : null,
     recommendation: candidateOffsets.length

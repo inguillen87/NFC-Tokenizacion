@@ -2,6 +2,7 @@ import { sql } from './db';
 import { decryptKey16 } from './keys';
 import { verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
+import { parseTTStatusFromDecryptedPayload } from './ttstatus';
 
 export type ScanContext = {
   ip?: string | null;
@@ -28,11 +29,17 @@ type TamperProfile = {
   tamper_open_values: string[];
   tamper_unknown_policy: "UNKNOWN" | "DO_NOT_DISPLAY";
   tamper_notes: string;
+  ttstatus_enabled: boolean;
+  ttstatus_source: "enc_decrypted" | "picc_data_decrypted" | "none";
+  ttstatus_offset: number | null;
+  ttstatus_length: 2;
+  ttstatus_plain_or_encrypted: "plain" | "encrypted";
+  ttstatus_notes: string | null;
 };
 
 function resolveTamperProfile(raw: unknown): TamperProfile {
   const cfg = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
-  const sourceRaw = String(cfg.tamper_status_source || "none").toLowerCase();
+  const sourceRaw = String(cfg.ttstatus_source || cfg.tamper_status_source || "none").toLowerCase();
   const source = (() => {
     if (sourceRaw === "enc" || sourceRaw === "decrypted_sdm" || sourceRaw === "enc_decrypted") return "enc_decrypted";
     if (sourceRaw === "picc_data" || sourceRaw === "picc_data_decrypted") return "picc_data_decrypted";
@@ -42,13 +49,14 @@ function resolveTamperProfile(raw: unknown): TamperProfile {
   const openedRaw = Array.isArray(cfg.tamper_open_values) ? cfg.tamper_open_values : [];
   const closed = closedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
   const opened = openedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
-  const offsetRaw = Number(cfg.tamper_status_offset);
+  const offsetRaw = Number(cfg.ttstatus_offset ?? cfg.tamper_status_offset);
   const lengthRaw = Number(cfg.tamper_status_length);
   const unknownPolicyRaw = String(cfg.tamper_unknown_policy || "UNKNOWN").toUpperCase();
+  const isTagTamperDefault = /424|tag.?tamper|tt/i.test(String(cfg.chip_model || ""));
   return {
     chip_model: String(cfg.chip_model || "unknown"),
-    tagtamper_enabled: Boolean(cfg.tagtamper_enabled ?? /424|tag.?tamper|tt/i.test(String(cfg.chip_model || ""))),
-    tamper_status_enabled: Boolean(cfg.tamper_status_enabled ?? false),
+    tagtamper_enabled: Boolean(cfg.tagtamper_enabled ?? isTagTamperDefault),
+    tamper_status_enabled: Boolean(cfg.tamper_status_enabled ?? cfg.ttstatus_enabled ?? false),
     tamper_status_source: source,
     tamper_status_offset: Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : null,
     tamper_status_length: Number.isInteger(lengthRaw) && lengthRaw > 0 ? lengthRaw : 1,
@@ -56,6 +64,12 @@ function resolveTamperProfile(raw: unknown): TamperProfile {
     tamper_open_values: opened,
     tamper_unknown_policy: (["UNKNOWN", "DO_NOT_DISPLAY"].includes(unknownPolicyRaw) ? unknownPolicyRaw : "UNKNOWN") as TamperProfile["tamper_unknown_policy"],
     tamper_notes: String(cfg.tamper_notes || cfg.notes || ""),
+    ttstatus_enabled: Boolean(cfg.ttstatus_enabled ?? cfg.tamper_status_enabled ?? false),
+    ttstatus_source: source,
+    ttstatus_offset: Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : null,
+    ttstatus_length: 2,
+    ttstatus_plain_or_encrypted: String(cfg.ttstatus_plain_or_encrypted || "encrypted").toLowerCase() === "plain" ? "plain" : "encrypted",
+    ttstatus_notes: cfg.ttstatus_notes ? String(cfg.ttstatus_notes) : null,
   };
 }
 
@@ -424,14 +438,22 @@ export async function processSunScan(input: {
     }
     return null;
   })();
+  const ttstatusParsed = (() => {
+    if (!tamperProfile.ttstatus_enabled || tamperProfile.ttstatus_source === "none" || tamperProfile.ttstatus_offset == null || !res.ok) return null;
+    const payloadHex = tamperProfile.ttstatus_source === "enc_decrypted" ? String(res.encPlainHex || "") : String(res.piccPlainHex || "");
+    return parseTTStatusFromDecryptedPayload(payloadHex, tamperProfile.ttstatus_offset);
+  })();
   const tamperConfigured = Boolean(
     tagTamperEnabled
-    && tamperProfile.tamper_status_enabled
-    && tamperProfile.tamper_status_source !== "none"
-    && Number.isInteger(tamperProfile.tamper_status_offset),
+    && (tamperProfile.ttstatus_enabled || tamperProfile.tamper_status_enabled)
+    && (tamperProfile.ttstatus_source !== "none" || tamperProfile.tamper_status_source !== "none")
+    && (Number.isInteger(tamperProfile.ttstatus_offset) || Number.isInteger(tamperProfile.tamper_status_offset)),
   );
   const tamperStatus = (() => {
     if (!tagTamperEnabled) return "UNKNOWN" as const;
+    if (ttstatusParsed?.tamper_status === "CLOSED") return "CLOSED" as const;
+    if (ttstatusParsed?.tamper_status === "OPENED") return "OPENED" as const;
+    if (ttstatusParsed?.tamper_status === "OPENED_PREVIOUSLY") return "OPENED_PREVIOUSLY" as const;
     if (tamperConfigured && configuredStatusHex && tamperProfile.tamper_open_values.includes(configuredStatusHex)) return "OPENED" as const;
     if (tamperConfigured && configuredStatusHex && tamperProfile.tamper_closed_values.includes(configuredStatusHex)) return "CLOSED" as const;
     if (!tamperConfigured) return "UNKNOWN" as const;
@@ -463,6 +485,8 @@ export async function processSunScan(input: {
     ? `manual_tamper_opened:${String(manualTamper?.reason || "operator_override")}`
     : tamperStatus === "OPENED"
     ? `tagtamper_opened:${configuredStatusHex || tamperSignal.raw || 'signal'}`
+    : tamperStatus === "OPENED_PREVIOUSLY"
+      ? `tagtamper_opened_previously:${ttstatusParsed?.raw || configuredStatusHex || tamperSignal.raw || 'signal'}`
     : requireTamperEvidence && !tamperConfigured
       ? 'tagtamper_unconfigured'
     : tamperSignal.tamper
@@ -476,6 +500,7 @@ export async function processSunScan(input: {
     if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT" as const;
     if (resolvedTamperStatus === "MANUAL_OPENED") return "VALID_MANUAL_OPENED" as const;
     if (resolvedTamperStatus === "OPENED") return "VALID_OPENED" as const;
+    if (resolvedTamperStatus === "OPENED_PREVIOUSLY") return "VALID_OPENED_PREVIOUSLY" as const;
     if (resolvedTamperStatus === "CLOSED") return "VALID_CLOSED" as const;
     return "VALID_UNKNOWN_TAMPER" as const;
   })();
@@ -516,12 +541,18 @@ export async function processSunScan(input: {
       tamper_status: resolvedTamperStatus,
       tamper_source: tamperSource,
       tamper_raw_value: configuredStatusHex || null,
+      tt_perm_status: ttstatusParsed?.perm || undefined,
+      tt_curr_status: ttstatusParsed?.current || undefined,
+      ttstatus_raw: ttstatusParsed?.raw || undefined,
+      ttstatus_reason: ttstatusParsed?.reason || undefined,
       tamper_reason: manualOpened
         ? "Producto auténtico. Sello marcado como abierto por operador."
         : resolvedTamperStatus === "UNKNOWN"
-        ? "Authenticity confirmed. Tamper status not available for this batch configuration."
+        ? "Authenticity confirmed. Open/closed status is not available for this batch configuration."
         : resolvedTamperStatus === "OPENED"
           ? "Authentic tag, but seal appears opened."
+          : resolvedTamperStatus === "OPENED_PREVIOUSLY"
+            ? "Authenticity confirmed. The seal was opened previously."
           : undefined,
       product_state: productState,
       tag_tamper_config_detected: tagTamperEnabled,
@@ -530,6 +561,12 @@ export async function processSunScan(input: {
       tamper_status_source: tamperProfile.tamper_status_source,
       tamper_status_offset: tamperProfile.tamper_status_offset ?? undefined,
       tamper_status_length: tamperProfile.tamper_status_length ?? undefined,
+      ttstatus_enabled: tamperProfile.ttstatus_enabled,
+      ttstatus_source: tamperProfile.ttstatus_source,
+      ttstatus_offset: tamperProfile.ttstatus_offset ?? undefined,
+      ttstatus_length: tamperProfile.ttstatus_length,
+      ttstatus_plain_or_encrypted: tamperProfile.ttstatus_plain_or_encrypted,
+      ttstatus_notes: tamperProfile.ttstatus_notes || undefined,
       tamper_closed_values: tamperProfile.tamper_closed_values,
       tamper_open_values: tamperProfile.tamper_open_values,
       tamper_unknown_policy: tamperProfile.tamper_unknown_policy,

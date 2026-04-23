@@ -286,15 +286,18 @@ function buildTroubleshooting(reason: string, bid: string) {
   return ['Revisá onboarding del batch.', 'Confirmá UID importado/activo.', 'Auditar eventos y llaves en dashboard.'];
 }
 
-function resolveTrustState(status: string, reason: string, productState?: ProductState | string | null) {
+function resolveTrustState(status: string, reason: string, productState?: string | null) {
   const normalizedStatus = status.toUpperCase();
   const normalizedReason = reason.toLowerCase();
   const normalizedProductState = String(productState || "").toUpperCase();
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay')) {
     return { code: 'REPLAY_SUSPECT', label: 'Replay detectado', summary: 'Payload reutilizado. Pedí nuevo tap físico.', tone: 'warn' as const };
   }
-  if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
-    return { code: 'OPENED', label: 'Producto abierto', summary: 'Producto auténtico, pero el sello fue abierto.', tone: 'warn' as const };
+  if (normalizedProductState === "VALID_OPENED" || normalizedProductState === "TAMPER_RISK" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
+    return { code: 'OPENED', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. Sello abierto.', tone: 'warn' as const };
+  }
+  if (normalizedProductState === "VALID_OPENED_PREVIOUSLY") {
+    return { code: 'OPENED_PREVIOUSLY', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. El sello fue abierto anteriormente.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_MANUAL_OPENED") {
     return { code: 'MANUAL_OPENED', label: 'Apertura registrada', summary: 'Producto auténtico. Sello marcado como abierto por operador.', tone: 'warn' as const };
@@ -306,7 +309,7 @@ function resolveTrustState(status: string, reason: string, productState?: Produc
     return { code: 'TAMPER_RISK', label: 'Riesgo de manipulación', summary: 'Se detectaron señales de posible manipulación.', tone: 'risk' as const };
   }
   if (normalizedProductState === "VALID_CLOSED" || normalizedStatus === 'VALID') {
-    return { code: 'VALID', label: 'Producto auténtico', summary: 'Firma SUN validada correctamente.', tone: 'good' as const };
+    return { code: 'VALID', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. Sello intacto.', tone: 'good' as const };
   }
   return { code: normalizedStatus || 'INVALID', label: 'Validación no concluyente', summary: 'No fue posible confirmar autenticidad final.', tone: 'warn' as const };
 }
@@ -630,9 +633,11 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const authPanelMessage = isReplay
     ? copy.authReplay
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
-      ? "Producto auténtico. Sello abierto."
+      ? "Producto auténtico. Sello marcado como abierto por operador."
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Authentic tag, but seal was opened."
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+        ? "Autenticidad confirmada. El sello fue abierto anteriormente."
       : productState === "VALID_UNKNOWN_TAMPER"
         ? "Authenticity confirmed. Open/closed status is not available for this batch configuration."
         : copy.authOk;
@@ -642,6 +647,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       ? "Commercial state: DEMO_OPENED"
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Commercial state: REVIEW"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+        ? "Commercial state: REVIEW_PREVIOUSLY_OPENED"
       : "Commercial state: OK";
   const riskStateLabel = isReplay
     ? "Risk: replay suspect"
@@ -649,6 +656,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       ? "Risk: manual opened"
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
       ? "Risk: tamper/opened"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+        ? "Risk: opened previously"
       : "Risk: controlled";
   const timeline = contract.provenance.timelineSummary;
   const timelineHtml = timeline.length
