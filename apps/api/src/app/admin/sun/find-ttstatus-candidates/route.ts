@@ -10,14 +10,6 @@ type Body = { closed_urls?: string[]; opened_urls?: string[] };
 type ParsedSun = { bid: string; piccDataHex: string; encHex: string; cmacHex: string; rawQuery: Record<string, string> };
 
 const TT_PATTERNS = new Set(["4343", "4F4F", "4F43", "4949"]);
-const DEFAULT_CLOSED_URLS = [
-  "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=C650B885D7146CE79800AA4475B3983F&enc=D9733A024311EA99DF7AA27E522AFEEB&cmac=E1632E17C28D27DB",
-  "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=05240F98A659A5FE258137FACAB89381&enc=0AC5A52BBFC082B47788BB7344B9D7A2&cmac=33C4649C557F1399",
-];
-const DEFAULT_OPENED_URLS = [
-  "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=63AA1132C2A88A880A9D129C03213CE2&enc=B266D136B436B2EC9B882B5ED893FDFA&cmac=DB5B4652ED29D9F6",
-  "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=A96EDF3F1A8CEDA46D59BC8614423DB7&enc=7F6A23FA69873EAF2FB58F5CC1C46831&cmac=4A3AA7DEB4904D17",
-];
 
 function parseSunUrl(rawUrl: string): ParsedSun {
   const parsed = new URL(rawUrl);
@@ -42,8 +34,18 @@ export async function POST(req: Request) {
   if (auth) return auth;
 
   const body = (await req.json().catch(() => ({}))) as Body;
-  const closedUrls = Array.isArray(body.closed_urls) && body.closed_urls.length ? body.closed_urls.filter(Boolean) : DEFAULT_CLOSED_URLS;
-  const openedUrls = Array.isArray(body.opened_urls) && body.opened_urls.length ? body.opened_urls.filter(Boolean) : DEFAULT_OPENED_URLS;
+  const closedUrls = Array.isArray(body.closed_urls) ? body.closed_urls.filter(Boolean) : [];
+  const openedUrls = Array.isArray(body.opened_urls) ? body.opened_urls.filter(Boolean) : [];
+  if (!closedUrls.length || !openedUrls.length) {
+    return json({
+      ok: false,
+      reason: "closed_urls and opened_urls are required",
+      expected: {
+        closed_urls: ["https://api.nexid.lat/sun?..."],
+        opened_urls: ["https://api.nexid.lat/sun?..."],
+      },
+    }, 400);
+  }
 
   const inspectMany = async (urls: string[], label: string) => Promise.all(urls.map(async (url, index) => {
     const parsed = parseSunUrl(url);
