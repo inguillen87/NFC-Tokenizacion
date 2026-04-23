@@ -1,32 +1,63 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { test } from 'node:test';
+import assert from 'node:assert';
 
-function canAwardForTap({ result, alreadyAwarded, cooldownActive }) {
-  const blocked = new Set(["REPLAY_SUSPECT", "INVALID", "NOT_ACTIVE", "NOT_REGISTERED", "TAMPER", "REVOKED", "BROKEN"]);
-  if (blocked.has(String(result || "").toUpperCase())) return false;
-  if (alreadyAwarded) return false;
-  if (cooldownActive) return false;
-  return true;
-}
+test('Loyalty rules block idempotencyKey duplicates', async () => {
+  const events = [];
+  const awardPoints = async (input) => {
+    if (events.includes(input.idempotencyKey)) {
+      return { awarded: false, duplicate: true };
+    }
+    events.push(input.idempotencyKey);
+    return { awarded: true, duplicate: false, entry: { delta: input.delta } };
+  };
 
-function redeemOutcome({ pointsBalance, pointsCost, stockRemaining }) {
-  if (pointsBalance < pointsCost) return "insufficient_points";
-  if (stockRemaining !== null && stockRemaining <= 0) return "out_of_stock";
-  return "ok";
-}
+  const firstCall = await awardPoints({ delta: 10, idempotencyKey: 'tap_123' });
+  const secondCall = await awardPoints({ delta: 10, idempotencyKey: 'tap_123' });
 
-test("valid tap awards points once", () => {
-  const first = canAwardForTap({ result: "VALID", alreadyAwarded: false, cooldownActive: false });
-  const second = canAwardForTap({ result: "VALID", alreadyAwarded: true, cooldownActive: false });
-  assert.equal(first, true);
-  assert.equal(second, false);
+  assert.strictEqual(firstCall.awarded, true);
+  assert.strictEqual(secondCall.awarded, false);
+  assert.strictEqual(secondCall.duplicate, true);
 });
 
-test("replay tap awards zero points", () => {
-  assert.equal(canAwardForTap({ result: "REPLAY_SUSPECT", alreadyAwarded: false, cooldownActive: false }), false);
+test('Reward redemption fails if points insufficient', () => {
+  const memberPoints = 50;
+  const rewardCost = 100;
+
+  const redeemReward = (balance, cost) => {
+    if (balance < cost) return { ok: false, reason: "insufficient_points" };
+    return { ok: true, balanceAfter: balance - cost };
+  };
+
+  const result = redeemReward(memberPoints, rewardCost);
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, "insufficient_points");
 });
 
-test("reward redemption deduct path blocks stock below zero", () => {
-  assert.equal(redeemOutcome({ pointsBalance: 100, pointsCost: 50, stockRemaining: 0 }), "out_of_stock");
-  assert.equal(redeemOutcome({ pointsBalance: 100, pointsCost: 50, stockRemaining: 3 }), "ok");
+test('Reward redemption fails if stock is depleted', () => {
+  const reward = { cost: 50, stock: 0 };
+  const memberPoints = 100;
+
+  const redeemReward = (balance, r) => {
+    if (balance < r.cost) return { ok: false, reason: "insufficient_points" };
+    if (r.stock <= 0) return { ok: false, reason: "out_of_stock" };
+    return { ok: true, balanceAfter: balance - r.cost };
+  };
+
+  const result = redeemReward(memberPoints, reward);
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, "out_of_stock");
+});
+
+test('Age gate blocks alcohol rewards', () => {
+  const ageGatePassed = false;
+  const rewardIsAlcohol = true;
+
+  const checkEligibility = (ageOk, isAlcohol) => {
+    if (isAlcohol && !ageOk) return { ok: false, reason: "age_verification_required" };
+    return { ok: true };
+  }
+
+  const result = checkEligibility(ageGatePassed, rewardIsAlcohol);
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, "age_verification_required");
 });
