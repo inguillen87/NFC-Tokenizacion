@@ -301,7 +301,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[70] w-[360px] max-w-[calc(100vw-1.5rem)]">
+    <div className="fixed bottom-[6.8rem] right-3 z-[38] w-[calc(100vw-1.5rem)] md:bottom-4 md:right-4 md:z-[70] md:w-[360px] md:max-w-[calc(100vw-1.5rem)]">
       {open ? (
         <div className="sales-widget-panel rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
@@ -315,7 +315,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
             </div>
           </div>
 
-          <div className="max-h-[42vh] space-y-2 overflow-y-auto p-3">
+          <div className="max-h-[46vh] space-y-2 overflow-y-auto p-3 md:max-h-[42vh]">
             {messages.length <= 1 ? (
               <div className="space-y-3">
                 <div>
@@ -387,7 +387,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
 
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="helpbot-toggle sales-widget-toggle ml-auto inline-flex min-h-12 items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm font-semibold text-cyan-200 shadow-[0_0_24px_rgba(47,225,195,.24)]"
+        className="helpbot-toggle sales-widget-toggle ml-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm font-semibold text-cyan-200 shadow-[0_0_24px_rgba(47,225,195,.24)]"
       >
         <span aria-hidden>💬</span>
         <span>{open ? t.toggleClose : t.toggleOpen}</span>

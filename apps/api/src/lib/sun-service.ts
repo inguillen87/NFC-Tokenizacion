@@ -487,6 +487,14 @@ export async function processSunScan(input: {
   })();
   const authStatus = !res.ok
     ? 'INVALID'
+    : parsedTTStatus?.product_state === "VALID_OPENED" || parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
+      ? 'OPENED'
+    : parsedTTStatus?.product_state === "TAMPER_RISK"
+      ? 'TAMPER_RISK'
+    : tamperSignal.opened
+      ? 'OPENED'
+      : tamperSignal.tamper
+        ? 'TAMPER_RISK'
     : replaySuspect
       ? 'REPLAY_SUSPECT'
       : !allowlisted
