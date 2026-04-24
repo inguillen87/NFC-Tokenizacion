@@ -109,8 +109,8 @@ function DashboardShellInner({
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white lg:flex">
-      <aside className="w-full border-b border-white/10 bg-slate-950/90 p-4 lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r lg:p-5">
+    <div className="min-h-screen bg-slate-950 text-white lg:flex overflow-hidden">
+      <aside className="w-full border-b border-white/10 bg-slate-950/90 p-4 lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r lg:p-5 overflow-y-auto lg:h-screen custom-scrollbar">
         <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-white">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={30} variant="ripple" theme="dark" /></Link>
           <div className="mt-3 text-sm font-semibold">{title}</div>
@@ -139,7 +139,45 @@ function DashboardShellInner({
           <Link href="/onboarding" className={`block rounded-xl px-3 py-2 text-sm transition ${pathname.startsWith("/onboarding") ? "bg-white/10 text-white" : "text-cyan-200 hover:bg-cyan-500/10 hover:text-cyan-100"}`}>
             Onboarding
           </Link>
-          {items.map((item) => (
+
+          {currentRole === "super-admin" ? (
+             <div className="mb-4">
+                <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Global Network</p>
+                <Link href="/superadmin-network" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-cyan-300 hover:bg-white/5 hover:text-cyan-200 transition">
+                  Consumer Network
+                </Link>
+             </div>
+          ) : null}
+          {currentRole === "tenant-admin" || currentRole === "super-admin" ? (
+            <div className="mb-4">
+               <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2 mt-4">Loyalty & Network</p>
+               <Link href="/loyalty/overview" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition">
+                 Loyalty Studio
+               </Link>
+               <Link href="/consumer-network/overview" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition">
+                 Portal de Usuarios
+               </Link>
+               <Link href="/loyalty/rewards" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition">
+                 Catálogo Beneficios
+               </Link>
+               <Link href="/loyalty/experiences" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition">
+                 Experiencias & Eventos
+               </Link>
+               <Link href="/loyalty/campaigns" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition">
+                 Growth & BotIA
+               </Link>
+               <Link href="/consumer-network/marketplace" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-violet-300 hover:bg-white/5 hover:text-violet-200 transition mt-2">
+                 Marketplace Opt-in
+               </Link>
+               <Link href="/consumer-network/offers" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition">
+                 Ofertas & Drops
+               </Link>
+               <Link href="/consumer-network/order-requests" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition">
+                 Order Requests
+               </Link>
+            </div>
+          ) : null}
+{items.map((item) => (
             <Link key={item.href} href={item.href} className={`block rounded-xl px-3 py-2 text-sm transition ${pathname === item.href ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
               {item.label}
             </Link>
