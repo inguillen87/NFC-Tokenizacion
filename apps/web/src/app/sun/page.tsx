@@ -211,7 +211,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
 
   return (
-    <main className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center py-6 px-4 font-sans relative overflow-hidden">
+    <main className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center py-6 px-4 font-sans relative overflow-hidden pb-safe pb-12">
       {/* Dynamic Background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
 
