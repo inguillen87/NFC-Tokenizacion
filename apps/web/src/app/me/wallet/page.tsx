@@ -1,6 +1,11 @@
+import { fetchConsumerPath } from "../_components/consumer-api";
 import { PortalShell } from "../_components/portal-shell";
 
-export default function WalletLedgerPage() {
+type WalletPayload = { balance_points?: number; memberships?: number; saved_products?: number; trust_score?: number };
+
+export default async function WalletLedgerPage() {
+  const wallet = (await fetchConsumerPath("wallet")) as WalletPayload | null;
+
   return (
     <PortalShell
       title="Billetera de Puntos"
@@ -14,7 +19,6 @@ export default function WalletLedgerPage() {
                <h2 className="text-lg font-bold text-white">Movimientos Recientes</h2>
                <select className="bg-slate-900 border border-slate-700 text-xs text-white rounded-lg px-2 py-1">
                   <option>Todas las marcas</option>
-                  <option>Demo Bodega</option>
                </select>
             </div>
 
@@ -30,37 +34,7 @@ export default function WalletLedgerPage() {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                      <tr className="hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3 text-xs text-slate-400">Hoy, 14:20</td>
-                        <td className="px-4 py-3">
-                           <p className="font-bold text-white">Tap Auténtico</p>
-                           <p className="text-[10px] text-slate-500">Gran Reserva Malbec</p>
-                        </td>
-                        <td className="px-4 py-3 text-xs">Demo Bodega</td>
-                        <td className="px-4 py-3 text-right">
-                           <span className="font-bold text-emerald-400">+10</span>
-                        </td>
-                     </tr>
-                     <tr className="hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3 text-xs text-slate-400">Ayer, 10:15</td>
-                        <td className="px-4 py-3">
-                           <p className="font-bold text-white">Canje de Experiencia</p>
-                           <p className="text-[10px] text-slate-500">Visita & Degustación</p>
-                        </td>
-                        <td className="px-4 py-3 text-xs">Demo Bodega</td>
-                        <td className="px-4 py-3 text-right">
-                           <span className="font-bold text-rose-400">-300</span>
-                        </td>
-                     </tr>
-                     <tr className="hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3 text-xs text-slate-400">12 Feb 2026</td>
-                        <td className="px-4 py-3">
-                           <p className="font-bold text-white">Badge Desbloqueado</p>
-                           <p className="text-[10px] text-slate-500">Primer Tap (Bono Bienvenida)</p>
-                        </td>
-                        <td className="px-4 py-3 text-xs">Demo Bodega</td>
-                        <td className="px-4 py-3 text-right">
-                           <span className="font-bold text-emerald-400">+50</span>
-                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-400" colSpan={4} align="center">No hay movimientos recientes.</td>
                      </tr>
                   </tbody>
                </table>
@@ -73,18 +47,10 @@ export default function WalletLedgerPage() {
 
             <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs">🍷</div>
-                  <p className="text-sm font-bold text-white">Demo Bodega</p>
+                  <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs">⭐</div>
+                  <p className="text-sm font-bold text-white">Consolidado</p>
                </div>
-               <p className="text-2xl font-bold text-white">450 <span className="text-xs text-slate-500">pts</span></p>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 opacity-50">
-               <div className="flex items-center gap-3 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs">✨</div>
-                  <p className="text-sm font-bold text-white">Demo Beauty</p>
-               </div>
-               <p className="text-2xl font-bold text-white">0 <span className="text-xs text-slate-500">pts</span></p>
+               <p className="text-2xl font-bold text-white">{wallet?.balance_points || 0} <span className="text-xs text-slate-500">pts</span></p>
             </div>
 
             <div className="mt-6 p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 text-center">
