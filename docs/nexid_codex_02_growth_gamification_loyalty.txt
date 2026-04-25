@@ -1,0 +1,1324 @@
+NEXID CODEX 02 — GROWTH / GAMIFICATION / LOYALTY / EXPERIENCES
+
+Repository: inguillen87/NFC-Tokenizacion
+Target platform: nexid.lat / api.nexid.lat
+Codex type: ADDENDUM 2
+
+COPY-PASTE THIS ENTIRE PROMPT INTO CODEX AFTER CODEX 01.
+
+This addendum extends NEXID CODEX 01 — ENTERPRISE LIVE OPS / SAAS CORE / ADMIN / SUPERADMIN.
+Keep every requirement from Codex 01.
+Do not replace the live tap pipeline, /sun, SUN/SDM validation, tenant admin, superadmin CRM, BotIA, analytics or heatmaps.
+
+PRIMARY OBJECTIVE
+Turn every valid NFC tap into a loyalty, storytelling, CRM and repeat-purchase moment.
+
+nexID must not be “just anti-counterfeit”. It must become:
+1. Authentication.
+2. Digital Product Passport.
+3. Consumer loyalty engine.
+4. Experience booking layer.
+5. Winery / brand CRM.
+6. Gamified data capture.
+7. AI-powered campaign generator.
+8. Reseller-ready SaaS module for wineries, premium events, perfumes, cosmetics, luxury goods and retailers.
+
+This must work especially well for:
+- Mendoza wineries
+- Argentine wineries
+- LATAM premium brands
+- Premium events
+- Perfumes
+- Cosmetics and creams
+- Luxury retail
+- Export brands selling in Europe, US, Brazil, Chile, Uruguay, Mexico and global markets
+
+Do not build generic gamification. Build a serious, enterprise-ready growth module that a winery, event producer, perfume brand or premium retailer would actually pay for.
+
+NON-NEGOTIABLE RULES
+1. Loyalty must be tied to verified product events.
+   - Valid tap can unlock points, badges, quests, rewards and experiences.
+   - Replay, revoked, broken, tampered or invalid taps must never grant points.
+   - Suspicious taps can create “report problem” flow, ticket, risk alert and CRM event.
+
+2. No fake rewards.
+   - Every reward must have a real state: available, locked, claimed, redeemed, expired, out_of_stock, cancelled.
+   - Demo mode may use simulated rewards, but UI must clearly mark demo/simulated.
+
+3. No dark patterns.
+   - Do not trick users into sharing data.
+   - Quizzes and profile data capture must be transparent and opt-in.
+   - Consent must be stored and revocable.
+
+4. Alcohol-sensitive verticals.
+   - For wine/alcohol experiences, implement optional age gate.
+   - Rewards for alcohol must be configurable by tenant and region.
+   - Avoid gambling or chance-based mechanics.
+   - Do not implement lottery/raffle mechanics unless explicitly enabled and legally configured.
+
+5. Privacy.
+   - Store consumer profile data minimally.
+   - Location must be approximate by default.
+   - Exact location requires explicit permission.
+   - Public mobile UX must not expose sensitive anti-fraud internals.
+
+6. Multi-tenant.
+   - A tenant owns its own loyalty programs, rewards, campaigns, consumer segments and analytics.
+   - Superadmin can view portfolio-level benchmarks but must respect tenant boundaries.
+   - Resellers can manage assigned tenants only.
+
+7. Internationalization.
+   - Default: es-AR.
+   - Also support pt-BR and en.
+   - Avoid hardcoded strings. Use existing i18n if present.
+
+PHASE 0 — REPO AUDIT FOR GROWTH MODULE
+Before coding, inspect current repo for:
+- /sun mobile passport UI
+- product passport data model
+- tenant admin pages
+- superadmin CRM pages
+- lead/ticket/order models
+- assistant/BotIA routes
+- event writing service
+- existing DB/ORM schema
+- existing i18n
+- existing UI package/components
+- existing PWA/service worker setup
+- existing email/WhatsApp/export integrations if any
+
+Run:
+- npm install if needed
+- npm run build
+- npm run lint if present
+- npm test if present
+
+Record baseline before changes.
+Do not continue if existing SUN/SDM validation cannot be located. Return blocker with exact searched paths.
+
+PHASE 1 — NEW DOMAIN MODEL: LOYALTY / GAMIFICATION / EXPERIENCES
+Use the existing ORM and migration system. Do not switch ORM.
+Add or extend these entities. If similar models already exist, map carefully and avoid duplicates.
+
+LoyaltyProgram:
+- id
+- tenantId
+- name
+- vertical: winery | events | perfume | cosmetics | luxury | retail | agro | other
+- status: draft | active | paused | archived
+- mode: demo | production
+- pointsName
+- defaultLocale
+- ageGateRequired boolean
+- allowFamilyPooling boolean
+- allowReferrals boolean
+- allowExperienceBooking boolean
+- allowDigitalCollectibles boolean
+- startAt
+- endAt nullable
+- rulesJson
+- createdAt
+- updatedAt
+
+LoyaltyMember:
+- id
+- tenantId
+- programId
+- consumerId nullable
+- email nullable
+- phone nullable
+- displayName nullable
+- country
+- preferredLocale
+- status: anonymous | enrolled | verified | blocked | deleted
+- tierId nullable
+- pointsBalance
+- lifetimePoints
+- firstTapAt
+- lastTapAt
+- consentJson
+- profileJson
+- createdAt
+- updatedAt
+
+LoyaltyAccount:
+- id
+- tenantId
+- programId
+- ownerMemberId
+- type: individual | family | group | corporate
+- name
+- status: active | blocked | archived
+- createdAt
+- updatedAt
+
+LoyaltyAccountMember:
+- id
+- accountId
+- memberId
+- role: owner | member | viewer
+- joinedAt
+
+LoyaltyTier:
+- id
+- tenantId
+- programId
+- name
+- rank
+- minPoints
+- minVerifiedTaps
+- benefitsJson
+- badgeIcon
+- colorToken
+- createdAt
+- updatedAt
+
+PointsLedger:
+- id
+- tenantId
+- programId
+- memberId
+- accountId nullable
+- tapEventId nullable
+- source:
+  TAP_VALID
+  PROVENANCE_VIEWED
+  OWNERSHIP_ACTIVATED
+  WARRANTY_REGISTERED
+  QUIZ_COMPLETED
+  EXPERIENCE_ATTENDED
+  REFERRAL_SIGNUP
+  REWARD_REDEEMED
+  ADMIN_ADJUSTMENT
+  FRAUD_REVERSAL
+  EXPIRATION
+- delta
+- balanceAfter
+- idempotencyKey
+- reason
+- metadataJson
+- createdAt
+
+Badge:
+- id
+- tenantId
+- programId
+- code
+- name
+- description
+- icon
+- rarity: common | rare | epic | legendary
+- vertical
+- criteriaJson
+- active
+- createdAt
+- updatedAt
+
+MemberBadge:
+- id
+- tenantId
+- programId
+- memberId
+- badgeId
+- tapEventId nullable
+- earnedAt
+- metadataJson
+
+Challenge:
+- id
+- tenantId
+- programId
+- code
+- title
+- description
+- type:
+  TAP_STREAK
+  PROVENANCE_EXPLORER
+  TERROIR_QUIZ
+  WINERY_VISIT
+  EVENT_ATTENDANCE
+  PRODUCT_COLLECTION
+  REFILL_REMINDER
+  REVIEW_SUBMISSION
+  REFERRAL
+  SEASONAL
+  SUSTAINABILITY
+- status: draft | active | paused | archived
+- startsAt
+- endsAt nullable
+- targetJson
+- rewardJson
+- segmentJson
+- createdAt
+- updatedAt
+
+ChallengeProgress:
+- id
+- challengeId
+- memberId
+- progress
+- target
+- status: not_started | in_progress | completed | claimed | expired
+- lastEventAt
+- completedAt nullable
+- claimedAt nullable
+- metadataJson
+
+Reward:
+- id
+- tenantId
+- programId
+- code
+- title
+- description
+- type:
+  DISCOUNT
+  EXPERIENCE
+  TASTING
+  TOUR
+  FREE_SHIPPING
+  EARLY_ACCESS
+  DIGITAL_COLLECTIBLE
+  CONTENT_UNLOCK
+  GIFT
+  SERVICE
+  WARRANTY_EXTENSION
+  REFILL
+  VIP_ACCESS
+  WINE_BOTTLE
+  WINE_BOX
+- status: draft | active | paused | archived
+- pointsCost
+- stockTotal nullable
+- stockRemaining nullable
+- startsAt
+- endsAt nullable
+- redemptionLimitPerMember nullable
+- eligibilityJson
+- fulfillmentJson
+- imageUrl nullable
+- createdAt
+- updatedAt
+
+RewardRedemption:
+- id
+- tenantId
+- programId
+- rewardId
+- memberId
+- accountId nullable
+- status: pending | confirmed | fulfilled | cancelled | expired | reversed
+- pointsSpent
+- redemptionCode
+- qrPayloadHash nullable
+- fulfilledAt nullable
+- expiresAt nullable
+- metadataJson
+- createdAt
+- updatedAt
+
+Experience:
+- id
+- tenantId
+- programId
+- title
+- description
+- vertical
+- type:
+  WINERY_TOUR
+  TASTING
+  HARVEST_DAY
+  DINNER_PAIRING
+  MASTERCLASS
+  EVENT_BACKSTAGE
+  PERFUME_WORKSHOP
+  COSMETICS_CONSULTATION
+  VIP_RETAIL
+  SUSTAINABILITY_VISIT
+- locationName
+- address
+- city
+- province
+- country
+- lat
+- lng
+- capacity
+- startsAt
+- endsAt
+- bookingPolicyJson
+- rewardId nullable
+- status: draft | active | sold_out | cancelled | archived
+- createdAt
+- updatedAt
+
+ExperienceBooking:
+- id
+- tenantId
+- programId
+- experienceId
+- memberId
+- status: requested | confirmed | checked_in | cancelled | no_show
+- checkInTapEventId nullable
+- bookingCode
+- guestsCount
+- metadataJson
+- createdAt
+- updatedAt
+
+Referral:
+- id
+- tenantId
+- programId
+- referrerMemberId
+- referredMemberId nullable
+- code
+- status: created | clicked | signed_up | qualified | rewarded | expired | blocked
+- sourceTapEventId nullable
+- metadataJson
+- createdAt
+- updatedAt
+
+ConsumerQuiz:
+- id
+- tenantId
+- programId
+- code
+- title
+- description
+- type:
+  TASTE_PROFILE
+  TERROIR_TRIVIA
+  PRODUCT_ROUTINE
+  FRAGRANCE_PROFILE
+  SKIN_PROFILE
+  EVENT_PREFERENCES
+  SUSTAINABILITY
+- questionsJson
+- rewardJson
+- active
+- createdAt
+- updatedAt
+
+QuizSubmission:
+- id
+- tenantId
+- programId
+- quizId
+- memberId
+- tapEventId nullable
+- answersJson
+- score nullable
+- profileInsightsJson
+- pointsAwarded
+- createdAt
+
+Campaign:
+- id
+- tenantId
+- programId
+- name
+- objective:
+  REPEAT_PURCHASE
+  VISIT_WINERY
+  COLLECT_PRODUCTS
+  RETAIN_CUSTOMERS
+  GENERATE_LEADS
+  EXPORT_MARKET
+  EVENT_ENGAGEMENT
+  REFILL
+  WARRANTY
+  COMMUNITY
+- status: draft | active | paused | completed | archived
+- segmentJson
+- messageJson
+- triggerJson
+- rewardsJson
+- startsAt
+- endsAt nullable
+- createdAt
+- updatedAt
+
+CampaignEvent:
+- id
+- campaignId
+- memberId nullable
+- tapEventId nullable
+- type: eligible | shown | clicked | joined | completed | rewarded | converted | dismissed
+- metadataJson
+- createdAt
+
+DigitalCollectible:
+- id
+- tenantId
+- programId
+- memberId
+- tapEventId nullable
+- code
+- title
+- description
+- imageUrl
+- rarity
+- status: earned | minted_simulated | minted_onchain | revoked
+- network nullable
+- txHash nullable
+- tokenId nullable
+- metadataJson
+- createdAt
+
+PHASE 2 — CORE LOYALTY ENGINE
+Implement a single service layer for loyalty.
+Suggested files:
+- packages/domain/src/loyalty/*
+- apps/api/src/services/loyalty/*
+- or existing equivalent
+
+Required services:
+
+1. evaluateLoyaltyForTap(input)
+Called after every tap event is recorded.
+Input:
+- tapEvent
+- validationResult
+- tenant
+- tag
+- productPassport
+- loyaltyProgram
+
+Rules:
+- valid tap may award points and update challenge progress.
+- replay/tampered/revoked/broken/invalid must not award points.
+- repeated valid taps from same member + same tag within cooldown must not farm points.
+- anonymous visitors can see locked rewards but must enroll to claim.
+- every award must use idempotencyKey.
+
+2. awardPoints(input)
+- creates PointsLedger row
+- updates LoyaltyMember.pointsBalance and lifetimePoints
+- supports positive and negative deltas
+- prevents duplicate award for same idempotencyKey
+
+3. evaluateBadges(input)
+- checks Badge criteria
+- creates MemberBadge if not already earned
+
+4. evaluateChallenges(input)
+- updates ChallengeProgress
+- marks completed
+- allows claim
+
+5. redeemReward(input)
+- validates member eligibility
+- validates stock
+- validates points balance
+- deducts points through ledger
+- creates RewardRedemption
+- returns redemption code
+
+6. checkTierUpgrade(input)
+- upgrades member tier based on lifetimePoints, valid taps and rules
+- emits event / audit log
+
+7. createReferral(input)
+- generates unique referral code
+- attributes signups to referrer
+- awards only after qualification event
+
+8. bookExperience(input)
+- validates capacity
+- creates booking
+- can be paid/points/free depending policy
+- supports check-in via valid NFC tap
+
+9. generatePersonalizedRecommendations(input)
+- if AI provider exists: use scoped tenant data
+- if no AI provider: deterministic rule-based fallback
+- must not hallucinate rewards or offers
+
+10. loyaltyFraudGuard(input)
+Detects:
+- replay trying to claim points
+- too many taps in short period
+- same eventId used multiple times
+- impossible geo velocity
+- same IP/device farming many accounts
+- redemption abuse
+Blocks/reverses points where appropriate and creates admin alert.
+
+PHASE 3 — VERTICAL PROGRAM TEMPLATES
+Create reusable templates stored as seed data/config and surfaced in admin.
+
+1. Winery / Bodega Mendoza Template — “Club Terroir”
+Purpose: Turn a bottle into a story, club membership and winery visit funnel.
+
+Features:
+- Valid tap unlocks “Pasaporte del Vino”.
+- Points name: “Uvas” or configurable.
+- Tiers:
+  - Explorador
+  - Amigo de la Bodega
+  - Coleccionista
+  - Embajador
+- Badges:
+  - Primer Tap Auténtico
+  - Malbec Lover
+  - Valle de Uco Explorer
+  - Gran Reserva Collector
+  - Vendimia Insider
+  - Maridaje Perfecto
+  - Visitó la Bodega
+  - Comprador Recurrente
+  - Embajador Mendoza
+- Challenges:
+  - Ver provenance completo
+  - Completar quiz de terroir
+  - Escanear 3 botellas distintas
+  - Reservar degustación
+  - Compartir pasaporte
+  - Registrar ownership
+  - Registrar garantía
+  - Check-in en bodega
+  - Visitar durante Vendimia
+- Rewards:
+  - 10% off próxima compra
+  - Upgrade de degustación
+  - Copa de bienvenida
+  - Tour de barrica
+  - Acceso preventa añada nueva
+  - Invitación a evento de vendimia
+  - Maridaje recomendado
+  - Envío bonificado
+  - Certificado digital de colección
+  - Vino individual
+  - Caja de vino
+- Experience booking:
+  - Degustación
+  - Tour finca
+  - Cena maridaje
+  - Día de cosecha
+  - Masterclass de Malbec
+- AI storytelling:
+  - Generate tasting note
+  - Translate to English/Portuguese
+  - Suggest pairing
+  - Explain terroir in consumer-friendly language
+- Admin metrics:
+  - tap -> provenance -> ownership -> visit booking -> purchase intent
+  - top regions
+  - tourists by country
+  - repeat tappers
+  - reward redemption rate
+  - referral conversion
+
+2. Premium Event Template — “Fan Passport”
+Purpose: Turn NFC ticket/wristband/merch into fan engagement.
+Features:
+- Valid tap unlocks event passport
+- Check-in badge
+- Digital memory after event
+- Sponsor quests
+- VIP content
+- Backstage unlock if eligible
+- Loyalty points for attendance, content views, sponsor activations and referrals
+- Event map and schedule
+- Post-event collectible
+Rewards:
+- early access
+- merch discount
+- VIP upgrade
+- food/drink voucher if tenant config allows
+- next-event presale
+Metrics:
+- check-ins
+- sponsor engagement
+- heatmap by venue zones
+- retention to next event
+
+3. Perfume Template — “Scent Passport”
+Purpose: Authenticate fragrance and create refill/repeat purchase loop.
+Features:
+- Valid tap authenticates bottle
+- Fragrance story
+- Ingredient/transparency layer
+- Fragrance profile quiz
+- Refill reminder
+- Badge collection by scent family
+Rewards:
+- refill discount
+- sample discovery
+- early access to new scent
+- gift wrapping
+- private launch event
+Metrics:
+- authenticity taps
+- ownership rate
+- refill intent
+- scent family preference
+- retailer leakage / gray market geography
+
+4. Cosmetics / Creams Template — “Beauty Routine Passport”
+Purpose: Authenticity, routine guidance, refill timing, quiz-based personalization.
+Features:
+- Valid tap authenticates product
+- Skin/routine profile quiz
+- Usage tips
+- Refill timer
+- Batch and expiry info
+- Before/after UGC optional
+Rewards:
+- refill discount
+- consultation
+- routine bundle
+- sample
+- VIP launch access
+
+5. Luxury / Premium Retail Template — “Authenticity Club”
+Purpose: Product authenticity, ownership, care, warranty, resale readiness.
+Features:
+- Valid tap authenticates item
+- Ownership transfer
+- Warranty
+- Care instructions
+- Sustainability/product passport data
+- Resale-ready authenticity proof
+Rewards:
+- care service
+- warranty extension
+- VIP event
+- private drop access
+- repair/refurbishment credit
+
+PHASE 4 — MOBILE CONSUMER UX: LOYALTY MINI-APP INSIDE /SUN
+Do not create a separate app first. The NFC tap experience must become a mini-app.
+
+After valid authentication, show:
+1. Product hero:
+- authenticity verdict
+- product story
+- provenance
+- product metadata
+- owner/warranty status
+- trust score
+
+2. Loyalty module:
+- join/enroll CTA
+- current points
+- tier progress
+- next reward
+- active quest
+- earned badges
+- reward carousel
+- experience booking CTA
+- referral/share CTA
+
+3. Gamified progression:
+- progress ring toward next tier
+- badge wall
+- quests with clear steps
+- complete profile quiz
+- unlock pairing for wine
+- unlock refill reminder for perfume/cosmetics
+- unlock event memory for events
+
+4. Mobile actions:
+- Enrolarme al club
+- Ver mis puntos
+- Reclamar recompensa
+- Reservar experiencia
+- Completar quiz
+- Compartir pasaporte
+- Invitar amigo
+- Ver mis badges
+- Reportar problema
+- Configurar idioma
+- Gestionar privacidad
+
+5. Replay / revoked / tampered behavior:
+- Do not show rewards as claimable.
+- Show “No podés sumar puntos con este tap por seguridad”.
+- Keep “Reportar problema” enabled.
+- Keep product education content available only if safe.
+- Log attempted reward abuse.
+
+6. UX polish:
+- micro-animations
+- confetti only for real achievements, not every tap
+- skeleton loaders
+- haptic-like visual feedback
+- premium cards
+- dark/light mode
+- accessible focus states
+- responsive to small phones
+
+PHASE 5 — ADMIN UX: LOYALTY STUDIO
+Add a tenant admin module called “Loyalty Studio” or “Fidelización”.
+
+Left menu:
+- Resumen
+- Lotes
+- Tags
+- Analítica
+- Eventos
+- Leads & Tickets
+- Fidelización
+- Experiencias
+- Campañas
+- Suscripciones
+- API Keys
+- MFA
+
+Loyalty Studio pages:
+
+1. Overview:
+- active program
+- enrolled members
+- anonymous tappers
+- points issued
+- points redeemed
+- active rewards
+- active challenges
+- conversion funnel: tap -> enrollment -> quiz -> reward -> booking -> repeat tap
+- top badges
+- top rewards
+- top segments
+- suspicious claims
+- revenue/opportunity estimate if backed by data
+
+2. Program Builder:
+- choose vertical template
+- edit points name
+- configure tiers
+- configure eligibility
+- configure age gate
+- configure countries
+- configure consent
+- activate/pause program
+
+3. Reward Catalog:
+- create/edit reward
+- stock
+- points cost
+- eligibility
+- expiration
+- fulfillment instructions
+- preview on mobile
+- QR/redemption code generation
+- export redemptions
+
+4. Challenges:
+- create challenge
+- select trigger: valid tap, provenance view, quiz completed, ownership activated, booking attended, referral qualified, product collection
+- define reward
+- preview mobile card
+
+5. Badges:
+- create badge
+- define criteria
+- rarity
+- icon/color
+- preview badge wall
+
+6. Experiences:
+- create experience
+- capacity
+- location/map
+- date/time
+- booking policy
+- check-in policy
+- reward link
+- attendee list
+- export bookings
+
+7. Campaigns:
+- campaign builder
+- objective
+- segment
+- trigger
+- message
+- reward
+- schedule
+- preview
+- activate/pause
+- performance
+
+8. Segments:
+- repeat tappers
+- tourists
+- local consumers
+- high-risk zones excluded
+- collectors
+- owners
+- quiz personas
+- referral sources
+- country/region
+- product interest
+
+9. Insights:
+- cohort retention
+- repeat tap rate
+- reward redemption rate
+- quiz completion rate
+- experience booking conversion
+- referral conversion
+- lifetime points
+- top countries/cities
+- export CSV/JSON/PDF
+
+10. Fraud Guard:
+- replay claim attempts
+- suspicious point farming
+- impossible geo
+- high redemption velocity
+- blocked members
+- manual review
+- reverse points
+- create ticket
+
+All admin buttons must work. No placeholder pages. No fake cards. No dead CTAs.
+
+PHASE 6 — SUPERADMIN UX: GROWTH OPS / LOYALTY PORTFOLIO
+Add superadmin portfolio view.
+
+Pages:
+1. Loyalty Portfolio:
+- tenants with active loyalty programs
+- vertical
+- enrolled members
+- reward redemption rate
+- experience booking rate
+- suspicious claims
+- program health
+- revenue/opportunity proxy if backed by data
+
+2. Templates:
+- create global templates
+- duplicate template to tenant
+- winery/event/perfume/cosmetics/luxury templates
+- localization defaults
+- recommended reward sets
+
+3. Benchmarks:
+- compare tenants by enrollment rate, repeat tap rate, reward conversion, experience booking, referral conversion, campaign lift
+- no cross-tenant PII exposure
+
+4. Reseller view:
+- reseller assigned tenants
+- program activation status
+- growth opportunities
+- recommended upsells:
+  - more NFC tags
+  - loyalty module
+  - experience booking
+  - BotIA growth
+  - advanced analytics
+
+5. CRM integration:
+- lead source includes loyalty
+- ticket source includes loyalty fraud
+- order request can be created from loyalty demand
+- BotIA can convert insight into lead/order/ticket
+
+PHASE 7 — BOTIA GROWTH STRATEGIST
+Extend BotIA with a Growth Strategist mode.
+
+Tenant admin prompts:
+- “Dame 3 campañas para vender más visitas a bodega.”
+- “Qué recompensa conviene para turistas brasileños.”
+- “Armá un club de fidelización para este Malbec.”
+- “Generá un quiz de terroir para este vino.”
+- “Qué segmentos tienen más potencial.”
+- “Por qué bajó el redemption rate.”
+- “Qué premio puedo ofrecer sin regalar margen.”
+- “Generá copy en español, portugués e inglés.”
+- “Creá una campaña de Vendimia.”
+- “Creá un desafío de referidos.”
+- “Explicame la oportunidad comercial de este lote.”
+
+Superadmin prompts:
+- “Qué tenants deberían activar fidelización.”
+- “Qué bodegas tienen más potencial de upsell.”
+- “Qué reseller necesita atención.”
+- “Generá benchmark de programas activos.”
+- “Prepará reporte para inversores sobre engagement.”
+- “Qué vertical está convirtiendo mejor.”
+
+Mobile consumer prompts:
+- “Qué significa este badge.”
+- “Cómo gano puntos.”
+- “Qué experiencia puedo reservar.”
+- “Qué maridaje va con este vino.”
+- “Qué perfume me recomendás según mi perfil.”
+- “Cuándo debería reponer esta crema.”
+
+AI rules:
+- If no AI provider env exists, implement deterministic fallback.
+- Do not hallucinate rewards, stock, dates or campaigns.
+- Every generated campaign must be editable before activation.
+- Every AI action must create AuditLog.
+- Answers must include scope, data freshness, confidence and next action buttons.
+- No consumer PII leakage.
+
+PHASE 8 — CAMPAIGN IDEAS TO SEED
+Seed campaign templates.
+
+Winery / Mendoza:
+1. “Vendimia Passport”
+- Seasonal campaign.
+- Earn badge by scanning valid bottle, completing terroir quiz and booking harvest/tasting experience.
+- Reward: winery visit upgrade or early access to new vintage.
+
+2. “Malbec Collector”
+- Scan 3 different valid Malbec bottles.
+- Unlock collector badge and discount / tasting invite.
+
+3. “Valle de Uco Explorer”
+- Learn origin/provenance.
+- Complete map-based story.
+- Unlock pairing recommendation and winery visit CTA.
+
+4. “Amigos de la Bodega”
+- Referral campaign.
+- Invite friend.
+- Reward after referred user validates authentic product and enrolls.
+
+5. “Gran Reserva Owners”
+- Register ownership.
+- Unlock warranty/collector certificate and private content.
+
+6. “Turista Brasil”
+- pt-BR localized campaign.
+- Portuguese welcome copy.
+- Tasting booking CTA.
+- WhatsApp share link fallback without requiring WhatsApp API.
+
+7. “Club Maridaje”
+- Quiz-based taste profile.
+- AI pairing recommendation.
+- Reward: curated bundle or tasting event.
+
+8. “Sustentabilidad de la Finca”
+- Education challenge.
+- Learn about farming/sustainability.
+- Earn sustainability badge.
+- Good for wine tourism awards positioning.
+
+Premium Events:
+1. “Fan Check-in” — NFC ticket/wristband check-in, badge and post-event memory.
+2. “Sponsor Quest” — visit sponsor zone and claim reward.
+3. “Backstage Unlock” — VIP-only gated content.
+4. “Next Event Presale” — attendance unlocks early access.
+
+Perfume:
+1. “Find Your Scent” — quiz-based fragrance profile and sample recommendation.
+2. “Refill Ritual” — refill reminder after configured days.
+3. “Collector Notes” — badges by scent family.
+4. “Gift Story” — shareable product story for gifted perfume.
+
+Cosmetics:
+1. “Routine Builder” — skin/routine quiz and product usage plan.
+2. “Refill Reminder” — time-based campaign.
+3. “Authentic Beauty” — ownership + warranty + education.
+4. “Sustainable Refill” — reward for refill/reuse action.
+
+Luxury:
+1. “Care Passport” — unlock care instructions, warranty and service reward.
+2. “Ownership Transfer” — secure transfer journey.
+3. “VIP Drop” — valid ownership unlocks early access.
+4. “Resale Ready” — prepare authenticity data for resale.
+
+PHASE 9 — API ROUTES
+Implement or fix these routes.
+
+Public/mobile:
+- GET /api/mobile/passport/:eventId/loyalty
+- POST /api/mobile/passport/:eventId/loyalty/enroll
+- POST /api/mobile/passport/:eventId/loyalty/claim-tap
+- POST /api/mobile/passport/:eventId/loyalty/quiz/:quizId/submit
+- POST /api/mobile/passport/:eventId/loyalty/challenges/:challengeId/claim
+- POST /api/mobile/passport/:eventId/loyalty/rewards/:rewardId/redeem
+- POST /api/mobile/passport/:eventId/loyalty/referral
+- POST /api/mobile/passport/:eventId/loyalty/experiences/:experienceId/book
+- POST /api/mobile/passport/:eventId/loyalty/share
+- GET /api/mobile/loyalty/member/:memberId
+- PATCH /api/mobile/loyalty/member/:memberId/preferences
+- DELETE /api/mobile/loyalty/member/:memberId/data-request
+
+Tenant admin:
+- GET /api/admin/loyalty/overview?tenant=
+- GET /api/admin/loyalty/programs?tenant=
+- POST /api/admin/loyalty/programs
+- PATCH /api/admin/loyalty/programs/:programId
+- POST /api/admin/loyalty/programs/:programId/activate
+- POST /api/admin/loyalty/programs/:programId/pause
+- GET /api/admin/loyalty/templates
+- POST /api/admin/loyalty/templates/:templateId/apply
+- GET /api/admin/loyalty/members?tenant=&q=&segment=
+- GET /api/admin/loyalty/members/:memberId
+- PATCH /api/admin/loyalty/members/:memberId
+- GET /api/admin/loyalty/rewards?programId=
+- POST /api/admin/loyalty/rewards
+- PATCH /api/admin/loyalty/rewards/:rewardId
+- GET /api/admin/loyalty/redemptions?programId=&status=
+- PATCH /api/admin/loyalty/redemptions/:redemptionId
+- GET /api/admin/loyalty/challenges?programId=
+- POST /api/admin/loyalty/challenges
+- PATCH /api/admin/loyalty/challenges/:challengeId
+- GET /api/admin/loyalty/badges?programId=
+- POST /api/admin/loyalty/badges
+- PATCH /api/admin/loyalty/badges/:badgeId
+- GET /api/admin/loyalty/experiences?programId=
+- POST /api/admin/loyalty/experiences
+- PATCH /api/admin/loyalty/experiences/:experienceId
+- GET /api/admin/loyalty/bookings?experienceId=
+- PATCH /api/admin/loyalty/bookings/:bookingId
+- GET /api/admin/loyalty/campaigns?programId=
+- POST /api/admin/loyalty/campaigns
+- PATCH /api/admin/loyalty/campaigns/:campaignId
+- POST /api/admin/loyalty/campaigns/:campaignId/activate
+- GET /api/admin/loyalty/segments?programId=
+- GET /api/admin/loyalty/analytics?programId=&range=
+- GET /api/admin/loyalty/fraud?programId=&range=
+- POST /api/admin/loyalty/fraud/:caseId/reverse-points
+- GET /api/admin/loyalty/export.csv
+- GET /api/admin/loyalty/export.json
+
+Superadmin:
+- GET /api/superadmin/loyalty/portfolio
+- GET /api/superadmin/loyalty/templates
+- POST /api/superadmin/loyalty/templates
+- PATCH /api/superadmin/loyalty/templates/:templateId
+- GET /api/superadmin/loyalty/benchmarks
+- GET /api/superadmin/loyalty/resellers
+- GET /api/superadmin/loyalty/fraud
+- GET /api/superadmin/loyalty/recommendations
+
+BotIA:
+- POST /api/assistant/growth
+- POST /api/assistant/growth/create-campaign
+- POST /api/assistant/growth/generate-quiz
+- POST /api/assistant/growth/generate-copy
+- POST /api/assistant/growth/explain-metrics
+
+PHASE 10 — ANALYTICS
+Add loyalty analytics.
+
+Metrics:
+- enrollmentRate = enrolled members / unique valid tappers
+- repeatTapRate
+- pointsIssued
+- pointsRedeemed
+- redemptionRate
+- activeChallenges
+- challengeCompletionRate
+- badgeEarnRate
+- referralConversionRate
+- experienceBookingRate
+- bookingAttendanceRate
+- quizCompletionRate
+- profileCompletionRate
+- rewardCostEstimate
+- fraudBlockedClaims
+- revenueOpportunityEstimate if backed by real data
+- top rewards
+- top badges
+- top campaigns
+- top regions
+- top consumer segments
+
+Dashboards:
+1. Tenant loyalty overview
+2. Superadmin portfolio
+3. Member detail
+4. Campaign detail
+5. Reward detail
+6. Experience detail
+7. Fraud guard
+
+Charts:
+- funnel
+- cohort retention
+- line chart points issued/redeemed
+- bar chart top rewards
+- map of loyalty engagement
+- challenge progress distribution
+- tier distribution
+- campaign performance
+
+All analytics must derive from events, ledger, redemptions, bookings and members. No hardcoded values.
+
+PHASE 11 — SECURITY / ABUSE / COMPLIANCE
+Implement:
+- idempotency per eventId + action
+- no points for replay/suspicious events
+- reward claim rate limit
+- member creation rate limit by IP/device
+- stock-safe redemption transaction
+- points ledger auditability
+- admin manual adjustment audit log
+- consent record
+- data deletion request path
+- age gate config per tenant/program
+- country-specific reward eligibility config
+
+Add loyalty audit events:
+- LOYALTY_PROGRAM_CREATED
+- LOYALTY_PROGRAM_ACTIVATED
+- MEMBER_ENROLLED
+- POINTS_AWARDED
+- POINTS_REVERSED
+- BADGE_EARNED
+- CHALLENGE_COMPLETED
+- REWARD_REDEEMED
+- EXPERIENCE_BOOKED
+- REFERRAL_CREATED
+- CAMPAIGN_ACTIVATED
+- FRAUD_BLOCKED
+
+PHASE 12 — UX COPY / LOCALIZATION
+Add es-AR, pt-BR and en copy.
+
+es-AR examples:
+- “Sumá puntos con productos auténticos.”
+- “Este tap no suma puntos por seguridad.”
+- “Completá tu perfil y desbloqueá beneficios.”
+- “Reservá una experiencia en la bodega.”
+- “Ganaste el badge Primer Tap Auténtico.”
+- “Tu recompensa está lista.”
+- “Esta recompensa está bloqueada.”
+- “No hay experiencias disponibles para esta fecha.”
+- “Compartí tu pasaporte y ganá beneficios cuando tu referido valide un producto auténtico.”
+
+pt-BR examples:
+- “Ganhe pontos com produtos autênticos.”
+- “Este tap não soma pontos por segurança.”
+- “Reserve uma experiência na vinícola.”
+- “Você ganhou um badge.”
+
+en examples:
+- “Earn points with authentic products.”
+- “This tap does not earn points for security reasons.”
+- “Book a winery experience.”
+- “You earned a badge.”
+
+PHASE 13 — TESTS
+Unit tests:
+- valid tap awards points once
+- replay tap awards zero points
+- revoked/broken/tampered awards zero points
+- duplicate claim with same idempotencyKey blocked
+- badge earned once
+- challenge progresses correctly
+- reward redemption deducts points
+- reward stock cannot go below zero
+- tier upgrade works
+- referral qualifies only after valid event
+- experience booking respects capacity
+- quiz submission updates profile insights
+- fraud guard blocks suspicious claim
+- points reversal creates ledger entry
+- age-gated program blocks claim until confirmed
+
+Integration tests:
+- seed Demo Bodega loyalty program
+- valid /sun tap creates TapEvent and loyalty claim
+- mobile passport shows points/rewards
+- complete terroir quiz
+- earn badge
+- redeem tasting upgrade
+- book winery experience
+- admin loyalty analytics update
+- replay fixture cannot claim points
+- report problem creates ticket
+
+E2E if Playwright/Cypress exists:
+- mobile valid tap loyalty enrollment
+- mobile replay tap reward blocked
+- mobile reward redemption
+- mobile experience booking
+- tenant Loyalty Studio overview
+- reward catalog create/edit
+- challenge create/edit
+- campaign activation
+- superadmin loyalty portfolio
+- BotIA Growth creates draft campaign
+- light mode
+- responsive mobile
+
+Static checks:
+- no dead buttons
+- no “coming soon”
+- no href="#"
+- no localhost production fallback
+- no hardcoded analytics
+- build passes
+- tests pass
+
+PHASE 14 — ACCEPTANCE CRITERIA
+Done only when:
+1. Existing /health works.
+2. Existing /sun works.
+3. Existing SUN/SDM validation remains intact.
+4. Valid tap can enroll user into loyalty.
+5. Valid tap can award points once.
+6. Replay cannot award points.
+7. Revoked/broken/tampered cannot award points.
+8. Demo Bodega has active winery loyalty template.
+9. Mobile /sun shows loyalty mini-app for valid product.
+10. Mobile /sun replay shows blocked loyalty state.
+11. Badges work.
+12. Challenges work.
+13. Rewards work.
+14. Experience booking works.
+15. Referral flow works.
+16. Quiz flow works.
+17. Tenant admin has Loyalty Studio.
+18. Superadmin has loyalty portfolio.
+19. BotIA Growth works with deterministic fallback if no AI env.
+20. Loyalty analytics derive from real data.
+21. Fraud guard detects suspicious claims.
+22. Consent and privacy preferences work.
+23. es-AR, pt-BR and en strings exist.
+24. UI is premium and responsive.
+25. Build and tests pass.
+
+DELIVERABLE FORMAT
+Return only:
+1. Summary of changes.
+2. Changed files.
+3. New files.
+4. New routes/endpoints.
+5. DB migrations/schema changes.
+6. Seed/template changes.
+7. Env/config changes.
+8. Commands run and results.
+9. Screenshots:
+   - mobile valid tap with loyalty mini-app
+   - mobile replay tap with loyalty blocked
+   - Demo Bodega Club Terroir
+   - badge earned
+   - reward redemption
+   - experience booking
+   - tenant Loyalty Studio overview
+   - reward catalog
+   - challenge builder
+   - campaign builder
+   - loyalty analytics
+   - loyalty fraud guard
+   - superadmin loyalty portfolio
+   - BotIA Growth panel
+   - pt-BR mobile view
+   - light mode
+10. Tests added.
+11. Production/staging checks performed.
+12. Blockers only if real:
+   - exact missing env/credential/path
+   - exact searched files
+   - exact failed command
+13. Deferred items only with exact reason.
+
+Do not return brainstorming.
+Do not return generic advice.
+Do not fabricate UID lists.
+Do not fake rewards.
+Do not fake screenshots.
+Do not say implemented unless code changed and tests/build were run.
+Ship working code.

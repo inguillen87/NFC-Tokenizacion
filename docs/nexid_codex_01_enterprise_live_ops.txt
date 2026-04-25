@@ -1,0 +1,1091 @@
+NEXID CODEX 01 — ENTERPRISE LIVE OPS / SAAS CORE / ADMIN / SUPERADMIN
+
+Repository: inguillen87/NFC-Tokenizacion
+Target platform: nexid.lat / api.nexid.lat
+Primary product: nexID SaaS for NFC authentication, SUN/SDM validation, traceability, anti-fraud analytics, tenant admin, superadmin CRM, reseller operations and premium mobile product passport.
+
+COPY-PASTE THIS ENTIRE PROMPT INTO CODEX.
+
+GOAL
+The platform must feel and behave like a sellable enterprise SaaS. The current product has the right concept, but the live data flow, UX/UI, real-time analytics, maps, charts, mobile passport, admin tenant and superadmin CRM need to work like a serious product that can be shown to investors, wineries, printers, retailers, resellers and final clients.
+
+The main visible production issue is that new taps are not reliably appearing live in the tenant/admin dashboards, heatmaps, analytics cards and event feeds. Fix the full pipeline, not just the UI.
+
+DO NOT BREAK
+- /health
+- /sun
+- existing SUN/SDM validation
+- existing monorepo structure
+- current demo flows
+- Demo Bodega 2026 flow
+- existing auth/session behavior
+- existing production deploy compatibility
+- existing environment variable names unless adding backward-compatible aliases
+
+DO NOT
+- weaken cryptographic validation
+- fake dashboard values
+- hardcode analytics
+- leave placeholder pages
+- leave buttons without behavior
+- add localhost fallbacks to production-facing code
+- show raw env errors to final users
+- invent the 10 UID list if it is not present
+- claim implementation without running build/tests
+
+KNOWN CURRENT CONTEXT TO VERIFY IN REPO
+Likely files and behaviors observed in current code. Verify before using.
+- Dashboard analytics page likely exists around:
+  - apps/dashboard/src/app/(app)/analytics/page.tsx
+- Multirubro ops panel likely exists around:
+  - apps/dashboard/src/components/multirubro-ops-panel.tsx
+- Existing panel appears to call:
+  - /api/admin/analytics?range=24h
+  - /api/admin/security-alerts?hours=24
+  - /api/admin/tokenization/requests?limit=20
+  - /api/admin/polygon/wallet
+  - EventSource("/api/admin/events/stream?limit=8")
+- API client likely has endpoints for:
+  - /sun
+  - /admin/overview
+  - /admin/analytics
+  - /admin/events
+  - /internal/demo/seed
+  - /internal/demo/generate-live-scans
+  - /internal/demo/simulate-tap
+  - /internal/demo/scan
+
+PRODUCTION TEST URL / REPLAY FIXTURE
+Use this URL as a real SUN tap fixture and replay test case:
+
+https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=25EF0E894399961B811966469E73F656&enc=6F0F5204CB8268EF4E25CD65502C0C53&cmac=8F914933144FE532
+
+Expected behavior:
+- It must render a premium mobile Digital Product Passport.
+- It must persist a tap event.
+- Because this payload is reused, seeded demo state must classify it as REPLAY_SUSPECT or blocked_replay.
+- It must appear in tenant admin live feed.
+- It must increment replay/duplicate metrics.
+- It must update risk score.
+- It must appear in analytics and heatmap if geo is available.
+- Unsafe mobile actions must be disabled with clear reason.
+- “Reportar problema” must still work and create a ticket/lead.
+
+If production credentials are not available:
+- Do not guess.
+- Run full local/staging tests.
+- Return exact missing credential/env blocker.
+- Still implement the code paths and tests.
+
+NON-NEGOTIABLE PRODUCT RULES
+1. One source of truth.
+   A SUN tap, demo simulation, revoked tag, broken tag, replay, tamper, warranty registration or ownership activation must produce a normalized event used by:
+   - mobile passport
+   - tenant admin dashboard
+   - superadmin CRM
+   - heatmap
+   - live feed
+   - reports
+   - risk score
+
+2. No dead buttons.
+   Every button must either:
+   - perform an action
+   - navigate to a real route
+   - open a real modal
+   - trigger a real download/export
+   - show a disabled state with precise reason and next step
+
+3. No fake analytics.
+   All tenant metrics, heatmaps, maps and feed data must derive from persisted events.
+
+4. No localhost fallback in production-facing code.
+   Create one URL/config resolver and use it everywhere.
+   Required envs:
+   - NEXT_PUBLIC_WEB_URL
+   - NEXT_PUBLIC_APP_URL
+   - NEXT_PUBLIC_API_URL
+   - optional NEXT_PUBLIC_MAP_PROVIDER
+   - optional MAPBOX_TOKEN or existing map provider token
+   - optional POLYGON_RPC_URL
+   - optional POLYGON_DEFAULT_RECIPIENT
+   - optional POLYGON_CHAIN_ID
+   - optional TOKENIZATION_MODE=simulated|polygon
+
+5. Localization readiness.
+   Default locale: es-AR.
+   Prepare pt-BR and en using existing i18n if present. If no i18n exists, create a minimal dictionary module. Do not scatter hardcoded copy.
+
+6. Privacy/geo rule.
+   For final-user tap location:
+   - default to approximate IP geolocation or existing backend geo method
+   - ask explicit browser geolocation permission only when needed
+   - store rounded lat/lng or geohash unless exact GPS is explicitly consented
+   - never block authentication if geolocation is unavailable
+   Winery/bodega address coordinates can be exact because they are business locations.
+
+PHASE 0 — BASELINE AUDIT
+Before coding:
+1. Inspect repository structure:
+   - package.json
+   - workspaces
+   - apps/api
+   - apps/dashboard
+   - apps/web
+   - packages/*
+   - prisma/drizzle/db layer
+   - API routes
+   - /sun handler
+   - auth/session middleware
+   - demo seed files
+   - existing UI/design-system package
+2. Identify:
+   - current SUN/SDM validation function
+   - where tap validation result is calculated
+   - where events are persisted
+   - where analytics are computed
+   - where SSE stream is implemented
+   - where admin dashboard fetches metrics
+   - where superadmin routes/pages live
+   - where BotIA/assistant exists
+3. Run:
+   - npm install if needed
+   - npm run build
+   - npm run lint if present
+   - npm test if present
+4. Record baseline failures before editing.
+5. Stop if existing SUN/SDM validation cannot be located. Return blocker with exact searched paths.
+
+PHASE 1 — DOMAIN MODEL AND SINGLE EVENT PIPELINE
+Use the current ORM. If Prisma exists, create a Prisma migration. If Drizzle/SQL exists, use equivalent migration. Do not switch ORM.
+
+Required entities, mapped to existing names where already present:
+
+Tenant:
+- id
+- slug
+- name
+- type: winery | events | cosmetics | agro | pharma | luxury | reseller | other
+- status: active | pending | risk | suspended
+- plan: basic | secure | enterprise | reseller
+- address
+- city
+- province
+- country
+- lat
+- lng
+- createdAt
+- updatedAt
+
+Batch:
+- id
+- tenantId
+- batchId / bid
+- name
+- chipModel: NTAG215 | NTAG424_DNA | NTAG424_DNA_TT | other
+- sku
+- quantityExpected
+- quantityImported
+- quantityActive
+- status: draft | imported | active | revoked | partially_revoked | archived
+- kMetaHex
+- kFileHex
+- notes
+- createdAt
+- activatedAt
+- revokedAt
+
+Tag:
+- id
+- tenantId
+- batchId
+- uid
+- productId
+- status: imported | active | revoked | broken | tampered | lost | expired | quarantined
+- readCounterLast
+- firstSeenAt
+- lastSeenAt
+- lastLat
+- lastLng
+- lastCity
+- lastCountry
+- riskScore
+- createdAt
+- updatedAt
+
+ProductPassport:
+- id
+- tenantId
+- batchId
+- tagId nullable
+- productName
+- productType
+- varietal
+- vintage
+- alcohol
+- barrelAging
+- harvest
+- region
+- wineryName
+- wineryAddress
+- wineryLat
+- wineryLng
+- qualityScore
+- provenanceText
+- metadataJson
+- imageUrl optional
+- createdAt
+- updatedAt
+
+TapEvent:
+- id
+- tenantId
+- tenantSlug
+- batchId
+- tagId nullable
+- uid nullable
+- bid
+- source: sun | demo_simulation | admin_manual | mobile_action | tokenization | warranty | ownership
+- eventType:
+  TAP_VALID
+  TAP_INVALID
+  REPLAY_SUSPECT
+  UNKNOWN_BATCH
+  NOT_REGISTERED
+  NOT_ACTIVE
+  REVOKED
+  BROKEN
+  TAMPERED
+  OWNERSHIP_ACTIVATED
+  WARRANTY_REGISTERED
+  PROVENANCE_VIEWED
+  TOKENIZATION_REQUESTED
+  TOKENIZATION_SIMULATED
+  TOKENIZATION_ANCHORED
+  EXPORT_GENERATED
+- verdict: valid | invalid | replay_suspect | revoked | broken | tampered | unknown_batch | not_registered | not_active | blocked_replay
+- riskLevel: none | low | medium | high | critical
+- readCounter nullable
+- piccDataHash nullable
+- cmacHash nullable
+- rawUrlHash
+- ipHash
+- userAgent
+- city
+- province
+- country
+- lat
+- lng
+- geoPrecision: none | ip | browser_rounded | browser_exact
+- productName nullable
+- metadataJson
+- createdAt
+
+Lead:
+- id
+- tenantId nullable
+- source: request_demo | talk_to_sales | become_reseller | request_quote | assistant | mobile_passport | admin
+- status: new | contacted | qualified | won | lost | archived
+- name
+- email
+- phone
+- company
+- role
+- vertical
+- volume
+- interest
+- message
+- assignedTo nullable
+- createdAt
+- updatedAt
+
+Ticket:
+- id
+- tenantId nullable
+- leadId nullable
+- tapEventId nullable
+- title
+- description
+- status: open | in_progress | resolved | closed
+- priority: low | medium | high | critical
+- createdAt
+- updatedAt
+
+OrderRequest:
+- id
+- tenantId nullable
+- leadId nullable
+- resellerId nullable
+- status: draft | requested | quoted | approved | fulfilled | cancelled
+- chipModel
+- quantity
+- vertical
+- notes
+- createdAt
+- updatedAt
+
+AuditLog:
+- id
+- actorId nullable
+- tenantId nullable
+- action
+- entityType
+- entityId
+- beforeJson nullable
+- afterJson nullable
+- createdAt
+
+PHASE 2 — REAL-TIME TAP PIPELINE
+Fix this full chain:
+
+SUN tap / demo tap / admin simulation
+→ validation result
+→ normalized persisted TapEvent
+→ tenant-scoped analytics aggregation
+→ SSE event emitted
+→ dashboard receives event
+→ UI updates without hard refresh
+→ heatmap/map/feed/charts update
+→ superadmin CRM/risk surfaces update
+
+Requirements:
+1. Create a single event-writing service:
+   - name suggestion: recordTapEvent(), writeTapEvent(), or existing equivalent.
+   - It must be called by:
+     - /sun
+     - internal demo scan
+     - simulate tap
+     - validate sample URL when not dryRun
+     - ownership action
+     - warranty action
+     - provenance action
+     - tokenization action
+     - revocation/broken/tamper changes when relevant
+
+2. All analytics must query TapEvent, not static arrays.
+
+3. Realtime SSE:
+   - Implement /api/admin/events/stream or fix existing route.
+   - Use text/event-stream.
+   - Send heartbeat every 15s.
+   - Send initial snapshot.
+   - Send incremental events.
+   - Support query params:
+     - tenant
+     - limit
+     - window=5m|1h|24h|7d|30d|all
+     - verdict
+     - risk
+   - Respect user role:
+     - tenant-admin sees only own tenant
+     - superadmin sees all
+     - reseller sees assigned tenants
+   - No sensitive keys in payload.
+   - Add reconnect-friendly event IDs if practical.
+   - On dashboard, handle connected/reconnecting/stale/offline/error.
+   - Fallback to polling every 10s only when SSE fails.
+
+4. UI update rule:
+   - New event must update cards, map, charts and feed in memory.
+   - Do not force page reload.
+   - Show a small animated “new tap received” pulse.
+
+Acceptance:
+- Triggering /sun or /internal/demo/simulate-tap must update tenant dashboard in under 2 seconds locally.
+- If production latency differs, log measured latency.
+
+PHASE 3 — DEMO BODEGA 2026 SYNC
+Fix Demo Bodega as the flagship demo.
+
+Required tenant:
+- name: Demo Bodega
+- slug: demo-bodega or existing exact slug
+- type/vertical: winery
+- status: active or risk depending on generated demo events
+- location: Mendoza, Argentina
+- winery profile: Finca Altamira / Valle de Uco / Mendoza / AR
+
+Required batch:
+- bid: DEMO-2026-02 unless repo uses exact compatible existing bid
+- product: Gran Reserva Malbec
+- vintage: 2022
+- varietal: Malbec
+- harvest: 2022
+- barrel aging: 12 meses
+- winery: Finca Altamira
+- region: Valle de Uco, Mendoza
+
+Required tags:
+- Use the real 10 UID list if present.
+- Do not fabricate UIDs.
+- If missing, return blocker with exact paths searched.
+
+Seed:
+- 10 active tags.
+- Product passport metadata for every tag.
+- Demo history with:
+  - valid taps
+  - replay suspect
+  - revoked or broken example
+  - tamper example if model supports it
+  - geo points in Mendoza, Buenos Aires, Santiago, São Paulo, Montevideo if demo requires regional heatmap.
+- The provided SUN URL must be seeded as a replay fixture so it always demonstrates the replay state.
+
+Expected sync:
+- Mobile /sun and tenant admin show the same product data.
+- Admin overview KPIs match tenant table values.
+- Heatmap uses TapEvent geo data.
+- Event feed includes every tap.
+- Superadmin tenant row matches tenant dashboard metrics.
+
+PHASE 4 — SUN VALIDATION AND EVENT RECORDING
+Find existing /sun validation. Wrap it with event recording. Do not replace cryptography.
+
+Required behavior:
+1. Existing valid SUN/SDM validation keeps working.
+2. Replay detection:
+   - repeated same uid + readCounter + cmac/piccData combination must produce REPLAY_SUSPECT or blocked_replay.
+   - mobile passport blocks ownership, warranty and tokenization actions for replayed taps.
+   - admin shows replay as risk event.
+3. Revoked tag:
+   - future taps return revoked verdict.
+   - mobile shows premium warning state.
+   - admin event feed updates.
+4. Broken/tampered:
+   - future taps return broken/tampered verdict if tag status is broken/tampered.
+   - admin creates high-risk alert.
+5. Unknown batch returns UNKNOWN_BATCH.
+6. Not registered returns NOT_REGISTERED.
+7. Not active returns NOT_ACTIVE.
+8. Valid returns valid passport payload and creates TAP_VALID event.
+
+Typed result:
+type SunValidationResult = {
+  verdict: 'valid' | 'invalid' | 'replay_suspect' | 'blocked_replay' | 'revoked' | 'broken' | 'tampered' | 'unknown_batch' | 'not_registered' | 'not_active';
+  riskLevel: 'none' | 'low' | 'medium' | 'high' | 'critical';
+  tenantSlug?: string;
+  bid?: string;
+  uid?: string;
+  tagId?: string;
+  batchId?: string;
+  productPassport?: ProductPassportDTO;
+  timeline: TapTimelineItem[];
+  actions: PassportActionState[];
+  eventId: string;
+};
+
+PHASE 5 — API ROUTES / SERVICE CONTRACTS
+Use existing route conventions. If app router exists, use Route Handlers. If pages/api exists, use that. Do not mix unnecessarily.
+
+Public/mobile:
+- GET /sun
+- POST /api/mobile/passport/:eventId/ownership
+- POST /api/mobile/passport/:eventId/warranty
+- POST /api/mobile/passport/:eventId/provenance
+- POST /api/mobile/passport/:eventId/tokenization
+- POST /api/mobile/passport/:eventId/report-problem
+- POST /api/mobile/passport/:eventId/share
+
+Tenant/admin analytics:
+- GET /api/admin/overview?tenant=
+- GET /api/admin/analytics?tenant=&range=24h|7d|30d|all&source=real|demo|imported|all&country=
+- GET /api/admin/events?tenant=&window=&verdict=&risk=&limit=
+- GET /api/admin/events/stream?tenant=&window=&limit=
+- GET /api/admin/heatmap?tenant=&window=&verdict=&risk=
+- GET /api/admin/security-alerts?tenant=&hours=
+- GET /api/admin/tags?tenant=&status=&q=
+- GET /api/admin/batches?tenant=&status=&q=
+- POST /api/admin/demo/simulate-tap
+- POST /api/admin/demo/reset
+- POST /api/admin/validate-sample-url
+
+Tenant routes if existing tenantSlug convention is used:
+- GET /api/admin/tenant/:tenantSlug/overview
+- GET /api/admin/tenant/:tenantSlug/events?window=5m|1h|24h|7d|all
+- GET /api/admin/tenant/:tenantSlug/heatmap?window=5m|1h|24h|7d|all
+- GET /api/admin/tenant/:tenantSlug/batches
+- POST /api/admin/tenant/:tenantSlug/batches/register
+- POST /api/admin/tenant/:tenantSlug/batches/:batchId/import-manifest
+- POST /api/admin/tenant/:tenantSlug/batches/:batchId/activate
+- POST /api/admin/tenant/:tenantSlug/batches/:batchId/revoke
+- GET /api/admin/tenant/:tenantSlug/tags
+- PATCH /api/admin/tenant/:tenantSlug/tags/:tagId/status
+- POST /api/admin/tenant/:tenantSlug/validate-sample-url
+- POST /api/admin/tenant/:tenantSlug/demo/simulate-tap
+- POST /api/admin/tenant/:tenantSlug/demo/reset
+- GET /api/admin/tenant/:tenantSlug/reports/export.csv
+- GET /api/admin/tenant/:tenantSlug/reports/export.json
+
+Superadmin:
+- GET /api/superadmin/overview
+- GET /api/superadmin/tenants
+- POST /api/superadmin/tenants
+- PATCH /api/superadmin/tenants/:tenantId
+- GET /api/superadmin/tenants/:id/health
+- GET /api/superadmin/events/stream
+- GET /api/superadmin/crm/leads
+- POST /api/superadmin/crm/leads
+- PATCH /api/superadmin/crm/leads/:id
+- GET /api/superadmin/crm/tickets
+- POST /api/superadmin/crm/tickets
+- PATCH /api/superadmin/crm/tickets/:id
+- GET /api/superadmin/crm/order-requests
+- POST /api/superadmin/crm/order-requests
+- PATCH /api/superadmin/crm/order-requests/:id
+- GET /api/superadmin/audit
+- GET /api/superadmin/resellers
+
+Lead capture:
+- POST /api/leads/request-demo
+- POST /api/leads/talk-to-sales
+- POST /api/leads/become-reseller
+- POST /api/leads/request-quote
+
+All endpoints:
+- no-store cache for live data
+- role scoping
+- clear error response: { ok: false, reason, details? }
+- no raw secrets
+- no raw Polygon env errors to final user
+
+PHASE 6 — TENANT ADMIN UX/UI ENTERPRISE
+Fix all left-side menu routes:
+- Resumen
+- Lotes
+- Tags
+- Analítica
+- Eventos
+- Leads & Tickets
+- Suscripciones
+- API Keys
+- MFA
+
+Every menu item must route to a real page. No placeholder page. If a module is thin, implement at least usable list/detail/filter/export.
+
+Admin overview must become a real Mission Control surface.
+
+Top command bar:
+- tenant selector
+- time window selector
+- source selector
+- risk filter
+- live status chip
+- last sync timestamp
+- “Simular tap” button
+- “Export report” button
+- BotIA button
+
+KPI grid:
+- scans total
+- valid rate
+- invalid rate
+- replay suspects
+- revoked taps
+- broken/tampered taps
+- active tags
+- active batches
+- geo regions
+- risk score
+- conversion funnel completion
+- open tickets
+
+Live map:
+- heatmap mode
+- cluster markers
+- pulse animation on new tap
+- marker colors by verdict/risk
+- tooltip with city, country, scans, risk, latest event, product
+- empty state with reason and “Simular NFC tap” CTA in demo mode
+
+Charts:
+- scans over time
+- valid vs invalid stacked bar
+- replay/tamper over time
+- risk event distribution
+- top regions
+- top batches/products
+- tag status distribution
+- conversion funnel: tap -> provenance -> ownership -> warranty -> lead
+Use existing chart library if present. If no chart library exists, add Recharts unless repo standardizes another lightweight chart package.
+
+Live event feed:
+- realtime stream
+- event type icon
+- timestamp
+- tenant
+- bid
+- masked uid
+- product
+- city/country
+- verdict badge
+- risk badge
+- open event detail drawer
+- filters by verdict/risk/window
+- copy event id
+- export filtered events
+
+Event detail drawer:
+- normalized event payload
+- validation result
+- product passport link
+- tag detail link
+- risk explanation
+- BotIA “explain this event”
+- actions: create ticket, mark reviewed, revoke tag, mark broken/tampered, export event
+
+Batch health:
+- imported vs active
+- revoked
+- broken
+- tampered
+- last tap
+- risk score
+- activation status
+- quick actions: import manifest, activate tags, revoke batch, validate sample URL
+
+Forms must include:
+- helper text
+- validation
+- loading state
+- success state
+- error state
+- destructive confirmation
+- clear next step
+
+PHASE 7 — MOBILE SUN TAP UX/UI PREMIUM
+Redesign the mobile Digital Product Passport.
+
+Requirements:
+- mobile-first responsive layout
+- full-screen premium product hero
+- glass/dark luxury style
+- intentional light mode
+- top authenticity badge
+- product image or fallback wine illustration
+- product name
+- winery
+- region
+- vintage
+- varietal
+- barrel aging
+- harvest
+- quality score
+- tap number/read counter
+- authenticity verdict
+
+Verdict animations:
+- valid: green/cyan trust pulse
+- replay: amber/red blocked pulse
+- revoked: red warning
+- broken/tampered: critical warning
+- unknown/not active: neutral warning
+Use CSS or existing motion lib. Respect prefers-reduced-motion.
+
+Action buttons must work:
+- Activar ownership
+- Registrar garantía
+- Ver provenance
+- Tokenización opcional
+- Compartir pasaporte
+- Reportar problema
+
+For replay/revoked/broken/tampered:
+- disable unsafe actions
+- show exact reason
+- keep “Reportar problema” enabled
+- allow share/copy only if safe
+
+Provenance timeline:
+- origin
+- cellar/sensor data
+- product lifecycle
+- first verified
+- last verified
+- latest tap city
+- warranty/ownership events
+- tokenization events
+
+Map:
+- winery location
+- last approximate tap location if available
+- distinct labels
+- privacy notice only when asking precise geo
+- do not block verification when geo unavailable
+
+Browser APIs:
+- Web Share API fallback to copy link
+- Web NFC progressive enhancement only
+- If NDEFReader exists and HTTPS, show “Escanear NFC”
+- Otherwise rely on URL flow
+
+PWA:
+- manifest
+- icons if assets exist
+- offline fallback for product passport shell
+- never cache admin APIs aggressively
+- cache public shell safely
+
+PHASE 8 — SUPERADMIN CRM ENTERPRISE
+Transform superadmin into a serious CRM/ops console.
+
+Pages:
+1. Superadmin Overview:
+   - tenants count
+   - active/risk/suspended tenants
+   - total scans
+   - replay/tamper alerts
+   - live global map
+   - leads pipeline
+   - open tickets
+   - order requests
+   - reseller performance
+   - subscription/MRR only if backed by data or explicit demo mode
+
+2. Tenants:
+   - enterprise table
+   - search
+   - filters: status, plan, vertical, risk, country
+   - create/edit tenant
+   - open tenant dashboard
+   - read-only impersonation with visible banner
+   - tenant health detail
+
+3. CRM Leads:
+   - kanban + table toggle
+   - statuses: new, contacted, qualified, won, lost
+   - quick actions: qualify, convert to order request, create ticket, assign owner, archive
+   - sources: request_demo, talk_to_sales, become_reseller, request_quote, assistant, mobile_passport, admin
+
+4. Tickets:
+   - priority
+   - tenant
+   - linked lead
+   - status
+   - SLA age
+   - event link if created from replay/tamper
+
+5. Order Requests:
+   - chip model
+   - quantity
+   - vertical
+   - source
+   - tenant/reseller
+   - quote status
+   - fulfillment status
+
+6. Resellers:
+   - assigned tenants
+   - performance
+   - pipeline
+   - order volume
+   - risk in assigned tenants
+
+7. Audit:
+   - actor
+   - role
+   - action
+   - entity
+   - before/after if available
+   - timestamp
+   - filters
+
+PHASE 9 — ANALYTICS, HEATMAPS, CHARTS
+Required analytics:
+- scans over time
+- valid vs invalid
+- replay suspects over time
+- top regions
+- top products/batches
+- risk events by type
+- conversion funnel: tap -> provenance viewed -> ownership -> warranty -> lead
+- tenant risk score
+- batch health
+- tag status distribution
+
+Risk score formula:
+riskScore = clamp(
+  replayRate * 45 +
+  invalidRate * 25 +
+  tamperRate * 50 +
+  revokedTapRate * 35 +
+  geoAnomalyRate * 20,
+  0,
+  100
+)
+Document formula in code comments. Use the same formula across tenant row, overview and superadmin.
+
+Heatmap:
+- use TapEvent lat/lng only
+- filter by window
+- filter by verdict/risk
+- cluster markers where needed
+- empty state explains missing data and provides “Simular NFC Tap” CTA in demo mode
+
+PHASE 10 — TOKENIZATION / POLYGON UX FIX
+Do not let Polygon config failure break UX.
+
+Implement tokenization abstraction:
+interface TokenizationService {
+  requestTokenization(input): Promise<TokenizationResult>
+}
+
+Modes:
+1. simulated
+   - always available in demo
+   - creates TOKENIZATION_SIMULATED event
+   - returns simulated token id / anchor id
+   - visible “simulated” badge in admin only or demo-aware UI
+2. polygon
+   - only when env present
+   - creates TOKENIZATION_ANCHORED event
+   - stores tx hash/network/token id
+   - handles errors gracefully
+
+Rules:
+- Final user never sees raw “POLYGON_RPC_URL missing”.
+- Admin can see config warning with exact missing env names.
+- Replay/revoked/broken/tampered blocks tokenization.
+- Valid taps can use simulated tokenization in demo.
+
+PHASE 11 — BOTIA / AI ASSISTANT
+Make BotIA useful and scoped. No fake chatbot.
+
+Tenant admin prompts:
+- “Explicame el riesgo actual”
+- “Por qué subieron los replay”
+- “Qué pasó con este UID”
+- “Generá reporte ejecutivo”
+- “Crear ticket por este evento”
+- “Qué hago para activar un lote”
+- “Validar sample URL”
+- “Simular tap de demo”
+
+Superadmin prompts:
+- “Resumen de tenants en riesgo”
+- “Leads calientes”
+- “Tickets críticos”
+- “Qué reseller está performando mejor”
+- “Generar reporte para inversor”
+- “Convertir lead a order request”
+
+Mobile passport prompts:
+- “Qué significa replay”
+- “Cómo reportar problema”
+- “Qué es provenance”
+
+Implementation:
+- Use existing assistant route/component if present.
+- If no AI provider env exists, add deterministic rule-based assistant mode.
+- Never fabricate data.
+- Every answer includes data freshness timestamp, scope, confidence/source and next action buttons.
+- Assistant actions create AuditLog.
+
+PHASE 12 — DESIGN SYSTEM AND MOTION
+Components to create/fix:
+- StatCard
+- SparklineStatCard
+- RiskBadge
+- VerdictBadge
+- LiveStatusBadge
+- EmptyState
+- ConfirmDialog
+- LoadingSkeleton
+- Tooltip/HelpHint
+- MapPanel
+- HeatmapPanel
+- EventFeed
+- EventDetailDrawer
+- BatchHealthCard
+- LeadStatusBadge
+- MobilePassportCard
+- PhonePreviewFrame
+- ActionButton with loading/disabled reason/success/error state
+- ExportButton
+- BotIAPanel
+- CommandBar
+- FilterChips
+- DateWindowSelector
+
+Motion:
+- card enter animation
+- stat count-up
+- sparkline draw-in
+- scan pulse
+- map pulse on new event
+- verdict transition
+- drawer slide
+- modal scale/fade
+- skeleton loaders
+- toast animation
+Respect prefers-reduced-motion.
+
+Visual direction:
+- dark premium enterprise
+- intentional light mode
+- semantic status colors for valid, invalid, replay, revoked, broken, tampered, warning, neutral
+- high contrast
+- keyboard focus states
+- accessible components
+- responsive tables with mobile card fallback
+- no cramped dense cards
+
+PHASE 13 — PWA / RESPONSIVE
+Add/fix:
+- manifest
+- mobile viewport metadata
+- app icon if existing assets available
+- installable PWA shell if safe
+- offline fallback for public/mobile shell
+- do not cache sensitive admin API responses aggressively
+- mobile layouts for homepage, /sun, tenant dashboard, demo lab, superadmin CRM tables
+
+PHASE 14 — OBSERVABILITY AND DEBUGGING
+Add minimal observability.
+
+Requirements:
+- Generate requestId per tap/action.
+- Log requestId, route, tenantSlug, bid, uid masked, verdict, eventId, createdAt, analytics aggregation status, SSE publish status.
+- Add admin-visible debug panel only in admin/dev mode:
+  - latest tap event
+  - latest SSE event
+  - latest analytics refresh
+  - stream state
+  - backend warning
+- Add internal diagnostic endpoint if safe:
+  - GET /api/admin/diagnostics/live-pipeline?tenant=
+  - must require admin auth
+  - returns counts and freshness, no secrets
+
+Freshness indicators:
+- last event timestamp
+- last analytics aggregation timestamp
+- stream connected/reconnecting/stale
+- no data reason
+
+PHASE 15 — TESTING / QA / FULL APP CHECK
+Unit tests:
+- valid tap creates TapEvent
+- replay tap creates REPLAY_SUSPECT
+- revoked tag blocks ownership/warranty/tokenization
+- broken tag blocks unsafe actions
+- tampered tag blocks unsafe actions
+- unknown batch returns UNKNOWN_BATCH
+- not active tag returns NOT_ACTIVE
+- risk score formula deterministic
+- manifest TXT parser
+- manifest CSV parser
+- sample URL parser
+- analytics aggregation from TapEvent
+- heatmap aggregation from TapEvent
+- SSE payload builder scopes tenant correctly
+
+Integration tests:
+- seed Demo Bodega 2026
+- simulate valid tap
+- assert TapEvent created, dashboard analytics scans increment, heatmap contains point, event feed contains event, mobile passport shows same metadata
+- simulate replay
+- assert duplicate/replay metric increments, event feed shows REPLAY_SUSPECT, mobile unsafe actions disabled, risk score changes
+- revoke tag and assert future tap returns revoked
+- mark tag broken and assert future tap returns broken
+- create mobile “report problem” and assert ticket/lead appears in CRM
+
+E2E if Playwright/Cypress exists:
+- /sun valid mobile screenshot
+- /sun replay mobile screenshot
+- tenant admin overview
+- tenant live feed receives simulated tap
+- heatmap updates after simulated tap
+- analytics filters work
+- all left menu routes load non-placeholder content
+- superadmin tenants page
+- superadmin CRM leads
+- lead creation flow
+- ticket creation flow
+- order request flow
+- BotIA asks “explicame el riesgo”
+- light mode screenshot
+- responsive mobile admin table
+
+Manual production/staging checks:
+- Open nexid.lat.
+- Log into superadmin if credentials are available.
+- Log into Demo Bodega tenant admin if credentials are available.
+- Open provided /sun URL.
+- Verify mobile passport renders, replay is recorded, admin live feed updates, analytics updates, heatmap updates, superadmin global risk updates.
+If credentials are not available, return exact blocker.
+
+Static checks:
+- grep for localhost in production-facing code
+- grep for “coming soon”
+- grep for href="#"
+- grep for buttons without onClick/href/type submit unless disabled with reason
+- grep for static mock analytics values
+- npm run build passes
+- npm run lint passes if present
+- npm test passes if present
+
+PHASE 16 — ACCEPTANCE CRITERIA
+Task is done only when:
+1. /health works.
+2. /sun works.
+3. Existing SUN/SDM validation remains intact.
+4. A tap creates a normalized persisted event.
+5. Replay creates REPLAY_SUSPECT or blocked_replay.
+6. Provided SUN URL works as replay fixture in demo state.
+7. Tenant admin event feed updates live after a tap.
+8. Tenant admin KPI cards update live after a tap.
+9. Heatmap updates from real TapEvent geo data.
+10. Analytics charts derive from TapEvent, not static mock data.
+11. Tenant overview metrics match tenant table metrics.
+12. Demo Bodega 2026 metadata is synchronized between mobile and admin.
+13. Superadmin shows tenant health and CRM data.
+14. All left menu routes work.
+15. All mobile passport buttons work or are disabled with reason.
+16. Report problem creates lead/ticket.
+17. Tokenization works in simulated mode and real mode if env exists.
+18. BotIA returns scoped, useful answers and actions.
+19. UI feels premium: animations, charts, map pulse, skeletons, polished dark/light themes, responsive design.
+20. PWA shell/offline fallback works for public/mobile where safe.
+21. No localhost production fallback.
+22. No dead buttons.
+23. No “coming soon” placeholders.
+24. Build passes.
+25. Tests pass or real blockers are documented.
+
+DELIVERABLE FORMAT
+Return only:
+1. Summary of what changed.
+2. Changed files.
+3. New files.
+4. New routes/endpoints.
+5. DB migrations/schema changes.
+6. Env/config changes.
+7. Exact commands run and results.
+8. Screenshots:
+   - mobile /sun valid
+   - mobile /sun replay using provided URL or deterministic fixture
+   - tenant admin overview
+   - tenant live feed after simulated tap
+   - tenant heatmap after simulated tap
+   - analytics charts
+   - event detail drawer
+   - batch health
+   - superadmin tenants
+   - superadmin CRM leads
+   - BotIA panel
+   - light mode
+   - responsive mobile admin
+9. Tests added.
+10. Production/staging checks performed.
+11. Blockers only if real:
+   - exact missing credential/env/path
+   - exact file/path searched
+   - exact failed command
+12. Deferred items only with exact reason.
+
+Do not return brainstorming.
+Do not return generic product advice.
+Do not say “implemented” unless code was changed and build/tests were run.
+Do not fake screenshots.
+Do not fabricate UID list.
+Ship working code.

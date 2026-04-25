@@ -1,0 +1,1332 @@
+NEXID CODEX 03 — CONSUMER PORTAL / PREMIUM PASSPORT NETWORK / MARKETPLACE
+
+Repository: inguillen87/NFC-Tokenizacion
+Target platform: nexid.lat / api.nexid.lat
+Codex type: ADDENDUM 3
+
+COPY-PASTE THIS ENTIRE PROMPT INTO CODEX AFTER CODEX 01 AND CODEX 02.
+
+This addendum extends:
+1. NEXID CODEX 01 — ENTERPRISE LIVE OPS / SAAS CORE / ADMIN / SUPERADMIN
+2. NEXID CODEX 02 — GROWTH / GAMIFICATION / LOYALTY / EXPERIENCES
+
+Do not replace the previous prompts.
+Do not break the real-time tap pipeline, /sun, SUN/SDM validation, tenant admin, superadmin CRM, BotIA, loyalty, rewards or analytics.
+
+PRIMARY OBJECTIVE
+Build a premium B2C consumer portal and cross-tenant premium product ecosystem for nexID.
+
+nexID must become:
+- A traceability and authenticity SaaS for brands.
+- A consumer Digital Product Passport wallet.
+- A loyalty and rewards portal.
+- A verified premium product marketplace.
+- A cross-brand discovery ecosystem for authenticated physical products.
+- A consumer relationship layer for each tenant.
+- A LATAM/global premium network for wineries, events, perfumes, cosmetics, luxury goods and retailers.
+
+STRATEGIC PRODUCT THESIS
+When a consumer taps a verified NFC product from a tenant, they should be able to:
+1. Verify authenticity.
+2. Register or log in as a nexID consumer.
+3. Join that tenant’s loyalty program.
+4. Associate the product/tap with their personal portal.
+5. Earn tenant-specific points or rewards if eligible.
+6. See product/tap history.
+7. Redeem tenant rewards such as wine bottles, wine boxes, discounts, tasting upgrades, promos or VIP experiences.
+8. Discover other verified premium brands inside the nexID ecosystem.
+9. Opt in to connect with other tenants and receive offers.
+10. Build a personal collection of authentic premium products.
+
+This must work especially well for:
+- Mendoza wineries
+- Argentine wineries
+- LATAM wineries
+- Premium wine shops / vinotecas
+- Premium events
+- Perfumes
+- Cosmetics / creams
+- Luxury retail
+- Export brands
+- Resellers selling NFC chips and SaaS access to clients
+
+DO NOT BUILD
+- A fake marketplace.
+- Fake purchases.
+- Fake rewards.
+- A single global points currency without liability controls.
+- Cross-tenant data sharing without explicit opt-in.
+- Gambling mechanics.
+- Lottery mechanics.
+- Alcohol rewards without age gate support.
+- Any reward claim flow that can be triggered by replay/revoked/tampered/broken taps.
+
+NON-NEGOTIABLE ARCHITECTURE RULES
+1. Separate identity from tenant membership.
+   A user can have one global nexID consumer account, but membership must be tenant-scoped.
+
+2. Separate point ledgers.
+   Use at least two ledger concepts:
+   - Tenant points: owned/funded by one tenant.
+   - NexID network credits: optional platform-level credits, disabled by default unless explicitly configured.
+
+3. Cross-tenant marketplace is opt-in.
+   A tenant must choose whether its offers/rewards/products appear in the nexID network marketplace.
+
+4. Consumer data is private by default.
+   Tenant A cannot see consumer activity with Tenant B unless the consumer explicitly opted into cross-brand sharing or marketplace participation.
+
+5. Tap authenticity gates rewards.
+   Only valid, non-replay, non-revoked, non-broken, non-tampered events can trigger points/rewards.
+
+6. Marketplace orders are not payments unless payment provider exists.
+   If there is no payment provider in the repo/env, implement:
+   - request-to-buy
+   - external checkout URL
+   - lead/order request
+   - reward redemption
+   Do not invent payment processing.
+
+7. Alcohol vertical requires age gate.
+   For wine/alcohol tenants:
+   - consumer must confirm legal age before alcohol reward redemption.
+   - region/country eligibility must be configurable.
+   - no gambling/chance mechanics.
+
+8. Every reward has inventory/state.
+   Rewards must support available, locked, claimed, redeemed, expired, cancelled and out_of_stock.
+
+9. Every claim is auditable.
+   Store consumer, tenant, tapEventId, rewardId, points ledger entry, redemption code, status changes, timestamps and source IP/user agent hashes if existing privacy model supports it.
+
+10. The portal must feel premium.
+   This is not a generic account page. It must feel like a luxury passport wallet for verified products.
+
+PHASE 0 — REPO AUDIT
+Before coding:
+1. Inspect:
+   - apps/api
+   - apps/web
+   - apps/dashboard
+   - packages/ui
+   - packages/api-client
+   - packages/config
+   - prisma/drizzle/schema
+   - /sun handler
+   - TapEvent model
+   - ProductPassport model
+   - Loyalty models from Codex 02 if already implemented
+   - existing auth/session implementation
+   - existing mobile passport UI
+   - existing tenant admin
+   - existing superadmin CRM
+   - existing BotIA/assistant
+   - existing i18n
+   - existing PWA config
+2. Run:
+   - npm install if needed
+   - npm run build
+   - npm run lint if present
+   - npm test if present
+3. Record baseline failures.
+4. Do not continue if /sun or SUN/SDM validation location is unknown.
+
+PHASE 1 — CONSUMER IDENTITY MODEL
+Implement global consumer identity without breaking existing tenant/admin auth.
+
+Add or extend these models using the current ORM.
+
+Consumer:
+- id
+- email nullable
+- phone nullable
+- displayName nullable
+- avatarUrl nullable
+- preferredLocale: es-AR | pt-BR | en
+- country nullable
+- city nullable
+- status: anonymous | registered | verified | blocked | deleted
+- lastLoginAt nullable
+- createdAt
+- updatedAt
+
+ConsumerIdentity:
+- id
+- consumerId
+- provider: email_magic_link | phone_otp | passkey | google | apple | wallet | anonymous_cookie
+- providerSubject
+- verifiedAt nullable
+- createdAt
+- updatedAt
+
+ConsumerSession:
+- id
+- consumerId
+- sessionTokenHash
+- expiresAt
+- createdAt
+- lastSeenAt
+- userAgentHash nullable
+- ipHash nullable
+
+TenantConsumerMembership:
+- id
+- tenantId
+- consumerId
+- loyaltyProgramId nullable
+- status: invited | active | paused | blocked | left
+- source: tap | marketplace | referral | admin | campaign | import
+- firstTapEventId nullable
+- lastTapEventId nullable
+- joinedAt
+- lastActivityAt
+- membershipNumber nullable
+- tierId nullable
+- pointsBalance
+- lifetimePoints
+- metadataJson
+- createdAt
+- updatedAt
+
+ConsumerTenantConsent:
+- id
+- tenantId
+- consumerId
+- scope:
+  loyalty
+  marketing
+  purchase_history
+  cross_brand_discovery
+  marketplace_offers
+  experience_booking
+  analytics_personalization
+- granted boolean
+- grantedAt nullable
+- revokedAt nullable
+- source
+- metadataJson
+
+ConsumerProduct:
+- id
+- consumerId
+- tenantId
+- productPassportId
+- tagId nullable
+- firstTapEventId
+- latestTapEventId nullable
+- ownershipStatus: viewed | claimed | verified_owner | transferred | revoked
+- nickname nullable
+- collectionType: wine | perfume | cosmetics | event | luxury | other
+- productName
+- brandName
+- imageUrl nullable
+- acquiredAt nullable
+- createdAt
+- updatedAt
+
+ConsumerTapHistory:
+- id
+- consumerId nullable
+- tenantId
+- tapEventId
+- productPassportId nullable
+- tagId nullable
+- verdict
+- riskLevel
+- city nullable
+- country nullable
+- createdAt
+
+ConsumerPurchase:
+- id
+- consumerId
+- tenantId nullable
+- marketplaceOrderId nullable
+- productPassportId nullable
+- source:
+  manual
+  tenant_import
+  external_checkout
+  marketplace_request
+  reward_redemption
+  receipt_upload
+  admin
+- status: claimed | pending_verification | verified | rejected | cancelled
+- amount nullable
+- currency nullable
+- productName
+- quantity
+- purchasedAt nullable
+- metadataJson
+- createdAt
+- updatedAt
+
+ConsumerRewardWallet:
+- id
+- consumerId
+- tenantId nullable
+- networkScope: tenant | nexid_network
+- pointsBalance
+- lifetimePoints
+- updatedAt
+
+ConsumerNotification:
+- id
+- consumerId
+- tenantId nullable
+- type:
+  reward_available
+  points_awarded
+  redemption_confirmed
+  experience_reminder
+  new_offer
+  authenticity_alert
+  marketplace_recommendation
+  referral_update
+  warranty_update
+- title
+- body
+- actionUrl nullable
+- readAt nullable
+- createdAt
+
+NexidNetworkProfile:
+- id
+- consumerId
+- status: active | paused | deleted
+- discoverability: private | marketplace_opt_in | public_profile
+- allowCrossBrandRecommendations boolean
+- allowPartnerOffers boolean
+- profileJson
+- createdAt
+- updatedAt
+
+Do not duplicate models already created in Codex 02. If LoyaltyMember already exists, map Consumer to LoyaltyMember cleanly and avoid parallel balances.
+
+PHASE 2 — PORTAL INFORMATION ARCHITECTURE
+Create a consumer portal with premium UX.
+
+Suggested routes:
+- /me
+- /me/passport
+- /me/products
+- /me/taps
+- /me/rewards
+- /me/wallet
+- /me/brands
+- /me/marketplace
+- /me/experiences
+- /me/purchases
+- /me/referrals
+- /me/settings
+- /me/privacy
+- /me/support
+
+If app structure uses another routing convention, adapt.
+
+Portal pages:
+
+1. /me — Consumer Home
+Must show:
+- welcome card
+- authenticity score / verified products count
+- points overview
+- active tenant memberships
+- latest taps
+- available rewards
+- recommended premium products
+- active experiences
+- unread notifications
+- BotIA consumer assistant
+- CTA: “Explorar marcas premium verificadas”
+- CTA: “Ver mis productos auténticos”
+
+2. /me/passport — NexID Premium Passport
+A wallet-style digital passport:
+- consumer identity
+- verified products
+- active memberships
+- badges
+- tiers
+- lifetime activity
+- authenticity footprint
+- countries/cities where they scanned
+- privacy controls
+
+3. /me/products — My Verified Products
+Cards grouped by vertical:
+- Wines
+- Events
+- Perfumes
+- Cosmetics
+- Luxury
+Each card:
+- product image
+- product name
+- tenant/brand
+- authenticity verdict
+- first tap date
+- latest tap date
+- ownership status
+- reward eligibility
+- open product passport
+
+4. /me/taps — Tap History
+A chronological timeline:
+- product
+- brand
+- verdict
+- date
+- city/country
+- points awarded if any
+- replay/blocked states
+- filter by tenant, vertical, verdict, date
+
+5. /me/rewards — Rewards
+Sections:
+- Available now
+- Locked
+- Claimed
+- Redeemed
+- Expired
+- By brand
+- By marketplace
+Reward card:
+- title
+- brand
+- cost
+- stock
+- expiration
+- eligibility
+- claim/redeem button
+- disabled reason if blocked
+
+6. /me/wallet — Points Wallet
+Show:
+- tenant-specific balances
+- network credits if enabled
+- points ledger
+- pending redemptions
+- expiration if configured
+- no cash value disclaimer in copy
+- family/account pooling if enabled
+
+7. /me/brands — My Brands
+Each tenant the consumer joined:
+- brand profile
+- membership status
+- tier
+- points
+- rewards
+- experiences
+- products owned/tapped
+- consent status
+- leave brand / revoke consent
+
+8. /me/marketplace — Premium Verified Marketplace
+Discovery layer for opt-in tenants:
+- verified premium products
+- wineries
+- perfumes
+- cosmetics
+- events
+- luxury items
+- offers
+- experiences
+- filters:
+  - vertical
+  - country
+  - region
+  - tenant
+  - reward eligible
+  - accepts points
+  - has NFC authenticity
+  - available shipping
+- cards:
+  - product image
+  - brand
+  - authenticity program badge
+  - price if available
+  - external checkout or request-to-buy
+  - available reward/promo
+  - “join brand” CTA
+
+9. /me/experiences
+- winery tastings
+- vineyard tours
+- harvest day
+- premium events
+- perfume workshops
+- beauty consultations
+- VIP retail experiences
+- booking history
+- upcoming bookings
+- check-in via valid NFC or QR code
+
+10. /me/purchases
+- verified purchase history
+- reward redemptions
+- marketplace requests
+- external checkout references
+- receipt upload if implemented
+- no fake purchase state
+
+11. /me/referrals
+- invite links
+- referred friends
+- status
+- rewards earned
+- per-tenant referral programs
+- network referral programs if enabled
+
+12. /me/privacy
+- profile data
+- tenant consent matrix
+- cross-brand discovery consent
+- marketing consent
+- location precision preference
+- data export
+- data deletion request
+- revoke tenant membership
+- revoke marketplace personalization
+
+13. /me/support
+- report problem
+- authenticity dispute
+- missing points
+- missing reward
+- contact tenant
+- contact nexID
+- ticket history
+
+PHASE 3 — MOBILE TAP → PORTAL FLOW
+When user taps a valid product:
+1. Render /sun Digital Product Passport.
+2. If no consumer session:
+   - show CTA: “Crear mi NexID Passport”, “Guardar este producto”, “Sumar puntos con esta bodega/marca”
+   - support email magic link and phone OTP if available
+   - allow anonymous temporary session but require registration to claim rewards
+3. If consumer session exists:
+   - associate tap with ConsumerTapHistory
+   - show points awarded, tenant membership, available rewards, product saved to collection, CTA to portal
+4. If consumer is not a member of this tenant:
+   - show “Unirme al club de esta marca”
+   - explain points/rewards
+   - create TenantConsumerMembership only after explicit opt-in
+5. If consumer opts into marketplace:
+   - show “Explorar otras marcas verificadas”
+   - do not share data with other tenants by default
+6. If tap is replay/revoked/broken/tampered:
+   - do not award points
+   - do not let user claim rewards
+   - allow report problem
+   - allow product education content only if safe
+   - show clear warning
+7. If age-gated product:
+   - require age confirmation before alcohol reward/marketplace offers
+   - do not block authenticity verification
+
+PHASE 4 — POINTS AND REDEMPTION LOGIC
+Implement these rules.
+
+1. Tenant Points
+- Points earned from valid taps belong to one tenant program.
+- Tenant controls points name, earning rules, expiration, reward catalog, tier rules, transfer/pooling rules.
+- Points cannot be spent in another tenant unless cross-tenant settlement is enabled.
+
+2. NexID Network Credits
+- Disabled by default.
+- Optional platform-level incentive for profile completion, cross-brand onboarding, marketplace discovery, referrals and campaigns funded by nexID.
+- Must have separate ledger.
+- Do not mix with tenant liabilities.
+
+3. Cross-Tenant Redemption
+Allowed only if:
+- tenant reward is marked networkVisible
+- tenant accepts network credits or partner points
+- settlementPolicy exists
+- stock available
+- consumer eligible
+- consumer has consented to marketplace offers
+- age/region rules pass
+
+4. Wine Box / Bottle / Discount Redemption
+Support reward types:
+- WINE_BOTTLE
+- WINE_BOX
+- DISCOUNT_CODE
+- TASTING_UPGRADE
+- SHIPPING_DISCOUNT
+- EVENT_ACCESS
+- EXPERIENCE_BOOKING
+- GIFT
+- SAMPLE
+- SERVICE
+- VIP_ACCESS
+
+Reward fulfillment fields:
+- fulfillmentType:
+  coupon_code
+  qr_code
+  manual_review
+  pickup_at_store
+  shipment_request
+  external_checkout
+  tenant_contact
+- fulfillmentInstructions
+- stockTotal
+- stockRemaining
+- maxPerMember
+- expirationDate
+- requiresAgeGate
+- requiresShippingAddress
+- requiresTenantApproval
+
+5. Missing Purchase Provider
+If no payment provider exists:
+- create MarketplaceOrderRequest
+- create Lead/OrderRequest for tenant
+- show “Solicitud enviada” / “La marca te contactará”
+- do not implement fake checkout
+
+PHASE 5 — PREMIUM MARKETPLACE MODEL
+Add models.
+
+MarketplaceBrandProfile:
+- id
+- tenantId
+- status: draft | active | paused | hidden
+- displayName
+- slug
+- vertical
+- description
+- logoUrl nullable
+- heroImageUrl nullable
+- country
+- province
+- city
+- lat nullable
+- lng nullable
+- websiteUrl nullable
+- externalStoreUrl nullable
+- whatsappUrl nullable
+- visibleInNetwork boolean
+- acceptsNetworkCredits boolean
+- featured boolean
+- tagsJson
+- createdAt
+- updatedAt
+
+MarketplaceProduct:
+- id
+- tenantId
+- productPassportId nullable
+- status: draft | active | paused | archived | sold_out
+- title
+- description
+- vertical
+- category
+- imageUrl nullable
+- priceAmount nullable
+- priceCurrency nullable
+- externalCheckoutUrl nullable
+- requestToBuyEnabled boolean
+- acceptsRewards boolean
+- acceptsTenantPoints boolean
+- acceptsNetworkCredits boolean
+- countryAvailabilityJson
+- shippingPolicyJson
+- ageGateRequired boolean
+- authenticityProgramBadge boolean
+- featured boolean
+- createdAt
+- updatedAt
+
+MarketplaceOffer:
+- id
+- tenantId
+- marketplaceProductId nullable
+- rewardId nullable
+- title
+- description
+- status: draft | active | paused | expired | archived
+- type:
+  discount
+  points_redemption
+  gift
+  bundle
+  experience
+  early_access
+  external_checkout
+  request_to_buy
+- startsAt
+- endsAt nullable
+- eligibilityJson
+- visibility:
+  tenant_members_only
+  verified_tappers
+  nexid_network
+  invited_segment
+- createdAt
+- updatedAt
+
+MarketplaceOrderRequest:
+- id
+- consumerId
+- tenantId
+- marketplaceProductId nullable
+- offerId nullable
+- status: requested | contacted | quoted | accepted | fulfilled | cancelled | rejected
+- quantity
+- consumerMessage nullable
+- contactJson
+- shippingAddressJson nullable
+- sourceTapEventId nullable
+- createdAt
+- updatedAt
+
+CrossTenantSettlementPolicy:
+- id
+- tenantId
+- status: draft | active | paused
+- acceptsNetworkCredits boolean
+- acceptsPartnerTenantPoints boolean
+- conversionRulesJson
+- reimbursementRulesJson
+- limitsJson
+- createdAt
+- updatedAt
+
+PHASE 6 — API ROUTES
+Implement or adapt to current routing style.
+
+Consumer auth:
+- POST /api/consumer/auth/start
+- POST /api/consumer/auth/verify
+- POST /api/consumer/auth/logout
+- GET /api/consumer/session
+
+Consumer portal:
+- GET /api/consumer/me
+- PATCH /api/consumer/me
+- GET /api/consumer/passport
+- GET /api/consumer/products
+- GET /api/consumer/taps
+- GET /api/consumer/rewards
+- GET /api/consumer/wallet
+- GET /api/consumer/brands
+- GET /api/consumer/experiences
+- GET /api/consumer/purchases
+- GET /api/consumer/notifications
+- PATCH /api/consumer/notifications/:id/read
+- GET /api/consumer/privacy
+- PATCH /api/consumer/privacy/consent
+- POST /api/consumer/privacy/export
+- POST /api/consumer/privacy/delete-request
+
+Tap association:
+- POST /api/mobile/passport/:eventId/consumer/claim
+- POST /api/mobile/passport/:eventId/consumer/join-tenant
+- POST /api/mobile/passport/:eventId/consumer/save-product
+- POST /api/mobile/passport/:eventId/consumer/claim-points
+- POST /api/mobile/passport/:eventId/consumer/report-problem
+
+Rewards:
+- POST /api/consumer/rewards/:rewardId/claim
+- POST /api/consumer/rewards/:rewardId/redeem
+- POST /api/consumer/rewards/:redemptionId/cancel
+
+Marketplace:
+- GET /api/marketplace/brands
+- GET /api/marketplace/brands/:slug
+- GET /api/marketplace/products
+- GET /api/marketplace/products/:id
+- GET /api/marketplace/offers
+- POST /api/marketplace/products/:id/request-to-buy
+- POST /api/marketplace/offers/:id/claim
+- POST /api/marketplace/brands/:tenantId/join
+
+Experiences:
+- GET /api/consumer/experiences
+- POST /api/consumer/experiences/:experienceId/book
+- POST /api/consumer/experiences/:bookingId/cancel
+- POST /api/consumer/experiences/:bookingId/check-in
+
+Tenant admin:
+- GET /api/admin/consumer-portal/overview?tenant=
+- GET /api/admin/consumer-portal/members?tenant=
+- GET /api/admin/consumer-portal/member/:consumerId
+- GET /api/admin/consumer-portal/marketplace-products?tenant=
+- POST /api/admin/consumer-portal/marketplace-products
+- PATCH /api/admin/consumer-portal/marketplace-products/:id
+- GET /api/admin/consumer-portal/offers?tenant=
+- POST /api/admin/consumer-portal/offers
+- PATCH /api/admin/consumer-portal/offers/:id
+- GET /api/admin/consumer-portal/order-requests?tenant=
+- PATCH /api/admin/consumer-portal/order-requests/:id
+- GET /api/admin/consumer-portal/redemptions?tenant=
+- PATCH /api/admin/consumer-portal/redemptions/:id
+- GET /api/admin/consumer-portal/analytics?tenant=&range=
+
+Superadmin:
+- GET /api/superadmin/consumer-network/overview
+- GET /api/superadmin/consumer-network/consumers
+- GET /api/superadmin/consumer-network/brands
+- GET /api/superadmin/consumer-network/marketplace
+- GET /api/superadmin/consumer-network/offers
+- GET /api/superadmin/consumer-network/order-requests
+- GET /api/superadmin/consumer-network/settlement
+- POST /api/superadmin/consumer-network/settlement-policies
+- PATCH /api/superadmin/consumer-network/settlement-policies/:id
+- GET /api/superadmin/consumer-network/analytics
+- GET /api/superadmin/consumer-network/fraud
+
+BotIA:
+- POST /api/assistant/consumer
+- POST /api/assistant/marketplace
+- POST /api/assistant/recommendations
+- POST /api/assistant/tenant-growth-opportunities
+
+PHASE 7 — TENANT ADMIN UX FOR CONSUMER NETWORK
+Add or extend admin navigation:
+
+Tenant admin menu:
+- Resumen
+- Lotes
+- Tags
+- Analítica
+- Eventos
+- Leads & Tickets
+- Fidelización
+- Portal de Usuarios
+- Marketplace
+- Experiencias
+- Campañas
+- Suscripciones
+- API Keys
+- MFA
+
+Pages:
+
+1. Portal de Usuarios — Overview
+Show:
+- total registered consumers
+- anonymous tappers
+- tenant members
+- conversion from tap to registration
+- conversion from registration to reward claim
+- repeat tappers
+- top verified products
+- top rewards
+- top offers
+- missing points tickets
+- consumer growth trend
+- latest member activity
+
+2. Members
+- table/search/filter
+- member detail
+- points balance
+- tap history for this tenant
+- rewards claimed
+- purchases/order requests
+- experiences booked
+- consent status
+- risk flags
+- manual adjustment with audit
+
+3. Marketplace Products
+- create/edit product visible in nexID marketplace
+- link product to ProductPassport
+- external checkout URL
+- request-to-buy toggle
+- price/currency
+- age gate
+- shipping countries
+- featured toggle
+- preview card
+
+4. Offers
+- create/edit offer
+- select visibility:
+  tenant members
+  verified tappers
+  nexID network
+  invited segment
+- select reward
+- select marketplace product
+- stock
+- start/end
+- eligibility
+- preview mobile card
+
+5. Order Requests
+- consumer requests from marketplace
+- contact info
+- product
+- source tap
+- status pipeline: requested -> contacted -> quoted -> accepted -> fulfilled
+- convert to CRM lead/order request
+- notes
+
+6. Redemptions
+- wine bottle/box redemptions
+- pickup/shipping/manual fulfillment
+- QR/coupon code
+- status updates
+- export
+
+7. Analytics
+- tap to registration funnel
+- registration to reward claim
+- product collection growth
+- marketplace views
+- request-to-buy conversion
+- offer claim rate
+- reward redemption rate
+- consumer lifetime activity
+- top regions
+- BotIA recommendations
+
+PHASE 8 — SUPERADMIN UX FOR NEXID NETWORK
+Add superadmin “Consumer Network” module.
+
+Pages:
+1. Network Overview
+- total consumers
+- registered consumers
+- active consumers
+- tenant memberships
+- cross-brand opt-ins
+- marketplace brands
+- marketplace products
+- offers active
+- order requests
+- reward redemptions
+- fraud/risk claims
+- growth by country
+- growth by vertical
+
+2. Consumers
+- privacy-safe global consumer list
+- search by email/phone only if permitted
+- anonymized activity if not permitted
+- memberships count
+- total verified products
+- risk status
+- support tickets
+
+3. Brands
+- tenants visible in marketplace
+- vertical
+- country
+- active offers
+- marketplace products
+- order requests
+- consumer memberships
+- conversion metrics
+
+4. Marketplace
+- global product catalog
+- moderation queue
+- featured brands/products
+- hidden/paused products
+- external checkout health
+- request-to-buy performance
+
+5. Settlement
+- tenant-level point/network credit policies
+- redemption liabilities
+- partner reimbursements
+- export reports
+- disabled by default unless configured
+
+6. Fraud
+- suspicious reward claims
+- replay claims
+- repeated failed redemptions
+- account farming
+- impossible geo
+- point reversal actions
+
+7. Network Recommendations
+- tenants that should publish offers
+- products with high tap volume but low conversion
+- consumers likely to join more brands
+- regions with premium demand
+- reseller upsell opportunities
+
+PHASE 9 — BOTIA CONSUMER / MARKETPLACE INTELLIGENCE
+Extend BotIA.
+
+Consumer-facing BotIA:
+- “Qué productos auténticos tengo.”
+- “Cuántos puntos tengo.”
+- “Qué puedo canjear.”
+- “Qué vinos me recomendás según mis taps.”
+- “Qué bodega de Mendoza puedo visitar.”
+- “Qué promo tengo disponible.”
+- “Qué significa este producto verificado.”
+- “Cómo reporto un problema.”
+- “Cómo borro mis datos.”
+
+Tenant admin BotIA:
+- “Qué consumidores deberían recibir promo.”
+- “Qué producto tiene mejor potencial de recompra.”
+- “Qué premio conviene para este segmento.”
+- “Qué oferta publico en el marketplace.”
+- “Qué consumidores hicieron tap pero no se registraron.”
+- “Qué promociones funcionan mejor.”
+- “Convertí estos order requests en leads.”
+
+Superadmin BotIA:
+- “Qué tenants deberían entrar al marketplace.”
+- “Qué marcas tienen más potencial cross-sell.”
+- “Qué vertical crece más.”
+- “Dónde hay demanda premium en LATAM.”
+- “Qué reseller puede vender el módulo portal usuario.”
+- “Generá un reporte ejecutivo del Consumer Network.”
+
+Rules:
+- No hallucinated offers.
+- No hallucinated stock.
+- No hallucinated prices.
+- No PII leakage.
+- Every AI action must be draft-first.
+- Activation requires explicit user/admin click.
+- Every action creates AuditLog.
+
+PHASE 10 — UX/UI REQUIREMENTS
+Consumer portal visual direction:
+- Premium passport wallet.
+- Luxury dark mode.
+- Intentional light mode.
+- Mobile-first.
+- PWA-ready.
+- High-quality cards.
+- Smooth transitions.
+- Product collection feel.
+- Badge wall.
+- Reward carousel.
+- Marketplace cards.
+- Map of verified experiences.
+- Clean privacy controls.
+- Clear tenant/brand boundaries.
+
+Components:
+- ConsumerShell
+- ConsumerTopBar
+- PassportHero
+- ProductCollectionCard
+- VerifiedProductBadge
+- BrandMembershipCard
+- PointsWalletCard
+- TenantPointsBalance
+- NetworkCreditsBalance
+- RewardCard
+- RewardRedemptionDrawer
+- MarketplaceProductCard
+- MarketplaceBrandCard
+- ExperienceBookingCard
+- TapTimeline
+- PurchaseHistoryCard
+- ConsentMatrix
+- PrivacyControlCard
+- ConsumerNotificationCenter
+- BotIAConsumerPanel
+- EmptyState
+- Skeleton
+- ActionButton
+- PremiumOfferCarousel
+- BrandDiscoveryGrid
+
+Animations:
+- card enter
+- verified pulse
+- point award count-up
+- reward unlock
+- badge earned
+- marketplace card hover
+- portal navigation transition
+- drawer/modal transition
+- skeleton loading
+- toast feedback
+Respect prefers-reduced-motion.
+
+PHASE 11 — MARKETPLACE POSITIONING / COPY
+Add es-AR, pt-BR and en.
+
+es-AR examples:
+- “Tu pasaporte de productos auténticos.”
+- “Guardá este vino en tu colección.”
+- “Sumá puntos con esta bodega.”
+- “Canjeá una caja de vino, una promo o una experiencia.”
+- “Explorá marcas premium verificadas por nexID.”
+- “Este producto está autenticado por NFC.”
+- “Tus puntos de esta marca.”
+- “Tus beneficios nexID.”
+- “Esta recompensa requiere ser miembro de la marca.”
+- “Este tap no suma puntos por seguridad.”
+- “La marca recibió tu solicitud de compra.”
+- “Elegí qué marcas pueden enviarte beneficios.”
+
+pt-BR examples:
+- “Seu passaporte de produtos autênticos.”
+- “Salve este vinho na sua coleção.”
+- “Ganhe pontos com esta marca.”
+- “Explore marcas premium verificadas pela nexID.”
+
+en examples:
+- “Your verified product passport.”
+- “Save this product to your collection.”
+- “Earn points with this brand.”
+- “Explore premium brands verified by nexID.”
+
+PHASE 12 — SECURITY / FRAUD / PRIVACY
+Implement:
+- email/phone verification before high-value redemption
+- idempotent reward claim
+- no points for replay/revoked/broken/tampered
+- rate limit reward claims
+- rate limit auth attempts
+- anti-farming checks:
+  - many accounts same device/IP
+  - many redemptions same address
+  - repeated replay claims
+  - impossible geo
+- points reversal flow
+- audit logs
+- consent logs
+- data export
+- data deletion request
+- tenant data boundaries
+- marketplace opt-in matrix
+- age gate for alcohol rewards
+- region eligibility rules
+- no cash-out
+- no transfer by default unless configured
+
+PHASE 13 — ANALYTICS
+Consumer portal analytics:
+- tap to registration rate
+- registration to tenant membership rate
+- tenant membership count
+- product save rate
+- points awarded
+- points redeemed
+- reward claim rate
+- reward redemption rate
+- marketplace view rate
+- marketplace request-to-buy conversion
+- cross-brand opt-in rate
+- tenant association count per consumer
+- repeat tap rate
+- purchase/order request rate
+- experience booking conversion
+- top brands
+- top products
+- top regions
+- fraud blocked claims
+- missing points tickets
+
+Tenant analytics:
+- consumer acquisition by product
+- best converting tap products
+- top reward
+- top marketplace product
+- repeat consumers
+- local vs tourist consumers
+- age-gated redemption attempts
+- referral conversion
+- purchase intent
+- campaign ROI proxy if backed by data
+
+Superadmin analytics:
+- network growth
+- brand adoption
+- marketplace GMV proxy only if backed by real order requests
+- cross-brand engagement
+- country/vertical expansion
+- reseller upsell opportunities
+- consumer cohort retention
+
+No hardcoded analytics.
+No fake GMV.
+If payment is not implemented, call it “order request volume” or “purchase intent”, not revenue.
+
+PHASE 14 — SEED DEMO
+Create deterministic demo for Demo Bodega.
+
+Demo flow:
+1. User taps Demo Bodega Gran Reserva Malbec.
+2. Valid tap:
+   - product authenticated
+   - user can create nexID Passport
+   - user joins Demo Bodega Club
+   - product saved to collection
+   - points awarded
+   - badge earned: Primer Tap Auténtico
+   - offer unlocked: 10% off próxima compra
+   - reward visible: canjear caja de vino after required points
+   - experience visible: Degustación Valle de Uco
+3. Replay tap:
+   - no points
+   - reward blocked
+   - report problem available
+4. Portal:
+   - shows product in collection
+   - shows Demo Bodega membership
+   - shows points wallet
+   - shows reward catalog
+   - shows marketplace with other demo premium brands
+5. Marketplace demo brands:
+   - Demo Bodega
+   - Demo Perfume
+   - Demo Beauty
+   - Demo Premium Event
+   - Demo Luxury Retail
+Mark all demo brands clearly as demo.
+Do not fabricate real partner brands.
+
+PHASE 15 — TESTS
+Unit tests:
+- consumer registration from tap
+- tenant membership created only after opt-in
+- valid tap saves product
+- replay tap cannot award points
+- reward claim idempotent
+- wine box reward stock decreases
+- stock cannot go below zero
+- redemption requires age gate when configured
+- marketplace offer visibility respects consent
+- Tenant A cannot access Tenant B consumer data
+- points ledgers remain separated
+- network credits disabled by default
+- request-to-buy creates MarketplaceOrderRequest
+- data export includes consumer-owned data
+- data deletion request anonymizes/marks deleted
+
+Integration tests:
+- seed Demo Bodega consumer portal
+- valid /sun tap
+- register consumer
+- join tenant
+- claim points
+- see product in /me/products
+- see tap in /me/taps
+- redeem discount
+- attempt wine box redemption with insufficient points
+- book tasting experience
+- open marketplace
+- request-to-buy another demo product
+- tenant admin sees member and order request
+- superadmin sees consumer network aggregate
+- replay tap cannot claim points
+
+E2E if Playwright/Cypress exists:
+- mobile /sun valid -> create consumer account
+- mobile /sun replay -> blocked reward
+- /me home
+- /me/products
+- /me/rewards
+- /me/marketplace
+- /me/brands
+- /me/privacy
+- tenant Portal de Usuarios
+- tenant Marketplace Products
+- tenant Offers
+- tenant Order Requests
+- superadmin Consumer Network
+- BotIA consumer recommendations
+- light mode
+- mobile responsive
+
+Static:
+- no localhost production fallback
+- no dead buttons
+- no href="#"
+- no “coming soon”
+- no fake marketplace values
+- no hardcoded points balances
+- no hardcoded revenue
+- npm run build passes
+- npm run lint passes if present
+- npm test passes if present
+
+PHASE 16 — ACCEPTANCE CRITERIA
+Done only when:
+1. /health works.
+2. /sun works.
+3. SUN/SDM validation remains intact.
+4. Valid tap can create/associate a consumer.
+5. Consumer can join the tapped product’s tenant.
+6. Consumer gets tenant-scoped points only for valid eligible taps.
+7. Replay/revoked/broken/tampered taps cannot award points.
+8. Consumer portal exists and is premium/responsive.
+9. Consumer can see tap history.
+10. Consumer can see verified product collection.
+11. Consumer can see tenant memberships.
+12. Consumer can redeem eligible rewards.
+13. Consumer can request-to-buy marketplace products.
+14. Consumer can discover opt-in premium brands.
+15. Tenant admin can manage portal members.
+16. Tenant admin can publish marketplace products/offers.
+17. Tenant admin can see consumer analytics.
+18. Superadmin can see aggregate consumer network.
+19. Cross-tenant data privacy is enforced.
+20. Marketplace participation is opt-in by tenant.
+21. Consumer cross-brand discovery is opt-in.
+22. Wine/alcohol rewards support age gate.
+23. No fake purchase/payment flow.
+24. BotIA supports consumer/marketplace recommendations.
+25. Demo Bodega flow works end to end.
+26. Tests pass.
+27. Build passes.
+
+DELIVERABLE FORMAT
+Return only:
+1. Summary of changes.
+2. Changed files.
+3. New files.
+4. New routes/endpoints.
+5. DB migrations/schema changes.
+6. Seed/demo changes.
+7. Env/config changes.
+8. Exact commands run and results.
+9. Screenshots:
+   - /sun valid with “Crear mi NexID Passport”
+   - /sun valid after logged-in consumer
+   - /sun replay with rewards blocked
+   - /me home
+   - /me/products
+   - /me/taps
+   - /me/rewards
+   - /me/wallet
+   - /me/brands
+   - /me/marketplace
+   - /me/privacy
+   - tenant Portal de Usuarios
+   - tenant Marketplace Products
+   - tenant Offers
+   - tenant Order Requests
+   - superadmin Consumer Network
+   - BotIA consumer recommendations
+   - mobile responsive
+   - light mode
+10. Tests added.
+11. Production/staging checks performed.
+12. Blockers only if real:
+   - exact missing env
+   - exact missing credential
+   - exact missing path
+   - exact failed command
+13. Deferred items only with exact reason.
+
+Do not return brainstorming.
+Do not return generic advice.
+Do not fake marketplace products.
+Do not fake purchases.
+Do not fake rewards.
+Do not fake screenshots.
+Do not claim implemented unless code changed and build/tests ran.
+Ship working code.
