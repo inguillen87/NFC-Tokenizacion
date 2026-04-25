@@ -319,7 +319,7 @@ export function UseCasesSection({ content }: { content: Content }) {
       <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {content.useCases.cards.map((item: any) => (
           <Card key={item.title} className="p-6 backdrop-blur-xl border border-white/5 bg-slate-900/50 shadow-lg hover:border-cyan-500/30 hover:-translate-y-1 transition-all duration-300 group">
-            <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">{item.title}</h3>
+            <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 shadow-inner group-hover:bg-cyan-500/20 transition-colors text-cyan-400">✨</div><h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">{item.title}</h3></div>
             <p className="mt-3 text-sm leading-6 text-slate-400">{item.body}</p>
           </Card>
         ))}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { OpsPanel, StatusChip, WorldMapRealtime } from "@product/ui";
+import { VerticalAsset } from "./multirubro-assets";
 import { motion } from "framer-motion";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from "recharts";
 
@@ -568,7 +569,7 @@ export function MultirubroOpsPanel() {
           <div className="mt-2 grid gap-2">
             {METADATA_TEMPLATES.map((template) => (
               <div key={template.vertical} className="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-200">
-                <p className="font-semibold text-white">{template.vertical}</p>
+                <div className="flex items-center gap-3"><VerticalAsset vertical={template.vertical} size="sm" /><p className="font-semibold text-white">{template.vertical}</p></div>
                 <p className="text-slate-400">{template.fields.join(" · ")}</p>
               </div>
             ))}
