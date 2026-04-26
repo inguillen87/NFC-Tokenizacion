@@ -116,3 +116,69 @@ html.theme-light .animate-card-shift:hover {
 .bottom-nav-btn {
   @apply flex flex-col items-center justify-center min-h-[44px] transition-colors active:bg-white/10;
 }
+
+/* Premium world-globe style animation for landing */
+.premium-globe {
+  position: relative;
+  margin-inline: auto;
+  width: min(100%, 290px);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(34, 211, 238, 0.35), transparent 35%),
+    radial-gradient(circle at 72% 70%, rgba(167, 139, 250, 0.28), transparent 40%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.98));
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: inset 0 0 46px rgba(59, 130, 246, 0.18), 0 20px 40px rgba(8, 15, 30, 0.45);
+  overflow: hidden;
+}
+
+.premium-globe::before,
+.premium-globe::after {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border-radius: 9999px;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  animation: premiumRotate 18s linear infinite;
+}
+
+.premium-globe::after {
+  inset: 20%;
+  border-color: rgba(196, 181, 253, 0.28);
+  animation-duration: 14s;
+  animation-direction: reverse;
+}
+
+.premium-globe__ring {
+  position: absolute;
+  inset: 8%;
+  border-radius: 9999px;
+  border: 1px dashed rgba(226, 232, 240, 0.18);
+}
+
+.premium-globe__ring--one { transform: rotate(15deg); animation: premiumRotate 24s linear infinite; }
+.premium-globe__ring--two { transform: rotate(65deg) scale(0.9); animation: premiumRotate 20s linear infinite reverse; }
+.premium-globe__ring--three { transform: rotate(-35deg) scale(0.75); animation: premiumRotate 16s linear infinite; }
+
+.premium-globe__dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  box-shadow: 0 0 18px currentColor;
+}
+
+.premium-globe__dot--one { top: 28%; left: 65%; color: #67e8f9; animation: premiumPulse 2.5s ease-in-out infinite; }
+.premium-globe__dot--two { top: 62%; left: 38%; color: #a78bfa; animation: premiumPulse 2.1s ease-in-out infinite 0.5s; }
+.premium-globe__dot--three { top: 44%; left: 18%; color: #34d399; animation: premiumPulse 2.7s ease-in-out infinite 0.8s; }
+
+@keyframes premiumRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes premiumPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}

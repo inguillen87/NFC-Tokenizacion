@@ -121,6 +121,8 @@ export function DashboardShellInner({
     items.push({ href: "/api-keys", label: nav.apiKeys });
   }
 
+  const isActiveRoute = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
   const role = (currentRole as keyof typeof roles) || "tenant-admin";
   const forbidden = (pathname === "/tenants" && currentRole === "tenant-admin") || (pathname.startsWith("/superadmin") && currentRole !== "super-admin");
   const isDemoMode = currentLabel.toLowerCase().includes("demo") || currentEmail.includes("demo");
@@ -170,7 +172,7 @@ export function DashboardShellInner({
           </Link>
 
           {items.map((item) => (
-            <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === item.href ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+            <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute(item.href) ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
               {item.label}
             </Link>
           ))}
@@ -178,7 +180,7 @@ export function DashboardShellInner({
           {currentRole === "super-admin" ? (
              <div className="mt-8 mb-4">
                 <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Global Network</p>
-                <Link href="/superadmin-network" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/superadmin-network" ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+                <Link href="/superadmin-network" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/superadmin-network") ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                   Consumer Network
                 </Link>
              </div>
@@ -187,28 +189,28 @@ export function DashboardShellInner({
           {currentRole === "tenant-admin" || currentRole === "super-admin" ? (
             <div className="mt-8 mb-4">
                <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Loyalty & Network</p>
-               <Link href="/loyalty/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/loyalty/overview" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/loyalty/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/overview") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Loyalty Studio
                </Link>
-               <Link href="/consumer-network/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/consumer-network/overview" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/consumer-network/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/consumer-network/overview") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Portal de Usuarios
                </Link>
-               <Link href="/loyalty/rewards" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/loyalty/rewards" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/loyalty/rewards" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/rewards") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Catálogo Beneficios
                </Link>
-               <Link href="/loyalty/experiences" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/loyalty/experiences" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/loyalty/experiences" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/experiences") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Experiencias & Eventos
                </Link>
-               <Link href="/loyalty/campaigns" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/loyalty/campaigns" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/loyalty/campaigns" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/campaigns") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Growth & BotIA
                </Link>
-               <Link href="/consumer-network/marketplace" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all mt-2 ${pathname === "/consumer-network/marketplace" ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-violet-400 hover:bg-white/5 hover:text-violet-300"}`}>
+               <Link href="/consumer-network/marketplace" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all mt-2 ${isActiveRoute("/consumer-network/marketplace") ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-violet-400 hover:bg-white/5 hover:text-violet-300"}`}>
                  Marketplace Opt-in
                </Link>
-               <Link href="/consumer-network/offers" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/consumer-network/offers" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/consumer-network/offers" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/consumer-network/offers") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Ofertas & Drops
                </Link>
-               <Link href="/consumer-network/order-requests" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/consumer-network/order-requests" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/consumer-network/order-requests" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/consumer-network/order-requests") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Order Requests
                </Link>
             </div>
@@ -217,11 +219,11 @@ export function DashboardShellInner({
           <div className="mt-8 border-t border-white/5 pt-4">
              <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Settings</p>
              {(currentPermissions.includes("users:manage") || currentRole === "super-admin") && (
-               <Link href="/users" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/users" ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/users" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/users") ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  IAM Users
                </Link>
              )}
-             <Link href="/mfa" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/mfa" ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+             <Link href="/mfa" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/mfa") ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                MFA Security
              </Link>
           </div>
@@ -298,7 +300,7 @@ export function DashboardShellInner({
         <div className="dashboard-mobile-dock fixed inset-x-0 bottom-0 z-40 border-t border-white/5 bg-slate-950/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl lg:hidden">
           <div className="grid grid-cols-4 gap-2">
             {mobileQuickLinks.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = isActiveRoute(item.href);
               return (
                 <Link key={item.href} href={item.href} className={`flex flex-col items-center justify-center rounded-xl p-2 text-[10px] font-bold transition-all ${isActive ? "text-cyan-300" : "text-slate-400 hover:text-slate-200"}`}>
                   <span className={`w-8 h-1 mb-1 rounded-full transition-colors ${isActive ? "bg-cyan-400" : "bg-transparent"}`} />

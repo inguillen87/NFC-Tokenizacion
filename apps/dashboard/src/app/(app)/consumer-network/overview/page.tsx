@@ -1,9 +1,33 @@
+import { WorldMapRealtime } from "@product/ui";
+
+const enterprisePoints = [
+  { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 124, risk: 1, status: "AUTH_OK", lastSeen: new Date().toISOString() },
+  { city: "Córdoba", country: "Argentina", lat: -31.4201, lng: -64.1888, scans: 88, risk: 0, status: "VIP_OK", lastSeen: new Date().toISOString() },
+  { city: "Mexico City", country: "Mexico", lat: 19.4326, lng: -99.1332, scans: 63, risk: 2, status: "DUPLICATE_BLOCKED", lastSeen: new Date().toISOString() },
+  { city: "São Paulo", country: "Brazil", lat: -23.5505, lng: -46.6333, scans: 79, risk: 1, status: "OPENED_EVENT", lastSeen: new Date().toISOString() },
+  { city: "Bogotá", country: "Colombia", lat: 4.711, lng: -74.0721, scans: 51, risk: 0, status: "PACKAGE_VERIFIED", lastSeen: new Date().toISOString() },
+];
+
+const enterpriseFeed: Array<{ title: string; place: string; vertical: string; severity: "opened" | "ok" | "risk" }> = [
+  { title: "Bottle uncorked", place: "Mendoza, AR", vertical: "Wine", severity: "opened" },
+  { title: "VIP wristband validated", place: "Córdoba, AR", vertical: "Events", severity: "ok" },
+  { title: "Duplicate access blocked", place: "Mexico City, MX", vertical: "Events", severity: "risk" },
+  { title: "Chain of custody checkpoint", place: "Bogotá, CO", vertical: "Pharma", severity: "ok" },
+  { title: "Bag open event", place: "Rosario, AR", vertical: "Agro", severity: "opened" },
+];
+
+function severityTone(severity: "opened" | "ok" | "risk") {
+  if (severity === "risk") return "text-rose-300 border-rose-300/20 bg-rose-500/10";
+  if (severity === "opened") return "text-violet-200 border-violet-300/20 bg-violet-500/10";
+  return "text-emerald-200 border-emerald-300/20 bg-emerald-500/10";
+}
+
 export default function PortalUsuariosOverviewPage() {
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-white">Portal de Usuarios</h1>
-        <p className="mt-1 text-sm text-slate-400">Métricas de adquisición, retención y conversión de la base de consumidores registrados.</p>
+        <p className="mt-1 text-sm text-slate-400">Métricas de adquisición, retención, conversión y eventos live en red enterprise.</p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -29,74 +53,59 @@ export default function PortalUsuariosOverviewPage() {
         </article>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-         {/* Top Users */}
-         <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
-            <h3 className="text-sm font-bold text-white mb-4">Últimos Miembros Activos</h3>
-            <ul className="space-y-4">
-               <li className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">MC</div>
-                     <div>
-                        <p className="text-sm font-medium text-white">Martina Costa</p>
-                        <p className="text-xs text-slate-400">martina@example.com</p>
-                     </div>
-                  </div>
-                  <div className="text-right">
-                     <p className="text-sm font-bold text-emerald-400">1,200 pts</p>
-                     <p className="text-[10px] text-slate-500">Nivel Embajador</p>
-                  </div>
-               </li>
-               <li className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">JP</div>
-                     <div>
-                        <p className="text-sm font-medium text-white">Juan Pérez</p>
-                        <p className="text-xs text-slate-400">juan.perez@example.com</p>
-                     </div>
-                  </div>
-                  <div className="text-right">
-                     <p className="text-sm font-bold text-emerald-400">450 pts</p>
-                     <p className="text-[10px] text-slate-500">Nivel Explorador</p>
-                  </div>
-               </li>
-            </ul>
-            <button className="w-full mt-4 text-xs font-bold text-cyan-400 hover:text-cyan-300">Ver base completa →</button>
-         </div>
+      <section className="rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+        <WorldMapRealtime
+          title="Geo Intelligence · Consumer Network"
+          subtitle="Flujo mundial de taps, autenticaciones y eventos de riesgo por tenant."
+          points={enterprisePoints}
+          initialExpanded={false}
+        />
+      </section>
 
-         {/* Acquisition Funnel Chart Mock */}
-         <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
-            <h3 className="text-sm font-bold text-white mb-4">Adquisición por Producto (Top 3)</h3>
-            <div className="space-y-5">
-               <div>
-                  <div className="flex justify-between text-xs mb-1">
-                     <span className="text-slate-300 font-medium">Gran Reserva Malbec 2022</span>
-                     <span className="text-cyan-400 font-bold">450 altas</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-cyan-500 w-[80%]"></div>
-                  </div>
-               </div>
-               <div>
-                  <div className="flex justify-between text-xs mb-1">
-                     <span className="text-slate-300 font-medium">Línea Joven Cabernet</span>
-                     <span className="text-cyan-400 font-bold">210 altas</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-cyan-500 w-[45%]"></div>
-                  </div>
-               </div>
-               <div>
-                  <div className="flex justify-between text-xs mb-1">
-                     <span className="text-slate-300 font-medium">Caja Mixta Terroir</span>
-                     <span className="text-cyan-400 font-bold">85 altas</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-cyan-500 w-[15%]"></div>
-                  </div>
-               </div>
-            </div>
-         </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
+          <h3 className="mb-4 text-sm font-bold text-white">Últimos Miembros Activos</h3>
+          <ul className="space-y-4">
+            <li className="flex items-center justify-between border-b border-white/5 pb-2">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-slate-300">MC</div>
+                <div>
+                  <p className="text-sm font-medium text-white">Martina Costa</p>
+                  <p className="text-xs text-slate-400">martina@example.com</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-emerald-400">1,200 pts</p>
+                <p className="text-[10px] text-slate-500">Nivel Embajador</p>
+              </div>
+            </li>
+            <li className="flex items-center justify-between border-b border-white/5 pb-2">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-slate-300">JP</div>
+                <div>
+                  <p className="text-sm font-medium text-white">Juan Pérez</p>
+                  <p className="text-xs text-slate-400">juan.perez@example.com</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-emerald-400">450 pts</p>
+                <p className="text-[10px] text-slate-500">Nivel Explorador</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
+          <h3 className="mb-4 text-sm font-bold text-white">Feed Enterprise (live)</h3>
+          <div className="space-y-2">
+            {enterpriseFeed.map((event) => (
+              <div key={`${event.title}-${event.place}`} className={`rounded-lg border px-3 py-2 text-xs ${severityTone(event.severity)}`}>
+                <p className="font-semibold">{event.vertical}: {event.title}</p>
+                <p className="mt-0.5 opacity-80">{event.place}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

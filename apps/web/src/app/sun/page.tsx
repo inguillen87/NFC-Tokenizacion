@@ -259,6 +259,39 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          </div>
 
 
+         {/* Mobile Geo Trace / Enterprise Map */}
+         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
+            <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
+            <div className="mt-2">
+               {mapPoints.length ? (
+                  <WorldMapRealtime
+                    title="Ruta de autenticidad"
+                    subtitle="Origen, eventos y tap actual en red global."
+                    points={mapPoints}
+                    initialExpanded={false}
+                  />
+               ) : (
+                  <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-400">
+                    Sin coordenadas disponibles para este tap. Se mostrará el mapa al recibir eventos geo.
+                  </div>
+               )}
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
+                <p className="text-[9px] uppercase text-slate-500">Events</p>
+                <p className="text-xs font-semibold text-white">{timelineCount}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
+                <p className="text-[9px] uppercase text-slate-500">Cities</p>
+                <p className="text-xs font-semibold text-white">{timelineCities}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
+                <p className="text-[9px] uppercase text-slate-500">Last</p>
+                <p className="text-[10px] font-semibold text-white">{lastEventAt ? fmtDate(lastEventAt) : "N/A"}</p>
+              </div>
+            </div>
+         </div>
+
          {/* Loyalty & Experiences Mini-app (Consumer Network) */}
          {trustTone === "text-emerald-200" && (
              <div className="rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-5 mt-4">

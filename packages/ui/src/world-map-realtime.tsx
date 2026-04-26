@@ -17,6 +17,7 @@ type GeoPoint = {
 };
 
 type TimeWindowMode = "5m" | "1h" | "24h" | "all";
+type MapMode = "classic" | "network";
 
 function parseEventTime(value?: string) {
   if (!value) return Date.now();
@@ -33,6 +34,12 @@ function buildMapUrl(points: GeoPoint[], active: GeoPoint | null) {
   const minLng = Math.min(...lngs) - 0.35;
   const maxLng = Math.max(...lngs) + 0.35;
   return `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${active.lat}%2C${active.lng}`;
+}
+
+function projectToCanvas(lat: number, lng: number, width: number, height: number) {
+  const x = ((lng + 180) / 360) * width;
+  const y = ((90 - lat) / 180) * height;
+  return { x, y };
 }
 
 export function WorldMapRealtime({
@@ -53,6 +60,7 @@ export function WorldMapRealtime({
 }) {
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
   const [expanded, setExpanded] = useState(initialExpanded);
+  const [mapMode, setMapMode] = useState<MapMode>("network");
   const [activeIndex, setActiveIndex] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [hydrated, setHydrated] = useState(false);
@@ -119,12 +127,66 @@ export function WorldMapRealtime({
         <button type="button" onClick={() => setExpanded((current) => !current)} className="rounded-lg border border-indigo-300/30 bg-indigo-500/10 px-3 py-1 text-indigo-100">
           {expanded ? "Compact view" : "Expand map"}
         </button>
+        <button type="button" onClick={() => setMapMode((prev) => (prev === "classic" ? "network" : "classic"))} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+          {mapMode === "classic" ? "Mode: classic" : "Mode: network"}
+        </button>
       </div>
 
       {activePoint ? (
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem]">
           <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950/80">
-            <iframe title="world-map-realtime" src={mapUrl} className={`${expanded ? "h-[34rem]" : "h-[24rem]"} w-full`} loading="lazy" />
+            {mapMode === "classic" ? (
+              <iframe title="world-map-realtime" src={mapUrl} className={`${expanded ? "h-[34rem]" : "h-[24rem]"} w-full`} loading="lazy" />
+            ) : (
+              <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} relative overflow-hidden bg-[radial-gradient(circle_at_20%_25%,rgba(34,211,238,.22),transparent_40%),radial-gradient(circle_at_75%_78%,rgba(167,139,250,.2),transparent_42%),linear-gradient(165deg,#020617,#0b1734_55%,#111827)]`}>
+                <svg viewBox="0 0 1000 520" className="absolute inset-0 h-full w-full">
+                  <defs>
+                    <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="rgba(34,211,238,0.25)" />
+                      <stop offset="50%" stopColor="rgba(167,139,250,0.9)" />
+                      <stop offset="100%" stopColor="rgba(34,211,238,0.25)" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="0" y="0" width="1000" height="520" fill="rgba(8,13,33,0.45)" />
+                  {[...rankedPoints]
+                    .slice(0, 6)
+                    .map((point, index, arr) => {
+                      if (index === arr.length - 1) return null;
+                      const a = projectToCanvas(point.lat, point.lng, 1000, 520);
+                      const b = projectToCanvas(arr[index + 1].lat, arr[index + 1].lng, 1000, 520);
+                      const cx = (a.x + b.x) / 2;
+                      const cy = Math.min(a.y, b.y) - 36;
+                      return (
+                        <path
+                          key={`${point.city}-${index}`}
+                          d={`M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`}
+                          stroke="url(#routeGradient)"
+                          strokeWidth="2"
+                          fill="none"
+                          strokeDasharray="5 6"
+                          opacity="0.85"
+                        />
+                      );
+                    })}
+                  {rankedPoints.slice(0, 24).map((point, index) => {
+                    const coord = projectToCanvas(point.lat, point.lng, 1000, 520);
+                    const isActive = index === activeIndex;
+                    return (
+                      <g key={`${point.city}-${index}`}>
+                        <circle cx={coord.x} cy={coord.y} r={isActive ? 10 : 6} fill={isActive ? "rgba(34,211,238,0.95)" : "rgba(129,140,248,0.75)"} />
+                        <circle cx={coord.x} cy={coord.y} r={isActive ? 22 : 14} fill="none" stroke="rgba(125,211,252,0.3)" strokeWidth="1.6">
+                          <animate attributeName="r" values={`${isActive ? "12;24;12" : "8;16;8"}`} dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
+                          <animate attributeName="opacity" values="0.9;0.2;0.9" dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
+                        </circle>
+                      </g>
+                    );
+                  })}
+                </svg>
+                <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
+                  Network mode: visual arcs for global scans, opened/tamper/duplicate signals and active hubs.
+                </div>
+              </div>
+            )}
           </div>
           <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} space-y-2 overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-2`}>
             {rankedPoints.slice(0, 30).map((point, index) => (
