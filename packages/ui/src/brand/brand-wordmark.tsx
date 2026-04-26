@@ -12,7 +12,8 @@ export function BrandWordmark({ size = 120, variant = "static", theme = "dark", 
       alt="nexID Logo"
       width={size}
       height={height}
-      className={cx("inline-block object-contain object-left", className)}
+      style={{ width: size, height: height, maxWidth: "100%", objectFit: "contain" }}
+      className={cx("inline-block object-left", className)}
     />
   );
 }

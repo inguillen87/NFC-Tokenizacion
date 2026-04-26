@@ -6,7 +6,7 @@ export function BrandLockup({ size = 42, variant = "pulse", theme = "dark", clas
   void theme;
   return (
     <div className={cx("brand-lockup inline-flex items-center", className)} aria-label="nexID">
-      <BrandWordmark size={Math.max(140, size * 3.5)} variant={variant} theme={theme} />
+      <BrandWordmark size={Math.max(140, size * 2.8)} variant={variant} theme={theme} />
     </div>
   );
 }
