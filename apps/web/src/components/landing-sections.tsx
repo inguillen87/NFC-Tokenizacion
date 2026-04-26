@@ -33,10 +33,10 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-6 py-3.5 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
-              {content.hero.cta.primary}
+              {content.hero?.cta?.primary || "Empezar"}
             </Link>
             <Link href="/docs" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
-              {content.hero.cta.secondary}
+              {content.hero?.cta?.secondary || "Contacto"}
             </Link>
           </div>
 
@@ -388,10 +388,10 @@ export function CtaSection({ content }: { content: Content }) {
            <p className="mx-auto max-w-2xl text-lg text-slate-400 mb-10">{content.cta.body}</p>
            <div className="flex flex-wrap justify-center gap-4">
              <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-sm font-bold text-slate-950 transition hover:bg-slate-200 hover:scale-105 shadow-xl">
-                {content.cta.primary}
+                {content.cta?.primary || "Empezar"}
              </Link>
              <Link href="/?contact=sales#contact-modal" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-4 text-sm font-semibold text-white transition hover:bg-white/10">
-                {content.cta.secondary}
+                {content.cta?.secondary || "Contacto"}
              </Link>
            </div>
          </div>
