@@ -105,6 +105,9 @@ export function WorldMapRealtime({
   const mapUrl = useMemo(() => buildMapUrl(rankedPoints, activePoint), [rankedPoints, activePoint]);
   const totalScans = rankedPoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const riskSignals = rankedPoints.reduce((acc, point) => acc + (point.risk || 0), 0);
+  const emptyStateText = riskOnly
+    ? "No hay hubs con señales de riesgo para la ventana seleccionada. Desactivá Risk-only o ampliá la ventana temporal."
+    : "No hay hubs geolocalizados para la ventana seleccionada. Generá taps reales o ampliá la ventana temporal.";
 
   return (
     <Card className="worldmap-card relative overflow-hidden p-4 md:p-6">
@@ -228,7 +231,7 @@ export function WorldMapRealtime({
         </div>
       ) : (
         <div className="mt-4 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
-          No hay hubs geolocalizados para la ventana seleccionada. Generá taps reales o ampliá la ventana temporal.
+          {emptyStateText}
         </div>
       )}
     </Card>
