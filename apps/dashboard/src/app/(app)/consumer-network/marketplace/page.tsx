@@ -51,12 +51,26 @@ export default function TenantMarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [visibilityFilter, setVisibilityFilter] = useState<"all" | Visibility>("all");
+  const [importing, setImporting] = useState(false);
 
   const totals = useMemo(() => {
     const publicCount = items.filter((item) => item.visibility === "network").length;
     const directCount = items.filter((item) => item.checkout === "direct").length;
     return { total: items.length, publicCount, directCount };
   }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((item) => {
+      const matchesVisibility = visibilityFilter === "all" ? true : item.visibility === visibilityFilter;
+      const matchesText = q
+        ? item.name.toLowerCase().includes(q) || item.vertical.toLowerCase().includes(q)
+        : true;
+      return matchesVisibility && matchesText;
+    });
+  }, [items, query, visibilityFilter]);
 
   useEffect(() => {
     let isMounted = true;
@@ -75,6 +89,12 @@ export default function TenantMarketplacePage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const resetEditor = () => {
     setDraft(emptyDraft);
@@ -164,6 +184,31 @@ export default function TenantMarketplacePage() {
     setNotice("Producto eliminado.");
   };
 
+  const importFromJson = async (file?: File) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as Array<Omit<Item, "id">>;
+      const response = await fetch("/api/tenant-marketplace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed),
+      });
+      if (!response.ok) {
+        setNotice("No se pudo importar el JSON.");
+        return;
+      }
+      const data = (await response.json()) as { items: Item[]; imported: number };
+      setItems((prev) => [...data.items, ...prev]);
+      setNotice(`${data.imported} productos importados.`);
+    } catch {
+      setNotice("JSON inválido para importar.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -171,15 +216,30 @@ export default function TenantMarketplacePage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">Marketplace & Network</h1>
           <p className="mt-1 text-sm text-slate-400">Publicá, editá y administrá productos en el NexID Consumer Network desde una sola vista.</p>
         </div>
-        <button onClick={onCreate} className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
-          + Publicar Producto
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <label className="cursor-pointer rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10">
+            {importing ? "Importando..." : "Importar JSON"}
+            <input disabled={importing} type="file" accept="application/json" className="hidden" onChange={(event) => importFromJson(event.target.files?.[0])} />
+          </label>
+          <button onClick={onCreate} className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
+            + Publicar Producto
+          </button>
+        </div>
       </header>
 
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 text-sm text-slate-200">Items activos: <b className="text-white">{totals.total}</b></div>
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Públicos en network: <b>{totals.publicCount}</b></div>
         <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 text-sm text-cyan-100">Direct checkout listos: <b>{totals.directCount}</b></div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto o vertical..." className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30" />
+        <select value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as "all" | Visibility)} className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30">
+          <option value="all">Todas las visibilidades</option>
+          <option value="network">Público (Network)</option>
+          <option value="private">Oculto</option>
+        </select>
       </div>
 
       <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-950/10 p-6 backdrop-blur-md">
@@ -209,7 +269,7 @@ export default function TenantMarketplacePage() {
                 <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Cargando productos...</td>
               </tr>
             ) : null}
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <tr key={item.id} className="transition-colors hover:bg-white/5">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -238,7 +298,7 @@ export default function TenantMarketplacePage() {
                 </td>
               </tr>
             ))}
-            {!loading && items.length === 0 ? (
+            {!loading && filteredItems.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Todavía no hay productos. Publicá el primero.</td>
               </tr>

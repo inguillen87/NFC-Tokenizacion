@@ -52,22 +52,25 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const payload = (await req.json()) as Omit<MarketplaceItem, "id">;
-  if (!payload?.name?.trim() || !payload?.vertical?.trim()) {
+  const payload = (await req.json()) as Omit<MarketplaceItem, "id"> | Array<Omit<MarketplaceItem, "id">>;
+  const store = getStore();
+  const payloads = Array.isArray(payload) ? payload : [payload];
+  const normalized = payloads
+    .filter((entry) => entry?.name?.trim() && entry?.vertical?.trim())
+    .map((entry, index) => ({
+      id: `item-${Date.now()}-${index}`,
+      emoji: entry.emoji || "🆕",
+      name: entry.name.trim(),
+      priceArs: Number(entry.priceArs) || 0,
+      vertical: entry.vertical.trim(),
+      checkout: entry.checkout || "request",
+      visibility: entry.visibility || "network",
+    } satisfies MarketplaceItem));
+
+  if (!normalized.length) {
     return NextResponse.json({ error: "name and vertical are required" }, { status: 400 });
   }
 
-  const item: MarketplaceItem = {
-    id: `item-${Date.now()}`,
-    emoji: payload.emoji || "🆕",
-    name: payload.name.trim(),
-    priceArs: Number(payload.priceArs) || 0,
-    vertical: payload.vertical.trim(),
-    checkout: payload.checkout || "request",
-    visibility: payload.visibility || "network",
-  };
-
-  const store = getStore();
-  store.items = [item, ...store.items];
-  return NextResponse.json({ item }, { status: 201 });
+  store.items = [...normalized, ...store.items];
+  return NextResponse.json({ item: normalized[0], items: normalized, imported: normalized.length }, { status: 201 });
 }
