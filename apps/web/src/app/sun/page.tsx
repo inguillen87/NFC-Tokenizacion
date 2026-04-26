@@ -351,6 +351,21 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          )}
 
+         {/* Post-tap journey (mobile-first) */}
+         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/15 p-5 mt-4">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Flujo post tap · SUN mobile</p>
+            <h3 className="mt-2 text-sm font-bold text-white">Asociá este tap al tenant y entrá al club premium</h3>
+            <div className="mt-3 space-y-2 text-xs text-slate-200">
+              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">1) Verificás autenticidad con NTAG424 DNA TT y estado anti-tamper.</div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">2) Activás ownership + garantía para abrir portal de usuario premium.</div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">3) Te unís al club del tenant ({result.identity?.tenantSlug || "tenant-demo"}) y desbloqueás beneficios.</div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <a href="/register" className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center font-semibold text-emerald-100">Registrarme</a>
+              <a href="/me" className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">Abrir Portal</a>
+            </div>
+         </div>
+
          {/* Technical Spec */}
          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 mt-4">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Trazabilidad Técnica</h4>
@@ -369,6 +384,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </div>
             </div>
          </div>
+
+         {bid && uid ? (
+           <div className="mt-4">
+             <CtaActions bid={bid} uid={uid} />
+           </div>
+         ) : null}
+
+         {canAutoOnboard ? <OnboardDemoButton bid={bid} /> : null}
 
       </div>
     </main>
