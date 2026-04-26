@@ -1088,11 +1088,12 @@ export async function GET(req: Request): Promise<Response> {
         })()
       : null;
     return new Response(renderSunHtml(contract, shareToken, locale), {
-      status: result.status,
+      status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
         'x-nexid-trace-id': traceId,
+        'x-nexid-upstream-status': String(result.status || 200),
       },
     });
   }

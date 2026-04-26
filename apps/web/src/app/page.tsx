@@ -454,7 +454,7 @@ export default async function HomePage() {
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
+            <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand" />
           </Link>
           <p className="text-sm site-muted">nexID es una plataforma de identidad física verificable: une carriers como NFC/QR con verificación, estado y derechos digitales para empresas y gobiernos.</p>
           <div className="flex flex-wrap gap-2">
