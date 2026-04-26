@@ -148,39 +148,44 @@ export function WorldMapRealtime({
                     </linearGradient>
                   </defs>
                   <rect x="0" y="0" width="1000" height="520" fill="rgba(8,13,33,0.45)" />
-                  {[...rankedPoints]
-                    .slice(0, 6)
-                    .map((point, index, arr) => {
-                      if (index === arr.length - 1) return null;
-                      const a = projectToCanvas(point.lat, point.lng, 1000, 520);
-                      const b = projectToCanvas(arr[index + 1].lat, arr[index + 1].lng, 1000, 520);
-                      const cx = (a.x + b.x) / 2;
-                      const cy = Math.min(a.y, b.y) - 36;
+                  <ellipse cx="500" cy="260" rx="320" ry="190" fill="none" stroke="rgba(148,163,184,0.16)" strokeWidth="1.2" />
+                  <ellipse cx="500" cy="260" rx="270" ry="160" fill="none" stroke="rgba(125,211,252,0.12)" strokeWidth="1.2" />
+                  <g>
+                    <animateTransform attributeName="transform" type="rotate" from="0 500 260" to="360 500 260" dur="28s" repeatCount="indefinite" />
+                    {[...rankedPoints]
+                      .slice(0, 6)
+                      .map((point, index, arr) => {
+                        if (index === arr.length - 1) return null;
+                        const a = projectToCanvas(point.lat, point.lng, 1000, 520);
+                        const b = projectToCanvas(arr[index + 1].lat, arr[index + 1].lng, 1000, 520);
+                        const cx = (a.x + b.x) / 2;
+                        const cy = Math.min(a.y, b.y) - 36;
+                        return (
+                          <path
+                            key={`${point.city}-${index}`}
+                            d={`M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`}
+                            stroke="url(#routeGradient)"
+                            strokeWidth="2"
+                            fill="none"
+                            strokeDasharray="5 6"
+                            opacity="0.85"
+                          />
+                        );
+                      })}
+                    {rankedPoints.slice(0, 24).map((point, index) => {
+                      const coord = projectToCanvas(point.lat, point.lng, 1000, 520);
+                      const isActive = index === activeIndex;
                       return (
-                        <path
-                          key={`${point.city}-${index}`}
-                          d={`M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`}
-                          stroke="url(#routeGradient)"
-                          strokeWidth="2"
-                          fill="none"
-                          strokeDasharray="5 6"
-                          opacity="0.85"
-                        />
+                        <g key={`${point.city}-${index}`}>
+                          <circle cx={coord.x} cy={coord.y} r={isActive ? 10 : 6} fill={isActive ? "rgba(34,211,238,0.95)" : "rgba(129,140,248,0.75)"} />
+                          <circle cx={coord.x} cy={coord.y} r={isActive ? 22 : 14} fill="none" stroke="rgba(125,211,252,0.3)" strokeWidth="1.6">
+                            <animate attributeName="r" values={`${isActive ? "12;24;12" : "8;16;8"}`} dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
+                            <animate attributeName="opacity" values="0.9;0.2;0.9" dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
+                          </circle>
+                        </g>
                       );
                     })}
-                  {rankedPoints.slice(0, 24).map((point, index) => {
-                    const coord = projectToCanvas(point.lat, point.lng, 1000, 520);
-                    const isActive = index === activeIndex;
-                    return (
-                      <g key={`${point.city}-${index}`}>
-                        <circle cx={coord.x} cy={coord.y} r={isActive ? 10 : 6} fill={isActive ? "rgba(34,211,238,0.95)" : "rgba(129,140,248,0.75)"} />
-                        <circle cx={coord.x} cy={coord.y} r={isActive ? 22 : 14} fill="none" stroke="rgba(125,211,252,0.3)" strokeWidth="1.6">
-                          <animate attributeName="r" values={`${isActive ? "12;24;12" : "8;16;8"}`} dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
-                          <animate attributeName="opacity" values="0.9;0.2;0.9" dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
-                        </circle>
-                      </g>
-                    );
-                  })}
+                  </g>
                 </svg>
                 <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
                   Network mode: visual arcs for global scans, opened/tamper/duplicate signals and active hubs.
