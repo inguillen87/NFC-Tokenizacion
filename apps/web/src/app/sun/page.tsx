@@ -215,6 +215,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : result.status?.tone === "risk"
               ? "Se detectaron señales de riesgo"
               : "Validación en revisión";
+  const journeySteps = [
+    { id: "scan", label: "Tap NFC", done: true },
+    { id: "verify", label: "Verificación", done: Boolean(result.status?.label) },
+    { id: "portal", label: "Portal", done: trustTone === "text-emerald-200" },
+    { id: "club", label: "Club premium", done: Boolean(result.identity?.tenantSlug) && trustTone === "text-emerald-200" },
+  ];
 
 
   return (
@@ -263,6 +269,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   <span className="text-[10px] text-slate-500 mt-1">Tap #{result.identity?.scanCount ?? 1}</span>
                </div>
             </div>
+         </div>
+
+         <div className="rounded-2xl border border-white/10 bg-slate-900/55 p-4">
+           <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Journey post tap</p>
+           <div className="mt-3 grid grid-cols-4 gap-2">
+             {journeySteps.map((step) => (
+               <div key={step.id} className={`rounded-lg border px-2 py-2 text-center text-[10px] ${step.done ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-950/50 text-slate-400"}`}>
+                 <p className="font-semibold">{step.done ? "✓" : "•"}</p>
+                 <p className="mt-1 leading-tight">{step.label}</p>
+               </div>
+             ))}
+           </div>
+           <p className="mt-2 text-[11px] text-slate-300">{statusHeadline}</p>
          </div>
 
 
