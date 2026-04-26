@@ -8,11 +8,17 @@
     --background: #020617;
     --foreground: #f8fafc;
     --brand: #06b6d4;
+    --brand-wordmark-main: #e2e8f0;
+    --brand-wordmark-accent: #2fe1c3;
+    --brand-wordmark-orbit: rgba(47, 225, 195, 0.5);
   }
 
   html.theme-light {
     --background: #f5f8ff;
     --foreground: #020617;
+    --brand-wordmark-main: #ffffff;
+    --brand-wordmark-accent: #dbeafe;
+    --brand-wordmark-orbit: rgba(191, 219, 254, 0.75);
   }
 
   body {
@@ -23,6 +29,73 @@
   /* Core layout classes */
   .container-shell {
     @apply mx-auto w-full max-w-7xl px-4 md:px-8;
+  }
+}
+
+.brand-lockup {
+  --brand-accent: #2fe1c3;
+  --brand-mark-bg: linear-gradient(145deg, #0b1220, #111b30);
+  --brand-mark-border: rgba(255, 255, 255, 0.14);
+  --brand-mark-plate: rgba(47, 225, 195, 0.1);
+  --brand-wordmark-pulse-duration: 4.2s;
+  --brand-wordmark-float-duration: 5.4s;
+  --brand-wordmark-pulse-up: -1px;
+  --brand-wordmark-float-up: -1.2px;
+  --brand-wordmark-float-down: .6px;
+  color: var(--brand-wordmark-main);
+}
+
+.brand-wordmark-svg {
+  filter: drop-shadow(0 0 18px rgba(47, 225, 195, 0.12));
+}
+
+.brand-lockup--pulse .brand-wordmark-svg {
+  animation: brandWordmarkPulse var(--brand-wordmark-pulse-duration) ease-in-out infinite;
+}
+
+.brand-lockup--ripple .brand-wordmark-svg {
+  animation: brandWordmarkFloat var(--brand-wordmark-float-duration) ease-in-out infinite;
+}
+
+.brand-surface-footer .brand-wordmark-svg {
+  --brand-wordmark-float-duration: 6s;
+}
+
+.brand-surface-loading .brand-wordmark-svg {
+  --brand-wordmark-pulse-duration: 2.8s;
+  filter: drop-shadow(0 0 20px rgba(47, 225, 195, 0.24));
+}
+
+html.theme-light .brand-lockup {
+  --brand-accent: #ffffff;
+  --brand-mark-bg: linear-gradient(145deg, #0f172a, #1e293b);
+  --brand-mark-border: rgba(255, 255, 255, 0.42);
+  --brand-mark-plate: rgba(255, 255, 255, 0.09);
+}
+
+html.theme-light .brand-wordmark-svg {
+  filter: drop-shadow(0 0 16px rgba(191, 219, 254, 0.26));
+}
+
+html.theme-light .brand-surface-loading .brand-wordmark-svg {
+  filter: drop-shadow(0 0 20px rgba(191, 219, 254, 0.38));
+}
+
+@keyframes brandWordmarkPulse {
+  0%, 100% { transform: translateY(0); opacity: .98; }
+  50% { transform: translateY(var(--brand-wordmark-pulse-up)); opacity: 1; }
+}
+
+@keyframes brandWordmarkFloat {
+  0%, 100% { transform: translateY(0); }
+  35% { transform: translateY(var(--brand-wordmark-float-up)); }
+  70% { transform: translateY(var(--brand-wordmark-float-down)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-lockup--pulse .brand-wordmark-svg,
+  .brand-lockup--ripple .brand-wordmark-svg {
+    animation: none !important;
   }
 }
 

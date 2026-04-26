@@ -13,7 +13,7 @@ export default async function RegisterPage() {
           <div className="grid gap-8 md:grid-cols-[1.05fr_1fr]">
             <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={56} variant="pulse" theme="dark" /></Link>
+                <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={56} variant="pulse" theme="dark" className="brand-surface-auth" /></Link>
                 <Link href="https://nexid.lat" className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200 transition hover:border-cyan-300/30 hover:text-cyan-100">← Volver al landing</Link>
               </div>
               <h1 className="mt-6 text-3xl font-bold text-white">{t.common.register}</h1>

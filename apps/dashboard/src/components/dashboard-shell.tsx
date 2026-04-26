@@ -170,7 +170,7 @@ export function DashboardShellInner({
     <div className="flex min-h-screen flex-col bg-[#020617] text-slate-200 lg:flex-row">
       <aside className="border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-72 lg:p-6 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.4)]">
         <Link href="/" className="mb-8 inline-flex items-center hover:opacity-80 transition-opacity">
-          <BrandLockup size={40} variant="pulse" theme="dark" />
+          <BrandLockup size={40} variant="pulse" theme="dark" className="brand-surface-sidebar" />
         </Link>
 
         <div className="space-y-4">

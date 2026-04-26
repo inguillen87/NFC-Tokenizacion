@@ -2,9 +2,9 @@ import { cx, type BrandProps } from "./types";
 
 export function BrandWordmark({ size = 120, variant = "static", theme = "dark", className }: BrandProps) {
   const height = Math.max(28, size * 0.26);
-  const wordColor = theme === "dark" ? "#E2E8F0" : "#0F172A";
-  const accent = theme === "dark" ? "#2FE1C3" : "#0891B2";
-  const orbitColor = theme === "dark" ? "rgba(47,225,195,0.5)" : "rgba(8,145,178,0.45)";
+  const wordColor = `var(--brand-wordmark-main, ${theme === "dark" ? "#E2E8F0" : "#0F172A"})`;
+  const accent = `var(--brand-wordmark-accent, ${theme === "dark" ? "#2FE1C3" : "#0891B2"})`;
+  const orbitColor = `var(--brand-wordmark-orbit, ${theme === "dark" ? "rgba(47,225,195,0.5)" : "rgba(8,145,178,0.45)"})`;
   const motionEnabled = variant !== "static";
 
   return (
@@ -15,7 +15,7 @@ export function BrandWordmark({ size = 120, variant = "static", theme = "dark", 
       width={size}
       height={height}
       style={{ width: size, height, maxWidth: "100%", overflow: "visible" }}
-      className={cx("inline-block object-left", className)}
+      className={cx("inline-block object-left brand-wordmark-svg", className)}
     >
       <text
         x="0"
