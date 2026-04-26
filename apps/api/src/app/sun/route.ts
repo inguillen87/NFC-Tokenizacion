@@ -562,6 +562,7 @@ function buildPublicContract(params: {
       bid: params.bid,
       uid: params.uid,
       readCounter: params.ctr,
+      eventId: (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null,
       tagStatus: params.passport?.tag_status || null,
       scanCount: params.passport?.scan_count || 0,
       tenantSlug,
@@ -725,7 +726,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.achievementTitle}</h3><div class="chips"><span class="chip">🏅 ${copy.achievementFirst}: ${contract.identity.scanCount > 0 ? "✓" : "-"}</span><span class="chip">📍 ${copy.achievementProv}: ${contract.provenance.timelineSummary.length > 0 ? "✓" : "-"}</span></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.actionsPanel}</h3><p class="subtitle" style="margin-bottom:10px">Consumer, warranty and traceability workflows.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" style="text-decoration:none;border:1px solid rgba(34,211,238,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#a5f3fc;background:rgba(6,182,212,.12);text-align:center">🛍 Marketplace ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" style="text-decoration:none;border:1px solid rgba(167,139,250,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#ddd6fe;background:rgba(139,92,246,.12);text-align:center">🎁 Promos & rewards</a><a href="${contract.cta.registerUrl}" style="text-decoration:none;border:1px solid rgba(52,211,153,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#d1fae5;background:rgba(16,185,129,.12);text-align:center">🧾 Registrarme</a><a href="${contract.cta.portalUrl}" style="text-decoration:none;border:1px solid rgba(59,130,246,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#dbeafe;background:rgba(59,130,246,.12);text-align:center">👤 Asociar al portal</a></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? copy.statusReplay : copy.statusReady}</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Demo mode: unsigned share fallback enabled for DEMO-* batches.</p>'}</section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.actionsPanel}</h3><p class="subtitle" style="margin-bottom:10px">Consumer, warranty and traceability workflows.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" data-gated-link="marketplace" style="text-decoration:none;border:1px solid rgba(34,211,238,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#a5f3fc;background:rgba(6,182,212,.12);text-align:center">🛍 Marketplace ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" data-gated-link="rewards" style="text-decoration:none;border:1px solid rgba(167,139,250,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#ddd6fe;background:rgba(139,92,246,.12);text-align:center">🎁 Promos & rewards</a><a href="${contract.cta.registerUrl}" data-gated-link="register" style="text-decoration:none;border:1px solid rgba(52,211,153,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#d1fae5;background:rgba(16,185,129,.12);text-align:center">🧾 Registrarme</a><a href="${contract.cta.portalUrl}" data-gated-link="portal" style="text-decoration:none;border:1px solid rgba(59,130,246,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#dbeafe;background:rgba(59,130,246,.12);text-align:center">👤 Asociar al portal</a></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#94a3b8">Si el tap está verificado, al tocar estos botones te vamos a pedir registro/login y asociar tu usuario al tenant automáticamente.</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Demo mode: unsigned share fallback enabled for DEMO-* batches.</p>'}</section>
   <section class="card"><details><summary>${copy.technicalPanel}</summary><p>BID: ${contract.identity.bid} · UID: ${contract.identity.uid || 'N/A'} · Read counter: ${contract.identity.readCounter ?? 'N/A'}</p><p>Raw: picc ${contract.technical.raw.piccDataPrefix} · enc ${contract.technical.raw.encPrefix} · cmac ${contract.technical.raw.cmacPrefix}</p><p>Troubleshooting: ${contract.troubleshooting.join(' | ') || 'No alerts'}</p></details></section>
 <script>
 (() => {
@@ -734,7 +735,53 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const uid = ${JSON.stringify(contract.identity.uid || '')};
   const copy = ${JSON.stringify(copy)};
   const ctaButtons = Array.from(document.querySelectorAll('[data-cta]'));
+  const gatedLinks = Array.from(document.querySelectorAll('[data-gated-link]'));
+  const eventId = ${JSON.stringify(contract.identity.eventId || null)};
   const nfcBtn = document.getElementById('nfc-scan');
+  async function ensureAuthAndTenant(action) {
+    const me = await fetch('/consumer/me', { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
+    let contact = '';
+    if (!me?.ok) {
+      contact = window.prompt('Ingresá tu email o teléfono para registrarte/asociarte al tenant:') || '';
+      if (!contact.trim()) return { ok: false, reason: 'cancelled' };
+      const start = await fetch('/consumer/auth/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(contact.includes('@') ? { email: contact } : { phone: contact }) }).then((r) => r.json()).catch(() => null);
+      if (!start?.ok) return { ok: false, reason: 'start_failed' };
+      const entered = window.prompt('Código de verificación (demo):', String(start.code || '')) || '';
+      if (!entered.trim()) return { ok: false, reason: 'code_cancelled' };
+      const verify = await fetch('/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(contact.includes('@') ? { email: contact, code: entered } : { phone: contact, code: entered }) }).then((r) => r.json()).catch(() => null);
+      if (!verify?.ok) return { ok: false, reason: 'verify_failed' };
+    }
+    if (eventId) {
+      await fetch('/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/join-tenant', { method: 'POST' }).catch(() => null);
+      await fetch('/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/save-product', { method: 'POST' }).catch(() => null);
+      if (action === 'rewards') {
+        const contactForEnroll = contact || window.prompt('Email para activar promos/rewards del club:') || '';
+        if (contactForEnroll.trim()) {
+          await fetch('/mobile/passport/' + encodeURIComponent(eventId) + '/loyalty/enroll', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(contactForEnroll.includes('@') ? { email: contactForEnroll } : { phone: contactForEnroll }),
+          }).catch(() => null);
+        }
+      }
+    }
+    return { ok: true };
+  }
+  gatedLinks.forEach((link) => {
+    link.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const action = link.getAttribute('data-gated-link') || 'portal';
+      const statusNode = document.getElementById('cta-status');
+      if (statusNode) statusNode.textContent = 'Validando identidad y asociando tu usuario al tenant...';
+      const auth = await ensureAuthAndTenant(action);
+      if (!auth.ok) {
+        if (statusNode) statusNode.textContent = 'No pudimos completar registro/asociación (' + auth.reason + ').';
+        return;
+      }
+      if (statusNode) statusNode.textContent = 'Asociación completada. Redirigiendo...';
+      window.location.href = link.getAttribute('href') || '/me';
+    });
+  });
   if (nfcBtn && 'NDEFReader' in window) {
     nfcBtn.style.display = 'block';
     nfcBtn.addEventListener('click', async () => {
