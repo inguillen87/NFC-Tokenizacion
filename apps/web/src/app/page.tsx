@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
+import { BrandLockup, BrandMark, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   BulletSection,
   CtaSection,
@@ -225,13 +225,28 @@ export default async function HomePage() {
   return (
     <main>
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
-        <div className="container-shell header-main-row flex h-20 items-center justify-between gap-3 sm:h-24 lg:h-28">
+        <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={56} variant="ripple" theme="dark" className="hero-brand site-main-brand sm:hidden" />
-            <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand hidden sm:inline-flex" />
+            <span className="inline-flex items-center gap-2 px-1 py-1">
+              <BrandMark
+                size={28}
+                variant="ripple"
+                theme="dark"
+                className="lg:hidden text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+              />
+              <span className="hidden items-center gap-2 lg:inline-flex">
+                <BrandMark
+                  size={28}
+                  variant="ripple"
+                  theme="dark"
+                  className="text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+                />
+                <span className="text-base font-semibold tracking-tight text-white">nex<span className="text-cyan-300">ID</span></span>
+              </span>
+            </span>
           </Link>
 
-          <nav className="hidden gap-6 text-sm md:flex site-nav">
+          <nav className="hidden gap-6 text-sm lg:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
@@ -248,10 +263,10 @@ export default async function HomePage() {
               primaryCtaHref="/?contact=demo#contact-modal"
               primaryCtaLabel={labels.mobileCtaDemo}
             />
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <LocaleSwitcher value={locale} options={[...locales]} />
             </div>
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <ThemeToggle />
             </div>
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
@@ -289,6 +304,53 @@ export default async function HomePage() {
       </section>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
+
+      <section className="container-shell py-8 md:py-10">
+        <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+          <article className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_12%_18%,rgba(6,182,212,.24),transparent_36%),radial-gradient(circle_at_90%_80%,rgba(99,102,241,.24),transparent_40%),linear-gradient(160deg,#050b1f,#0b1633_55%,#101536)] p-6 md:p-8">
+            <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">Premium tokenization + blockchain-ready trust layer</p>
+            <h2 className="mt-3 max-w-3xl text-2xl font-semibold text-white md:text-3xl">
+              Diseñada para marcas premium, resellers y equipos enterprise que necesitan antifraude, trazabilidad y fidelización en la misma experiencia.
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+              Cada tap en una etiqueta NFC NTAG424 DNA TagTamper puede abrir el portal del usuario, activar ownership, registrar eventos de riesgo y conectar con marketplace, club premium y campañas.
+            </p>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-white/15 bg-slate-950/45 p-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Wine & spirits</p>
+                <p className="mt-2 text-sm text-slate-200">Evento de descorche + sello alterado + validación geográfica en tiempo real.</p>
+              </div>
+              <div className="rounded-xl border border-white/15 bg-slate-950/45 p-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-violet-200">Events & hospitality</p>
+                <p className="mt-2 text-sm text-slate-200">Pulseras NFC con acceso inteligente, anti-duplicado y upgrades VIP.</p>
+              </div>
+              <div className="rounded-xl border border-white/15 bg-slate-950/45 p-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">Pharma, agro, cosmetics</p>
+                <p className="mt-2 text-sm text-slate-200">Cadena de custodia, lote/origen y estado de empaque para compliance comercial.</p>
+              </div>
+            </div>
+          </article>
+
+          <article className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/80 p-6">
+            <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full bg-cyan-500/20 blur-3xl" />
+            <div className="absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-violet-500/20 blur-3xl" />
+            <p className="relative z-10 text-xs uppercase tracking-[0.16em] text-cyan-300">Global trust network</p>
+            <div className="premium-globe mt-4">
+              <span className="premium-globe__ring premium-globe__ring--one" />
+              <span className="premium-globe__ring premium-globe__ring--two" />
+              <span className="premium-globe__ring premium-globe__ring--three" />
+              <span className="premium-globe__dot premium-globe__dot--one" />
+              <span className="premium-globe__dot premium-globe__dot--two" />
+              <span className="premium-globe__dot premium-globe__dot--three" />
+            </div>
+            <div className="relative z-10 mt-4 space-y-2 text-xs text-slate-200">
+              <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">Consumer portal: identidad del producto + historial + recompensas.</p>
+              <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">Marketplace vivo: editar, subir y lanzar productos nuevos por tenant.</p>
+              <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">Vista mobile first: onboarding, registro y club premium sin fricción.</p>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <section className="container-shell py-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
