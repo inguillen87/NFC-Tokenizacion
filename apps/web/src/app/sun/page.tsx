@@ -394,6 +394,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          {canAutoOnboard ? <OnboardDemoButton bid={bid} /> : null}
 
       </div>
+
+      <div className="fixed inset-x-0 bottom-3 z-40 mx-auto w-full max-w-[375px] px-3">
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
+          <a href="/register" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Registro</a>
+          <a href="/me" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">Portal</a>
+          <a href="/?contact=sales&intent=sun_mobile#contact-modal" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 text-center text-xs font-semibold text-violet-100">Club</a>
+        </div>
+      </div>
     </main>
   );
 }
