@@ -2,7 +2,7 @@
 
 import { BrandDot, BrandLockup } from "@product/ui";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { dashboardContent } from "../lib/dashboard-content";
 import { productUrls } from "@product/config";
@@ -87,6 +87,7 @@ export function DashboardShellInner({
   currentPermissions?: string[];
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const { mode, setMode } = useAudienceMode();
@@ -121,6 +122,9 @@ export function DashboardShellInner({
     items.push({ href: "/api-keys", label: nav.apiKeys });
   }
 
+  const isActiveRoute = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const normalizedQuery = query.trim().toLowerCase();
+
   const role = (currentRole as keyof typeof roles) || "tenant-admin";
   const forbidden = (pathname === "/tenants" && currentRole === "tenant-admin") || (pathname.startsWith("/superadmin") && currentRole !== "super-admin");
   const isDemoMode = currentLabel.toLowerCase().includes("demo") || currentEmail.includes("demo");
@@ -142,6 +146,26 @@ export function DashboardShellInner({
     { href: "/analytics", label: "KPIs" },
   ];
 
+  const searchableLinks = [
+    { href: "/onboarding", label: "Onboarding Setup" },
+    ...items,
+    { href: "/superadmin-network", label: "Consumer Network", role: "super-admin" },
+    { href: "/loyalty/overview", label: "Loyalty Studio" },
+    { href: "/consumer-network/overview", label: "Portal de Usuarios" },
+    { href: "/loyalty/rewards", label: "Catálogo Beneficios" },
+    { href: "/loyalty/experiences", label: "Experiencias & Eventos" },
+    { href: "/loyalty/campaigns", label: "Growth & BotIA" },
+    { href: "/consumer-network/marketplace", label: "Marketplace Opt-in" },
+    { href: "/consumer-network/offers", label: "Ofertas & Drops" },
+    { href: "/consumer-network/order-requests", label: "Order Requests" },
+    { href: "/users", label: "IAM Users" },
+    { href: "/mfa", label: "MFA Security" },
+  ].filter((entry) => (entry as { role?: string }).role ? currentRole === (entry as { role?: string }).role : true);
+
+  const filteredLinks = normalizedQuery
+    ? searchableLinks.filter((entry) => entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
+    : [];
+
   return (
     <div className="flex min-h-screen flex-col bg-[#020617] text-slate-200 lg:flex-row">
       <aside className="border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-72 lg:p-6 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.4)]">
@@ -157,9 +181,36 @@ export function DashboardShellInner({
           </div>
 
           <div className="relative">
-            <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={shell.search} className="w-full rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all outline-none" />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && filteredLinks[0]) {
+                  router.push(filteredLinks[0].href);
+                  setQuery("");
+                }
+              }}
+              placeholder={shell.search}
+              className="w-full rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all outline-none"
+            />
             <div className="absolute right-3 top-2.5 text-[10px] text-slate-500 font-mono border border-white/10 rounded px-1">/</div>
           </div>
+          {normalizedQuery ? (
+            <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/25 p-2 text-xs">
+              {filteredLinks.length ? (
+                <div className="space-y-1">
+                  {filteredLinks.slice(0, 4).map((entry) => (
+                    <button key={entry.href} onClick={() => { router.push(entry.href); setQuery(""); }} className="block w-full rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-left text-cyan-100 hover:bg-cyan-500/15">
+                      {entry.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="px-1 py-1 text-slate-400">Sin resultados para &quot;{query}&quot;.</p>
+              )}
+            </div>
+          ) : null}
         </div>
 
         <nav className="mt-8 space-y-1">
@@ -170,7 +221,7 @@ export function DashboardShellInner({
           </Link>
 
           {items.map((item) => (
-            <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === item.href ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+            <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute(item.href) ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
               {item.label}
             </Link>
           ))}
@@ -178,7 +229,7 @@ export function DashboardShellInner({
           {currentRole === "super-admin" ? (
              <div className="mt-8 mb-4">
                 <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Global Network</p>
-                <Link href="/superadmin-network" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/superadmin-network" ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+                <Link href="/superadmin-network" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/superadmin-network") ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                   Consumer Network
                 </Link>
              </div>
@@ -187,28 +238,28 @@ export function DashboardShellInner({
           {currentRole === "tenant-admin" || currentRole === "super-admin" ? (
             <div className="mt-8 mb-4">
                <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Loyalty & Network</p>
-               <Link href="/loyalty/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/loyalty/overview" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/loyalty/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/overview") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Loyalty Studio
                </Link>
-               <Link href="/consumer-network/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/consumer-network/overview" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/consumer-network/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/consumer-network/overview") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Portal de Usuarios
                </Link>
-               <Link href="/loyalty/rewards" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/loyalty/rewards" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/loyalty/rewards" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/rewards") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Catálogo Beneficios
                </Link>
-               <Link href="/loyalty/experiences" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/loyalty/experiences" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/loyalty/experiences" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/experiences") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Experiencias & Eventos
                </Link>
-               <Link href="/loyalty/campaigns" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/loyalty/campaigns" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/loyalty/campaigns" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/campaigns") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Growth & BotIA
                </Link>
-               <Link href="/consumer-network/marketplace" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all mt-2 ${pathname === "/consumer-network/marketplace" ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-violet-400 hover:bg-white/5 hover:text-violet-300"}`}>
+               <Link href="/consumer-network/marketplace" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all mt-2 ${isActiveRoute("/consumer-network/marketplace") ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-violet-400 hover:bg-white/5 hover:text-violet-300"}`}>
                  Marketplace Opt-in
                </Link>
-               <Link href="/consumer-network/offers" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/consumer-network/offers" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/consumer-network/offers" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/consumer-network/offers") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Ofertas & Drops
                </Link>
-               <Link href="/consumer-network/order-requests" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/consumer-network/order-requests" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/consumer-network/order-requests" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/consumer-network/order-requests") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  Order Requests
                </Link>
             </div>
@@ -217,11 +268,11 @@ export function DashboardShellInner({
           <div className="mt-8 border-t border-white/5 pt-4">
              <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Settings</p>
              {(currentPermissions.includes("users:manage") || currentRole === "super-admin") && (
-               <Link href="/users" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/users" ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+               <Link href="/users" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/users") ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                  IAM Users
                </Link>
              )}
-             <Link href="/mfa" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname === "/mfa" ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+             <Link href="/mfa" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/mfa") ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
                MFA Security
              </Link>
           </div>
@@ -260,7 +311,13 @@ export function DashboardShellInner({
               <div className="h-6 w-px bg-white/10 mx-1" />
               <LocaleSwitcher value={locale} options={[...locales]} />
               <ThemeToggle />
-              <Link href="/logout" className="rounded-lg border border-rose-500/20 hover:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 transition-colors">
+              <Link
+                href="/logout"
+                onClick={(event) => {
+                  if (!window.confirm("¿Querés salir ahora?")) event.preventDefault();
+                }}
+                className="rounded-lg border border-rose-500/20 hover:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 transition-colors"
+              >
                  {shell.logout}
               </Link>
             </div>
@@ -298,7 +355,7 @@ export function DashboardShellInner({
         <div className="dashboard-mobile-dock fixed inset-x-0 bottom-0 z-40 border-t border-white/5 bg-slate-950/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl lg:hidden">
           <div className="grid grid-cols-4 gap-2">
             {mobileQuickLinks.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = isActiveRoute(item.href);
               return (
                 <Link key={item.href} href={item.href} className={`flex flex-col items-center justify-center rounded-xl p-2 text-[10px] font-bold transition-all ${isActive ? "text-cyan-300" : "text-slate-400 hover:text-slate-200"}`}>
                   <span className={`w-8 h-1 mb-1 rounded-full transition-colors ${isActive ? "bg-cyan-400" : "bg-transparent"}`} />
