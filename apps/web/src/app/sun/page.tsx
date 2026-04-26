@@ -158,6 +158,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     }]
     : [];
   const mapPoints = [...wineryPoint, ...timelinePoints, ...currentTapPoint];
+  const fallbackNetworkPoints = [
+    { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458, scans: 1, risk: 0, status: "AUTH_OK", source: "fallback_seed" },
+    { city: "Córdoba", country: "AR", lat: -31.4201, lng: -64.1888, scans: 1, risk: 0, status: "EVENT_OK", source: "fallback_seed" },
+    { city: "Mexico City", country: "MX", lat: 19.4326, lng: -99.1332, scans: 1, risk: 1, status: "DUPLICATE", source: "fallback_seed" },
+    { city: "Bogotá", country: "CO", lat: 4.711, lng: -74.0721, scans: 1, risk: 0, status: "PHARMA_OK", source: "fallback_seed" },
+  ];
+  const effectiveMapPoints = mapPoints.length ? mapPoints : fallbackNetworkPoints;
   const orderedTimelinePoints = [...timelinePoints].reverse();
   const mapRoutes = [
     ...(wineryPoint.length && orderedTimelinePoints.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: orderedTimelinePoints[0].lat, toLng: orderedTimelinePoints[0].lng, label: "Origen de bodega → primer evento registrado", tone: "info" as const }] : []),
@@ -263,11 +270,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
             <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
             <div className="mt-2">
-               {mapPoints.length ? (
+               {effectiveMapPoints.length ? (
                   <WorldMapRealtime
                     title="Ruta de autenticidad"
                     subtitle="Origen, eventos y tap actual en red global."
-                    points={mapPoints}
+                    points={effectiveMapPoints}
                     initialExpanded={false}
                   />
                ) : (
