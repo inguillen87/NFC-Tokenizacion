@@ -331,22 +331,29 @@ export default async function HomePage() {
             </div>
           </article>
 
-          <article className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/80 p-6">
+          <article className="relative overflow-hidden rounded-3xl border border-cyan-300/15 bg-[linear-gradient(165deg,#030b1f,#081a38_55%,#10163a)] p-6">
             <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full bg-cyan-500/20 blur-3xl" />
             <div className="absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-violet-500/20 blur-3xl" />
-            <p className="relative z-10 text-xs uppercase tracking-[0.16em] text-cyan-300">Global trust network</p>
-            <div className="premium-globe mt-4">
-              <span className="premium-globe__ring premium-globe__ring--one" />
-              <span className="premium-globe__ring premium-globe__ring--two" />
-              <span className="premium-globe__ring premium-globe__ring--three" />
-              <span className="premium-globe__dot premium-globe__dot--one" />
-              <span className="premium-globe__dot premium-globe__dot--two" />
-              <span className="premium-globe__dot premium-globe__dot--three" />
+            <p className="relative z-10 text-xs uppercase tracking-[0.16em] text-cyan-300">Cómo funciona end-to-end</p>
+            <h3 className="relative z-10 mt-3 text-xl font-semibold text-white">De la etiqueta física al portal del cliente en 3 pasos claros.</h3>
+            <div className="relative z-10 mt-4 space-y-3 text-sm text-slate-200">
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">01 · Tap & verificación</p>
+                <p className="mt-1">El NFC TagTamper valida autenticidad, detecta replay/opened y registra geoseñal en tiempo real.</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-violet-200">02 · SUN mobile + acciones</p>
+                <p className="mt-1">El usuario accede al passport, provenance, garantías y tokenización opcional según estado de riesgo.</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">03 · Club & marketplace</p>
+                <p className="mt-1">Registro al portal, asociación al tenant y acceso a recompensas/promos desde el marketplace del club.</p>
+              </div>
             </div>
-            <div className="relative z-10 mt-4 space-y-2 text-xs text-slate-200">
-              <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">Consumer portal: identidad del producto + historial + recompensas.</p>
-              <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">Marketplace vivo: editar, subir y lanzar productos nuevos por tenant.</p>
-              <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">Vista mobile first: onboarding, registro y club premium sin fricción.</p>
+            <div className="relative z-10 mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-cyan-200">Fraude</p><p className="font-semibold text-white">↓ Replay</p></div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-violet-200">Operación</p><p className="font-semibold text-white">↑ Trazabilidad</p></div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-emerald-200">Revenue</p><p className="font-semibold text-white">↑ Club/CRM</p></div>
             </div>
           </article>
         </div>
