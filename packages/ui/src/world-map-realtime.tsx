@@ -49,6 +49,10 @@ function buildMapUrl(points: GeoPoint[], active: GeoPoint | null) {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${active.lat}%2C${active.lng}`;
 }
 
+function buildGlobalMapUrl() {
+  return "https://www.openstreetmap.org/export/embed.html?bbox=-180%2C-70%2C180%2C85&layer=mapnik";
+}
+
 function projectToCanvas(lat: number, lng: number, width: number, height: number) {
   const x = ((lng + 180) / 360) * width;
   const y = ((90 - lat) / 180) * height;
@@ -122,6 +126,7 @@ export function WorldMapRealtime({
 
   const activePoint = rankedPoints[activeIndex] || null;
   const mapUrl = useMemo(() => buildMapUrl(rankedPoints, activePoint), [rankedPoints, activePoint]);
+  const globalMapUrl = useMemo(() => buildGlobalMapUrl(), []);
   const totalScans = rankedPoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const riskSignals = rankedPoints.reduce((acc, point) => acc + (point.risk || 0), 0);
   const visibleRoutes = useMemo<MapRoute[]>(() => {
@@ -186,6 +191,7 @@ export function WorldMapRealtime({
               <iframe title="world-map-realtime" src={mapUrl} className={`${expanded ? "h-[34rem]" : "h-[24rem]"} w-full`} loading="lazy" />
             ) : (
               <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} relative overflow-hidden bg-[radial-gradient(circle_at_20%_25%,rgba(34,211,238,.22),transparent_40%),radial-gradient(circle_at_75%_78%,rgba(167,139,250,.2),transparent_42%),linear-gradient(165deg,#020617,#0b1734_55%,#111827)]`}>
+                <iframe title="world-map-network-base" src={globalMapUrl} className="pointer-events-none absolute inset-0 h-full w-full opacity-30 mix-blend-screen" loading="lazy" />
                 <svg viewBox="0 0 1000 520" className="absolute inset-0 h-full w-full">
                   <defs>
                     <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -194,7 +200,7 @@ export function WorldMapRealtime({
                       <stop offset="100%" stopColor="rgba(34,211,238,0.25)" />
                     </linearGradient>
                   </defs>
-                  <rect x="0" y="0" width="1000" height="520" fill="rgba(8,13,33,0.45)" />
+                  <rect x="0" y="0" width="1000" height="520" fill="rgba(8,13,33,0.3)" />
                   <ellipse cx="500" cy="260" rx="320" ry="190" fill="none" stroke="rgba(148,163,184,0.16)" strokeWidth="1.2" />
                   <ellipse cx="500" cy="260" rx="270" ry="160" fill="none" stroke="rgba(125,211,252,0.12)" strokeWidth="1.2" />
                   {GLOBAL_BACKBONE_POINTS.map((backbone, index) => {
@@ -202,7 +208,6 @@ export function WorldMapRealtime({
                     return <circle key={`backbone-${index}`} cx={coord.x} cy={coord.y} r="3" fill="rgba(148,163,184,0.28)" />;
                   })}
                   <g>
-                    <animateTransform attributeName="transform" type="rotate" from="0 500 260" to="360 500 260" dur={spinSpeed === "slow" ? "36s" : spinSpeed === "fast" ? "16s" : "28s"} repeatCount="indefinite" />
                     {visibleRoutes.map((route, index) => {
                       const a = projectToCanvas(route.fromLat, route.fromLng, 1000, 520);
                       const b = projectToCanvas(route.toLat, route.toLng, 1000, 520);
@@ -215,7 +220,9 @@ export function WorldMapRealtime({
                           fill="none"
                           strokeDasharray="5 6"
                           opacity="0.9"
-                        />
+                        >
+                          <animate attributeName="stroke-dashoffset" values={spinSpeed === "slow" ? "0;-18" : spinSpeed === "fast" ? "0;-56" : "0;-32"} dur={spinSpeed === "slow" ? "4.2s" : spinSpeed === "fast" ? "1.6s" : "2.4s"} repeatCount="indefinite" />
+                        </path>
                       );
                     })}
                     {rankedPoints.slice(0, 24).map((point, index) => {

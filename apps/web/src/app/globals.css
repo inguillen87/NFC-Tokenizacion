@@ -70,6 +70,25 @@ html.theme-light .site-muted {
   @apply text-slate-600;
 }
 
+html.theme-light body {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(56, 189, 248, 0.12), transparent 32%),
+    radial-gradient(circle at 90% 12%, rgba(129, 140, 248, 0.12), transparent 30%),
+    linear-gradient(180deg, #f7fbff 0%, #eef4ff 100%);
+}
+
+html.theme-light .site-header {
+  @apply border-slate-300/80 bg-white/90 text-slate-900;
+}
+
+html.theme-light .quick-links-wrap {
+  @apply border-slate-300/70 bg-white/85 shadow-[0_10px_28px_rgba(15,23,42,0.08)];
+}
+
+html.theme-light .worldmap-card {
+  @apply border-slate-300/70 bg-white/85;
+}
+
 /* Mobile & PWA ergonomics */
 body {
   padding-bottom: env(safe-area-inset-bottom);

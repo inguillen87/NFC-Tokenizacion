@@ -19,6 +19,11 @@ export default async function WebLoginPage() {
               <BrandMark size={32} variant="ripple" theme="dark" />
               <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">Access center</p>
             </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+              <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">MFA-ready</span>
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100">Tenant + reseller</span>
+              <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2 py-1 text-violet-100">Secure login</span>
+            </div>
             <h1 className="mt-5 text-3xl font-bold text-white">{t.web.auth.loginTitle}</h1>
             <p className="mt-2 text-sm leading-6 text-slate-300">{content.hero.body}</p>
             <div className="mt-6 grid gap-3">
