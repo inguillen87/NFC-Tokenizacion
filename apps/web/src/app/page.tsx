@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
+import { BrandLockup, BrandMark, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   BulletSection,
   CtaSection,
@@ -225,13 +225,28 @@ export default async function HomePage() {
   return (
     <main>
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
-        <div className="container-shell header-main-row flex h-20 items-center justify-between gap-3 sm:h-24 lg:h-28">
+        <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={56} variant="ripple" theme="dark" className="hero-brand site-main-brand sm:hidden" />
-            <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand hidden sm:inline-flex" />
+            <span className="inline-flex items-center gap-2 px-1 py-1">
+              <BrandMark
+                size={28}
+                variant="ripple"
+                theme="dark"
+                className="lg:hidden text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+              />
+              <span className="hidden items-center gap-2 lg:inline-flex">
+                <BrandMark
+                  size={28}
+                  variant="ripple"
+                  theme="dark"
+                  className="text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+                />
+                <span className="text-base font-semibold tracking-tight text-white">nex<span className="text-cyan-300">ID</span></span>
+              </span>
+            </span>
           </Link>
 
-          <nav className="hidden gap-6 text-sm md:flex site-nav">
+          <nav className="hidden gap-6 text-sm lg:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
@@ -248,10 +263,10 @@ export default async function HomePage() {
               primaryCtaHref="/?contact=demo#contact-modal"
               primaryCtaLabel={labels.mobileCtaDemo}
             />
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <LocaleSwitcher value={locale} options={[...locales]} />
             </div>
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <ThemeToggle />
             </div>
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
@@ -289,6 +304,60 @@ export default async function HomePage() {
       </section>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
+
+      <section className="container-shell py-8 md:py-10">
+        <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+          <article className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_12%_18%,rgba(6,182,212,.24),transparent_36%),radial-gradient(circle_at_90%_80%,rgba(99,102,241,.24),transparent_40%),linear-gradient(160deg,#050b1f,#0b1633_55%,#101536)] p-6 md:p-8">
+            <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">Premium tokenization + blockchain-ready trust layer</p>
+            <h2 className="mt-3 max-w-3xl text-2xl font-semibold text-white md:text-3xl">
+              Diseñada para marcas premium, resellers y equipos enterprise que necesitan antifraude, trazabilidad y fidelización en la misma experiencia.
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+              Cada tap en una etiqueta NFC NTAG424 DNA TagTamper puede abrir el portal del usuario, activar ownership, registrar eventos de riesgo y conectar con marketplace, club premium y campañas.
+            </p>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-white/15 bg-slate-950/45 p-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Wine & spirits</p>
+                <p className="mt-2 text-sm text-slate-200">Evento de descorche + sello alterado + validación geográfica en tiempo real.</p>
+              </div>
+              <div className="rounded-xl border border-white/15 bg-slate-950/45 p-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-violet-200">Events & hospitality</p>
+                <p className="mt-2 text-sm text-slate-200">Pulseras NFC con acceso inteligente, anti-duplicado y upgrades VIP.</p>
+              </div>
+              <div className="rounded-xl border border-white/15 bg-slate-950/45 p-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">Pharma, agro, cosmetics</p>
+                <p className="mt-2 text-sm text-slate-200">Cadena de custodia, lote/origen y estado de empaque para compliance comercial.</p>
+              </div>
+            </div>
+          </article>
+
+          <article className="relative overflow-hidden rounded-3xl border border-cyan-300/15 bg-[linear-gradient(165deg,#030b1f,#081a38_55%,#10163a)] p-6">
+            <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full bg-cyan-500/20 blur-3xl" />
+            <div className="absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-violet-500/20 blur-3xl" />
+            <p className="relative z-10 text-xs uppercase tracking-[0.16em] text-cyan-300">Cómo funciona end-to-end</p>
+            <h3 className="relative z-10 mt-3 text-xl font-semibold text-white">De la etiqueta física al portal del cliente en 3 pasos claros.</h3>
+            <div className="relative z-10 mt-4 space-y-3 text-sm text-slate-200">
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">01 · Tap & verificación</p>
+                <p className="mt-1">El NFC TagTamper valida autenticidad, detecta replay/opened y registra geoseñal en tiempo real.</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-violet-200">02 · SUN mobile + acciones</p>
+                <p className="mt-1">El usuario accede al passport, provenance, garantías y tokenización opcional según estado de riesgo.</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">03 · Club & marketplace</p>
+                <p className="mt-1">Registro al portal, asociación al tenant y acceso a recompensas/promos desde el marketplace del club.</p>
+              </div>
+            </div>
+            <div className="relative z-10 mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-cyan-200">Fraude</p><p className="font-semibold text-white">↓ Replay</p></div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-violet-200">Operación</p><p className="font-semibold text-white">↑ Trazabilidad</p></div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-2"><p className="text-emerald-200">Revenue</p><p className="font-semibold text-white">↑ Club/CRM</p></div>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <section className="container-shell py-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
@@ -385,7 +454,7 @@ export default async function HomePage() {
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
+            <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand" />
           </Link>
           <p className="text-sm site-muted">nexID es una plataforma de identidad física verificable: une carriers como NFC/QR con verificación, estado y derechos digitales para empresas y gobiernos.</p>
           <div className="flex flex-wrap gap-2">
