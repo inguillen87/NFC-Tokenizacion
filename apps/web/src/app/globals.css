@@ -182,3 +182,133 @@ html.theme-light .animate-card-shift:hover {
   0%, 100% { opacity: 0.4; transform: scale(0.9); }
   50% { opacity: 1; transform: scale(1.15); }
 }
+
+/* Interactive demo vertical objects (wine/events/cosmetics/agro) */
+.hero-bottle,
+.uncork-demo,
+.wristband-demo,
+.cosmetic-demo,
+.agro-demo {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.hero-bottle::before,
+.uncork-demo::before {
+  content: "";
+  position: absolute;
+  inset: 24px 42px 10px;
+  border-radius: 26px 26px 34px 34px;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+  border: 2px solid rgba(148, 163, 184, 0.45);
+  box-shadow: inset 0 0 22px rgba(15, 23, 42, 0.8), 0 14px 28px rgba(2, 6, 23, 0.45);
+}
+
+.hero-bottle::after,
+.uncork-demo::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 60px;
+  width: 30px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #c084fc 0%, #7c3aed 100%);
+  border: 2px solid rgba(216, 180, 254, 0.7);
+  transition: transform 0.5s ease, opacity 0.3s ease;
+}
+
+.uncork-demo.scanning::after {
+  transform: translateY(-16px) rotate(-14deg);
+}
+
+.uncork-demo.tampered::after {
+  transform: translateY(-22px) rotate(-24deg);
+  opacity: 0.75;
+}
+
+.wristband-demo::before {
+  content: "";
+  position: absolute;
+  inset: 45px 14px;
+  border-radius: 999px;
+  border: 10px solid rgba(56, 189, 248, 0.55);
+  box-shadow: inset 0 0 24px rgba(14, 116, 144, 0.5), 0 10px 30px rgba(14, 165, 233, 0.3);
+}
+
+.wristband-demo::after {
+  content: "NFC";
+  position: absolute;
+  top: 58px;
+  left: 56px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(8, 47, 73, 0.95);
+  border: 1px solid rgba(125, 211, 252, 0.5);
+  color: #bae6fd;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.wristband-demo.scanning {
+  animation: wristbandPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes wristbandPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.cosmetic-demo::before {
+  content: "";
+  position: absolute;
+  inset: 26px 36px 12px;
+  border-radius: 26px;
+  background: linear-gradient(160deg, #f8fafc 0%, #cbd5e1 100%);
+  border: 2px solid rgba(148, 163, 184, 0.45);
+}
+
+.cosmetic-demo::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 54px;
+  width: 42px;
+  height: 24px;
+  border-radius: 9px;
+  background: linear-gradient(160deg, #f472b6 0%, #db2777 100%);
+  border: 2px solid rgba(249, 168, 212, 0.65);
+  transition: transform .4s ease;
+}
+
+.cosmetic-demo.scanning::after { transform: rotate(-12deg) translateY(-4px); }
+.cosmetic-demo.tampered::before {
+  box-shadow: inset 0 0 0 2px rgba(244,63,94,.35), inset 0 0 24px rgba(244,63,94,.18);
+}
+
+.agro-demo::before {
+  content: "";
+  position: absolute;
+  inset: 20px 28px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, #bbf7d0 0%, #86efac 48%, #4ade80 100%);
+  border: 2px solid rgba(22, 163, 74, 0.5);
+  box-shadow: inset 0 0 18px rgba(22, 101, 52, 0.25);
+}
+
+.agro-demo::after {
+  content: "";
+  position: absolute;
+  top: 28px;
+  left: 42px;
+  width: 70px;
+  height: 2px;
+  background: rgba(21, 128, 61, 0.45);
+  box-shadow: 0 20px 0 rgba(21, 128, 61, 0.35), 0 40px 0 rgba(21, 128, 61, 0.35);
+}
+
+.agro-demo.tampered::before {
+  clip-path: polygon(0 0, 100% 0, 100% 58%, 72% 68%, 58% 100%, 0 100%);
+}

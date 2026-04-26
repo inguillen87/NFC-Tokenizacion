@@ -225,11 +225,11 @@ export default async function HomePage() {
   return (
     <main>
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
-        <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-20 lg:h-20">
+        <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <span className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/75 px-2 py-1.5 shadow-[0_12px_30px_rgba(2,6,23,.45)]">
-              <BrandMark size={34} variant="ripple" theme="dark" />
-              <BrandLockup size={108} variant="ripple" theme="dark" className="hidden sm:inline-flex" />
+            <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-2 py-1 shadow-[0_8px_20px_rgba(2,6,23,.35)]">
+              <BrandMark size={28} variant="ripple" theme="dark" />
+              <BrandLockup size={88} variant="ripple" theme="dark" className="hidden md:inline-flex" />
             </span>
           </Link>
 
