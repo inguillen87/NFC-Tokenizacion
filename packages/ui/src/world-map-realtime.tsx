@@ -19,6 +19,18 @@ type GeoPoint = {
 type TimeWindowMode = "5m" | "1h" | "24h" | "all";
 type MapMode = "classic" | "network";
 type SpinSpeed = "slow" | "normal" | "fast";
+type MapRoute = { fromLat: number; fromLng: number; toLat: number; toLng: number; label?: string; tone?: "info" | "warn" };
+
+const GLOBAL_BACKBONE_POINTS: Array<{ lat: number; lng: number }> = [
+  { lat: 37.7749, lng: -122.4194 }, // SF
+  { lat: 40.7128, lng: -74.006 }, // NY
+  { lat: -23.5505, lng: -46.6333 }, // Sao Paulo
+  { lat: 51.5072, lng: -0.1276 }, // London
+  { lat: 48.8566, lng: 2.3522 }, // Paris
+  { lat: 25.2048, lng: 55.2708 }, // Dubai
+  { lat: 1.3521, lng: 103.8198 }, // Singapore
+  { lat: 35.6762, lng: 139.6503 }, // Tokyo
+];
 
 function parseEventTime(value?: string) {
   if (!value) return Date.now();
@@ -43,10 +55,17 @@ function projectToCanvas(lat: number, lng: number, width: number, height: number
   return { x, y };
 }
 
+function curvedRoutePath(a: { x: number; y: number }, b: { x: number; y: number }, lift = 38) {
+  const cx = (a.x + b.x) / 2;
+  const cy = Math.min(a.y, b.y) - lift;
+  return `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+}
+
 export function WorldMapRealtime({
   title = "Global scan footprint",
   subtitle = "Mapa operativo real de autenticaciones, riesgo y cobertura multi-tenant.",
   points = [],
+  routes = [],
   onPointSelect,
   metadataRows,
   initialExpanded = false,
@@ -56,7 +75,7 @@ export function WorldMapRealtime({
   points?: GeoPoint[];
   onPointSelect?: (point: GeoPoint) => void;
   metadataRows?: (point: GeoPoint) => Array<{ label: string; value: string }>;
-  routes?: Array<{ fromLat: number; fromLng: number; toLat: number; toLng: number; label?: string; tone?: "info" | "warn" }>;
+  routes?: MapRoute[];
   initialExpanded?: boolean;
 }) {
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
@@ -105,6 +124,20 @@ export function WorldMapRealtime({
   const mapUrl = useMemo(() => buildMapUrl(rankedPoints, activePoint), [rankedPoints, activePoint]);
   const totalScans = rankedPoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const riskSignals = rankedPoints.reduce((acc, point) => acc + (point.risk || 0), 0);
+  const visibleRoutes = useMemo<MapRoute[]>(() => {
+    if (routes.length) return routes.slice(0, 16);
+    const fromRanking = rankedPoints.slice(0, 8).flatMap((point, index, arr) => {
+      if (index === arr.length - 1) return [];
+      return [{
+        fromLat: point.lat,
+        fromLng: point.lng,
+        toLat: arr[index + 1].lat,
+        toLng: arr[index + 1].lng,
+        tone: (point.risk || arr[index + 1].risk) ? "warn" as const : "info" as const,
+      }];
+    });
+    return fromRanking;
+  }, [rankedPoints, routes]);
   const emptyStateText = riskOnly
     ? "No hay hubs con señales de riesgo para la ventana seleccionada. Desactivá Risk-only o ampliá la ventana temporal."
     : "No hay hubs geolocalizados para la ventana seleccionada. Generá taps reales o ampliá la ventana temporal.";
@@ -164,28 +197,27 @@ export function WorldMapRealtime({
                   <rect x="0" y="0" width="1000" height="520" fill="rgba(8,13,33,0.45)" />
                   <ellipse cx="500" cy="260" rx="320" ry="190" fill="none" stroke="rgba(148,163,184,0.16)" strokeWidth="1.2" />
                   <ellipse cx="500" cy="260" rx="270" ry="160" fill="none" stroke="rgba(125,211,252,0.12)" strokeWidth="1.2" />
+                  {GLOBAL_BACKBONE_POINTS.map((backbone, index) => {
+                    const coord = projectToCanvas(backbone.lat, backbone.lng, 1000, 520);
+                    return <circle key={`backbone-${index}`} cx={coord.x} cy={coord.y} r="3" fill="rgba(148,163,184,0.28)" />;
+                  })}
                   <g>
                     <animateTransform attributeName="transform" type="rotate" from="0 500 260" to="360 500 260" dur={spinSpeed === "slow" ? "36s" : spinSpeed === "fast" ? "16s" : "28s"} repeatCount="indefinite" />
-                    {[...rankedPoints]
-                      .slice(0, 6)
-                      .map((point, index, arr) => {
-                        if (index === arr.length - 1) return null;
-                        const a = projectToCanvas(point.lat, point.lng, 1000, 520);
-                        const b = projectToCanvas(arr[index + 1].lat, arr[index + 1].lng, 1000, 520);
-                        const cx = (a.x + b.x) / 2;
-                        const cy = Math.min(a.y, b.y) - 36;
-                        return (
-                          <path
-                            key={`${point.city}-${index}`}
-                            d={`M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`}
-                            stroke="url(#routeGradient)"
-                            strokeWidth="2"
-                            fill="none"
-                            strokeDasharray="5 6"
-                            opacity="0.85"
-                          />
-                        );
-                      })}
+                    {visibleRoutes.map((route, index) => {
+                      const a = projectToCanvas(route.fromLat, route.fromLng, 1000, 520);
+                      const b = projectToCanvas(route.toLat, route.toLng, 1000, 520);
+                      return (
+                        <path
+                          key={`route-${index}-${route.fromLat}-${route.toLng}`}
+                          d={curvedRoutePath(a, b, route.tone === "warn" ? 52 : 38)}
+                          stroke={route.tone === "warn" ? "rgba(251,113,133,0.8)" : "url(#routeGradient)"}
+                          strokeWidth={route.tone === "warn" ? "2.4" : "2"}
+                          fill="none"
+                          strokeDasharray="5 6"
+                          opacity="0.9"
+                        />
+                      );
+                    })}
                     {rankedPoints.slice(0, 24).map((point, index) => {
                       const coord = projectToCanvas(point.lat, point.lng, 1000, 520);
                       const isActive = index === activeIndex;

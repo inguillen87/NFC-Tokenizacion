@@ -228,12 +228,12 @@ export default async function HomePage() {
         <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
             <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-2 py-1 shadow-[0_8px_20px_rgba(2,6,23,.35)]">
-              <BrandMark size={28} variant="ripple" theme="dark" />
-              <BrandLockup size={88} variant="ripple" theme="dark" className="hidden md:inline-flex" />
+              <BrandMark size={28} variant="ripple" theme="dark" className="lg:hidden" />
+              <BrandLockup size={88} variant="ripple" theme="dark" className="hidden lg:inline-flex" />
             </span>
           </Link>
 
-          <nav className="hidden gap-6 text-sm md:flex site-nav">
+          <nav className="hidden gap-6 text-sm lg:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
@@ -250,10 +250,10 @@ export default async function HomePage() {
               primaryCtaHref="/?contact=demo#contact-modal"
               primaryCtaLabel={labels.mobileCtaDemo}
             />
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <LocaleSwitcher value={locale} options={[...locales]} />
             </div>
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <ThemeToggle />
             </div>
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">

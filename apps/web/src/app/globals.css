@@ -82,6 +82,25 @@ body {
   }
 }
 
+/* Mobile menu + PWA standalone ergonomics */
+.mobile-nav-overlay {
+  overscroll-behavior: contain;
+}
+
+.mobile-nav-sheet {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+@media (display-mode: standalone) {
+  .site-header {
+    padding-top: max(4px, env(safe-area-inset-top));
+  }
+
+  .pwa-install-card {
+    bottom: max(5rem, env(safe-area-inset-bottom) + 1rem);
+  }
+}
+
 /* Hero Glow Animations */
 @keyframes heroPulse {
   0%, 100% { opacity: 0.2; transform: scale(1); }

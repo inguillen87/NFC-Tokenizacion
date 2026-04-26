@@ -215,6 +215,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : result.status?.tone === "risk"
               ? "Se detectaron señales de riesgo"
               : "Validación en revisión";
+  const riskLevelLabel = trustScore >= 85 ? "Riesgo bajo" : trustScore >= 65 ? "Riesgo moderado" : "Riesgo alto";
+  const recommendedAction = trustScore >= 85
+    ? { label: "Guardar en mi Passport", href: "/me", helper: "Autenticidad sólida. Continuá con ownership/club." }
+    : trustScore >= 65
+      ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
+      : { label: "Reportar y reintentar tap", href: "/?contact=sales&intent=sun_mobile#contact-modal", helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
   const journeySteps = [
     { id: "scan", label: "Tap NFC", done: true },
     { id: "verify", label: "Verificación", done: Boolean(result.status?.label) },
@@ -228,7 +234,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       {/* Dynamic Background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
 
-      <div className="w-full max-w-[375px] z-10 space-y-4">
+      <div className="w-full max-w-[420px] z-10 space-y-4">
          {/* Trust Header */}
          <div className="flex items-center justify-between px-2 mb-2">
             <div className="flex items-center gap-2">
@@ -284,17 +290,38 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            <p className="mt-2 text-[11px] text-slate-300">{statusHeadline}</p>
          </div>
 
+         <section className="rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+           <p className="text-[10px] uppercase tracking-[0.16em] text-violet-300">Prioridad operativa</p>
+           <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+             <span className={`rounded-full border px-2 py-1 font-semibold ${securityTone}`}>{result.status?.label || "Estado"}</span>
+             <span className={`rounded-full border px-2 py-1 font-semibold ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>{riskLevelLabel}</span>
+             <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 font-semibold text-cyan-100">Trust {trustScore}/100</span>
+           </div>
+           <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/55 p-3">
+             <p className="text-xs font-semibold text-white">Siguiente acción recomendada</p>
+             <p className="mt-1 text-xs text-slate-300">{recommendedAction.helper}</p>
+             <a href={recommendedAction.href} className={`mt-3 inline-flex min-h-10 items-center justify-center rounded-lg border px-3 text-xs font-semibold ${trustScore >= 85 ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : trustScore >= 65 ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "border-rose-300/30 bg-rose-500/15 text-rose-100"}`}>
+               {recommendedAction.label}
+             </a>
+           </div>
+         </section>
+
 
          {/* Mobile Geo Trace / Enterprise Map */}
-         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
+         <div id="geo-trace" className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
             <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
             <div className="mt-2">
                {effectiveMapPoints.length ? (
                   <WorldMapRealtime
                     title="Ruta de autenticidad"
-                    subtitle="Origen, eventos y tap actual en red global."
+                    subtitle="Vista tipo network: origen, hops de verificación y tap actual en trazado global."
                     points={effectiveMapPoints}
-                    initialExpanded={false}
+                    routes={mapRoutes}
+                    initialExpanded
+                    metadataRows={(point) => [
+                      { label: "Source", value: point.source || "trace" },
+                      { label: "Status", value: point.status || "REVIEW" },
+                    ]}
                   />
                ) : (
                   <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-400">
