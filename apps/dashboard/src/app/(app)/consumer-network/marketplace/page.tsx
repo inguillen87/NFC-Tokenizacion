@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Visibility = "network" | "private";
 type CheckoutMode = "request" | "external" | "direct";
@@ -14,27 +14,6 @@ type Item = {
   checkout: CheckoutMode;
   visibility: Visibility;
 };
-
-const initialItems: Item[] = [
-  {
-    id: "wine-01",
-    emoji: "🍷",
-    name: "Lote Experimental Malbec",
-    priceArs: 45000,
-    vertical: "Vino Premium",
-    checkout: "request",
-    visibility: "network",
-  },
-  {
-    id: "box-01",
-    emoji: "📦",
-    name: "Caja Degustación Terroir",
-    priceArs: 120000,
-    vertical: "Caja / Combo",
-    checkout: "external",
-    visibility: "private",
-  },
-];
 
 type Draft = Omit<Item, "id">;
 
@@ -65,16 +44,37 @@ function visibilityChip(visibility: Visibility) {
 }
 
 export default function TenantMarketplacePage() {
-  const [items, setItems] = useState<Item[]>(initialItems);
+  const [items, setItems] = useState<Item[]>([]);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const totals = useMemo(() => {
     const publicCount = items.filter((item) => item.visibility === "network").length;
     const directCount = items.filter((item) => item.checkout === "direct").length;
     return { total: items.length, publicCount, directCount };
   }, [items]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/tenant-marketplace", { cache: "no-store" });
+        const data = (await response.json()) as { items: Item[] };
+        if (isMounted) setItems(data.items || []);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const resetEditor = () => {
     setDraft(emptyDraft);
@@ -101,29 +101,67 @@ export default function TenantMarketplacePage() {
     setIsEditorOpen(true);
   };
 
-  const saveItem = () => {
+  const saveItem = async () => {
     if (!draft.name.trim() || !draft.vertical.trim()) return;
+    setSaving(true);
     if (editingId) {
-      setItems((prev) => prev.map((item) => (item.id === editingId ? { ...item, ...draft } : item)));
+      const response = await fetch(`/api/tenant-marketplace/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      if (!response.ok) {
+        setNotice("No se pudo guardar el producto.");
+        setSaving(false);
+        return;
+      }
+      const data = (await response.json()) as { item: Item };
+      setItems((prev) => prev.map((item) => (item.id === editingId ? data.item : item)));
+      setNotice("Producto actualizado.");
       resetEditor();
+      setSaving(false);
       return;
     }
-    const newItem: Item = {
-      id: `item-${Date.now()}`,
-      ...draft,
-    };
-    setItems((prev) => [newItem, ...prev]);
+    const response = await fetch("/api/tenant-marketplace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draft),
+    });
+    if (!response.ok) {
+      setNotice("No se pudo crear el producto.");
+      setSaving(false);
+      return;
+    }
+    const data = (await response.json()) as { item: Item };
+    setItems((prev) => [data.item, ...prev]);
+    setNotice("Producto publicado.");
     resetEditor();
+    setSaving(false);
   };
 
-  const toggleVisibility = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, visibility: item.visibility === "network" ? "private" : "network" }
-          : item
-      )
-    );
+  const toggleVisibility = async (item: Item) => {
+    const nextVisibility: Visibility = item.visibility === "network" ? "private" : "network";
+    const response = await fetch(`/api/tenant-marketplace/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibility: nextVisibility }),
+    });
+    if (!response.ok) {
+      setNotice("No se pudo cambiar la visibilidad.");
+      return;
+    }
+    const data = (await response.json()) as { item: Item };
+    setItems((prev) => prev.map((existing) => (existing.id === item.id ? data.item : existing)));
+  };
+
+  const deleteItem = async (id: string) => {
+    const response = await fetch(`/api/tenant-marketplace/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      setNotice("No se pudo eliminar el producto.");
+      return;
+    }
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    setNotice("Producto eliminado.");
   };
 
   return (
@@ -166,6 +204,11 @@ export default function TenantMarketplacePage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Cargando productos...</td>
+              </tr>
+            ) : null}
             {items.map((item) => (
               <tr key={item.id} className="transition-colors hover:bg-white/5">
                 <td className="px-4 py-3">
@@ -182,16 +225,24 @@ export default function TenantMarketplacePage() {
                 <td className="px-4 py-3">{visibilityChip(item.visibility)}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="inline-flex gap-2">
-                    <button onClick={() => toggleVisibility(item.id)} className="rounded-md border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10">
+                    <button onClick={() => toggleVisibility(item)} className="rounded-md border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10">
                       {item.visibility === "network" ? "Ocultar" : "Publicar"}
                     </button>
                     <button onClick={() => onEdit(item)} className="rounded-md border border-cyan-500/20 px-2 py-1 text-xs font-medium text-cyan-400 hover:bg-cyan-500/10">
                       Editar
                     </button>
+                    <button onClick={() => deleteItem(item.id)} className="rounded-md border border-rose-500/20 px-2 py-1 text-xs font-medium text-rose-300 hover:bg-rose-500/10">
+                      Eliminar
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
+            {!loading && items.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Todavía no hay productos. Publicá el primero.</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
@@ -215,13 +266,19 @@ export default function TenantMarketplacePage() {
             </select>
           </div>
           <div className="mt-4 flex gap-2">
-            <button onClick={saveItem} className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400">
-              Guardar
+            <button disabled={saving} onClick={saveItem} className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70">
+              {saving ? "Guardando..." : "Guardar"}
             </button>
             <button onClick={resetEditor} className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200 hover:bg-white/10">
               Cancelar
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {notice ? (
+        <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/30 px-3 py-2 text-xs text-cyan-100">
+          {notice}
         </div>
       ) : null}
     </div>
