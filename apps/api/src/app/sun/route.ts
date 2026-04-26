@@ -532,6 +532,12 @@ function buildPublicContract(params: {
   const fallbackServing = preset?.serving || null;
   const tenantSlug = preset?.tenantSlug || "demobodega";
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
+  const eventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
+  const tapQuery = new URLSearchParams({
+    tenant: tenantSlug,
+    fromTap: "1",
+  });
+  if (eventId) tapQuery.set("eventId", eventId);
   const wineryLocation = preset?.wineryLocation || null;
   const sensorHistory = buildDemoSensorHistory(params.timeline, fallbackStorage, params.passport?.barrel_months || fallbackBarrelMonths);
   const avgTemp = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
@@ -562,7 +568,7 @@ function buildPublicContract(params: {
       bid: params.bid,
       uid: params.uid,
       readCounter: params.ctr,
-      eventId: (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null,
+      eventId,
       tagStatus: params.passport?.tag_status || null,
       scanCount: params.passport?.scan_count || 0,
       tenantSlug,
@@ -641,10 +647,10 @@ function buildPublicContract(params: {
       provenance: Boolean(params.uid),
       tokenize: Boolean(params.uid),
       clubName: preset?.clubName || "Club premium",
-      registerUrl: `${webBase}/register?tenant=${encodeURIComponent(tenantSlug)}`,
-      portalUrl: `${webBase}/me?tenant=${encodeURIComponent(tenantSlug)}`,
-      marketplaceUrl: `${webBase}/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}`,
-      rewardsUrl: `${webBase}/me/rewards?tenant=${encodeURIComponent(tenantSlug)}`,
+      registerUrl: `${webBase}/register?${tapQuery.toString()}&action=register`,
+      portalUrl: `${webBase}/me?${tapQuery.toString()}&action=portal`,
+      marketplaceUrl: `${webBase}/me/marketplace?${tapQuery.toString()}&action=marketplace`,
+      rewardsUrl: `${webBase}/me/rewards?${tapQuery.toString()}&action=rewards`,
     },
     troubleshooting,
     technical: {
@@ -737,8 +743,10 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const ctaButtons = Array.from(document.querySelectorAll('[data-cta]'));
   const gatedLinks = Array.from(document.querySelectorAll('[data-gated-link]'));
   const eventId = ${JSON.stringify(contract.identity.eventId || null)};
+  const canAssociate = ${JSON.stringify(contract.status.tone === "good" && contract.status.code !== "REPLAY_SUSPECT")};
   const nfcBtn = document.getElementById('nfc-scan');
   async function ensureAuthAndTenant(action) {
+    if (!canAssociate) return { ok: false, reason: 'tap_not_verified' };
     const me = await fetch('/consumer/me', { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
     let contact = '';
     if (!me?.ok) {
@@ -775,7 +783,9 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       if (statusNode) statusNode.textContent = 'Validando identidad y asociando tu usuario al tenant...';
       const auth = await ensureAuthAndTenant(action);
       if (!auth.ok) {
-        if (statusNode) statusNode.textContent = 'No pudimos completar registro/asociación (' + auth.reason + ').';
+        if (statusNode) statusNode.textContent = auth.reason === 'tap_not_verified'
+          ? 'Este tap no quedó en estado verificado. Reintentá escanear físicamente la etiqueta.'
+          : 'No pudimos completar registro/asociación (' + auth.reason + ').';
         return;
       }
       if (statusNode) statusNode.textContent = 'Asociación completada. Redirigiendo...';

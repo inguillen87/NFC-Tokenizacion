@@ -65,7 +65,7 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
   return (
     <div>
       <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/5 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">Quick access presets</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">Quick access presets (admin demo)</p>
         <div className="mt-4 grid gap-3">
           {profiles.map((profile) => (
             <button
@@ -90,6 +90,9 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
       ) : null}
 
       <div className="mt-4 grid gap-3">
+        <div className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+          Ingresá con cuenta de <span className="text-cyan-200">dashboard admin</span>. Este login no corresponde al portal de consumidores.
+        </div>
         <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={emailPlaceholder} value={email} onChange={(event) => setEmail(event.target.value)} />
         <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={passwordPlaceholder} value={password} onChange={(event) => setPassword(event.target.value)} />
         <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder="MFA / TOTP code (optional)" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} />
@@ -102,6 +105,9 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
         <Link href="/register" className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-cyan-300">{registerLabel}</Link>
         <Link href="/forgot-password" className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-cyan-300">{forgotLabel}</Link>
         <Link href="/invite-user" className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-cyan-300">{inviteLabel}</Link>
+      </div>
+      <div className="mt-2 grid gap-2 text-center text-xs">
+        <a href="https://nexid.lat/login" className="rounded-lg border border-cyan-300/20 bg-cyan-500/5 px-2 py-2 text-cyan-200">Ir al login del portal consumidor</a>
       </div>
     </div>
   );
