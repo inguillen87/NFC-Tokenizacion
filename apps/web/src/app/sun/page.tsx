@@ -158,6 +158,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     }]
     : [];
   const mapPoints = [...wineryPoint, ...timelinePoints, ...currentTapPoint];
+  const fallbackNetworkPoints = [
+    { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458, scans: 1, risk: 0, status: "AUTH_OK", source: "fallback_seed" },
+    { city: "Córdoba", country: "AR", lat: -31.4201, lng: -64.1888, scans: 1, risk: 0, status: "EVENT_OK", source: "fallback_seed" },
+    { city: "Mexico City", country: "MX", lat: 19.4326, lng: -99.1332, scans: 1, risk: 1, status: "DUPLICATE", source: "fallback_seed" },
+    { city: "Bogotá", country: "CO", lat: 4.711, lng: -74.0721, scans: 1, risk: 0, status: "PHARMA_OK", source: "fallback_seed" },
+  ];
+  const effectiveMapPoints = mapPoints.length ? mapPoints : fallbackNetworkPoints;
   const orderedTimelinePoints = [...timelinePoints].reverse();
   const mapRoutes = [
     ...(wineryPoint.length && orderedTimelinePoints.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: orderedTimelinePoints[0].lat, toLng: orderedTimelinePoints[0].lng, label: "Origen de bodega → primer evento registrado", tone: "info" as const }] : []),
@@ -208,6 +215,18 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : result.status?.tone === "risk"
               ? "Se detectaron señales de riesgo"
               : "Validación en revisión";
+  const riskLevelLabel = trustScore >= 85 ? "Riesgo bajo" : trustScore >= 65 ? "Riesgo moderado" : "Riesgo alto";
+  const recommendedAction = trustScore >= 85
+    ? { label: "Guardar en mi Passport", href: "/me", helper: "Autenticidad sólida. Continuá con ownership/club." }
+    : trustScore >= 65
+      ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
+      : { label: "Reportar y reintentar tap", href: "/?contact=sales&intent=sun_mobile#contact-modal", helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
+  const journeySteps = [
+    { id: "scan", label: "Tap NFC", done: true },
+    { id: "verify", label: "Verificación", done: Boolean(result.status?.label) },
+    { id: "portal", label: "Portal", done: trustTone === "text-emerald-200" },
+    { id: "club", label: "Club premium", done: Boolean(result.identity?.tenantSlug) && trustTone === "text-emerald-200" },
+  ];
 
 
   return (
@@ -215,7 +234,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       {/* Dynamic Background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
 
-      <div className="w-full max-w-[375px] z-10 space-y-4">
+      <div className="w-full max-w-[420px] z-10 space-y-4">
          {/* Trust Header */}
          <div className="flex items-center justify-between px-2 mb-2">
             <div className="flex items-center gap-2">
@@ -258,6 +277,73 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          </div>
 
+         <div className="rounded-2xl border border-white/10 bg-slate-900/55 p-4">
+           <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Journey post tap</p>
+           <div className="mt-3 grid grid-cols-4 gap-2">
+             {journeySteps.map((step) => (
+               <div key={step.id} className={`rounded-lg border px-2 py-2 text-center text-[10px] ${step.done ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-950/50 text-slate-400"}`}>
+                 <p className="font-semibold">{step.done ? "✓" : "•"}</p>
+                 <p className="mt-1 leading-tight">{step.label}</p>
+               </div>
+             ))}
+           </div>
+           <p className="mt-2 text-[11px] text-slate-300">{statusHeadline}</p>
+         </div>
+
+         <section className="rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+           <p className="text-[10px] uppercase tracking-[0.16em] text-violet-300">Prioridad operativa</p>
+           <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+             <span className={`rounded-full border px-2 py-1 font-semibold ${securityTone}`}>{result.status?.label || "Estado"}</span>
+             <span className={`rounded-full border px-2 py-1 font-semibold ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>{riskLevelLabel}</span>
+             <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 font-semibold text-cyan-100">Trust {trustScore}/100</span>
+           </div>
+           <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/55 p-3">
+             <p className="text-xs font-semibold text-white">Siguiente acción recomendada</p>
+             <p className="mt-1 text-xs text-slate-300">{recommendedAction.helper}</p>
+             <a href={recommendedAction.href} className={`mt-3 inline-flex min-h-10 items-center justify-center rounded-lg border px-3 text-xs font-semibold ${trustScore >= 85 ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : trustScore >= 65 ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "border-rose-300/30 bg-rose-500/15 text-rose-100"}`}>
+               {recommendedAction.label}
+             </a>
+           </div>
+         </section>
+
+
+         {/* Mobile Geo Trace / Enterprise Map */}
+         <div id="geo-trace" className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
+            <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
+            <div className="mt-2">
+               {effectiveMapPoints.length ? (
+                  <WorldMapRealtime
+                    title="Ruta de autenticidad"
+                    subtitle="Vista tipo network: origen, hops de verificación y tap actual en trazado global."
+                    points={effectiveMapPoints}
+                    routes={mapRoutes}
+                    initialExpanded
+                    metadataRows={(point) => [
+                      { label: "Source", value: point.source || "trace" },
+                      { label: "Status", value: point.status || "REVIEW" },
+                    ]}
+                  />
+               ) : (
+                  <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-400">
+                    Sin coordenadas disponibles para este tap. Se mostrará el mapa al recibir eventos geo.
+                  </div>
+               )}
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
+                <p className="text-[9px] uppercase text-slate-500">Events</p>
+                <p className="text-xs font-semibold text-white">{timelineCount}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
+                <p className="text-[9px] uppercase text-slate-500">Cities</p>
+                <p className="text-xs font-semibold text-white">{timelineCities}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
+                <p className="text-[9px] uppercase text-slate-500">Last</p>
+                <p className="text-[10px] font-semibold text-white">{lastEventAt ? fmtDate(lastEventAt) : "N/A"}</p>
+              </div>
+            </div>
+         </div>
 
          {/* Loyalty & Experiences Mini-app (Consumer Network) */}
          {trustTone === "text-emerald-200" && (
@@ -311,6 +397,21 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          )}
 
+         {/* Post-tap journey (mobile-first) */}
+         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/15 p-5 mt-4">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Flujo post tap · SUN mobile</p>
+            <h3 className="mt-2 text-sm font-bold text-white">Asociá este tap al tenant y entrá al club premium</h3>
+            <div className="mt-3 space-y-2 text-xs text-slate-200">
+              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">1) Verificás autenticidad con NTAG424 DNA TT y estado anti-tamper.</div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">2) Activás ownership + garantía para abrir portal de usuario premium.</div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">3) Te unís al club del tenant ({result.identity?.tenantSlug || "tenant-demo"}) y desbloqueás beneficios.</div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <a href="/register" className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center font-semibold text-emerald-100">Registrarme</a>
+              <a href="/me" className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">Abrir Portal</a>
+            </div>
+         </div>
+
          {/* Technical Spec */}
          <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 mt-4">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Trazabilidad Técnica</h4>
@@ -330,6 +431,22 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          </div>
 
+         {bid && uid ? (
+           <div className="mt-4">
+             <CtaActions bid={bid} uid={uid} />
+           </div>
+         ) : null}
+
+         {canAutoOnboard ? <OnboardDemoButton bid={bid} /> : null}
+
+      </div>
+
+      <div className="fixed inset-x-0 bottom-3 z-40 mx-auto w-full max-w-[375px] px-3">
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
+          <a href="/register" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Registro</a>
+          <a href="/me" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">Portal</a>
+          <a href="/?contact=sales&intent=sun_mobile#contact-modal" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 text-center text-xs font-semibold text-violet-100">Club</a>
+        </div>
       </div>
     </main>
   );

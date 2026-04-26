@@ -17,6 +17,20 @@ type GeoPoint = {
 };
 
 type TimeWindowMode = "5m" | "1h" | "24h" | "all";
+type MapMode = "classic" | "network";
+type SpinSpeed = "slow" | "normal" | "fast";
+type MapRoute = { fromLat: number; fromLng: number; toLat: number; toLng: number; label?: string; tone?: "info" | "warn" };
+
+const GLOBAL_BACKBONE_POINTS: Array<{ lat: number; lng: number }> = [
+  { lat: 37.7749, lng: -122.4194 }, // SF
+  { lat: 40.7128, lng: -74.006 }, // NY
+  { lat: -23.5505, lng: -46.6333 }, // Sao Paulo
+  { lat: 51.5072, lng: -0.1276 }, // London
+  { lat: 48.8566, lng: 2.3522 }, // Paris
+  { lat: 25.2048, lng: 55.2708 }, // Dubai
+  { lat: 1.3521, lng: 103.8198 }, // Singapore
+  { lat: 35.6762, lng: 139.6503 }, // Tokyo
+];
 
 function parseEventTime(value?: string) {
   if (!value) return Date.now();
@@ -35,10 +49,23 @@ function buildMapUrl(points: GeoPoint[], active: GeoPoint | null) {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${active.lat}%2C${active.lng}`;
 }
 
+function projectToCanvas(lat: number, lng: number, width: number, height: number) {
+  const x = ((lng + 180) / 360) * width;
+  const y = ((90 - lat) / 180) * height;
+  return { x, y };
+}
+
+function curvedRoutePath(a: { x: number; y: number }, b: { x: number; y: number }, lift = 38) {
+  const cx = (a.x + b.x) / 2;
+  const cy = Math.min(a.y, b.y) - lift;
+  return `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+}
+
 export function WorldMapRealtime({
   title = "Global scan footprint",
   subtitle = "Mapa operativo real de autenticaciones, riesgo y cobertura multi-tenant.",
   points = [],
+  routes = [],
   onPointSelect,
   metadataRows,
   initialExpanded = false,
@@ -48,11 +75,14 @@ export function WorldMapRealtime({
   points?: GeoPoint[];
   onPointSelect?: (point: GeoPoint) => void;
   metadataRows?: (point: GeoPoint) => Array<{ label: string; value: string }>;
-  routes?: Array<{ fromLat: number; fromLng: number; toLat: number; toLng: number; label?: string; tone?: "info" | "warn" }>;
+  routes?: MapRoute[];
   initialExpanded?: boolean;
 }) {
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
   const [expanded, setExpanded] = useState(initialExpanded);
+  const [mapMode, setMapMode] = useState<MapMode>("network");
+  const [spinSpeed, setSpinSpeed] = useState<SpinSpeed>("normal");
+  const [riskOnly, setRiskOnly] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [hydrated, setHydrated] = useState(false);
@@ -77,10 +107,10 @@ export function WorldMapRealtime({
     [points, timeWindowMode, cutoffMs]
   );
 
-  const rankedPoints = useMemo(
-    () => [...windowedPoints].sort((a, b) => (b.scans || 0) - (a.scans || 0)),
-    [windowedPoints]
-  );
+  const rankedPoints = useMemo(() => {
+    const filtered = riskOnly ? windowedPoints.filter((point) => (point.risk || 0) > 0) : windowedPoints;
+    return [...filtered].sort((a, b) => (b.scans || 0) - (a.scans || 0));
+  }, [windowedPoints, riskOnly]);
 
   useEffect(() => {
     if (!rankedPoints.length) {
@@ -94,6 +124,23 @@ export function WorldMapRealtime({
   const mapUrl = useMemo(() => buildMapUrl(rankedPoints, activePoint), [rankedPoints, activePoint]);
   const totalScans = rankedPoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const riskSignals = rankedPoints.reduce((acc, point) => acc + (point.risk || 0), 0);
+  const visibleRoutes = useMemo<MapRoute[]>(() => {
+    if (routes.length) return routes.slice(0, 16);
+    const fromRanking = rankedPoints.slice(0, 8).flatMap((point, index, arr) => {
+      if (index === arr.length - 1) return [];
+      return [{
+        fromLat: point.lat,
+        fromLng: point.lng,
+        toLat: arr[index + 1].lat,
+        toLng: arr[index + 1].lng,
+        tone: (point.risk || arr[index + 1].risk) ? "warn" as const : "info" as const,
+      }];
+    });
+    return fromRanking;
+  }, [rankedPoints, routes]);
+  const emptyStateText = riskOnly
+    ? "No hay hubs con señales de riesgo para la ventana seleccionada. Desactivá Risk-only o ampliá la ventana temporal."
+    : "No hay hubs geolocalizados para la ventana seleccionada. Generá taps reales o ampliá la ventana temporal.";
 
   return (
     <Card className="worldmap-card relative overflow-hidden p-4 md:p-6">
@@ -119,12 +166,78 @@ export function WorldMapRealtime({
         <button type="button" onClick={() => setExpanded((current) => !current)} className="rounded-lg border border-indigo-300/30 bg-indigo-500/10 px-3 py-1 text-indigo-100">
           {expanded ? "Compact view" : "Expand map"}
         </button>
+        <button type="button" onClick={() => setMapMode((prev) => (prev === "classic" ? "network" : "classic"))} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+          {mapMode === "classic" ? "Mode: classic" : "Mode: network"}
+        </button>
+        <button type="button" onClick={() => setRiskOnly((prev) => !prev)} className={`rounded-lg border px-3 py-1 ${riskOnly ? "border-rose-300/35 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+          {riskOnly ? "Risk-only: on" : "Risk-only: off"}
+        </button>
+        {mapMode === "network" ? (
+          <button type="button" onClick={() => setSpinSpeed((prev) => (prev === "slow" ? "normal" : prev === "normal" ? "fast" : "slow"))} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-violet-100">
+            Spin: {spinSpeed}
+          </button>
+        ) : null}
       </div>
 
       {activePoint ? (
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem]">
           <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950/80">
-            <iframe title="world-map-realtime" src={mapUrl} className={`${expanded ? "h-[34rem]" : "h-[24rem]"} w-full`} loading="lazy" />
+            {mapMode === "classic" ? (
+              <iframe title="world-map-realtime" src={mapUrl} className={`${expanded ? "h-[34rem]" : "h-[24rem]"} w-full`} loading="lazy" />
+            ) : (
+              <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} relative overflow-hidden bg-[radial-gradient(circle_at_20%_25%,rgba(34,211,238,.22),transparent_40%),radial-gradient(circle_at_75%_78%,rgba(167,139,250,.2),transparent_42%),linear-gradient(165deg,#020617,#0b1734_55%,#111827)]`}>
+                <svg viewBox="0 0 1000 520" className="absolute inset-0 h-full w-full">
+                  <defs>
+                    <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="rgba(34,211,238,0.25)" />
+                      <stop offset="50%" stopColor="rgba(167,139,250,0.9)" />
+                      <stop offset="100%" stopColor="rgba(34,211,238,0.25)" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="0" y="0" width="1000" height="520" fill="rgba(8,13,33,0.45)" />
+                  <ellipse cx="500" cy="260" rx="320" ry="190" fill="none" stroke="rgba(148,163,184,0.16)" strokeWidth="1.2" />
+                  <ellipse cx="500" cy="260" rx="270" ry="160" fill="none" stroke="rgba(125,211,252,0.12)" strokeWidth="1.2" />
+                  {GLOBAL_BACKBONE_POINTS.map((backbone, index) => {
+                    const coord = projectToCanvas(backbone.lat, backbone.lng, 1000, 520);
+                    return <circle key={`backbone-${index}`} cx={coord.x} cy={coord.y} r="3" fill="rgba(148,163,184,0.28)" />;
+                  })}
+                  <g>
+                    <animateTransform attributeName="transform" type="rotate" from="0 500 260" to="360 500 260" dur={spinSpeed === "slow" ? "36s" : spinSpeed === "fast" ? "16s" : "28s"} repeatCount="indefinite" />
+                    {visibleRoutes.map((route, index) => {
+                      const a = projectToCanvas(route.fromLat, route.fromLng, 1000, 520);
+                      const b = projectToCanvas(route.toLat, route.toLng, 1000, 520);
+                      return (
+                        <path
+                          key={`route-${index}-${route.fromLat}-${route.toLng}`}
+                          d={curvedRoutePath(a, b, route.tone === "warn" ? 52 : 38)}
+                          stroke={route.tone === "warn" ? "rgba(251,113,133,0.8)" : "url(#routeGradient)"}
+                          strokeWidth={route.tone === "warn" ? "2.4" : "2"}
+                          fill="none"
+                          strokeDasharray="5 6"
+                          opacity="0.9"
+                        />
+                      );
+                    })}
+                    {rankedPoints.slice(0, 24).map((point, index) => {
+                      const coord = projectToCanvas(point.lat, point.lng, 1000, 520);
+                      const isActive = index === activeIndex;
+                      return (
+                        <g key={`${point.city}-${index}`}>
+                          <circle cx={coord.x} cy={coord.y} r={isActive ? 10 : 6} fill={isActive ? "rgba(34,211,238,0.95)" : "rgba(129,140,248,0.75)"} />
+                          <circle cx={coord.x} cy={coord.y} r={isActive ? 22 : 14} fill="none" stroke="rgba(125,211,252,0.3)" strokeWidth="1.6">
+                            <animate attributeName="r" values={`${isActive ? "12;24;12" : "8;16;8"}`} dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
+                            <animate attributeName="opacity" values="0.9;0.2;0.9" dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
+                          </circle>
+                        </g>
+                      );
+                    })}
+                  </g>
+                </svg>
+                <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
+                  Network mode: visual arcs for global scans, opened/tamper/duplicate signals and active hubs.
+                </div>
+              </div>
+            )}
           </div>
           <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} space-y-2 overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-2`}>
             {rankedPoints.slice(0, 30).map((point, index) => (
@@ -150,7 +263,7 @@ export function WorldMapRealtime({
         </div>
       ) : (
         <div className="mt-4 rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
-          No hay hubs geolocalizados para la ventana seleccionada. Generá taps reales o ampliá la ventana temporal.
+          {emptyStateText}
         </div>
       )}
     </Card>
