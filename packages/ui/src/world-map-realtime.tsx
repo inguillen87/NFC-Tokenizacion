@@ -18,6 +18,7 @@ type GeoPoint = {
 
 type TimeWindowMode = "5m" | "1h" | "24h" | "all";
 type MapMode = "classic" | "network";
+type SpinSpeed = "slow" | "normal" | "fast";
 
 function parseEventTime(value?: string) {
   if (!value) return Date.now();
@@ -61,6 +62,8 @@ export function WorldMapRealtime({
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
   const [expanded, setExpanded] = useState(initialExpanded);
   const [mapMode, setMapMode] = useState<MapMode>("network");
+  const [spinSpeed, setSpinSpeed] = useState<SpinSpeed>("normal");
+  const [riskOnly, setRiskOnly] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [hydrated, setHydrated] = useState(false);
@@ -85,10 +88,10 @@ export function WorldMapRealtime({
     [points, timeWindowMode, cutoffMs]
   );
 
-  const rankedPoints = useMemo(
-    () => [...windowedPoints].sort((a, b) => (b.scans || 0) - (a.scans || 0)),
-    [windowedPoints]
-  );
+  const rankedPoints = useMemo(() => {
+    const filtered = riskOnly ? windowedPoints.filter((point) => (point.risk || 0) > 0) : windowedPoints;
+    return [...filtered].sort((a, b) => (b.scans || 0) - (a.scans || 0));
+  }, [windowedPoints, riskOnly]);
 
   useEffect(() => {
     if (!rankedPoints.length) {
@@ -130,6 +133,14 @@ export function WorldMapRealtime({
         <button type="button" onClick={() => setMapMode((prev) => (prev === "classic" ? "network" : "classic"))} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
           {mapMode === "classic" ? "Mode: classic" : "Mode: network"}
         </button>
+        <button type="button" onClick={() => setRiskOnly((prev) => !prev)} className={`rounded-lg border px-3 py-1 ${riskOnly ? "border-rose-300/35 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+          {riskOnly ? "Risk-only: on" : "Risk-only: off"}
+        </button>
+        {mapMode === "network" ? (
+          <button type="button" onClick={() => setSpinSpeed((prev) => (prev === "slow" ? "normal" : prev === "normal" ? "fast" : "slow"))} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-violet-100">
+            Spin: {spinSpeed}
+          </button>
+        ) : null}
       </div>
 
       {activePoint ? (
@@ -151,7 +162,7 @@ export function WorldMapRealtime({
                   <ellipse cx="500" cy="260" rx="320" ry="190" fill="none" stroke="rgba(148,163,184,0.16)" strokeWidth="1.2" />
                   <ellipse cx="500" cy="260" rx="270" ry="160" fill="none" stroke="rgba(125,211,252,0.12)" strokeWidth="1.2" />
                   <g>
-                    <animateTransform attributeName="transform" type="rotate" from="0 500 260" to="360 500 260" dur="28s" repeatCount="indefinite" />
+                    <animateTransform attributeName="transform" type="rotate" from="0 500 260" to="360 500 260" dur={spinSpeed === "slow" ? "36s" : spinSpeed === "fast" ? "16s" : "28s"} repeatCount="indefinite" />
                     {[...rankedPoints]
                       .slice(0, 6)
                       .map((point, index, arr) => {
