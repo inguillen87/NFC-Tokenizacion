@@ -40,13 +40,27 @@ export type TapEventPayload = {
   rawQuery?: Record<string, unknown>;
 };
 
+let ensureReadCounterColumnPromise: Promise<void> | null = null;
+
+async function ensureEventsReadCounterColumn() {
+  if (!ensureReadCounterColumnPromise) {
+    ensureReadCounterColumnPromise = (async () => {
+      try {
+        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS read_counter integer`;
+      } catch (error) {
+        console.warn('[tap_event_service] unable to ensure events.read_counter column', error);
+      }
+    })();
+  }
+  await ensureReadCounterColumnPromise;
+}
+
 export async function recordTapEvent(payload: TapEventPayload): Promise<number | null> {
   const resultStr = payload.verdict.toUpperCase();
   const sourceStr = payload.source === 'sun' || payload.source === 'real' ? 'real' : payload.source === 'demo' || payload.source === 'demo_simulation' ? 'demo' : 'imported';
   const metaJson = payload.meta || payload.metadataJson || {};
 
-  try {
-    const inserted = await sql`
+  const insertWithReadCounter = () => sql`
       INSERT INTO events (
         tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, reason,
         user_agent, city, country_code, lat, lng, source, meta, tenant_slug, tag_id, bid, event_type, verdict, risk_level,
@@ -60,6 +74,32 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
       )
       RETURNING id
     `;
+  const insertWithoutReadCounter = () => sql`
+      INSERT INTO events (
+        tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
+        user_agent, city, country_code, lat, lng, source, meta, tenant_slug, tag_id, bid, event_type, verdict, risk_level,
+        picc_data_hash, cmac_hash, raw_url_hash, ip_hash, geo_precision, product_name,
+        ip, geo_city, geo_country, device_label, raw_query
+      ) VALUES (
+        ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr || payload.readCounter || null}, ${payload.cmacOk || null}, ${payload.allowlisted || null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
+        ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${payload.lat || null}, ${payload.lng || null}, ${sourceStr}::scan_source, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::event_type, ${payload.verdict}, ${payload.riskLevel}::risk_level,
+        ${payload.piccDataHash || null}, ${payload.cmacHash || null}, ${payload.rawUrlHash || null}, ${payload.ipHash || null}, ${payload.geoPrecision || 'none'}::geo_precision, ${payload.productName || null},
+        ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${payload.rawQuery || null}::jsonb
+      )
+      RETURNING id
+    `;
+
+  try {
+    await ensureEventsReadCounterColumn();
+    let inserted;
+    try {
+      inserted = await insertWithReadCounter();
+    } catch (error) {
+      const err = error as { code?: string; message?: string };
+      const missingReadCounter = err?.code === "42703" && String(err?.message || "").toLowerCase().includes("read_counter");
+      if (!missingReadCounter) throw error;
+      inserted = await insertWithoutReadCounter();
+    }
     const eventId = Number((inserted?.[0] as { id?: number } | undefined)?.id || 0) || null;
 
     if (eventId) {

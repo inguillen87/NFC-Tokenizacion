@@ -10,7 +10,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
   const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza Enterprise";
 
   return (
-    <section className="relative overflow-hidden border-b border-white/5 bg-slate-950 pb-20 pt-28 lg:pb-32 lg:pt-40">
+    <section className="relative overflow-hidden border-b border-white/5 bg-slate-950 pb-16 pt-16 lg:pb-24 lg:pt-24">
       {/* Stripe-level Animated Background Glow */}
       <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden pointer-events-none">
         <div className="absolute top-[10%] w-[800px] h-[500px] bg-cyan-500/20 blur-[120px] rounded-[100%] animate-pulse" style={{ animationDuration: '6s' }} />
