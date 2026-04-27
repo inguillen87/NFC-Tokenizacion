@@ -1,150 +1,168 @@
-import { Badge, BrandDot, Button, Card, SectionHeading, WorldMapRealtime } from "@product/ui";
+import { Card, SectionHeading, Badge, Button, WorldMapRealtime } from "@product/ui";
 import Link from "next/link";
-import { HeroScene } from "./hero-scene";
 
-import type { AppLocale } from "@product/config";
-import type { LandingContent } from "../lib/landing-content";
-import { ProductExitLink } from "./product-exit-link";
+type Content = any;
 
-type Content = LandingContent;
-type StatsCopy = {
-  latency: string;
-  unitEconomics: string;
-  businessModel: string;
-  latencyDelta: string;
-  economicsDelta: string;
-  businessDelta: string;
-};
+export function HeroSection({ content, stats, locale }: { content: Content; stats: any; locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
 
-const proofByLocale: Record<AppLocale, string[]> = {
-  "es-AR": ["SaaS trazable", "Titularidad / Garantía / Procedencia", "SaaS para identidad física verificable"],
-  "pt-BR": ["SaaS rastreável", "Titularidade / Garantia / Procedência", "SaaS para identidade física verificável"],
-  en: ["Traceable SaaS", "Ownership / Warranty / Provenance", "SaaS for verifiable physical identity"],
-};
+  const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza Enterprise";
 
-export function HeroSection({ content, stats, locale }: { content: Content; stats: StatsCopy; locale: AppLocale }) {
-  void stats;
-  const proofItems = [...new Set(proofByLocale[locale] || proofByLocale["es-AR"])]
-  const badgeText = content.hero.badge;
-  const heroTitle = content.hero.title;
-  const heroBody = content.hero.body;
-  const demoCta = locale === "en" ? "View interactive demo" : locale === "pt-BR" ? "Ver demo interativa" : "Ver demo interactiva";
-  const samplesCta = locale === "en" ? "Request demo" : locale === "pt-BR" ? "Solicitar demo" : "Pedir demo";
-  const resellerCta = locale === "en" ? "Become a reseller" : locale === "pt-BR" ? "Quero ser reseller" : "Quiero ser reseller";
-  const salesCta = locale === "en" ? "Talk to sales" : locale === "pt-BR" ? "Falar com vendas" : "Hablar con ventas";
-  const waSalesCta = locale === "en" ? "WhatsApp sales" : locale === "pt-BR" ? "WhatsApp vendas" : "WhatsApp ventas";
-  const waCeoCta = locale === "en" ? "WhatsApp CEO" : locale === "pt-BR" ? "WhatsApp CEO" : "WhatsApp CEO";
-  const demoLabCta = locale === "en" ? "Open Demo Lab" : locale === "pt-BR" ? "Abrir Demo Lab" : "Abrir Demo Lab";
-  const aiGuideCta = locale === "en" ? "AI guide · ask anything" : locale === "pt-BR" ? "BotIA · consultoria guiada" : "BotIA · asesoría guiada";
   return (
-    <section className="container-shell py-16 md:py-24">
-      <div className="hero-shell grid gap-10 rounded-[2rem] p-6 md:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            {badgeText}
+    <section className="relative overflow-hidden border-b border-white/5 bg-slate-950 pb-16 pt-16 lg:pb-24 lg:pt-24">
+      {/* Stripe-level Animated Background Glow */}
+      <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden pointer-events-none">
+        <div className="absolute top-[10%] w-[800px] h-[500px] bg-cyan-500/20 blur-[120px] rounded-[100%] animate-pulse" style={{ animationDuration: '6s' }} />
+        <div className="absolute top-[30%] left-[20%] w-[600px] h-[600px] bg-violet-600/10 blur-[100px] rounded-[100%] animate-pulse" style={{ animationDuration: '8s' }} />
+      </div>
+
+      <div className="container-shell relative z-10">
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur-md transition-colors hover:bg-white/10">
+             <span className="flex h-2 w-2 rounded-full bg-emerald-400" />
+             <span className="text-xs font-medium text-slate-300 uppercase tracking-widest">{trustBadge}</span>
           </div>
 
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
-            <BrandDot size={10} variant="ripple" theme="dark" />
-            <span>{locale === "en" ? "Production-ready product OS" : locale === "pt-BR" ? "Product OS pronto para produção" : "Product OS listo para producción"}</span>
+          <h1 className="mt-8 text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 sm:text-6xl lg:text-7xl">
+            {content.hero.title}
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-400 sm:text-xl">
+            {content.hero.subtitle}
+          </p>
+
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-6 py-3.5 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
+              {content.hero?.cta?.primary || "Empezar"}
+            </Link>
+            <Link href="/docs" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
+              {content.hero?.cta?.secondary || "Contacto"}
+            </Link>
           </div>
 
-          <h1 className="mt-6 text-balance text-5xl font-black tracking-tight text-white md:text-7xl">{heroTitle}</h1>
-          <p className="hero-subtitle mt-6 max-w-2xl text-lg leading-8 text-slate-300">{heroBody}</p>
-
-          <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <a href="#demo" className="hero-cta hero-cta--cyan rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-3 text-sm font-semibold text-cyan-100">{demoCta}</a>
-            <Link href="/?contact=demo#contact-modal" className="hero-cta hero-cta--emerald rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-100">{samplesCta}</Link>
-            <Link href="/?contact=reseller#contact-modal" className="hero-cta hero-cta--violet rounded-xl border border-violet-300/35 bg-violet-500/15 px-4 py-3 text-sm font-semibold text-violet-100">{resellerCta}</Link>
-            <Link href="/?contact=sales#contact-modal" className="hero-cta hero-cta--neutral rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100">{salesCta}</Link>
-          </div>
-
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <a href="/?assistant=open" className="hero-mini-cta hero-mini-cta--cyan rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">{aiGuideCta}</a>
-            <a href="https://wa.me/5492613168608?text=Hola%20quiero%20hablar%20con%20ventas%20nexID" target="_blank" rel="noreferrer" className="hero-mini-cta hero-mini-cta--emerald rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">{waSalesCta}</a>
-            <a href="https://wa.me/5492613168608?text=Hola%20quiero%20hablar%20con%20el%20CEO%20de%20nexID" target="_blank" rel="noreferrer" className="hero-mini-cta hero-mini-cta--violet rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">{waCeoCta}</a>
-          </div>
-
-          <div className="mt-2">
-            <ProductExitLink kind="demoLab" className="hero-mini-cta hero-mini-cta--neutral inline-flex rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">{demoLabCta}</ProductExitLink>
-          </div>
-
-          <div className="mt-7 flex flex-wrap gap-2">
-            {proofItems.map((item) => (
-              <span key={item} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {item}
-              </span>
-            ))}
+          <div className="mt-14 grid grid-cols-2 gap-4 border-t border-white/10 pt-10 md:grid-cols-4">
+             <div className="text-center">
+                <p className="text-3xl font-bold text-white">{stats.scanSpeed}</p>
+                <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.scanSpeedLabel}</p>
+             </div>
+             <div className="text-center">
+                <p className="text-3xl font-bold text-white">{stats.uptime}</p>
+                <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.uptimeLabel}</p>
+             </div>
+             <div className="text-center">
+                <p className="text-3xl font-bold text-white">{stats.crypto}</p>
+                <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.cryptoLabel}</p>
+             </div>
+             <div className="text-center">
+                <p className="text-3xl font-bold text-white">{stats.global}</p>
+                <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.globalLabel}</p>
+             </div>
           </div>
         </div>
-
-        <Card className="hero-panel hero-glow p-5 md:p-6">
-          <HeroScene locale={locale} />
-        </Card>
       </div>
     </section>
   );
 }
 
-export function TrustBarSection({ content }: { content: Content }) {
-  return (
-    <section className="container-shell pb-10">
-      <div className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-5">
-        {content.trustBar.map((item) => (
-          <div key={item} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-center text-xs uppercase tracking-[0.14em] text-cyan-200">
-            {item}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function HowItWorksSection({ content }: { content: Content }) {
+export function RadarSection({ radar, locale }: { radar: any; locale: string }) {
   return (
     <section className="container-shell py-16">
-      <SectionHeading eyebrow={content.howItWorks.eyebrow} title={content.howItWorks.title} description={content.howItWorks.description} />
-      <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {content.howItWorks.steps.map((step) => (
-          <Card key={step.title} className="p-5">
-            <p className="text-sm font-semibold text-white">{step.title}</p>
-            <p className="mt-2 text-sm leading-7 text-slate-400">{step.body}</p>
-          </Card>
-        ))}
+      <div className="grid items-center gap-12 lg:grid-cols-2">
+         <div>
+            <SectionHeading eyebrow={radar.eyebrow} title={radar.title} description={radar.description}  />
+            <ul className="mt-8 space-y-4">
+              {radar.features.map((feature: any) => (
+                <li key={feature.title} className="flex gap-4">
+                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                      ✓
+                   </div>
+                   <div>
+                      <h4 className="text-sm font-bold text-white">{feature.title}</h4>
+                      <p className="text-sm text-slate-400 mt-1">{feature.body}</p>
+                   </div>
+                </li>
+              ))}
+            </ul>
+         </div>
+         <div className="relative rounded-2xl border border-white/10 bg-slate-900/40 p-4 shadow-2xl backdrop-blur-xl h-[400px] overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent transition-opacity group-hover:opacity-50" />
+            <WorldMapRealtime title="" subtitle="" points={[{ lat: -34.6, lng: -58.3, city: "Buenos Aires", scans: 140, risk: 0 }]} initialExpanded={false} />
+            <div className="absolute bottom-4 right-4 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-lg p-3 text-xs text-slate-300 shadow-xl">
+               <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-bold text-white">Live Network</span>
+               </div>
+               Global node visualization.
+            </div>
+         </div>
       </div>
     </section>
   );
 }
 
-export function CardsSection({ content }: { content: Content }) {
-  return (
-    <section id="platform" className="container-shell py-16">
-      <SectionHeading eyebrow={content.what.eyebrow} title={content.what.title} description={content.what.description} />
-      <div className="mt-10 grid gap-6 lg:grid-cols-3">
-        {content.what.cards.map((card) => (
-          <Card key={card.title} className="animate-card-shift p-6 backdrop-blur-xl border border-white/5 bg-slate-900/60 shadow-xl hover:border-cyan-500/30 transition-colors group">
-            <div className="text-base font-semibold text-white">{card.title}</div>
-            <p className="mt-3 text-sm leading-7 text-slate-400">{card.body}</p>
-          </Card>
-        ))}
-      </div>
-    </section>
-  );
+export function InteractiveDemoSection({ locale }: { locale: string }) {
+   const copy = locale === "en" ? {
+      eyebrow: "Interactive Preview",
+      title: "Experience the Consumer Journey",
+      desc: "Scan a product and instantly access provenance, loyalty, and secondary market tools without app downloads."
+   } : {
+      eyebrow: "Preview Interactivo",
+      title: "Viví la Experiencia del Consumidor",
+      desc: "Escaneá un producto y accedé a su historia, programa de lealtad y herramientas de reventa sin descargar apps."
+   };
+
+   return (
+      <section className="container-shell py-20">
+         <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-8 md:p-12 shadow-2xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-violet-600/10 to-transparent pointer-events-none" />
+
+            <div className="grid md:grid-cols-2 gap-8 items-center relative z-10">
+               <div>
+                  <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.desc}  />
+                  <div className="mt-8 flex flex-wrap gap-4">
+                     <Link href="/sun" className="inline-flex items-center justify-center rounded-xl bg-white text-slate-950 px-6 py-3 font-bold transition hover:bg-slate-200 shadow-lg shadow-white/10">
+                        Probar Passport Móvil
+                     </Link>
+                     <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white transition hover:bg-white/10 backdrop-blur-sm">
+                        Abrir Demo Lab
+                     </Link>
+                  </div>
+               </div>
+
+               <div className="flex justify-center md:justify-end">
+                  <div className="w-[280px] h-[550px] border-[8px] border-slate-800 rounded-[3rem] bg-slate-950 overflow-hidden relative shadow-2xl ring-1 ring-white/10 transform rotate-[-5deg] transition-transform duration-500 hover:rotate-0">
+                     <div className="absolute top-0 inset-x-0 h-6 bg-slate-900 z-20 flex justify-center">
+                        <div className="w-20 h-4 bg-slate-950 rounded-b-xl" />
+                     </div>
+                     <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=600')] bg-cover bg-center opacity-30" />
+                     <div className="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent">
+                        <div className="inline-flex px-2 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold rounded mb-3 w-max">AUTÉNTICO</div>
+                        <h3 className="text-xl font-bold text-white">Gran Reserva Malbec</h3>
+                        <p className="text-xs text-slate-300 mt-1">Mendoza, Argentina</p>
+                        <div className="mt-4 w-full h-10 bg-white text-slate-950 rounded-lg flex items-center justify-center text-sm font-bold shadow-lg">
+                           Reclamar Propiedad
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </section>
+   );
 }
 
 
-
-export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
+export function EventsTagPositioningSection({ locale }: { locale: string }) {
   const copy = locale === "en"
     ? {
-      eyebrow: "Events / NTAG215 positioning",
-      title: "Why NTAG215 wins against QR in many event flows",
-      intro: "NTAG215 is built for tap UX, serialisation and operational control in wristbands, tickets and credentials. It is not premium anti-fraud.",
-      basicTitle: "NTAG215 Basic (events and activations)",
+      eyebrow: "Events Positioning / NTAG215",
+      title: "Why NTAG215 beats QR in event flows",
+      intro: "NTAG215 is for tap UX, serialization, and operational control on wristbands, tickets, and credentials. It is not premium anti-fraud.",
+      basicTitle: "NTAG215 Basic (events & activations)",
       basicBullets: [
-        "Faster check-in than QR/email/photo in crowded access points.",
-        "Each physical piece can be serialised with UID and rules server-side.",
-        "Harder to share casually than a screenshot-based QR flow.",
+        "Faster check-in than QR/email/photo in queued access.",
+        "Each physical piece can be serialized with UID and server-side rules.",
+        "Harder to share casually than a screenshot QR.",
         "Ideal for event wristbands, credentials, tickets and brand activations.",
       ],
       secureTitle: "NTAG 424 DNA TagTamper (premium anti-fraud)",
@@ -196,41 +214,62 @@ export function EventsTagPositioningSection({ locale }: { locale: AppLocale }) {
     <section className="container-shell py-16">
       <Card className="p-6 md:p-8 backdrop-blur-xl border border-white/5 bg-slate-900/60 shadow-2xl">
         <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.intro} />
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-            <p className="text-sm font-semibold text-cyan-200">{copy.basicTitle}</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-300">
-              {copy.basicBullets.map((bullet) => <li key={bullet}>• {bullet}</li>)}
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-cyan-300/25 bg-gradient-to-br from-cyan-500/10 to-transparent p-6 hover:border-cyan-300/40 transition-colors">
+            <p className="text-sm font-bold text-cyan-200">{copy.basicTitle}</p>
+            <ul className="mt-4 space-y-3 text-sm text-slate-300">
+              {copy.basicBullets.map((bullet) => (
+                 <li key={bullet} className="flex items-start gap-2">
+                    <span className="text-cyan-500 mt-0.5">•</span>
+                    <span>{bullet}</span>
+                 </li>
+              ))}
             </ul>
           </div>
-          <div className="rounded-2xl border border-violet-300/25 bg-violet-500/10 p-4">
-            <p className="text-sm font-semibold text-violet-200">{copy.secureTitle}</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-300">
-              {copy.secureBullets.map((bullet) => <li key={bullet}>• {bullet}</li>)}
+          <div className="rounded-2xl border border-violet-300/25 bg-gradient-to-br from-violet-500/10 to-transparent p-6 hover:border-violet-300/40 transition-colors">
+            <p className="text-sm font-bold text-violet-200">{copy.secureTitle}</p>
+            <ul className="mt-4 space-y-3 text-sm text-slate-300">
+              {copy.secureBullets.map((bullet) => (
+                 <li key={bullet} className="flex items-start gap-2">
+                    <span className="text-violet-500 mt-0.5">•</span>
+                    <span>{bullet}</span>
+                 </li>
+              ))}
             </ul>
           </div>
         </div>
-        <p className="mt-5 text-sm text-slate-300">{copy.footer}</p>
+        <p className="mt-6 text-sm text-slate-400 text-center">{copy.footer}</p>
       </Card>
     </section>
   );
 }
+
 export function PlansSection({ content }: { content: Content }) {
   return (
-    <section className="container-shell py-16">
+    <section className="container-shell py-20">
       <SectionHeading eyebrow={content.plans.eyebrow} title={content.plans.title} description={content.plans.description} />
-      <div className="mt-10 grid gap-6 xl:grid-cols-3">
-        {content.plans.cards.map((plan) => (
-          <Card key={plan.name} className="animate-card-shift p-6">
-            <Badge tone={plan.name.includes("ENTERPRISE") ? "amber" : "cyan"}>{plan.badge}</Badge>
-            <div className="mt-4 text-2xl font-bold text-white">{plan.name}</div>
-            <p className="mt-2 text-sm text-cyan-300">{plan.price}</p>
-            <p className="mt-3 text-sm leading-7 text-slate-400">{plan.body}</p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-300">
-              {plan.bullets.map((bullet) => <li key={bullet}>• {bullet}</li>)}
-            </ul>
-          </Card>
-        ))}
+      <div className="mt-12 grid gap-6 xl:grid-cols-3">
+        {content.plans.cards.map((plan: any) => {
+           const isPremium = plan.name.includes("ENTERPRISE") || plan.name.includes("PRO");
+           return (
+             <Card key={plan.name} className={`relative p-8 overflow-hidden transition-transform duration-300 hover:-translate-y-2 ${isPremium ? 'border-cyan-500/30 bg-slate-900/80 shadow-[0_0_40px_rgba(6,182,212,0.1)]' : 'border-white/5 bg-slate-900/40'}`}>
+               {isPremium && <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/20 blur-[50px] rounded-full pointer-events-none" />}
+               <div className="mb-6 inline-block"><Badge tone={isPremium ? "cyan" : "default"}>{plan.badge}</Badge></div>
+               <h3 className="text-3xl font-bold text-white tracking-tight">{plan.name}</h3>
+               <p className="mt-2 text-sm font-medium text-cyan-300">{plan.price}</p>
+               <p className="mt-4 text-sm leading-6 text-slate-400">{plan.body}</p>
+               <div className="my-6 h-px w-full bg-gradient-to-r from-white/10 to-transparent" />
+               <ul className="space-y-3 text-sm text-slate-300">
+                 {plan.bullets.map((bullet: string) => (
+                    <li key={bullet} className="flex items-start gap-2">
+                       <span className="text-cyan-500">✓</span>
+                       <span>{bullet}</span>
+                    </li>
+                 ))}
+               </ul>
+             </Card>
+           );
+        })}
       </div>
     </section>
   );
@@ -241,13 +280,13 @@ export function AuthenticityStatesSection({ content }: { content: Content }) {
     <section className="container-shell py-16">
       <SectionHeading eyebrow={content.authenticity.eyebrow} title={content.authenticity.title} description={content.authenticity.description} />
       <div className="mt-8 grid gap-4 md:grid-cols-3">
-        {content.authenticity.cards.map((item) => (
-          <Card key={item.state} className="p-5">
-            <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{item.state}</p>
-            <p className={`mt-3 text-lg font-semibold ${item.tone === "good" ? "text-emerald-300" : item.tone === "warn" ? "text-amber-300" : "text-rose-300"}`}>
+        {content.authenticity.cards.map((item: any) => (
+          <Card key={item.state} className="p-6 backdrop-blur-xl border border-white/5 bg-slate-900/50 hover:bg-slate-900/80 transition-colors">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 mb-2">{item.state}</p>
+            <span className={`inline-flex px-3 py-1 rounded text-xs font-bold ${item.tone === "good" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : item.tone === "warn" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"}`}>
               {item.tone === "good" ? content.authenticity.badges.good : item.tone === "warn" ? content.authenticity.badges.warn : content.authenticity.badges.risk}
-            </p>
-            <p className="mt-2 text-sm leading-7 text-slate-400">{item.detail}</p>
+            </span>
+            <p className="mt-4 text-sm leading-6 text-slate-400">{item.detail}</p>
           </Card>
         ))}
       </div>
@@ -258,11 +297,14 @@ export function AuthenticityStatesSection({ content }: { content: Content }) {
 export function BulletSection({ eyebrow, title, description, bullets }: { eyebrow: string; title: string; description: string; bullets: string[] }) {
   return (
     <section className="container-shell py-16">
-      <Card className="p-8">
+      <Card className="p-8 backdrop-blur-xl border border-white/5 bg-slate-900/60 shadow-xl">
         <SectionHeading eyebrow={eyebrow} title={title} description={description} />
-        <div className="mt-6 grid gap-3 md:grid-cols-2">
+        <div className="mt-10 grid gap-4 md:grid-cols-2">
           {bullets.map((bullet) => (
-            <div key={bullet} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">{bullet}</div>
+            <div key={bullet} className="flex items-center gap-3 rounded-2xl border border-white/5 bg-slate-950/50 px-5 py-4 text-sm text-slate-300 transition-colors hover:border-white/10 hover:bg-white/5">
+               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
+               {bullet}
+            </div>
           ))}
         </div>
       </Card>
@@ -275,10 +317,10 @@ export function UseCasesSection({ content }: { content: Content }) {
     <section className="container-shell py-16">
       <SectionHeading eyebrow={content.useCases.eyebrow} title={content.useCases.title} description={content.useCases.description} />
       <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {content.useCases.cards.map((item) => (
-          <Card key={item.title} className="animate-card-shift p-6 backdrop-blur-xl border border-white/5 bg-slate-900/60 shadow-xl hover:border-cyan-500/30 transition-colors group">
-            <div className="text-base font-semibold text-white">{item.title}</div>
-            <p className="mt-3 text-sm leading-7 text-slate-400">{item.body}</p>
+        {content.useCases.cards.map((item: any) => (
+          <Card key={item.title} className="p-6 backdrop-blur-xl border border-white/5 bg-slate-900/50 shadow-lg hover:border-cyan-500/30 hover:-translate-y-1 transition-all duration-300 group">
+            <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 shadow-inner group-hover:bg-cyan-500/20 transition-colors text-cyan-400">✨</div><h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">{item.title}</h3></div>
+            <p className="mt-3 text-sm leading-6 text-slate-400">{item.body}</p>
           </Card>
         ))}
       </div>
@@ -291,10 +333,11 @@ export function ResellerSection({ content }: { content: Content }) {
     <section className="container-shell py-16">
       <SectionHeading eyebrow={content.reseller.eyebrow} title={content.reseller.title} description={content.reseller.description} />
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        {content.reseller.cards.map((item) => (
-          <Card key={item.title} className="animate-card-shift p-6 backdrop-blur-xl border border-white/5 bg-slate-900/60 shadow-xl hover:border-cyan-500/30 transition-colors group">
-            <div className="text-lg font-bold text-white">{item.title}</div>
-            <p className="mt-3 text-sm leading-7 text-slate-400">{item.body}</p>
+        {content.reseller.cards.map((item: any) => (
+          <Card key={item.title} className="relative p-8 backdrop-blur-xl border border-white/5 bg-gradient-to-br from-slate-900/80 to-slate-950 shadow-xl overflow-hidden hover:border-white/10 transition-colors group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-[40px] rounded-full group-hover:bg-cyan-500/10 transition-colors" />
+            <h3 className="text-xl font-bold text-white relative z-10">{item.title}</h3>
+            <p className="mt-4 text-sm leading-7 text-slate-400 relative z-10">{item.body}</p>
           </Card>
         ))}
       </div>
@@ -304,27 +347,31 @@ export function ResellerSection({ content }: { content: Content }) {
 
 export function RoiCredibilitySection({ content }: { content: Content }) {
   return (
-    <section className="container-shell py-16">
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-6">
-          <SectionHeading eyebrow={content.roi.eyebrow} title={content.roi.title} description={content.roi.description} />
-          <div className="mt-6 space-y-4">
-            {content.roi.metrics.map((metric) => (
-              <div key={metric.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.14em] text-cyan-300">{metric.label}</p>
-                <p className="mt-2 text-2xl font-bold text-white">{metric.value}</p>
-                <p className="mt-1 text-sm text-slate-400">{metric.detail}</p>
+    <section className="container-shell py-20">
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Card className="p-8 backdrop-blur-md border-white/5 bg-slate-900/50">
+          <SectionHeading eyebrow={content.roi.eyebrow} title={content.roi.title} description={content.roi.description}  />
+          <div className="mt-10 grid gap-4">
+            {content.roi.metrics.map((metric: any) => (
+              <div key={metric.label} className="group rounded-2xl border border-white/5 bg-slate-950/50 p-6 transition-all hover:border-cyan-500/20 hover:bg-slate-900/80">
+                <p className="text-xs font-bold uppercase tracking-widest text-cyan-400">{metric.label}</p>
+                <p className="mt-2 text-3xl font-extrabold text-white tracking-tight">{metric.value}</p>
+                <p className="mt-2 text-sm text-slate-400">{metric.detail}</p>
               </div>
             ))}
           </div>
         </Card>
 
-        <Card className="p-6">
-          <SectionHeading eyebrow={content.credibility.eyebrow} title={content.credibility.title} description={content.credibility.description} />
-          <ul className="mt-6 space-y-3 text-sm text-slate-300">
-            {content.credibility.items.map((item) => <li key={item}>• {item}</li>)}
+        <Card className="p-8 backdrop-blur-md border-white/5 bg-slate-900/50">
+          <SectionHeading eyebrow={content.credibility.eyebrow} title={content.credibility.title} description={content.credibility.description}  />
+          <ul className="mt-8 space-y-4 text-sm text-slate-300">
+            {content.credibility.items.map((item: string) => (
+               <li key={item} className="flex gap-3">
+                  <span className="text-cyan-500 font-bold mt-0.5">✓</span>
+                  <span>{item}</span>
+               </li>
+            ))}
           </ul>
-          <div className="mt-6"><WorldMapRealtime /></div>
         </Card>
       </div>
     </section>
@@ -333,15 +380,22 @@ export function RoiCredibilitySection({ content }: { content: Content }) {
 
 export function CtaSection({ content }: { content: Content }) {
   return (
-    <section className="container-shell py-20">
-      <Card className="hero-glow p-8 text-center">
-        <h2 className="text-3xl font-bold text-white">{content.cta.title}</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">{content.cta.body}</p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/?contact=demo#contact-modal"><Button>{content.cta.primary}</Button></Link>
-          <Link href="/?contact=sales#contact-modal"><Button variant="secondary">{content.cta.secondary}</Button></Link>
-        </div>
-      </Card>
+    <section className="container-shell py-24">
+      <div className="relative rounded-[2rem] border border-cyan-500/20 bg-slate-900/80 overflow-hidden shadow-[0_0_80px_rgba(6,182,212,0.15)]">
+         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-violet-500/10 pointer-events-none" />
+         <div className="relative px-6 py-16 md:py-24 text-center z-10">
+           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-6">{content.cta.title}</h2>
+           <p className="mx-auto max-w-2xl text-lg text-slate-400 mb-10">{content.cta.body}</p>
+           <div className="flex flex-wrap justify-center gap-4">
+             <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-sm font-bold text-slate-950 transition hover:bg-slate-200 hover:scale-105 shadow-xl">
+                {content.cta?.primary || "Empezar"}
+             </Link>
+             <Link href="/?contact=sales#contact-modal" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-4 text-sm font-semibold text-white transition hover:bg-white/10">
+                {content.cta?.secondary || "Contacto"}
+             </Link>
+           </div>
+         </div>
+      </div>
     </section>
   );
 }

@@ -1,32 +1,59 @@
 import { cx, type BrandProps } from "./types";
 
 export function BrandWordmark({ size = 120, variant = "static", theme = "dark", className }: BrandProps) {
-  void variant;
-  void theme;
-  const base = "currentColor";
-  const accent = "var(--brand-accent, #2FE1C3)";
-  const height = size * 0.26;
+  const height = Math.max(28, size * 0.26);
+  const wordColor = `var(--brand-wordmark-main, ${theme === "dark" ? "#E2E8F0" : "#0F172A"})`;
+  const accent = `var(--brand-wordmark-accent, ${theme === "dark" ? "#2FE1C3" : "#0891B2"})`;
+  const orbitColor = `var(--brand-wordmark-orbit, ${theme === "dark" ? "rgba(47,225,195,0.5)" : "rgba(8,145,178,0.45)"})`;
+  const motionEnabled = variant !== "static";
 
   return (
     <svg
-      viewBox="0 0 320 84"
+      viewBox="0 0 520 120"
+      role="img"
+      aria-label="nexID logo"
       width={size}
       height={height}
-      className={cx("inline-block", className)}
-      role="img"
-      aria-label="nexID"
+      style={{ width: size, height, maxWidth: "100%", overflow: "visible" }}
+      className={cx("inline-block object-left brand-wordmark-svg", className)}
     >
       <text
         x="0"
-        y="60"
+        y="78"
         fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial"
-        fontSize="58"
+        fontSize="72"
         fontWeight="700"
-        letterSpacing="-1.2"
-        fill={base}
+        letterSpacing="-1.5"
+        fill={wordColor}
       >
-        nex<tspan fill={accent}>ID</tspan>
+        nex
       </text>
+      <text
+        x="182"
+        y="78"
+        fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+        fontSize="72"
+        fontWeight="700"
+        letterSpacing="-1.5"
+        fill={accent}
+      >
+        ID
+      </text>
+      <ellipse cx="248" cy="41" rx="17" ry="11" fill="none" stroke={orbitColor} strokeWidth="1.5" strokeDasharray="3 3" />
+      <g>
+        <circle cx="248" cy="30" r="4.4" fill={accent}>
+          {motionEnabled ? (
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              from={`0 248 41`}
+              to={`360 248 41`}
+              dur={variant === "ripple" ? "2.2s" : "3.1s"}
+              repeatCount="indefinite"
+            />
+          ) : null}
+        </circle>
+      </g>
     </svg>
   );
 }

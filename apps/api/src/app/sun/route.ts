@@ -100,9 +100,14 @@ const BID_PASSPORT_PRESETS: Record<string, {
   region: string;
   varietal: string;
   vintage: string;
+  alcohol: string;
+  bottle: string;
+  serving: string;
   harvestYear: number;
   barrelMonths: number;
   storage: string;
+  tenantSlug: string;
+  clubName: string;
   wineryLocation: string;
   altitude: string;
   oakType: string;
@@ -114,9 +119,14 @@ const BID_PASSPORT_PRESETS: Record<string, {
     region: "Valle de Uco, Mendoza",
     varietal: "Malbec",
     vintage: "2022",
+    alcohol: "14.5%",
+    bottle: "750ml",
+    serving: "16°C · decantar 20 min",
     harvestYear: 2022,
     barrelMonths: 12,
     storage: "16°C",
+    tenantSlug: "demobodega",
+    clubName: "Club Terroir",
     wineryLocation: "Finca Altamira, Mendoza, AR",
     altitude: "1,050 msnm",
     oakType: "Roble francés tostado medio",
@@ -128,9 +138,14 @@ const BID_PASSPORT_PRESETS: Record<string, {
     region: "Luján de Cuyo, Mendoza",
     varietal: "Cabernet Franc",
     vintage: "2023",
+    alcohol: "13.8%",
+    bottle: "750ml",
+    serving: "15°C · sin decantar",
     harvestYear: 2023,
     barrelMonths: 10,
     storage: "15°C",
+    tenantSlug: "demobodega",
+    clubName: "Club Terroir",
     wineryLocation: "Perdriel, Luján de Cuyo, AR",
     altitude: "980 msnm",
     oakType: "Roble francés de grano fino",
@@ -164,8 +179,10 @@ type SunLocale = "es-AR" | "pt-BR" | "en";
 
 function detectSunLocale(country: string | null, acceptLanguage: string | null): SunLocale {
   const c = String(country || "").trim().toUpperCase();
+  const spanishFirstCountries = new Set(["AR", "UY", "PY", "CL", "PE", "BO", "EC", "CO", "VE", "MX", "ES", "PA", "CR", "GT", "HN", "NI", "SV", "DO", "PR"]);
   if (c === "BR") return "pt-BR";
   if (c === "US") return "en";
+  if (spanishFirstCountries.has(c)) return "es-AR";
   const langs = String(acceptLanguage || "").toLowerCase();
   if (langs.includes("pt-br") || langs.includes("pt")) return "pt-BR";
   if (langs.includes("en-us") || langs.includes("en")) return "en";
@@ -176,7 +193,7 @@ function getSunCopy(locale: SunLocale) {
   if (locale === "pt-BR") {
     return {
       lang: "pt-BR",
-      title: "Digital Product Passport",
+      title: "Passaporte Digital do Produto",
       actionsPanel: "Ações",
       authPanel: "Estado de autenticação",
       identityPanel: "Identidade do produto",
@@ -191,13 +208,13 @@ function getSunCopy(locale: SunLocale) {
       processing: "Processando...",
       actionOk: "executado com sucesso.",
       actionFail: "falhou",
-      ctaClaim: "Ativar ownership",
+      ctaClaim: "Ativar titularidade",
       ctaWarranty: "Registrar garantia",
       ctaProvenance: "Ver proveniência",
       ctaTokenize: "Tokenização opcional",
       quality: "Qualidade",
-      authReplay: "Replay detectado: solicite um novo toque físico antes de ownership/garantia/tokenização.",
-      authOk: "Autenticação concluída. Você pode continuar com ownership, garantia, proveniência e tokenização opcional.",
+      authReplay: "Replay detectado: solicite um novo toque físico antes de titularidade/garantia/tokenização.",
+      authOk: "Autenticação concluída. Você pode continuar com titularidade, garantia, proveniência e tokenização opcional.",
       statusReady: "Pronto para executar CTAs seguras.",
       statusReplay: "Replay ativo: ações comerciais bloqueadas até novo toque.",
       timelineEmpty: "Sem eventos ainda. Faça um novo tap para gerar histórico.",
@@ -241,34 +258,34 @@ function getSunCopy(locale: SunLocale) {
   }
   return {
     lang: "es",
-    title: "Digital Product Passport",
+    title: "Pasaporte Digital del Producto",
     actionsPanel: "Acciones",
     authPanel: "Estado de autenticación",
     identityPanel: "Identidad del producto",
-    provenancePanel: "Provenance",
+    provenancePanel: "Proveniencia",
     timelinePanel: "Resumen de eventos",
     tokenPanel: "Tokenización",
     technicalPanel: "Detalles técnicos",
-    iotPanel: "IoT & bodega",
+    iotPanel: "IoT y bodega",
     tapPanel: "Inteligencia del dispositivo",
     firstVerified: "Primera verificación",
     lastVerified: "Última verificación",
     processing: "Procesando...",
     actionOk: "ejecutado correctamente.",
     actionFail: "falló",
-    ctaClaim: "Activar ownership",
+    ctaClaim: "Activar titularidad",
     ctaWarranty: "Registrar garantía",
-    ctaProvenance: "Ver provenance",
+    ctaProvenance: "Ver proveniencia",
     ctaTokenize: "Tokenización opcional",
     quality: "Calidad",
-    authReplay: "Replay detectado: pedí un nuevo tap físico antes de ownership/garantía/tokenización.",
-    authOk: "Autenticación completada. Podés seguir con ownership, garantía, provenance y tokenización opcional.",
+    authReplay: "Replay detectado: pedí un nuevo tap físico antes de titularidad/garantía/tokenización.",
+    authOk: "Autenticación completada. Podés seguir con titularidad, garantía, proveniencia y tokenización opcional.",
     statusReady: "Listo para ejecutar CTAs seguras.",
     statusReplay: "Replay activo: acciones comerciales bloqueadas hasta nuevo tap.",
     timelineEmpty: "Sin eventos todavía. Hacé un nuevo tap para generar historial.",
     achievementTitle: "Logros",
     achievementFirst: "Primera autenticación",
-    achievementProv: "Provenance revisado",
+    achievementProv: "Proveniencia revisada",
   } as const;
 }
 
@@ -512,6 +529,17 @@ function buildPublicContract(params: {
   const fallbackHarvestYear = preset?.harvestYear || null;
   const fallbackBarrelMonths = preset?.barrelMonths || null;
   const fallbackStorage = preset?.storage || null;
+  const fallbackAlcohol = preset?.alcohol || null;
+  const fallbackBottle = preset?.bottle || null;
+  const fallbackServing = preset?.serving || null;
+  const tenantSlug = preset?.tenantSlug || "demobodega";
+  const webBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
+  const eventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
+  const tapQuery = new URLSearchParams({
+    tenant: tenantSlug,
+    fromTap: "1",
+  });
+  if (eventId) tapQuery.set("eventId", eventId);
   const wineryLocation = preset?.wineryLocation || null;
   const sensorHistory = buildDemoSensorHistory(params.timeline, fallbackStorage, params.passport?.barrel_months || fallbackBarrelMonths);
   const avgTemp = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
@@ -542,8 +570,10 @@ function buildPublicContract(params: {
       bid: params.bid,
       uid: params.uid,
       readCounter: params.ctr,
+      eventId,
       tagStatus: params.passport?.tag_status || null,
       scanCount: params.passport?.scan_count || 0,
+      tenantSlug,
     },
     product: {
       name: params.passport?.product_name || params.passport?.sku || fallbackName,
@@ -554,6 +584,9 @@ function buildPublicContract(params: {
       harvestYear: params.passport?.harvest_year || fallbackHarvestYear,
       barrelMonths: params.passport?.barrel_months || fallbackBarrelMonths,
       storage: params.passport?.temperature_storage || fallbackStorage,
+      alcohol: fallbackAlcohol,
+      bottle: fallbackBottle,
+      serving: fallbackServing,
     },
     provenance: {
       origin: params.passport?.region || params.passport?.winery || wineryLocation || null,
@@ -600,6 +633,7 @@ function buildPublicContract(params: {
       os: ua.os,
       browser: ua.browser,
       deviceType: ua.device,
+      userAgent: params.tap.userAgent || null,
       city: params.tap.city,
       country: params.tap.country,
       lat: roundCoord(params.tap.lat, 2),
@@ -614,6 +648,11 @@ function buildPublicContract(params: {
       registerWarranty: Boolean(params.uid),
       provenance: Boolean(params.uid),
       tokenize: Boolean(params.uid),
+      clubName: preset?.clubName || "Club premium",
+      registerUrl: `${webBase}/me?${tapQuery.toString()}&action=register`,
+      portalUrl: `${webBase}/me?${tapQuery.toString()}&action=portal`,
+      marketplaceUrl: `${webBase}/me/marketplace?${tapQuery.toString()}&action=marketplace`,
+      rewardsUrl: `${webBase}/me/rewards?${tapQuery.toString()}&action=rewards`,
     },
     troubleshooting,
     technical: {
@@ -628,38 +667,262 @@ function buildPublicContract(params: {
 
 function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareToken: string | null, locale: SunLocale) {
   const copy = getSunCopy(locale);
+  const labels = locale === "pt-BR"
+    ? {
+      manualOpened: "Produto autêntico. Selo marcado como aberto por operador.",
+      opened: "Produto autêntico, mas o selo foi aberto.",
+      openedPreviously: "Autenticidade confirmada. O selo foi aberto anteriormente.",
+      unknownTamper: "Autenticidade confirmada. Estado de abertura indisponível para este lote.",
+      commercialState: "Estado comercial",
+      risk: "Risco",
+      hold: "SUSPENSO",
+      review: "REVISÃO",
+      reviewPrev: "REVISÃO ABERTO ANTES",
+      ok: "OK",
+      dashboardSync: "Sincronizado com painel: Analytics · Eventos · Tags",
+      events: "Eventos",
+      tokenization: "Tokenização",
+      device: "Dispositivo",
+      wineProfile: "Perfil do vinho",
+      traceability: "Rastreabilidade",
+      sensorIntelligence: "Inteligência de sensores",
+      geoContext: "Contexto geográfico",
+      consumerJourney: "Jornada do consumidor",
+      mapLocalTitle: "Mapa local · rota adega → toque",
+      mapGlobalTitle: "Contexto global · posição do toque",
+      mapLegend: "Origem da adega → ponto de toque",
+      routeSummary: "Resumo da rota",
+      routeDistance: "Distância estimada",
+      routeRegion: "Região de leitura",
+      actionSubtitle: "Fluxos de consumidor, garantia e rastreabilidade.",
+      varietal: "Varietal",
+      vintage: "Safra",
+      harvest: "Colheita",
+      barrel: "Barril",
+      alcohol: "Álcool",
+      serving: "Serviço",
+      bottleFormat: "Garrafa",
+      origin: "Origem",
+      winery: "Vinícola",
+      altitude: "Altitude",
+      oak: "Carvalho",
+      cellarTemp: "Temp. adega",
+      humidity: "Umidade",
+      light: "Luz",
+      transit: "Trânsito",
+      os: "SO",
+      browser: "Navegador",
+      tapLocation: "Local do toque",
+      months: "meses",
+      linkMarketplace: "Marketplace",
+      linkRewards: "Promoções e benefícios",
+      linkRegister: "Criar conta",
+      linkPortal: "Ir para meu portal",
+      tapHelp: "Se o toque estiver verificado, vamos pedir login/registro e associar sua conta automaticamente ao tenant.",
+      demoMode: "Modo demo: fallback sem assinatura habilitado para lotes DEMO-*.",
+      statusLabel: "Status",
+      networkLabel: "Rede",
+      tokenIdLabel: "Token ID",
+      txLabel: "Tx",
+      actionDone: "Concluído ✓",
+      provenanceLoaded: "Proveniência",
+      eventsLoaded: "eventos carregados",
+      technicalTitle: "Detalhes técnicos",
+      heroRoute: "Rota SUN",
+      eventLabel: "Evento",
+      riskReplay: "replay suspeito",
+      riskManual: "abertura manual",
+      riskTamper: "violação/aberto",
+      riskPrev: "aberto anteriormente",
+      riskControlled: "controlado",
+      journey1: "1) Validar identidade",
+      journey2: "2) Vincular ao tenant",
+      journey3: "3) Desbloquear benefícios",
+      journey1Desc: "Use seu e-mail/celular para criar sessão segura.",
+      journey2Desc: "Conectamos este toque ao produto no seu portal.",
+      journey3Desc: "Marketplace, garantia e recompensas ficam ativas.",
+    }
+    : locale === "en"
+      ? {
+        manualOpened: "Authentic product. Seal flagged as opened by operator.",
+        opened: "Authentic product, but the seal was opened.",
+        openedPreviously: "Authenticity confirmed. The seal was opened previously.",
+        unknownTamper: "Authenticity confirmed. Open-state unavailable for this batch.",
+        commercialState: "Commercial state",
+        risk: "Risk",
+        hold: "HOLD",
+        review: "REVIEW",
+        reviewPrev: "REVIEW PREVIOUSLY OPENED",
+        ok: "OK",
+        dashboardSync: "Dashboard sync: Analytics · Events · Tags",
+        events: "Events",
+        tokenization: "Tokenization",
+        device: "Device",
+        wineProfile: "Wine profile",
+        traceability: "Traceability",
+        sensorIntelligence: "Sensor intelligence",
+        geoContext: "Geo context",
+        consumerJourney: "Consumer journey",
+        mapLocalTitle: "Local map · winery to tap route",
+        mapGlobalTitle: "Global context · tap position",
+        mapLegend: "Winery origin → tap point",
+        routeSummary: "Route summary",
+        routeDistance: "Estimated distance",
+        routeRegion: "Read region",
+        actionSubtitle: "Consumer, warranty and traceability workflows.",
+        varietal: "Varietal",
+        vintage: "Vintage",
+        harvest: "Harvest",
+        barrel: "Barrel",
+        alcohol: "Alcohol",
+        serving: "Serving",
+        bottleFormat: "Bottle format",
+        origin: "Origin",
+        winery: "Winery",
+        altitude: "Altitude",
+        oak: "Oak",
+        cellarTemp: "Cellar temp",
+        humidity: "Humidity",
+        light: "Light",
+        transit: "Transit",
+        os: "OS",
+        browser: "Browser",
+        tapLocation: "Tap location",
+        months: "months",
+        linkMarketplace: "Marketplace",
+        linkRewards: "Promos & rewards",
+        linkRegister: "Register",
+        linkPortal: "Open portal",
+        tapHelp: "If this tap is verified, we will ask for sign-in/register and auto-link your account to the tenant.",
+        demoMode: "Demo mode: unsigned fallback enabled for DEMO-* batches.",
+        statusLabel: "Status",
+        networkLabel: "Network",
+        tokenIdLabel: "Token ID",
+        txLabel: "Tx",
+        actionDone: "Done ✓",
+        provenanceLoaded: "Provenance",
+        eventsLoaded: "events loaded",
+        technicalTitle: "Technical details",
+        heroRoute: "SUN route",
+        eventLabel: "Event",
+        riskReplay: "replay suspect",
+        riskManual: "manual opened",
+        riskTamper: "tamper/opened",
+        riskPrev: "opened previously",
+        riskControlled: "controlled",
+        journey1: "1) Verify identity",
+        journey2: "2) Link to tenant",
+        journey3: "3) Unlock benefits",
+        journey1Desc: "Use email/phone to create a secure session.",
+        journey2Desc: "We connect this tap to your product portal.",
+        journey3Desc: "Marketplace, warranty and rewards become active.",
+      }
+      : {
+        manualOpened: "Producto auténtico. Sello marcado como abierto por operador.",
+        opened: "Producto auténtico, pero el sello fue abierto.",
+        openedPreviously: "Autenticidad confirmada. El sello fue abierto anteriormente.",
+        unknownTamper: "Autenticidad confirmada. Estado de apertura no disponible para este lote.",
+        commercialState: "Estado comercial",
+        risk: "Riesgo",
+        hold: "PAUSA",
+        review: "REVISIÓN",
+        reviewPrev: "REVISIÓN ABIERTO PREVIO",
+        ok: "OK",
+        dashboardSync: "Sincronizado con dashboard: Analytics · Eventos · Tags",
+        events: "Eventos",
+        tokenization: "Tokenización",
+        device: "Dispositivo",
+        wineProfile: "Perfil del vino",
+        traceability: "Trazabilidad",
+        sensorIntelligence: "Inteligencia de sensores",
+        geoContext: "Contexto geo",
+        consumerJourney: "Recorrido del consumidor",
+        mapLocalTitle: "Mapa local · ruta bodega → tap",
+        mapGlobalTitle: "Contexto global · posición del tap",
+        mapLegend: "Origen bodega → punto de tap",
+        routeSummary: "Resumen de ruta",
+        routeDistance: "Distancia estimada",
+        routeRegion: "Región de lectura",
+        actionSubtitle: "Flujos de consumidor, garantía y trazabilidad.",
+        varietal: "Varietal",
+        vintage: "Cosecha",
+        harvest: "Vendimia",
+        barrel: "Barrica",
+        alcohol: "Alcohol",
+        serving: "Servicio",
+        bottleFormat: "Botella",
+        origin: "Origen",
+        winery: "Bodega",
+        altitude: "Altitud",
+        oak: "Roble",
+        cellarTemp: "Temp. cava",
+        humidity: "Humedad",
+        light: "Luz",
+        transit: "Tránsito",
+        os: "SO",
+        browser: "Navegador",
+        tapLocation: "Ubicación tap",
+        months: "meses",
+        linkMarketplace: "Marketplace",
+        linkRewards: "Promos y beneficios",
+        linkRegister: "Registrarme",
+        linkPortal: "Ir a mi portal",
+        tapHelp: "Si el tap está verificado, te vamos a pedir login/registro y asociar tu cuenta al tenant automáticamente.",
+        demoMode: "Modo demo: fallback sin firma habilitado para lotes DEMO-*.",
+        statusLabel: "Estado",
+        networkLabel: "Red",
+        tokenIdLabel: "Token ID",
+        txLabel: "Tx",
+        actionDone: "Listo ✓",
+        provenanceLoaded: "Trazabilidad",
+        eventsLoaded: "eventos cargados",
+        technicalTitle: "Detalles técnicos",
+        heroRoute: "Ruta SUN",
+        eventLabel: "Evento",
+        riskReplay: "replay sospechoso",
+        riskManual: "apertura manual",
+        riskTamper: "apertura/alteración",
+        riskPrev: "abierto previamente",
+        riskControlled: "controlado",
+        journey1: "1) Verificar identidad",
+        journey2: "2) Asociar al tenant",
+        journey3: "3) Desbloquear beneficios",
+        journey1Desc: "Usá email/celular para crear una sesión segura.",
+        journey2Desc: "Conectamos este tap a tu producto en el portal.",
+        journey3Desc: "Se activan marketplace, garantía y recompensas.",
+      };
   const tone = contract.status.tone === 'good' ? '#22c55e' : contract.status.tone === 'risk' ? '#ef4444' : '#f59e0b';
   const isReplay = contract.status.code === "REPLAY_SUSPECT";
   const productState = String(contract.status.productState || "").toUpperCase();
   const authPanelMessage = isReplay
     ? copy.authReplay
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
-      ? "Producto auténtico. Sello marcado como abierto por operador."
+      ? labels.manualOpened
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
-      ? "Producto auténtico, pero el sello fue abierto."
+      ? labels.opened
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
-        ? "Autenticidad confirmada. El sello fue abierto anteriormente."
+        ? labels.openedPreviously
       : productState === "VALID_UNKNOWN_TAMPER"
-        ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
+        ? labels.unknownTamper
         : copy.authOk;
   const commercialStateLabel = isReplay
-    ? "Commercial state: HOLD"
+    ? `${labels.commercialState}: ${labels.hold}`
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
-      ? "Commercial state: DEMO_OPENED"
+      ? `${labels.commercialState}: DEMO_OPENED`
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
-      ? "Commercial state: REVIEW"
+      ? `${labels.commercialState}: ${labels.review}`
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
-        ? "Commercial state: REVIEW_PREVIOUSLY_OPENED"
-      : "Commercial state: OK";
+        ? `${labels.commercialState}: ${labels.reviewPrev}`
+      : `${labels.commercialState}: ${labels.ok}`;
   const riskStateLabel = isReplay
-    ? "Risk: replay suspect"
+    ? `${labels.risk}: ${labels.riskReplay}`
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
-      ? "Risk: manual opened"
+      ? `${labels.risk}: ${labels.riskManual}`
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
-      ? "Risk: tamper/opened"
+      ? `${labels.risk}: ${labels.riskTamper}`
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
-        ? "Risk: opened previously"
-      : "Risk: controlled";
+        ? `${labels.risk}: ${labels.riskPrev}`
+      : `${labels.risk}: ${labels.riskControlled}`;
   const timeline = contract.provenance.timelineSummary;
   const timelineHtml = timeline.length
     ? timeline.map((item) => `<li>${item.at || 'N/A'} · <b>${item.result || '-'}</b> · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
@@ -670,42 +933,159 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const wineryLng = contract.iot.wineryCoordinates?.lng ?? tapLng ?? -68.7794;
   const destinationLat = tapLat ?? wineryLat;
   const destinationLng = tapLng ?? wineryLng;
-  const bbox = [
-    Math.min(wineryLng, destinationLng) - 0.08,
-    Math.min(wineryLat, destinationLat) - 0.05,
-    Math.max(wineryLng, destinationLng) + 0.08,
-    Math.max(wineryLat, destinationLat) + 0.05,
-  ];
-  const mapEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox[0]}%2C${bbox[1]}%2C${bbox[2]}%2C${bbox[3]}&layer=mapnik&marker=${destinationLat}%2C${destinationLng}`;
+  const projectWorld = (lat: number, lng: number) => ({
+    x: ((lng + 180) / 360) * 1000,
+    y: ((90 - lat) / 180) * 460,
+  });
+  const wineryPoint = projectWorld(wineryLat, wineryLng);
+  const tapPoint = projectWorld(destinationLat, destinationLng);
+  const toRad = (v: number) => v * (Math.PI / 180);
+  const earthKm = 6371;
+  const dLat = toRad(destinationLat - wineryLat);
+  const dLng = toRad(destinationLng - wineryLng);
+  const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(wineryLat)) * Math.cos(toRad(destinationLat)) * Math.sin(dLng / 2) ** 2;
+  const routeDistanceKm = Math.round(earthKm * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa)));
 
   return `<!doctype html><html lang="${copy.lang}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-icon" />
-  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:10px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.subtitle{color:#334155}.chip{color:#334155;border-color:#cbd5e1}button{background:#f8fafc;color:#0f172a}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
-  <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ? "pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">Dashboard sync: Analytics · Events · Tags</span></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.identityPanel}</h3><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Harvest ${contract.product.harvestYear || '-'} · Barrel ${contract.product.barrelMonths || '-'} months</p></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.provenancePanel}</h3><p>Origin: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.iotPanel}</h3><p>Winery: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>Altitude: <b>${contract.iot.altitude || '-'}</b> · Oak: <b>${contract.iot.oakType || '-'}</b></p><p>Cellar temp: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humidity: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Light: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transit: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.tapPanel}</h3><p>OS: <b>${contract.tapContext.os}</b> · Browser: <b>${contract.tapContext.browser}</b> · Device: <b>${contract.tapContext.deviceType}</b></p><p>Tap location: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p>
-  <div style="margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:12px;overflow:hidden;background:#020617">
-    <iframe title="sun-tap-map" src="${mapEmbed}" loading="lazy" style="display:block;width:100%;height:180px;border:0"></iframe>
-  </div>
-  <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${contract.iot.wineryLocation || 'Origin'} → tap point.</p></section>
+  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.hero h1{margin:10px 0 4px;font-size:31px;line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:8px;background:rgba(2,6,23,.45)}.kpi b{display:block;font-size:13px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-route-overlay{position:absolute;inset:0;width:100%;height:100%}.world-map-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%);border-color:#93c5fd}.world-map-canvas{background:#dbeafe}.world-map-image{filter:saturate(1) contrast(1)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <section class="card hero"><div class="hero-top"><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">NexID Verified Tap</span></div><h1>${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><p class="hero-meta">${labels.heroRoute} · ${labels.eventLabel} #${contract.identity.eventId || 'N/A'}</p></div><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span></div><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ? "pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div><div class="kpis"><div class="kpi"><b>${contract.provenance.timelineSummary.length}</b><span>${labels.events}</span></div><div class="kpi"><b>${contract.tokenization.status || "-"}</b><span>${labels.tokenization}</span></div><div class="kpi"><b>${contract.tapContext.deviceType || "-"}</b><span>${labels.device}</span></div></div></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">${labels.dashboardSync}</span></div></section>
+  <section class="card"><div class="section-head"><h3>${copy.identityPanel}</h3><span class="section-tag">${labels.wineProfile}</span></div><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.varietal}</span><span class="v">${contract.product.varietal || '-'}</span></div><div class="detail-item"><span class="k">${labels.vintage}</span><span class="v">${contract.product.vintage || '-'}</span></div><div class="detail-item"><span class="k">${labels.harvest}</span><span class="v">${contract.product.harvestYear || '-'}</span></div><div class="detail-item"><span class="k">${labels.barrel}</span><span class="v">${contract.product.barrelMonths || '-'} ${labels.months}</span></div><div class="detail-item"><span class="k">${labels.alcohol}</span><span class="v">${contract.product.alcohol || '-'}</span></div><div class="detail-item"><span class="k">${labels.serving}</span><span class="v">${contract.product.serving || '-'}</span></div></div><p style="margin-top:10px">${labels.bottleFormat}: <b>${contract.product.bottle || '-'}</b></p></section>
+  <section class="card"><div class="section-head"><h3>${copy.provenancePanel}</h3><span class="section-tag">${labels.traceability}</span></div><p>${labels.origin}: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
+  <section class="card"><div class="section-head"><h3>${copy.iotPanel}</h3><span class="section-tag">${labels.sensorIntelligence}</span></div><p>${labels.winery}: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>${labels.altitude}: <b>${contract.iot.altitude || '-'}</b> · ${labels.oak}: <b>${contract.iot.oakType || '-'}</b></p><p>${labels.cellarTemp}: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · ${labels.humidity}: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>${labels.light}: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · ${labels.transit}: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
+  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><p style="font-size:11px;color:#94a3b8">User-Agent: ${contract.tapContext.userAgent || '-'}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceKm} km</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
+  <div class="world-map-wrap"><div class="world-map-canvas"><img class="world-map-image" alt="${labels.mapGlobalTitle}" src="https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg" loading="lazy"/><svg class="world-route-overlay" viewBox="0 0 1000 460" aria-hidden="true"><line x1="${wineryPoint.x.toFixed(2)}" y1="${wineryPoint.y.toFixed(2)}" x2="${tapPoint.x.toFixed(2)}" y2="${tapPoint.y.toFixed(2)}" stroke="#f97316" stroke-width="3" stroke-dasharray="9 7"/><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="7" fill="#22d3ee"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="7" fill="#f97316"/></svg></div><div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div></div>
+  <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${labels.routeSummary}: ${contract.iot.wineryLocation || labels.origin} → ${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'} · ${labels.mapLegend}.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.achievementTitle}</h3><div class="chips"><span class="chip">🏅 ${copy.achievementFirst}: ${contract.identity.scanCount > 0 ? "✓" : "-"}</span><span class="chip">📍 ${copy.achievementProv}: ${contract.provenance.timelineSummary.length > 0 ? "✓" : "-"}</span></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.actionsPanel}</h3><p class="subtitle" style="margin-bottom:10px">Consumer, warranty and traceability workflows.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? copy.statusReplay : copy.statusReady}</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Demo mode: unsigned share fallback enabled for DEMO-* batches.</p>'}</section>
-  <section class="card"><details><summary>${copy.technicalPanel}</summary><p>BID: ${contract.identity.bid} · UID: ${contract.identity.uid || 'N/A'} · Read counter: ${contract.identity.readCounter ?? 'N/A'}</p><p>Raw: picc ${contract.technical.raw.piccDataPrefix} · enc ${contract.technical.raw.encPrefix} · cmac ${contract.technical.raw.cmacPrefix}</p><p>Troubleshooting: ${contract.troubleshooting.join(' | ') || 'No alerts'}</p></details></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>${labels.statusLabel}: <b>${contract.tokenization.status}</b> · ${labels.networkLabel}: <b>${contract.tokenization.network || '-'}</b></p><p>${labels.tokenIdLabel}: ${contract.tokenization.tokenId || '-'} · ${labels.txLabel}: ${contract.tokenization.txHash || '-'}</p></section>
+  <section class="card"><div class="section-head"><h3>${copy.actionsPanel}</h3><span class="section-tag">${labels.consumerJourney}</span></div><p class="subtitle" style="margin-bottom:10px">${labels.actionSubtitle}</p><div class="journey-steps"><div class="journey-step"><b>${labels.journey1}</b><span>${labels.journey1Desc}</span></div><div class="journey-step"><b>${labels.journey2}</b><span>${labels.journey2Desc}</span></div><div class="journey-step"><b>${labels.journey3}</b><span>${labels.journey3Desc}</span></div></div><div class="actions-grid" style="margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" data-gated-link="marketplace" class="link-btn" style="color:#a5f3fc;background:rgba(6,182,212,.12)">🛍 ${labels.linkMarketplace} ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" data-gated-link="rewards" class="link-btn" style="color:#ddd6fe;background:rgba(139,92,246,.12)">🎁 ${labels.linkRewards}</a><a href="${contract.cta.registerUrl}" data-gated-link="register" class="link-btn" style="color:#d1fae5;background:rgba(16,185,129,.12)">🧾 ${labels.linkRegister}</a><a href="${contract.cta.portalUrl}" data-gated-link="portal" class="link-btn" style="color:#dbeafe;background:rgba(59,130,246,.12)">👤 ${labels.linkPortal}</a></div><div class="actions-grid"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#94a3b8">${labels.tapHelp}</p>${shareToken ? "" : `<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">${labels.demoMode}</p>`}</section>
 <script>
 (() => {
   const share = ${JSON.stringify(shareToken)};
   const bid = ${JSON.stringify(contract.identity.bid)};
   const uid = ${JSON.stringify(contract.identity.uid || '')};
   const copy = ${JSON.stringify(copy)};
+  const labels = ${JSON.stringify(labels)};
+  const ui = copy.lang === 'pt-BR'
+    ? {
+      askContact: 'Informe seu e-mail ou telefone para registrar/associar ao tenant:',
+      askCode: 'Código de verificação (demo):',
+      askRewards: 'E-mail para ativar promoções/rewards do clube:',
+      validating: 'Validando identidade e associando seu usuário ao tenant...',
+      notVerified: 'Este toque não ficou em estado verificado. Refaça o toque físico da etiqueta.',
+      hostFail: 'Não foi possível validar sessão neste host. Vamos levar você ao registro para continuar.',
+      assocFail: 'Não foi possível completar registro/associação',
+      assocOk: 'Associação concluída. Redirecionando...',
+      nfcReady: 'Leitor NFC ativo. Aproxime a etiqueta do telefone.',
+      nfcFail: 'Não foi possível iniciar NFC neste dispositivo.',
+    }
+    : copy.lang === 'en'
+      ? {
+        askContact: 'Enter your email or phone to register/link your account to this tenant:',
+        askCode: 'Verification code (demo):',
+        askRewards: 'Email to activate club promos/rewards:',
+        validating: 'Validating identity and linking your account to tenant...',
+        notVerified: 'This tap is not verified. Please perform a fresh physical tap.',
+        hostFail: 'Session validation failed on this host. Redirecting to registration.',
+        assocFail: 'Could not complete registration/association',
+        assocOk: 'Association complete. Redirecting...',
+        nfcReady: 'NFC listener active. Bring the tag close to your phone.',
+        nfcFail: 'Could not start NFC on this device.',
+      }
+      : {
+        askContact: 'Ingresá tu email o teléfono para registrarte/asociarte al tenant:',
+        askCode: 'Código de verificación (demo):',
+        askRewards: 'Email para activar promos/rewards del club:',
+        validating: 'Validando identidad y asociando tu usuario al tenant...',
+        notVerified: 'Este tap no quedó en estado verificado. Reintentá escanear físicamente la etiqueta.',
+        hostFail: 'No pudimos validar sesión en este host. Te llevamos a registro para continuar.',
+        assocFail: 'No pudimos completar registro/asociación',
+        assocOk: 'Asociación completada. Redirigiendo...',
+        nfcReady: 'NFC listener activo. Acercá la etiqueta al teléfono.',
+        nfcFail: 'No fue posible iniciar NFC en este dispositivo.',
+      };
   const ctaButtons = Array.from(document.querySelectorAll('[data-cta]'));
+  const gatedLinks = Array.from(document.querySelectorAll('[data-gated-link]'));
+  const eventId = ${JSON.stringify(contract.identity.eventId || null)};
+  const canAssociate = ${JSON.stringify(contract.status.tone === "good" && contract.status.code !== "REPLAY_SUSPECT")};
+  const appBase = (() => {
+    try {
+      return new URL(${JSON.stringify(contract.cta.portalUrl)}).origin;
+    } catch {
+      return window.location.origin;
+    }
+  })();
   const nfcBtn = document.getElementById('nfc-scan');
+  const jsonFetch = (path, init = {}) => fetch(appBase + path, { credentials: 'include', ...init }).then((r) => r.json());
+  async function ensureAuthAndTenant(action) {
+    if (!canAssociate) return { ok: false, reason: 'tap_not_verified' };
+    const me = await jsonFetch('/api/consumer/me', { cache: 'no-store' }).catch(() => null);
+    let contact = '';
+    if (!me?.ok) {
+      contact = window.prompt(ui.askContact) || '';
+      if (!contact.trim()) return { ok: false, reason: 'cancelled' };
+      const normalizedContact = contact.trim();
+      const payload = normalizedContact.includes('@') ? { email: normalizedContact } : { phone: normalizedContact };
+      const start = await jsonFetch('/api/consumer/auth/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => null);
+      if (!start?.ok) return { ok: false, reason: 'start_failed' };
+      let entered = String(start.code || '').trim();
+      if (!entered) {
+        entered = (window.prompt(ui.askCode, '') || '').trim();
+      }
+      if (!entered) return { ok: false, reason: 'code_cancelled' };
+      const buildVerifyPayload = (code) => normalizedContact.includes('@')
+        ? { email: normalizedContact, code }
+        : { phone: normalizedContact, code };
+      let verify = await jsonFetch('/api/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildVerifyPayload(entered)) }).catch(() => null);
+      if (!verify?.ok && start?.code) {
+        const manual = (window.prompt(ui.askCode, String(start.code || '')) || '').trim();
+        if (manual) {
+          verify = await jsonFetch('/api/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildVerifyPayload(manual)) }).catch(() => null);
+        }
+      }
+      if (!verify?.ok) return { ok: false, reason: 'verify_failed' };
+    }
+    if (eventId) {
+      await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/join-tenant', { method: 'POST' }).catch(() => null);
+      await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/save-product', { method: 'POST' }).catch(() => null);
+      if (action === 'rewards') {
+        const contactForEnroll = contact || window.prompt(ui.askRewards) || '';
+        if (contactForEnroll.trim()) {
+          await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/loyalty/enroll', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(contactForEnroll.includes('@') ? { email: contactForEnroll } : { phone: contactForEnroll }),
+          }).catch(() => null);
+        }
+      }
+    }
+    return { ok: true };
+  }
+  gatedLinks.forEach((link) => {
+    link.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const action = link.getAttribute('data-gated-link') || 'portal';
+      const statusNode = document.getElementById('cta-status');
+      if (statusNode) statusNode.textContent = ui.validating;
+      const auth = await ensureAuthAndTenant(action);
+      if (!auth.ok) {
+        if (statusNode) statusNode.textContent = auth.reason === 'tap_not_verified'
+          ? ui.notVerified
+          : auth.reason === 'start_failed' || auth.reason === 'verify_failed'
+            ? ui.hostFail
+            : ui.assocFail + ' (' + auth.reason + ').';
+        if (auth.reason === 'start_failed' || auth.reason === 'verify_failed') {
+          window.location.href = ${JSON.stringify(contract.cta.registerUrl)};
+        }
+        return;
+      }
+      if (statusNode) statusNode.textContent = ui.assocOk;
+      window.location.href = link.getAttribute('href') || '/me';
+    });
+  });
   if (nfcBtn && 'NDEFReader' in window) {
     nfcBtn.style.display = 'block';
     nfcBtn.addEventListener('click', async () => {
@@ -713,9 +1093,9 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       try {
         const reader = new window.NDEFReader();
         await reader.scan();
-        if (statusNode) statusNode.textContent = 'NFC listener activo. Acercá la etiqueta al teléfono.';
+        if (statusNode) statusNode.textContent = ui.nfcReady;
       } catch {
-        if (statusNode) statusNode.textContent = 'No fue posible iniciar NFC en este dispositivo.';
+        if (statusNode) statusNode.textContent = ui.nfcFail;
       }
     });
   }
@@ -741,11 +1121,11 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
           if (statusNode) statusNode.textContent = action + ' ' + copy.actionFail + ': ' + reason;
           return;
         }
-        button.textContent = 'Hecho ✓';
+        button.textContent = labels.actionDone;
         if (statusNode) statusNode.textContent = action + ' ' + copy.actionOk;
         if (action === 'provenance') {
           const timeline = Array.isArray(payload?.timeline) ? payload.timeline : [];
-          if (statusNode) statusNode.textContent = 'Provenance: ' + timeline.length + ' events loaded.';
+          if (statusNode) statusNode.textContent = labels.provenanceLoaded + ': ' + timeline.length + ' ' + labels.eventsLoaded + '.';
         }
       } catch {
         button.textContent = 'Error';
@@ -1002,11 +1382,12 @@ export async function GET(req: Request): Promise<Response> {
         })()
       : null;
     return new Response(renderSunHtml(contract, shareToken, locale), {
-      status: result.status,
+      status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
         'x-nexid-trace-id': traceId,
+        'x-nexid-upstream-status': String(result.status || 200),
       },
     });
   }
