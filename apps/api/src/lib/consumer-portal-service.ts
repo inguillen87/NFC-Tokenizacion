@@ -1,5 +1,6 @@
 import { sql } from "./db";
 import { claimTapPoints, getTapEvent } from "./loyalty-service";
+import { evaluateOwnershipEligibility } from "./ownership-policy";
 
 export async function ensureTenantMembership(input: { consumerId: string; tenantId: string; tapEventId?: string; source?: string }) {
   const programRows = await sql/*sql*/`SELECT id FROM loyalty_programs WHERE tenant_id = ${input.tenantId} AND status='active' ORDER BY created_at DESC LIMIT 1`;
@@ -67,6 +68,88 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
   `;
 
   return event;
+}
+
+type ClaimOwnershipInput = {
+  consumerId: string;
+  eventId: string;
+  bid?: string | null;
+  uidHex?: string | null;
+  source?: "sun_passport" | "marketplace" | "admin";
+  trustSnapshot?: Record<string, unknown>;
+};
+
+export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
+  const event = await getTapEvent(input.eventId);
+  if (!event) return { ok: false as const, status: 404, error: "event_not_found" as const };
+  if (!event.tenant_id || !event.uid_hex) return { ok: false as const, status: 400, error: "event_missing_identity" as const };
+  if (input.uidHex && String(input.uidHex).toUpperCase() !== String(event.uid_hex).toUpperCase()) {
+    return { ok: false as const, status: 403, error: "uid_mismatch" as const };
+  }
+
+  const tagRows = await sql/*sql*/`
+    SELECT t.id, t.status, b.id AS batch_id, b.bid
+    FROM tags t
+    JOIN batches b ON b.id = t.batch_id
+    WHERE b.tenant_id = ${event.tenant_id}
+      AND t.uid_hex = ${event.uid_hex}
+    ORDER BY t.created_at ASC
+    LIMIT 1
+  `;
+  const tag = tagRows[0];
+  if (!tag) return { ok: false as const, status: 404, error: "tag_not_found" as const };
+  if (input.bid && String(input.bid).trim() !== String(tag.bid || "").trim()) {
+    return { ok: false as const, status: 403, error: "tenant_batch_mismatch" as const };
+  }
+  const result = String(event.result || "").toUpperCase();
+  const { isBlocked, nextStatus } = evaluateOwnershipEligibility({ result, tagStatus: tag.status || null });
+
+  await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
+  await saveTapForConsumer({ consumerId: input.consumerId, eventId: String(event.id) });
+
+  const trustSnapshot = {
+    result,
+    reason: event.reason || null,
+    city: event.city || null,
+    country: event.country_code || null,
+    tag_status: tag.status || null,
+    blocked: isBlocked,
+    ...(input.trustSnapshot || {}),
+  };
+
+  const ownershipRows = await sql/*sql*/`
+    INSERT INTO consumer_product_ownerships (
+      tenant_id, consumer_id, batch_id, tag_id, uid_hex, event_id, status, source, trust_snapshot
+    ) VALUES (
+      ${event.tenant_id}, ${input.consumerId}, ${tag.batch_id}, ${tag.id || null}, ${String(event.uid_hex).toUpperCase()}, ${event.id}, ${nextStatus}, ${input.source || "sun_passport"}, ${JSON.stringify(trustSnapshot)}::jsonb
+    )
+    ON CONFLICT (consumer_id, event_id)
+    DO UPDATE SET
+      status = EXCLUDED.status,
+      trust_snapshot = EXCLUDED.trust_snapshot,
+      updated_at = now()
+    RETURNING *
+  `;
+  const ownership = ownershipRows[0];
+
+  await sql/*sql*/`
+    UPDATE consumer_products
+    SET ownership_status = ${nextStatus},
+        latest_tap_event_id = ${event.id},
+        updated_at = now()
+    WHERE consumer_id = ${input.consumerId}
+      AND tenant_id = ${event.tenant_id}
+      AND (
+        product_passport_id = ${String(event.uid_hex).toUpperCase()}
+        OR tag_id = ${tag.id || null}
+      )
+  `;
+
+  if (isBlocked) {
+    return { ok: false as const, status: 409, error: nextStatus === "blocked_replay" ? "blocked_replay" as const : "revoked" as const, ownership };
+  }
+
+  return { ok: true as const, status: 200, ownership };
 }
 
 export async function claimPointsForConsumer(input: { consumerId: string; eventId: string; locale?: string }) {
