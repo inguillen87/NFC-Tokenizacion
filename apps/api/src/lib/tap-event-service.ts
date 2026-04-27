@@ -1,5 +1,6 @@
 import { sql } from './db';
 import { publishRealtimeEvent } from './realtime-events';
+import { evaluateSecurityAlerts } from "./alert-engine";
 
 export type TapEventPayload = {
   tenantId?: string | null;
@@ -141,6 +142,15 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
         created_at: new Date().toISOString(),
         trace_id: payload.traceId || null,
       });
+      void evaluateSecurityAlerts({
+        eventId,
+        tenantId: payload.tenantId || null,
+        tenantSlug: payload.tenantSlug || null,
+        uidHex: payload.uidHex || null,
+        result: resultStr,
+        countryCode: payload.countryCode || payload.geoCountry || null,
+        deviceLabel: payload.deviceLabel || null,
+      }).catch(() => null);
     }
 
     return eventId;

@@ -264,6 +264,22 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       ],
     });
   }
+  if (method === "GET" && normalized === "alerts") {
+    return NextResponse.json({
+      ok: true,
+      items: [
+        { id: "alert-demo-001", type: "replay_spike", severity: "high", status: "open", tenant_slug: "demobodega", created_at: new Date().toISOString(), title: "Replay spike detected" },
+      ],
+    });
+  }
+  if (method === "GET" && normalized === "alert-rules") {
+    return NextResponse.json({
+      ok: true,
+      items: [
+        { id: "rule-demo-001", tenant_slug: "demobodega", type: "replay_spike", severity: "high", threshold: 2, window_minutes: 60, enabled: true },
+      ],
+    });
+  }
   if (method === "GET" && normalized === "polygon/wallet") {
     return NextResponse.json({
       ok: true,
@@ -418,7 +434,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
 
 async function forward(req: Request, path: string[]) {
   const normalizedPath = path.join("/");
-  const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "security-alerts" || normalizedPath === "tokenization/requests");
+  const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "security-alerts" || normalizedPath === "alerts" || normalizedPath === "alert-rules" || normalizedPath === "tokenization/requests");
   const target = `${API_BASE}/admin/${path.join("/")}${new URL(req.url).search}`;
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
@@ -465,6 +481,12 @@ async function forward(req: Request, path: string[]) {
         repeatedInvalidUid: [],
         geoVelocityAlerts: [],
       });
+    }
+    if (req.method === "GET" && normalizedPath === "alerts") {
+      return NextResponse.json({ ok: false, reason, items: [] });
+    }
+    if (req.method === "GET" && normalizedPath === "alert-rules") {
+      return NextResponse.json({ ok: false, reason, items: [] });
     }
     if (req.method === "GET" && normalizedPath === "tokenization/requests") {
       return NextResponse.json({ ok: false, reason, rows: [] });
