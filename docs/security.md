@@ -16,3 +16,10 @@
 
 - Simulated fallback responses must only be available in explicit demo mode.
 - Any demo fallback response should be labeled with `x-nexid-demo-data: DEMO DATA`.
+- Dashboard demo login fallback should be gated with explicit envs in production:
+  - `DASHBOARD_ALLOW_DEMO_LOGIN=false` (recommended default)
+  - enable only with explicit demo mode (`DASHBOARD_DEMO_MODE=true` or `NEXT_PUBLIC_DEMO_MODE=true`).
+
+## Rotation action
+
+- Legacy hardcoded demo credentials were removed from code defaults. Configure demo users via environment variables only and rotate any previously shared credentials.
