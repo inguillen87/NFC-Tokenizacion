@@ -100,9 +100,14 @@ const BID_PASSPORT_PRESETS: Record<string, {
   region: string;
   varietal: string;
   vintage: string;
+  alcohol: string;
+  bottle: string;
+  serving: string;
   harvestYear: number;
   barrelMonths: number;
   storage: string;
+  tenantSlug: string;
+  clubName: string;
   wineryLocation: string;
   altitude: string;
   oakType: string;
@@ -114,9 +119,14 @@ const BID_PASSPORT_PRESETS: Record<string, {
     region: "Valle de Uco, Mendoza",
     varietal: "Malbec",
     vintage: "2022",
+    alcohol: "14.5%",
+    bottle: "750ml",
+    serving: "16°C · decantar 20 min",
     harvestYear: 2022,
     barrelMonths: 12,
     storage: "16°C",
+    tenantSlug: "demobodega",
+    clubName: "Club Terroir",
     wineryLocation: "Finca Altamira, Mendoza, AR",
     altitude: "1,050 msnm",
     oakType: "Roble francés tostado medio",
@@ -128,9 +138,14 @@ const BID_PASSPORT_PRESETS: Record<string, {
     region: "Luján de Cuyo, Mendoza",
     varietal: "Cabernet Franc",
     vintage: "2023",
+    alcohol: "13.8%",
+    bottle: "750ml",
+    serving: "15°C · sin decantar",
     harvestYear: 2023,
     barrelMonths: 10,
     storage: "15°C",
+    tenantSlug: "demobodega",
+    clubName: "Club Terroir",
     wineryLocation: "Perdriel, Luján de Cuyo, AR",
     altitude: "980 msnm",
     oakType: "Roble francés de grano fino",
@@ -512,6 +527,17 @@ function buildPublicContract(params: {
   const fallbackHarvestYear = preset?.harvestYear || null;
   const fallbackBarrelMonths = preset?.barrelMonths || null;
   const fallbackStorage = preset?.storage || null;
+  const fallbackAlcohol = preset?.alcohol || null;
+  const fallbackBottle = preset?.bottle || null;
+  const fallbackServing = preset?.serving || null;
+  const tenantSlug = preset?.tenantSlug || "demobodega";
+  const webBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
+  const eventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
+  const tapQuery = new URLSearchParams({
+    tenant: tenantSlug,
+    fromTap: "1",
+  });
+  if (eventId) tapQuery.set("eventId", eventId);
   const wineryLocation = preset?.wineryLocation || null;
   const sensorHistory = buildDemoSensorHistory(params.timeline, fallbackStorage, params.passport?.barrel_months || fallbackBarrelMonths);
   const avgTemp = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
@@ -542,8 +568,10 @@ function buildPublicContract(params: {
       bid: params.bid,
       uid: params.uid,
       readCounter: params.ctr,
+      eventId,
       tagStatus: params.passport?.tag_status || null,
       scanCount: params.passport?.scan_count || 0,
+      tenantSlug,
     },
     product: {
       name: params.passport?.product_name || params.passport?.sku || fallbackName,
@@ -554,6 +582,9 @@ function buildPublicContract(params: {
       harvestYear: params.passport?.harvest_year || fallbackHarvestYear,
       barrelMonths: params.passport?.barrel_months || fallbackBarrelMonths,
       storage: params.passport?.temperature_storage || fallbackStorage,
+      alcohol: fallbackAlcohol,
+      bottle: fallbackBottle,
+      serving: fallbackServing,
     },
     provenance: {
       origin: params.passport?.region || params.passport?.winery || wineryLocation || null,
@@ -600,6 +631,7 @@ function buildPublicContract(params: {
       os: ua.os,
       browser: ua.browser,
       deviceType: ua.device,
+      userAgent: params.tap.userAgent || null,
       city: params.tap.city,
       country: params.tap.country,
       lat: roundCoord(params.tap.lat, 2),
@@ -614,6 +646,11 @@ function buildPublicContract(params: {
       registerWarranty: Boolean(params.uid),
       provenance: Boolean(params.uid),
       tokenize: Boolean(params.uid),
+      clubName: preset?.clubName || "Club premium",
+      registerUrl: `${webBase}/register?${tapQuery.toString()}&action=register`,
+      portalUrl: `${webBase}/me?${tapQuery.toString()}&action=portal`,
+      marketplaceUrl: `${webBase}/me/marketplace?${tapQuery.toString()}&action=marketplace`,
+      rewardsUrl: `${webBase}/me/rewards?${tapQuery.toString()}&action=rewards`,
     },
     troubleshooting,
     technical: {
@@ -677,26 +714,25 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     Math.max(wineryLat, destinationLat) + 0.05,
   ];
   const mapEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox[0]}%2C${bbox[1]}%2C${bbox[2]}%2C${bbox[3]}&layer=mapnik&marker=${destinationLat}%2C${destinationLng}`;
+  const globalMapEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=-180%2C-70%2C180%2C85&layer=mapnik&marker=${destinationLat}%2C${destinationLng}`;
 
   return `<!doctype html><html lang="${copy.lang}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-icon" />
-  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 55%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:10px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.subtitle{color:#334155}.chip{color:#334155;border-color:#cbd5e1}button{background:#f8fafc;color:#0f172a}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
-  <section class="card"><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span><h1 style="margin:10px 0 4px;font-size:28px;line-height:1.1">${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ? "pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div></section>
+  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.hero h1{margin:10px 0 4px;font-size:31px;line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:8px;background:rgba(2,6,23,.45)}.kpi b{display:block;font-size:13px}.kpi span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:600;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.map-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.map-box{border:1px solid rgba(148,163,184,.28);border-radius:12px;overflow:hidden;background:#020617}.map-box p{margin:0;padding:6px 8px;font-size:11px;color:#9fb5d9;border-bottom:1px solid rgba(148,163,184,.25)}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (max-width:720px){.map-grid,.kpis{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.map-box{background:#f8fafc;border-color:#cbd5e1}.map-box p{color:#334155;border-color:#cbd5e1}button{background:#f8fafc;color:#0f172a}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <section class="card hero"><div class="hero-top"><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">NexID Verified Tap</span></div><h1>${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><p class="hero-meta">Secure SUN route · Event #${contract.identity.eventId || 'N/A'}</p></div><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span></div><div class="chips"><span class="chip">BID ${contract.identity.bid}</span><span class="chip">UID ${contract.identity.uid || 'N/A'}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ? "pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div><div class="kpis"><div class="kpi"><b>${contract.provenance.timelineSummary.length}</b><span>Eventos</span></div><div class="kpi"><b>${contract.tokenization.status || "-"}</b><span>Tokenización</span></div><div class="kpi"><b>${contract.tapContext.deviceType || "-"}</b><span>Dispositivo</span></div></div></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">Dashboard sync: Analytics · Events · Tags</span></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.identityPanel}</h3><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Harvest ${contract.product.harvestYear || '-'} · Barrel ${contract.product.barrelMonths || '-'} months</p></section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.identityPanel}</h3><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><p>Varietal ${contract.product.varietal || '-'} · Vintage ${contract.product.vintage || '-'}</p><p>Harvest ${contract.product.harvestYear || '-'} · Barrel ${contract.product.barrelMonths || '-'} months</p><p>Alcohol: <b>${contract.product.alcohol || '-'}</b> · Bottle: <b>${contract.product.bottle || '-'}</b> · Serving: <b>${contract.product.serving || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.provenancePanel}</h3><p>Origin: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.iotPanel}</h3><p>Winery: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>Altitude: <b>${contract.iot.altitude || '-'}</b> · Oak: <b>${contract.iot.oakType || '-'}</b></p><p>Cellar temp: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · Humidity: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>Light: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · Transit: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.tapPanel}</h3><p>OS: <b>${contract.tapContext.os}</b> · Browser: <b>${contract.tapContext.browser}</b> · Device: <b>${contract.tapContext.deviceType}</b></p><p>Tap location: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p>
-  <div style="margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:12px;overflow:hidden;background:#020617">
-    <iframe title="sun-tap-map" src="${mapEmbed}" loading="lazy" style="display:block;width:100%;height:180px;border:0"></iframe>
-  </div>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.tapPanel}</h3><p>OS: <b>${contract.tapContext.os}</b> · Browser: <b>${contract.tapContext.browser}</b> · Device: <b>${contract.tapContext.deviceType}</b></p><p>Tap location: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><p style="font-size:11px;color:#94a3b8">User-Agent: ${contract.tapContext.userAgent || '-'}</p>
+  <div class="map-grid"><div class="map-box"><p>Tap local map</p><iframe title="sun-tap-map" src="${mapEmbed}" loading="lazy" style="display:block;width:100%;height:180px;border:0"></iframe></div><div class="map-box"><p>Global context</p><iframe title="sun-global-map" src="${globalMapEmbed}" loading="lazy" style="display:block;width:100%;height:180px;border:0"></iframe></div></div>
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${contract.iot.wineryLocation || 'Origin'} → tap point.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>Status: <b>${contract.tokenization.status}</b> · Network: <b>${contract.tokenization.network || '-'}</b></p><p>Token ID: ${contract.tokenization.tokenId || '-'} · Tx: ${contract.tokenization.txHash || '-'}</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.achievementTitle}</h3><div class="chips"><span class="chip">🏅 ${copy.achievementFirst}: ${contract.identity.scanCount > 0 ? "✓" : "-"}</span><span class="chip">📍 ${copy.achievementProv}: ${contract.provenance.timelineSummary.length > 0 ? "✓" : "-"}</span></div></section>
-  <section class="card"><h3 style="margin:0 0 6px">${copy.actionsPanel}</h3><p class="subtitle" style="margin-bottom:10px">Consumer, warranty and traceability workflows.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? copy.statusReplay : copy.statusReady}</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Demo mode: unsigned share fallback enabled for DEMO-* batches.</p>'}</section>
+  <section class="card"><h3 style="margin:0 0 6px">${copy.actionsPanel}</h3><p class="subtitle" style="margin-bottom:10px">Consumer, warranty and traceability workflows.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" data-gated-link="marketplace" style="text-decoration:none;border:1px solid rgba(34,211,238,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#a5f3fc;background:rgba(6,182,212,.12);text-align:center">🛍 Marketplace ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" data-gated-link="rewards" style="text-decoration:none;border:1px solid rgba(167,139,250,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#ddd6fe;background:rgba(139,92,246,.12);text-align:center">🎁 Promos & rewards</a><a href="${contract.cta.registerUrl}" data-gated-link="register" style="text-decoration:none;border:1px solid rgba(52,211,153,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#d1fae5;background:rgba(16,185,129,.12);text-align:center">🧾 Registrarme</a><a href="${contract.cta.portalUrl}" data-gated-link="portal" style="text-decoration:none;border:1px solid rgba(59,130,246,.35);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;color:#dbeafe;background:rgba(59,130,246,.12);text-align:center">👤 Asociar al portal</a></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#94a3b8">Si el tap está verificado, al tocar estos botones te vamos a pedir registro/login y asociar tu usuario al tenant automáticamente.</p>${shareToken ? "" : '<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">Demo mode: unsigned share fallback enabled for DEMO-* batches.</p>'}</section>
   <section class="card"><details><summary>${copy.technicalPanel}</summary><p>BID: ${contract.identity.bid} · UID: ${contract.identity.uid || 'N/A'} · Read counter: ${contract.identity.readCounter ?? 'N/A'}</p><p>Raw: picc ${contract.technical.raw.piccDataPrefix} · enc ${contract.technical.raw.encPrefix} · cmac ${contract.technical.raw.cmacPrefix}</p><p>Troubleshooting: ${contract.troubleshooting.join(' | ') || 'No alerts'}</p></details></section>
 <script>
 (() => {
@@ -705,7 +741,75 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const uid = ${JSON.stringify(contract.identity.uid || '')};
   const copy = ${JSON.stringify(copy)};
   const ctaButtons = Array.from(document.querySelectorAll('[data-cta]'));
+  const gatedLinks = Array.from(document.querySelectorAll('[data-gated-link]'));
+  const eventId = ${JSON.stringify(contract.identity.eventId || null)};
+  const canAssociate = ${JSON.stringify(contract.status.tone === "good" && contract.status.code !== "REPLAY_SUSPECT")};
+  const appBase = (() => {
+    try {
+      return new URL(${JSON.stringify(contract.cta.portalUrl)}).origin;
+    } catch {
+      return window.location.origin;
+    }
+  })();
   const nfcBtn = document.getElementById('nfc-scan');
+  const jsonFetch = (path, init = {}) => fetch(appBase + path, { credentials: 'include', ...init }).then((r) => r.json());
+  async function ensureAuthAndTenant(action) {
+    if (!canAssociate) return { ok: false, reason: 'tap_not_verified' };
+    const me = await jsonFetch('/api/consumer/me', { cache: 'no-store' }).catch(() => null);
+    let contact = '';
+    if (!me?.ok) {
+      contact = window.prompt('Ingresá tu email o teléfono para registrarte/asociarte al tenant:') || '';
+      if (!contact.trim()) return { ok: false, reason: 'cancelled' };
+      const normalizedContact = contact.trim();
+      const payload = normalizedContact.includes('@') ? { email: normalizedContact } : { phone: normalizedContact };
+      const start = await jsonFetch('/api/consumer/auth/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => null);
+      if (!start?.ok) return { ok: false, reason: 'start_failed' };
+      const entered = window.prompt('Código de verificación (demo):', String(start.code || '')) || String(start.code || '');
+      if (!entered.trim()) return { ok: false, reason: 'code_cancelled' };
+      const verifyPayload = normalizedContact.includes('@')
+        ? { email: normalizedContact, code: entered.trim() }
+        : { phone: normalizedContact, code: entered.trim() };
+      const verify = await jsonFetch('/api/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(verifyPayload) }).catch(() => null);
+      if (!verify?.ok) return { ok: false, reason: 'verify_failed' };
+    }
+    if (eventId) {
+      await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/join-tenant', { method: 'POST' }).catch(() => null);
+      await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/save-product', { method: 'POST' }).catch(() => null);
+      if (action === 'rewards') {
+        const contactForEnroll = contact || window.prompt('Email para activar promos/rewards del club:') || '';
+        if (contactForEnroll.trim()) {
+          await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/loyalty/enroll', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(contactForEnroll.includes('@') ? { email: contactForEnroll } : { phone: contactForEnroll }),
+          }).catch(() => null);
+        }
+      }
+    }
+    return { ok: true };
+  }
+  gatedLinks.forEach((link) => {
+    link.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const action = link.getAttribute('data-gated-link') || 'portal';
+      const statusNode = document.getElementById('cta-status');
+      if (statusNode) statusNode.textContent = 'Validando identidad y asociando tu usuario al tenant...';
+      const auth = await ensureAuthAndTenant(action);
+      if (!auth.ok) {
+        if (statusNode) statusNode.textContent = auth.reason === 'tap_not_verified'
+          ? 'Este tap no quedó en estado verificado. Reintentá escanear físicamente la etiqueta.'
+          : auth.reason === 'start_failed' || auth.reason === 'verify_failed'
+            ? 'No pudimos validar sesión en este host. Te llevamos a registro para continuar.'
+            : 'No pudimos completar registro/asociación (' + auth.reason + ').';
+        if (auth.reason === 'start_failed' || auth.reason === 'verify_failed') {
+          window.location.href = ${JSON.stringify(contract.cta.registerUrl)};
+        }
+        return;
+      }
+      if (statusNode) statusNode.textContent = 'Asociación completada. Redirigiendo...';
+      window.location.href = link.getAttribute('href') || '/me';
+    });
+  });
   if (nfcBtn && 'NDEFReader' in window) {
     nfcBtn.style.display = 'block';
     nfcBtn.addEventListener('click', async () => {
@@ -1002,11 +1106,12 @@ export async function GET(req: Request): Promise<Response> {
         })()
       : null;
     return new Response(renderSunHtml(contract, shareToken, locale), {
-      status: result.status,
+      status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
         'x-nexid-trace-id': traceId,
+        'x-nexid-upstream-status': String(result.status || 200),
       },
     });
   }
