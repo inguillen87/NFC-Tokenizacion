@@ -16,13 +16,16 @@
     "prisma:seed": "node prisma/seed.mjs",
     "demo:demobodega": "node scripts/demo-demobodega.mjs",
     "demo:seed": "node scripts/demo-demobodega.mjs",
+    "demo:reset": "node scripts/demo-reset-demobodega.mjs",
+    "demo:emit-taps": "node scripts/demo-emit-taps.mjs",
     "test:loyalty": "node --test tests/loyalty-rules.test.mjs",
     "contracts:compile": "hardhat compile",
     "contracts:deploy:amoy": "hardhat run scripts/deploy-nexid-amoy.mjs --network amoy",
     "bootstrap:tenant": "node scripts/bootstrap-enterprise-tenant.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
     "test:sun": "node --test tests/sun-error-sanitization.test.mjs",
-    "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs"
+    "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",
+    "test:demo-corpus": "node --test tests/demo-corpus-smoke.test.mjs"
   },
   "dependencies": {
     "next": "^15.0.0",
@@ -33,6 +36,7 @@
     "csv-parse": "^5.6.0",
     "@prisma/client": "^5.22.0",
     "ethers": "^6.15.0",
+    "@product/core": "file:../../packages/core",
     "@openzeppelin/contracts": "^5.1.0"
   },
   "devDependencies": {
