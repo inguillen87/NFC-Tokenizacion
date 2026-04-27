@@ -1,8 +1,16 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { OpsPanel, StatCard, StatusChip, WorldMapRealtime } from "@product/ui";
+import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { OpsPanel, StatCard, StatusChip } from "@product/ui";
 import { DemoOpsMap } from "./demo-ops-map";
+import { DeviceRiskMatrix } from "./charts/device-risk-matrix";
+import { RiskRadarChart } from "./charts/risk-radar-chart";
+import { TapVelocityChart } from "./charts/tap-velocity-chart";
+import { TopProductsTable } from "./charts/top-products-table";
+import { TrustFunnelChart } from "./charts/trust-funnel-chart";
+
+const GlobalOpsMap = dynamic(() => import("@product/ui").then((mod) => mod.GlobalOpsMap), { ssr: false });
 
 type AnalyticsPanelsProps = {
   kpis: {
@@ -65,6 +73,8 @@ function pct(value: number, total: number) {
 }
 
 export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: AnalyticsPanelsProps) {
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [riskCategoryFilter, setRiskCategoryFilter] = useState<string>("ALL");
   const api = data?.kpis || {};
   const trend = data?.trend || [];
   const countries = data?.geography?.countries || [];
@@ -90,43 +100,80 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
     `Prioridad sugerida: ${riskSignals > 0 ? "investigar outliers de riesgo y reforzar onboarding operativo" : "escalar escaneos reales y ampliar cobertura comercial del pasaporte digital"}.`,
   ];
   const hasOperationalData = scansTotal > 0 || trend.length > 0 || feed.length > 0 || products.length > 0 || tagJourney.length > 0;
-  const journeyMapPoints = tagJourney.flatMap((item) => {
+  const filteredFeed = useMemo(() => feed.filter((item) => {
+    const dayMatch = selectedDay ? String(item.createdAt || "").includes(selectedDay) : true;
+    const riskMatch = riskCategoryFilter === "ALL"
+      ? true
+      : riskCategoryFilter === "Replay / duplicates"
+      ? ["DUPLICATE", "REPLAY_SUSPECT"].includes(String(item.result || "").toUpperCase())
+      : riskCategoryFilter === "Tamper alerts"
+      ? ["TAMPER", "TAMPERED", "OPENED"].includes(String(item.result || "").toUpperCase())
+      : true;
+    return dayMatch && riskMatch;
+  }), [feed, riskCategoryFilter, selectedDay]);
+  const trustFunnel = useMemo(() => {
+    const taps = scansTotal;
+    const valid = Math.round(taps * ((api.validRate || 0) / 100));
+    const claims = Math.min(valid, Math.max(0, tagJourney.length));
+    const warranty = Math.round(claims * 0.35);
+    const marketplace = Math.round(claims * 0.2);
+    return [
+      { stage: "Tap", value: taps },
+      { stage: "Valid passport", value: valid },
+      { stage: "Claim", value: claims },
+      { stage: "Warranty", value: warranty },
+      { stage: "Marketplace", value: marketplace },
+    ];
+  }, [api.validRate, scansTotal, tagJourney.length]);
+  const journeyMapPoints = tagJourney.flatMap((item, idx) => {
     const originPoint = item.origin.lat != null && item.origin.lng != null
       ? [{
+        id: `${item.uid}-origin-${idx}`,
         city: item.origin.city || "Origin",
         country: item.origin.country || "--",
         lat: Number(item.origin.lat),
         lng: Number(item.origin.lng),
         scans: item.taps,
         risk: 0,
-        status: "ORIGIN",
-        source: "tag_origin",
+        verdict: "ORIGIN",
+        tenantSlug: "tenant",
+        lastSeen: item.firstSeenAt || item.lastSeenAt || new Date().toISOString(),
+        uid: item.uid,
+        device: item.lastDevice || "unknown",
       }]
       : [];
     const currentPoint = item.current.lat != null && item.current.lng != null
       ? [{
+        id: `${item.uid}-current-${idx}`,
         city: item.current.city || "Current",
         country: item.current.country || "--",
         lat: Number(item.current.lat),
         lng: Number(item.current.lng),
         scans: item.taps,
         risk: item.taps > 20 ? 0 : 1,
-        status: "CURRENT",
-        source: "last_verified",
+        verdict: item.taps > 20 ? "VALID" : "RISK",
+        tenantSlug: "tenant",
+        lastSeen: item.lastSeenAt || new Date().toISOString(),
+        uid: item.uid,
+        device: item.lastDevice || "unknown",
       }]
       : [];
     return [...originPoint, ...currentPoint];
   });
   const journeyRoutes = tagJourney
     .filter((item) => item.origin.lat != null && item.origin.lng != null && item.current.lat != null && item.current.lng != null)
-    .slice(0, 24)
-    .map((item) => ({
+    .slice(0, 120)
+    .map((item, idx) => ({
+      id: `journey-route-${idx}-${item.uid}`,
       fromLat: Number(item.origin.lat),
       fromLng: Number(item.origin.lng),
       toLat: Number(item.current.lat),
       toLng: Number(item.current.lng),
-      label: item.uid,
-      tone: item.taps > 20 ? "info" as const : "warn" as const,
+      uid: item.uid,
+      risk: item.taps > 20 ? 0 : 1,
+      taps: item.taps,
+      firstSeenAt: item.firstSeenAt || item.lastSeenAt || new Date().toISOString(),
+      lastSeenAt: item.lastSeenAt || new Date().toISOString(),
     }));
 
   if (!hasOperationalData) {
@@ -218,22 +265,11 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       </OpsPanel>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <OpsPanel title={kpis.trendTitle} subtitle="Volumen y señales de riesgo en el rango seleccionado.">
+        <OpsPanel title={kpis.trendTitle} subtitle="Volumen y señales de riesgo en el rango seleccionado. Click en un punto para filtrar feed.">
           {!trend.length ? <p className="text-sm text-slate-400">Sin datos para el período seleccionado.</p> : (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trend}>
-                  <CartesianGrid stroke="rgba(148,163,184,.2)" strokeDasharray="3 3" />
-                  <XAxis dataKey="day" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" />
-                  <Tooltip contentStyle={{ backgroundColor: "rgba(15, 23, 42, 0.8)", backdropFilter: "blur(12px)", borderColor: "rgba(255,255,255,0.1)", borderRadius: "12px", color: "#fff", boxShadow: "0 10px 25px rgba(0,0,0,0.5)" }} />
-                  <defs><linearGradient id="scansGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/><stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/></linearGradient></defs><Area type="monotone" dataKey="scans" stroke="#06b6d4" strokeWidth={2} fill="url(#scansGradient)" />
-                  <Area type="monotone" dataKey="duplicates" stroke="#f59e0b" fill="rgba(245,158,11,.15)" />
-                  <Area type="monotone" dataKey="tamper" stroke="#ef4444" fill="rgba(239,68,68,.12)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            <TapVelocityChart data={trend} onSelectDay={setSelectedDay} />
           )}
+          {selectedDay ? <p className="mt-2 text-xs text-cyan-200">Drill-down day activo: {selectedDay}</p> : null}
         </OpsPanel>
 
         <OpsPanel title="Trust / Risk split" subtitle="Lecturas válidas frente a señales de invalidación y manipulación.">
@@ -250,6 +286,9 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           <div className="mt-3 flex flex-wrap gap-2">
             <StatusChip label={`Duplicates ${api.duplicates ?? 0}`} tone="warn" />
             <StatusChip label={`Tamper ${api.tamper ?? 0}`} tone="risk" />
+          </div>
+          <div className="mt-4">
+            <TrustFunnelChart data={trustFunnel} />
           </div>
         </OpsPanel>
       </div>
@@ -274,17 +313,21 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
             <DeviceBucket title="Timezone" items={devices?.timezones || []} />
           </div>
           <p className="mt-2 text-xs text-slate-300">Mobile share: <b>{((devices?.mobileShare || 0) * 100).toFixed(1)}%</b></p>
+          <div className="mt-3">
+            <DeviceRiskMatrix rows={deviceSignals} />
+          </div>
         </OpsPanel>
       </div>
 
       <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({ city: point.city, country: point.country || "--", lat: point.lat, lng: point.lng, scans: point.scans || 1, risk: point.risk || 0 }))} />
-      <OpsPanel title="Journey map (tenant premium taps)" subtitle="Mapa interactivo de origen de bodega vs última ubicación verificada por UID, con rutas animadas.">
+      <OpsPanel title="Journey map (tenant premium taps)" subtitle="Mapa interactivo de origen de bodega vs última ubicación verificada por UID, con playback de journeys.">
         {journeyMapPoints.length ? (
-          <WorldMapRealtime
-            title="Recorrido de activos premium"
-            subtitle="Cada ruta muestra origen inicial y último tap verificado para clientes del tenant."
+          <GlobalOpsMap
+            mode={mapMode === "global" ? "global" : "tenant"}
             points={journeyMapPoints}
             routes={journeyRoutes}
+            playbackEnabled
+            riskOnly={false}
           />
         ) : <p className="text-sm text-slate-400">Sin coordenadas suficientes para dibujar journeys todavía.</p>}
       </OpsPanel>
@@ -292,49 +335,25 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       <div className="grid gap-6 xl:grid-cols-2">
         <OpsPanel title="Live tap feed" subtitle="Actividad reciente y contexto operativo real.">
           <div className="space-y-2">
-            {(feed.length ? feed : []).slice(0, 10).map((item) => (
+            {(filteredFeed.length ? filteredFeed : []).slice(0, 10).map((item) => (
               <div key={item.id} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
                 <p><b>{item.result}</b> · {item.uidHex} · {item.bid}</p>
                 <p className="text-slate-400">{item.city}, {item.country} · {item.device} · {fmtDate(item.createdAt)}</p>
               </div>
             ))}
-            {!feed.length ? <p className="text-sm text-slate-400">Sin eventos recientes para este scope.</p> : null}
+            {!filteredFeed.length ? <p className="text-sm text-slate-400">Sin eventos recientes para este scope/filtro.</p> : null}
           </div>
         </OpsPanel>
 
         <OpsPanel title="Top tags / products" subtitle="Activos con más lecturas, última ubicación verificada y tokenización.">
-          <div className="space-y-2">
-            {(products.length ? products : []).slice(0, 10).map((item) => (
-              <div key={`${item.bid}-${item.uidHex}`} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
-                <p><b>{item.productName}</b> · {item.uidHex}</p>
-                <p className="text-slate-400">{item.winery} / {item.region} / {item.vintage} · scans {item.scanCount}</p>
-                <p className="text-slate-400">Last verified: {item.lastVerifiedCity}, {item.lastVerifiedCountry} · tokenization {item.tokenization.status}</p>
-              </div>
-            ))}
-            {!products.length ? <p className="text-sm text-slate-400">No hay productos/tags para el período.</p> : null}
-          </div>
+          <TopProductsTable items={products} />
         </OpsPanel>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <OpsPanel title="Risk radar (operational)" subtitle="Semáforo rápido por dimensión crítica del tenant.">
-          <div className="space-y-3">
-            {riskRadar.map((item) => {
-              const ratio = Math.max(0, Math.min(100, (item.value / Math.max(item.max, 1)) * 100));
-              const tone = ratio >= 40 ? "bg-rose-500/70" : ratio >= 20 ? "bg-amber-400/70" : "bg-emerald-400/70";
-              return (
-                <div key={item.label}>
-                  <div className="mb-1 flex items-center justify-between text-xs text-slate-300">
-                    <span>{item.label}</span>
-                    <span>{item.value} · {ratio.toFixed(1)}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-800">
-                    <div className={`h-2 rounded-full ${tone}`} style={{ width: `${ratio}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <RiskRadarChart data={riskRadar} onSelectCategory={(label) => setRiskCategoryFilter(label)} />
+          <p className="mt-2 text-xs text-cyan-200">Drill-down risk: {riskCategoryFilter}</p>
         </OpsPanel>
 
         <OpsPanel title="Device intelligence" subtitle="Modelos y combinaciones con mayor riesgo relativo.">

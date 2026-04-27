@@ -26,10 +26,10 @@
 npm run --workspace=api bootstrap:tenant -- \
   --tenant=demobodega \
   --tenant-name="Demo Bodega" \
-  --tenant-admin-email=demobodega@nexid.lat \
-  --tenant-admin-password='DemoBodega2026' \
-  --super-admin-email=inguillen@nexid.lat \
-  --super-admin-password='Marcelog2026' \
+  --tenant-admin-email=tenant-admin@example.com \
+  --tenant-admin-password='<ROTATE_ME_TENANT_ADMIN_PASSWORD>' \
+  --super-admin-email=super-admin@example.com \
+  --super-admin-password='<ROTATE_ME_SUPER_ADMIN_PASSWORD>' \
   --batch-bid=DEMO-2026-02 \
   --manifest=apps/api/prisma/demo/demobodega_manifest.csv
 ```
