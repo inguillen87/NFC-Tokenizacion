@@ -5,6 +5,22 @@ import { NextResponse } from "next/server";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
 type DemoEvent = { id: number; result: string; uid_hex: string; city: string; country_code: string; lat: number; lng: number; product_name: string; vertical: string; created_at: string };
+type SimulateTapPayload = {
+  mode?: string;
+  scenario?: string;
+  vertical?: string;
+  city?: string;
+  country?: string;
+  lat?: number;
+  lng?: number;
+  device?: string;
+  productName?: string;
+  tenant?: string;
+  tenantName?: string;
+  bid?: string;
+  tapUrl?: string;
+  marketplacePath?: string;
+};
 
 const MOCK_PACKS = [
   { key: "wine-secure", label: "Wine secure", icType: "NTAG424DNA_TT", batchId: "DEMO-2026-02", tenant: "demobodega", itemId: "demo-item-001" },
@@ -53,6 +69,27 @@ function pushEvent(vertical = "wine", result = "VALID") {
     created_at: new Date().toISOString(),
   };
   state.events = [ev, ...state.events].slice(0, 25);
+}
+
+function toNumberOrNull(value: unknown) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseTapUrl(tapUrl: string | undefined) {
+  if (!tapUrl) return null;
+  try {
+    const parsed = new URL(tapUrl);
+    return {
+      raw: tapUrl,
+      bid: parsed.searchParams.get("bid"),
+      picc_data: parsed.searchParams.get("picc_data"),
+      enc: parsed.searchParams.get("enc"),
+      cmac: parsed.searchParams.get("cmac"),
+    };
+  } catch {
+    return { raw: tapUrl, bid: null, picc_data: null, enc: null, cmac: null };
+  }
 }
 
 function summary() {
@@ -109,9 +146,10 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
     return { ok: true, source: "fallback", count };
   }
   if (endpoint === "simulate-tap") {
-    const mode = String(body.mode || "valid");
-    const scenario = String(body.scenario || "valid");
-    const vertical = String(body.vertical || "wine");
+    const payload = body as SimulateTapPayload;
+    const mode = String(payload.mode || "valid");
+    const scenario = String(payload.scenario || "valid");
+    const vertical = String(payload.vertical || "wine");
     const result =
       scenario === "claim"
         ? "CLAIMED"
@@ -125,7 +163,52 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
                 ? "REPLAY_SUSPECT"
                 : "VALID";
     pushEvent(vertical, result);
-    return { ok: true, source: "fallback", mode, scenario, result };
+    const city = String(payload.city || "New York");
+    const country = String(payload.country || "US");
+    const lat = toNumberOrNull(payload.lat) ?? 40.7831;
+    const lng = toNumberOrNull(payload.lng) ?? -73.9712;
+    const tenant = String(payload.tenant || "demobodega");
+    const tenantName = String(payload.tenantName || "Demo Bodega");
+    const bid = String(payload.bid || "DEMO-2026-02");
+    const productName = String(payload.productName || "Gran Reserva Malbec");
+    const device = String(payload.device || "iPhone 15 Pro");
+    const tapUrl = parseTapUrl(payload.tapUrl);
+    const marketplacePath = String(payload.marketplacePath || `/me/marketplace?tenant=${encodeURIComponent(tenant)}`);
+    return {
+      ok: true,
+      source: "fallback",
+      mode,
+      scenario,
+      result,
+      tap: {
+        status: "VALID",
+        product_state: mode === "tamper" ? "VALID_OPENED" : "VALID_CLOSED",
+        tamper_status: mode === "tamper" ? "OPENED" : "CLOSED",
+        risk_score: mode === "replay" ? 76 : mode === "tamper" ? 42 : 3,
+        quality_score: mode === "replay" ? 21 : mode === "tamper" ? 58 : 94,
+        tenant,
+        tenant_name: tenantName,
+        bid,
+        country,
+        city,
+        lat,
+        lng,
+        device,
+        product_name: productName,
+        tag_type: "NTAG 424 DNA TagTamper",
+      },
+      nfc: tapUrl,
+      consumer_flow: {
+        passport_path: `/sun?v=1&bid=${encodeURIComponent(bid)}`,
+        marketplace_path: marketplacePath,
+        cta: ["view_marketplace", "activate_benefits", "create_account", "tokenize_ownership"],
+      },
+      dashboard_realtime: {
+        taps_delta: 1,
+        region_delta: `${country} +1`,
+        risk_density_recomputed: true,
+      },
+    };
   }
   if (endpoint === "upload-manifest") {
     const rows = String(body.csv || "").split("\n").filter(Boolean).length;
