@@ -2,14 +2,15 @@ import { asArray, fetchConsumerPath, fetchMarketplacePath } from "../_components
 import { PortalShell } from "../_components/portal-shell";
 
 type Listing = { title?: string; brand?: string; points_price?: number; cash_price?: number; stock_status?: string };
-type ConsumerProduct = { tenant_slug?: string | null };
+type ConsumerProduct = { tenant_slug?: string | null; ownership_status?: string | null; ownership_record_status?: string | null };
 
 export default async function MarketplacePage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
   const tenantFromQuery = typeof params.tenant === "string" ? params.tenant : "";
   const consumerProductsPayload = await fetchConsumerPath("products");
   const consumerProducts = asArray<ConsumerProduct>(consumerProductsPayload);
-  const contextualTenant = tenantFromQuery || String(consumerProducts[0]?.tenant_slug || "").trim();
+  const preferredOwned = consumerProducts.find((item) => String(item.ownership_record_status || item.ownership_status || "").toLowerCase() === "claimed");
+  const contextualTenant = tenantFromQuery || String(preferredOwned?.tenant_slug || consumerProducts[0]?.tenant_slug || "").trim();
   const payload = await fetchMarketplacePath(`products${contextualTenant ? `?tenant=${encodeURIComponent(contextualTenant)}` : ""}`);
   const items = asArray<Listing>(payload);
 

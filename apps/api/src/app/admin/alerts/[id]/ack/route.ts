@@ -1,13 +1,14 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const { forcedTenantSlug } = getAdminTenantScope(req);
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const ackBy = String(body.acknowledged_by || "admin");
@@ -18,6 +19,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         acknowledged_by = ${ackBy},
         updated_at = now()
     WHERE id = ${id}
+      AND (
+        ${forcedTenantSlug} = ''
+        OR tenant_id = (SELECT id FROM tenants WHERE slug = ${forcedTenantSlug} LIMIT 1)
+      )
     RETURNING *
   `;
   if (!rows[0]) return json({ ok: false, error: "not_found" }, 404);

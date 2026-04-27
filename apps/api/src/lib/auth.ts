@@ -1,8 +1,16 @@
-import { evaluateAdminAccess, normalizeScope } from "./admin-auth-policy";
+import { evaluateAdminAccess, normalizeScope, resolveAdminTenantScope } from "./admin-auth-policy";
 export type AdminScope = "super_admin" | "tenant_admin" | "reseller" | "readonly_demo";
 
 function resolveScope(req: Request): AdminScope | null {
   return normalizeScope(req.headers.get("x-nexid-admin-scope"), req.headers.get("x-dashboard-role")) as AdminScope | null;
+}
+
+export function getAdminTenantScope(req: Request) {
+  return resolveAdminTenantScope(
+    req.headers.get("x-nexid-admin-scope"),
+    req.headers.get("x-dashboard-role"),
+    req.headers.get("x-nexid-tenant-slug"),
+  );
 }
 
 export function checkAdmin(req: Request, requiredScopes: AdminScope[] = ["super_admin", "tenant_admin", "reseller"]): Response | null {

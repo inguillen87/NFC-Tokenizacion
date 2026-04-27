@@ -42,3 +42,10 @@ export function evaluateAdminAccess({
   if (!expectedToken || providedToken !== expectedToken) return { ok: false, status: 401 as const };
   return { ok: true, status: 200 as const };
 }
+
+export function resolveAdminTenantScope(scopeHeader: string | null | undefined, roleHeader: string | null | undefined, tenantSlugHeader: string | null | undefined) {
+  const scope = normalizeScope(scopeHeader, roleHeader);
+  const tenantSlug = String(tenantSlugHeader || "").trim().toLowerCase();
+  const forcedTenantSlug = (scope === "tenant_admin" || scope === "reseller") && tenantSlug ? tenantSlug : "";
+  return { scope, tenantSlug, forcedTenantSlug };
+}

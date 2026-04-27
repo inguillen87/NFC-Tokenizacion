@@ -1,22 +1,33 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
+import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
-  const rows = await sql/*sql*/`SELECT r.*, t.slug AS tenant_slug FROM alert_rules r LEFT JOIN tenants t ON t.id = r.tenant_id ORDER BY r.created_at DESC`;
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const { searchParams } = new URL(req.url);
+  const tenantFilter = effectiveTenantFilter({ forcedTenantSlug, requestedTenantSlug: searchParams.get("tenant") });
+  const rows = await sql/*sql*/`
+    SELECT r.*, t.slug AS tenant_slug
+    FROM alert_rules r
+    LEFT JOIN tenants t ON t.id = r.tenant_id
+    WHERE (${tenantFilter} = '' OR t.slug = ${tenantFilter})
+    ORDER BY r.created_at DESC
+  `;
   return json({ ok: true, items: rows });
 }
 
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const { forcedTenantSlug } = getAdminTenantScope(req);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const tenantSlug = String(body.tenant_slug || "").trim().toLowerCase();
+  const tenantSlug = effectiveTenantFilter({ forcedTenantSlug, requestedTenantSlug: String(body.tenant_slug || "") });
   const type = String(body.type || "").trim();
   if (!type) return json({ ok: false, error: "type_required" }, 400);
   const tenantRows = tenantSlug ? await sql/*sql*/`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1` : [];

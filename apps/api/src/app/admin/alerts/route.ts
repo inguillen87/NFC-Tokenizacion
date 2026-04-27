@@ -1,17 +1,19 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
+import { normalizeAlertSeverity, normalizeAlertType, resolveAlertsTenant } from "../../../lib/alerts-query";
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const { forcedTenantSlug } = getAdminTenantScope(req);
   const { searchParams } = new URL(req.url);
-  const tenant = String(searchParams.get("tenant") || "").trim().toLowerCase();
-  const severity = String(searchParams.get("severity") || "").trim().toLowerCase();
-  const type = String(searchParams.get("type") || "").trim();
+  const tenant = resolveAlertsTenant({ forcedTenantSlug, requestedTenantSlug: searchParams.get("tenant") });
+  const severity = normalizeAlertSeverity(searchParams.get("severity"));
+  const type = normalizeAlertType(searchParams.get("type"));
   const rows = await sql/*sql*/`
     SELECT a.*, t.slug AS tenant_slug
     FROM security_alerts a

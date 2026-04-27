@@ -1,5 +1,6 @@
 import { sql } from "./db";
 import { publishRealtimeEvent } from "./realtime-events";
+import { normalizeTypeFromResult, toRealtimeAlertEvent, type AlertType } from "./alert-events";
 
 type EvaluateInput = {
   eventId: number;
@@ -10,16 +11,6 @@ type EvaluateInput = {
   countryCode?: string | null;
   deviceLabel?: string | null;
 };
-
-type AlertType = "replay_spike" | "tamper_rate" | "invalid_rate" | "geo_velocity" | "new_country_for_uid" | "suspicious_device_cluster";
-
-function normalizeTypeFromResult(result: string): AlertType | null {
-  const r = String(result || "").toUpperCase();
-  if (r === "REPLAY_SUSPECT" || r === "DUPLICATE") return "replay_spike";
-  if (r === "TAMPER" || r === "TAMPERED" || r === "BROKEN") return "tamper_rate";
-  if (r && r !== "VALID" && r !== "VALID_CLOSED") return "invalid_rate";
-  return null;
-}
 
 async function getRule(tenantId: string | null, type: AlertType) {
   const rows = await sql/*sql*/`
@@ -50,15 +41,19 @@ async function createAlert(input: {
     RETURNING id, created_at
   `;
   const alert = rows[0];
-  publishRealtimeEvent({
-    id: String(alert?.id || ""),
-    tenant_slug: input.tenantSlug || undefined,
-    result: "SECURITY_ALERT",
-    reason: input.type,
-    source: "alerts",
-    created_at: String(alert?.created_at || new Date().toISOString()),
-    trace_id: String(input.eventId),
-  });
+  publishRealtimeEvent(
+    {
+      ...toRealtimeAlertEvent({
+        alertId: String(alert?.id || ""),
+        tenantId: input.tenantId || null,
+        tenantSlug: input.tenantSlug || null,
+        type: input.type,
+        severity: input.severity,
+        createdAt: String(alert?.created_at || new Date().toISOString()),
+      }),
+      trace_id: String(input.eventId),
+    },
+  );
 }
 
 export async function evaluateSecurityAlerts(input: EvaluateInput) {

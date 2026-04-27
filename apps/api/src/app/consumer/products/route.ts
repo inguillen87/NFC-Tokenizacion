@@ -30,11 +30,15 @@ export async function GET(req: Request) {
       FROM consumer_product_ownerships o
       WHERE o.consumer_id = cp.consumer_id
         AND o.tenant_id = cp.tenant_id
+        AND (
+          (cp.product_passport_id IS NOT NULL AND UPPER(o.uid_hex) = UPPER(cp.product_passport_id))
+          OR (cp.product_passport_id IS NULL)
+        )
       ORDER BY o.claimed_at DESC
       LIMIT 1
     ) ow ON TRUE
     WHERE cp.consumer_id = ${consumer.id}
-    ORDER BY cp.updated_at DESC
+    ORDER BY (cp.ownership_status = 'claimed') DESC, cp.updated_at DESC
   `;
   return json({ ok: true, items: rows });
 }
