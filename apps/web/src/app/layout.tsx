@@ -68,9 +68,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const locale = resolveLocale(cookieStore.get("locale")?.value);
+  const themeCookie = cookieStore.get("theme")?.value;
+  const theme = themeCookie === "light" ? "light" : "dark";
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning className={theme === "light" ? "theme-light" : undefined} data-theme={theme}>
       <body>
         <MisconfigurationBanner />
         <PwaSetup />
