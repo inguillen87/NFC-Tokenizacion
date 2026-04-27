@@ -40,6 +40,21 @@ export type TapEventPayload = {
   rawQuery?: Record<string, unknown>;
 };
 
+let ensureReadCounterColumnPromise: Promise<void> | null = null;
+
+async function ensureEventsReadCounterColumn() {
+  if (!ensureReadCounterColumnPromise) {
+    ensureReadCounterColumnPromise = (async () => {
+      try {
+        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS read_counter integer`;
+      } catch (error) {
+        console.warn('[tap_event_service] unable to ensure events.read_counter column', error);
+      }
+    })();
+  }
+  await ensureReadCounterColumnPromise;
+}
+
 export async function recordTapEvent(payload: TapEventPayload): Promise<number | null> {
   const resultStr = payload.verdict.toUpperCase();
   const sourceStr = payload.source === 'sun' || payload.source === 'real' ? 'real' : payload.source === 'demo' || payload.source === 'demo_simulation' ? 'demo' : 'imported';
@@ -75,6 +90,7 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
     `;
 
   try {
+    await ensureEventsReadCounterColumn();
     let inserted;
     try {
       inserted = await insertWithReadCounter();
