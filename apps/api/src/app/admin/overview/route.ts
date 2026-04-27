@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { checkAdmin } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+import { aggregateTenantMetrics } from "@product/core";
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
@@ -43,20 +44,16 @@ export async function GET(req: Request) {
     `;
 
   const stats = rows[0] || { batches: 0, tags: 0, scans: 0, duplicates: 0, tamper: 0, valid: 0, revoked: 0 };
-  const scansTotal = Number(stats.scans || 0);
+  const metrics = aggregateTenantMetrics({
+    counts: {
+      scans: Number(stats.scans || 0),
+      valid: Number(stats.valid || 0),
+      invalid: Math.max(Number(stats.scans || 0) - Number(stats.valid || 0), 0),
+      duplicates: Number(stats.duplicates || 0),
+      tamper: Number(stats.tamper || 0),
+      revoked: Number(stats.revoked || 0),
+    },
+  });
 
-  // Phase 9: Implement riskScore computation in backend matching the frontend formula
-  // riskScore = clamp(replayRate * 45 + invalidRate * 25 + tamperRate * 50 + revokedTapRate * 35 + geoAnomalyRate * 20, 0, 100)
-  let riskScore = 0;
-  if (scansTotal > 0) {
-    const replayRate = Number(stats.duplicates || 0) / scansTotal;
-    // Approximation for invalid vs tamper since we aggregated them broadly,
-    // but we can at least use tamper directly if available.
-    const tamperRate = Number(stats.tamper || 0) / scansTotal;
-    const revokedRate = Number(stats.revoked || 0) / scansTotal;
-    const rawScore = (replayRate * 45) + (tamperRate * 50) + (revokedRate * 35);
-    riskScore = Math.max(0, Math.min(100, Math.round(rawScore)));
-  }
-
-  return json({ ...stats, riskScore });
+  return json({ ...stats, riskScore: metrics.riskScore, riskBreakdown: metrics.riskBreakdown });
 }

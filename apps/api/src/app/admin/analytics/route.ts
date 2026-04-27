@@ -5,6 +5,7 @@ import { checkAdmin } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { addBucket, normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters, toSortedBuckets } from "../../../lib/analytics";
+import { aggregateTenantMetrics } from "@product/core";
 
 type TrendRow = { day: string; scans: number; duplicates: number; tamper: number };
 
@@ -603,8 +604,14 @@ export async function GET(req: Request) {
     active_tenants: 0,
   }) as Record<string, number>;
 
-  const validRate = overview.scans ? Number(((overview.valid / overview.scans) * 100).toFixed(1)) : 0;
-  const invalidRate = overview.scans ? Number(((overview.invalid / overview.scans) * 100).toFixed(1)) : 0;
+  const scansTotal = Number(overview.scans || 0);
+  const duplicates = Number(overview.duplicates || 0);
+  const tamper = Number(overview.tamper || 0);
+  const invalid = Number(overview.invalid || 0);
+  const revoked = Number((overview as Record<string, number>).revoked || 0);
+  const metrics = aggregateTenantMetrics({
+    counts: { scans: scansTotal, valid: Number(overview.valid || 0), invalid, duplicates, tamper, revoked },
+  });
 
   const trend = (trendRows as TrendRow[]).map((row) => ({
     day: row.day,
@@ -675,33 +682,18 @@ export async function GET(req: Request) {
   if (mobileCount > 0) addBucket(deviceTypeBuckets, normalizeDeviceType({ mobile: true }), mobileCount);
   if (desktopCount > 0) addBucket(deviceTypeBuckets, normalizeDeviceType({ mobile: false }), desktopCount);
 
-  const scansTotal = Number(overview.scans || 0);
-  const duplicates = Number(overview.duplicates || 0);
-  const tamper = Number(overview.tamper || 0);
-  const invalid = Number(overview.invalid || 0);
-  const revoked = Number((overview as Record<string, number>).revoked || 0);
-
-  const riskScore = scansTotal > 0
-    ? Math.max(0, Math.min(100, Math.round(
-        ((duplicates / scansTotal) * 45) +
-        ((invalid / scansTotal) * 25) +
-        ((tamper / scansTotal) * 50) +
-        ((revoked / scansTotal) * 35)
-      )))
-    : 0;
-
   return json({
     kpis: {
       scans: scansTotal,
-      validRate,
-      invalidRate,
+      validRate: metrics.validRate,
+      invalidRate: metrics.invalidRate,
       duplicates,
       tamper,
       activeBatches: Number(overview.active_batches || 0),
       activeTenants: Number(overview.active_tenants || 0),
       geoRegions: geoPoints.length,
       resellerPerformance: Number((overview.scans || 0) * 1.8),
-      riskScore,
+      riskScore: metrics.riskScore,
     },
     scope: {
       tenant: tenant || "global",
@@ -709,6 +701,7 @@ export async function GET(req: Request) {
       range,
       country: country || "all",
     },
+    riskBreakdown: metrics.riskBreakdown,
     geography: {
       countries: (countryRows as CountryRow[]).map((row) => ({
         country: row.country || "--",

@@ -114,7 +114,6 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
     `;
 
   try {
-    await ensureEventsReadCounterColumn();
     let inserted;
     try {
       inserted = await insertWithReadCounter();
