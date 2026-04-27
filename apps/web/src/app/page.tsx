@@ -22,7 +22,6 @@ import { PublicLinkChip } from "../components/public-link-chip";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
-import { LandingProofSection } from "../components/landing-proof-section";
 
 export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
@@ -223,19 +222,6 @@ export default async function HomePage() {
     { label: labels.sunCta, href: "/sun" },
   ];
 
-  const proofSummary = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.nexid.lat"}/public/proof/summary`, {
-    next: { revalidate: 30 },
-  })
-    .then((res) => (res.ok ? res.json() : null))
-    .catch(() => null) as {
-      tapsToday?: number;
-      validRate?: number;
-      riskBlocked?: number;
-      activeRegions?: number;
-      demoMode?: boolean;
-      latestPublicEvents?: Array<{ city: string; country: string; verdict: string; tenant: string; occurredAt: string; uidMasked: string }>;
-    } | null;
-
   return (
     <main className="landing-root">
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
@@ -318,16 +304,6 @@ export default async function HomePage() {
       </section>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
-      <LandingProofSection
-        proof={{
-          tapsToday: Number(proofSummary?.tapsToday || 0),
-          validRate: Number(proofSummary?.validRate || 0),
-          riskBlocked: Number(proofSummary?.riskBlocked || 0),
-          activeRegions: Number(proofSummary?.activeRegions || 0),
-          demoMode: Boolean(proofSummary?.demoMode),
-          latestPublicEvents: Array.isArray(proofSummary?.latestPublicEvents) ? proofSummary.latestPublicEvents : [],
-        }}
-      />
 
       <section className="container-shell py-8 md:py-10">
         <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
