@@ -76,7 +76,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       { method: "POST", path: "/assistant/chat", detail: "BotIA comercial: captura leads, tickets y pedidos." },
       { method: "GET/POST", path: "/admin/leads", detail: "CRM-lite para super-admin y pipeline comercial." },
       { method: "POST", path: "/internal/demo/use-pack", detail: "Carga packs por vertical para demos y ventas." },
-      { method: "POST", path: "/internal/demo/simulate-tap", detail: "Simula tap NFC y estado autenticado/tamper." },
+      { method: "POST", path: "/internal/demo/simulate-tap", detail: "Simula tap NFC end-to-end (geo/device/tenant) y devuelve flujo consumer + marketplace + dashboard." },
     ],
     packsTitle: "Packs priorizados para vender ya",
     packs: [
@@ -165,7 +165,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       { method: "POST", path: "/assistant/chat", detail: "BotIA comercial para leads/tickets/pedidos." },
       { method: "GET/POST", path: "/admin/leads", detail: "CRM-lite para super-admin." },
       { method: "POST", path: "/internal/demo/use-pack", detail: "Carrega packs verticais para demo comercial." },
-      { method: "POST", path: "/internal/demo/simulate-tap", detail: "Simula tap NFC e estados autenticados." },
+      { method: "POST", path: "/internal/demo/simulate-tap", detail: "Simula tap NFC ponta a ponta (geo/device/tenant) e retorna fluxo consumer + marketplace + dashboard." },
     ],
     packsTitle: "Packs priorizados",
     packs: [
@@ -254,7 +254,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       { method: "POST", path: "/assistant/chat", detail: "Sales BotIA for leads/tickets/orders." },
       { method: "GET/POST", path: "/admin/leads", detail: "CRM-lite pipeline for super-admin." },
       { method: "POST", path: "/internal/demo/use-pack", detail: "Load vertical demo packs." },
-      { method: "POST", path: "/internal/demo/simulate-tap", detail: "Simulate NFC taps and trust state." },
+      { method: "POST", path: "/internal/demo/simulate-tap", detail: "Simulate end-to-end NFC taps (geo/device/tenant) and return consumer + marketplace + dashboard flow." },
     ],
     packsTitle: "Prioritized sellable packs",
     packs: [
