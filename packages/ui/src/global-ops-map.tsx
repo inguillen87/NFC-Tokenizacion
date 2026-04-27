@@ -1,11 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import DeckGL from "@deck.gl/react";
-import { ArcLayer, ScatterplotLayer } from "@deck.gl/layers";
-import { HexagonLayer, HeatmapLayer } from "@deck.gl/aggregation-layers";
-import { TripsLayer } from "@deck.gl/geo-layers";
-import { Map } from "react-map-gl/maplibre";
 import { Card } from "./card";
 
 export type GlobalOpsPoint = {
@@ -93,7 +88,6 @@ export function GlobalOpsMap({
   const [progress, setProgress] = useState(100);
   const [internalSelectedId, setInternalSelectedId] = useState(selectedPointId || "");
   const [webglReady, setWebglReady] = useState(false);
-  const [mapRuntimeReady, setMapRuntimeReady] = useState(true);
 
   useEffect(() => setWebglReady(hasWebGlSupport()), []);
   useEffect(() => setInternalSelectedId(selectedPointId || ""), [selectedPointId]);
@@ -165,97 +159,7 @@ export function GlobalOpsMap({
   const replayTamper = visiblePoints.filter((point) => ["REPLAY_SUSPECT", "DUPLICATE", "TAMPER", "TAMPERED"].includes(point.verdict)).length;
 
   const fallbackRows = visiblePoints.slice(0, 12);
-  const canRenderMap = webglReady && mapRuntimeReady;
-
-  const mapLayers = useMemo(() => {
-    if (!canRenderMap) return [];
-
-    const pointLayer = new ScatterplotLayer<GlobalOpsPoint>({
-      id: "ops-points",
-      data: visiblePoints,
-      pickable: true,
-      opacity: 0.92,
-      filled: true,
-      radiusUnits: "pixels",
-      radiusMinPixels: 3,
-      radiusMaxPixels: 18,
-      getPosition: (d) => [d.lng, d.lat],
-      getRadius: (d) => Math.min(14, 5 + d.scans / 40),
-      getFillColor: (d) => d.risk > 0 ? [251, 113, 133, 230] : [56, 189, 248, 220],
-      getLineColor: (d) => d.id === selectedPoint?.id ? [255, 255, 255, 230] : [2, 6, 23, 100],
-      lineWidthMinPixels: 1.5,
-      onClick: (info) => {
-        if (!info.object) return;
-        setInternalSelectedId(info.object.id);
-        onPointSelect?.(info.object);
-      },
-    });
-
-    const arcLayer = new ArcLayer<GlobalOpsRoute>({
-      id: "ops-routes",
-      data: visibleRoutes,
-      pickable: false,
-      getSourcePosition: (d) => [d.fromLng, d.fromLat],
-      getTargetPosition: (d) => [d.toLng, d.toLat],
-      getSourceColor: (d) => d.risk > 0 ? [251, 113, 133, 170] : [34, 211, 238, 150],
-      getTargetColor: (d) => d.risk > 0 ? [251, 113, 133, 240] : [34, 211, 238, 220],
-      getWidth: (d) => d.risk > 0 ? 2.8 : 1.7,
-      greatCircle: true,
-    });
-
-    const hexLayer = new HexagonLayer<GlobalOpsPoint>({
-      id: "ops-hex",
-      data: visiblePoints,
-      getPosition: (d) => [d.lng, d.lat],
-      radius: mode === "global" ? 95_000 : 62_000,
-      elevationScale: 10,
-      extruded: false,
-      pickable: false,
-      colorRange: [
-        [6, 78, 59, 60],
-        [8, 145, 178, 85],
-        [37, 99, 235, 110],
-        [217, 70, 239, 130],
-      ],
-      getColorWeight: (d) => d.risk > 0 ? d.risk * 2 + d.scans : d.scans,
-    });
-
-    const heatLayer = new HeatmapLayer<GlobalOpsPoint>({
-      id: "ops-heat",
-      data: visiblePoints,
-      getPosition: (d) => [d.lng, d.lat],
-      getWeight: (d) => (d.risk > 0 ? 2 : 1) * Math.max(1, d.scans / 3),
-      radiusPixels: mode === "global" ? 44 : 34,
-      intensity: 0.7,
-      threshold: 0.06,
-      visible: mode !== "tenant",
-    });
-
-    const tripData = visibleRoutes.map((route, idx) => {
-      const start = Math.max(0, idx * 14);
-      return {
-        ...route,
-        path: [[route.fromLng, route.fromLat], [route.toLng, route.toLat]],
-        timestamps: [start, start + 100],
-      };
-    });
-
-    const tripsLayer = new TripsLayer({
-      id: "ops-trips",
-      data: tripData,
-      getPath: (d: { path: [number, number][] }) => d.path,
-      getTimestamps: (d: { timestamps: number[] }) => d.timestamps,
-      getColor: (d: { risk: number }) => d.risk > 0 ? [251, 113, 133, 210] : [34, 211, 238, 180],
-      opacity: 0.65,
-      widthMinPixels: 2,
-      trailLength: 42,
-      currentTime: Math.min(100, progress),
-      rounded: true,
-      visible: playback,
-    });
-
-    return [hexLayer, heatLayer, arcLayer, tripsLayer, pointLayer];
-  }, [canRenderMap, mode, onPointSelect, playback, progress, selectedPoint?.id, visiblePoints, visibleRoutes]);
+  const canRenderMap = false && webglReady; // TODO: enable optional DeckGL/MapLibre runtime when deps are available.
 
   return (
     <Card className="overflow-hidden p-4 md:p-6">
@@ -295,21 +199,7 @@ export function GlobalOpsMap({
       <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">
         <div className="overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.25),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(167,139,250,.2),transparent_40%),linear-gradient(160deg,#020617,#0f172a,#111827)]">
           <div className="relative h-[29rem]">
-            {canRenderMap ? (
-              <DeckGL
-                initialViewState={{ latitude: 18, longitude: -8, zoom: 1.25, pitch: 24, bearing: 0 }}
-                controller
-                layers={mapLayers}
-                getCursor={({ isDragging }) => isDragging ? "grabbing" : "crosshair"}
-              >
-                <Map
-                  reuseMaps
-                  mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-                  onError={() => setMapRuntimeReady(false)}
-                />
-              </DeckGL>
-            ) : (
-              <svg viewBox="0 0 1200 620" className="absolute inset-0 h-full w-full">
+            <svg viewBox="0 0 1200 620" className="absolute inset-0 h-full w-full">
                 <rect x="0" y="0" width="1200" height="620" fill="rgba(15,23,42,.45)" />
                 <ellipse cx="600" cy="310" rx="410" ry="240" fill="none" stroke="rgba(148,163,184,.18)" strokeWidth="1.5" />
                 <ellipse cx="600" cy="310" rx="320" ry="190" fill="none" stroke="rgba(34,211,238,.18)" strokeWidth="1.2" />
@@ -331,7 +221,6 @@ export function GlobalOpsMap({
                   );
                 })}
               </svg>
-            )}
             {!canRenderMap ? (
               <div className="absolute left-3 top-3 rounded-lg border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100">
                 WebGL or map runtime unavailable. Showing operational fallback view.
