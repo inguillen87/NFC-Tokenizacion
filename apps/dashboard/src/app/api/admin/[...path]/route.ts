@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
-import { computeRiskScore } from "../../../../lib/risk-score";
+import { aggregateTenantMetrics } from "@product/core";
 import { getDashboardSession } from "../../../../lib/session";
 import { canReadonlyDemoAccess, shouldAllowDemoFallback } from "../../../../lib/admin-proxy-policy";
 
@@ -73,9 +73,19 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     return NextResponse.json([DEMO_BATCH]);
   }
   if (method === "GET" && normalized === "tenants") {
+    const demobodegaMetrics = aggregateTenantMetrics({
+      counts: { scans: 240, valid: 230, invalid: 10, duplicates: 5, tamper: 1, revoked: 0 },
+      geoAnomalyRate: 0.02,
+      deviceAnomalyRate: 0.01,
+    });
+    const demoeventsMetrics = aggregateTenantMetrics({
+      counts: { scans: 92, valid: 86, invalid: 6, duplicates: 2, tamper: 0, revoked: 0 },
+      geoAnomalyRate: 0.01,
+      deviceAnomalyRate: 0.01,
+    });
     const rows = [
-      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: computeRiskScore({ replayRate: 0.02, invalidRate: 0.04, tamperRate: 0.01, revokedTapRate: 0.0, geoAnomalyRate: 0.02, deviceAnomalyRate: 0.01 }) },
-      { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0, risk_score: computeRiskScore({ replayRate: 0.03, invalidRate: 0.05, tamperRate: 0.0, revokedTapRate: 0.0, geoAnomalyRate: 0.01, deviceAnomalyRate: 0.01 }) },
+      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: demobodegaMetrics.riskScore },
+      { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0, risk_score: demoeventsMetrics.riskScore },
     ];
     return NextResponse.json(rows);
   }
@@ -100,11 +110,8 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     const tamper = trend.reduce((acc, row) => acc + row.tamper, 0);
     const invalid = duplicates + tamper;
     const valid = Math.max(scans - invalid, 0);
-    const riskScore = computeRiskScore({
-      replayRate: scans ? duplicates / scans : 0,
-      invalidRate: scans ? invalid / scans : 0,
-      tamperRate: scans ? tamper / scans : 0,
-      revokedTapRate: 0,
+    const metrics = aggregateTenantMetrics({
+      counts: { scans, valid, invalid, duplicates, tamper, revoked: 0 },
       geoAnomalyRate: 0.02,
       deviceAnomalyRate: 0.01,
     });
@@ -120,7 +127,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
         activeTenants: 1,
         geoRegions: 6,
         resellerPerformance: 88,
-        riskScore: Number(riskScore.toFixed(1)),
+        riskScore: Number(metrics.riskScore.toFixed(1)),
       },
       geography: {
         countries: [
