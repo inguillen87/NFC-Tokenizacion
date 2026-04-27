@@ -16,6 +16,8 @@
     "prisma:seed": "node prisma/seed.mjs",
     "demo:demobodega": "node scripts/demo-demobodega.mjs",
     "demo:seed": "node scripts/demo-demobodega.mjs",
+    "demo:reset": "node scripts/demo-reset-demobodega.mjs",
+    "demo:emit-taps": "node scripts/demo-emit-taps.mjs",
     "test:loyalty": "node --test tests/loyalty-rules.test.mjs",
     "contracts:compile": "hardhat compile",
     "contracts:deploy:amoy": "hardhat run scripts/deploy-nexid-amoy.mjs --network amoy",
