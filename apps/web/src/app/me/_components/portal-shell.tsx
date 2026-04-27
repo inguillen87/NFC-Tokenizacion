@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ReactNode } from "react";
+import { TapAssociationBanner } from "./tap-association-banner";
 
 export function PortalShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
@@ -62,6 +63,7 @@ export function PortalShell({ title, subtitle, children }: { title: string; subt
         </header>
 
         <div className="relative z-10 space-y-8">
+           <TapAssociationBanner />
            {children}
         </div>
       </main>
