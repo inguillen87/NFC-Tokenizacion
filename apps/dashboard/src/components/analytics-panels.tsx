@@ -67,6 +67,15 @@ function DeviceBucket({ title, items }: { title: string; items: Array<{ label: s
   );
 }
 
+
+function alertSeverityFromResult(result: string) {
+  const normalized = String(result || "").toUpperCase();
+  if (["REPLAY_SUSPECT", "DUPLICATE"].includes(normalized)) return "high" as const;
+  if (["TAMPER", "TAMPERED", "BROKEN", "REVOKED"].includes(normalized)) return "critical" as const;
+  if (["INVALID", "OPENED"].includes(normalized)) return "medium" as const;
+  return "none" as const;
+}
+
 function pct(value: number, total: number) {
   if (!total) return "0%";
   return `${((value / total) * 100).toFixed(1)}%`;
@@ -75,6 +84,7 @@ function pct(value: number, total: number) {
 export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: AnalyticsPanelsProps) {
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [riskCategoryFilter, setRiskCategoryFilter] = useState<string>("ALL");
+  const [feedSeverityFilter, setFeedSeverityFilter] = useState<string>("all");
   const api = data?.kpis || {};
   const trend = data?.trend || [];
   const countries = data?.geography?.countries || [];
@@ -109,8 +119,10 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       : riskCategoryFilter === "Tamper alerts"
       ? ["TAMPER", "TAMPERED", "OPENED"].includes(String(item.result || "").toUpperCase())
       : true;
-    return dayMatch && riskMatch;
-  }), [feed, riskCategoryFilter, selectedDay]);
+    const severity = alertSeverityFromResult(item.result);
+    const severityMatch = feedSeverityFilter === "all" ? true : severity === feedSeverityFilter;
+    return dayMatch && riskMatch && severityMatch;
+  }), [feed, feedSeverityFilter, riskCategoryFilter, selectedDay]);
   const trustFunnel = useMemo(() => {
     const taps = scansTotal;
     const valid = Math.round(taps * ((api.validRate || 0) / 100));
@@ -334,13 +346,30 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
 
       <div className="grid gap-6 xl:grid-cols-2">
         <OpsPanel title="Live tap feed" subtitle="Actividad reciente y contexto operativo real.">
+          <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-300">
+            <p>Badge automático de alerta por severidad derivada del evento.</p>
+            <label>
+              Severity
+              <select value={feedSeverityFilter} onChange={(event) => setFeedSeverityFilter(event.target.value)} className="ml-2 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">
+                <option value="all">all</option>
+                <option value="critical">critical</option>
+                <option value="high">high</option>
+                <option value="medium">medium</option>
+                <option value="none">none</option>
+              </select>
+            </label>
+          </div>
           <div className="space-y-2">
-            {(filteredFeed.length ? filteredFeed : []).slice(0, 10).map((item) => (
-              <div key={item.id} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
-                <p><b>{item.result}</b> · {item.uidHex} · {item.bid}</p>
-                <p className="text-slate-400">{item.city}, {item.country} · {item.device} · {fmtDate(item.createdAt)}</p>
-              </div>
-            ))}
+            {(filteredFeed.length ? filteredFeed : []).slice(0, 10).map((item) => {
+              const severity = alertSeverityFromResult(item.result);
+              const tone = severity === "critical" ? "risk" : severity === "high" ? "warn" : severity === "medium" ? "neutral" : "good";
+              return (
+                <div key={item.id} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
+                  <p className="flex flex-wrap items-center gap-2"><b>{item.result}</b> · {item.uidHex} · {item.bid} {severity !== "none" ? <StatusChip label={`alert ${severity}`} tone={tone} /> : null}</p>
+                  <p className="text-slate-400">{item.city}, {item.country} · {item.device} · {fmtDate(item.createdAt)}</p>
+                </div>
+              );
+            })}
             {!filteredFeed.length ? <p className="text-sm text-slate-400">Sin eventos recientes para este scope/filtro.</p> : null}
           </div>
         </OpsPanel>
