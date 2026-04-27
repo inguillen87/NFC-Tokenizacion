@@ -649,7 +649,7 @@ function buildPublicContract(params: {
       provenance: Boolean(params.uid),
       tokenize: Boolean(params.uid),
       clubName: preset?.clubName || "Club premium",
-      registerUrl: `${webBase}/register?${tapQuery.toString()}&action=register`,
+      registerUrl: `${webBase}/me?${tapQuery.toString()}&action=register`,
       portalUrl: `${webBase}/me?${tapQuery.toString()}&action=portal`,
       marketplaceUrl: `${webBase}/me/marketplace?${tapQuery.toString()}&action=marketplace`,
       rewardsUrl: `${webBase}/me/rewards?${tapQuery.toString()}&action=rewards`,
