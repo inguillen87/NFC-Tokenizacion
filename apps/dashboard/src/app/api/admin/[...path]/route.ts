@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { computeRiskScore } from "../../../../lib/risk-score";
+import { getDashboardSession } from "../../../../lib/session";
 
 const API_BASE = productUrls.api;
 const DEMO_BATCH = {
@@ -17,6 +18,18 @@ const DEMO_BATCH = {
 function isDemoSession(req: Request) {
   const cookie = req.headers.get("cookie") || "";
   return cookie.includes("nexid_dashboard_session=demo.");
+}
+
+function dashboardRoleToScope(role: string | undefined) {
+  if (role === "super-admin") return "super_admin";
+  if (role === "tenant-admin") return "tenant_admin";
+  if (role === "reseller") return "reseller";
+  return "readonly_demo";
+}
+
+function markDemoData(res: NextResponse) {
+  res.headers.set("x-nexid-demo-data", "DEMO DATA");
+  return res;
 }
 
 function safeParseJson(text: string) {
@@ -60,8 +73,8 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   }
   if (method === "GET" && normalized === "tenants") {
     const rows = [
-      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: computeRiskScore({ replayRate: 0.02, invalidRate: 0.04, tamperRate: 0.01, revokedTapRate: 0.0, geoAnomalyRate: 0.02 }) },
-      { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0, risk_score: computeRiskScore({ replayRate: 0.03, invalidRate: 0.05, tamperRate: 0.0, revokedTapRate: 0.0, geoAnomalyRate: 0.01 }) },
+      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: computeRiskScore({ replayRate: 0.02, invalidRate: 0.04, tamperRate: 0.01, revokedTapRate: 0.0, geoAnomalyRate: 0.02, deviceAnomalyRate: 0.01 }) },
+      { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0, risk_score: computeRiskScore({ replayRate: 0.03, invalidRate: 0.05, tamperRate: 0.0, revokedTapRate: 0.0, geoAnomalyRate: 0.01, deviceAnomalyRate: 0.01 }) },
     ];
     return NextResponse.json(rows);
   }
@@ -92,6 +105,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       tamperRate: scans ? tamper / scans : 0,
       revokedTapRate: 0,
       geoAnomalyRate: 0.02,
+      deviceAnomalyRate: 0.01,
     });
     return NextResponse.json({
       scope: { tenant: tenantFilter || "demobodega", source: "real", range: "30d", country: "all" },
@@ -407,8 +421,14 @@ async function forward(req: Request, path: string[]) {
   const target = `${API_BASE}/admin/${path.join("/")}${new URL(req.url).search}`;
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
+  const requireScopedAdminAuth = String(process.env.REQUIRE_SCOPED_ADMIN_AUTH || "").toLowerCase() === "true";
   const demoSession = isDemoSession(req);
   const allowDemoFallback = String(process.env.DASHBOARD_ALLOW_DEMO_FALLBACK || "").toLowerCase() === "true";
+  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const demoModeExplicit = String(process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
+  const allowDemoFallbackForRequest = allowDemoFallback && (!isProduction || demoModeExplicit);
+  const dashboardSession = await getDashboardSession().catch(() => null);
+  const scopedRole = dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
 
   const unavailable = (reason: string) => {
     if (req.method === "GET" && normalizedPath === "analytics") {
@@ -444,12 +464,19 @@ async function forward(req: Request, path: string[]) {
     return NextResponse.json({ ok: false, reason }, { status: 503 });
   };
 
-  if (!hasAdminKey && (!demoSession || !allowDemoFallback)) {
+  if (!hasAdminKey && !scopedRole && (!demoSession || !allowDemoFallbackForRequest)) {
     return unavailable("ADMIN_API_KEY missing. Real tenant data is disabled until admin API auth is configured.");
   }
 
-  if (demoSession && allowDemoFallback) {
-    return demoAdminResponse(req.method, path, body || "", req.url);
+  if (requireScopedAdminAuth && !scopedRole) {
+    return NextResponse.json(
+      { ok: false, reason: "Scoped admin auth required. Login with an authorized dashboard role." },
+      { status: 401 },
+    );
+  }
+
+  if (demoSession && allowDemoFallbackForRequest) {
+    return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
 
   let response: Response;
@@ -458,7 +485,9 @@ async function forward(req: Request, path: string[]) {
       method: req.method,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}`,
+        ...(hasAdminKey ? { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` } : {}),
+        ...(scopedRole ? { "x-nexid-admin-scope": scopedRole } : {}),
+        ...(dashboardSession?.tenantSlug ? { "x-nexid-tenant-slug": dashboardSession.tenantSlug } : {}),
       },
       body,
       cache: "no-store",
@@ -475,8 +504,8 @@ async function forward(req: Request, path: string[]) {
     return unavailable(`Admin upstream error (${response.status}).`);
   }
 
-  if (!response.ok && demoSession && allowDemoFallback) {
-    return demoAdminResponse(req.method, path, body || "", req.url);
+  if (!response.ok && demoSession && allowDemoFallbackForRequest) {
+    return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
 
   const contentType = (response.headers.get("content-type") || "").toLowerCase();
