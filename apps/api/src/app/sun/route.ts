@@ -744,28 +744,41 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const gatedLinks = Array.from(document.querySelectorAll('[data-gated-link]'));
   const eventId = ${JSON.stringify(contract.identity.eventId || null)};
   const canAssociate = ${JSON.stringify(contract.status.tone === "good" && contract.status.code !== "REPLAY_SUSPECT")};
+  const appBase = (() => {
+    try {
+      return new URL(${JSON.stringify(contract.cta.portalUrl)}).origin;
+    } catch {
+      return window.location.origin;
+    }
+  })();
   const nfcBtn = document.getElementById('nfc-scan');
+  const jsonFetch = (path, init = {}) => fetch(appBase + path, { credentials: 'include', ...init }).then((r) => r.json());
   async function ensureAuthAndTenant(action) {
     if (!canAssociate) return { ok: false, reason: 'tap_not_verified' };
-    const me = await fetch('/consumer/me', { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
+    const me = await jsonFetch('/api/consumer/me', { cache: 'no-store' }).catch(() => null);
     let contact = '';
     if (!me?.ok) {
       contact = window.prompt('Ingresá tu email o teléfono para registrarte/asociarte al tenant:') || '';
       if (!contact.trim()) return { ok: false, reason: 'cancelled' };
-      const start = await fetch('/consumer/auth/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(contact.includes('@') ? { email: contact } : { phone: contact }) }).then((r) => r.json()).catch(() => null);
+      const normalizedContact = contact.trim();
+      const payload = normalizedContact.includes('@') ? { email: normalizedContact } : { phone: normalizedContact };
+      const start = await jsonFetch('/api/consumer/auth/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => null);
       if (!start?.ok) return { ok: false, reason: 'start_failed' };
-      const entered = window.prompt('Código de verificación (demo):', String(start.code || '')) || '';
+      const entered = window.prompt('Código de verificación (demo):', String(start.code || '')) || String(start.code || '');
       if (!entered.trim()) return { ok: false, reason: 'code_cancelled' };
-      const verify = await fetch('/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(contact.includes('@') ? { email: contact, code: entered } : { phone: contact, code: entered }) }).then((r) => r.json()).catch(() => null);
+      const verifyPayload = normalizedContact.includes('@')
+        ? { email: normalizedContact, code: entered.trim() }
+        : { phone: normalizedContact, code: entered.trim() };
+      const verify = await jsonFetch('/api/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(verifyPayload) }).catch(() => null);
       if (!verify?.ok) return { ok: false, reason: 'verify_failed' };
     }
     if (eventId) {
-      await fetch('/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/join-tenant', { method: 'POST' }).catch(() => null);
-      await fetch('/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/save-product', { method: 'POST' }).catch(() => null);
+      await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/join-tenant', { method: 'POST' }).catch(() => null);
+      await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/save-product', { method: 'POST' }).catch(() => null);
       if (action === 'rewards') {
         const contactForEnroll = contact || window.prompt('Email para activar promos/rewards del club:') || '';
         if (contactForEnroll.trim()) {
-          await fetch('/mobile/passport/' + encodeURIComponent(eventId) + '/loyalty/enroll', {
+          await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/loyalty/enroll', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(contactForEnroll.includes('@') ? { email: contactForEnroll } : { phone: contactForEnroll }),
@@ -785,7 +798,12 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       if (!auth.ok) {
         if (statusNode) statusNode.textContent = auth.reason === 'tap_not_verified'
           ? 'Este tap no quedó en estado verificado. Reintentá escanear físicamente la etiqueta.'
-          : 'No pudimos completar registro/asociación (' + auth.reason + ').';
+          : auth.reason === 'start_failed' || auth.reason === 'verify_failed'
+            ? 'No pudimos validar sesión en este host. Te llevamos a registro para continuar.'
+            : 'No pudimos completar registro/asociación (' + auth.reason + ').';
+        if (auth.reason === 'start_failed' || auth.reason === 'verify_failed') {
+          window.location.href = ${JSON.stringify(contract.cta.registerUrl)};
+        }
         return;
       }
       if (statusNode) statusNode.textContent = 'Asociación completada. Redirigiendo...';
