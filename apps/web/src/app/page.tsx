@@ -223,7 +223,7 @@ export default async function HomePage() {
   ];
 
   return (
-    <main>
+    <main className="landing-root">
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
         <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
@@ -307,7 +307,7 @@ export default async function HomePage() {
 
       <section className="container-shell py-8 md:py-10">
         <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-          <article className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_12%_18%,rgba(6,182,212,.24),transparent_36%),radial-gradient(circle_at_90%_80%,rgba(99,102,241,.24),transparent_40%),linear-gradient(160deg,#050b1f,#0b1633_55%,#101536)] p-6 md:p-8">
+          <article className="landing-hero-card overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_12%_18%,rgba(6,182,212,.24),transparent_36%),radial-gradient(circle_at_90%_80%,rgba(99,102,241,.24),transparent_40%),linear-gradient(160deg,#050b1f,#0b1633_55%,#101536)] p-6 md:p-8">
             <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">Premium tokenization + blockchain-ready trust layer</p>
             <h2 className="mt-3 max-w-3xl text-2xl font-semibold text-white md:text-3xl">
               Diseñada para marcas premium, resellers y equipos enterprise que necesitan antifraude, trazabilidad y fidelización en la misma experiencia.
@@ -331,7 +331,7 @@ export default async function HomePage() {
             </div>
           </article>
 
-          <article className="relative overflow-hidden rounded-3xl border border-cyan-300/15 bg-[linear-gradient(165deg,#030b1f,#081a38_55%,#10163a)] p-6">
+          <article className="landing-steps-card relative overflow-hidden rounded-3xl border border-cyan-300/15 bg-[linear-gradient(165deg,#030b1f,#081a38_55%,#10163a)] p-6">
             <div className="absolute -right-10 -top-16 h-44 w-44 rounded-full bg-cyan-500/20 blur-3xl" />
             <div className="absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-violet-500/20 blur-3xl" />
             <p className="relative z-10 text-xs uppercase tracking-[0.16em] text-cyan-300">Cómo funciona end-to-end</p>

@@ -154,6 +154,39 @@ html.theme-light .site-header {
   @apply border-slate-300/80 bg-white/90 text-slate-900;
 }
 
+html.theme-light .landing-root {
+  color: #0f172a;
+}
+
+html.theme-light .landing-root .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .landing-root .text-slate-300,
+html.theme-light .landing-root .text-slate-200 {
+  color: #334155 !important;
+}
+
+html.theme-light .landing-root .bg-slate-900\/60,
+html.theme-light .landing-root .bg-slate-900\/55,
+html.theme-light .landing-root .bg-slate-950\/70,
+html.theme-light .landing-root .bg-slate-950\/60,
+html.theme-light .landing-root .bg-slate-950\/50,
+html.theme-light .landing-root .bg-slate-950\/45 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+html.theme-light .landing-root .landing-hero-card {
+  background: radial-gradient(circle at 12% 18%, rgba(14, 116, 144, 0.15), transparent 36%), radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.12), transparent 40%), linear-gradient(160deg, #f8fbff, #eef4ff 55%, #e7efff) !important;
+  border-color: rgba(125, 211, 252, 0.55) !important;
+}
+
+html.theme-light .landing-root .landing-steps-card {
+  background: linear-gradient(165deg, #f8fbff, #edf3ff 55%, #e5edff) !important;
+  border-color: rgba(125, 211, 252, 0.5) !important;
+}
+
 html.theme-light .quick-links-wrap {
   @apply border-slate-300/70 bg-white/85 shadow-[0_10px_28px_rgba(15,23,42,0.08)];
 }

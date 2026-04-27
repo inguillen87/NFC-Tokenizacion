@@ -40,15 +40,20 @@ export function BrandWordmark({ size = 120, variant = "static", theme = "dark", 
         ID
       </text>
       <ellipse cx="248" cy="41" rx="17" ry="11" fill="none" stroke={orbitColor} strokeWidth="1.5" strokeDasharray="3 3" />
-      <circle cx="248" cy="30" r="4.4" fill={accent}>
-        {motionEnabled ? (
-          <animateMotion
-            dur={variant === "ripple" ? "2.2s" : "3.1s"}
-            repeatCount="indefinite"
-            path="M 248 30 m -17 11 a 17 11 0 1 0 34 0 a 17 11 0 1 0 -34 0"
-          />
-        ) : null}
-      </circle>
+      <g>
+        <circle cx="248" cy="30" r="4.4" fill={accent}>
+          {motionEnabled ? (
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              from={`0 248 41`}
+              to={`360 248 41`}
+              dur={variant === "ripple" ? "2.2s" : "3.1s"}
+              repeatCount="indefinite"
+            />
+          ) : null}
+        </circle>
+      </g>
     </svg>
   );
 }
