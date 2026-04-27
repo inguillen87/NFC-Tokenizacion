@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./card";
 
 export type GlobalOpsPoint = {
@@ -34,6 +34,13 @@ export type GlobalOpsRoute = {
 type Mode = "tenant" | "global" | "demo";
 type TimeWindow = "1h" | "24h" | "7d" | "all";
 
+type MapLibreRuntime = {
+  Map: new (...args: any[]) => any;
+};
+
+const MAPLIBRE_JS = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
+const MAPLIBRE_CSS = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+
 function toMs(value?: string) {
   if (!value) return 0;
   const n = Date.parse(value);
@@ -62,6 +69,75 @@ function hasWebGlSupport() {
   }
 }
 
+async function ensureCss(href: string) {
+  if (typeof document === "undefined") return;
+  if (document.querySelector(`link[data-global-ops-map-css='${href}']`)) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = href;
+  link.dataset.globalOpsMapCss = href;
+  document.head.appendChild(link);
+}
+
+async function ensureScript(src: string) {
+  if (typeof document === "undefined") return;
+  if (document.querySelector(`script[data-global-ops-map-js='${src}']`)) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.dataset.globalOpsMapJs = src;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+function pointsToFeatureCollection(points: GlobalOpsPoint[]) {
+  return {
+    type: "FeatureCollection",
+    features: points.map((point) => ({
+      type: "Feature",
+      properties: {
+        id: point.id,
+        city: point.city,
+        country: point.country,
+        scans: point.scans,
+        risk: point.risk,
+        verdict: point.verdict,
+        tenantSlug: point.tenantSlug,
+        lastSeen: point.lastSeen,
+      },
+      geometry: {
+        type: "Point",
+        coordinates: [point.lng, point.lat],
+      },
+    })),
+  };
+}
+
+function routesToFeatureCollection(routes: GlobalOpsRoute[]) {
+  return {
+    type: "FeatureCollection",
+    features: routes.map((route) => ({
+      type: "Feature",
+      properties: {
+        id: route.id,
+        risk: route.risk,
+        taps: route.taps,
+        uid: route.uid,
+      },
+      geometry: {
+        type: "LineString",
+        coordinates: [[route.fromLng, route.fromLat], [route.toLng, route.toLat]],
+      },
+    })),
+  };
+}
+
 export function GlobalOpsMap({
   points,
   routes,
@@ -88,6 +164,10 @@ export function GlobalOpsMap({
   const [progress, setProgress] = useState(100);
   const [internalSelectedId, setInternalSelectedId] = useState(selectedPointId || "");
   const [webglReady, setWebglReady] = useState(false);
+  const [mapRuntimeReady, setMapRuntimeReady] = useState(false);
+
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<any | null>(null);
 
   useEffect(() => setWebglReady(hasWebGlSupport()), []);
   useEffect(() => setInternalSelectedId(selectedPointId || ""), [selectedPointId]);
@@ -159,13 +239,156 @@ export function GlobalOpsMap({
   const replayTamper = visiblePoints.filter((point) => ["REPLAY_SUSPECT", "DUPLICATE", "TAMPER", "TAMPERED"].includes(point.verdict)).length;
 
   const fallbackRows = visiblePoints.slice(0, 12);
-  const canRenderMap = false && webglReady; // TODO: enable optional DeckGL/MapLibre runtime when deps are available.
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function mountMap() {
+      if (!webglReady || !mapContainerRef.current || mapRef.current) return;
+      try {
+        await ensureCss(MAPLIBRE_CSS);
+        await ensureScript(MAPLIBRE_JS);
+        const maplibregl = (window as any).maplibregl as MapLibreRuntime | undefined;
+        if (!maplibregl?.Map || cancelled) {
+          setMapRuntimeReady(false);
+          return;
+        }
+
+        const map = new maplibregl.Map({
+          container: mapContainerRef.current,
+          style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+          center: [-8, 18],
+          zoom: 1.25,
+          pitch: 25,
+          attributionControl: false,
+        });
+        mapRef.current = map;
+
+        map.on("load", () => {
+          if (cancelled) return;
+          map.addSource("ops-points", { type: "geojson", data: pointsToFeatureCollection([]), cluster: true, clusterRadius: 40, clusterMaxZoom: 7 });
+          map.addSource("ops-routes", { type: "geojson", data: routesToFeatureCollection([]) });
+
+          map.addLayer({
+            id: "ops-routes-risk",
+            type: "line",
+            source: "ops-routes",
+            filter: [">", ["get", "risk"], 0],
+            paint: { "line-color": "#fb7185", "line-width": 2.2, "line-opacity": 0.75 },
+          });
+
+          map.addLayer({
+            id: "ops-routes-clean",
+            type: "line",
+            source: "ops-routes",
+            filter: ["<=", ["get", "risk"], 0],
+            paint: { "line-color": "#22d3ee", "line-width": 1.4, "line-opacity": 0.55 },
+          });
+
+          map.addLayer({
+            id: "ops-heat",
+            type: "heatmap",
+            source: "ops-points",
+            maxzoom: 8,
+            paint: {
+              "heatmap-weight": ["interpolate", ["linear"], ["get", "scans"], 0, 0, 100, 1],
+              "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, 0.6, 8, 1.4],
+              "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 8, 8, 26],
+              "heatmap-opacity": 0.4,
+            },
+          });
+
+          map.addLayer({
+            id: "ops-clusters",
+            type: "circle",
+            source: "ops-points",
+            filter: ["has", "point_count"],
+            paint: {
+              "circle-color": ["step", ["get", "point_count"], "#0ea5e9", 10, "#2563eb", 30, "#7c3aed"],
+              "circle-radius": ["step", ["get", "point_count"], 11, 10, 16, 30, 22],
+              "circle-opacity": 0.82,
+            },
+          });
+
+          map.addLayer({
+            id: "ops-points-unclustered",
+            type: "circle",
+            source: "ops-points",
+            filter: ["!", ["has", "point_count"]],
+            paint: {
+              "circle-color": ["case", [">", ["get", "risk"], 0], "#fb7185", "#22d3ee"],
+              "circle-radius": ["interpolate", ["linear"], ["get", "scans"], 1, 4, 80, 10],
+              "circle-stroke-width": 1.2,
+              "circle-stroke-color": "#f8fafc",
+              "circle-opacity": 0.93,
+            },
+          });
+
+          map.on("click", "ops-points-unclustered", (event: any) => {
+            const feature = event.features?.[0];
+            if (!feature) return;
+            const id = String(feature.properties?.id || "");
+            const selected = visiblePoints.find((item) => item.id === id);
+            if (!selected) return;
+            setInternalSelectedId(selected.id);
+            onPointSelect?.(selected);
+          });
+
+          map.on("click", "ops-clusters", (event: any) => {
+            const feature = event.features?.[0];
+            const clusterId = feature?.properties?.cluster_id;
+            if (clusterId === undefined) return;
+            const source = map.getSource("ops-points");
+            source?.getClusterExpansionZoom?.(clusterId, (error: unknown, zoom: number) => {
+              if (error) return;
+              map.easeTo({ center: feature.geometry.coordinates, zoom });
+            });
+          });
+
+          map.on("error", () => setMapRuntimeReady(false));
+          setMapRuntimeReady(true);
+        });
+      } catch {
+        if (!cancelled) setMapRuntimeReady(false);
+      }
+    }
+
+    mountMap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onPointSelect, visiblePoints, webglReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapRuntimeReady) return;
+
+    const pointsSource = map.getSource("ops-points");
+    const routesSource = map.getSource("ops-routes");
+
+    pointsSource?.setData?.(pointsToFeatureCollection(visiblePoints));
+
+    const animatedRoutes = playback
+      ? visibleRoutes.slice(0, Math.max(1, Math.floor((progress / 100) * visibleRoutes.length)))
+      : visibleRoutes;
+    routesSource?.setData?.(routesToFeatureCollection(animatedRoutes));
+  }, [mapRuntimeReady, playback, progress, visiblePoints, visibleRoutes]);
+
+  useEffect(() => {
+    return () => {
+      mapRef.current?.remove?.();
+      mapRef.current = null;
+    };
+  }, []);
+
+  const canRenderMap = webglReady && mapRuntimeReady;
 
   return (
     <Card className="overflow-hidden p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">Global Ops Map {canRenderMap ? "DeckGL/MapLibre" : "Fallback"}</p>
+          <p className="text-sm font-semibold text-white">Global Ops Map {canRenderMap ? "MapLibre GL" : "Fallback"}</p>
           <p className="text-xs text-slate-400">Control plane operativo para hubs, journeys y riesgo ({mode}).</p>
         </div>
         <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
@@ -199,7 +422,9 @@ export function GlobalOpsMap({
       <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">
         <div className="overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.25),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(167,139,250,.2),transparent_40%),linear-gradient(160deg,#020617,#0f172a,#111827)]">
           <div className="relative h-[29rem]">
-            <svg viewBox="0 0 1200 620" className="absolute inset-0 h-full w-full">
+            <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+            {!canRenderMap ? (
+              <svg viewBox="0 0 1200 620" className="absolute inset-0 h-full w-full">
                 <rect x="0" y="0" width="1200" height="620" fill="rgba(15,23,42,.45)" />
                 <ellipse cx="600" cy="310" rx="410" ry="240" fill="none" stroke="rgba(148,163,184,.18)" strokeWidth="1.5" />
                 <ellipse cx="600" cy="310" rx="320" ry="190" fill="none" stroke="rgba(34,211,238,.18)" strokeWidth="1.2" />
@@ -221,13 +446,14 @@ export function GlobalOpsMap({
                   );
                 })}
               </svg>
+            ) : null}
             {!canRenderMap ? (
               <div className="absolute left-3 top-3 rounded-lg border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100">
-                WebGL or map runtime unavailable. Showing operational fallback view.
+                WebGL/map runtime unavailable. Showing operational fallback view.
               </div>
             ) : null}
             <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
-              Scatter/arc/trips {canRenderMap ? "rendering" : "simulation"} with clustered hubs and capped routes for performance ({visibleRoutes.length} routes rendered).
+              Scatter/arc/trips rendering with clustered hubs and capped routes for performance ({visibleRoutes.length} routes rendered).
             </div>
           </div>
         </div>
