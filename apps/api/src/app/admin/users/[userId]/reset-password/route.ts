@@ -10,6 +10,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ userId:
   if (error) return error;
   const { userId } = await params;
   const token = createResetToken();
+  await sql`UPDATE password_reset_tokens SET consumed_at = now() WHERE user_id = ${userId}::uuid AND consumed_at IS NULL`;
   await sql`INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, meta) VALUES (${userId}::uuid, ${sha256(token)}, now() + interval '30 minutes', '{"source":"admin"}'::jsonb)`;
-  return json({ ok: true, resetToken: process.env.NODE_ENV === 'production' ? undefined : token });
+  const exposeResetToken = String(process.env.DEV_EXPOSE_RESET_TOKEN || '').toLowerCase() === 'true';
+  return json({ ok: true, resetToken: exposeResetToken ? token : undefined });
 }

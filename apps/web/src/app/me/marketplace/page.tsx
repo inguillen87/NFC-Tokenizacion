@@ -1,16 +1,29 @@
-import { asArray, fetchConsumerPath, fetchMarketplacePath } from "../_components/consumer-api";
+import { asArray, fetchConsumerPath, fetchMarketplacePath, requireConsumerSession } from "../_components/consumer-api";
+import { resolveMarketplaceTenant } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
+import { MarketplaceGridClient } from "./marketplace-grid-client";
 
-type Listing = { title?: string; brand?: string; points_price?: number; cash_price?: number; stock_status?: string };
+type Listing = {
+  id: string;
+  title?: string;
+  brand?: string;
+  brand_name?: string;
+  points_price?: number;
+  cash_price?: number;
+  price_amount?: number;
+  stock_status?: string;
+  request_to_buy_enabled?: boolean;
+  age_gate_required?: boolean;
+};
 type ConsumerProduct = { tenant_slug?: string | null; ownership_status?: string | null; ownership_record_status?: string | null };
 
 export default async function MarketplacePage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  await requireConsumerSession("/me/marketplace");
   const params = (await searchParams) || {};
   const tenantFromQuery = typeof params.tenant === "string" ? params.tenant : "";
   const consumerProductsPayload = await fetchConsumerPath("products");
   const consumerProducts = asArray<ConsumerProduct>(consumerProductsPayload);
-  const preferredOwned = consumerProducts.find((item) => String(item.ownership_record_status || item.ownership_status || "").toLowerCase() === "claimed");
-  const contextualTenant = tenantFromQuery || String(preferredOwned?.tenant_slug || consumerProducts[0]?.tenant_slug || "").trim();
+  const contextualTenant = resolveMarketplaceTenant({ tenantFromQuery, products: consumerProducts });
   const payload = await fetchMarketplacePath(`products${contextualTenant ? `?tenant=${encodeURIComponent(contextualTenant)}` : ""}`);
   const items = asArray<Listing>(payload);
 
@@ -22,25 +35,13 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
         : "Catálogo curado para miembros NexID: canje, reserva y request-to-buy."}
     >
       {!items.length ? (
-        <section className="rounded-xl border border-violet-300/30 bg-violet-500/10 p-5 text-sm text-violet-100">Sin catálogo publicado por ahora. Volvé pronto para nuevas experiencias premium.</section>
-      ) : (
-        <section className="grid gap-3 md:grid-cols-2">
-          {items.map((item, idx) => {
-            const status = String(item.stock_status || "available");
-            const cta = status === "out_of_stock" ? "Sin stock" : "Solicitar compra";
-            return (
-              <article key={`${item.title || idx}`} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
-                <p className="text-sm font-semibold text-white">{item.title || "Item premium"}</p>
-                <p className="mt-1 text-xs text-slate-400">{item.brand || "Brand"}</p>
-                <p className="mt-2 text-xs text-slate-300">{item.points_price || 0} pts · ${item.cash_price || 0}</p>
-                <div className="mt-3 flex items-center justify-between text-[11px]">
-                  <span className="rounded-full border border-white/20 px-2 py-0.5 text-slate-200">{status.toUpperCase()}</span>
-                  <button disabled={status === "out_of_stock"} className="rounded border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100 disabled:opacity-50">{cta}</button>
-                </div>
-              </article>
-            );
-          })}
+        <section className="rounded-xl border border-violet-300/30 bg-violet-500/10 p-5 text-sm text-violet-100">
+          {contextualTenant
+            ? `Sin catálogo publicado para ${contextualTenant} por ahora.`
+            : "Sin contexto de tenant para abrir catálogo contextual. Este placeholder usa solo estado real y no inventa productos."}
         </section>
+      ) : (
+        <MarketplaceGridClient items={items} />
       )}
     </PortalShell>
   );

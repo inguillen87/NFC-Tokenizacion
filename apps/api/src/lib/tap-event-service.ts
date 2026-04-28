@@ -41,45 +41,6 @@ export type TapEventPayload = {
   rawQuery?: Record<string, unknown>;
 };
 
-let ensureReadCounterColumnPromise: Promise<void> | null = null;
-
-async function ensureEventsReadCounterColumn() {
-  if (!ensureReadCounterColumnPromise) {
-    ensureReadCounterColumnPromise = (async () => {
-      try {
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS read_counter integer`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS city text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS country_code text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS lat double precision`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS lng double precision`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS user_agent text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS source text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS meta jsonb`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS tenant_slug text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS tag_id text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS bid text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS verdict text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS risk_level text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS picc_data_hash text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS cmac_hash text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS raw_url_hash text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS ip_hash text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS geo_precision text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS product_name text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS ip text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS geo_city text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS geo_country text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS device_label text`;
-        await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS raw_query jsonb`;
-      } catch (error) {
-        console.warn('[tap_event_service] unable to ensure events.read_counter column', error);
-      }
-    })();
-  }
-  await ensureReadCounterColumnPromise;
-}
-
 export async function recordTapEvent(payload: TapEventPayload): Promise<number | null> {
   const resultStr = payload.verdict.toUpperCase();
   const sourceStr = payload.source === 'sun' || payload.source === 'real' ? 'real' : payload.source === 'demo' || payload.source === 'demo_simulation' ? 'demo' : 'imported';
@@ -129,9 +90,15 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
     if (eventId) {
       publishRealtimeEvent({
         id: eventId,
+        tenant_id: payload.tenantId || undefined,
         tenant_slug: payload.tenantSlug || undefined,
+        batch_id: payload.batchId || undefined,
+        tag_id: payload.tagId || undefined,
         bid: payload.bid || undefined,
         uid_hex: payload.uidHex || undefined,
+        verdict: payload.verdict,
+        risk_level: payload.riskLevel,
+        product_name: payload.productName || undefined,
         result: resultStr,
         reason: payload.reason || undefined,
         city: payload.city || null,
