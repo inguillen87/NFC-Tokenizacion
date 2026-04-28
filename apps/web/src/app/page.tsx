@@ -23,16 +23,27 @@ import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
 
+type LandingProofEvent = {
+  city: string;
+  country: string;
+  verdict: string;
+  tenant: string;
+  occurredAt: string;
+  uidMasked: string;
+};
+
+type ProofSummary = {
+  tapsToday: number;
+  validRate: number;
+  riskBlocked: number;
+  activeRegions: number;
+  demoMode: boolean;
+  latestPublicEvents: LandingProofEvent[];
+};
+
 export default async function HomePage() {
   // Legacy fallback to avoid deploy breakages if an older landing-proof block is reintroduced by merge cache.
-  const proofSummary: {
-    tapsToday?: number;
-    validRate?: number;
-    riskBlocked?: number;
-    activeRegions?: number;
-    demoMode?: boolean;
-    latestPublicEvents?: unknown[];
-  } = {};
+  const proofSummary: Partial<ProofSummary> = {};
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
   const labels = locale === "en"
