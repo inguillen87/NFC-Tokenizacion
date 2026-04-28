@@ -6,6 +6,10 @@ type Content = any;
 export function HeroSection({ content, stats, locale }: { content: Content; stats: any; locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
+  const hero = content?.hero || {};
+  const heroSubtitle = hero?.subtitle || hero?.body || "";
+  const primaryCta = hero?.cta?.primary || hero?.primary || "Empezar";
+  const secondaryCta = hero?.cta?.secondary || hero?.secondary || "Contacto";
 
   const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza Enterprise";
 
@@ -25,18 +29,18 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
           </div>
 
           <h1 className="mt-8 text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 sm:text-6xl lg:text-7xl">
-            {content.hero.title}
+            {hero.title}
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-400 sm:text-xl">
-            {content.hero.subtitle}
+            {heroSubtitle}
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-6 py-3.5 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
-              {content.hero?.cta?.primary || "Empezar"}
+              {primaryCta}
             </Link>
             <Link href="/docs" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
-              {content.hero?.cta?.secondary || "Contacto"}
+              {secondaryCta}
             </Link>
           </div>
 
