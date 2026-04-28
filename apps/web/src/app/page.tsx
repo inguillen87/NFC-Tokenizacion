@@ -223,18 +223,38 @@ export default async function HomePage() {
     { label: labels.sunCta, href: "/sun" },
   ];
 
-  const proofSummary = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.nexid.lat"}/public/proof/summary`, {
-    next: { revalidate: 30 },
-  })
-    .then((res) => (res.ok ? res.json() : null))
-    .catch(() => null) as {
-      tapsToday?: number;
-      validRate?: number;
-      riskBlocked?: number;
-      activeRegions?: number;
-      demoMode?: boolean;
-      latestPublicEvents?: Array<{ city: string; country: string; verdict: string; tenant: string; occurredAt: string; uidMasked: string }>;
-    } | null;
+  const premiumExplainer = locale === "en"
+    ? {
+      eyebrow: "Premium tokenization + blockchain-ready trust layer",
+      title: "Built for premium brands, resellers, and enterprise teams that need anti-fraud, traceability, and loyalty in one flow.",
+      body: "Each tap validates authenticity, activates the digital passport, and opens tenant-aware commercial actions.",
+      points: [
+        "Tap & verify: SUN/NFC authenticity and trust outcome in seconds.",
+        "Passport & provenance: product context, status, and guided consumer actions.",
+        "Club & marketplace: ownership activation, loyalty and contextual offers.",
+      ],
+    }
+    : locale === "pt-BR"
+      ? {
+        eyebrow: "Premium tokenization + blockchain-ready trust layer",
+        title: "Projetado para marcas premium, revendedores e equipes enterprise que precisam de antifraude, rastreabilidade e fidelização no mesmo fluxo.",
+        body: "Cada tap valida autenticidade, ativa o passport digital e abre ações comerciais por tenant.",
+        points: [
+          "Tap & verificação: autenticidade SUN/NFC e resultado de confiança em segundos.",
+          "Passport & provenance: contexto do produto, estado e ações guiadas ao consumidor.",
+          "Clube & marketplace: ativação de ownership, loyalty e ofertas contextuais.",
+        ],
+      }
+      : {
+        eyebrow: "Premium tokenization + blockchain-ready trust layer",
+        title: "Diseñada para marcas premium, resellers y equipos enterprise que necesitan antifraude, trazabilidad y fidelización en la misma experiencia.",
+        body: "Cada tap valida autenticidad, activa el passport digital y habilita acciones comerciales por tenant.",
+        points: [
+          "Tap & verificación: autenticidad SUN/NFC y estado de confianza en segundos.",
+          "Passport & provenance: contexto de producto, estado y acciones guiadas al consumidor.",
+          "Club & marketplace: activación de ownership, loyalty y ofertas contextuales.",
+        ],
+      };
 
   return (
     <main className="landing-root">
@@ -539,6 +559,19 @@ export default async function HomePage() {
               <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">Commercial layer</p>
               <p className="mt-1 text-sm text-slate-200">Passport, ownership y marketplace para convertir trazabilidad en fidelización.</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-shell py-6 md:py-8">
+        <div className="rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_12%_18%,rgba(6,182,212,.2),transparent_36%),linear-gradient(160deg,#06112b,#0e1638_58%,#131f43)] p-6 md:p-8">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{premiumExplainer.eyebrow}</p>
+          <h2 className="mt-3 max-w-4xl text-2xl font-semibold text-white md:text-4xl">{premiumExplainer.title}</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">{premiumExplainer.body}</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {premiumExplainer.points.map((item) => (
+              <div key={item} className="rounded-xl border border-white/10 bg-slate-950/45 p-4 text-sm text-slate-200">{item}</div>
+            ))}
           </div>
         </div>
       </section>
