@@ -7,7 +7,6 @@ import {
   HeroSection,
   PlansSection,
 } from "../components/landing-sections";
-import { RadarSection } from "../components/radar-section";
 import { InteractiveDemoSection } from "../components/interactive-demo-section";
 import { SalesChatWidget } from "../components/sales-chat-widget";
 import { DemoRequestSection } from "../components/demo-request-section";
@@ -20,69 +19,11 @@ import { ProductExitLink } from "../components/product-exit-link";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight } from "lucide-react";
-import { LandingProofSection, type ProofSummary } from "../components/landing-proof-section";
 
-
-const EMPTY_PROOF_SUMMARY: ProofSummary = {
-  tapsToday: 0,
-  validRate: 0,
-  riskBlocked: 0,
-  activeRegions: 0,
-  demoMode: false,
-  latestPublicEvents: [],
-};
-
-function parsePublicProofSummary(input: unknown): ProofSummary {
-  if (!input || typeof input !== "object") {
-    return EMPTY_PROOF_SUMMARY;
-  }
-
-  const payload = input as Record<string, unknown>;
-  const toNumber = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) ? value : 0);
-  const toBoolean = (value: unknown): boolean => typeof value === "boolean" ? value : false;
-  const toString = (value: unknown): string => (typeof value === "string" ? value : "");
-
-  const latestPublicEvents = Array.isArray(payload.latestPublicEvents)
-    ? payload.latestPublicEvents.flatMap((event) => {
-      if (!event || typeof event !== "object") return [];
-      const eventRecord = event as Record<string, unknown>;
-      const city = toString(eventRecord.city);
-      const country = toString(eventRecord.country);
-      const verdict = toString(eventRecord.verdict);
-      const tenant = toString(eventRecord.tenant);
-      const occurredAt = toString(eventRecord.occurredAt);
-      const uidMasked = toString(eventRecord.uidMasked);
-
-      if (!city || !country || !verdict || !tenant || !occurredAt || !uidMasked) return [];
-
-      return [{ city, country, verdict, tenant, occurredAt, uidMasked }];
-    })
-    : [];
-
-  return {
-    tapsToday: toNumber(payload.tapsToday),
-    validRate: toNumber(payload.validRate),
-    riskBlocked: toNumber(payload.riskBlocked),
-    activeRegions: toNumber(payload.activeRegions),
-    demoMode: toBoolean(payload.demoMode),
-    latestPublicEvents,
-  };
-}
 
 export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
-
-  let proofSummary = EMPTY_PROOF_SUMMARY;
-  try {
-    const proofSummaryResponse = await fetch(`${productUrls.api}/public/proof/summary`, { cache: "no-store" });
-    if (proofSummaryResponse.ok) {
-      const proofSummaryJson: unknown = await proofSummaryResponse.json();
-      proofSummary = parsePublicProofSummary(proofSummaryJson);
-    }
-  } catch {
-    proofSummary = EMPTY_PROOF_SUMMARY;
-  }
 
   const labels = locale === "en"
     ? {
@@ -331,9 +272,7 @@ export default async function HomePage() {
 
 
 
-      <HeroSection content={content} stats={t.web.stats} locale={locale} />
-      <LandingProofSection proof={proofSummary} />
-      <RadarSection radar={content.radar} locale={locale} />
+      <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
       <InteractiveDemoSection locale={locale} />
 
       <PlansSection content={content} />
