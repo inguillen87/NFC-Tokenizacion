@@ -22,6 +22,22 @@ type SecurityPayload = {
   geoVelocityAlerts?: Array<{ uidHex: string; fromCountry: string; toCountry: string; severity: string }>;
 };
 
+type AlertItem = {
+  id: string;
+  type: string;
+  severity: "low" | "medium" | "high" | "critical" | string;
+  status: "open" | "acknowledged" | string;
+  tenant_slug?: string;
+  title?: string;
+  created_at?: string;
+};
+
+type AlertsPayload = {
+  ok?: boolean;
+  reason?: string;
+  items?: AlertItem[];
+};
+
 type TokenizationPayload = {
   ok?: boolean;
   reason?: string;
@@ -96,6 +112,9 @@ export function MultirubroOpsPanel() {
   const [botQuestion, setBotQuestion] = useState("explicame el riesgo actual");
   const [botAnswer, setBotAnswer] = useState("");
   const [liveFeed, setLiveFeed] = useState<LiveFeedItem[]>([]);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [alertSeverityFilter, setAlertSeverityFilter] = useState<string>("");
+  const [alertTypeFilter, setAlertTypeFilter] = useState<string>("");
 
   function normalizeFeedItem(payload: StreamEventPayload): LiveFeedItem {
     return {
@@ -197,10 +216,20 @@ export function MultirubroOpsPanel() {
     }
   }
 
+  function withQuery(path: string, params: Record<string, string>) {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (String(value || "").trim()) qs.set(key, value.trim());
+    }
+    const query = qs.toString();
+    return query ? `${path}?${query}` : path;
+  }
+
   async function loadData() {
-    const [a, s, t, w, d] = await Promise.all([
+    const [a, s, alertsPayload, t, w, d] = await Promise.all([
       fetchJson<AnalyticsPayload>("/api/admin/analytics?range=24h"),
       fetchJson<SecurityPayload>("/api/admin/security-alerts?hours=24"),
+      fetchJson<AlertsPayload>(withQuery("/api/admin/alerts", { severity: alertSeverityFilter, type: alertTypeFilter })),
       fetchJson<TokenizationPayload>("/api/admin/tokenization/requests?limit=20"),
       fetchJson<WalletPayload>("/api/admin/polygon/wallet"),
       fetchJson<DiagnosticsPayload>("/api/admin/diagnostics/live-pipeline"),
@@ -208,6 +237,7 @@ export function MultirubroOpsPanel() {
     const nextWarnings = [
       a?.reason,
       s?.reason,
+      alertsPayload?.reason,
       t?.reason,
       w?.reason,
       d?.ok === false ? "live_pipeline_unavailable" : null,
@@ -215,6 +245,7 @@ export function MultirubroOpsPanel() {
     setWarnings(Array.from(new Set(nextWarnings)));
     setAnalytics(a);
     setSecurity(s);
+    setAlerts(alertsPayload?.items || []);
     setTokenization(t);
     setWallet(w);
     setDiagnostics(d);
@@ -227,7 +258,7 @@ export function MultirubroOpsPanel() {
       if (!streamOnlineRef.current) void loadData();
     }, 10_000);
     return () => clearInterval(timer);
-  }, []);
+  }, [alertSeverityFilter, alertTypeFilter]);
 
   useEffect(() => {
     let active = true;
@@ -542,6 +573,46 @@ export function MultirubroOpsPanel() {
           <button onClick={runBotAnalysis} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Analizar</button>
         </div>
         {botAnswer ? <p className="mt-2 rounded-lg border border-cyan-300/20 bg-cyan-500/5 px-3 py-2 text-xs text-cyan-100">{botAnswer}</p> : null}
+      </div>
+
+      <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/60 p-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Alert center (realtime)</p>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <label className="text-slate-400">Severity
+              <select value={alertSeverityFilter} onChange={(event) => setAlertSeverityFilter(event.target.value)} className="ml-1 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">
+                <option value="">all</option>
+                <option value="critical">critical</option>
+                <option value="high">high</option>
+                <option value="medium">medium</option>
+                <option value="low">low</option>
+              </select>
+            </label>
+            <label className="text-slate-400">Type
+              <select value={alertTypeFilter} onChange={(event) => setAlertTypeFilter(event.target.value)} className="ml-1 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">
+                <option value="">all</option>
+                <option value="replay_spike">replay_spike</option>
+                <option value="tamper_rate">tamper_rate</option>
+                <option value="invalid_rate">invalid_rate</option>
+                <option value="geo_velocity">geo_velocity</option>
+                <option value="new_country_for_uid">new_country_for_uid</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div className="mt-2 space-y-2">
+          {alerts.length ? alerts.slice(0, 12).map((item) => (
+            <div key={item.id} className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold text-rose-200">{item.title || item.type}</span>
+                <span className="text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleTimeString("es-AR") : "n/a"}</span>
+              </div>
+              <p className="mt-1 text-slate-400">{item.type} · {item.severity} · {item.status} · tenant {item.tenant_slug || "n/a"}</p>
+            </div>
+          )) : (
+            <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">Sin alertas para los filtros seleccionados.</p>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/60 p-3">

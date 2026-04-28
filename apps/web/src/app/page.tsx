@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
+import { BrandLockup, BrandMark, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   BulletSection,
   CtaSection,
@@ -23,7 +23,27 @@ import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
 
+type LandingProofEvent = {
+  city: string;
+  country: string;
+  verdict: string;
+  tenant: string;
+  occurredAt: string;
+  uidMasked: string;
+};
+
+type ProofSummary = {
+  tapsToday: number;
+  validRate: number;
+  riskBlocked: number;
+  activeRegions: number;
+  demoMode: boolean;
+  latestPublicEvents: LandingProofEvent[];
+};
+
 export default async function HomePage() {
+  // Legacy fallback to avoid deploy breakages if an older landing-proof block is reintroduced by merge cache.
+  const proofSummary: Partial<ProofSummary> = {};
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
   const labels = locale === "en"
@@ -222,16 +242,64 @@ export default async function HomePage() {
     { label: labels.sunCta, href: "/sun" },
   ];
 
+  const premiumExplainer = locale === "en"
+    ? {
+      eyebrow: "Premium tokenization + blockchain-ready trust layer",
+      title: "Built for premium brands, resellers, and enterprise teams that need anti-fraud, traceability, and loyalty in one flow.",
+      body: "Each tap validates authenticity, activates the digital passport, and opens tenant-aware commercial actions.",
+      points: [
+        "Tap & verify: SUN/NFC authenticity and trust outcome in seconds.",
+        "Passport & provenance: product context, status, and guided consumer actions.",
+        "Club & marketplace: ownership activation, loyalty and contextual offers.",
+      ],
+    }
+    : locale === "pt-BR"
+      ? {
+        eyebrow: "Premium tokenization + blockchain-ready trust layer",
+        title: "Projetado para marcas premium, revendedores e equipes enterprise que precisam de antifraude, rastreabilidade e fidelização no mesmo fluxo.",
+        body: "Cada tap valida autenticidade, ativa o passport digital e abre ações comerciais por tenant.",
+        points: [
+          "Tap & verificação: autenticidade SUN/NFC e resultado de confiança em segundos.",
+          "Passport & provenance: contexto do produto, estado e ações guiadas ao consumidor.",
+          "Clube & marketplace: ativação de ownership, loyalty e ofertas contextuais.",
+        ],
+      }
+      : {
+        eyebrow: "Premium tokenization + blockchain-ready trust layer",
+        title: "Diseñada para marcas premium, resellers y equipos enterprise que necesitan antifraude, trazabilidad y fidelización en la misma experiencia.",
+        body: "Cada tap valida autenticidad, activa el passport digital y habilita acciones comerciales por tenant.",
+        points: [
+          "Tap & verificación: autenticidad SUN/NFC y estado de confianza en segundos.",
+          "Passport & provenance: contexto de producto, estado y acciones guiadas al consumidor.",
+          "Club & marketplace: activación de ownership, loyalty y ofertas contextuales.",
+        ],
+      };
+
   return (
-    <main>
+    <main className="landing-root">
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
-        <div className="container-shell header-main-row flex h-20 items-center justify-between gap-3 sm:h-24 lg:h-28">
+        <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={56} variant="ripple" theme="dark" className="hero-brand site-main-brand sm:hidden" />
-            <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand hidden sm:inline-flex" />
+            <span className="inline-flex items-center gap-2 px-1 py-1">
+              <BrandMark
+                size={28}
+                variant="ripple"
+                theme="dark"
+                className="lg:hidden text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+              />
+              <span className="hidden items-center gap-2 lg:inline-flex">
+                <BrandMark
+                  size={28}
+                  variant="ripple"
+                  theme="dark"
+                  className="text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+                />
+                <span className="text-base font-semibold tracking-tight text-white">nex<span className="text-cyan-300">ID</span></span>
+              </span>
+            </span>
           </Link>
 
-          <nav className="hidden gap-6 text-sm md:flex site-nav">
+          <nav className="hidden gap-6 text-sm lg:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
@@ -248,10 +316,10 @@ export default async function HomePage() {
               primaryCtaHref="/?contact=demo#contact-modal"
               primaryCtaLabel={labels.mobileCtaDemo}
             />
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <LocaleSwitcher value={locale} options={[...locales]} />
             </div>
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <ThemeToggle />
             </div>
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
@@ -280,15 +348,20 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="container-shell pb-2 md:hidden">
-        <div className="grid grid-cols-3 gap-2">
-          <Link href="/docs" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
-          <Link href="/pricing" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-medium text-slate-100">{content.nav.pricing}</Link>
-          <Link href="/?contact=demo#contact-modal" className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-center text-xs font-medium text-cyan-100">{labels.mobileCtaDemo}</Link>
+      <HeroSection content={content} stats={t.web.stats} locale={locale} />
+
+      <section className="container-shell py-6 md:py-8">
+        <div className="rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_12%_18%,rgba(6,182,212,.2),transparent_36%),linear-gradient(160deg,#06112b,#0e1638_58%,#131f43)] p-6 md:p-8">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{premiumExplainer.eyebrow}</p>
+          <h2 className="mt-3 max-w-4xl text-2xl font-semibold text-white md:text-4xl">{premiumExplainer.title}</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">{premiumExplainer.body}</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {premiumExplainer.points.map((item) => (
+              <div key={item} className="rounded-xl border border-white/10 bg-slate-950/45 p-4 text-sm text-slate-200">{item}</div>
+            ))}
+          </div>
         </div>
       </section>
-
-      <HeroSection content={content} stats={t.web.stats} locale={locale} />
 
       <section className="container-shell py-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
@@ -385,7 +458,7 @@ export default async function HomePage() {
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
+            <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand brand-surface-footer" />
           </Link>
           <p className="text-sm site-muted">nexID es una plataforma de identidad física verificable: une carriers como NFC/QR con verificación, estado y derechos digitales para empresas y gobiernos.</p>
           <div className="flex flex-wrap gap-2">
