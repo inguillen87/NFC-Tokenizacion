@@ -35,6 +35,12 @@ export async function POST(req: Request) {
   await ensurePresetUser(sql as any, email, { context: 'login' });
   const user = await getAuthUserByEmail(sql as any, email);
 
+  const userStatus = String((user as { admin_status?: string } | null)?.admin_status || 'active');
+  if (user && userStatus !== 'active') {
+    await auditAuthEvent(sql as any, { email, eventName: 'login_blocked', ok: false, role: user.role, ...meta, meta: { reason: 'user_not_active', source: 'dashboard', userStatus } }).catch(() => null);
+    return json({ ok: false, reason: userStatus === 'disabled' ? 'account disabled' : 'account pending activation' }, 403);
+  }
+
   if (!user || !verifyPassword(password, String(user.password_hash || ''))) {
     await auditAuthEvent(sql as any, { email, eventName: 'login_failed', ok: false, role: user?.role, ...meta, meta: { reason: 'invalid_credentials', source: 'dashboard' } }).catch(() => null);
     return json({ ok: false, reason: 'invalid credentials' }, 401);
