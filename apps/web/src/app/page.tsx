@@ -24,14 +24,71 @@ import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight, CirclePlay, Layers3, Sparkles } from "lucide-react";
 
+const EMPTY_PROOF_SUMMARY: ProofSummary = {
+  tapsToday: 0,
+  validRate: 0,
+  riskBlocked: 0,
+  activeRegions: 0,
+  demoMode: false,
+  latestPublicEvents: [],
+};
+
+function parsePublicProofSummary(input: unknown): ProofSummary {
+  if (!input || typeof input !== "object") {
+    return EMPTY_PROOF_SUMMARY;
+  }
+
+  const payload = input as Record<string, unknown>;
+  const toNumber = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) ? value : 0);
+  const toBoolean = (value: unknown): boolean => typeof value === "boolean" ? value : false;
+  const toString = (value: unknown): string => typeof value === "string" ? value : "";
+
+  const latestPublicEvents = Array.isArray(payload.latestPublicEvents)
+    ? payload.latestPublicEvents.flatMap((event) => {
+      if (!event || typeof event !== "object") {
+        return [];
+      }
+
+      const eventRecord = event as Record<string, unknown>;
+      const city = toString(eventRecord.city);
+      const country = toString(eventRecord.country);
+      const verdict = toString(eventRecord.verdict);
+      const tenant = toString(eventRecord.tenant);
+      const occurredAt = toString(eventRecord.occurredAt);
+      const uidMasked = toString(eventRecord.uidMasked);
+
+      if (!city || !country || !verdict || !tenant || !occurredAt || !uidMasked) {
+        return [];
+      }
+
+      return [{ city, country, verdict, tenant, occurredAt, uidMasked }];
+    })
+    : [];
+
+  return {
+    tapsToday: toNumber(payload.tapsToday),
+    validRate: toNumber(payload.validRate),
+    riskBlocked: toNumber(payload.riskBlocked),
+    activeRegions: toNumber(payload.activeRegions),
+    demoMode: toBoolean(payload.demoMode),
+    latestPublicEvents,
+  };
+}
+
 export default async function HomePage() {
-  // Legacy fallback to avoid deploy breakages if an older landing-proof block is reintroduced by merge cache.
-  const proofSummary: Partial<ProofSummary> = {};
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
-  const proofSummaryResponse = await fetch(`${productUrls.api}/public/proof/summary`, { cache: "no-store" }).catch(() => null);
-  const proofSummaryJson = proofSummaryResponse?.ok ? await proofSummaryResponse.json().catch(() => ({})) : {};
-  const proofSummary = (proofSummaryJson || {}) as Partial<ProofSummary>;
+
+  let proofSummary = EMPTY_PROOF_SUMMARY;
+  try {
+    const proofSummaryResponse = await fetch(`${productUrls.api}/public/proof/summary`, { cache: "no-store" });
+    if (proofSummaryResponse.ok) {
+      const proofSummaryJson: unknown = await proofSummaryResponse.json();
+      proofSummary = parsePublicProofSummary(proofSummaryJson);
+    }
+  } catch {
+    proofSummary = EMPTY_PROOF_SUMMARY;
+  }
   const labels = locale === "en"
     ? {
       demoJson: "Download seed JSON",
@@ -326,16 +383,7 @@ export default async function HomePage() {
       </section>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
-      <LandingProofSection
-        proof={{
-          tapsToday: Number(proofSummary.tapsToday || 0),
-          validRate: Number(proofSummary.validRate || 0),
-          riskBlocked: Number(proofSummary.riskBlocked || 0),
-          activeRegions: Number(proofSummary.activeRegions || 0),
-          demoMode: Boolean(proofSummary.demoMode),
-          latestPublicEvents: proofSummary.latestPublicEvents ?? [],
-        }}
-      />
+      <LandingProofSection proof={proofSummary} />
 
       <section className="container-shell py-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
