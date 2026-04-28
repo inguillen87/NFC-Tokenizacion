@@ -41,6 +41,24 @@ export type NexidTapEvent = {
   isDemo: boolean;
 };
 
+export type TenantTapRealtimeEvent = {
+  eventId: string;
+  tenantId: string | null;
+  tenantSlug: string | null;
+  batchId: string | null;
+  tagId: string | null;
+  uidMasked: string;
+  occurredAt: string;
+  verdict: string;
+  riskLevel: string;
+  city?: string | null;
+  country?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  productName?: string | null;
+  source: "production" | "demo";
+};
+
 const WEIGHTS = {
   replay: 45,
   invalid: 25,
@@ -74,6 +92,38 @@ function verdictToRiskLevel(verdict: NexidEventVerdict): NexidTapEvent["riskLeve
   if (verdict === "revoked" || verdict === "broken") return "critical";
   if (verdict === "invalid" || verdict === "unknown_batch" || verdict === "not_registered" || verdict === "not_active") return "medium";
   return "low";
+}
+
+export function maskUid(uid: string | null | undefined) {
+  const value = String(uid || "").trim().toUpperCase();
+  if (!value) return "N/A";
+  if (value.length <= 6) return `${value.slice(0, 1)}***${value.slice(-1)}`;
+  return `${value.slice(0, 4)}****${value.slice(-2)}`;
+}
+
+export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): TenantTapRealtimeEvent {
+  const normalized = normalizeEvent(row);
+  const tenantId = row.tenant_id == null ? null : String(row.tenant_id);
+  const batchId = row.batch_id == null ? (normalized.bid || null) : String(row.batch_id);
+  const tagId = row.tag_id == null ? null : String(row.tag_id);
+  const productName = row.product_name == null ? null : String(row.product_name);
+  return {
+    eventId: String(normalized.id || row.event_id || `${normalized.createdAt || Date.now()}`),
+    tenantId,
+    tenantSlug: normalized.tenantSlug || null,
+    batchId,
+    tagId,
+    uidMasked: maskUid(normalized.uidHex || null),
+    occurredAt: normalized.createdAt || new Date().toISOString(),
+    verdict: normalized.verdict,
+    riskLevel: normalized.riskLevel,
+    city: normalized.city || null,
+    country: normalized.countryCode || null,
+    lat: normalized.lat ?? null,
+    lng: normalized.lng ?? null,
+    productName,
+    source: normalized.isDemo ? "demo" : "production",
+  };
 }
 
 export function computeRiskScore(input: RiskScoreInput): RiskScoreBreakdown {
