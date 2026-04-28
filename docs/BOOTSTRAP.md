@@ -30,3 +30,9 @@ Variables opcionales:
 - El bootstrap es idempotente (upsert de usuario/membresías/permisos).
 - No imprime valores secretos.
 - El login normal no debe usarse como bootstrap implícito en producción.
+
+
+## Consumer OTP auth
+- `CONSUMER_AUTH_MODE=demo|provider`
+- `DEMO_MODE=true` permite retornar `code` en respuestas para pruebas locales.
+- `OTP_TTL_MINUTES`, `OTP_MAX_ATTEMPTS`, `OTP_PROVIDER_API_KEY` configuran expiración, intentos y provider.

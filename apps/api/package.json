@@ -23,7 +23,7 @@
     "contracts:deploy:amoy": "hardhat run scripts/deploy-nexid-amoy.mjs --network amoy",
     "bootstrap:tenant": "node scripts/bootstrap-enterprise-tenant.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
-    "test:sun": "node --test tests/sun-error-sanitization.test.mjs",
+    "test:sun": "node --test tests/sun-*.test.mjs",
     "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",
     "test:demo-corpus": "node --test tests/demo-corpus-smoke.test.mjs",
     "demo:smoke": "node scripts/demo-smoke.mjs",

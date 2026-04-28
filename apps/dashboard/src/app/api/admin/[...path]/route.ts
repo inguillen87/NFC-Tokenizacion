@@ -471,6 +471,7 @@ async function forward(req: Request, path: string[]) {
   const scopedRole = dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
 
   if (scopedRole === "readonly_demo" && !canReadonlyDemoAccess(req.method, normalizedPath)) {
+    console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "readonly_demo_mutation_blocked", method: req.method, path: normalizedPath }));
     return NextResponse.json(
       { ok: false, reason: "readonly_demo scope only allows GET access to demo-safe admin resources." },
       { status: 403 },
@@ -514,7 +515,7 @@ async function forward(req: Request, path: string[]) {
     if (req.method === "GET" && normalizedPath === "tokenization/requests") {
       return NextResponse.json(annotatePayload({ ok: false, reason, rows: [] }, "production"));
     }
-    return NextResponse.json(annotatePayload({ ok: false, reason }, "production"), { status: 503 });
+    return NextResponse.json(annotatePayload({ ok: false, reason }, "production"), { status: 502 });
   };
 
   if (!hasAdminKey && !scopedRole && (!demoSession || !allowDemoFallbackForRequest)) {
@@ -529,6 +530,7 @@ async function forward(req: Request, path: string[]) {
   }
 
   if (demoSession && allowDemoFallbackForRequest) {
+    console.info("[admin_proxy_demo_fallback]", JSON.stringify({ method: req.method, path: normalizedPath, scopedRole: scopedRole || "none" }));
     return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
 

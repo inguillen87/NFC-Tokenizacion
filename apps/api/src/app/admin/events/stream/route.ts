@@ -107,6 +107,13 @@ export async function GET(req: Request): Promise<Response> {
   const { searchParams } = new URL(req.url);
   const requestId = req.headers.get("x-request-id") || req.headers.get("x-nexid-request-id") || randomUUID();
   const encoder = new TextEncoder();
+  if ((scope === "tenant_admin" || scope === "reseller") && forcedTenantSlug) {
+    const requestedTenant = String(searchParams.get("tenant") || "").trim().toLowerCase();
+    if (requestedTenant && requestedTenant !== forcedTenantSlug) {
+      return new Response(JSON.stringify({ ok: false, reason: "forbidden_tenant_scope" }), { status: 403, headers: { "content-type": "application/json" } });
+    }
+  }
+  console.info("[admin_sse_access]", JSON.stringify({ requestId, scope: scope || "none", forcedTenantSlug: forcedTenantSlug || null }));
 
   const stream = new ReadableStream({
     async start(controller) {

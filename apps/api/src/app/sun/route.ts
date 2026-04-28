@@ -9,10 +9,12 @@ import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
 import { buildLifecycleState, listDemoCta } from '../../lib/demo-cta';
 import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
 import { mapVerdictAndRisk, resolveActionMatrix } from '../../lib/sun-passport-policy';
+import { getRequestMeta } from '../../lib/request-meta';
+import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
 
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
-const rateMap = new Map<string, { count: number; start: number }>();
+const RATE_LIMIT_MAX_IP = Number(process.env.SUN_RATE_LIMIT_IP_PER_MIN || 120);
+const RATE_LIMIT_MAX_BID = Number(process.env.SUN_RATE_LIMIT_BID_PER_MIN || 240);
+const RATE_LIMIT_MAX_UID_CTR = Number(process.env.SUN_RATE_LIMIT_UID_CTR_PER_MIN || 30);
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 const HEX_RE = /^[0-9A-F]+$/i;
 
@@ -173,19 +175,6 @@ const BID_PASSPORT_PRESETS: Record<string, {
     wineryCoordinates: { lat: -33.0377, lng: -68.8841 },
   },
 };
-
-function isRateLimited(ip: string | null) {
-  if (!ip) return false;
-  const now = Date.now();
-  const current = rateMap.get(ip);
-  if (!current || now - current.start > RATE_LIMIT_WINDOW_MS) {
-    rateMap.set(ip, { count: 1, start: now });
-    return false;
-  }
-  current.count += 1;
-  rateMap.set(ip, current);
-  return current.count > RATE_LIMIT_MAX;
-}
 
 function wantsHtml(req: Request, url: URL) {
   const force = (url.searchParams.get('view') || '').toLowerCase();
@@ -1065,10 +1054,12 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const eventId = ${JSON.stringify(contract.identity.eventId || null)};
   const canAssociate = ${JSON.stringify(contract.status.tone === "good" && contract.status.code !== "REPLAY_SUSPECT")};
   const appBase = (() => {
+    const currentOrigin = window.location.origin;
     try {
-      return new URL(${JSON.stringify(contract.cta.portalUrl)}).origin;
+      const portalOrigin = new URL(${JSON.stringify(contract.cta.portalUrl)}).origin;
+      return portalOrigin || currentOrigin;
     } catch {
-      return window.location.origin;
+      return currentOrigin;
     }
   })();
   const nfcBtn = document.getElementById('nfc-scan');
@@ -1256,26 +1247,37 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
 
 export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  const traceId = req.headers.get("x-nexid-trace-id") || req.headers.get("x-request-id") || `sun_${Date.now().toString(36)}`;
+  const meta = getRequestMeta(req);
+  const traceId = meta.traceId;
   const bid = url.searchParams.get('bid') || '';
   const picc_data = url.searchParams.get('picc_data') || '';
   const enc = url.searchParams.get('enc') || '';
   const cmac = url.searchParams.get('cmac') || '';
 
   const ua = req.headers.get('user-agent') || '';
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null;
+  const ip = meta.ip;
   const geoCity = safeDecode(req.headers.get('x-vercel-ip-city'));
   const geoCountry = req.headers.get('x-vercel-ip-country') || null;
   const geoLat = Number(req.headers.get('x-vercel-ip-latitude') || '');
   const geoLng = Number(req.headers.get('x-vercel-ip-longitude') || '');
   const locale = resolveSunLocale(url, geoCountry, req.headers.get('accept-language'));
 
-  if (isRateLimited(ip)) return json({ ok: false, reason: 'rate_limited', limitPerMinute: RATE_LIMIT_MAX }, 429);
-  if (!bid || !picc_data || !enc || !cmac) return json({ ok: false, reason: 'missing params', need: ['bid', 'picc_data', 'enc', 'cmac'] }, 400);
-  if (!BID_RE.test(bid)) return json({ ok: false, reason: 'invalid bid format' }, 400);
-  if (!HEX_RE.test(picc_data) || picc_data.length % 2 !== 0) return json({ ok: false, reason: 'invalid picc_data hex' }, 400);
-  if (!HEX_RE.test(enc) || enc.length !== 32) return json({ ok: false, reason: 'invalid enc hex (expected 32 hex chars)' }, 400);
-  if (!HEX_RE.test(cmac) || cmac.length !== 16) return json({ ok: false, reason: 'invalid cmac hex (expected 16 hex chars)' }, 400);
+  const uidLike = (url.searchParams.get("uid") || "").trim();
+  const ctrLike = (url.searchParams.get("ctr") || "").trim();
+  const uidCtrKey = `${uidLike || "no_uid"}:${ctrLike || "no_ctr"}`;
+  const [ipRate, bidRate, uidCtrRate] = await Promise.all([
+    hitSunRateLimit('ip', ip || 'unknown', 60, RATE_LIMIT_MAX_IP),
+    hitSunRateLimit('bid', bid || 'unknown', 60, RATE_LIMIT_MAX_BID),
+    hitSunRateLimit('uid_ctr', uidCtrKey, 60, RATE_LIMIT_MAX_UID_CTR),
+  ]);
+  if (ipRate.limited || bidRate.limited || uidCtrRate.limited) {
+    return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  }
+  if (!bid || !picc_data || !enc || !cmac) return json({ ok: false, reason: 'missing params', need: ['bid', 'picc_data', 'enc', 'cmac'] }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  if (!BID_RE.test(bid)) return json({ ok: false, reason: 'invalid bid format' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  if (!HEX_RE.test(picc_data) || picc_data.length % 2 !== 0) return json({ ok: false, reason: 'invalid picc_data hex' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  if (!HEX_RE.test(enc) || enc.length !== 32) return json({ ok: false, reason: 'invalid enc hex (expected 32 hex chars)' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  if (!HEX_RE.test(cmac) || cmac.length !== 16) return json({ ok: false, reason: 'invalid cmac hex (expected 16 hex chars)' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
 
   let result: SunResult;
   try {
@@ -1438,6 +1440,7 @@ export async function GET(req: Request): Promise<Response> {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
         'x-nexid-trace-id': traceId,
+        'x-request-id': traceId,
         'x-nexid-upstream-status': String(result.status || 200),
       },
     });
@@ -1445,6 +1448,7 @@ export async function GET(req: Request): Promise<Response> {
 
   const response = json(contract, result.status);
   response.headers.set("x-nexid-trace-id", traceId);
+  response.headers.set("x-request-id", traceId);
   if (diagnosticId) response.headers.set("x-nexid-diagnostic-id", String(diagnosticId));
   if (eventId) response.headers.set("x-nexid-event-id", String(eventId));
   return response;

@@ -81,3 +81,31 @@ Los scripts imprimen passwords demo solamente fuera de producción.
 - Todo dato demo debe viajar con metadata identificable (`source='demo'` o metadata demo).
 - No mezclar marcas reales ni credenciales reales.
 - Demo fallback debe estar explícitamente habilitado por env y visible en UI.
+
+## Runtime wiring contract for `/sun` HTML
+
+`/sun?view=html` ejecuta CTAs autenticados de consumidor usando rutas relativas `/api/...` del **host donde se sirve el HTML**.
+
+### Estrategia adoptada: B (proxy explícito en web)
+
+Cuando el HTML se consume desde `web` (`nexid.lat`), ese host debe exponer proxies hacia API para evitar CORS/404 y mantener cookies HTTP-only en el dominio web.
+
+Rutas requeridas en web:
+- `/api/consumer/auth/start`
+- `/api/consumer/auth/verify`
+- `/api/consumer/auth/logout`
+- `/api/consumer/me`
+- `/api/mobile/passport/[eventId]/consumer/join-tenant`
+- `/api/mobile/passport/[eventId]/consumer/save-product`
+- `/api/mobile/passport/[eventId]/consumer/claim`
+- `/api/mobile/passport/[eventId]/loyalty/enroll`
+
+### Correlation ID
+
+Los proxies web reenvían `x-correlation-id` al API y, si no viene en request, generan uno nuevo. Ese mismo valor se devuelve en la respuesta del proxy para trazabilidad cross-service.
+
+### Despliegue
+
+- `NEXT_PUBLIC_API_URL`/`API_BASE_URL` debe apuntar al origin público de API.
+- Si `/sun` se sirve directamente desde API, el flujo puede operar sin proxy web (mismo host del HTML).
+- Si `/sun` se consume desde web/app, el proxy anterior es obligatorio para que el tap verificado complete auth/join/save/claim sin CORS.
