@@ -26,7 +26,8 @@
     "test:sun": "node --test tests/sun-error-sanitization.test.mjs",
     "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",
     "test:demo-corpus": "node --test tests/demo-corpus-smoke.test.mjs",
-    "demo:smoke": "node scripts/demo-smoke.mjs"
+    "demo:smoke": "node scripts/demo-smoke.mjs",
+    "bootstrap:saas": "node scripts/bootstrap-saas.mjs"
   },
   "dependencies": {
     "next": "^15.0.0",
