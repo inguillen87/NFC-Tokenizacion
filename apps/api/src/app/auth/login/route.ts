@@ -14,12 +14,12 @@ function normalizeLoginEmail(rawEmail: string) {
   if (normalized.includes('@')) return normalized;
 
   const aliases: Record<string, string | undefined> = {
-    'superadmin': process.env.SUPER_ADMIN_EMAIL || process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'inguillen@nexid.lat',
-    'super-admin': process.env.SUPER_ADMIN_EMAIL || process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'inguillen@nexid.lat',
-    'bodegaadmin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'demobodega@nexid.lat',
-    'bodega-admin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'demobodega@nexid.lat',
-    'tenantadmin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'demobodega@nexid.lat',
-    'tenant-admin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'demobodega@nexid.lat',
+    'superadmin': process.env.SUPER_ADMIN_EMAIL || process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'super-admin@example.com',
+    'super-admin': process.env.SUPER_ADMIN_EMAIL || process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'super-admin@example.com',
+    'bodegaadmin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'tenant-admin@example.com',
+    'bodega-admin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'tenant-admin@example.com',
+    'tenantadmin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'tenant-admin@example.com',
+    'tenant-admin': process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL || 'tenant-admin@example.com',
   };
   return String(aliases[normalized] || normalized).trim().toLowerCase();
 }

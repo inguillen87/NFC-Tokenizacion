@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
+import { BrandLockup, BrandMark, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   BulletSection,
   CtaSection,
@@ -9,7 +9,6 @@ import {
   ResellerSection,
 } from "../components/landing-sections";
 import { RadarSection } from "../components/radar-section";
-import { InteractiveDemoSection } from "../components/interactive-demo-section";
 import { SalesChatWidget } from "../components/sales-chat-widget";
 import { DemoRequestSection } from "../components/demo-request-section";
 import { MobileNavSheet } from "../components/mobile-nav-sheet";
@@ -21,22 +20,13 @@ import { ProductExitLink } from "../components/product-exit-link";
 import { PublicLinkChip } from "../components/public-link-chip";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
-import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
+import { ArrowRight, CirclePlay, Layers3, Sparkles } from "lucide-react";
 
 export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
   const labels = locale === "en"
     ? {
-      demoJson: "Download seed JSON",
-      demoCsv: "Download manifest CSV",
-      launchLab: "Open Demo Lab",
-      assetTitle: "Demo Pack Library",
-      assetBody: "Use these files for technical pilots: JSON seeds simulate events and CSV manifests map UID/tag metadata per vertical.",
-      whyJson: "Seed JSON: scenario events (tap/open/tamper) to preload demos",
-      whyCsv: "Manifest CSV: UID/tag mapping for batch import and operational traceability",
-      whyLab: "Demo Lab: controlled test console to simulate scans and verify end-to-end flow",
-      forWho: "For agencies, investors, resellers, enterprise buyers and internal sales teams.",
       quickNavTitle: "Quick access",
       quickFaq: "FAQ",
       quickStack: "Stack",
@@ -75,15 +65,6 @@ export default async function HomePage() {
     }
     : locale === "pt-BR"
     ? {
-      demoJson: "Baixar seed JSON",
-      demoCsv: "Baixar manifest CSV",
-      launchLab: "Abrir Demo Lab",
-      assetTitle: "Biblioteca de Demo Packs",
-      assetBody: "Use estes arquivos em pilotos técnicos: JSON simula eventos e CSV mapeia UID/tag por vertical.",
-      whyJson: "Seed JSON: eventos de cenário (tap/open/tamper) para pré-carregar demos",
-      whyCsv: "Manifest CSV: mapeamento UID/tag para import de lote e rastreabilidade",
-      whyLab: "Demo Lab: console controlado para simular scans e validar o fluxo completo",
-      forWho: "Para agências, investidores, revendedores, compradores enterprise e times de vendas.",
       quickNavTitle: "Acesso rápido",
       quickFaq: "FAQ",
       quickStack: "Stack",
@@ -121,15 +102,6 @@ export default async function HomePage() {
       sunCta: "Abrir SUN validation center",
     }
     : {
-      demoJson: "Descargar seed JSON",
-      demoCsv: "Descargar manifest CSV",
-      launchLab: "Abrir Demo Lab",
-      assetTitle: "Biblioteca de Demo Packs",
-      assetBody: "Usá estos archivos para pilotos técnicos: JSON simula eventos y CSV mapea UID/tag por vertical.",
-      whyJson: "Seed JSON: eventos de escenario (tap/open/tamper) para precargar demos",
-      whyCsv: "Manifest CSV: mapeo UID/tag para importar lotes y trazabilidad operativa",
-      whyLab: "Demo Lab: consola controlada para simular lecturas y validar el flujo end-to-end",
-      forWho: "Para agencias, inversores, resellers, compradores enterprise y equipos comerciales.",
       quickNavTitle: "Acceso rápido",
       quickFaq: "FAQ",
       quickStack: "Stack",
@@ -166,15 +138,6 @@ export default async function HomePage() {
       investorCta: "Abrir investor snapshot",
       sunCta: "Abrir SUN validation center",
     };
-
-  const demoPacks = [
-    { key: "wine-secure", label: "Wine secure", tag: "NTAG 424 DNA TT", sim: "Bottle passport + uncork/tamper flow" },
-    { key: "events-basic", label: "Events basic", tag: "NTAG215", sim: "Wristband access + duplicate gate control" },
-    { key: "cosmetics-secure", label: "Cosmetics secure", tag: "NTAG 424 DNA TT", sim: "Cap opening + authenticity state" },
-    { key: "agro-secure", label: "Agro secure", tag: "NTAG 424 DNA TT", sim: "Bag tear + lot/origin validation" },
-    { key: "pharma-secure", label: "Docs & presence secure", tag: "NTAG 424 DNA", sim: "Certificates + contractor credential + proof-of-presence" },
-    { key: "luxury-basic", label: "Luxury basic", tag: "NTAG215", sim: "Brand story + ownership activation" },
-  ];
 
   const techMatrix = locale === "en"
     ? {
@@ -223,15 +186,30 @@ export default async function HomePage() {
   ];
 
   return (
-    <main>
+    <main className="landing-root">
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
-        <div className="container-shell header-main-row flex h-20 items-center justify-between gap-3 sm:h-24 lg:h-28">
+        <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={56} variant="ripple" theme="dark" className="hero-brand site-main-brand sm:hidden" />
-            <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand hidden sm:inline-flex" />
+            <span className="inline-flex items-center gap-2 px-1 py-1">
+              <BrandMark
+                size={28}
+                variant="ripple"
+                theme="dark"
+                className="lg:hidden text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+              />
+              <span className="hidden items-center gap-2 lg:inline-flex">
+                <BrandMark
+                  size={28}
+                  variant="ripple"
+                  theme="dark"
+                  className="text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+                />
+                <span className="text-base font-semibold tracking-tight text-white">nex<span className="text-cyan-300">ID</span></span>
+              </span>
+            </span>
           </Link>
 
-          <nav className="hidden gap-6 text-sm md:flex site-nav">
+          <nav className="hidden gap-6 text-sm lg:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
@@ -248,10 +226,10 @@ export default async function HomePage() {
               primaryCtaHref="/?contact=demo#contact-modal"
               primaryCtaLabel={labels.mobileCtaDemo}
             />
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <LocaleSwitcher value={locale} options={[...locales]} />
             </div>
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <ThemeToggle />
             </div>
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
@@ -277,14 +255,6 @@ export default async function HomePage() {
             <PublicLinkChip href="/audiences" variant="violet" className="quick-link-chip">{labels.quickAudiences}</PublicLinkChip>
             <PublicLinkChip href={productExitHref.demoLab} variant="amber" icon={<CirclePlay className="h-3.5 w-3.5" />} className="quick-link-chip">{labels.quickDemoLab}</PublicLinkChip>
           </div>
-        </div>
-      </section>
-
-      <section className="container-shell pb-2 md:hidden">
-        <div className="grid grid-cols-3 gap-2">
-          <Link href="/docs" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
-          <Link href="/pricing" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs font-medium text-slate-100">{content.nav.pricing}</Link>
-          <Link href="/?contact=demo#contact-modal" className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-center text-xs font-medium text-cyan-100">{labels.mobileCtaDemo}</Link>
         </div>
       </section>
 
@@ -314,51 +284,12 @@ export default async function HomePage() {
       </section>
 
       <RadarSection radar={content.radar} locale={locale} />
-      <InteractiveDemoSection locale={locale} />
 
       <PlansSection content={content} />
       <EventsTagPositioningSection locale={locale} />
 
       <ResellerSection content={content} />
       <BulletSection eyebrow={content.identity.eyebrow} title={content.identity.title} description={content.identity.description} bullets={content.identity.bullets} />
-
-      <section className="container-shell py-8">
-        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{labels.assetTitle}</p>
-          <p className="mt-2 text-sm text-slate-300">{labels.assetBody}</p>
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {demoPacks.map((pack) => (
-              <div key={pack.key} className="group rounded-xl border border-white/10 bg-slate-950/70 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-slate-950 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
-                <p className="text-sm font-semibold text-white">{pack.label} <span className="text-cyan-300">· {pack.tag}</span></p>
-                <p className="mt-1 text-xs text-slate-300">{pack.sim}</p>
-                <div className="mt-3 grid gap-2 md:grid-cols-3">
-                  <a className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white transition-colors duration-200 group-hover:border-white/20" href={`/demo/${pack.key}/seed.json`} download><FileJson className="h-3.5 w-3.5" />{labels.demoJson}</a>
-                  <a className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white transition-colors duration-200 group-hover:border-white/20" href={`/demo/${pack.key}/manifest.csv`} download><FileSpreadsheet className="h-3.5 w-3.5" />{labels.demoCsv}</a>
-                  <ProductExitLink kind="demoLab" className="inline-flex items-center justify-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200 transition-transform duration-200 group-hover:translate-x-0.5"><CirclePlay className="h-3.5 w-3.5" />{labels.launchLab}</ProductExitLink>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 grid gap-2 text-xs text-slate-300 md:grid-cols-4">
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyJson}</div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyCsv}</div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyLab}</div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.forWho}</div>
-          </div>
-          <div className="mt-5 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{labels.rolloutTitle}</p>
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {labels.rolloutBullets.map((item) => (
-                <div key={item} className="rounded-lg border border-cyan-300/15 bg-slate-950/50 p-3 text-xs text-slate-200 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-slate-950/70">{item}</div>
-              ))}
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/docs" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutDocs}<ArrowRight className="h-3.5 w-3.5" /></Link>
-              <Link href="/pricing" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutPricing}<ArrowRight className="h-3.5 w-3.5" /></Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <section className="container-shell py-8">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
@@ -385,7 +316,7 @@ export default async function HomePage() {
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
+            <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand brand-surface-footer" />
           </Link>
           <p className="text-sm site-muted">nexID es una plataforma de identidad física verificable: une carriers como NFC/QR con verificación, estado y derechos digitales para empresas y gobiernos.</p>
           <div className="flex flex-wrap gap-2">
