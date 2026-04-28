@@ -31,6 +31,8 @@ export default async function HomePage() {
     validRate?: number;
     riskBlocked?: number;
     activeRegions?: number;
+    demoMode?: boolean;
+    latestPublicEvents?: unknown[];
   } = {};
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
@@ -566,6 +568,19 @@ export default async function HomePage() {
               <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">Commercial layer</p>
               <p className="mt-1 text-sm text-slate-200">Passport, ownership y marketplace para convertir trazabilidad en fidelización.</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-shell py-6 md:py-8">
+        <div className="rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_12%_18%,rgba(6,182,212,.2),transparent_36%),linear-gradient(160deg,#06112b,#0e1638_58%,#131f43)] p-6 md:p-8">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{premiumExplainer.eyebrow}</p>
+          <h2 className="mt-3 max-w-4xl text-2xl font-semibold text-white md:text-4xl">{premiumExplainer.title}</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">{premiumExplainer.body}</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {premiumExplainer.points.map((item) => (
+              <div key={item} className="rounded-xl border border-white/10 bg-slate-950/45 p-4 text-sm text-slate-200">{item}</div>
+            ))}
           </div>
         </div>
       </section>
