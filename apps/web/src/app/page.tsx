@@ -13,7 +13,6 @@ import { InteractiveDemoSection } from "../components/interactive-demo-section";
 import { SalesChatWidget } from "../components/sales-chat-widget";
 import { DemoRequestSection } from "../components/demo-request-section";
 import { MobileNavSheet } from "../components/mobile-nav-sheet";
-import { LiveProofSection } from "../components/live-proof-section";
 import { PwaInstallPrompt } from "../components/pwa-install-prompt";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
@@ -305,7 +304,6 @@ export default async function HomePage() {
       </section>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
-      <LiveProofSection />
 
       <section className="container-shell py-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
