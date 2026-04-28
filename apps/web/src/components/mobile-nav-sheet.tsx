@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowRight, Menu, X } from "lucide-react";
 
 type NavItem = { label: string; href: string };
@@ -22,6 +23,7 @@ export function MobileNavSheet({
   primaryCtaLabel,
 }: MobileNavSheetProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!open) {
@@ -44,21 +46,36 @@ export function MobileNavSheet({
     };
   }, [open]);
 
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const closeOnDesktop = () => {
+      if (window.innerWidth >= 1024) setOpen(false);
+    };
+    window.addEventListener("resize", closeOnDesktop);
+    return () => window.removeEventListener("resize", closeOnDesktop);
+  }, []);
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="mobile-nav-toggle inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-2 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,0.08)] md:hidden"
+        onClick={() => setOpen((current) => !current)}
+        className="mobile-nav-toggle inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-2 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,0.08)] lg:hidden"
         aria-label="Open menu"
+        aria-expanded={open}
+        aria-controls="mobile-nav-panel"
       >
-        <Menu className="h-5 w-5" />
+        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
       {open ? (
-        <div className="mobile-nav-overlay fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-sm md:hidden" onClick={() => setOpen(false)}>
+        <div className="mobile-nav-overlay fixed inset-0 z-[120] bg-slate-950/85 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)}>
           <div
-            className="mobile-nav-sheet absolute inset-x-3 top-3 bottom-3 flex flex-col overflow-hidden rounded-2xl border border-cyan-400/20 bg-slate-950/95 p-4 shadow-[0_20px_60px_rgba(3,7,18,0.65)]"
+            id="mobile-nav-panel"
+            className="mobile-nav-sheet fixed inset-x-3 top-[max(12px,env(safe-area-inset-top))] bottom-[max(12px,env(safe-area-inset-bottom))] flex flex-col overflow-hidden rounded-2xl border border-cyan-400/20 bg-slate-950/95 p-4 shadow-[0_20px_60px_rgba(3,7,18,0.65)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">

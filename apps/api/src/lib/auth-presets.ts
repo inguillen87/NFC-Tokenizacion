@@ -8,7 +8,7 @@ type Preset = {
   permissions: string[];
 };
 
-function read(value: string | undefined, fallback: string) {
+function read(value: string | undefined, fallback = "") {
   const normalized = (value || "").trim();
   return normalized || fallback;
 }
@@ -16,31 +16,31 @@ function read(value: string | undefined, fallback: string) {
 export function getAuthPresets(): Preset[] {
   return [
     {
-      email: read(process.env.SUPER_ADMIN_EMAIL || process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL, "inguillen@nexid.lat"),
-      password: read(process.env.SUPER_ADMIN_PASSWORD || process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD, "Marcelog2026"),
+      email: read(process.env.SUPER_ADMIN_EMAIL || process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL, "super-admin@example.com"),
+      password: read(process.env.SUPER_ADMIN_PASSWORD || process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD),
       role: "super_admin",
-      fullName: "Ignacio Guillen",
+      fullName: "Super Admin",
       permissions: ["users:manage", "tenants:write", "batches:write", "analytics:read", "events:read"],
     },
     {
-      email: read(process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL, "demobodega@nexid.lat"),
-      password: read(process.env.TENANT_ADMIN_PASSWORD || process.env.BODEGA_ADMIN_PASSWORD || process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD, "DemoBodega2026"),
+      email: read(process.env.TENANT_ADMIN_EMAIL || process.env.BODEGA_ADMIN_EMAIL || process.env.NEXT_PUBLIC_TENANT_ADMIN_EMAIL, "tenant-admin@example.com"),
+      password: read(process.env.TENANT_ADMIN_PASSWORD || process.env.BODEGA_ADMIN_PASSWORD || process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD),
       role: "tenant_admin",
-      fullName: "DemoBodega Admin",
+      fullName: "Tenant Admin",
       permissions: ["users:manage", "batches:write", "analytics:read", "events:read"],
     },
     {
-      email: read(process.env.RESELLER_EMAIL || process.env.NEXT_PUBLIC_RESELLER_EMAIL, "partner.demo@nexid.lat"),
-      password: read(process.env.RESELLER_PASSWORD || process.env.NEXT_PUBLIC_RESELLER_PASSWORD, "NexidPartner2026"),
+      email: read(process.env.RESELLER_EMAIL || process.env.NEXT_PUBLIC_RESELLER_EMAIL, "reseller@example.com"),
+      password: read(process.env.RESELLER_PASSWORD || process.env.NEXT_PUBLIC_RESELLER_PASSWORD),
       role: "reseller",
-      fullName: "Partner Demo",
+      fullName: "Reseller",
       permissions: ["batches:write", "analytics:read", "events:read"],
     },
     {
-      email: read(process.env.GENERIC_DEMO_EMAIL || process.env.NEXT_PUBLIC_GENERIC_DEMO_EMAIL, "demo@nexid.lat"),
-      password: read(process.env.GENERIC_DEMO_PASSWORD || process.env.NEXT_PUBLIC_GENERIC_DEMO_PASSWORD, "NexidDemo2026"),
+      email: read(process.env.GENERIC_DEMO_EMAIL || process.env.NEXT_PUBLIC_GENERIC_DEMO_EMAIL, "viewer@example.com"),
+      password: read(process.env.GENERIC_DEMO_PASSWORD || process.env.NEXT_PUBLIC_GENERIC_DEMO_PASSWORD),
       role: "viewer",
-      fullName: "Generic Demo",
+      fullName: "Demo Viewer",
       permissions: ["analytics:read", "events:read"],
     },
   ];
@@ -59,6 +59,7 @@ async function resolveDemoTenantId(sql: (strings: TemplateStringsArray, ...value
 export async function ensurePresetUser(sql: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any>, email: string) {
   const preset = getAuthPresets().find((item) => item.email.toLowerCase() === email.toLowerCase());
   if (!preset) return null;
+  if (!preset.password) return null;
 
   const existing = await sql`SELECT id FROM users WHERE email = ${preset.email} LIMIT 1`;
   const userId = existing[0]?.id || (await sql`INSERT INTO users (email, full_name) VALUES (${preset.email}, ${preset.fullName}) RETURNING id`)[0]?.id;
