@@ -11,8 +11,8 @@ function read(rel) {
   return fs.readFileSync(path.join(repoRoot, rel), 'utf8');
 }
 
-test('runtime SQL paths do not hard-cast to scan_source type', () => {
-  const files = [
+test('runtime SQL paths do not hard-cast to custom enum types that may be missing', () => {
+  const runtimeFiles = [
     'apps/api/src/lib/tap-event-service.ts',
     'apps/api/src/app/admin/analytics/route.ts',
     'apps/api/src/app/admin/events/route.ts',
@@ -20,8 +20,12 @@ test('runtime SQL paths do not hard-cast to scan_source type', () => {
     'apps/api/src/app/admin/tags/[uid]/passport/route.ts',
   ];
 
-  for (const rel of files) {
+  const forbiddenCasts = ['::scan_source', '::event_type', '::risk_level', '::geo_precision'];
+
+  for (const rel of runtimeFiles) {
     const content = read(rel);
-    assert.equal(content.includes('::scan_source'), false, `unexpected scan_source cast in ${rel}`);
+    for (const castToken of forbiddenCasts) {
+      assert.equal(content.includes(castToken), false, `unexpected enum cast ${castToken} in ${rel}`);
+    }
   }
 });

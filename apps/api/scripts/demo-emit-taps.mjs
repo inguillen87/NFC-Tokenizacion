@@ -84,7 +84,7 @@ for (let i = 0; i < count; i += 1) {
     ) VALUES (
       ${scope.tenant_id}, ${scope.batch_id}, ${tag.uid_hex}, ${tag.id}, ${scope.bid},
       ${verdict.result}, ${verdict.result === "VALID" ? "sun_ok" : "demo_simulation"},
-      ${verdict.event_type}::event_type, ${verdict.verdict}, ${verdict.risk_level}::risk_level,
+      ${verdict.event_type}::text, ${verdict.verdict}, ${verdict.risk_level}::text,
       ${geo.city}, ${geo.country}, ${geo.lat}, ${geo.lng},
       'demo'::text, 'Demo Emitter', ${JSON.stringify({ demoEmitter: true, corpus: "demobodega-flagship" })}::jsonb
     )
