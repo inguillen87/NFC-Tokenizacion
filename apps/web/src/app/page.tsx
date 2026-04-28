@@ -22,6 +22,25 @@ import { PublicLinkChip } from "../components/public-link-chip";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
+import { LandingProofSection } from "../components/landing-proof-section";
+
+type LandingProofEvent = {
+  city: string;
+  country: string;
+  verdict: string;
+  tenant: string;
+  occurredAt: string;
+  uidMasked: string;
+};
+
+type ProofSummary = {
+  tapsToday: number;
+  validRate: number;
+  riskBlocked: number;
+  activeRegions: number;
+  demoMode: boolean;
+  latestPublicEvents: LandingProofEvent[];
+};
 
 type LandingProofEvent = {
   city: string;
