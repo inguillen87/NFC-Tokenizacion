@@ -6,7 +6,6 @@ import {
   EventsTagPositioningSection,
   HeroSection,
   PlansSection,
-  ResellerSection,
 } from "../components/landing-sections";
 import { RadarSection } from "../components/radar-section";
 import { InteractiveDemoSection } from "../components/interactive-demo-section";
@@ -18,11 +17,9 @@ import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { ProductExitLink } from "../components/product-exit-link";
-import { PublicLinkChip } from "../components/public-link-chip";
-import { LandingProofSection, type ProofSummary } from "../components/landing-proof-section";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
-import { ArrowRight, CirclePlay, Layers3, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const EMPTY_PROOF_SUMMARY: ProofSummary = {
   tapsToday: 0,
@@ -79,16 +76,6 @@ export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
 
-  let proofSummary = EMPTY_PROOF_SUMMARY;
-  try {
-    const proofSummaryResponse = await fetch(`${productUrls.api}/public/proof/summary`, { cache: "no-store" });
-    if (proofSummaryResponse.ok) {
-      const proofSummaryJson: unknown = await proofSummaryResponse.json();
-      proofSummary = parsePublicProofSummary(proofSummaryJson);
-    }
-  } catch {
-    proofSummary = EMPTY_PROOF_SUMMARY;
-  }
   const labels = locale === "en"
     ? {
       demoJson: "Download seed JSON",
@@ -230,36 +217,6 @@ export default async function HomePage() {
       sunCta: "Abrir SUN validation center",
     };
 
-  const techMatrix = locale === "en"
-    ? {
-      title: "Tag strategy: QR + NTAG212/213/215 + NTAG424 DNA TagTamper",
-      body: "Enterprise rollout combines accessibility (QR/basic tags) with anti-fraud cryptographic proof (424 TT) according to product risk and margin.",
-      rows: [
-        { tech: "QR + NTAG212/213", fit: "Entry SKU / broad campaigns", proof: "Fast adoption, lower security", mobile: "Landing + lead capture + basic provenance" },
-        { tech: "NTAG215", fit: "Events, memberships, loyalty", proof: "UID allowlist + anti-duplicate ops", mobile: "Access/control experience with CTA" },
-        { tech: "NTAG424 DNA / TagTamper", fit: "Wine, pharma, cosmetics, agro", proof: "Encrypted SUN + anti-tamper + anti-clone", mobile: "Premium authenticity passport + ownership/warranty" },
-      ],
-    }
-    : locale === "pt-BR"
-      ? {
-        title: "Estratégia de tags: QR + NTAG212/213/215 + NTAG424 DNA TagTamper",
-        body: "Rollout enterprise combina acessibilidade (QR/tags básicas) com prova anti-fraude criptográfica (424 TT) conforme risco e margem.",
-        rows: [
-          { tech: "QR + NTAG212/213", fit: "SKU de entrada / campanhas massivas", proof: "Adoção rápida, segurança menor", mobile: "Landing + captura de lead + provenance básico" },
-          { tech: "NTAG215", fit: "Eventos, memberships, loyalty", proof: "UID allowlist + operação anti-duplicação", mobile: "Experiência de acesso/controle com CTA" },
-          { tech: "NTAG424 DNA / TagTamper", fit: "Vinho, pharma, cosméticos, agro", proof: "SUN criptográfico + anti-tamper + anti-clone", mobile: "Passport premium de autenticidade + ownership/garantia" },
-        ],
-      }
-      : {
-        title: "Estrategia de tags: QR + NTAG212/213/215 + NTAG424 DNA TagTamper",
-        body: "El rollout enterprise combina accesibilidad (QR/tags básicos) con prueba antifraude criptográfica (424 TT) según riesgo y margen de producto.",
-        rows: [
-          { tech: "QR + NTAG212/213", fit: "SKU de entrada / campañas masivas", proof: "Adopción rápida, seguridad menor", mobile: "Landing + captura de lead + provenance básico" },
-          { tech: "NTAG215", fit: "Eventos, memberships, loyalty", proof: "UID allowlist + operación anti-duplicado", mobile: "Experiencia de acceso/control con CTA" },
-          { tech: "NTAG424 DNA / TagTamper", fit: "Vino, pharma, cosmética, agro", proof: "SUN cifrado + anti-tamper + anti-clon", mobile: "Passport premium de autenticidad + ownership/garantía" },
-        ],
-      };
-
   const loginHref = `${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`;
 
   const mobileNavItems = [
@@ -316,19 +273,19 @@ export default async function HomePage() {
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
             <span className="inline-flex items-center gap-2 px-1 py-1">
               <BrandMark
-                size={28}
+                size={34}
                 variant="ripple"
                 theme="dark"
                 className="lg:hidden text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
               />
               <span className="hidden items-center gap-2 lg:inline-flex">
                 <BrandMark
-                  size={28}
+                  size={40}
                   variant="ripple"
                   theme="dark"
                   className="text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
                 />
-                <span className="text-base font-semibold tracking-tight text-white">nex<span className="text-cyan-300">ID</span></span>
+                <span className="text-xl font-bold tracking-tight text-white">nex<span className="text-cyan-300">ID</span></span>
               </span>
             </span>
           </Link>
@@ -338,8 +295,6 @@ export default async function HomePage() {
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
             <Link href="/docs">{content.nav.docs}</Link>
-            <Link href="/stack">{labels.quickStack}</Link>
-            <Link href="/docs#faq">{labels.quickFaq}</Link>
           </nav>
 
           <div className="header-actions flex items-center gap-2">
@@ -368,68 +323,38 @@ export default async function HomePage() {
 
 
 
-      <section className="container-shell quick-links-section hidden py-3 md:block">
-        <div className="quick-links-wrap rounded-xl border border-white/10 bg-slate-900/55 p-2 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_18px_45px_rgba(8,15,30,0.35)]">
-          <div className="quick-links-scroll flex items-center gap-2 overflow-x-auto whitespace-nowrap text-xs">
-            <span className="inline-flex items-center gap-1 px-2 py-1 font-semibold text-cyan-300"><Sparkles className="h-3.5 w-3.5" />{labels.quickNavTitle}</span>
-            <PublicLinkChip href="/docs#faq" variant="cyan" className="quick-link-chip">{labels.quickFaq}</PublicLinkChip>
-            <PublicLinkChip href="/stack" variant="indigo" icon={<Layers3 className="h-3.5 w-3.5" />} className="quick-link-chip">{labels.quickStack}</PublicLinkChip>
-            <PublicLinkChip href="/glossary" variant="emerald" className="quick-link-chip">{labels.quickGlossary}</PublicLinkChip>
-            <PublicLinkChip href={productExitHref.investorSnapshot} variant="amber" className="quick-link-chip">{labels.quickInvestor}</PublicLinkChip>
-            <PublicLinkChip href="/audiences" variant="violet" className="quick-link-chip">{labels.quickAudiences}</PublicLinkChip>
-            <PublicLinkChip href={productExitHref.demoLab} variant="amber" icon={<CirclePlay className="h-3.5 w-3.5" />} className="quick-link-chip">{labels.quickDemoLab}</PublicLinkChip>
-          </div>
-        </div>
-      </section>
-
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
-      <LandingProofSection proof={proofSummary} />
-
-      <section className="container-shell py-6">
-        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{labels.intentTitle}</p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {labels.intentCards.map((card) => {
-              const body = (
-                <>
-                  <p className="text-sm font-semibold text-white">{card.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{card.body}</p>
-                  <span className="mt-4 inline-flex items-center gap-2 text-sm text-cyan-200">Explorar<ArrowRight className="h-4 w-4" /></span>
-                </>
-              );
-
-              return (
-                <Link key={card.title} href={card.href} className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
-                  {body}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       <RadarSection radar={content.radar} locale={locale} />
       <InteractiveDemoSection locale={locale} />
 
       <PlansSection content={content} />
       <EventsTagPositioningSection locale={locale} />
 
-      <ResellerSection content={content} />
       <BulletSection eyebrow={content.identity.eyebrow} title={content.identity.title} description={content.identity.description} bullets={content.identity.bullets} />
 
-      <section className="container-shell py-8">
-        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{techMatrix.title}</p>
-          <p className="mt-2 text-sm text-slate-300">{techMatrix.body}</p>
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            {techMatrix.rows.map((row) => (
-              <article key={row.tech} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
-                <p className="text-sm font-semibold text-white">{row.tech}</p>
-                <p className="mt-2 text-xs text-slate-300">Fit: <span className="text-white">{row.fit}</span></p>
-                <p className="mt-1 text-xs text-slate-300">Security: <span className="text-white">{row.proof}</span></p>
-                <p className="mt-1 text-xs text-cyan-100">Mobile UX: {row.mobile}</p>
-              </article>
-            ))}
+      <section className="container-shell py-10">
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 md:p-8">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Canal y arquitectura comercial</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">Una sola propuesta clara: autenticación + trazabilidad + operación reseller</h2>
+          <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-300 md:text-base">
+            Diseñado para imprentas de seguridad, integradores, agencias, distribuidores y operadores que revenden soluciones a bodegas,
+            productores de eventos, organizadores de conferencias y marcas premium. Implementamos un modelo white-label con gobierno central de
+            autenticación para que cada partner venda con su marca y opere con estándares enterprise.
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <article className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
+              <p className="text-sm font-semibold text-cyan-200">Programa reseller / white-label</p>
+              <p className="mt-2 text-sm text-slate-300">Onboarding operativo, playbooks comerciales y soporte para acelerar ventas B2B desde el día uno.</p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
+              <p className="text-sm font-semibold text-cyan-200">Stacks por nivel de riesgo</p>
+              <p className="mt-2 text-sm text-slate-300">Desde activaciones con QR/NFC hasta SUN criptográfico con anti-clonado y trazabilidad para sectores críticos.</p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
+              <p className="text-sm font-semibold text-cyan-200">Identidad digital y lifecycle</p>
+              <p className="mt-2 text-sm text-slate-300">Cada producto conecta autenticidad, ownership, garantías y marketplace en un flujo continuo y auditable.</p>
+            </article>
           </div>
         </div>
       </section>
