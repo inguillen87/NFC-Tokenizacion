@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
+import { BrandLockup, BrandMark, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   BulletSection,
   CtaSection,
@@ -223,15 +223,30 @@ export default async function HomePage() {
   ];
 
   return (
-    <main>
+    <main className="landing-root">
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
-        <div className="container-shell header-main-row flex h-20 items-center justify-between gap-3 sm:h-24 lg:h-28">
+        <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={56} variant="ripple" theme="dark" className="hero-brand site-main-brand sm:hidden" />
-            <BrandLockup size={64} variant="ripple" theme="dark" className="hero-brand site-main-brand hidden sm:inline-flex" />
+            <span className="inline-flex items-center gap-2 px-1 py-1">
+              <BrandMark
+                size={28}
+                variant="ripple"
+                theme="dark"
+                className="lg:hidden text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+              />
+              <span className="hidden items-center gap-2 lg:inline-flex">
+                <BrandMark
+                  size={28}
+                  variant="ripple"
+                  theme="dark"
+                  className="text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
+                />
+                <span className="text-base font-semibold tracking-tight text-white">nex<span className="text-cyan-300">ID</span></span>
+              </span>
+            </span>
           </Link>
 
-          <nav className="hidden gap-6 text-sm md:flex site-nav">
+          <nav className="hidden gap-6 text-sm lg:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
@@ -248,10 +263,10 @@ export default async function HomePage() {
               primaryCtaHref="/?contact=demo#contact-modal"
               primaryCtaLabel={labels.mobileCtaDemo}
             />
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <LocaleSwitcher value={locale} options={[...locales]} />
             </div>
-            <div className="hidden md:inline-flex">
+            <div className="hidden lg:inline-flex">
               <ThemeToggle />
             </div>
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
@@ -385,7 +400,7 @@ export default async function HomePage() {
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={36} variant="ripple" theme="dark" className="hero-brand" />
+            <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand brand-surface-footer" />
           </Link>
           <p className="text-sm site-muted">nexID es una plataforma de identidad física verificable: une carriers como NFC/QR con verificación, estado y derechos digitales para empresas y gobiernos.</p>
           <div className="flex flex-wrap gap-2">

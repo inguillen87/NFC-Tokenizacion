@@ -2,7 +2,9 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
-import { computeRiskScore } from "../../../../lib/risk-score";
+import { aggregateTenantMetrics } from "@product/core";
+import { getDashboardSession } from "../../../../lib/session";
+import { canReadonlyDemoAccess, shouldAllowDemoFallback } from "../../../../lib/admin-proxy-policy";
 
 const API_BASE = productUrls.api;
 const DEMO_BATCH = {
@@ -17,6 +19,18 @@ const DEMO_BATCH = {
 function isDemoSession(req: Request) {
   const cookie = req.headers.get("cookie") || "";
   return cookie.includes("nexid_dashboard_session=demo.");
+}
+
+function dashboardRoleToScope(role: string | undefined) {
+  if (role === "super-admin") return "super_admin";
+  if (role === "tenant-admin") return "tenant_admin";
+  if (role === "reseller") return "reseller";
+  return "readonly_demo";
+}
+
+function markDemoData(res: NextResponse) {
+  res.headers.set("x-nexid-demo-data", "DEMO DATA");
+  return res;
 }
 
 function safeParseJson(text: string) {
@@ -59,9 +73,19 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     return NextResponse.json([DEMO_BATCH]);
   }
   if (method === "GET" && normalized === "tenants") {
+    const demobodegaMetrics = aggregateTenantMetrics({
+      counts: { scans: 240, valid: 230, invalid: 10, duplicates: 5, tamper: 1, revoked: 0 },
+      geoAnomalyRate: 0.02,
+      deviceAnomalyRate: 0.01,
+    });
+    const demoeventsMetrics = aggregateTenantMetrics({
+      counts: { scans: 92, valid: 86, invalid: 6, duplicates: 2, tamper: 0, revoked: 0 },
+      geoAnomalyRate: 0.01,
+      deviceAnomalyRate: 0.01,
+    });
     const rows = [
-      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: computeRiskScore({ replayRate: 0.02, invalidRate: 0.04, tamperRate: 0.01, revokedTapRate: 0.0, geoAnomalyRate: 0.02 }) },
-      { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0, risk_score: computeRiskScore({ replayRate: 0.03, invalidRate: 0.05, tamperRate: 0.0, revokedTapRate: 0.0, geoAnomalyRate: 0.01 }) },
+      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: demobodegaMetrics.riskScore },
+      { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0, risk_score: demoeventsMetrics.riskScore },
     ];
     return NextResponse.json(rows);
   }
@@ -86,12 +110,10 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     const tamper = trend.reduce((acc, row) => acc + row.tamper, 0);
     const invalid = duplicates + tamper;
     const valid = Math.max(scans - invalid, 0);
-    const riskScore = computeRiskScore({
-      replayRate: scans ? duplicates / scans : 0,
-      invalidRate: scans ? invalid / scans : 0,
-      tamperRate: scans ? tamper / scans : 0,
-      revokedTapRate: 0,
+    const metrics = aggregateTenantMetrics({
+      counts: { scans, valid, invalid, duplicates, tamper, revoked: 0 },
       geoAnomalyRate: 0.02,
+      deviceAnomalyRate: 0.01,
     });
     return NextResponse.json({
       scope: { tenant: tenantFilter || "demobodega", source: "real", range: "30d", country: "all" },
@@ -105,7 +127,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
         activeTenants: 1,
         geoRegions: 6,
         resellerPerformance: 88,
-        riskScore: Number(riskScore.toFixed(1)),
+        riskScore: Number(metrics.riskScore.toFixed(1)),
       },
       geography: {
         countries: [
@@ -246,6 +268,22 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           toAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
           severity: "critical",
         },
+      ],
+    });
+  }
+  if (method === "GET" && normalized === "alerts") {
+    return NextResponse.json({
+      ok: true,
+      items: [
+        { id: "alert-demo-001", type: "replay_spike", severity: "high", status: "open", tenant_slug: "demobodega", created_at: new Date().toISOString(), title: "Replay spike detected" },
+      ],
+    });
+  }
+  if (method === "GET" && normalized === "alert-rules") {
+    return NextResponse.json({
+      ok: true,
+      items: [
+        { id: "rule-demo-001", tenant_slug: "demobodega", type: "replay_spike", severity: "high", threshold: 2, window_minutes: 60, enabled: true },
       ],
     });
   }
@@ -403,12 +441,25 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
 
 async function forward(req: Request, path: string[]) {
   const normalizedPath = path.join("/");
-  const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "security-alerts" || normalizedPath === "tokenization/requests");
+  const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "security-alerts" || normalizedPath === "alerts" || normalizedPath === "alert-rules" || normalizedPath === "tokenization/requests");
   const target = `${API_BASE}/admin/${path.join("/")}${new URL(req.url).search}`;
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
+  const requireScopedAdminAuth = String(process.env.REQUIRE_SCOPED_ADMIN_AUTH || "").toLowerCase() === "true";
   const demoSession = isDemoSession(req);
   const allowDemoFallback = String(process.env.DASHBOARD_ALLOW_DEMO_FALLBACK || "").toLowerCase() === "true";
+  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const demoModeExplicit = String(process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
+  const allowDemoFallbackForRequest = shouldAllowDemoFallback({ allowDemoFallback, isProduction, demoModeExplicit });
+  const dashboardSession = await getDashboardSession().catch(() => null);
+  const scopedRole = dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
+
+  if (scopedRole === "readonly_demo" && !canReadonlyDemoAccess(req.method, normalizedPath)) {
+    return NextResponse.json(
+      { ok: false, reason: "readonly_demo scope only allows GET access to demo-safe admin resources." },
+      { status: 403 },
+    );
+  }
 
   const unavailable = (reason: string) => {
     if (req.method === "GET" && normalizedPath === "analytics") {
@@ -438,18 +489,31 @@ async function forward(req: Request, path: string[]) {
         geoVelocityAlerts: [],
       });
     }
+    if (req.method === "GET" && normalizedPath === "alerts") {
+      return NextResponse.json({ ok: false, reason, items: [] });
+    }
+    if (req.method === "GET" && normalizedPath === "alert-rules") {
+      return NextResponse.json({ ok: false, reason, items: [] });
+    }
     if (req.method === "GET" && normalizedPath === "tokenization/requests") {
       return NextResponse.json({ ok: false, reason, rows: [] });
     }
     return NextResponse.json({ ok: false, reason }, { status: 503 });
   };
 
-  if (!hasAdminKey && (!demoSession || !allowDemoFallback)) {
+  if (!hasAdminKey && !scopedRole && (!demoSession || !allowDemoFallbackForRequest)) {
     return unavailable("ADMIN_API_KEY missing. Real tenant data is disabled until admin API auth is configured.");
   }
 
-  if (demoSession && allowDemoFallback) {
-    return demoAdminResponse(req.method, path, body || "", req.url);
+  if (requireScopedAdminAuth && !scopedRole) {
+    return NextResponse.json(
+      { ok: false, reason: "Scoped admin auth required. Login with an authorized dashboard role." },
+      { status: 401 },
+    );
+  }
+
+  if (demoSession && allowDemoFallbackForRequest) {
+    return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
 
   let response: Response;
@@ -458,7 +522,9 @@ async function forward(req: Request, path: string[]) {
       method: req.method,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}`,
+        ...(hasAdminKey ? { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` } : {}),
+        ...(scopedRole ? { "x-nexid-admin-scope": scopedRole } : {}),
+        ...(dashboardSession?.tenantSlug ? { "x-nexid-tenant-slug": dashboardSession.tenantSlug } : {}),
       },
       body,
       cache: "no-store",
@@ -475,8 +541,8 @@ async function forward(req: Request, path: string[]) {
     return unavailable(`Admin upstream error (${response.status}).`);
   }
 
-  if (!response.ok && demoSession && allowDemoFallback) {
-    return demoAdminResponse(req.method, path, body || "", req.url);
+  if (!response.ok && demoSession && allowDemoFallbackForRequest) {
+    return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
 
   const contentType = (response.headers.get("content-type") || "").toLowerCase();
