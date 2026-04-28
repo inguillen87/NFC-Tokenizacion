@@ -221,6 +221,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : trustScore >= 65
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: "/?contact=sales&intent=sun_mobile#contact-modal", helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
+  const tenantSlug = String(result.identity?.tenantSlug || "").trim();
+  const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
+  const blockedTapReason = isValid
+    ? ""
+    : "Este tap no es apto para ownership/club. Necesitás un tap válido y fresco para continuar.";
   const journeySteps = [
     { id: "scan", label: "Tap NFC", done: true },
     { id: "verify", label: "Verificación", done: Boolean(result.status?.label) },
@@ -251,8 +256,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
          <div className="grid grid-cols-3 gap-2">
            <a href="#geo-trace" className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Geo trace</a>
-           <a href="/register" className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Registro</a>
-           <a href="/me" className="rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">Mi portal</a>
+           <a href={`/login?consumer=1&next=${encodeURIComponent(marketplaceHref)}`} className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Registrarme</a>
+           <a href={`/login?consumer=1&next=${encodeURIComponent(tenantSlug ? `/me?tenant=${tenantSlug}` : "/me")}`} className="rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">Mi portal</a>
          </div>
 
          {/* Hero Product Card */}
@@ -310,6 +315,26 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                {recommendedAction.label}
              </a>
            </div>
+         </section>
+
+         <section className="rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+           <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Acciones de passport</p>
+           <div className="mt-3 grid gap-2">
+             <a href="/register" className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+               Crear mi nexID Passport
+             </a>
+             <a href="/me/products" className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+               Guardar producto
+             </a>
+             <a href={marketplaceHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+               Unirme al club de esta marca
+             </a>
+           </div>
+           {isValid ? (
+             <p className="mt-2 text-[11px] text-slate-300">Después de iniciar sesión podés reclamar ownership, guardar producto y unirte al tenant automáticamente.</p>
+           ) : (
+             <p className="mt-2 text-[11px] text-amber-200">{blockedTapReason}</p>
+           )}
          </section>
 
 

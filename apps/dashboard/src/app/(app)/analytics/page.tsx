@@ -3,6 +3,7 @@ import { messages } from "@product/config";
 import { AnalyticsPanels } from "../../../components/analytics-panels";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
+import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/demo-data-mode";
 import { requireDashboardSession } from "../../../lib/session";
 import { getServerOrigin } from "../../../lib/server-origin";
 
@@ -89,7 +90,7 @@ async function getAnalytics({
   source?: "real" | "demo" | "imported" | "all";
   range?: "24h" | "7d" | "30d";
   country?: string;
-}): Promise<AnalyticsPayload | null> {
+}): Promise<{ data: AnalyticsPayload | null; meta: DemoDataMeta }> {
   try {
     const queryParams = new URLSearchParams();
     if (tenantScope) queryParams.set("tenant", tenantScope);
@@ -98,10 +99,11 @@ async function getAnalytics({
     if (country) queryParams.set("country", country.toUpperCase());
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
     const response = await fetch(`${origin}/api/admin/analytics${query}`, { cache: "no-store" });
-    if (!response.ok) return null;
-    return response.json();
+    const meta = readDemoDataMetaFromResponse(response);
+    if (!response.ok) return { data: null, meta };
+    return { data: await response.json(), meta };
   } catch {
-    return null;
+    return { data: null, meta: { demoMode: false, dataSource: "production", demoSource: "production" } };
   }
 }
 
@@ -129,6 +131,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
       <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
         <span className="ml-2">Fuente: <b className="text-white">{source}</b> · Rango: <b className="text-white">{range}</b> · Country: <b className="text-white">{country || "all"}</b>.</span>
+        {analyticsData.meta.demoMode ? (
+          <span className="ml-2 inline-flex rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
+            DEMO DATA · source={analyticsData.meta.demoSource}
+          </span>
+        ) : null}
       </div>
       <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
         <form className="grid gap-3 md:grid-cols-5">
@@ -156,7 +163,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <button type="submit" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100">Apply analytics scope</button>
         </form>
       </div>
-      <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData || undefined} mapMode={mapMode} />
+      <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData.data || undefined} mapMode={mapMode} />
     </main>
   );
 }

@@ -8,10 +8,13 @@ import { sql } from '../../lib/db';
 import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
 import { buildLifecycleState, listDemoCta } from '../../lib/demo-cta';
 import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
+import { mapVerdictAndRisk, resolveActionMatrix } from '../../lib/sun-passport-policy';
+import { getRequestMeta } from '../../lib/request-meta';
+import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
 
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = Number(process.env.SUN_RATE_LIMIT_PER_MIN || 120);
-const rateMap = new Map<string, { count: number; start: number }>();
+const RATE_LIMIT_MAX_IP = Number(process.env.SUN_RATE_LIMIT_IP_PER_MIN || 120);
+const RATE_LIMIT_MAX_BID = Number(process.env.SUN_RATE_LIMIT_BID_PER_MIN || 240);
+const RATE_LIMIT_MAX_UID_CTR = Number(process.env.SUN_RATE_LIMIT_UID_CTR_PER_MIN || 30);
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 const HEX_RE = /^[0-9A-F]+$/i;
 
@@ -94,6 +97,26 @@ type TimelineEvent = {
   stage?: string | null;
 };
 
+export type SunPublicPassportContract = {
+  eventId: string | null;
+  tenantId: string | null;
+  tenantSlug: string | null;
+  batchId: string;
+  tagId: string | null;
+  uidMasked: string;
+  verdict: string;
+  riskLevel: "none" | "low" | "medium" | "high" | "critical";
+  productName: string;
+  provenance: {
+    origin: string | null;
+    firstVerified: { at: string | null; city: string | null; country: string | null };
+    lastVerifiedLocation: { at: string | null; city: string | null; country: string | null; result: string | null };
+    timelineSummary: TimelineEvent[];
+  };
+  allowedActions: string[];
+  blockedActions: string[];
+};
+
 const BID_PASSPORT_PRESETS: Record<string, {
   name: string;
   winery: string;
@@ -152,19 +175,6 @@ const BID_PASSPORT_PRESETS: Record<string, {
     wineryCoordinates: { lat: -33.0377, lng: -68.8841 },
   },
 };
-
-function isRateLimited(ip: string | null) {
-  if (!ip) return false;
-  const now = Date.now();
-  const current = rateMap.get(ip);
-  if (!current || now - current.start > RATE_LIMIT_WINDOW_MS) {
-    rateMap.set(ip, { count: 1, start: now });
-    return false;
-  }
-  current.count += 1;
-  rateMap.set(ip, current);
-  return current.count > RATE_LIMIT_MAX;
-}
 
 function wantsHtml(req: Request, url: URL) {
   const force = (url.searchParams.get('view') || '').toLowerCase();
@@ -527,6 +537,8 @@ function buildPublicContract(params: {
   const status = params.result.result || (params.result.ok ? 'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
   const trust = resolveTrustState(status, reason, params.result.product_state || null);
+  const verdictRisk = mapVerdictAndRisk({ statusCode: status, productState: params.result.product_state || null, reason });
+  const actionMatrix = resolveActionMatrix(verdictRisk.verdict);
   const troubleshooting = buildTroubleshooting(reason, params.bid);
   const preset = BID_PASSPORT_PRESETS[params.bid];
   const fallbackName = preset?.name || `NexID Verified Asset · ${params.bid}`;
@@ -541,6 +553,7 @@ function buildPublicContract(params: {
   const fallbackBottle = preset?.bottle || null;
   const fallbackServing = preset?.serving || null;
   const tenantSlug = preset?.tenantSlug || "demobodega";
+  const tenantId = ((params.result as { tenant_id?: string | null }).tenant_id || null);
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
   const eventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
   const tapQuery = new URLSearchParams({
@@ -576,12 +589,14 @@ function buildPublicContract(params: {
     },
     identity: {
       bid: params.bid,
-      uid: params.uid,
+      uid: null,
+      uidMasked: maskIdentityValue(params.uid || ""),
       readCounter: params.ctr,
       eventId,
       tagStatus: params.passport?.tag_status || null,
       scanCount: params.passport?.scan_count || 0,
       tenantSlug,
+      tenantId,
     },
     product: {
       name: params.passport?.product_name || params.passport?.sku || fallbackName,
@@ -641,7 +656,6 @@ function buildPublicContract(params: {
       os: ua.os,
       browser: ua.browser,
       deviceType: ua.device,
-      userAgent: params.tap.userAgent || null,
       city: params.tap.city,
       country: params.tap.country,
       lat: roundCoord(params.tap.lat, 2),
@@ -652,10 +666,10 @@ function buildPublicContract(params: {
       tier: qualityScore >= 85 ? "Premium" : qualityScore >= 65 ? "Monitored" : "At Risk",
     },
     cta: {
-      claimOwnership: Boolean(params.uid),
-      registerWarranty: Boolean(params.uid),
-      provenance: Boolean(params.uid),
-      tokenize: Boolean(params.uid),
+      claimOwnership: actionMatrix.allowedActions.includes("claim"),
+      registerWarranty: actionMatrix.allowedActions.includes("warranty"),
+      provenance: actionMatrix.allowedActions.includes("provenance"),
+      tokenize: actionMatrix.allowedActions.includes("tokenization"),
       clubName: preset?.clubName || "Club premium",
       registerUrl: `${webBase}/me?${tapQuery.toString()}&action=register`,
       portalUrl: `${webBase}/me?${tapQuery.toString()}&action=portal`,
@@ -663,13 +677,17 @@ function buildPublicContract(params: {
       rewardsUrl: `${webBase}/me/rewards?${tapQuery.toString()}&action=rewards`,
     },
     troubleshooting,
-    technical: {
-      raw: {
-        piccDataPrefix: `${params.raw.picc_data.slice(0, 12)}...`,
-        encPrefix: `${params.raw.enc.slice(0, 12)}...`,
-        cmacPrefix: `${params.raw.cmac.slice(0, 8)}...`,
-      },
-    },
+    eventId,
+    tenantId,
+    tenantSlug,
+    batchId: params.bid,
+    tagId: params.uid ? maskIdentityValue(params.uid) : null,
+    uidMasked: maskIdentityValue(params.uid || ""),
+    verdict: verdictRisk.verdict,
+    riskLevel: verdictRisk.riskLevel,
+    productName: params.passport?.product_name || params.passport?.sku || fallbackName,
+    allowedActions: actionMatrix.allowedActions,
+    blockedActions: actionMatrix.blockedActions,
   };
 }
 
@@ -913,9 +931,9 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         journey3Desc: "Se activan marketplace, garantía y recompensas.",
       };
   const tone = contract.status.tone === 'good' ? '#22c55e' : contract.status.tone === 'risk' ? '#ef4444' : '#f59e0b';
-  const isReplay = contract.status.code === "REPLAY_SUSPECT";
+  const isRiskBlocked = contract.blockedActions.includes("claim");
   const productState = String(contract.status.productState || "").toUpperCase();
-  const authPanelMessage = isReplay
+  const authPanelMessage = isRiskBlocked
     ? copy.authReplay
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
       ? labels.manualOpened
@@ -926,7 +944,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       : productState === "VALID_UNKNOWN_TAMPER"
         ? labels.unknownTamper
         : copy.authOk;
-  const commercialStateLabel = isReplay
+  const commercialStateLabel = isRiskBlocked
     ? `${labels.commercialState}: ${labels.hold}`
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
       ? `${labels.commercialState}: DEMO_OPENED`
@@ -935,7 +953,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
         ? `${labels.commercialState}: ${labels.reviewPrev}`
       : `${labels.commercialState}: ${labels.ok}`;
-  const riskStateLabel = isReplay
+  const riskStateLabel = isRiskBlocked
     ? `${labels.risk}: ${labels.riskReplay}`
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
       ? `${labels.risk}: ${labels.riskManual}`
@@ -967,29 +985,30 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(wineryLat)) * Math.cos(toRad(destinationLat)) * Math.sin(dLng / 2) ** 2;
   const routeDistanceKm = Math.round(earthKm * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa)));
   const maskedBid = maskIdentityValue(contract.identity.bid);
-  const maskedUid = maskIdentityValue(contract.identity.uid || "");
+  const maskedUid = contract.uidMasked;
 
   return `<!doctype html><html lang="${copy.lang}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-icon" />
-  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.lang-switch{display:flex;gap:6px;margin-top:6px}.lang-switch a{text-decoration:none;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.4);color:#dbeafe}.lang-switch a.active{border-color:#22d3ee;color:#67e8f9;background:rgba(34,211,238,.12)}.hero h1{margin:10px 0 4px;font-size:31px;line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:8px;background:rgba(2,6,23,.45)}.kpi b{display:block;font-size:13px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-route-overlay{position:absolute;inset:0;width:100%;height:100%}.world-map-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%);border-color:#93c5fd}.world-map-canvas{background:#dbeafe}.world-map-image{filter:saturate(1) contrast(1)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif}.wrap{max-width:760px;margin:0 auto;padding:18px}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.trust-sticky{position:sticky;top:8px;z-index:40;border:1px solid rgba(34,211,238,.35);background:rgba(8,16,36,.85);backdrop-filter:blur(8px);padding:8px 10px;border-radius:12px;margin-bottom:10px;font-size:12px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.lang-switch{display:flex;gap:6px;margin-top:6px}.lang-switch a{text-decoration:none;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.4);color:#dbeafe}.lang-switch a.active{border-color:#22d3ee;color:#67e8f9;background:rgba(34,211,238,.12)}.hero h1{margin:10px 0 4px;font-size:31px;line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:8px;background:rgba(2,6,23,.45)}.kpi b{display:block;font-size:13px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-route-overlay{position:absolute;inset:0;width:100%;height:100%}.world-map-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%);border-color:#93c5fd}.world-map-canvas{background:#dbeafe}.world-map-image{filter:saturate(1) contrast(1)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <div class="trust-sticky"><b>${copy.authPanel}:</b> ${contract.status.label} · ${contract.riskLevel}</div>
   <section class="card hero"><div class="hero-top"><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">NexID Verified Tap</span></div><h1>${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><p class="hero-meta">${labels.heroRoute} · ${labels.eventLabel} #${contract.identity.eventId || 'N/A'}</p><div class="lang-switch"><a href="${langUrl('es-AR')}" class="${locale === 'es-AR' ? 'active' : ''}">ES</a><a href="${langUrl('pt-BR')}" class="${locale === 'pt-BR' ? 'active' : ''}">PT</a><a href="${langUrl('en')}" class="${locale === 'en' ? 'active' : ''}">EN</a></div></div><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span></div><div class="chips"><span class="chip">BID ${maskedBid}</span><span class="chip">UID ${maskedUid}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ? "pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div><div class="kpis"><div class="kpi"><b>${contract.provenance.timelineSummary.length}</b><span>${labels.events}</span></div><div class="kpi"><b>${contract.tokenization.status || "-"}</b><span>${labels.tokenization}</span></div><div class="kpi"><b>${contract.tapContext.deviceType || "-"}</b><span>${labels.device}</span></div></div></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">${labels.dashboardSync}</span></div></section>
   <section class="card"><div class="section-head"><h3>${copy.identityPanel}</h3><span class="section-tag">${labels.wineProfile}</span></div><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.varietal}</span><span class="v">${contract.product.varietal || '-'}</span></div><div class="detail-item"><span class="k">${labels.vintage}</span><span class="v">${contract.product.vintage || '-'}</span></div><div class="detail-item"><span class="k">${labels.harvest}</span><span class="v">${contract.product.harvestYear || '-'}</span></div><div class="detail-item"><span class="k">${labels.barrel}</span><span class="v">${contract.product.barrelMonths || '-'} ${labels.months}</span></div><div class="detail-item"><span class="k">${labels.alcohol}</span><span class="v">${contract.product.alcohol || '-'}</span></div><div class="detail-item"><span class="k">${labels.serving}</span><span class="v">${contract.product.serving || '-'}</span></div></div><p style="margin-top:10px">${labels.bottleFormat}: <b>${contract.product.bottle || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.provenancePanel}</h3><span class="section-tag">${labels.traceability}</span></div><p>${labels.origin}: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.iotPanel}</h3><span class="section-tag">${labels.sensorIntelligence}</span></div><p>${labels.winery}: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>${labels.altitude}: <b>${contract.iot.altitude || '-'}</b> · ${labels.oak}: <b>${contract.iot.oakType || '-'}</b></p><p>${labels.cellarTemp}: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · ${labels.humidity}: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>${labels.light}: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · ${labels.transit}: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
-  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><p style="font-size:11px;color:#94a3b8">User-Agent: ${contract.tapContext.userAgent || '-'}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceKm} km</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
+  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceKm} km</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
   <div class="world-map-wrap"><div class="world-map-canvas"><img class="world-map-image" alt="${labels.mapGlobalTitle}" src="https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg" loading="lazy"/><svg class="world-route-overlay" viewBox="0 0 1000 460" aria-hidden="true"><line x1="${wineryPoint.x.toFixed(2)}" y1="${wineryPoint.y.toFixed(2)}" x2="${tapPoint.x.toFixed(2)}" y2="${tapPoint.y.toFixed(2)}" stroke="#f97316" stroke-width="3" stroke-dasharray="9 7"/><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="7" fill="#22d3ee"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="7" fill="#f97316"/></svg></div><div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div></div>
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${labels.routeSummary}: ${contract.iot.wineryLocation || labels.origin} → ${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'} · ${labels.mapLegend}.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>${labels.statusLabel}: <b>${contract.tokenization.status}</b> · ${labels.networkLabel}: <b>${contract.tokenization.network || '-'}</b></p><p>${labels.tokenIdLabel}: ${contract.tokenization.tokenId || '-'} · ${labels.txLabel}: ${contract.tokenization.txHash || '-'}</p></section>
-  <section class="card"><div class="section-head"><h3>${copy.actionsPanel}</h3><span class="section-tag">${labels.consumerJourney}</span></div><p class="subtitle" style="margin-bottom:10px">${labels.actionSubtitle}</p><div class="journey-steps"><div class="journey-step"><b>${labels.journey1}</b><span>${labels.journey1Desc}</span></div><div class="journey-step"><b>${labels.journey2}</b><span>${labels.journey2Desc}</span></div><div class="journey-step"><b>${labels.journey3}</b><span>${labels.journey3Desc}</span></div></div><div class="actions-grid" style="margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" data-gated-link="marketplace" class="link-btn" style="color:#a5f3fc;background:rgba(6,182,212,.12)">🛍 ${labels.linkMarketplace} ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" data-gated-link="rewards" class="link-btn" style="color:#ddd6fe;background:rgba(139,92,246,.12)">🎁 ${labels.linkRewards}</a><a href="${contract.cta.registerUrl}" data-gated-link="register" class="link-btn" style="color:#d1fae5;background:rgba(16,185,129,.12)">🧾 ${labels.linkRegister}</a><a href="${contract.cta.portalUrl}" data-gated-link="portal" class="link-btn" style="color:#dbeafe;background:rgba(59,130,246,.12)">👤 ${labels.linkPortal}</a></div><div class="actions-grid"><button type="button" data-cta="claim-ownership" ${isReplay ? "disabled" : ""}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${isReplay ? "disabled" : ""}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance">📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${isReplay ? "disabled" : ""}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isReplay ? copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#94a3b8">${labels.tapHelp}</p>${shareToken ? "" : `<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">${labels.demoMode}</p>`}</section>
+  <section class="card"><div class="section-head"><h3>${copy.actionsPanel}</h3><span class="section-tag">${labels.consumerJourney}</span></div><p class="subtitle" style="margin-bottom:10px">${labels.actionSubtitle}</p><div class="journey-steps"><div class="journey-step"><b>${labels.journey1}</b><span>${labels.journey1Desc}</span></div><div class="journey-step"><b>${labels.journey2}</b><span>${labels.journey2Desc}</span></div><div class="journey-step"><b>${labels.journey3}</b><span>${labels.journey3Desc}</span></div></div><div class="actions-grid" style="margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" data-gated-link="marketplace" class="link-btn" style="color:#a5f3fc;background:rgba(6,182,212,.12)">🛍 ${labels.linkMarketplace} ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" data-gated-link="rewards" class="link-btn" style="color:#ddd6fe;background:rgba(139,92,246,.12)">🎁 ${labels.linkRewards}</a><a href="${contract.cta.registerUrl}" data-gated-link="register" class="link-btn" style="color:#d1fae5;background:rgba(16,185,129,.12)">🧾 ${labels.linkRegister}</a><a href="${contract.cta.portalUrl}" data-gated-link="portal" class="link-btn" style="color:#dbeafe;background:rgba(59,130,246,.12)">👤 ${labels.linkPortal}</a></div><div class="actions-grid"><button type="button" data-cta="claim-ownership" ${contract.cta.claimOwnership ? "" : "disabled"}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${contract.cta.registerWarranty ? "" : "disabled"}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance" ${contract.cta.provenance ? "" : "disabled"}>📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${contract.cta.tokenize ? "" : "disabled"}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isRiskBlocked ? copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#94a3b8">${labels.tapHelp}</p>${shareToken ? "" : `<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">${labels.demoMode}</p>`}</section>
 <script>
 (() => {
   const share = ${JSON.stringify(shareToken)};
   const bid = ${JSON.stringify(contract.identity.bid)};
-  const uid = ${JSON.stringify(contract.identity.uid || '')};
+  const uid = '';
   const copy = ${JSON.stringify(copy)};
   const labels = ${JSON.stringify(labels)};
   const ui = copy.lang === 'pt-BR'
@@ -1035,10 +1054,12 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const eventId = ${JSON.stringify(contract.identity.eventId || null)};
   const canAssociate = ${JSON.stringify(contract.status.tone === "good" && contract.status.code !== "REPLAY_SUSPECT")};
   const appBase = (() => {
+    const currentOrigin = window.location.origin;
     try {
-      return new URL(${JSON.stringify(contract.cta.portalUrl)}).origin;
+      const portalOrigin = new URL(${JSON.stringify(contract.cta.portalUrl)}).origin;
+      return portalOrigin || currentOrigin;
     } catch {
-      return window.location.origin;
+      return currentOrigin;
     }
   })();
   const nfcBtn = document.getElementById('nfc-scan');
@@ -1132,9 +1153,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       button.textContent = copy.processing;
       if (statusNode) statusNode.textContent = copy.processing + ' ' + action;
       const shareQuery = share ? '&share=' + encodeURIComponent(share) : '';
-      const endpoint = action === 'provenance'
-        ? '/public/cta/provenance?bid=' + encodeURIComponent(bid) + '&uid=' + encodeURIComponent(uid) + shareQuery
-        : '/public/cta/' + action + '?' + (share ? 'share=' + encodeURIComponent(share) : '');
+      const endpoint = '/public/cta/' + action + '?' + (share ? 'share=' + encodeURIComponent(share) : '');
       try {
         const res = await fetch(endpoint, action === 'provenance' ? { method: 'GET', cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bid, uid, event_id: eventId, source: 'sun_mobile_preview' }) });
         const payload = await res.json().catch(() => ({}));
@@ -1228,26 +1247,37 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
 
 export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  const traceId = req.headers.get("x-nexid-trace-id") || req.headers.get("x-request-id") || `sun_${Date.now().toString(36)}`;
+  const meta = getRequestMeta(req);
+  const traceId = meta.traceId;
   const bid = url.searchParams.get('bid') || '';
   const picc_data = url.searchParams.get('picc_data') || '';
   const enc = url.searchParams.get('enc') || '';
   const cmac = url.searchParams.get('cmac') || '';
 
   const ua = req.headers.get('user-agent') || '';
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null;
+  const ip = meta.ip;
   const geoCity = safeDecode(req.headers.get('x-vercel-ip-city'));
   const geoCountry = req.headers.get('x-vercel-ip-country') || null;
   const geoLat = Number(req.headers.get('x-vercel-ip-latitude') || '');
   const geoLng = Number(req.headers.get('x-vercel-ip-longitude') || '');
   const locale = resolveSunLocale(url, geoCountry, req.headers.get('accept-language'));
 
-  if (isRateLimited(ip)) return json({ ok: false, reason: 'rate_limited', limitPerMinute: RATE_LIMIT_MAX }, 429);
-  if (!bid || !picc_data || !enc || !cmac) return json({ ok: false, reason: 'missing params', need: ['bid', 'picc_data', 'enc', 'cmac'] }, 400);
-  if (!BID_RE.test(bid)) return json({ ok: false, reason: 'invalid bid format' }, 400);
-  if (!HEX_RE.test(picc_data) || picc_data.length % 2 !== 0) return json({ ok: false, reason: 'invalid picc_data hex' }, 400);
-  if (!HEX_RE.test(enc) || enc.length !== 32) return json({ ok: false, reason: 'invalid enc hex (expected 32 hex chars)' }, 400);
-  if (!HEX_RE.test(cmac) || cmac.length !== 16) return json({ ok: false, reason: 'invalid cmac hex (expected 16 hex chars)' }, 400);
+  const uidLike = (url.searchParams.get("uid") || "").trim();
+  const ctrLike = (url.searchParams.get("ctr") || "").trim();
+  const uidCtrKey = `${uidLike || "no_uid"}:${ctrLike || "no_ctr"}`;
+  const [ipRate, bidRate, uidCtrRate] = await Promise.all([
+    hitSunRateLimit('ip', ip || 'unknown', 60, RATE_LIMIT_MAX_IP),
+    hitSunRateLimit('bid', bid || 'unknown', 60, RATE_LIMIT_MAX_BID),
+    hitSunRateLimit('uid_ctr', uidCtrKey, 60, RATE_LIMIT_MAX_UID_CTR),
+  ]);
+  if (ipRate.limited || bidRate.limited || uidCtrRate.limited) {
+    return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  }
+  if (!bid || !picc_data || !enc || !cmac) return json({ ok: false, reason: 'missing params', need: ['bid', 'picc_data', 'enc', 'cmac'] }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  if (!BID_RE.test(bid)) return json({ ok: false, reason: 'invalid bid format' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  if (!HEX_RE.test(picc_data) || picc_data.length % 2 !== 0) return json({ ok: false, reason: 'invalid picc_data hex' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  if (!HEX_RE.test(enc) || enc.length !== 32) return json({ ok: false, reason: 'invalid enc hex (expected 32 hex chars)' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  if (!HEX_RE.test(cmac) || cmac.length !== 16) return json({ ok: false, reason: 'invalid cmac hex (expected 16 hex chars)' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
 
   let result: SunResult;
   try {
@@ -1410,6 +1440,7 @@ export async function GET(req: Request): Promise<Response> {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
         'x-nexid-trace-id': traceId,
+        'x-request-id': traceId,
         'x-nexid-upstream-status': String(result.status || 200),
       },
     });
@@ -1417,6 +1448,7 @@ export async function GET(req: Request): Promise<Response> {
 
   const response = json(contract, result.status);
   response.headers.set("x-nexid-trace-id", traceId);
+  response.headers.set("x-request-id", traceId);
   if (diagnosticId) response.headers.set("x-nexid-diagnostic-id", String(diagnosticId));
   if (eventId) response.headers.set("x-nexid-event-id", String(eventId));
   return response;
