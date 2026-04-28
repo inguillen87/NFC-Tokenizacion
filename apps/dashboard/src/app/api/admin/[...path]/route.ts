@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { aggregateTenantMetrics } from "@product/core";
 import { getDashboardSession } from "../../../../lib/session";
-import { canReadonlyDemoAccess, shouldAllowDemoFallback } from "../../../../lib/admin-proxy-policy";
+import { canReadonlyDemoAccess, resolveAdminProxyPolicy } from "../../../../lib/admin-proxy-policy";
 
 const API_BASE = productUrls.api;
 const DEMO_BATCH = {
@@ -30,7 +30,17 @@ function dashboardRoleToScope(role: string | undefined) {
 
 function markDemoData(res: NextResponse) {
   res.headers.set("x-nexid-demo-data", "DEMO DATA");
+  res.headers.set("x-nexid-data-mode", "demo");
+  res.headers.set("x-nexid-demo-source", "fallback");
   return res;
+}
+
+function annotatePayload<T extends Record<string, unknown>>(payload: T, source: "demo" | "production") {
+  return {
+    ...payload,
+    demoMode: source === "demo",
+    dataSource: source,
+  };
 }
 
 function safeParseJson(text: string) {
@@ -115,7 +125,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       geoAnomalyRate: 0.02,
       deviceAnomalyRate: 0.01,
     });
-    return NextResponse.json({
+    return NextResponse.json(annotatePayload({
       scope: { tenant: tenantFilter || "demobodega", source: "real", range: "30d", country: "all" },
       kpis: {
         scans,
@@ -192,10 +202,10 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" },
         },
       ],
-    });
+    }, "demo"));
   }
   if (method === "GET" && normalized === "tags") {
-    return NextResponse.json({
+    return NextResponse.json(annotatePayload({
       scope: { tenant: tenantFilter || "demobodega", source: "real", range: "30d", country: "all", query: "", offset: 0, limit: 100 },
       totals: { total: 3, active_tags: 3, non_active_tags: 0, minted_tags: 1, pending_tokenization: 2 },
       rows: [
@@ -210,7 +220,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" },
         },
       ],
-    });
+    }, "demo"));
   }
   if (method === "GET" && normalized === "tokenization/requests") {
     return NextResponse.json({
@@ -436,7 +446,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   if (method === "POST" && normalized === "users") {
     return NextResponse.json({ ok: true, userId: "demo-user-001" });
   }
-  return NextResponse.json({ ok: true, demo: true, path: normalized });
+  return NextResponse.json(annotatePayload({ ok: true, demo: true, path: normalized }, "demo"));
 }
 
 async function forward(req: Request, path: string[]) {
@@ -447,10 +457,16 @@ async function forward(req: Request, path: string[]) {
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
   const requireScopedAdminAuth = String(process.env.REQUIRE_SCOPED_ADMIN_AUTH || "").toLowerCase() === "true";
   const demoSession = isDemoSession(req);
-  const allowDemoFallback = String(process.env.DASHBOARD_ALLOW_DEMO_FALLBACK || "").toLowerCase() === "true";
+  const allowDemoFallback = String(process.env.DEMO_FALLBACK_ALLOWED || process.env.DASHBOARD_ALLOW_DEMO_FALLBACK || "").toLowerCase() === "true";
   const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
-  const demoModeExplicit = String(process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
-  const allowDemoFallbackForRequest = shouldAllowDemoFallback({ allowDemoFallback, isProduction, demoModeExplicit });
+  const demoModeExplicit = String(process.env.DEMO_MODE || process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
+  const policy = resolveAdminProxyPolicy({
+    isProduction,
+    demoMode: demoModeExplicit,
+    demoFallbackAllowed: allowDemoFallback,
+    requireScopedAdminAuth,
+  });
+  const allowDemoFallbackForRequest = policy.allowDemoFallback;
   const dashboardSession = await getDashboardSession().catch(() => null);
   const scopedRole = dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
 
@@ -463,7 +479,7 @@ async function forward(req: Request, path: string[]) {
 
   const unavailable = (reason: string) => {
     if (req.method === "GET" && normalizedPath === "analytics") {
-      return NextResponse.json({
+      return NextResponse.json(annotatePayload({
         ok: false,
         reason,
         scope: { source: "unavailable", tenant: "unknown", range: "24h", country: "all" },
@@ -477,28 +493,28 @@ async function forward(req: Request, path: string[]) {
         deviceSignals: [],
         tagJourney: [],
         products: [],
-      });
+      }, "production"));
     }
     if (req.method === "GET" && normalizedPath === "security-alerts") {
-      return NextResponse.json({
+      return NextResponse.json(annotatePayload({
         ok: false,
         reason,
         scope: { source: "unavailable", hours: 24 },
         summary: { repeatedInvalidUid: 0, geoVelocityAlerts: 0 },
         repeatedInvalidUid: [],
         geoVelocityAlerts: [],
-      });
+      }, "production"));
     }
     if (req.method === "GET" && normalizedPath === "alerts") {
-      return NextResponse.json({ ok: false, reason, items: [] });
+      return NextResponse.json(annotatePayload({ ok: false, reason, items: [] }, "production"));
     }
     if (req.method === "GET" && normalizedPath === "alert-rules") {
-      return NextResponse.json({ ok: false, reason, items: [] });
+      return NextResponse.json(annotatePayload({ ok: false, reason, items: [] }, "production"));
     }
     if (req.method === "GET" && normalizedPath === "tokenization/requests") {
-      return NextResponse.json({ ok: false, reason, rows: [] });
+      return NextResponse.json(annotatePayload({ ok: false, reason, rows: [] }, "production"));
     }
-    return NextResponse.json({ ok: false, reason }, { status: 503 });
+    return NextResponse.json(annotatePayload({ ok: false, reason }, "production"), { status: 503 });
   };
 
   if (!hasAdminKey && !scopedRole && (!demoSession || !allowDemoFallbackForRequest)) {
@@ -550,7 +566,9 @@ async function forward(req: Request, path: string[]) {
   if (criticalGet && (!contentType.includes("application/json") || !safeParseJson(text))) {
     return unavailable("Admin upstream returned invalid payload.");
   }
-  return new NextResponse(text, { status: response.status, headers: { "Content-Type": response.headers.get("content-type") || "application/json" } });
+  const headers = new Headers({ "Content-Type": response.headers.get("content-type") || "application/json" });
+  headers.set("x-nexid-data-mode", "production");
+  return new NextResponse(text, { status: response.status, headers });
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {

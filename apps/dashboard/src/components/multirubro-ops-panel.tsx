@@ -5,6 +5,7 @@ import { OpsPanel, StatusChip, WorldMapRealtime } from "@product/ui";
 import { VerticalAsset } from "./multirubro-assets";
 import { motion } from "framer-motion";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from "recharts";
+import { readDemoDataMetaFromResponse } from "../lib/demo-data-mode";
 
 type AnalyticsPayload = {
   ok?: boolean;
@@ -101,6 +102,7 @@ export function MultirubroOpsPanel() {
   const [busy, setBusy] = useState(false);
   const [mintStatus, setMintStatus] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [demoDataMode, setDemoDataMode] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<string>("");
   const [streamOnline, setStreamOnline] = useState(false);
   const [streamState, setStreamState] = useState<"connected" | "reconnecting" | "stale" | "offline">("offline");
@@ -203,6 +205,7 @@ export function MultirubroOpsPanel() {
   async function fetchJson<T>(url: string): Promise<T | null> {
     try {
       const response = await fetch(url, { cache: "no-store" });
+      if (readDemoDataMetaFromResponse(response).demoMode) setDemoDataMode(true);
       const payload = await response.json().catch(() => null);
       if (!payload) {
         return null;
@@ -493,6 +496,7 @@ export function MultirubroOpsPanel() {
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Security alerts<br /><b className="text-rose-200">{Number(security?.summary?.repeatedInvalidUid || 0) + Number(security?.summary?.geoVelocityAlerts || 0)}</b></div>
       </motion.div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+        {demoDataMode ? <StatusChip label="DEMO DATA" tone="warn" /> : null}
         <StatusChip
           label={`stream ${streamState}`}
           tone={streamState === "connected" ? "good" : streamState === "stale" ? "warn" : "risk"}

@@ -29,14 +29,12 @@ export async function GET() {
 
   const latestRows = await sql/*sql*/`
     SELECT
-      e.id,
       e.created_at,
       e.result,
       COALESCE(NULLIF(e.city, ''), 'Unknown') AS city,
       COALESCE(NULLIF(e.country_code, ''), 'UNK') AS country,
       e.uid_hex,
-      COALESCE(t.slug, 'tenant') AS tenant_slug,
-      LOWER(COALESCE(e.source, 'real')) AS source
+      COALESCE(t.slug, 'tenant') AS tenant_slug
     FROM events e
     LEFT JOIN tenants t ON t.id = e.tenant_id
     ORDER BY e.created_at DESC
@@ -50,14 +48,12 @@ export async function GET() {
   const demoMode = process.env.DEMO_MODE === "true" || (prodEvents === 0 && demoEvents > 0);
 
   const latestPublicEvents = latestRows.map((row: Record<string, unknown>) => ({
-    eventId: Number(row.id || 0),
     occurredAt: String(row.created_at || ""),
     verdict: String(row.result || "UNKNOWN"),
     city: String(row.city || "Unknown"),
     country: String(row.country || "UNK"),
     tenant: String(row.tenant_slug || "tenant").slice(0, 24),
     uidMasked: maskUid(String(row.uid_hex || "")),
-    source: String(row.source || "real"),
   }));
 
   const payload = {
