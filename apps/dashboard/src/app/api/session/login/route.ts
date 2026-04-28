@@ -112,6 +112,7 @@ export async function POST(req) {
   clearTimeout(timeout);
 
   const demoProfile = findDemoProfile(submittedEmail, submittedPassword);
+  const canUseDemoLogin = allowDemoLoginMode();
   if (!upstream) {
     if (demoProfile && canUseDemoLogin) {
       const response = NextResponse.json({
