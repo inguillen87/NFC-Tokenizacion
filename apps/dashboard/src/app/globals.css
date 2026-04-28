@@ -40,6 +40,40 @@ select {
 .brand-lockup {
   color: #e2e8f0;
   --brand-accent: #2fe1c3;
+  --brand-wordmark-main: #e2e8f0;
+  --brand-wordmark-accent: #2fe1c3;
+  --brand-wordmark-orbit: rgba(47, 225, 195, 0.5);
+  --brand-mark-bg: linear-gradient(145deg,#0b1220,#111b30);
+  --brand-mark-border: rgba(255,255,255,.12);
+  --brand-mark-plate: rgba(47,225,195,.10);
+  --brand-wordmark-pulse-duration: 4.2s;
+  --brand-wordmark-float-duration: 5.4s;
+  --brand-wordmark-pulse-up: -1px;
+  --brand-wordmark-float-up: -1.2px;
+  --brand-wordmark-float-down: .6px;
+}
+
+.brand-wordmark-svg {
+  filter: drop-shadow(0 0 16px rgba(47,225,195,.14));
+}
+
+.brand-lockup--pulse .brand-wordmark-svg {
+  animation: brandWordmarkPulse var(--brand-wordmark-pulse-duration) ease-in-out infinite;
+}
+
+.brand-lockup--ripple .brand-wordmark-svg {
+  animation: brandWordmarkFloat var(--brand-wordmark-float-duration) ease-in-out infinite;
+}
+
+.brand-surface-sidebar .brand-wordmark-svg {
+  --brand-wordmark-pulse-duration: 5.6s;
+  filter: drop-shadow(0 0 14px rgba(47,225,195,.16));
+}
+
+.brand-surface-auth .brand-wordmark-svg {
+  --brand-wordmark-pulse-duration: 4.1s;
+  --brand-wordmark-float-duration: 4.1s;
+  filter: drop-shadow(0 0 20px rgba(47,225,195,.22));
 }
 
 .brand-mark {
@@ -131,9 +165,22 @@ select {
   }
 }
 
+@keyframes brandWordmarkPulse {
+  0%, 100% { transform: translateY(0); opacity: .98; }
+  50% { transform: translateY(var(--brand-wordmark-pulse-up)); opacity: 1; }
+}
+
+@keyframes brandWordmarkFloat {
+  0%, 100% { transform: translateY(0); }
+  35% { transform: translateY(var(--brand-wordmark-float-up)); }
+  70% { transform: translateY(var(--brand-wordmark-float-down)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .brand-dot__core,
-  .brand-i-head-orbit {
+  .brand-i-head-orbit,
+  .brand-lockup--pulse .brand-wordmark-svg,
+  .brand-lockup--ripple .brand-wordmark-svg {
     animation: none;
   }
 }
@@ -186,12 +233,30 @@ html.theme-light .bg-white\/10 {
 
 
 html.theme-light .brand-lockup {
-  color: #0f172a;
-  --brand-accent: #06b6d4;
+  color: #ffffff;
+  --brand-accent: #ffffff;
+  --brand-wordmark-main: #ffffff;
+  --brand-wordmark-accent: #dbeafe;
+  --brand-wordmark-orbit: rgba(191,219,254,.75);
+  --brand-mark-bg: linear-gradient(145deg,#0f172a,#1e293b);
+  --brand-mark-border: rgba(255,255,255,.34);
+  --brand-mark-plate: rgba(255,255,255,.10);
 }
 
 html.theme-light .brand-mark {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+}
+
+html.theme-light .brand-wordmark-svg {
+  filter: drop-shadow(0 0 16px rgba(191,219,254,.32));
+}
+
+html.theme-light .brand-surface-sidebar .brand-wordmark-svg {
+  filter: drop-shadow(0 0 14px rgba(191,219,254,.30));
+}
+
+html.theme-light .brand-surface-auth .brand-wordmark-svg {
+  filter: drop-shadow(0 0 20px rgba(191,219,254,.45));
 }
 
 
