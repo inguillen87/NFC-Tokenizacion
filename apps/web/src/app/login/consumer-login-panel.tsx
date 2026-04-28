@@ -1,6 +1,22 @@
 "use client";
 
 import { useState } from "react";
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+}
+
+function parseContact(value: string) {
+  const input = value.trim();
+  const email = input.includes("@");
+  const valid = email ? isValidEmail(input) : isValidPhone(input);
+  return { input, email, valid };
+}
+
 
 export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const [contact, setContact] = useState("");
@@ -10,13 +26,17 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const [pending, setPending] = useState(false);
 
   async function start() {
-    if (!contact.trim()) return;
+    const parsed = parseContact(contact);
+    if (!parsed.valid) {
+      setStatus("Ingresá un email o teléfono válido.");
+      return;
+    }
     setPending(true);
     setStatus("Enviando código...");
     const payload = await fetch("/api/consumer/auth/start", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(contact.includes("@") ? { email: contact.trim() } : { phone: contact.trim() }),
+      body: JSON.stringify(parsed.email ? { email: parsed.input } : { phone: parsed.input }),
     }).then((res) => res.json().catch(() => null)).catch(() => null);
     setPending(false);
     if (!payload?.ok) {
@@ -29,13 +49,17 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   }
 
   async function verify() {
-    if (!contact.trim() || !code.trim()) return;
+    const parsed = parseContact(contact);
+    if (!parsed.valid || !code.trim()) {
+      setStatus("Revisá el contacto y el código.");
+      return;
+    }
     setPending(true);
     setStatus("Verificando...");
     const response = await fetch("/api/consumer/auth/verify", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(contact.includes("@") ? { email: contact.trim(), code: code.trim() } : { phone: contact.trim(), code: code.trim() }),
+      body: JSON.stringify(parsed.email ? { email: parsed.input, code: code.trim() } : { phone: parsed.input, code: code.trim() }),
     }).catch(() => null);
     setPending(false);
     if (!response || !response.ok) {
@@ -53,7 +77,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         <input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Email o teléfono" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500" />
         {step === "verify" ? <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Código" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500" /> : null}
         {step === "start" ? (
-          <button disabled={pending || !contact.trim()} onClick={() => void start()} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60">Recibir código</button>
+          <button disabled={pending || !parseContact(contact).valid} onClick={() => void start()} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60">Recibir código</button>
         ) : (
           <button disabled={pending || !code.trim()} onClick={() => void verify()} className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60">Entrar al portal</button>
         )}
