@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { randomUUID } from "node:crypto";
+import { getDashboardSession } from "../../../../../lib/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
@@ -40,11 +41,26 @@ export async function GET(request: Request) {
   incoming.searchParams.forEach((value, key) => upstream.searchParams.set(key, value));
 
   const token = String(process.env.ADMIN_API_KEY || "").trim();
-  if (!token) return fallbackStream("ADMIN_API_KEY missing in dashboard environment", requestId);
+  const requireScopedAdminAuth = String(process.env.REQUIRE_SCOPED_ADMIN_AUTH || "").toLowerCase() === "true";
+  const session = await getDashboardSession().catch(() => null);
+  const scopedRole = session?.role === "super-admin"
+    ? "super_admin"
+    : session?.role === "tenant-admin"
+      ? "tenant_admin"
+      : session?.role === "reseller"
+        ? "reseller"
+        : session?.role
+          ? "readonly_demo"
+          : "";
+
+  if (requireScopedAdminAuth && !scopedRole) return fallbackStream("Scoped admin auth required", requestId);
+  if (!token && !scopedRole) return fallbackStream("ADMIN_API_KEY missing in dashboard environment", requestId);
 
   const response = await fetch(upstream.toString(), {
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(scopedRole ? { "x-nexid-admin-scope": scopedRole } : {}),
+      ...(session?.tenantSlug ? { "x-nexid-tenant-slug": session.tenantSlug } : {}),
       Accept: "text/event-stream",
       "x-nexid-request-id": requestId,
       ...(request.headers.get("last-event-id") ? { "Last-Event-ID": String(request.headers.get("last-event-id")) } : {}),

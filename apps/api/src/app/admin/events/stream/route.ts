@@ -5,6 +5,7 @@ import { checkAdmin } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { onRealtimeEvent } from "../../../../lib/realtime-events";
 import { randomUUID } from "node:crypto";
+import { normalizeEvent } from "@product/core";
 
 type EventRow = Record<string, unknown>;
 
@@ -126,7 +127,8 @@ export async function GET(req: Request): Promise<Response> {
 
       try {
         send("connected", { id: `connected-${Date.now()}`, stream_request_id: requestId, ts: new Date().toISOString() });
-        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, rows: await fetchRows(searchParams) });
+        const snapshotRows = await fetchRows(searchParams);
+        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, rows: snapshotRows.map((row) => normalizeEvent(row)) });
       } catch {
         send("warning", { id: `warning-${Date.now()}`, stream_request_id: requestId, reason: "snapshot_unavailable" });
       }
@@ -145,7 +147,7 @@ export async function GET(req: Request): Promise<Response> {
         const createdAtMs = payload.created_at ? new Date(String(payload.created_at)).getTime() : NaN;
         const streamLatencyMs = Number.isFinite(createdAtMs) ? Math.max(0, emittedAt.getTime() - createdAtMs) : null;
         send("event", {
-          ...payload,
+          ...normalizeEvent(payload as Record<string, unknown>),
           stream_sent_at: emittedAt.toISOString(),
           stream_latency_ms: streamLatencyMs,
           stream_request_id: requestId,
