@@ -9,6 +9,7 @@ import { RiskRadarChart } from "./charts/risk-radar-chart";
 import { TapVelocityChart } from "./charts/tap-velocity-chart";
 import { TopProductsTable } from "./charts/top-products-table";
 import { TrustFunnelChart } from "./charts/trust-funnel-chart";
+import { classifyEventAlertSeverity, matchesSeverityFilter } from "../lib/alert-severity";
 
 const GlobalOpsMap = dynamic(() => import("@product/ui").then((mod) => mod.GlobalOpsMap), { ssr: false });
 
@@ -68,14 +69,6 @@ function DeviceBucket({ title, items }: { title: string; items: Array<{ label: s
 }
 
 
-function alertSeverityFromResult(result: string) {
-  const normalized = String(result || "").toUpperCase();
-  if (["REPLAY_SUSPECT", "DUPLICATE"].includes(normalized)) return "high" as const;
-  if (["TAMPER", "TAMPERED", "BROKEN", "REVOKED"].includes(normalized)) return "critical" as const;
-  if (["INVALID", "OPENED"].includes(normalized)) return "medium" as const;
-  return "none" as const;
-}
-
 function pct(value: number, total: number) {
   if (!total) return "0%";
   return `${((value / total) * 100).toFixed(1)}%`;
@@ -119,8 +112,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       : riskCategoryFilter === "Tamper alerts"
       ? ["TAMPER", "TAMPERED", "OPENED"].includes(String(item.result || "").toUpperCase())
       : true;
-    const severity = alertSeverityFromResult(item.result);
-    const severityMatch = feedSeverityFilter === "all" ? true : severity === feedSeverityFilter;
+    const severity = classifyEventAlertSeverity(item.result);
+    const severityMatch = matchesSeverityFilter(severity, feedSeverityFilter);
     return dayMatch && riskMatch && severityMatch;
   }), [feed, feedSeverityFilter, riskCategoryFilter, selectedDay]);
   const trustFunnel = useMemo(() => {
@@ -361,7 +354,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           </div>
           <div className="space-y-2">
             {(filteredFeed.length ? filteredFeed : []).slice(0, 10).map((item) => {
-              const severity = alertSeverityFromResult(item.result);
+              const severity = classifyEventAlertSeverity(item.result);
               const tone = severity === "critical" ? "risk" : severity === "high" ? "warn" : severity === "medium" ? "neutral" : "good";
               return (
                 <div key={item.id} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
