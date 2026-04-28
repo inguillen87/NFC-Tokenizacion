@@ -20,3 +20,5 @@ export * from "./brand";
 export * from "./helpbot";
 
 export * from "./theme-toggle";
+
+export * from "./global-ops-map";

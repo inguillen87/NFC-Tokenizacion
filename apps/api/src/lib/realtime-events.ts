@@ -4,6 +4,11 @@ import { Pool } from "@neondatabase/serverless";
 
 type RealtimeEventPayload = {
   id?: string | number;
+  event_type?: string;
+  alert_id?: string;
+  tenant_id?: string;
+  severity?: string;
+  type?: string;
   tenant_slug?: string;
   bid?: string;
   uid_hex?: string;
