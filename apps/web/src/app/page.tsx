@@ -19,6 +19,7 @@ import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { ProductExitLink } from "../components/product-exit-link";
 import { PublicLinkChip } from "../components/public-link-chip";
+import { LandingProofSection, type ProofSummary } from "../components/landing-proof-section";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
@@ -83,7 +84,9 @@ export default async function HomePage() {
   const proofSummary: Partial<ProofSummary> = {};
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
-  const howItWorks = content.howItWorks;
+  const proofSummaryResponse = await fetch(`${productUrls.api}/public/proof/summary`, { cache: "no-store" }).catch(() => null);
+  const proofSummaryJson = proofSummaryResponse?.ok ? await proofSummaryResponse.json().catch(() => ({})) : {};
+  const proofSummary = (proofSummaryJson || {}) as Partial<ProofSummary>;
   const labels = locale === "en"
     ? {
       demoJson: "Download seed JSON",
@@ -387,6 +390,16 @@ export default async function HomePage() {
       </section>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
+      <LandingProofSection
+        proof={{
+          tapsToday: Number(proofSummary.tapsToday || 0),
+          validRate: Number(proofSummary.validRate || 0),
+          riskBlocked: Number(proofSummary.riskBlocked || 0),
+          activeRegions: Number(proofSummary.activeRegions || 0),
+          demoMode: Boolean(proofSummary.demoMode),
+          latestPublicEvents: proofSummary.latestPublicEvents ?? [],
+        }}
+      />
 
       <section className="container-shell py-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
