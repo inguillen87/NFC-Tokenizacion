@@ -32,7 +32,7 @@ export async function GET(req: Request) {
         AND o.tenant_id = cp.tenant_id
         AND (
           (cp.product_passport_id IS NOT NULL AND UPPER(o.uid_hex) = UPPER(cp.product_passport_id))
-          OR (cp.product_passport_id IS NULL)
+          OR (cp.product_passport_id IS NULL AND o.event_id = cp.latest_tap_event_id)
         )
       ORDER BY o.claimed_at DESC
       LIMIT 1

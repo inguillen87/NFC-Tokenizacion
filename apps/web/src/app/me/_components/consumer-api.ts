@@ -1,4 +1,6 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { shouldRedirectToConsumerAuth } from "./consumer-portal-model";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.nexid.lat";
 
@@ -21,6 +23,18 @@ async function fetchJson(path: string) {
 
 export async function fetchConsumerMe() {
   return fetchJson("/consumer/me");
+}
+
+export async function fetchConsumerSession() {
+  return fetchJson("/consumer/session");
+}
+
+export async function requireConsumerSession(nextPath = "/me") {
+  const session = (await fetchConsumerSession()) as { ok?: boolean; authenticated?: boolean } | null;
+  if (shouldRedirectToConsumerAuth(session)) {
+    redirect(`/login?consumer=1&next=${encodeURIComponent(nextPath)}`);
+  }
+  return session;
 }
 
 export async function fetchConsumerPath(path: string) {
