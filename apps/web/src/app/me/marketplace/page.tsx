@@ -1,16 +1,17 @@
-import { asArray, fetchConsumerPath, fetchMarketplacePath } from "../_components/consumer-api";
+import { asArray, fetchConsumerPath, fetchMarketplacePath, requireConsumerSession } from "../_components/consumer-api";
+import { resolveMarketplaceTenant } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
 
 type Listing = { title?: string; brand?: string; points_price?: number; cash_price?: number; stock_status?: string };
 type ConsumerProduct = { tenant_slug?: string | null; ownership_status?: string | null; ownership_record_status?: string | null };
 
 export default async function MarketplacePage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  await requireConsumerSession("/me/marketplace");
   const params = (await searchParams) || {};
   const tenantFromQuery = typeof params.tenant === "string" ? params.tenant : "";
   const consumerProductsPayload = await fetchConsumerPath("products");
   const consumerProducts = asArray<ConsumerProduct>(consumerProductsPayload);
-  const preferredOwned = consumerProducts.find((item) => String(item.ownership_record_status || item.ownership_status || "").toLowerCase() === "claimed");
-  const contextualTenant = tenantFromQuery || String(preferredOwned?.tenant_slug || consumerProducts[0]?.tenant_slug || "").trim();
+  const contextualTenant = resolveMarketplaceTenant({ tenantFromQuery, products: consumerProducts });
   const payload = await fetchMarketplacePath(`products${contextualTenant ? `?tenant=${encodeURIComponent(contextualTenant)}` : ""}`);
   const items = asArray<Listing>(payload);
 
@@ -22,7 +23,11 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
         : "Catálogo curado para miembros NexID: canje, reserva y request-to-buy."}
     >
       {!items.length ? (
-        <section className="rounded-xl border border-violet-300/30 bg-violet-500/10 p-5 text-sm text-violet-100">Sin catálogo publicado por ahora. Volvé pronto para nuevas experiencias premium.</section>
+        <section className="rounded-xl border border-violet-300/30 bg-violet-500/10 p-5 text-sm text-violet-100">
+          {contextualTenant
+            ? `Sin catálogo publicado para ${contextualTenant} por ahora.`
+            : "Sin contexto de tenant para abrir catálogo contextual. Este placeholder usa solo estado real y no inventa productos."}
+        </section>
       ) : (
         <section className="grid gap-3 md:grid-cols-2">
           {items.map((item, idx) => {
