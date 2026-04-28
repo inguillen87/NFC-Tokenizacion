@@ -22,62 +22,7 @@ import { PublicLinkChip } from "../components/public-link-chip";
 import { LandingProofSection, type ProofSummary } from "../components/landing-proof-section";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
-import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
-import { LandingProofSection } from "../components/landing-proof-section";
-
-type LandingProofEvent = {
-  city: string;
-  country: string;
-  verdict: string;
-  tenant: string;
-  occurredAt: string;
-  uidMasked: string;
-};
-
-type ProofSummary = {
-  tapsToday: number;
-  validRate: number;
-  riskBlocked: number;
-  activeRegions: number;
-  demoMode: boolean;
-  latestPublicEvents: LandingProofEvent[];
-};
-
-type LandingProofEvent = {
-  city: string;
-  country: string;
-  verdict: string;
-  tenant: string;
-  occurredAt: string;
-  uidMasked: string;
-};
-
-type ProofSummary = {
-  tapsToday: number;
-  validRate: number;
-  riskBlocked: number;
-  activeRegions: number;
-  demoMode: boolean;
-  latestPublicEvents: LandingProofEvent[];
-};
-
-type LandingProofEvent = {
-  city: string;
-  country: string;
-  verdict: string;
-  tenant: string;
-  occurredAt: string;
-  uidMasked: string;
-};
-
-type ProofSummary = {
-  tapsToday: number;
-  validRate: number;
-  riskBlocked: number;
-  activeRegions: number;
-  demoMode: boolean;
-  latestPublicEvents: LandingProofEvent[];
-};
+import { ArrowRight, CirclePlay, Layers3, Sparkles } from "lucide-react";
 
 export default async function HomePage() {
   // Legacy fallback to avoid deploy breakages if an older landing-proof block is reintroduced by merge cache.
@@ -227,15 +172,6 @@ export default async function HomePage() {
       investorCta: "Abrir investor snapshot",
       sunCta: "Abrir SUN validation center",
     };
-
-  const demoPacks = [
-    { key: "wine-secure", label: "Wine secure", tag: "NTAG 424 DNA TT", sim: "Bottle passport + uncork/tamper flow" },
-    { key: "events-basic", label: "Events basic", tag: "NTAG215", sim: "Wristband access + duplicate gate control" },
-    { key: "cosmetics-secure", label: "Cosmetics secure", tag: "NTAG 424 DNA TT", sim: "Cap opening + authenticity state" },
-    { key: "agro-secure", label: "Agro secure", tag: "NTAG 424 DNA TT", sim: "Bag tear + lot/origin validation" },
-    { key: "pharma-secure", label: "Docs & presence secure", tag: "NTAG 424 DNA", sim: "Certificates + contractor credential + proof-of-presence" },
-    { key: "luxury-basic", label: "Luxury basic", tag: "NTAG215", sim: "Brand story + ownership activation" },
-  ];
 
   const techMatrix = locale === "en"
     ? {
@@ -432,44 +368,6 @@ export default async function HomePage() {
 
       <ResellerSection content={content} />
       <BulletSection eyebrow={content.identity.eyebrow} title={content.identity.title} description={content.identity.description} bullets={content.identity.bullets} />
-
-      <section className="container-shell py-8">
-        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{labels.assetTitle}</p>
-          <p className="mt-2 text-sm text-slate-300">{labels.assetBody}</p>
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {demoPacks.map((pack) => (
-              <div key={pack.key} className="group rounded-xl border border-white/10 bg-slate-950/70 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-slate-950 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
-                <p className="text-sm font-semibold text-white">{pack.label} <span className="text-cyan-300">· {pack.tag}</span></p>
-                <p className="mt-1 text-xs text-slate-300">{pack.sim}</p>
-                <div className="mt-3 grid gap-2 md:grid-cols-3">
-                  <a className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white transition-colors duration-200 group-hover:border-white/20" href={`/demo/${pack.key}/seed.json`} download><FileJson className="h-3.5 w-3.5" />{labels.demoJson}</a>
-                  <a className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white transition-colors duration-200 group-hover:border-white/20" href={`/demo/${pack.key}/manifest.csv`} download><FileSpreadsheet className="h-3.5 w-3.5" />{labels.demoCsv}</a>
-                  <ProductExitLink kind="demoLab" className="inline-flex items-center justify-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200 transition-transform duration-200 group-hover:translate-x-0.5"><CirclePlay className="h-3.5 w-3.5" />{labels.launchLab}</ProductExitLink>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 grid gap-2 text-xs text-slate-300 md:grid-cols-4">
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyJson}</div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyCsv}</div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.whyLab}</div>
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">{labels.forWho}</div>
-          </div>
-          <div className="mt-5 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{labels.rolloutTitle}</p>
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {labels.rolloutBullets.map((item) => (
-                <div key={item} className="rounded-lg border border-cyan-300/15 bg-slate-950/50 p-3 text-xs text-slate-200 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-slate-950/70">{item}</div>
-              ))}
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/docs" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutDocs}<ArrowRight className="h-3.5 w-3.5" /></Link>
-              <Link href="/pricing" className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-slate-950/60 px-3 py-2 text-xs text-cyan-100 transition-transform duration-200 hover:-translate-y-0.5">{labels.rolloutPricing}<ArrowRight className="h-3.5 w-3.5" /></Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <section className="container-shell py-8">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
