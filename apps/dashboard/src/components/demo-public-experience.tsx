@@ -21,8 +21,37 @@ type EventItem = {
   vertical?: string;
 };
 
+type SimulateTapResponse = {
+  tap?: {
+    status?: string;
+    product_state?: string;
+    tamper_status?: string;
+    risk_score?: number;
+    quality_score?: number;
+    tenant?: string;
+    tenant_name?: string;
+    city?: string;
+    country?: string;
+    device?: string;
+    product_name?: string;
+  };
+  consumer_flow?: {
+    passport_path?: string;
+    marketplace_path?: string;
+    cta?: string[];
+  };
+  dashboard_realtime?: {
+    taps_delta?: number;
+    region_delta?: string;
+  };
+  nfc?: {
+    raw?: string;
+    bid?: string | null;
+  } | null;
+};
+
 async function call(path: string, method = "GET", payload?: unknown) {
-  const res = await fetch(`/api/internal/demo/${path}`, {
+  const res = await fetch(`/api/internal/demo/${path}?demo=1`, {
     method,
     headers: { "Content-Type": "application/json" },
     body: payload ? JSON.stringify(payload) : undefined,
@@ -47,9 +76,11 @@ function resultTone(result?: string) {
 
 export function DemoPublicExperience() {
   const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
+  const realSunTapUrl = "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=90029D3D1F11F4C1B28A7A7989889CED&enc=695597B1B5B4FD43DE20014FF38A1721&cmac=A04388FD0F3E8D09";
   const [vertical, setVertical] = useState<Vertical>("wine");
   const [scenario, setScenario] = useState<Scenario>("valid");
   const [latest, setLatest] = useState<EventItem | null>(null);
+  const [simulation, setSimulation] = useState<SimulateTapResponse | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [status, setStatus] = useState("Elegí escenario y presioná Probar escenario");
   const [loading, setLoading] = useState(true);
@@ -135,7 +166,23 @@ export function DemoPublicExperience() {
       setPendingScenario(true);
       setError(null);
       setStatus("Corriendo escenario...");
-      await call("simulate-tap", "POST", { mode: scenario, scenario, vertical, source: "consumer_tap" });
+      const result = await call("simulate-tap", "POST", {
+        mode: scenario,
+        scenario,
+        vertical,
+        source: "consumer_tap",
+        tenant: "demobodega",
+        tenantName: "Demo Bodega",
+        bid: "DEMO-2026-02",
+        city: "New York",
+        country: "US",
+        lat: 40.7831,
+        lng: -73.9712,
+        device: "iPhone 15 Pro",
+        productName: vertical === "events" ? "VIP Wristband" : vertical === "docs" ? "Secure Presence Credential" : "Gran Reserva Malbec",
+        tapUrl: realSunTapUrl,
+      });
+      setSimulation((result || null) as SimulateTapResponse | null);
       await refresh(false);
       setStatus("Escenario aplicado. Mostrá resultado + mapa + passport.");
     } catch {
@@ -215,6 +262,16 @@ export function DemoPublicExperience() {
             <h3 className="font-semibold text-white">Resultado del toque</h3>
             <p className={`mt-2 font-medium ${resultTone(latest?.result)}`}>Estado: <b>{latest?.result || "N/A"}</b></p>
             <p className="text-xs text-slate-400">{formatTimestamp(latest?.created_at)}</p>
+            {simulation?.tap ? (
+              <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200 md:grid-cols-2">
+                <p>Tap status: <b>{simulation.tap.status || "N/A"}</b></p>
+                <p>Product state: <b>{simulation.tap.product_state || "N/A"}</b></p>
+                <p>Tamper: <b>{simulation.tap.tamper_status || "N/A"}</b></p>
+                <p>Risk / Quality: <b>{simulation.tap.risk_score ?? "-"} / {simulation.tap.quality_score ?? "-"}</b></p>
+                <p>Tenant: <b>{simulation.tap.tenant_name || simulation.tap.tenant || "-"}</b></p>
+                <p>Device: <b>{simulation.tap.device || "-"}</b></p>
+              </div>
+            ) : null}
             <p className="mt-2 text-xs text-cyan-200">Leído de etiqueta · Aportado por celular · Resuelto por nexID · Simulado para demo</p>
           </Card>
         </div>
@@ -224,10 +281,23 @@ export function DemoPublicExperience() {
             <h3 className="font-semibold text-white">Historia / passport</h3>
             <p className="mt-2">Item: {latest?.product_name || "Demo product"}</p>
             <p>Última ciudad: {latest?.city || "-"} ({latest?.country_code || "-"})</p>
+            {simulation?.nfc?.raw ? (
+              <p className="mt-2 break-all text-[11px] text-slate-400">URL SUN real usada: {simulation.nfc.raw}</p>
+            ) : null}
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Ver resultado en celular (público)</a>
               <Link href="/demo-lab" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Abrir Demo Lab pro</Link>
             </div>
+            {simulation?.consumer_flow ? (
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                <Link href={simulation.consumer_flow.passport_path || "/sun"} className="rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-2 text-xs text-cyan-100">
+                  Abrir passport simulado
+                </Link>
+                <Link href={simulation.consumer_flow.marketplace_path || "/me/marketplace?tenant=demobodega"} className="rounded-lg border border-emerald-300/40 bg-emerald-500/10 p-2 text-xs text-emerald-100">
+                  Abrir marketplace tenant
+                </Link>
+              </div>
+            ) : null}
           </Card>
 
           <Card className="p-4 text-sm text-slate-300">
@@ -255,6 +325,11 @@ export function DemoPublicExperience() {
 
       <Card className="p-4 text-xs text-slate-300">
         <p>{status}</p>
+        {simulation?.dashboard_realtime ? (
+          <p className="mt-2 text-cyan-200">
+            Realtime dashboard: +{simulation.dashboard_realtime.taps_delta ?? 0} tap · {simulation.dashboard_realtime.region_delta || "region N/A"}
+          </p>
+        ) : null}
         {error ? <p className="mt-2 text-rose-300">{error}</p> : null}
       </Card>
     </div>

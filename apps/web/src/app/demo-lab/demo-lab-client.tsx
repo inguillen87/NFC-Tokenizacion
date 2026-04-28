@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DEMO_CANONICAL_BATCH_ID, DEMO_TENANT_SLUG, DEMO_WINE_ITEM_ID } from "@product/config";
+import { WorldMapRealtime } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -61,6 +62,27 @@ const kpisByRole: Record<Role, Array<{ label: string; value: string }>> = {
     { label: "Authenticity", value: "Verified" },
     { label: "Warranty", value: "Available" },
     { label: "Ownership", value: "Claimable" },
+  ],
+};
+
+const mapPointsByBeat: Record<Beat, Array<{ city: string; country: string; lat: number; lng: number; scans: number; risk: number; status: string; lastSeen: string }>> = {
+  0: [
+    { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 3, risk: 0, status: "BATCH_READY", lastSeen: new Date().toISOString() },
+    { city: "Córdoba", country: "Argentina", lat: -31.4201, lng: -64.1888, scans: 1, risk: 0, status: "DEMO_WINDOW", lastSeen: new Date().toISOString() },
+  ],
+  1: [
+    { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 8, risk: 0, status: "AUTH_OK", lastSeen: new Date().toISOString() },
+    { city: "Miami", country: "USA", lat: 25.7617, lng: -80.1918, scans: 3, risk: 0, status: "EXPORT_SCAN", lastSeen: new Date().toISOString() },
+  ],
+  2: [
+    { city: "São Paulo", country: "Brazil", lat: -23.5505, lng: -46.6333, scans: 2, risk: 2, status: "DUPLICATE_BLOCKED", lastSeen: new Date().toISOString() },
+    { city: "Mexico City", country: "Mexico", lat: 19.4326, lng: -99.1332, scans: 2, risk: 1, status: "REPLAY_SIGNAL", lastSeen: new Date().toISOString() },
+    { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 5, risk: 0, status: "AUTH_OK", lastSeen: new Date().toISOString() },
+  ],
+  3: [
+    { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 5, risk: 0, status: "OWNERSHIP_CLAIMED", lastSeen: new Date().toISOString() },
+    { city: "Bogotá", country: "Colombia", lat: 4.711, lng: -74.0721, scans: 2, risk: 0, status: "WARRANTY_ENABLED", lastSeen: new Date().toISOString() },
+    { city: "Lima", country: "Peru", lat: -12.0464, lng: -77.0428, scans: 1, risk: 0, status: "TOKEN_LEAD", lastSeen: new Date().toISOString() },
   ],
 };
 
@@ -158,6 +180,15 @@ export function DemoLabClient() {
             <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Mobile preview synced to beat</p>
             <iframe title="demo mobile preview" src={mobileUrl} className="mt-3 h-[620px] w-full rounded-xl border border-white/10 bg-slate-950" />
           </article>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/70 p-3">
+          <WorldMapRealtime
+            title="Demo Lab geo-ops map"
+            subtitle="Mapa global dinámico por beat de narrativa (auth, risk, ownership)."
+            points={mapPointsByBeat[beat]}
+            initialExpanded={false}
+          />
         </div>
       </section>
     </main>
