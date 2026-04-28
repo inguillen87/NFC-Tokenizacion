@@ -20,6 +20,8 @@ import { ProductExitLink } from "../components/product-exit-link";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight } from "lucide-react";
+import { LandingProofSection, type ProofSummary } from "../components/landing-proof-section";
+
 
 const EMPTY_PROOF_SUMMARY: ProofSummary = {
   tapsToday: 0,
@@ -38,14 +40,11 @@ function parsePublicProofSummary(input: unknown): ProofSummary {
   const payload = input as Record<string, unknown>;
   const toNumber = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) ? value : 0);
   const toBoolean = (value: unknown): boolean => typeof value === "boolean" ? value : false;
-  const toString = (value: unknown): string => typeof value === "string" ? value : "";
+  const toString = (value: unknown): string => (typeof value === "string" ? value : "");
 
   const latestPublicEvents = Array.isArray(payload.latestPublicEvents)
     ? payload.latestPublicEvents.flatMap((event) => {
-      if (!event || typeof event !== "object") {
-        return [];
-      }
-
+      if (!event || typeof event !== "object") return [];
       const eventRecord = event as Record<string, unknown>;
       const city = toString(eventRecord.city);
       const country = toString(eventRecord.country);
@@ -54,9 +53,7 @@ function parsePublicProofSummary(input: unknown): ProofSummary {
       const occurredAt = toString(eventRecord.occurredAt);
       const uidMasked = toString(eventRecord.uidMasked);
 
-      if (!city || !country || !verdict || !tenant || !occurredAt || !uidMasked) {
-        return [];
-      }
+      if (!city || !country || !verdict || !tenant || !occurredAt || !uidMasked) return [];
 
       return [{ city, country, verdict, tenant, occurredAt, uidMasked }];
     })
@@ -75,6 +72,17 @@ function parsePublicProofSummary(input: unknown): ProofSummary {
 export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
+
+  let proofSummary = EMPTY_PROOF_SUMMARY;
+  try {
+    const proofSummaryResponse = await fetch(`${productUrls.api}/public/proof/summary`, { cache: "no-store" });
+    if (proofSummaryResponse.ok) {
+      const proofSummaryJson: unknown = await proofSummaryResponse.json();
+      proofSummary = parsePublicProofSummary(proofSummaryJson);
+    }
+  } catch {
+    proofSummary = EMPTY_PROOF_SUMMARY;
+  }
 
   const labels = locale === "en"
     ? {
@@ -324,6 +332,7 @@ export default async function HomePage() {
 
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
+      <LandingProofSection proof={proofSummary} />
       <RadarSection radar={content.radar} locale={locale} />
       <InteractiveDemoSection locale={locale} />
 
