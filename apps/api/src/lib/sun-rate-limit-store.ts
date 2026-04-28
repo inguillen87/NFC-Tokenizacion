@@ -3,14 +3,20 @@ let ensuredTable = false;
 
 async function ensureSunRateLimitTable() {
   if (ensuredTable) return;
-  await sql/*sql*/`
-    CREATE TABLE IF NOT EXISTS sun_rate_limit_events (
-      id bigserial PRIMARY KEY,
-      scope text NOT NULL,
-      scope_key text NOT NULL,
-      created_at timestamptz NOT NULL DEFAULT now()
-    )
-  `;
+  await sql/*sql*/`CREATE SEQUENCE IF NOT EXISTS sun_rate_limit_events_id_seq`;
+  try {
+    await sql/*sql*/`
+      CREATE TABLE IF NOT EXISTS sun_rate_limit_events (
+        id bigint PRIMARY KEY DEFAULT nextval('sun_rate_limit_events_id_seq'),
+        scope text NOT NULL,
+        scope_key text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+  } catch (error) {
+    const code = typeof error === "object" && error && "code" in error ? String((error as { code?: string }).code || "") : "";
+    if (code !== "23505") throw error;
+  }
   await sql/*sql*/`
     CREATE INDEX IF NOT EXISTS idx_sun_rate_limit_events_scope_time
       ON sun_rate_limit_events (scope, scope_key, created_at DESC)
