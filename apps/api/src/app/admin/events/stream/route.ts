@@ -2,19 +2,26 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { checkAdmin } from "../../../../lib/auth";
+import { getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { onRealtimeEvent } from "../../../../lib/realtime-events";
 import { randomUUID } from "node:crypto";
-import { normalizeEvent } from "@product/core";
+import { normalizeTenantTapRealtimeEvent } from "@product/core";
+import { allowRealtimeEventForScope } from "../../../../lib/realtime-stream-filter";
 
 type EventRow = Record<string, unknown>;
+type RealtimeAlertPayload = {
+  event_type: "security_alert.created";
+  alert_id: string;
+  tenant_id?: string;
+  tenant_slug?: string;
+  type: string;
+  severity: string;
+  created_at: string;
+};
 
-function inferRiskLevel(result: string) {
-  const normalized = String(result || "").toUpperCase();
-  if (normalized === "VALID" || normalized === "TAP_VALID") return "none";
-  if (normalized === "REPLAY_SUSPECT" || normalized === "TAMPER" || normalized === "TAMPERED") return "high";
-  if (normalized === "INVALID" || normalized === "NOT_REGISTERED" || normalized === "NOT_ACTIVE" || normalized === "REVOKED") return "medium";
-  return "low";
+function isSecurityAlertPayload(payload: Record<string, unknown>): payload is RealtimeAlertPayload {
+  return String(payload.event_type || "") === "security_alert.created" && Boolean(payload.alert_id);
 }
 
 function resolveWindow(search: URLSearchParams) {
@@ -41,15 +48,15 @@ function resolveWindowMs(raw: string): number | null {
   return map[raw] ?? null;
 }
 
-async function fetchRows(search: URLSearchParams): Promise<EventRow[]> {
+async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promise<EventRow[]> {
   const limit = Math.max(1, Math.min(200, Number(search.get("limit") || 40)));
-  const tenant = String(search.get("tenant") || "").trim().toLowerCase();
+  const tenant = (forcedTenantSlug || String(search.get("tenant") || "")).trim().toLowerCase();
   const verdict = String(search.get("verdict") || "").trim().toUpperCase();
   const risk = String(search.get("risk") || "").trim().toUpperCase();
   const { interval } = resolveWindow(search);
   const rows = tenant
     ? await sql/*sql*/`
-        SELECT id, result, reason, uid_hex, created_at, city, country_code, lat, lng, bid, source,
+        SELECT id, tenant_id, batch_id, tag_id, product_name, result, reason, uid_hex, created_at, city, country_code, lat, lng, bid, source,
                (SELECT slug FROM tenants t WHERE t.id = e.tenant_id LIMIT 1) AS tenant_slug
         FROM events e
         WHERE (SELECT slug FROM tenants t WHERE t.id = e.tenant_id LIMIT 1) = ${tenant}
@@ -70,7 +77,7 @@ async function fetchRows(search: URLSearchParams): Promise<EventRow[]> {
         LIMIT ${limit}
       `
     : await sql/*sql*/`
-        SELECT id, result, reason, uid_hex, created_at, city, country_code, lat, lng, bid, source,
+        SELECT id, tenant_id, batch_id, tag_id, product_name, result, reason, uid_hex, created_at, city, country_code, lat, lng, bid, source,
                (SELECT slug FROM tenants t WHERE t.id = e.tenant_id LIMIT 1) AS tenant_slug
         FROM events e
         WHERE (${verdict} = '' OR UPPER(e.result) = ${verdict})
@@ -95,6 +102,7 @@ async function fetchRows(search: URLSearchParams): Promise<EventRow[]> {
 export async function GET(req: Request): Promise<Response> {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const { scope, forcedTenantSlug } = getAdminTenantScope(req);
 
   const { searchParams } = new URL(req.url);
   const requestId = req.headers.get("x-request-id") || req.headers.get("x-nexid-request-id") || randomUUID();
@@ -103,15 +111,15 @@ export async function GET(req: Request): Promise<Response> {
   const stream = new ReadableStream({
     async start(controller) {
       let closed = false;
-      const tenant = String(searchParams.get("tenant") || "").trim().toLowerCase();
+      const tenant = (forcedTenantSlug || String(searchParams.get("tenant") || "")).trim().toLowerCase();
       const verdict = String(searchParams.get("verdict") || "").trim().toUpperCase();
       const risk = String(searchParams.get("risk") || "").trim().toUpperCase();
       const { raw } = resolveWindow(searchParams);
       const windowMs = resolveWindowMs(raw);
       const send = (event: string, payload: unknown) => {
         if (closed) return;
-        const eventId = typeof payload === "object" && payload && "id" in (payload as Record<string, unknown>)
-          ? String((payload as Record<string, unknown>).id)
+        const eventId = typeof payload === "object" && payload && "eventId" in (payload as Record<string, unknown>)
+          ? String((payload as Record<string, unknown>).eventId)
           : String(Date.now());
         controller.enqueue(encoder.encode(`id: ${eventId}\n`));
         controller.enqueue(encoder.encode("retry: 5000\n"));
@@ -127,31 +135,60 @@ export async function GET(req: Request): Promise<Response> {
 
       try {
         send("connected", { id: `connected-${Date.now()}`, stream_request_id: requestId, ts: new Date().toISOString() });
-        const snapshotRows = await fetchRows(searchParams);
-        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, rows: snapshotRows.map((row) => normalizeEvent(row)) });
+        const snapshotRows = await fetchRows(searchParams, forcedTenantSlug);
+        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, rows: snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row)) });
       } catch {
         send("warning", { id: `warning-${Date.now()}`, stream_request_id: requestId, reason: "snapshot_unavailable" });
       }
 
       const unsubscribe = onRealtimeEvent((payload) => {
-        if (tenant && String(payload.tenant_slug || "").toLowerCase() !== tenant) return;
-        if (verdict && String(payload.result || "").toUpperCase() !== verdict) return;
-        if (risk && inferRiskLevel(String(payload.result || "")) !== risk.toLowerCase()) return;
+        const rawPayload = payload as Record<string, unknown>;
+        if (isSecurityAlertPayload(rawPayload)) {
+          if (!allowRealtimeEventForScope({
+            scope,
+            forcedTenantSlug,
+            requestedTenant: tenant,
+            eventTenantSlug: typeof rawPayload.tenant_slug === "string" ? rawPayload.tenant_slug : null,
+          })) return;
+          send("event", {
+            event_type: "security_alert.created",
+            alert_id: String(rawPayload.alert_id),
+            tenant_id: rawPayload.tenant_id ? String(rawPayload.tenant_id) : null,
+            tenant_slug: rawPayload.tenant_slug ? String(rawPayload.tenant_slug) : null,
+            type: String(rawPayload.type || ""),
+            severity: String(rawPayload.severity || ""),
+            created_at: String(rawPayload.created_at || new Date().toISOString()),
+            stream_sent_at: new Date().toISOString(),
+            stream_request_id: requestId,
+            request_id: requestId,
+          });
+          return;
+        }
+
+        const normalized = normalizeTenantTapRealtimeEvent(rawPayload);
+        if (!allowRealtimeEventForScope({
+          scope,
+          forcedTenantSlug,
+          requestedTenant: tenant,
+          eventTenantSlug: normalized.tenantSlug,
+        })) return;
+        if (verdict && String(normalized.verdict || "").toUpperCase() !== verdict.toUpperCase()) return;
+        if (risk && String(normalized.riskLevel || "").toUpperCase() !== risk.toUpperCase()) return;
         if (windowMs) {
-          const createdAt = new Date(String(payload.created_at || Date.now()));
+          const createdAt = new Date(String(normalized.occurredAt || Date.now()));
           if (Number.isNaN(createdAt.getTime())) return;
           const lowerBound = new Date(Date.now() - windowMs);
           if (createdAt < lowerBound) return;
         }
         const emittedAt = new Date();
-        const createdAtMs = payload.created_at ? new Date(String(payload.created_at)).getTime() : NaN;
+        const createdAtMs = normalized.occurredAt ? new Date(String(normalized.occurredAt)).getTime() : NaN;
         const streamLatencyMs = Number.isFinite(createdAtMs) ? Math.max(0, emittedAt.getTime() - createdAtMs) : null;
         send("event", {
-          ...normalizeEvent(payload as Record<string, unknown>),
+          ...normalized,
           stream_sent_at: emittedAt.toISOString(),
           stream_latency_ms: streamLatencyMs,
           stream_request_id: requestId,
-          origin_trace_id: typeof payload.trace_id === "string" && payload.trace_id ? payload.trace_id : null,
+          origin_trace_id: typeof rawPayload.trace_id === "string" && rawPayload.trace_id ? rawPayload.trace_id : null,
           request_id: requestId,
         });
       });

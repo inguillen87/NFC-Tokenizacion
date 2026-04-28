@@ -580,3 +580,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ path: s
   const p = await params;
   return forward(req, p.path || []);
 }
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
+  const p = await params;
+  return forward(req, p.path || []);
+}

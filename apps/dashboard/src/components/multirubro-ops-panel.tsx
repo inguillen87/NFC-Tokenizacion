@@ -6,6 +6,7 @@ import { VerticalAsset } from "./multirubro-assets";
 import { motion } from "framer-motion";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from "recharts";
 import { readDemoDataMetaFromResponse } from "../lib/demo-data-mode";
+import { isSecurityAlertCreatedEvent, mergeAlertCenterItems, toAlertCenterItem, type AlertCenterItem, type SecurityAlertRealtimePayload } from "../lib/realtime-alerts";
 
 type AnalyticsPayload = {
   ok?: boolean;
@@ -23,20 +24,10 @@ type SecurityPayload = {
   geoVelocityAlerts?: Array<{ uidHex: string; fromCountry: string; toCountry: string; severity: string }>;
 };
 
-type AlertItem = {
-  id: string;
-  type: string;
-  severity: "low" | "medium" | "high" | "critical" | string;
-  status: "open" | "acknowledged" | string;
-  tenant_slug?: string;
-  title?: string;
-  created_at?: string;
-};
-
 type AlertsPayload = {
   ok?: boolean;
   reason?: string;
-  items?: AlertItem[];
+  items?: AlertCenterItem[];
 };
 
 type TokenizationPayload = {
@@ -114,7 +105,7 @@ export function MultirubroOpsPanel() {
   const [botQuestion, setBotQuestion] = useState("explicame el riesgo actual");
   const [botAnswer, setBotAnswer] = useState("");
   const [liveFeed, setLiveFeed] = useState<LiveFeedItem[]>([]);
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [alerts, setAlerts] = useState<AlertCenterItem[]>([]);
   const [alertSeverityFilter, setAlertSeverityFilter] = useState<string>("");
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>("");
 
@@ -255,6 +246,19 @@ export function MultirubroOpsPanel() {
     setLastSyncAt(new Date().toISOString());
   }
 
+  async function acknowledgeAlert(alertId: string) {
+    const response = await fetch(`/api/admin/alerts/${encodeURIComponent(alertId)}/ack`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ acknowledged_by: "dashboard_admin" }),
+    }).then((r) => r.json().catch(() => ({ ok: false }))).catch(() => ({ ok: false }));
+    if (!response?.ok) {
+      setWarnings((prev) => Array.from(new Set([...prev, "alert_ack_failed"])));
+      return;
+    }
+    setAlerts((prev) => prev.map((item) => (item.id === alertId ? { ...item, status: "acknowledged" } : item)));
+  }
+
   useEffect(() => {
     void loadData();
     const timer = setInterval(() => {
@@ -328,9 +332,15 @@ export function MultirubroOpsPanel() {
         setStreamState("connected");
         bumpStaleTimer();
         try {
-          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as StreamEventPayload;
-          applyIncomingEvent(payload);
-          const item = normalizeFeedItem(payload);
+          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as StreamEventPayload | SecurityAlertRealtimePayload;
+          if (isSecurityAlertCreatedEvent(payload as Record<string, unknown>)) {
+            const item = toAlertCenterItem(payload as SecurityAlertRealtimePayload);
+            setAlerts((prev) => mergeAlertCenterItems(prev, item, 12));
+            return;
+          }
+          const tapPayload = payload as StreamEventPayload;
+          applyIncomingEvent(tapPayload);
+          const item = normalizeFeedItem(tapPayload);
           setLiveFeed((prev) => [item, ...prev.filter((row) => row.id !== item.id)].slice(0, 12));
         } catch {
           // ignore malformed payload; reconciliation fetch below will refresh state
@@ -600,6 +610,7 @@ export function MultirubroOpsPanel() {
                 <option value="invalid_rate">invalid_rate</option>
                 <option value="geo_velocity">geo_velocity</option>
                 <option value="new_country_for_uid">new_country_for_uid</option>
+                <option value="suspicious_device_cluster">suspicious_device_cluster</option>
               </select>
             </label>
           </div>
@@ -612,6 +623,19 @@ export function MultirubroOpsPanel() {
                 <span className="text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleTimeString("es-AR") : "n/a"}</span>
               </div>
               <p className="mt-1 text-slate-400">{item.type} · {item.severity} · {item.status} · tenant {item.tenant_slug || "n/a"}</p>
+              <div className="mt-2 flex items-center gap-2">
+                {item.status !== "acknowledged" ? (
+                  <button onClick={() => void acknowledgeAlert(item.id)} className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">
+                    Ack
+                  </button>
+                ) : null}
+                <a
+                  href={`/events?tenant=${encodeURIComponent(String(item.tenant_slug || ""))}`}
+                  className="rounded border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-100"
+                >
+                  Open events
+                </a>
+              </div>
             </div>
           )) : (
             <p className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">Sin alertas para los filtros seleccionados.</p>
