@@ -51,8 +51,8 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Ingresar", requestDemo: "Solicitar demo" },
     hero: {
       badge: "Plataforma de identidad física verificable",
-      title: "La capa premium para autenticar producto físico y operar revenue por tenant.",
-      body: "nexID conecta NFC/SUN con validación criptográfica, passport digital y flujos de ownership, loyalty y marketplace en tiempo real.",
+      title: "Autenticá cada producto físico y convertí cada toque en confianza, trazabilidad y ventas.",
+      body: "nexID conecta NFC/SUN con validación criptográfica, pasaporte digital y flujos de propiedad, fidelización y marketplace en tiempo real.",
       primary: "Pedir muestras",
       secondary: "Ver demo",
       tertiary: "Quiero ser reseller",

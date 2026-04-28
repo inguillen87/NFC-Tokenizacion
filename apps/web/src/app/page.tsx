@@ -388,32 +388,6 @@ export default async function HomePage() {
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
 
-      <section className="container-shell py-6 md:py-8">
-        <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
-          <div className="rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_12%_18%,rgba(6,182,212,.2),transparent_36%),linear-gradient(160deg,#06112b,#0e1638_58%,#131f43)] p-6 md:p-8">
-            <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{howItWorks.eyebrow}</p>
-            <h2 className="mt-3 max-w-4xl text-2xl font-semibold text-white md:text-4xl">{howItWorks.title}</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">{howItWorks.description}</p>
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              {howItWorks.steps.map((step) => (
-                <div key={step.title} className="rounded-xl border border-white/10 bg-slate-950/45 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">{step.title}</p>
-                  <p className="mt-2 text-sm text-slate-200">{step.body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-3xl border border-cyan-300/20 bg-gradient-to-b from-cyan-950/40 to-slate-950 p-6 md:p-8">
-            <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{labels.rolloutTitle}</p>
-            <div className="mt-3 grid gap-2">
-              {labels.rolloutBullets.map((item) => (
-                <div key={item} className="rounded-lg border border-cyan-300/20 bg-slate-950/60 p-3 text-xs text-slate-200">{item}</div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="container-shell py-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{labels.intentTitle}</p>
