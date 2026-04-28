@@ -54,6 +54,44 @@ function allowDemoLoginMode() {
   return shouldAllowDemoFallback({ allowDemoFallback: allowDemoLogin, isProduction, demoModeExplicit: explicitDemoMode });
 }
 
+type LoginDiagnostics = {
+  upstreamReachable: boolean;
+  upstreamStatus: number | null;
+  apiBaseConfigured: boolean;
+  demoLoginAllowed: boolean;
+  presetProfilesAvailable: boolean;
+  missingEnvNames: string[];
+};
+
+function buildDiagnostics(input: {
+  upstreamReachable: boolean;
+  upstreamStatus: number | null;
+  demoLoginAllowed: boolean;
+}): LoginDiagnostics {
+  const apiBaseConfigured = Boolean(
+    String(process.env.NEXT_PUBLIC_API_URL || "").trim() || String(process.env.NEXT_PUBLIC_API_BASE_URL || "").trim(),
+  );
+  const presetProfilesAvailable = getAccessProfiles().some((profile) => profile.available);
+  const missingEnvNames: string[] = [];
+  if (!apiBaseConfigured) {
+    missingEnvNames.push("NEXT_PUBLIC_API_URL | NEXT_PUBLIC_API_BASE_URL");
+  }
+  if (!presetProfilesAvailable) {
+    missingEnvNames.push(
+      "SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD, TENANT_ADMIN_EMAIL/TENANT_ADMIN_PASSWORD, RESELLER_EMAIL/RESELLER_PASSWORD o GENERIC_DEMO_EMAIL/GENERIC_DEMO_PASSWORD",
+    );
+  }
+
+  return {
+    upstreamReachable: input.upstreamReachable,
+    upstreamStatus: input.upstreamStatus,
+    apiBaseConfigured,
+    demoLoginAllowed: input.demoLoginAllowed,
+    presetProfilesAvailable,
+    missingEnvNames,
+  };
+}
+
 export async function handleSessionLogin(req: Request) {
   const body = await req.text();
   const parsed = safeParseJson(body);
@@ -67,7 +105,14 @@ export async function handleSessionLogin(req: Request) {
 
   if (wantsDemoLogin) {
     if (!canUseDemoLogin) {
-      return NextResponse.json({ ok: false, reason: "demo login disabled in this environment" }, { status: 403 });
+      return NextResponse.json(
+        {
+          ok: false,
+          reason: "demo login disabled in this environment",
+          diagnostics: buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: canUseDemoLogin }),
+        },
+        { status: 403 },
+      );
     }
     const demoEmail = `demo.${demoRole}@nexid.local`;
     const demoLabel = demoRole === "viewer" ? "Readonly Demo Session" : `${demoRole} Demo Session`;
@@ -109,6 +154,7 @@ export async function handleSessionLogin(req: Request) {
   clearTimeout(timeout);
 
   const demoProfile = findDemoProfile(submittedEmail, submittedPassword);
+  const unreachableDiagnostics = buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: canUseDemoLogin });
   if (!upstream) {
     if (demoProfile && canUseDemoLogin) {
       const response = NextResponse.json({
@@ -135,11 +181,13 @@ export async function handleSessionLogin(req: Request) {
       });
       return response;
     }
-    return NextResponse.json({ ok: false, reason: "auth upstream unavailable" }, { status: 502 });
+    return NextResponse.json({ ok: false, reason: "auth upstream unavailable", diagnostics: unreachableDiagnostics }, { status: 502 });
   }
 
   const text = await upstream.text();
   const data = safeParseJson(text);
+  const upstreamStatus = Number.isFinite(upstream.status) ? upstream.status : null;
+  const baseDiagnostics = buildDiagnostics({ upstreamReachable: true, upstreamStatus, demoLoginAllowed: canUseDemoLogin });
   if (!upstream.ok || !data?.ok || !data?.sessionToken) {
     if (demoProfile && canUseDemoLogin) {
       const response = NextResponse.json({
@@ -166,11 +214,18 @@ export async function handleSessionLogin(req: Request) {
       });
       return response;
     }
-    const status = upstream.status === 401 || upstream.status === 403 ? upstream.status : 502;
-    return NextResponse.json(
-      data || { ok: false, reason: status === 502 ? "auth upstream invalid response" : "invalid credentials" },
-      { status },
-    );
+    const normalizedStatus = upstream.status === 401 ? 401 : upstream.status === 403 ? 403 : upstream.status >= 500 ? 502 : 500;
+    const fallbackReason = normalizedStatus === 401
+      ? "invalid credentials"
+      : normalizedStatus === 403
+      ? "demo disabled or missing scope"
+      : normalizedStatus === 502
+      ? "auth upstream unavailable"
+      : "internal login error";
+    const payload = data && typeof data === "object"
+      ? { ...(data as Record<string, unknown>), diagnostics: baseDiagnostics }
+      : { ok: false, reason: fallbackReason, diagnostics: baseDiagnostics };
+    return NextResponse.json(payload, { status: normalizedStatus });
   }
 
   const response = NextResponse.json({ ok: true, email: data.email, role: data.role, label: data.label, permissions: data.permissions, mfaRequired: false });

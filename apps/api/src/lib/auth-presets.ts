@@ -46,6 +46,18 @@ export function getAuthPresets(): Preset[] {
   ];
 }
 
+export function shouldAllowPresetProvisioning(context: "login" | "bootstrap") {
+  if (context === "bootstrap") return true;
+  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const demoModeEnabled = String(process.env.DEMO_MODE || process.env.DASHBOARD_DEMO_MODE || "").toLowerCase() === "true";
+  return !isProduction || demoModeEnabled;
+}
+
+export function getBootstrapMissingEnvNames() {
+  const required = ["DATABASE_URL", "SUPER_ADMIN_EMAIL", "SUPER_ADMIN_PASSWORD"];
+  return required.filter((name) => String(process.env[name] || "").trim().length === 0);
+}
+
 async function resolveDemoTenantId(sql: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any>) {
   const preferred = read(process.env.DEMO_TENANT_SLUG || process.env.DEMO_BODEGA_SLUG, "demobodega");
   const candidates = [preferred, "demobodega", "demo-bodega"];
@@ -56,7 +68,13 @@ async function resolveDemoTenantId(sql: (strings: TemplateStringsArray, ...value
   return null;
 }
 
-export async function ensurePresetUser(sql: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any>, email: string) {
+export async function ensurePresetUser(
+  sql: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any>,
+  email: string,
+  options: { context?: "login" | "bootstrap" } = {},
+) {
+  const context = options.context || "login";
+  if (!shouldAllowPresetProvisioning(context)) return null;
   const preset = getAuthPresets().find((item) => item.email.toLowerCase() === email.toLowerCase());
   if (!preset) return null;
   if (!preset.password) return null;
@@ -86,4 +104,15 @@ export async function ensurePresetUser(sql: (strings: TemplateStringsArray, ...v
   }
 
   return preset;
+}
+
+export async function ensureAllPresetUsers(sql: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any>) {
+  const presets = getAuthPresets();
+  const ensured: string[] = [];
+  for (const preset of presets) {
+    if (!preset.password) continue;
+    const result = await ensurePresetUser(sql, preset.email, { context: "bootstrap" });
+    if (result) ensured.push(result.email);
+  }
+  return ensured;
 }
