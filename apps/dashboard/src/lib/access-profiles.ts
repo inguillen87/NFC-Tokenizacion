@@ -45,8 +45,8 @@ export function getAccessProfiles(): AccessProfile[] {
       label: "Super Admin",
       emailEnv: ["SUPER_ADMIN_EMAIL", "NEXT_PUBLIC_SUPER_ADMIN_EMAIL"],
       passwordEnv: ["SUPER_ADMIN_PASSWORD", "NEXT_PUBLIC_SUPER_ADMIN_PASSWORD"],
-      fallbackEmail: "inguillen@nexid.lat",
-      fallbackPassword: "Marcelog2026",
+      fallbackEmail: "",
+      fallbackPassword: "",
       note: "Control total de tenants, batches, seguridad y flows críticos.",
     }),
     profile({
@@ -55,8 +55,8 @@ export function getAccessProfiles(): AccessProfile[] {
       label: "Tenant Admin DemoBodega",
       emailEnv: ["TENANT_ADMIN_EMAIL", "BODEGA_ADMIN_EMAIL", "NEXT_PUBLIC_TENANT_ADMIN_EMAIL"],
       passwordEnv: ["TENANT_ADMIN_PASSWORD", "BODEGA_ADMIN_PASSWORD", "NEXT_PUBLIC_TENANT_ADMIN_PASSWORD"],
-      fallbackEmail: "demobodega@nexid.lat",
-      fallbackPassword: "DemoBodega2026",
+      fallbackEmail: "",
+      fallbackPassword: "",
       note: "Admin de ejemplo para operar lotes, tags y manifest del tenant demo.",
     }),
     profile({
@@ -65,8 +65,8 @@ export function getAccessProfiles(): AccessProfile[] {
       label: "Reseller Demo",
       emailEnv: ["RESELLER_EMAIL", "NEXT_PUBLIC_RESELLER_EMAIL"],
       passwordEnv: ["RESELLER_PASSWORD", "NEXT_PUBLIC_RESELLER_PASSWORD"],
-      fallbackEmail: "partner.demo@nexid.lat",
-      fallbackPassword: "NexidPartner2026",
+      fallbackEmail: "",
+      fallbackPassword: "",
       note: "Perfil ejemplo para canal white-label y operación partner.",
     }),
     profile({
@@ -75,8 +75,8 @@ export function getAccessProfiles(): AccessProfile[] {
       label: "Demo Generic",
       emailEnv: ["GENERIC_DEMO_EMAIL", "NEXT_PUBLIC_GENERIC_DEMO_EMAIL"],
       passwordEnv: ["GENERIC_DEMO_PASSWORD", "NEXT_PUBLIC_GENERIC_DEMO_PASSWORD"],
-      fallbackEmail: "demo@nexid.lat",
-      fallbackPassword: "NexidDemo2026",
+      fallbackEmail: "",
+      fallbackPassword: "",
       note: "Usuario demo genérico para entrar rápido y alternar roles no críticos en la UI.",
     }),
   ];
