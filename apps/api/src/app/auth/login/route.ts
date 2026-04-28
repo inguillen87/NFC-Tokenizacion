@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   if (!email || !password) return json({ ok: false, reason: 'email and password required' }, 400);
 
   const meta = getRequestMeta(req);
-  await ensurePresetUser(sql as any, email);
+  await ensurePresetUser(sql as any, email, { context: 'login' });
   const user = await getAuthUserByEmail(sql as any, email);
 
   if (!user || !verifyPassword(password, String(user.password_hash || ''))) {
