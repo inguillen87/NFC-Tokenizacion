@@ -3,8 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { decryptKey16 } from './keys';
 import { verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
-import { parseTTStatusFromDecryptedPayload } from './ttstatus';
+import { decodeTTStatus, parseTTStatusFromDecryptedPayload } from './ttstatus';
 import { recordTapEvent } from './tap-event-service';
+import type { NexidEventVerdict } from '@product/core';
 
 export type ScanContext = {
   ip?: string | null;
@@ -268,9 +269,35 @@ export async function processSunScan(input: {
     hasGeoValue: boolean;
   }): Promise<number | null> {
     if (!batch) return null;
+    if (payload.resultValue === "REPLAY_SUSPECT" && payload.uidHex && payload.ctr != null) {
+      const existing = await sql/*sql*/`
+        SELECT id
+        FROM events
+        WHERE batch_id = ${batch.id}
+          AND uid_hex = ${payload.uidHex}
+          AND sdm_read_ctr = ${payload.ctr}
+        ORDER BY created_at ASC
+        LIMIT 1
+      `;
+      const existingId = Number((existing?.[0] as { id?: number } | undefined)?.id || 0) || null;
+      if (existingId) return existingId;
+    }
     const isReplay = payload.resultValue === 'REPLAY_SUSPECT';
     const isInvalid = payload.resultValue !== 'VALID' && payload.resultValue !== 'TAP_VALID';
     const riskLevelStr = payload.resultValue === 'TAMPER_RISK' || isReplay ? 'high' : isInvalid ? 'medium' : 'none';
+    const verdictByResult: Record<string, NexidEventVerdict> = {
+      VALID: "valid",
+      TAP_VALID: "valid",
+      REPLAY_SUSPECT: "replay_suspect",
+      TAMPER_RISK: "tampered",
+      NOT_REGISTERED: "not_registered",
+      NOT_ACTIVE: "not_active",
+      UNKNOWN_BATCH: "unknown_batch",
+      REVOKED: "revoked",
+      BROKEN: "broken",
+      INVALID: "invalid",
+    };
+    const verdict = verdictByResult[payload.resultValue] || "invalid";
 
     return await recordTapEvent({
       tenantId: batch.tenant_id,
@@ -280,8 +307,8 @@ export async function processSunScan(input: {
       uidHex: payload.uidHex,
       source: input.context?.source || 'real',
       eventType: isReplay ? 'REPLAY_SUSPECT' : isInvalid ? 'TAP_INVALID' : 'TAP_VALID',
-      verdict: payload.resultValue.toLowerCase() as any,
-      riskLevel: riskLevelStr as any,
+      verdict,
+      riskLevel: riskLevelStr,
       readCounter: payload.ctr,
       sdmReadCtr: payload.ctr,
       cmacOk: payload.cmacOk,
@@ -400,6 +427,7 @@ export async function processSunScan(input: {
   })();
   // Backward-compatible alias used by some in-flight branches/deploys.
   const parsedTTStatus = ttstatusParsed;
+  const decodedTT = decodeTTStatus(ttstatusParsed?.raw || configuredStatusHex || tamperSignal.raw || null);
   const tamperConfigured = Boolean(
     tagTamperEnabled
     && (tamperProfile.ttstatus_enabled || tamperProfile.tamper_status_enabled)
@@ -519,6 +547,17 @@ export async function processSunScan(input: {
       }
     }).catch(() => null);
   }
+  console.info("[sun_tamper_decode]", JSON.stringify({
+    bid: input.bid,
+    uid: res.ok ? res.uidHex : null,
+    read_counter: res.ok ? res.ctr : null,
+    cmac_valid: Boolean(res.ok),
+    sdm_decryption_ok: Boolean(res.ok && res.encPlainHex),
+    tt_raw: decodedTT.raw,
+    tt_decoded_status: decodedTT.status,
+    tt_status_source: tamperProfile.ttstatus_source,
+    tt_status_offset: tamperProfile.ttstatus_offset,
+  }));
 
   return {
     status: result === 'VALID' ? 200 : 403,
@@ -557,6 +596,17 @@ export async function processSunScan(input: {
           : resolvedTamperStatus === "OPENED_PREVIOUSLY"
             ? "Authenticity confirmed. The seal was opened previously."
           : undefined,
+      tag_tamper: {
+        available: decodedTT.available,
+        verified: Boolean(res.ok),
+        source: tamperProfile.ttstatus_source === "none" ? tamperProfile.tamper_status_source : tamperProfile.ttstatus_source,
+        raw: decodedTT.raw,
+        permanent: decodedTT.permanent,
+        current: decodedTT.current,
+        status: decodedTT.status,
+        tampered: decodedTT.tampered,
+        current_open: decodedTT.current_open,
+      },
       product_state: productState,
       tag_tamper_config_detected: tagTamperEnabled,
       tag_tamper_evidence_required: requireTamperEvidence,
