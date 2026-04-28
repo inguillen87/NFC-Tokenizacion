@@ -56,9 +56,17 @@ function allowDemoLoginMode() {
   return shouldAllowDemoFallback({ allowDemoFallback: allowDemoLogin, isProduction, demoModeExplicit: explicitDemoMode });
 }
 
+type LoginPayload = {
+  email?: string;
+  password?: string;
+  demoLogin?: boolean;
+  demoRole?: string;
+};
+
 export async function POST(req: Request) {
   const body = await req.text();
-  const submitted = safeParseJson(body) as { email?: string; password?: string; demoLogin?: boolean; demoRole?: string } | null;
+  const parsed = safeParseJson(body);
+  const submitted: LoginPayload = parsed && typeof parsed === "object" ? (parsed as LoginPayload) : {};
   const submittedEmail = (submitted?.email || "").trim();
   const submittedPassword = submitted?.password || "";
   const wantsDemoLogin = submitted?.demoLogin === true;

@@ -517,6 +517,32 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="container-shell py-6 md:py-8">
+        <div className="rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_15%_12%,rgba(6,182,212,.16),transparent_35%),linear-gradient(160deg,#06102a,#0a1530_62%,#101a3a)] p-6 md:p-8">
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">Premium tokenization + blockchain-ready trust layer</p>
+          <h2 className="mt-3 max-w-4xl text-2xl font-semibold text-white md:text-4xl">
+            Infraestructura premium para autenticar producto físico, reducir fraude y activar revenue en una sola capa operativa.
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+            Unificá validación SUN/NFC, passport digital y operaciones por tenant sin fricción para marca, canal y consumidor.
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Auth first</p>
+              <p className="mt-1 text-sm text-slate-200">Detección de replay/tamper y estado de confianza en cada tap.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-xs uppercase tracking-[0.14em] text-violet-200">Tenant operations</p>
+              <p className="mt-1 text-sm text-slate-200">Analytics, alertas y flujo operativo por cuenta, lote y región.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">Commercial layer</p>
+              <p className="mt-1 text-sm text-slate-200">Passport, ownership y marketplace para convertir trazabilidad en fidelización.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="container-shell py-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">{labels.intentTitle}</p>
