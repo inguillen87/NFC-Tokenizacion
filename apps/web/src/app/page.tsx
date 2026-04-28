@@ -19,13 +19,19 @@ import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { ProductExitLink } from "../components/product-exit-link";
 import { PublicLinkChip } from "../components/public-link-chip";
+import { LandingProofSection, type ProofSummary } from "../components/landing-proof-section";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight, CirclePlay, Layers3, Sparkles } from "lucide-react";
 
 export default async function HomePage() {
+  // Legacy fallback to avoid deploy breakages if an older landing-proof block is reintroduced by merge cache.
+  const proofSummary: Partial<ProofSummary> = {};
   const { locale, locales, t } = await getWebI18n();
   const content = landingContent[locale];
+  const proofSummaryResponse = await fetch(`${productUrls.api}/public/proof/summary`, { cache: "no-store" }).catch(() => null);
+  const proofSummaryJson = proofSummaryResponse?.ok ? await proofSummaryResponse.json().catch(() => ({})) : {};
+  const proofSummary = (proofSummaryJson || {}) as Partial<ProofSummary>;
   const labels = locale === "en"
     ? {
       demoJson: "Download seed JSON",
@@ -213,6 +219,39 @@ export default async function HomePage() {
     { label: labels.sunCta, href: "/sun" },
   ];
 
+  const premiumExplainer = locale === "en"
+    ? {
+      eyebrow: "Premium tokenization + blockchain-ready trust layer",
+      title: "Built for premium brands, resellers, and enterprise teams that need anti-fraud, traceability, and loyalty in one flow.",
+      body: "Each tap validates authenticity, activates the digital passport, and opens tenant-aware commercial actions.",
+      points: [
+        "Tap & verify: SUN/NFC authenticity and trust outcome in seconds.",
+        "Passport & provenance: product context, status, and guided consumer actions.",
+        "Club & marketplace: ownership activation, loyalty and contextual offers.",
+      ],
+    }
+    : locale === "pt-BR"
+      ? {
+        eyebrow: "Premium tokenization + blockchain-ready trust layer",
+        title: "Projetado para marcas premium, revendedores e equipes enterprise que precisam de antifraude, rastreabilidade e fidelização no mesmo fluxo.",
+        body: "Cada tap valida autenticidade, ativa o passport digital e abre ações comerciais por tenant.",
+        points: [
+          "Tap & verificação: autenticidade SUN/NFC e resultado de confiança em segundos.",
+          "Passport & provenance: contexto do produto, estado e ações guiadas ao consumidor.",
+          "Clube & marketplace: ativação de ownership, loyalty e ofertas contextuais.",
+        ],
+      }
+      : {
+        eyebrow: "Premium tokenization + blockchain-ready trust layer",
+        title: "Diseñada para marcas premium, resellers y equipos enterprise que necesitan antifraude, trazabilidad y fidelización en la misma experiencia.",
+        body: "Cada tap valida autenticidad, activa el passport digital y habilita acciones comerciales por tenant.",
+        points: [
+          "Tap & verificación: autenticidad SUN/NFC y estado de confianza en segundos.",
+          "Passport & provenance: contexto de producto, estado y acciones guiadas al consumidor.",
+          "Club & marketplace: activación de ownership, loyalty y ofertas contextuales.",
+        ],
+      };
+
   return (
     <main className="landing-root">
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
@@ -287,6 +326,16 @@ export default async function HomePage() {
       </section>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} />
+      <LandingProofSection
+        proof={{
+          tapsToday: Number(proofSummary.tapsToday || 0),
+          validRate: Number(proofSummary.validRate || 0),
+          riskBlocked: Number(proofSummary.riskBlocked || 0),
+          activeRegions: Number(proofSummary.activeRegions || 0),
+          demoMode: Boolean(proofSummary.demoMode),
+          latestPublicEvents: proofSummary.latestPublicEvents ?? [],
+        }}
+      />
 
       <section className="container-shell py-6">
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 md:p-6">
