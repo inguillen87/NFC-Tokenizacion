@@ -58,9 +58,46 @@ function allowDemoLoginMode() {
 
 export async function POST(req: Request) {
   const body = await req.text();
-  const submitted = safeParseJson(body) as { email?: string; password?: string } | null;
+  const submitted = safeParseJson(body) as { email?: string; password?: string; demoLogin?: boolean; demoRole?: string } | null;
   const submittedEmail = (submitted?.email || "").trim();
   const submittedPassword = submitted?.password || "";
+  const wantsDemoLogin = submitted?.demoLogin === true;
+  const requestedDemoRole = String(submitted?.demoRole || "viewer").trim().toLowerCase();
+  const demoRole = requestedDemoRole === "super-admin" || requestedDemoRole === "tenant-admin" || requestedDemoRole === "reseller" ? requestedDemoRole : "viewer";
+  const canUseDemoLogin = allowDemoLoginMode();
+
+  if (wantsDemoLogin) {
+    if (!canUseDemoLogin) {
+      return NextResponse.json({ ok: false, reason: "demo login disabled in this environment" }, { status: 403 });
+    }
+    const demoEmail = `demo.${demoRole}@nexid.local`;
+    const demoLabel = demoRole === "viewer" ? "Readonly Demo Session" : `${demoRole} Demo Session`;
+    const demoPermissions = demoRole === "viewer" ? ["read:*"] : ["*"];
+    const response = NextResponse.json({
+      ok: true,
+      email: demoEmail,
+      role: demoRole,
+      label: demoLabel,
+      permissions: demoPermissions,
+      mfaRequired: false,
+    });
+    response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(demoEmail, demoRole), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: useSecureCookie(req),
+      path: "/",
+      maxAge: 60 * 60 * 12,
+    });
+    response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoEmail, demoRole, demoLabel, demoPermissions), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: useSecureCookie(req),
+      path: "/",
+      maxAge: 60 * 60 * 12,
+    });
+    return response;
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), AUTH_UPSTREAM_TIMEOUT_MS);
   const upstream = await fetch(`${API_BASE}/auth/login`, {

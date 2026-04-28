@@ -62,6 +62,23 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
     window.location.href = "/";
   }
 
+  async function enterReadonlyDemo() {
+    setPending(true);
+    setStatus("");
+    const res = await fetch("/api/session/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ demoLogin: true, demoRole: "viewer" }),
+    }).catch(() => null);
+    const data = await res?.json().catch(() => null);
+    if (!res?.ok) {
+      setStatus(data?.reason || "No se pudo iniciar demo readonly. Activá DASHBOARD_DEMO_MODE=true.");
+      setPending(false);
+      return;
+    }
+    window.location.href = "/";
+  }
+
   return (
     <div>
       <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/5 p-4">
@@ -88,6 +105,17 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
           No hay presets disponibles. Configurá SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD (u otros perfiles) en variables de entorno del servidor.
         </p>
       ) : null}
+
+      <div className="mt-3">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={enterReadonlyDemo}
+          className="w-full rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Entrar demo solo lectura (sin credenciales)
+        </button>
+      </div>
 
       <div className="mt-4 grid gap-3">
         <div className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">

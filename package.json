@@ -25,7 +25,8 @@
     "demo:emit-taps": "npm run demo:emit-taps --workspace=api",
     "check:routes": "node scripts/check-next-dynamic-routes.mjs",
     "verify:routes": "npm run check:routes && npm run test:routes --workspace=api",
-    "check:placeholders": "node scripts/check-no-placeholders.mjs"
+    "check:placeholders": "node scripts/check-no-placeholders.mjs",
+    "demo:smoke": "npm run demo:smoke --workspace=api"
   },
   "packageManager": "npm@10.9.0",
   "engines": {
