@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge, Card } from "@product/ui";
 import Link from "next/link";
 import { DemoOpsMap } from "./demo-ops-map";
+import { mergeRealtimeEvents, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
-type EventRow = Record<string, unknown>;
 type MapMode = "tenant" | "global";
 
 type Labels = {
@@ -15,12 +15,12 @@ type Labels = {
   mapSubtitle: string;
 };
 
-function toMapPoint(row: EventRow) {
-  const lat = Number(row.lat ?? (row.location as { lat?: number } | undefined)?.lat);
-  const lng = Number(row.lng ?? (row.location as { lng?: number } | undefined)?.lng);
-  const city = String(row.city || (row.location as { city?: string } | undefined)?.city || row.reason || "Unknown");
-  const country = String(row.country_code || (row.location as { country?: string } | undefined)?.country || "--");
-  const result = String(row.result || "VALID").toUpperCase();
+function toMapPoint(row: TenantTapRealtimeEvent) {
+  const lat = Number(row.lat);
+  const lng = Number(row.lng);
+  const city = String(row.city || "Unknown");
+  const country = String(row.country || "--");
+  const result = String(row.verdict || "valid").toUpperCase();
   return {
     city,
     country,
@@ -29,8 +29,8 @@ function toMapPoint(row: EventRow) {
     scans: 1,
     risk: result === "VALID" ? 0 : 1,
     status: result,
-    source: String(row.source || "real"),
-    lastSeen: String(row.created_at || row.createdAt || new Date().toISOString()),
+    source: String(row.source || "production"),
+    lastSeen: String(row.occurredAt || new Date().toISOString()),
   };
 }
 
@@ -40,12 +40,12 @@ export function RealtimeOpsMonitor({
   mode,
   labels,
 }: {
-  initialEvents: EventRow[];
+  initialEvents: TenantTapRealtimeEvent[];
   tenantScope: string;
   mode: MapMode;
   labels: Labels;
 }) {
-  const [events, setEvents] = useState<EventRow[]>(initialEvents);
+  const [events, setEvents] = useState<TenantTapRealtimeEvent[]>(initialEvents);
   const [connected, setConnected] = useState(false);
   const [lastUpdateAt, setLastUpdateAt] = useState<string>(new Date().toISOString());
   const [latestEventId, setLatestEventId] = useState<string>("");
@@ -63,12 +63,12 @@ export function RealtimeOpsMonitor({
     source.onerror = () => setConnected(false);
     const onSnapshot = (event: MessageEvent<string>) => {
       try {
-        const payload = JSON.parse(event.data) as { rows?: EventRow[] };
+        const payload = JSON.parse(event.data) as { rows?: TenantTapRealtimeEvent[] };
         if (Array.isArray(payload.rows)) {
           const incomingFirst = payload.rows[0];
-          const incomingId = incomingFirst ? String(incomingFirst.id || incomingFirst.uid_hex || incomingFirst.created_at || "") : "";
+          const incomingId = incomingFirst ? String((incomingFirst as TenantTapRealtimeEvent).eventId || "") : "";
           if (incomingId && incomingId !== latestEventId) setLatestEventId(incomingId);
-          setEvents(payload.rows);
+          setEvents(payload.rows as TenantTapRealtimeEvent[]);
           setLastUpdateAt(new Date().toISOString());
         }
       } catch {
@@ -79,18 +79,12 @@ export function RealtimeOpsMonitor({
 
     const onEvent = (event: MessageEvent<string>) => {
       try {
-        const payload = JSON.parse(event.data) as EventRow;
+        const payload = JSON.parse(event.data) as TenantTapRealtimeEvent;
         if (payload) {
-          const incomingId = String(payload.id || payload.uid_hex || payload.created_at || "");
+          const incomingId = String(payload.eventId || "");
           setLatestEventId((prev) => {
             if (incomingId && incomingId !== prev) {
-              setEvents((prevEvents) => {
-                // Ensure no duplicates based on ID (if ID is available and valid)
-                if (payload.id && prevEvents.some((e) => e.id === payload.id)) {
-                  return prevEvents;
-                }
-                return [payload, ...prevEvents].slice(0, 40); // Keep max 40 to avoid memory leak
-              });
+              setEvents((prevEvents) => mergeRealtimeEvents(prevEvents, payload, 40));
               setLastUpdateAt(new Date().toISOString());
               return incomingId;
             }
@@ -112,13 +106,14 @@ export function RealtimeOpsMonitor({
 
   const tenantOptions = useMemo(
     () =>
-      [...new Set(events.map((event) => String(event.tenant_slug || event.tenantSlug || "unknown")))]
+      [...new Set(events.map((event) => String(event.tenantSlug || "unknown")))]
+        .map((tenant) => tenant.toLowerCase())
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b)),
     [events]
   );
   const visibleEvents = useMemo(
-    () => (selectedTenant === "all" ? events : events.filter((event) => String(event.tenant_slug || event.tenantSlug || "unknown") === selectedTenant)),
+    () => (selectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === selectedTenant)),
     [events, selectedTenant]
   );
   const mapPoints = useMemo(
@@ -126,26 +121,26 @@ export function RealtimeOpsMonitor({
     [visibleEvents]
   );
   const liveMetrics = useMemo(() => {
-    const valid = visibleEvents.filter((item) => String(item.result || "").toUpperCase() === "VALID").length;
+    const valid = visibleEvents.filter((item) => String(item.verdict || "").toLowerCase() === "valid").length;
     const risk = Math.max(0, visibleEvents.length - valid);
-    const uniqueTags = new Set(visibleEvents.map((item) => String(item.uid_hex || item.uidHex || ""))).size;
-    const uniqueCities = new Set(visibleEvents.map((item) => String(item.city || (item.location as { city?: string } | undefined)?.city || "Unknown"))).size;
+    const uniqueTags = new Set(visibleEvents.map((item) => String(item.uidMasked || ""))).size;
+    const uniqueCities = new Set(visibleEvents.map((item) => String(item.city || "Unknown"))).size;
     return { valid, risk, uniqueTags, uniqueCities };
   }, [visibleEvents]);
   const realtimePulse = useMemo(() => {
     const now = Date.now();
     const fiveMinutesAgo = now - 5 * 60 * 1000;
     const recent = visibleEvents.filter((event) => {
-      const at = new Date(String(event.created_at || event.createdAt || "")).getTime();
+      const at = new Date(String(event.occurredAt || "")).getTime();
       return Number.isFinite(at) && at >= fiveMinutesAgo;
     });
     const tapsPerMinute = Math.round((recent.length / 5) * 10) / 10;
     const byTenant = new Map<string, { taps: number; risk: number }>();
     recent.forEach((event) => {
-      const tenant = String(event.tenant_slug || event.tenantSlug || "unknown");
+      const tenant = String(event.tenantSlug || "unknown");
       const current = byTenant.get(tenant) || { taps: 0, risk: 0 };
       current.taps += 1;
-      if (String(event.result || "").toUpperCase() !== "VALID") current.risk += 1;
+      if (String(event.verdict || "").toLowerCase() !== "valid") current.risk += 1;
       byTenant.set(tenant, current);
     });
     const topTenants = [...byTenant.entries()]
@@ -161,7 +156,7 @@ export function RealtimeOpsMonitor({
       return { minuteStart, count: 0 };
     });
     visibleEvents.forEach((event) => {
-      const at = new Date(String(event.created_at || event.createdAt || "")).getTime();
+      const at = new Date(String(event.occurredAt || "")).getTime();
       if (!Number.isFinite(at)) return;
       const diffMinutes = Math.floor((now - at) / 60_000);
       const bucketIndex = 9 - diffMinutes;
@@ -290,21 +285,21 @@ export function RealtimeOpsMonitor({
         </div>
         <div className="mt-4 space-y-2">
           {visibleEvents.slice(0, 10).map((event) => {
-            const result = String(event.result || "VALID");
+            const result = String(event.verdict || "valid").toUpperCase();
             const tone = result === "VALID" ? "text-emerald-300" : "text-rose-300";
-            const eventId = String(event.id || event.uid_hex || event.uidHex || event.created_at || "");
+            const eventId = String(event.eventId || "");
             const isLatest = latestEventId && eventId === latestEventId;
             return (
-              <div key={eventId || String(event.id)} className={`rounded-xl border bg-slate-900/70 p-3 text-sm transition ${isLatest ? "border-cyan-300/40 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]" : "border-white/10"}`}>
+              <div key={eventId} className={`rounded-xl border bg-slate-900/70 p-3 text-sm transition ${isLatest ? "border-cyan-300/40 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]" : "border-white/10"}`}>
                 <div className="flex items-center justify-between gap-2">
                   <p className={`font-semibold ${tone}`}>{result}</p>
                   <div className="flex items-center gap-2 text-[10px]">
                     {isLatest ? <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-cyan-300" /> : null}
-                    <span className="text-slate-400">{timeAgo(event.created_at || event.createdAt)}</span>
+                    <span className="text-slate-400">{timeAgo(event.occurredAt)}</span>
                   </div>
                 </div>
                 <p className="mt-1 text-slate-300">
-                  {String(event.tenant_slug || event.tenantSlug || "-")} · {String(event.bid || "-")} · {String(event.uid_hex || event.uidHex || "-")}
+                  {String(event.tenantSlug || "-")} · {String(event.batchId || "-")} · {String(event.uidMasked || "-")}
                 </p>
               </div>
             );

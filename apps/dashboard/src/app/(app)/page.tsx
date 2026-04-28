@@ -6,6 +6,7 @@ import { DataTable } from "../../components/data-table";
 import { ModuleGrid } from "../../components/module-grid";
 import { MultirubroOpsPanel } from "../../components/multirubro-ops-panel";
 import { RealtimeOpsMonitor } from "../../components/realtime-ops-monitor";
+import type { TenantTapRealtimeEvent } from "../../lib/realtime-feed";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
@@ -80,6 +81,28 @@ function buildTenantRiskScore(scans: number, duplicates: number, tamper: number)
   return Math.max(0, Math.min(100, Math.round(weighted * 100)));
 }
 
+function toRealtimeEvent(row: Record<string, unknown>): TenantTapRealtimeEvent {
+  const uid = String(row.uid_hex || row.uidHex || "").toUpperCase();
+  const uidMasked = uid ? `${uid.slice(0, 4)}****${uid.slice(-2)}` : "N/A";
+  return {
+    eventId: String(row.id || row.eventId || row.created_at || Date.now()),
+    tenantId: row.tenant_id ? String(row.tenant_id) : null,
+    tenantSlug: row.tenant_slug ? String(row.tenant_slug) : null,
+    batchId: row.batch_id ? String(row.batch_id) : (row.bid ? String(row.bid) : null),
+    tagId: row.tag_id ? String(row.tag_id) : null,
+    uidMasked,
+    occurredAt: String(row.created_at || row.createdAt || new Date().toISOString()),
+    verdict: String(row.verdict || row.result || "invalid").toLowerCase(),
+    riskLevel: String(row.risk_level || "medium").toLowerCase(),
+    city: row.city ? String(row.city) : null,
+    country: row.country_code ? String(row.country_code) : null,
+    lat: typeof row.lat === "number" ? row.lat : null,
+    lng: typeof row.lng === "number" ? row.lng : null,
+    productName: row.product_name ? String(row.product_name) : null,
+    source: String(row.source || "").toLowerCase().includes("demo") ? "demo" : "production",
+  };
+}
+
 export default async function DashboardHome() {
   const { locale } = await getDashboardI18n();
   const fallbackLocale = "es-AR" as const;
@@ -127,6 +150,7 @@ export default async function DashboardHome() {
   const scopedLiveEvents = tenantScope
     ? liveEvents.filter((row: Record<string, unknown>) => tenantFromRow(row) === tenantScope)
     : liveEvents;
+  const initialRealtimeEvents = scopedLiveEvents.map(toRealtimeEvent);
   const scopedTokenizationRows = tenantScope
     ? tokenizationRows.filter((row: Record<string, unknown>) => String(row.tenant_slug || "").toLowerCase() === tenantScope)
     : tokenizationRows;
@@ -175,7 +199,7 @@ export default async function DashboardHome() {
       <MultirubroOpsPanel />
 
       <RealtimeOpsMonitor
-        initialEvents={scopedLiveEvents}
+        initialEvents={initialRealtimeEvents}
         tenantScope={tenantScope}
         mode={isTenantAdmin ? "tenant" : "global"}
         labels={labels}
