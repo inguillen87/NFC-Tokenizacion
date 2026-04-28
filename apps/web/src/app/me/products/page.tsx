@@ -1,9 +1,21 @@
-import { asArray, fetchConsumerPath } from "../_components/consumer-api";
+import { asArray, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { ownershipTone } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
 
-type Product = { name?: string; brand?: string; status?: string; scanned_at?: string };
+type Product = {
+  product_name?: string;
+  brand_name?: string;
+  tenant_slug?: string;
+  ownership_status?: string;
+  ownership_record_status?: string;
+  first_tap_event_id?: number;
+  latest_tap_event_id?: number;
+  created_at?: string;
+  bid?: string;
+};
 
 export default async function ProductsPage() {
+  await requireConsumerSession("/me/products");
   const payload = await fetchConsumerPath("products");
   const products = asArray<Product>(payload);
 
@@ -14,15 +26,23 @@ export default async function ProductsPage() {
       ) : (
         <section className="space-y-3">
           {products.map((p, idx) => {
-            const status = String(p.status || "available");
-            const tone = status === "locked" ? "border-rose-300/30 bg-rose-500/10 text-rose-100" : status === "claimed" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : "border-cyan-300/30 bg-cyan-500/10 text-cyan-100";
+            const status = String(p.ownership_record_status || p.ownership_status || "viewed").toLowerCase();
+            const tone = ownershipTone(status);
+            const toneClass = tone === "success"
+              ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
+              : tone === "danger"
+                ? "border-rose-300/30 bg-rose-500/10 text-rose-100"
+                : "border-cyan-300/30 bg-cyan-500/10 text-cyan-100";
             return (
-              <article key={`${p.name || "product"}-${idx}`} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+              <article key={`${p.product_name || "product"}-${idx}`} className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-white">{p.name || "Producto autenticado"}</p>
-                  <span className={`rounded-full border px-2 py-0.5 text-[11px] ${tone}`}>{status.toUpperCase()}</span>
+                  <p className="text-sm font-semibold text-white">{p.product_name || "Producto autenticado"}</p>
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] ${toneClass}`}>{status.toUpperCase()}</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-400">{p.brand || "Marca"} · Último tap {p.scanned_at || "N/A"}</p>
+                <p className="mt-1 text-xs text-slate-400">{p.brand_name || "Marca"} · tenant {p.tenant_slug || "n/a"} · BID {p.bid || "n/a"}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Primer tap #{p.first_tap_event_id || "n/a"} · Último tap #{p.latest_tap_event_id || "n/a"} · guardado {p.created_at ? new Date(p.created_at).toLocaleString() : "n/a"}
+                </p>
               </article>
             );
           })}

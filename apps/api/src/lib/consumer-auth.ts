@@ -3,6 +3,7 @@ import { sql } from "./db";
 
 const SESSION_COOKIE = "nexid_consumer_session";
 
+
 function sha(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }

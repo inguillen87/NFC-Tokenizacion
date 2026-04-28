@@ -50,11 +50,20 @@ export function LandingProofSection({ proof }: { proof: ProofSummary }) {
         <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
           <div className="flex items-center justify-between">
             <p className="text-xs uppercase tracking-[0.14em] text-cyan-300">Últimos eventos públicos</p>
-            <p className="text-xs text-slate-400">{proof.demoMode ? "Modo demo" : "Datos operativos"}</p>
+            {proof.demoMode ? (
+              <span className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-200">
+                Demo data
+              </span>
+            ) : (
+              <p className="text-xs text-slate-400">Datos operativos</p>
+            )}
           </div>
           <div className="mt-3 space-y-2">
             {proof.latestPublicEvents.length === 0 ? (
-              <p className="text-sm text-slate-400">Sin eventos recientes.</p>
+              <div className="rounded-lg border border-dashed border-white/15 bg-slate-900/60 p-4">
+                <p className="text-sm font-medium text-slate-200">Todavía no hay eventos públicos recientes.</p>
+                <p className="mt-1 text-xs text-slate-400">Cuando haya nuevas validaciones anonimizadas, aparecerán acá automáticamente.</p>
+              </div>
             ) : (
               proof.latestPublicEvents.slice(0, 6).map((event) => (
                 <div key={`${event.occurredAt}-${event.uidMasked}`} className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm">

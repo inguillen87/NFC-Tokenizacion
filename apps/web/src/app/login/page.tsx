@@ -3,9 +3,13 @@ import { BrandMark, Button, Card } from "@product/ui";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
 import Link from "next/link";
+import { ConsumerLoginPanel } from "./consumer-login-panel";
 
-export default async function WebLoginPage() {
+export default async function WebLoginPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { locale, t } = await getWebI18n();
+  const params = (await searchParams) || {};
+  const consumerMode = String(params.consumer || "") === "1";
+  const nextPath = typeof params.next === "string" ? params.next : "/me";
   const content = landingContent[locale];
 
   return (
@@ -31,6 +35,8 @@ export default async function WebLoginPage() {
               <input type="password" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={t.web.auth.passwordPlaceholder} />
               <a href="https://app.nexid.lat/login"><Button className="w-full">{content.nav.cta}</Button></a>
             </div>
+
+            {consumerMode ? <ConsumerLoginPanel nextPath={nextPath} /> : null}
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               <Link href="/register" className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-slate-200">Crear cuenta</Link>
               <Link href="/docs" className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-slate-200">Ver docs</Link>
