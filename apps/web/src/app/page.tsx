@@ -9,7 +9,6 @@ import {
   ResellerSection,
 } from "../components/landing-sections";
 import { RadarSection } from "../components/radar-section";
-import { InteractiveDemoSection } from "../components/interactive-demo-section";
 import { SalesChatWidget } from "../components/sales-chat-widget";
 import { DemoRequestSection } from "../components/demo-request-section";
 import { MobileNavSheet } from "../components/mobile-nav-sheet";
@@ -34,15 +33,6 @@ export default async function HomePage() {
   const proofSummary = (proofSummaryJson || {}) as Partial<ProofSummary>;
   const labels = locale === "en"
     ? {
-      demoJson: "Download seed JSON",
-      demoCsv: "Download manifest CSV",
-      launchLab: "Open Demo Lab",
-      assetTitle: "Demo Pack Library",
-      assetBody: "Use these files for technical pilots: JSON seeds simulate events and CSV manifests map UID/tag metadata per vertical.",
-      whyJson: "Seed JSON: scenario events (tap/open/tamper) to preload demos",
-      whyCsv: "Manifest CSV: UID/tag mapping for batch import and operational traceability",
-      whyLab: "Demo Lab: controlled test console to simulate scans and verify end-to-end flow",
-      forWho: "For agencies, investors, resellers, enterprise buyers and internal sales teams.",
       quickNavTitle: "Quick access",
       quickFaq: "FAQ",
       quickStack: "Stack",
@@ -81,15 +71,6 @@ export default async function HomePage() {
     }
     : locale === "pt-BR"
     ? {
-      demoJson: "Baixar seed JSON",
-      demoCsv: "Baixar manifest CSV",
-      launchLab: "Abrir Demo Lab",
-      assetTitle: "Biblioteca de Demo Packs",
-      assetBody: "Use estes arquivos em pilotos técnicos: JSON simula eventos e CSV mapeia UID/tag por vertical.",
-      whyJson: "Seed JSON: eventos de cenário (tap/open/tamper) para pré-carregar demos",
-      whyCsv: "Manifest CSV: mapeamento UID/tag para import de lote e rastreabilidade",
-      whyLab: "Demo Lab: console controlado para simular scans e validar o fluxo completo",
-      forWho: "Para agências, investidores, revendedores, compradores enterprise e times de vendas.",
       quickNavTitle: "Acesso rápido",
       quickFaq: "FAQ",
       quickStack: "Stack",
@@ -127,15 +108,6 @@ export default async function HomePage() {
       sunCta: "Abrir SUN validation center",
     }
     : {
-      demoJson: "Descargar seed JSON",
-      demoCsv: "Descargar manifest CSV",
-      launchLab: "Abrir Demo Lab",
-      assetTitle: "Biblioteca de Demo Packs",
-      assetBody: "Usá estos archivos para pilotos técnicos: JSON simula eventos y CSV mapea UID/tag por vertical.",
-      whyJson: "Seed JSON: eventos de escenario (tap/open/tamper) para precargar demos",
-      whyCsv: "Manifest CSV: mapeo UID/tag para importar lotes y trazabilidad operativa",
-      whyLab: "Demo Lab: consola controlada para simular lecturas y validar el flujo end-to-end",
-      forWho: "Para agencias, inversores, resellers, compradores enterprise y equipos comerciales.",
       quickNavTitle: "Acceso rápido",
       quickFaq: "FAQ",
       quickStack: "Stack",
@@ -361,7 +333,6 @@ export default async function HomePage() {
       </section>
 
       <RadarSection radar={content.radar} locale={locale} />
-      <InteractiveDemoSection locale={locale} />
 
       <PlansSection content={content} />
       <EventsTagPositioningSection locale={locale} />
