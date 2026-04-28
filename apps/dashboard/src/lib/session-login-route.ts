@@ -105,6 +105,7 @@ export async function handleSessionLogin(req: Request) {
 
   if (wantsDemoLogin) {
     if (!canUseDemoLogin) {
+      console.info("[dashboard_login_audit]", JSON.stringify({ event: "demo_login_denied", reason: "disabled", email: submittedEmail || null }));
       return NextResponse.json(
         {
           ok: false,
@@ -139,6 +140,7 @@ export async function handleSessionLogin(req: Request) {
       path: "/",
       maxAge: 60 * 60 * 12,
     });
+    console.info("[dashboard_login_audit]", JSON.stringify({ event: "demo_login_ok", email: demoEmail, role: demoRole }));
     return response;
   }
 
@@ -179,6 +181,7 @@ export async function handleSessionLogin(req: Request) {
         path: "/",
         maxAge: 60 * 60 * 12,
       });
+      console.info("[dashboard_login_audit]", JSON.stringify({ event: "fallback_demo_login_ok", email: demoProfile.email, role: demoProfile.role }));
       return response;
     }
     return NextResponse.json({ ok: false, reason: "auth upstream unavailable", diagnostics: unreachableDiagnostics }, { status: 502 });
@@ -225,6 +228,7 @@ export async function handleSessionLogin(req: Request) {
     const payload = data && typeof data === "object"
       ? { ...(data as Record<string, unknown>), diagnostics: baseDiagnostics }
       : { ok: false, reason: fallbackReason, diagnostics: baseDiagnostics };
+    console.info("[dashboard_login_audit]", JSON.stringify({ event: "upstream_login_fail", status: normalizedStatus, email: submittedEmail || null }));
     return NextResponse.json(payload, { status: normalizedStatus });
   }
 
@@ -243,5 +247,6 @@ export async function handleSessionLogin(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 12,
   });
+  console.info("[dashboard_login_audit]", JSON.stringify({ event: "upstream_login_ok", email: String(data.email || submittedEmail || ""), role: String(data.role || "viewer") }));
   return response;
 }
