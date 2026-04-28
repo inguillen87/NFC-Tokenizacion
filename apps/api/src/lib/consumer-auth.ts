@@ -10,7 +10,6 @@ const OTP_LOCKOUT_MINUTES = 15;
 const startRate = new Map<string, { count: number; resetAt: number }>();
 const verifyRate = new Map<string, { count: number; resetAt: number }>();
 
-
 function sha(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }

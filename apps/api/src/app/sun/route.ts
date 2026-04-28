@@ -339,7 +339,7 @@ function resolveTrustState(status: string, reason: string, productState?: string
     return { code: 'MANUAL_OPENED', label: 'Apertura registrada', summary: 'Producto auténtico. Sello marcado como abierto por operador.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_UNKNOWN_TAMPER") {
-    return { code: 'VALID_UNKNOWN_TAMPER', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Estado de apertura no disponible para este lote.', tone: 'good' as const };
+    return { code: 'VALID_UNKNOWN_TAMPER', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Estado de apertura no disponible.', tone: 'good' as const };
   }
   if (normalizedStatus === 'TAMPER_RISK' || normalizedReason.includes('tamper')) {
     return { code: 'TAMPER_RISK', label: 'Riesgo de manipulación', summary: 'Se detectaron señales de posible manipulación.', tone: 'risk' as const };
@@ -860,7 +860,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         manualOpened: "Producto auténtico. Sello marcado como abierto por operador.",
         opened: "Producto auténtico, pero el sello fue abierto.",
         openedPreviously: "Autenticidad confirmada. El sello fue abierto anteriormente.",
-        unknownTamper: "Autenticidad confirmada. Estado de apertura no disponible para este lote.",
+        unknownTamper: "Autenticidad confirmada. Estado de apertura no disponible.",
         commercialState: "Estado comercial",
         risk: "Riesgo",
         hold: "PAUSA",

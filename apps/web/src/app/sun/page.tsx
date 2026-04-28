@@ -52,6 +52,7 @@ type SunContract = {
   iot?: { wineryLocation?: string | null; wineryCoordinates?: { lat?: number | null; lng?: number | null } | null };
   tapContext?: { city?: string | null; country?: string | null; lat?: number | null; lng?: number | null };
   tokenization?: { status?: string | null; network?: string | null; txHash?: string | null; tokenId?: string | null };
+  tag_tamper?: { available?: boolean; status?: "closed" | "opened" | "invalid" | "unknown" | "not_available" | string; raw?: string | null };
   cta?: { claimOwnership?: boolean; registerWarranty?: boolean; provenance?: boolean; tokenize?: boolean };
   troubleshooting?: string[];
   technical?: { raw?: { piccDataPrefix?: string; encPrefix?: string; cmacPrefix?: string } };
@@ -199,15 +200,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
   const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
   const productState = String(result.status?.productState || "").toUpperCase();
+  const ttStatus = String(result.tag_tamper?.status || "").toLowerCase();
   const pulseClass = isValid ? "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" : productState === "REPLAY_SUSPECT" ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]" : "bg-rose-300 shadow-[0_0_8px_rgba(253,164,175,0.8)]";
-  const statusHeadline = productState === "VALID_CLOSED"
+  const statusHeadline = ttStatus === "closed" || productState === "VALID_CLOSED"
     ? "Producto auténtico. Sello intacto."
+    : ttStatus === "opened"
+      ? "Producto auténtico, pero el sello fue abierto / manipulado."
+    : ttStatus === "invalid"
+      ? "TagTamper no inicializado o configuración inválida."
     : productState === "VALID_MANUAL_OPENED"
       ? "Autenticidad confirmada. Sello marcado como abierto por operador."
     : productState === "VALID_OPENED"
       ? "Producto auténtico, pero el sello fue abierto."
-    : productState === "VALID_UNKNOWN_TAMPER"
-        ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
+    : productState === "VALID_UNKNOWN_TAMPER" || ttStatus === "not_available"
+        ? "Autenticidad confirmada. Estado de apertura no disponible."
         : result.status?.code === "REPLAY_SUSPECT"
           ? "Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura."
           : result.status?.tone === "good"

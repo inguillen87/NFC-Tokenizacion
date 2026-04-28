@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { decryptKey16 } from './keys';
 import { verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
-import { parseTTStatusFromDecryptedPayload } from './ttstatus';
+import { decodeTTStatus, parseTTStatusFromDecryptedPayload } from './ttstatus';
 import { recordTapEvent } from './tap-event-service';
 import type { NexidEventVerdict } from '@product/core';
 
@@ -427,6 +427,7 @@ export async function processSunScan(input: {
   })();
   // Backward-compatible alias used by some in-flight branches/deploys.
   const parsedTTStatus = ttstatusParsed;
+  const decodedTT = decodeTTStatus(ttstatusParsed?.raw || configuredStatusHex || tamperSignal.raw || null);
   const tamperConfigured = Boolean(
     tagTamperEnabled
     && (tamperProfile.ttstatus_enabled || tamperProfile.tamper_status_enabled)
@@ -546,6 +547,17 @@ export async function processSunScan(input: {
       }
     }).catch(() => null);
   }
+  console.info("[sun_tamper_decode]", JSON.stringify({
+    bid: input.bid,
+    uid: res.ok ? res.uidHex : null,
+    read_counter: res.ok ? res.ctr : null,
+    cmac_valid: Boolean(res.ok),
+    sdm_decryption_ok: Boolean(res.ok && res.encPlainHex),
+    tt_raw: decodedTT.raw,
+    tt_decoded_status: decodedTT.status,
+    tt_status_source: tamperProfile.ttstatus_source,
+    tt_status_offset: tamperProfile.ttstatus_offset,
+  }));
 
   return {
     status: result === 'VALID' ? 200 : 403,
@@ -584,6 +596,17 @@ export async function processSunScan(input: {
           : resolvedTamperStatus === "OPENED_PREVIOUSLY"
             ? "Authenticity confirmed. The seal was opened previously."
           : undefined,
+      tag_tamper: {
+        available: decodedTT.available,
+        verified: Boolean(res.ok),
+        source: tamperProfile.ttstatus_source === "none" ? tamperProfile.tamper_status_source : tamperProfile.ttstatus_source,
+        raw: decodedTT.raw,
+        permanent: decodedTT.permanent,
+        current: decodedTT.current,
+        status: decodedTT.status,
+        tampered: decodedTT.tampered,
+        current_open: decodedTT.current_open,
+      },
       product_state: productState,
       tag_tamper_config_detected: tagTamperEnabled,
       tag_tamper_evidence_required: requireTamperEvidence,
