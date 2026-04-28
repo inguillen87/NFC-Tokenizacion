@@ -22,6 +22,43 @@ import { PublicLinkChip } from "../components/public-link-chip";
 import { productUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight, CirclePlay, FileJson, FileSpreadsheet, Layers3, Sparkles } from "lucide-react";
+import { LandingProofSection } from "../components/landing-proof-section";
+
+type LandingProofEvent = {
+  city: string;
+  country: string;
+  verdict: string;
+  tenant: string;
+  occurredAt: string;
+  uidMasked: string;
+};
+
+type ProofSummary = {
+  tapsToday: number;
+  validRate: number;
+  riskBlocked: number;
+  activeRegions: number;
+  demoMode: boolean;
+  latestPublicEvents: LandingProofEvent[];
+};
+
+type LandingProofEvent = {
+  city: string;
+  country: string;
+  verdict: string;
+  tenant: string;
+  occurredAt: string;
+  uidMasked: string;
+};
+
+type ProofSummary = {
+  tapsToday: number;
+  validRate: number;
+  riskBlocked: number;
+  activeRegions: number;
+  demoMode: boolean;
+  latestPublicEvents: LandingProofEvent[];
+};
 
 type LandingProofEvent = {
   city: string;
@@ -241,6 +278,39 @@ export default async function HomePage() {
     { label: labels.quickFaq, href: "/docs#faq" },
     { label: labels.sunCta, href: "/sun" },
   ];
+
+  const premiumExplainer = locale === "en"
+    ? {
+      eyebrow: "Premium tokenization + blockchain-ready trust layer",
+      title: "Built for premium brands, resellers, and enterprise teams that need anti-fraud, traceability, and loyalty in one flow.",
+      body: "Each tap validates authenticity, activates the digital passport, and opens tenant-aware commercial actions.",
+      points: [
+        "Tap & verify: SUN/NFC authenticity and trust outcome in seconds.",
+        "Passport & provenance: product context, status, and guided consumer actions.",
+        "Club & marketplace: ownership activation, loyalty and contextual offers.",
+      ],
+    }
+    : locale === "pt-BR"
+      ? {
+        eyebrow: "Premium tokenization + blockchain-ready trust layer",
+        title: "Projetado para marcas premium, revendedores e equipes enterprise que precisam de antifraude, rastreabilidade e fidelização no mesmo fluxo.",
+        body: "Cada tap valida autenticidade, ativa o passport digital e abre ações comerciais por tenant.",
+        points: [
+          "Tap & verificação: autenticidade SUN/NFC e resultado de confiança em segundos.",
+          "Passport & provenance: contexto do produto, estado e ações guiadas ao consumidor.",
+          "Clube & marketplace: ativação de ownership, loyalty e ofertas contextuais.",
+        ],
+      }
+      : {
+        eyebrow: "Premium tokenization + blockchain-ready trust layer",
+        title: "Diseñada para marcas premium, resellers y equipos enterprise que necesitan antifraude, trazabilidad y fidelización en la misma experiencia.",
+        body: "Cada tap valida autenticidad, activa el passport digital y habilita acciones comerciales por tenant.",
+        points: [
+          "Tap & verificación: autenticidad SUN/NFC y estado de confianza en segundos.",
+          "Passport & provenance: contexto de producto, estado y acciones guiadas al consumidor.",
+          "Club & marketplace: activación de ownership, loyalty y ofertas contextuales.",
+        ],
+      };
 
   return (
     <main className="landing-root">
