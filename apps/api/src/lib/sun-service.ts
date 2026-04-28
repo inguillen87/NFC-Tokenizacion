@@ -5,6 +5,7 @@ import { verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
 import { parseTTStatusFromDecryptedPayload } from './ttstatus';
 import { recordTapEvent } from './tap-event-service';
+import type { NexidEventVerdict } from '@product/core';
 
 export type ScanContext = {
   ip?: string | null;
@@ -268,9 +269,35 @@ export async function processSunScan(input: {
     hasGeoValue: boolean;
   }): Promise<number | null> {
     if (!batch) return null;
+    if (payload.resultValue === "REPLAY_SUSPECT" && payload.uidHex && payload.ctr != null) {
+      const existing = await sql/*sql*/`
+        SELECT id
+        FROM events
+        WHERE batch_id = ${batch.id}
+          AND uid_hex = ${payload.uidHex}
+          AND sdm_read_ctr = ${payload.ctr}
+        ORDER BY created_at ASC
+        LIMIT 1
+      `;
+      const existingId = Number((existing?.[0] as { id?: number } | undefined)?.id || 0) || null;
+      if (existingId) return existingId;
+    }
     const isReplay = payload.resultValue === 'REPLAY_SUSPECT';
     const isInvalid = payload.resultValue !== 'VALID' && payload.resultValue !== 'TAP_VALID';
     const riskLevelStr = payload.resultValue === 'TAMPER_RISK' || isReplay ? 'high' : isInvalid ? 'medium' : 'none';
+    const verdictByResult: Record<string, NexidEventVerdict> = {
+      VALID: "valid",
+      TAP_VALID: "valid",
+      REPLAY_SUSPECT: "replay_suspect",
+      TAMPER_RISK: "tampered",
+      NOT_REGISTERED: "not_registered",
+      NOT_ACTIVE: "not_active",
+      UNKNOWN_BATCH: "unknown_batch",
+      REVOKED: "revoked",
+      BROKEN: "broken",
+      INVALID: "invalid",
+    };
+    const verdict = verdictByResult[payload.resultValue] || "invalid";
 
     return await recordTapEvent({
       tenantId: batch.tenant_id,
@@ -280,8 +307,8 @@ export async function processSunScan(input: {
       uidHex: payload.uidHex,
       source: input.context?.source || 'real',
       eventType: isReplay ? 'REPLAY_SUSPECT' : isInvalid ? 'TAP_INVALID' : 'TAP_VALID',
-      verdict: payload.resultValue.toLowerCase() as any,
-      riskLevel: riskLevelStr as any,
+      verdict,
+      riskLevel: riskLevelStr,
       readCounter: payload.ctr,
       sdmReadCtr: payload.ctr,
       cmacOk: payload.cmacOk,
