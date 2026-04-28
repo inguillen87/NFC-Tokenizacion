@@ -43,16 +43,19 @@ if (!dbUrl) throw new Error('DATABASE_URL is required');
 
 const tenantSlug = arg('tenant', 'demobodega').toLowerCase();
 const tenantName = arg('tenant-name', tenantSlug);
-const adminEmail = arg('tenant-admin-email', 'demobodega@nexid.lat').toLowerCase();
-const adminPassword = arg('tenant-admin-password', 'DemoBodega2026');
-const superAdminEmail = arg('super-admin-email', 'inguillen@nexid.lat').toLowerCase();
-const superAdminPassword = arg('super-admin-password', 'Marcelog2026');
+const adminEmail = arg('tenant-admin-email', 'tenant-admin@example.com').toLowerCase();
+const adminPassword = arg('tenant-admin-password', '');
+const superAdminEmail = arg('super-admin-email', 'super-admin@example.com').toLowerCase();
+const superAdminPassword = arg('super-admin-password', '');
 const bid = arg('batch-bid', 'DEMO-2026-02');
 const manifestPath = arg('manifest', path.join(process.cwd(), 'prisma/demo/demobodega_manifest.csv'));
 
 const manifest = fs.readFileSync(manifestPath, 'utf8');
 const rows = parseManifest(manifest);
 if (rows.length < 1) throw new Error('Manifest has no rows');
+if (!adminPassword || !superAdminPassword) {
+  throw new Error('Missing required passwords. Use --tenant-admin-password and --super-admin-password with rotated secrets.');
+}
 
 const sql = neon(dbUrl);
 
@@ -88,7 +91,7 @@ async function upsertUser(email, fullName, password, role, tenantScoped) {
   return userId;
 }
 
-await upsertUser(superAdminEmail, 'Ignacio Guillen', superAdminPassword, 'super_admin', false);
-await upsertUser(adminEmail, 'DemoBodega Admin', adminPassword, 'tenant_admin', true);
+await upsertUser(superAdminEmail, 'Super Admin', superAdminPassword, 'super_admin', false);
+await upsertUser(adminEmail, 'Tenant Admin', adminPassword, 'tenant_admin', true);
 
 console.log(JSON.stringify({ ok: true, tenant: tenantSlug, batch: bid, tagsActive: rows.length, users: [superAdminEmail, adminEmail], manifestPath }, null, 2));
