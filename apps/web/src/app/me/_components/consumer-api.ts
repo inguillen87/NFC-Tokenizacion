@@ -1,9 +1,20 @@
+import { headers } from "next/headers";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.nexid.lat";
 
 type JsonMap = Record<string, unknown>;
 
 async function fetchJson(path: string) {
-  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store", headers: { cookie: "" } }).catch(() => null);
+  const incomingHeaders = await headers();
+  const cookie = incomingHeaders.get("cookie") || "";
+  const res = await fetch(`${API_BASE}${path}`, {
+    cache: "no-store",
+    headers: {
+      cookie,
+      "x-forwarded-for": incomingHeaders.get("x-forwarded-for") || "",
+      "user-agent": incomingHeaders.get("user-agent") || "nexid-web-portal",
+    },
+  }).catch(() => null);
   if (!res || !res.ok) return null;
   return res.json().catch(() => null);
 }

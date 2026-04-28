@@ -9,6 +9,8 @@ function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("theme-light", theme === "light");
   try {
     localStorage.setItem("theme", theme);
+    document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
+    document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax; domain=.nexid.lat`;
   } catch {
     // ignore
   }

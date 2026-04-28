@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "../../../../lib/session";
 import { getAccessProfiles } from "../../../../lib/access-profiles";
+import { shouldAllowDemoFallback } from "../../../../lib/admin-proxy-policy";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const AUTH_UPSTREAM_TIMEOUT_MS = Number(process.env.AUTH_UPSTREAM_TIMEOUT_MS || 8000);
@@ -47,11 +48,57 @@ function buildSnapshot(email: string, role: string, label?: string, permissions?
   ).toString("base64url");
 }
 
+function allowDemoLoginMode() {
+  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const explicitDemoMode = String(process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
+  const configured = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
+  const allowDemoLogin = configured === "" ? !isProduction : configured === "true";
+  return shouldAllowDemoFallback({ allowDemoFallback: allowDemoLogin, isProduction, demoModeExplicit: explicitDemoMode });
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
-  const submitted = safeParseJson(body) as { email?: string; password?: string } | null;
-  const submittedEmail = (submitted?.email || "").trim();
-  const submittedPassword = submitted?.password || "";
+  const parsed = safeParseJson(body);
+  const submitted = (parsed && typeof parsed === "object" ? parsed : {}) as Record<string, unknown>;
+  const submittedEmail = String(submitted["email"] || "").trim();
+  const submittedPassword = String(submitted["password"] || "");
+  const wantsDemoLogin = submitted["demoLogin"] === true;
+  const requestedDemoRole = String(submitted["demoRole"] || "viewer").trim().toLowerCase();
+  const demoRole = requestedDemoRole === "super-admin" || requestedDemoRole === "tenant-admin" || requestedDemoRole === "reseller" ? requestedDemoRole : "viewer";
+  const canUseDemoLogin = allowDemoLoginMode();
+
+  if (wantsDemoLogin) {
+    if (!canUseDemoLogin) {
+      return NextResponse.json({ ok: false, reason: "demo login disabled in this environment" }, { status: 403 });
+    }
+    const demoEmail = `demo.${demoRole}@nexid.local`;
+    const demoLabel = demoRole === "viewer" ? "Readonly Demo Session" : `${demoRole} Demo Session`;
+    const demoPermissions = demoRole === "viewer" ? ["read:*"] : ["*"];
+    const response = NextResponse.json({
+      ok: true,
+      email: demoEmail,
+      role: demoRole,
+      label: demoLabel,
+      permissions: demoPermissions,
+      mfaRequired: false,
+    });
+    response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(demoEmail, demoRole), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: useSecureCookie(req),
+      path: "/",
+      maxAge: 60 * 60 * 12,
+    });
+    response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoEmail, demoRole, demoLabel, demoPermissions), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: useSecureCookie(req),
+      path: "/",
+      maxAge: 60 * 60 * 12,
+    });
+    return response;
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), AUTH_UPSTREAM_TIMEOUT_MS);
   const upstream = await fetch(`${API_BASE}/auth/login`, {
@@ -65,7 +112,7 @@ export async function POST(req: Request) {
 
   const demoProfile = findDemoProfile(submittedEmail, submittedPassword);
   if (!upstream) {
-    if (demoProfile) {
+    if (demoProfile && canUseDemoLogin) {
       const response = NextResponse.json({
         ok: true,
         email: demoProfile.email,
@@ -96,7 +143,7 @@ export async function POST(req: Request) {
   const text = await upstream.text();
   const data = safeParseJson(text);
   if (!upstream.ok || !data?.ok || !data?.sessionToken) {
-    if (demoProfile) {
+    if (demoProfile && canUseDemoLogin) {
       const response = NextResponse.json({
         ok: true,
         email: demoProfile.email,
