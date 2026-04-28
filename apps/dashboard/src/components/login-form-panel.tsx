@@ -13,9 +13,10 @@ type Props = {
   forgotLabel: string;
   inviteLabel: string;
   profiles: AccessProfile[];
+  demoLoginAllowed: boolean;
 };
 
-export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAction, registerLabel, forgotLabel, inviteLabel, profiles }: Props) {
+export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAction, registerLabel, forgotLabel, inviteLabel, profiles, demoLoginAllowed }: Props) {
   const LOGIN_TIMEOUT_MS = 10_000;
   const firstAvailable = profiles.find((profile) => profile.available) || profiles[0];
   const [email, setEmail] = useState(firstAvailable?.email || "");
@@ -23,7 +24,22 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
   const [role, setRole] = useState(firstAvailable?.role || "super-admin");
   const [mfaCode, setMfaCode] = useState("");
   const [status, setStatus] = useState("");
+  const [opsStatus, setOpsStatus] = useState("");
   const [pending, setPending] = useState(false);
+
+  function formatDiagnostics(input: unknown) {
+    if (!input || typeof input !== "object") return "";
+    const diagnostics = input as Record<string, unknown>;
+    const missingEnvNames = Array.isArray(diagnostics.missingEnvNames)
+      ? diagnostics.missingEnvNames.filter((item): item is string => typeof item === "string" && item.length > 0)
+      : [];
+    const parts: string[] = [];
+    if (diagnostics.apiBaseConfigured === false) parts.push("API base no configurada.");
+    if (diagnostics.upstreamReachable === false) parts.push("Upstream auth no disponible.");
+    if (diagnostics.demoLoginAllowed === false) parts.push("Demo login deshabilitado.");
+    if (missingEnvNames.length) parts.push(`Faltan env: ${missingEnvNames.join(", ")}`);
+    return parts.join(" ");
+  }
 
   function useProfile(profile: AccessProfile) {
     setEmail(profile.email);
@@ -36,6 +52,7 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
   async function submit() {
     setPending(true);
     setStatus("");
+    setOpsStatus("");
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS);
     const res = await fetch("/api/session/login", {
@@ -47,10 +64,18 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
     clearTimeout(timeout);
     const data = await res?.json().catch(() => null);
     if (!res?.ok) {
+      const diagnosticsNote = formatDiagnostics(data?.diagnostics);
+      if (diagnosticsNote) setOpsStatus(diagnosticsNote);
       if (data?.mfaRequired) {
         setStatus("Ingresá tu código MFA de 6 dígitos para continuar.");
+      } else if (res?.status === 502) {
+        setStatus("Servicio de autenticación no disponible temporalmente.");
+      } else if (res?.status === 403) {
+        setStatus("Acceso denegado por política de entorno (demo/scope).");
+      } else if (res?.status === 401) {
+        setStatus("Credenciales inválidas.");
       } else if (res?.status && res.status >= 500) {
-        setStatus("Servicio de autenticación temporalmente no disponible. Usá un preset demo para ingresar igual.");
+        setStatus("Error interno al autenticar.");
       } else if (!res) {
         setStatus("El login tardó demasiado o no hubo respuesta. Reintentá en unos segundos.");
       } else {
@@ -65,6 +90,7 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
   async function enterReadonlyDemo() {
     setPending(true);
     setStatus("");
+    setOpsStatus("");
     const res = await fetch("/api/session/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -72,7 +98,9 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
     }).catch(() => null);
     const data = await res?.json().catch(() => null);
     if (!res?.ok) {
-      setStatus(data?.reason || "No se pudo iniciar demo readonly. Activá DASHBOARD_DEMO_MODE=true.");
+      const diagnosticsNote = formatDiagnostics(data?.diagnostics);
+      if (diagnosticsNote) setOpsStatus(diagnosticsNote);
+      setStatus(data?.reason || "No se pudo iniciar demo readonly.");
       setPending(false);
       return;
     }
@@ -88,7 +116,7 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
             <button
               key={profile.key}
               type="button"
-              disabled={!profile.available}
+              disabled={!profile.available || !demoLoginAllowed}
               onClick={() => useProfile(profile)}
               className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-left transition hover:border-emerald-300/30 hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -106,10 +134,16 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
         </p>
       ) : null}
 
+      {!demoLoginAllowed ? (
+        <p className="mt-3 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          Presets demo deshabilitados por política del entorno.
+        </p>
+      ) : null}
+
       <div className="mt-3">
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || !demoLoginAllowed}
           onClick={enterReadonlyDemo}
           className="w-full rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -127,6 +161,7 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
         <div className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300">Role preset: <span className="text-cyan-200">{role}</span></div>
         <Button className="w-full" onClick={submit} disabled={pending}>{loginAction}</Button>
         {status ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{status}</p> : null}
+        {opsStatus ? <p className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">{opsStatus}</p> : null}
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
