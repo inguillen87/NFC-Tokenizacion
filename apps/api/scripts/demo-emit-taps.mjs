@@ -86,7 +86,7 @@ for (let i = 0; i < count; i += 1) {
       ${verdict.result}, ${verdict.result === "VALID" ? "sun_ok" : "demo_simulation"},
       ${verdict.event_type}::event_type, ${verdict.verdict}, ${verdict.risk_level}::risk_level,
       ${geo.city}, ${geo.country}, ${geo.lat}, ${geo.lng},
-      'demo'::scan_source, 'Demo Emitter', ${JSON.stringify({ demoEmitter: true, corpus: "demobodega-flagship" })}::jsonb
+      'demo'::text, 'Demo Emitter', ${JSON.stringify({ demoEmitter: true, corpus: "demobodega-flagship" })}::jsonb
     )
   `;
   inserted += 1;
