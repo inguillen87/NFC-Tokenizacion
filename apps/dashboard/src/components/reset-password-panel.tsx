@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@product/ui";
+import { useSearchParams } from "next/navigation";
 
 
 export function ResetPasswordPanel({ passwordPlaceholder, actionLabel }: { passwordPlaceholder: string; actionLabel: string }) {
-  const [token, setToken] = useState("");
+  const searchParams = useSearchParams();
+  const [token, setToken] = useState(searchParams.get("token") || "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [status, setStatus] = useState("");

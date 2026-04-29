@@ -10,6 +10,26 @@ export type ParsedTTStatus = {
   reason?: string;
 };
 
+export function decodeTTStatus(input: Uint8Array | string | null | undefined) {
+  const toBytes = () => {
+    if (!input) return null;
+    if (input instanceof Uint8Array) return input;
+    const raw = String(input).trim();
+    if (!raw) return null;
+    if (/^[COI]{2}$/i.test(raw)) return new Uint8Array([raw.toUpperCase().charCodeAt(0), raw.toUpperCase().charCodeAt(1)]);
+    const hex = raw.replace(/[^0-9a-f]/gi, "").toUpperCase();
+    if (hex.length >= 4) return new Uint8Array([parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16)]);
+    return null;
+  };
+  const bytes = toBytes();
+  if (!bytes || bytes.length < 2) return { available: false, raw: null, permanent: "unknown", current: "unknown", status: "not_available", tampered: null, current_open: null };
+  const mapByte = (b: number) => b === 0x43 ? "closed" : b === 0x4f ? "opened" : b === 0x49 ? "invalid" : "unknown";
+  const permanent = mapByte(bytes[0]);
+  const current = mapByte(bytes[1]);
+  const status = permanent === "invalid" || current === "invalid" ? "invalid" : permanent === "opened" || current === "opened" ? "opened" : permanent === "closed" && current === "closed" ? "closed" : "unknown";
+  return { available: true, raw: String.fromCharCode(bytes[0]) + String.fromCharCode(bytes[1]), permanent, current, status, tampered: status === "opened" ? true : status === "invalid" ? null : false, current_open: current === "opened" ? true : status === "invalid" ? null : false };
+}
+
 function mapStatusByte(hexByte: string): TTStatusState {
   const normalized = String(hexByte || "").toUpperCase();
   if (normalized === "43") return "CLOSED";
