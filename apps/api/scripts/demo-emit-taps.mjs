@@ -1,5 +1,21 @@
 import { neon } from "@neondatabase/serverless";
 
+function assertDemoWriteAllowed(scriptName) {
+  const demoMode = String(process.env.DEMO_MODE || "").toLowerCase() === "true";
+  if (!demoMode) {
+    console.error(`${scriptName} blocked: set DEMO_MODE=true to run demo corpus writers.`);
+    process.exit(1);
+  }
+  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const explicitProdAllow = String(process.env.DEMO_ALLOW_PROD_DATA_WRITE || "").toLowerCase() === "true";
+  if (isProduction && !explicitProdAllow) {
+    console.error(`${scriptName} blocked in production. Set DEMO_ALLOW_PROD_DATA_WRITE=true only for explicit demo environments.`);
+    process.exit(1);
+  }
+}
+
+assertDemoWriteAllowed("demo:emit-taps");
+
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL is required");
@@ -48,9 +64,9 @@ const cities = [
 
 const verdictCycle = [
   { result: "VALID", event_type: "TAP_VALID", verdict: "valid", risk_level: "none" },
-  { result: "VALID", event_type: "TAP_VALID", verdict: "valid", risk_level: "low" },
   { result: "REPLAY_SUSPECT", event_type: "REPLAY_SUSPECT", verdict: "replay_suspect", risk_level: "high" },
   { result: "TAMPERED", event_type: "TAMPERED", verdict: "tampered", risk_level: "critical" },
+  { result: "REVOKED", event_type: "REVOKED", verdict: "revoked", risk_level: "high" },
   { result: "INVALID", event_type: "TAP_INVALID", verdict: "invalid", risk_level: "medium" },
 ];
 
@@ -68,9 +84,9 @@ for (let i = 0; i < count; i += 1) {
     ) VALUES (
       ${scope.tenant_id}, ${scope.batch_id}, ${tag.uid_hex}, ${tag.id}, ${scope.bid},
       ${verdict.result}, ${verdict.result === "VALID" ? "sun_ok" : "demo_simulation"},
-      ${verdict.event_type}::event_type, ${verdict.verdict}, ${verdict.risk_level}::risk_level,
+      ${verdict.event_type}::text, ${verdict.verdict}, ${verdict.risk_level}::text,
       ${geo.city}, ${geo.country}, ${geo.lat}, ${geo.lng},
-      'demo'::scan_source, 'Demo Emitter', ${JSON.stringify({ demoEmitter: true })}::jsonb
+      'demo'::text, 'Demo Emitter', ${JSON.stringify({ demoEmitter: true, corpus: "demobodega-flagship" })}::jsonb
     )
   `;
   inserted += 1;
