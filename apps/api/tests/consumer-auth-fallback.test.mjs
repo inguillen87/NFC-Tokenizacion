@@ -16,3 +16,9 @@ test('backfill migration exists for consumer_auth_challenges', () => {
   const migration = fs.readFileSync(path.join(repoRoot, 'apps/api/db/migrations/20260428221000_0021_consumer_auth_challenges_backfill.sql'), 'utf8');
   assert.match(migration, /CREATE TABLE IF NOT EXISTS consumer_auth_challenges/);
 });
+
+test('auth hotfix migration provides minimum users + consumer_auth_challenges tables', () => {
+  const migration = fs.readFileSync(path.join(repoRoot, 'apps/api/db/migrations/20260429170000_0025_auth_hotfix_minimum_tables.sql'), 'utf8');
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS users/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS consumer_auth_challenges/);
+});

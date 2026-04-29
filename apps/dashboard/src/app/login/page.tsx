@@ -16,7 +16,9 @@ export default async function LoginPage() {
   const explicitDemoMode = String(process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
   const configuredDemo = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
   const allowDemoFallback = configuredDemo === "" ? !isProduction : configuredDemo === "true";
-  const demoLoginAllowed = shouldAllowDemoFallback({ allowDemoFallback, isProduction, demoModeExplicit: explicitDemoMode });
+  const demoLoginAllowed = configuredDemo === "true"
+    ? true
+    : shouldAllowDemoFallback({ allowDemoFallback, isProduction, demoModeExplicit: explicitDemoMode });
   const session = await getDashboardSession();
   if (session) redirect("/");
 
