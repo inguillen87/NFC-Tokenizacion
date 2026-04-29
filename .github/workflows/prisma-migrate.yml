@@ -24,6 +24,10 @@ jobs:
             echo "DB_URL_PRESENT=true" >> "$GITHUB_ENV"
           fi
 
-      - name: Run Prisma migrate deploy
+      - name: Run SQL migrations (production source of truth)
+        if: env.DB_URL_PRESENT == 'true'
+        run: npm run db:migrate --workspace=api
+
+      - name: Run Prisma migrate deploy (compat)
         if: env.DB_URL_PRESENT == 'true'
         run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma

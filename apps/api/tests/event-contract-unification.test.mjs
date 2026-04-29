@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const contract = await import("../../../packages/core/src/event-contract.ts");
-const { aggregateTenantMetrics, normalizeEvent } = contract;
+const { aggregateTenantMetrics, normalizeEvent, normalizeTenantTapRealtimeEvent } = contract;
 
 const fixtureEvents = [
   { id: 1, result: "VALID", source: "real", created_at: "2026-04-27T10:00:00.000Z", city: "Mendoza", country_code: "AR" },
@@ -32,4 +32,21 @@ test("eventos demo y productivos se distinguen", () => {
   const aggregate = aggregateTenantMetrics({ events: fixtureEvents });
   assert.equal(aggregate.demoEvents, 1);
   assert.equal(aggregate.productionEvents, 3);
+});
+
+test("stream snapshot rows normalized", () => {
+  const row = normalizeTenantTapRealtimeEvent({
+    id: 22,
+    tenant_id: "tenant-id-1",
+    tenant_slug: "demobodega",
+    bid: "DEMO-2026-02",
+    uid_hex: "04A1B2C3D4",
+    result: "REPLAY_SUSPECT",
+    source: "real",
+    created_at: "2026-04-28T10:00:00.000Z",
+  });
+  assert.equal(row.eventId, "22");
+  assert.equal(row.tenantSlug, "demobodega");
+  assert.equal(row.verdict, "replay_suspect");
+  assert.equal(row.source, "production");
 });
