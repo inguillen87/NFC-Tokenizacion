@@ -36,7 +36,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
               <a href="https://app.nexid.lat/login"><Button className="w-full">{content.nav.cta}</Button></a>
             </div>
 
-            {consumerMode ? <ConsumerLoginPanel nextPath={nextPath} /> : null}
+            {consumerMode ? <ConsumerLoginPanel nextPath={nextPath} /> : <ConsumerLoginPanel nextPath={nextPath} />}
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               <Link href="/register" className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-slate-200">Crear cuenta</Link>
               <Link href="/docs" className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-slate-200">Ver docs</Link>

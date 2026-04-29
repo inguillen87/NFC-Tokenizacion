@@ -107,6 +107,26 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
     window.location.href = "/";
   }
 
+  async function enterDemoRole(demoRole: "super-admin" | "tenant-admin") {
+    setPending(true);
+    setStatus("");
+    setOpsStatus("");
+    const res = await fetch("/api/session/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ demoLogin: true, demoRole }),
+    }).catch(() => null);
+    const data = await res?.json().catch(() => null);
+    if (!res?.ok) {
+      const diagnosticsNote = formatDiagnostics(data?.diagnostics);
+      if (diagnosticsNote) setOpsStatus(diagnosticsNote);
+      setStatus(data?.reason || "No se pudo iniciar sesión demo.");
+      setPending(false);
+      return;
+    }
+    window.location.href = "/";
+  }
+
   return (
     <div>
       <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/5 p-4">
@@ -141,6 +161,24 @@ export function LoginFormPanel({ emailPlaceholder, passwordPlaceholder, loginAct
       ) : null}
 
       <div className="mt-3">
+        <div className="mb-2 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={pending || !demoLoginAllowed}
+            onClick={() => void enterDemoRole("super-admin")}
+            className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Entrar 1-click SuperAdmin
+          </button>
+          <button
+            type="button"
+            disabled={pending || !demoLoginAllowed}
+            onClick={() => void enterDemoRole("tenant-admin")}
+            className="rounded-xl border border-indigo-300/30 bg-indigo-500/10 px-3 py-2 text-sm font-medium text-indigo-100 transition hover:border-indigo-300/50 hover:bg-indigo-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Entrar 1-click DemoBodega
+          </button>
+        </div>
         <button
           type="button"
           disabled={pending || !demoLoginAllowed}
