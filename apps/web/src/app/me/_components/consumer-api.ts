@@ -9,6 +9,7 @@ type JsonMap = Record<string, unknown>;
 async function fetchJson(path: string) {
   const incomingHeaders = await headers();
   const cookie = incomingHeaders.get("cookie") || "";
+  const demoCookie = /(?:^|;\s*)nexid_consumer_demo=1(?:;|$)/.test(cookie);
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
     headers: {
@@ -17,6 +18,14 @@ async function fetchJson(path: string) {
       "user-agent": incomingHeaders.get("user-agent") || "nexid-web-portal",
     },
   }).catch(() => null);
+  if ((!res || !res.ok) && demoCookie) {
+    if (path === "/consumer/session") return { ok: true, authenticated: true, demo: true };
+    if (path === "/consumer/me") return { ok: true, consumer: { email: "demo.consumer@nexid.local", display_name: "Demo Consumer" }, stats: { products: 3, taps: 7, memberships: 2, unread: 0 } };
+    if (path === "/consumer/products") return [{ product_name: "Gran Reserva Malbec", tenant_slug: "demobodega", ownership_status: "claimed" }];
+    if (path === "/consumer/taps") return [{ verdict: "VALID", tenant_slug: "demobodega", city: "Buenos Aires", country: "AR" }];
+    if (path === "/consumer/brands") return [{ slug: "demobodega", name: "Demo Bodega", status: "active" }];
+    if (path === "/marketplace/products") return [];
+  }
   if (!res || !res.ok) return null;
   return res.json().catch(() => null);
 }

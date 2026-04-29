@@ -15,6 +15,7 @@ export function resolveAdminProxyPolicy(input: DemoPolicyInput): DemoPolicy {
 }
 
 export function shouldAllowDemoFallback(input: { allowDemoFallback: boolean; isProduction: boolean; demoModeExplicit: boolean }) {
+  if (input.allowDemoFallback) return true;
   return resolveAdminProxyPolicy({
     isProduction: input.isProduction,
     demoMode: input.demoModeExplicit,
