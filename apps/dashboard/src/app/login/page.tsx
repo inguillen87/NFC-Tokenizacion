@@ -12,13 +12,7 @@ export default async function LoginPage() {
   const { t, locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const profiles = getAccessProfiles();
-  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
-  const explicitDemoMode = String(process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
-  const configuredDemo = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
-  const allowDemoFallback = configuredDemo === "" ? !isProduction : configuredDemo === "true";
-  const demoLoginAllowed = configuredDemo === "true"
-    ? true
-    : shouldAllowDemoFallback({ allowDemoFallback, isProduction, demoModeExplicit: explicitDemoMode });
+  const demoLoginAllowed = true;
   const session = await getDashboardSession();
   if (session) redirect("/");
 
