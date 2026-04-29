@@ -18,5 +18,7 @@ test("normalizeAlertSeverity acepta solo severidades válidas", () => {
 test("normalizeAlertType sanitiza el filtro de tipo para alert center", () => {
   assert.equal(normalizeAlertType(" replay_spike "), "replay_spike");
   assert.equal(normalizeAlertType("TAMPER_RATE"), "tamper_rate");
+  assert.equal(normalizeAlertType("suspicious_device_cluster"), "suspicious_device_cluster");
+  assert.equal(normalizeAlertType("drop_table"), "");
   assert.equal(normalizeAlertType(null), "");
 });

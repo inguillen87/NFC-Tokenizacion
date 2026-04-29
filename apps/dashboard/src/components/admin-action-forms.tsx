@@ -568,7 +568,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             <textarea
               disabled={!canEdit}
               className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
-              placeholder={`https://api.nexid.lat/sun?v=1&bid=${DEMO_SUPPLIER_BATCH_ID}&picc_data=...&enc=...&cmac=...`}
+              placeholder="Pegá una URL /sun recién escaneada desde una tag física"
               value={urlValidation.sampleUrl}
               onChange={(event) => setUrlValidation({ sampleUrl: event.target.value })}
             />
