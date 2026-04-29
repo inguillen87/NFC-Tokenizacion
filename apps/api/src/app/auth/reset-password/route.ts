@@ -26,7 +26,9 @@ export async function POST(req: Request) {
   const row = rows[0];
   if (!row) return json({ ok: false, reason: 'invalid or expired token' }, 400);
   await sql`UPDATE password_credentials SET password_hash = ${hashPassword(password)}, updated_at = now() WHERE user_id = ${row.user_id}::uuid`;
-  await sql`UPDATE password_reset_tokens SET consumed_at = now() WHERE token_hash = ${sha256(token)} AND consumed_at IS NULL`;
+  await sql`UPDATE password_reset_tokens SET consumed_at = now() WHERE user_id = ${row.user_id}::uuid AND consumed_at IS NULL`;
+  await sql`UPDATE user_invites SET consumed_at = now() WHERE email = ${String(row.email)} AND consumed_at IS NULL`;
+  await sql`UPDATE users SET admin_status = 'active'::admin_user_status WHERE id = ${row.user_id}::uuid`;
   await sql`UPDATE auth_sessions SET revoked_at = now() WHERE user_id = ${row.user_id}::uuid AND revoked_at IS NULL`;
   await auditAuthEvent(sql as any, { email: String(row.email), eventName: 'password_reset_completed', ok: true, role: String(row.role), ...meta }).catch(() => null);
   return json({ ok: true });

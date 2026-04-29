@@ -3,20 +3,32 @@ import fs from "node:fs";
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
 
+function assertDemoWriteAllowed(scriptName) {
+  const demoMode = String(process.env.DEMO_MODE || "").toLowerCase() === "true";
+  if (!demoMode) {
+    console.error(`${scriptName} blocked: set DEMO_MODE=true to run demo corpus writers.`);
+    process.exit(1);
+  }
+  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const explicitProdAllow = String(process.env.DEMO_ALLOW_PROD_DATA_WRITE || "").toLowerCase() === "true";
+  if (isProduction && !explicitProdAllow) {
+    console.error(`${scriptName} blocked in production. Set DEMO_ALLOW_PROD_DATA_WRITE=true only for explicit demo environments.`);
+    process.exit(1);
+  }
+}
+
+assertDemoWriteAllowed("demo:seed");
+
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL is required");
   process.exit(1);
 }
 
-const metaHex = process.env.DEMO_BODEGA_META_KEY_HEX;
-const fileHex = process.env.DEMO_BODEGA_FILE_KEY_HEX;
-if (!metaHex || !fileHex) {
-  console.error("DEMO_BODEGA_META_KEY_HEX and DEMO_BODEGA_FILE_KEY_HEX are required");
-  process.exit(1);
-}
+const metaHex = process.env.DEMO_BODEGA_META_KEY_HEX || "00112233445566778899AABBCCDDEEFF";
+const fileHex = process.env.DEMO_BODEGA_FILE_KEY_HEX || "FFEEDDCCBBAA99887766554433221100";
 
-const requestedPack = process.argv.find((a) => a.startsWith("--pack="))?.split("=")[1] || "wine-secure";
+const requestedPack = process.argv.find((a) => a.startsWith("--pack="))?.split("=")[1] || "demobodega";
 const demoDir = path.resolve(process.cwd(), "prisma", "demo");
 const packDir = path.join(demoDir, requestedPack);
 const hasPackFolder = fs.existsSync(path.join(packDir, "manifest.csv")) && fs.existsSync(path.join(packDir, "seed.json"));
@@ -99,18 +111,20 @@ function parseProducts(raw) {
 }
 
 const manifestRows = parseManifest(manifestCsv);
+if (manifestRows.length !== 10) {
+  console.error(`Expected deterministic corpus with 10 tags, got ${manifestRows.length}`);
+  process.exit(1);
+}
 const products = parseProducts(seedJson);
 const productByUid = new Map(products.map((p) => [p.uidHex, p]));
 const bid = manifestRows[0]?.batch_id || "DEMO-2026-02";
 
 const accounts = [
-  { email: "superadmin@nexid.lat", fullName: "nexID Super Admin", role: "super_admin", tenantScoped: false },
-  { email: "admin@demobodega.lat", fullName: "Demo Bodega Admin", role: "tenant_admin", tenantScoped: true },
-  { email: "reseller@partner.lat", fullName: "Partner Reseller", role: "reseller", tenantScoped: true },
-  { email: "viewer@investor.lat", fullName: "Investor Viewer", role: "viewer", tenantScoped: true },
+  { email: "superadmin+demo@nexid.local", fullName: "Demo Super Admin", role: "super_admin", tenantScoped: false, password: "demo-super-admin-2026" },
+  { email: "admin+demobodega@nexid.local", fullName: "Demo Bodega Admin", role: "tenant_admin", tenantScoped: true, password: "demo-tenant-admin-2026" },
+  { email: "reseller+demo@nexid.local", fullName: "Demo Reseller", role: "reseller", tenantScoped: true, password: "demo-reseller-2026" },
+  { email: "viewer+demo@nexid.local", fullName: "Demo Viewer", role: "viewer", tenantScoped: true, password: "demo-viewer-2026" },
 ];
-
-const generatedPasswords = Object.fromEntries(accounts.map((a) => [a.email, `Demo-${crypto.randomBytes(6).toString("hex")}`]));
 
 await sql`INSERT INTO tenants (slug, name, root_key_ct)
 VALUES ('demobodega', 'Demo Bodega', 'demo-root-key')
@@ -123,7 +137,7 @@ for (const account of accounts) {
   ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name`;
   const user = (await sql`SELECT id FROM users WHERE email = ${account.email} LIMIT 1`)[0];
   await sql`INSERT INTO password_credentials (user_id, password_hash)
-  VALUES (${user.id}, ${hashPassword(generatedPasswords[account.email])})
+  VALUES (${user.id}, ${hashPassword(account.password)})
   ON CONFLICT (user_id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()`;
   await sql`INSERT INTO memberships (user_id, tenant_id, role)
   VALUES (${user.id}, ${account.tenantScoped ? tenant.id : null}, ${account.role}::membership_role)
@@ -142,7 +156,7 @@ for (const row of manifestRows) {
 
   const tag = (await sql`SELECT id FROM tags WHERE batch_id = ${batch.id} AND uid_hex = ${row.uid_hex} LIMIT 1`)[0];
   const p = productByUid.get(row.uid_hex) || {};
-  const vertical = p.vertical || (requestedPack.includes('wine') ? 'wine' : requestedPack.includes('cosmetics') ? 'cosmetics' : requestedPack.includes('pharma') ? 'pharma' : requestedPack.includes('agro') ? 'agro' : requestedPack.includes('events') ? 'events' : 'luxury');
+  const vertical = p.vertical || 'wine';
 
   await sql`INSERT INTO tag_profiles (
     tag_id, sku, product_name, vintage, grape_varietal, alcohol_pct, barrel_months, harvest_year,
@@ -152,30 +166,77 @@ for (const row of manifestRows) {
     ${p.alcoholPct || null}, ${p.barrelMonths || null}, ${p.harvestYear || null}, ${p.vineyardHumidity || null}, ${p.soilHumidity || null},
     ${p.region || 'LATAM'}, 'Demo Bodega', ${p.temperatureStorage || null}, ${p.notes || 'Demo premium traceability story.'},
     'https://images.unsplash.com/photo-1516594915697-87eb3b1c14ea',
-    ${JSON.stringify({ vertical, pack: requestedPack, 'es-AR': p, 'pt-BR': p, en: p })}::jsonb
+    ${JSON.stringify({ vertical, pack: requestedPack, uid_masked: `${row.uid_hex.slice(0, 4)}***${row.uid_hex.slice(-2)}`, 'es-AR': p, 'pt-BR': p, en: p })}::jsonb
   )
   ON CONFLICT (tag_id) DO UPDATE SET sku=EXCLUDED.sku, product_name=EXCLUDED.product_name, locale_data=EXCLUDED.locale_data, updated_at=now()`;
 }
 
-await sql`INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes, transcript, assigned_to)
-VALUES ('es-AR', 'compras@demobodega.lat', 'Demo Bodega', 'AR', ${requestedPack}, 'secure', 50000, 'web_bot', 'qualified', 'Demo lead generated', 'Pack generated from Demo Lab.', 'tenant_admin')
-ON CONFLICT DO NOTHING`;
-await sql`INSERT INTO tickets (locale, contact, title, detail, status, source, assigned_to)
-VALUES ('en', 'ops@demobodega.lat', 'Demo ticket', 'Need pack-specific analytics dashboard.', 'open', 'web_bot', 'tenant_admin')
-ON CONFLICT DO NOTHING`;
-await sql`INSERT INTO order_requests (locale, contact, company, tag_type, volume, notes, status, source, assigned_to)
-VALUES ('pt-BR', 'canal@partner.lat', 'Partner Pipeline', 'mixed', 25000, 'Generated from vertical pack', 'quoting', 'web_bot', 'reseller')
-ON CONFLICT DO NOTHING`;
+await sql`
+  INSERT INTO marketplace_brand_profiles (
+    tenant_id, status, display_name, slug, vertical, description, country, city, visible_in_network, featured
+  ) VALUES (
+    ${tenant.id}, 'active', 'Demo Bodega', 'demobodega', 'winery',
+    'Demo flagship tenant for deterministic smoke checks.', 'AR', 'Mendoza', true, true
+  )
+  ON CONFLICT (tenant_id) DO UPDATE SET
+    status = 'active',
+    display_name = EXCLUDED.display_name,
+    slug = EXCLUDED.slug,
+    vertical = EXCLUDED.vertical,
+    visible_in_network = true,
+    updated_at = now()
+`;
+
+const catalog = [
+  { title: 'Gran Reserva Malbec', vertical: 'winery', category: 'wine', age_gate_required: true },
+  { title: 'Demo Perfume', vertical: 'perfume', category: 'fragrance', age_gate_required: false },
+  { title: 'Demo Beauty', vertical: 'cosmetics', category: 'beauty', age_gate_required: false },
+  { title: 'Demo Premium Event', vertical: 'events', category: 'ticketing', age_gate_required: false },
+  { title: 'Demo Luxury Retail', vertical: 'luxury', category: 'retail', age_gate_required: false },
+];
+for (const item of catalog) {
+  await sql`
+    INSERT INTO marketplace_products (
+      tenant_id, status, title, description, vertical, category, price_amount, price_currency,
+      request_to_buy_enabled, accepts_rewards, accepts_tenant_points, accepts_network_credits, age_gate_required, featured
+    ) VALUES (
+      ${tenant.id}, 'active', ${item.title}, 'Demo catalog product for flagship smoke tests.',
+      ${item.vertical}, ${item.category}, 100.00, 'USD',
+      true, true, true, false, ${item.age_gate_required}, true
+    )
+    ON CONFLICT DO NOTHING
+  `;
+}
 
 const hasEvents = await sql`SELECT COUNT(*)::int AS count FROM events WHERE batch_id=${batch.id}`;
 if ((hasEvents[0]?.count || 0) === 0) {
-  for (const [idx, uid] of manifestRows.slice(0, 6).map((m) => m.uid_hex).entries()) {
-    const city = ['Mendoza', 'São Paulo', 'Bogotá', 'CDMX', 'Lima', 'Santiago'][idx % 6];
-    const country = ['AR', 'BR', 'CO', 'MX', 'PE', 'CL'][idx % 6];
-    const lat = [-32.8895, -23.55, 4.711, 19.4326, -12.0464, -33.4489][idx % 6];
-    const lng = [-68.8458, -46.63, -74.072, -99.1332, -77.0428, -70.6693][idx % 6];
-    await sql`INSERT INTO events (tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, city, country_code, lat, lng, device_label, source, meta)
-    VALUES (${tenant.id}, ${batch.id}, ${uid}, ${idx + 1}, ${idx + 1}, true, true, 'active', ${idx === 5 ? 'REPLAY_SUSPECT' : 'VALID'}, ${city}, ${country}, ${lat}, ${lng}, 'Demo Seeder', 'demo', ${JSON.stringify({ seed: true, pack: requestedPack })}::jsonb)`;
+  const cities = [
+    { city: 'Mendoza', country: 'AR', lat: -32.8895, lng: -68.8458 },
+    { city: 'Buenos Aires', country: 'AR', lat: -34.6037, lng: -58.3816 },
+    { city: 'São Paulo', country: 'BR', lat: -23.5505, lng: -46.6333 },
+    { city: 'New York', country: 'US', lat: 40.7128, lng: -74.006 },
+    { city: 'Madrid', country: 'ES', lat: 40.4168, lng: -3.7038 },
+  ];
+  const verdicts = [
+    { result: 'VALID', eventType: 'TAP_VALID', verdict: 'valid', risk: 'none' },
+    { result: 'REPLAY_SUSPECT', eventType: 'REPLAY_SUSPECT', verdict: 'replay_suspect', risk: 'high' },
+    { result: 'TAMPERED', eventType: 'TAMPERED', verdict: 'tampered', risk: 'critical' },
+    { result: 'REVOKED', eventType: 'REVOKED', verdict: 'revoked', risk: 'high' },
+    { result: 'INVALID', eventType: 'TAP_INVALID', verdict: 'invalid', risk: 'medium' },
+  ];
+
+  for (let idx = 0; idx < manifestRows.length; idx += 1) {
+    const uid = manifestRows[idx].uid_hex;
+    const geo = cities[idx % cities.length];
+    const v = verdicts[idx % verdicts.length];
+    await sql`INSERT INTO events (
+      tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result,
+      event_type, verdict, risk_level, city, country_code, lat, lng, device_label, source, meta
+    ) VALUES (
+      ${tenant.id}, ${batch.id}, ${uid}, ${idx + 1}, ${idx + 1}, true, true, 'active', ${v.result},
+      ${v.eventType}::event_type, ${v.verdict}, ${v.risk}::risk_level, ${geo.city}, ${geo.country}, ${geo.lat}, ${geo.lng},
+      'Demo Seeder', 'demo', ${JSON.stringify({ seed: true, corpus: 'demobodega-flagship' })}::jsonb
+    )`;
   }
 }
 
@@ -184,8 +245,8 @@ console.log(`\n=== Demo pack seeded (${requestedPack}) ===`);
 console.log(`Tenant: ${tenant.name} (${tenant.slug})`);
 console.log(`Batch: ${batch.bid}`);
 console.log(`Active tags: ${activeTags[0].count}`);
-console.log("Routes: /demo-lab, /demo, /internal/demo/scan");
+console.log("Routes: /demo-lab, /demo, /internal/demo/scan, /me, /me/marketplace");
 if (process.env.NODE_ENV !== "production") {
-  console.log("\nLogins (dev/demo only):");
-  for (const account of accounts) console.log(`- ${account.role}: ${account.email} / ${generatedPasswords[account.email]}`);
+  console.log("\nDeterministic demo logins (non-production only):");
+  for (const account of accounts) console.log(`- ${account.role}: ${account.email} / ${account.password}`);
 }

@@ -10,6 +10,26 @@ export type ParsedTTStatus = {
   reason?: string;
 };
 
+export function decodeTTStatus(input: Uint8Array | string | null | undefined) {
+  const toBytes = () => {
+    if (!input) return null;
+    if (input instanceof Uint8Array) return input;
+    const raw = String(input).trim();
+    if (!raw) return null;
+    if (/^[COI]{2}$/i.test(raw)) return new Uint8Array([raw.toUpperCase().charCodeAt(0), raw.toUpperCase().charCodeAt(1)]);
+    const hex = raw.replace(/[^0-9a-f]/gi, "").toUpperCase();
+    if (hex.length >= 4) return new Uint8Array([parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16)]);
+    return null;
+  };
+  const bytes = toBytes();
+  if (!bytes || bytes.length < 2) return { available: false, raw: null, permanent: "unknown", current: "unknown", status: "not_available", tampered: null, current_open: null };
+  const mapByte = (b: number) => b === 0x43 ? "closed" : b === 0x4f ? "opened" : b === 0x49 ? "invalid" : "unknown";
+  const permanent = mapByte(bytes[0]);
+  const current = mapByte(bytes[1]);
+  const status = permanent === "invalid" || current === "invalid" ? "invalid" : permanent === "opened" || current === "opened" ? "opened" : permanent === "closed" && current === "closed" ? "closed" : "unknown";
+  return { available: true, raw: String.fromCharCode(bytes[0]) + String.fromCharCode(bytes[1]), permanent, current, status, tampered: status === "opened" ? true : status === "invalid" ? null : false, current_open: current === "opened" ? true : status === "invalid" ? null : false };
+}
+
 function mapStatusByte(hexByte: string): TTStatusState {
   const normalized = String(hexByte || "").toUpperCase();
   if (normalized === "43") return "CLOSED";
@@ -18,7 +38,15 @@ function mapStatusByte(hexByte: string): TTStatusState {
   return "UNKNOWN";
 }
 
-export function parseTTStatusFromDecryptedPayload(payloadHex: string, offset: number) {
+export function parseTTStatusFromDecryptedPayload(
+  payloadHex: string,
+  offset: number,
+  config?: {
+    closedValues?: string[];
+    openedValues?: string[];
+    invalidValues?: string[];
+  },
+) {
   const normalized = String(payloadHex || "").replace(/[^0-9a-f]/gi, "").toUpperCase();
   const start = Number.isInteger(offset) && offset >= 0 ? offset * 2 : -1;
   const raw = start >= 0 && normalized.length >= start + 4 ? normalized.slice(start, start + 4) : "";
@@ -36,17 +64,21 @@ export function parseTTStatusFromDecryptedPayload(payloadHex: string, offset: nu
     tamper_risk: false,
   };
 
-  if (raw === "4343") {
+  const closedValues = (config?.closedValues || ["4343"]).map((v) => String(v).toUpperCase());
+  const openedValues = (config?.openedValues || ["4F4F", "4F43"]).map((v) => String(v).toUpperCase());
+  const invalidValues = (config?.invalidValues || ["4949"]).map((v) => String(v).toUpperCase());
+
+  if (closedValues.includes(raw)) {
     parsed.product_state = "VALID_CLOSED";
     parsed.tamper_status = "CLOSED";
     return parsed;
   }
-  if (raw === "4F4F") {
+  if (raw === "4F4F" || openedValues.includes(raw) && raw !== "4F43") {
     parsed.product_state = "VALID_OPENED";
     parsed.tamper_status = "OPENED";
     return parsed;
   }
-  if (raw === "4F43") {
+  if (raw === "4F43" || openedValues.includes(raw) && raw === "4F43") {
     parsed.product_state = "VALID_OPENED_PREVIOUSLY";
     parsed.tamper_status = "OPENED_PREVIOUSLY";
     return parsed;
@@ -58,9 +90,9 @@ export function parseTTStatusFromDecryptedPayload(payloadHex: string, offset: nu
     parsed.reason = "TTStatus inconsistent (434F)";
     return parsed;
   }
-  if (raw === "4949") {
+  if (invalidValues.includes(raw)) {
     parsed.tamper_status = "INVALID";
-    parsed.reason = "TTStatus invalid/not enabled";
+    parsed.reason = "INVALID_TTSTATUS";
     return parsed;
   }
   if (!raw) {

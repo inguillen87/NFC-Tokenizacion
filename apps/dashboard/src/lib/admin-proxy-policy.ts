@@ -1,5 +1,27 @@
+type DemoPolicyInput = {
+  isProduction: boolean;
+  demoMode: boolean;
+  demoFallbackAllowed: boolean;
+  requireScopedAdminAuth: boolean;
+};
+
+export type DemoPolicy = DemoPolicyInput & {
+  allowDemoFallback: boolean;
+};
+
+export function resolveAdminProxyPolicy(input: DemoPolicyInput): DemoPolicy {
+  const allowDemoFallback = input.demoMode && input.demoFallbackAllowed && (!input.isProduction || input.demoMode);
+  return { ...input, allowDemoFallback };
+}
+
 export function shouldAllowDemoFallback(input: { allowDemoFallback: boolean; isProduction: boolean; demoModeExplicit: boolean }) {
-  return input.allowDemoFallback && (!input.isProduction || input.demoModeExplicit);
+  if (input.allowDemoFallback) return true;
+  return resolveAdminProxyPolicy({
+    isProduction: input.isProduction,
+    demoMode: input.demoModeExplicit,
+    demoFallbackAllowed: input.allowDemoFallback,
+    requireScopedAdminAuth: false,
+  }).allowDemoFallback;
 }
 
 const READONLY_DEMO_ALLOWED = [

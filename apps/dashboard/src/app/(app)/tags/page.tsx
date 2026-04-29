@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, SectionHeading, StatusChip } from "@product/ui";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
+import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/demo-data-mode";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { getServerOrigin } from "../../../lib/server-origin";
@@ -28,15 +29,16 @@ type TagsResponse = {
   };
 };
 
-async function getTags(origin: string, params: URLSearchParams): Promise<TagsResponse> {
+async function getTags(origin: string, params: URLSearchParams): Promise<{ data: TagsResponse; meta: DemoDataMeta }> {
   const query = params.toString() ? `?${params.toString()}` : "";
   try {
     const response = await fetch(`${origin}/api/admin/tags${query}`, { cache: "no-store" });
-    if (!response.ok) return { rows: [] };
+    const meta = readDemoDataMetaFromResponse(response);
+    if (!response.ok) return { data: { rows: [] }, meta };
     const data = await response.json() as TagsResponse;
-    return { rows: data.rows || [], totals: data.totals || {} };
+    return { data: { rows: data.rows || [], totals: data.totals || {} }, meta };
   } catch {
-    return { rows: [] };
+    return { data: { rows: [] }, meta: { demoMode: false, dataSource: "production", demoSource: "production" } };
   }
 }
 
@@ -80,8 +82,8 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   params.set("offset", String(offset));
 
   const data = await getTags(origin, params);
-  const rows = data.rows;
-  const totals = data.totals || {};
+  const rows = data.data.rows;
+  const totals = data.data.totals || {};
   const totalRows = Number(totals.total || 0);
   const hasPrevious = page > 1;
   const hasNext = offset + rows.length < totalRows;
@@ -124,6 +126,11 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
           <button className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
         </form>
         <p className="mt-3 text-xs text-slate-400">Scope: <b className="text-slate-200">{tenantScope || "global"}</b> · Source: <b className="text-slate-200">{source}</b> · Total: <b className="text-slate-200">{totalRows}</b> · Page: <b className="text-slate-200">{page}</b></p>
+        {data.meta.demoMode ? (
+          <p className="mt-2 inline-flex rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
+            DEMO DATA · source={data.meta.demoSource}
+          </p>
+        ) : null}
         <a
           className="mt-3 inline-flex rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-500/20"
           href={csvUrl}
