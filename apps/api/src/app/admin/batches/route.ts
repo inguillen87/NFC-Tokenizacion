@@ -1,7 +1,6 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { randomBytes } from "crypto";
 import { sql } from "../../../lib/db";
 import { checkAdmin } from "../../../lib/auth";
 import { encryptKey16 } from "../../../lib/keys";
@@ -103,8 +102,11 @@ export async function POST(req: Request) {
   if (!tenant) return json({ ok: false, reason: "tenant not found" }, 404);
 
   try {
-    const kMetaHex = normalizeHexKey(body.k_meta_hex, "k_meta_hex") || randomBytes(16).toString("hex").toUpperCase();
-    const kFileHex = normalizeHexKey(body.k_file_hex, "k_file_hex") || randomBytes(16).toString("hex").toUpperCase();
+    const kMetaHex = normalizeHexKey(body.k_meta_hex, "k_meta_hex");
+    const kFileHex = normalizeHexKey(body.k_file_hex, "k_file_hex");
+    if (!kMetaHex || !kFileHex) {
+      return json({ ok: false, reason: "k_meta_hex and k_file_hex are required (32 hex chars each)" }, 400);
+    }
     const metaCt = encryptKey16(Buffer.from(kMetaHex, "hex"));
     const fileCt = encryptKey16(Buffer.from(kFileHex, "hex"));
 
@@ -116,6 +118,13 @@ export async function POST(req: Request) {
     const sdmConfig = {
       mac_input: "enc_plus_cmac_literal",
       url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`,
+      ttstatus_enabled: true,
+      ttstatus_source: "enc_decrypted",
+      ttstatus_offset: 0,
+      ttstatus_length: 2,
+      ttstatus_closed_values: ["4343"],
+      ttstatus_opened_values: ["4F4F", "4F43"],
+      ttstatus_invalid_values: ["4949"],
       requested_quantity: requestedQuantity || undefined,
       sku: sku || undefined,
       profile,

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 type Content = any;
 
-export function HeroSection({ content, stats, locale }: { content: Content; stats: any; locale: string }) {
+export function HeroSection({ content, stats, locale, radar }: { content: Content; stats: any; locale: string; radar?: any }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const hero = content?.hero || {};
@@ -61,6 +61,27 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
                 <p className="text-3xl font-bold text-white">{stats.global}</p>
                 <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.globalLabel}</p>
              </div>
+          </div>
+
+          <div className="mt-10 rounded-2xl border border-white/10 bg-slate-900/55 p-5 text-left backdrop-blur-xl md:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">{radar?.eyebrow || "Auth radar (Demo Lab)"}</p>
+                <p className="mt-2 text-base font-semibold text-white md:text-lg">{radar?.title || "Visualización operativa de eventos de verificación"}</p>
+                <p className="mt-2 text-sm text-slate-300">{radar?.description || "Demo guiada para equipos comerciales y técnicos."}</p>
+              </div>
+              <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
+                Abrir Demo Lab
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              {(radar?.signals || []).slice(0, 3).map((signal: { label: string; value: string }) => (
+                <div key={signal.label} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-400">{signal.label}</p>
+                  <p className="mt-1 text-lg font-semibold text-white">{signal.value}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

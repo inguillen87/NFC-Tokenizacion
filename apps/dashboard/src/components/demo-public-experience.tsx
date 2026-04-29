@@ -76,7 +76,7 @@ function resultTone(result?: string) {
 
 export function DemoPublicExperience() {
   const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
-  const realSunTapUrl = "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=90029D3D1F11F4C1B28A7A7989889CED&enc=695597B1B5B4FD43DE20014FF38A1721&cmac=A04388FD0F3E8D09";
+  const sampleSunTapUrl = `${productUrls.api}/sun?v=1&bid=DEMO_BATCH`;
   const [vertical, setVertical] = useState<Vertical>("wine");
   const [scenario, setScenario] = useState<Scenario>("valid");
   const [latest, setLatest] = useState<EventItem | null>(null);
@@ -180,7 +180,7 @@ export function DemoPublicExperience() {
         lng: -73.9712,
         device: "iPhone 15 Pro",
         productName: vertical === "events" ? "VIP Wristband" : vertical === "docs" ? "Secure Presence Credential" : "Gran Reserva Malbec",
-        tapUrl: realSunTapUrl,
+        tapUrl: sampleSunTapUrl,
       });
       setSimulation((result || null) as SimulateTapResponse | null);
       await refresh(false);
