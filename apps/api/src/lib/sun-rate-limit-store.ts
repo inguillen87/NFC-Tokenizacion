@@ -24,7 +24,7 @@ async function ensureSunRateLimitTable() {
   ensuredTable = true;
 }
 
-export async function hitSunRateLimit(scope: string, scopeKey: string, windowSeconds: number, maxHits: number): Promise<{ hits: number; limited: boolean }> {
+export async function hitSunRateLimit(scope: string, scopeKey: string, windowSeconds: number, maxHits: number): Promise<{ hits: number; limited: boolean; unavailable?: boolean }> {
   try {
     const rows = await sql/*sql*/`
       WITH ins AS (
@@ -43,10 +43,18 @@ export async function hitSunRateLimit(scope: string, scopeKey: string, windowSec
   } catch (error) {
     const code = typeof error === "object" && error && "code" in error ? String((error as { code?: string }).code || "") : "";
     if (code === "42P01") {
-      console.warn("[sun_rate_limit_repair]", JSON.stringify({ reason: "sun_rate_limit_events_missing", scope, scopeKey }));
-      await ensureSunRateLimitTable();
-      const retry = await hitSunRateLimit(scope, scopeKey, windowSeconds, maxHits);
-      return retry;
+      console.warn("[sun_rate_limit_store_missing]", JSON.stringify({ scope, scopeKey }));
+      try {
+        await ensureSunRateLimitTable();
+        const retry = await hitSunRateLimit(scope, scopeKey, windowSeconds, maxHits);
+        return retry;
+      } catch (repairError) {
+        const repairCode = typeof repairError === "object" && repairError && "code" in repairError ? String((repairError as { code?: string }).code || "") : "";
+        if (repairCode === "42P01") {
+          return { hits: 0, limited: false, unavailable: true };
+        }
+        throw repairError;
+      }
     }
     throw error;
   }

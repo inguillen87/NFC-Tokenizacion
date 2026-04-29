@@ -11,6 +11,7 @@ import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
 import { mapVerdictAndRisk, resolveActionMatrix } from '../../lib/sun-passport-policy';
 import { getRequestMeta } from '../../lib/request-meta';
 import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
+import crypto from "node:crypto";
 
 const RATE_LIMIT_MAX_IP = Number(process.env.SUN_RATE_LIMIT_IP_PER_MIN || 120);
 const RATE_LIMIT_MAX_BID = Number(process.env.SUN_RATE_LIMIT_BID_PER_MIN || 240);
@@ -685,6 +686,7 @@ function buildPublicContract(params: {
     uidMasked: maskIdentityValue(params.uid || ""),
     verdict: verdictRisk.verdict,
     riskLevel: verdictRisk.riskLevel,
+    tag_tamper: params.result.tag_tamper || null,
     productName: params.passport?.product_name || params.passport?.sku || fallbackName,
     allowedActions: actionMatrix.allowedActions,
     blockedActions: actionMatrix.blockedActions,
@@ -1275,15 +1277,17 @@ export async function GET(req: Request): Promise<Response> {
   const geoLng = Number(req.headers.get('x-vercel-ip-longitude') || '');
   const locale = resolveSunLocale(url, geoCountry, req.headers.get('accept-language'));
 
-  const uidLike = (url.searchParams.get("uid") || "").trim();
-  const ctrLike = (url.searchParams.get("ctr") || "").trim();
-  const uidCtrKey = `${uidLike || "no_uid"}:${ctrLike || "no_ctr"}`;
-  const [ipRate, bidRate, uidCtrRate] = await Promise.all([
+  const payloadFingerprint = crypto
+    .createHash("sha256")
+    .update(`${bid}:${picc_data}:${enc}:${cmac}`)
+    .digest("hex")
+    .slice(0, 32);
+  const [ipRate, bidRate, payloadRate] = await Promise.all([
     hitSunRateLimit('ip', ip || 'unknown', 60, RATE_LIMIT_MAX_IP),
     hitSunRateLimit('bid', bid || 'unknown', 60, RATE_LIMIT_MAX_BID),
-    hitSunRateLimit('uid_ctr', uidCtrKey, 60, RATE_LIMIT_MAX_UID_CTR),
+    hitSunRateLimit('payload', payloadFingerprint, 60, RATE_LIMIT_MAX_UID_CTR),
   ]);
-  if (ipRate.limited || bidRate.limited || uidCtrRate.limited) {
+  if (ipRate.limited || bidRate.limited || payloadRate.limited) {
     return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
   }
   if (!bid || !picc_data || !enc || !cmac) return json({ ok: false, reason: 'missing params', need: ['bid', 'picc_data', 'enc', 'cmac'] }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
@@ -1323,6 +1327,12 @@ export async function GET(req: Request): Promise<Response> {
   const uid = result.body.uid || null;
   const eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
   const ctr = typeof result.body.ctr === 'number' ? result.body.ctr : null;
+  if (uid && ctr != null) {
+    const uidCtrRate = await hitSunRateLimit('uid_ctr', `${uid}:${ctr}`, 60, RATE_LIMIT_MAX_UID_CTR);
+    if (uidCtrRate.limited) {
+      return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+    }
+  }
   const passport = await withTimeout(getPassportSnapshot(bid, uid || undefined), 2500, "sun_passport_snapshot").catch(() => null);
   const timeline = await withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]);
   const ctaTimeline = await withTimeout(getCtaTimelineSummary(bid, uid || undefined), 2500, "sun_cta_timeline").catch(() => [] as TimelineEvent[]);

@@ -553,10 +553,16 @@ export async function processSunScan(input: {
     read_counter: res.ok ? res.ctr : null,
     cmac_valid: Boolean(res.ok),
     sdm_decryption_ok: Boolean(res.ok && res.encPlainHex),
+    enc_plain_hex_length: res.ok && typeof res.encPlainHex === "string" ? res.encPlainHex.length : 0,
     tt_raw: decodedTT.raw,
     tt_decoded_status: decodedTT.status,
     tt_status_source: tamperProfile.ttstatus_source,
     tt_status_offset: tamperProfile.ttstatus_offset,
+    tag_tamper: {
+      status: decodedTT.status,
+      raw: decodedTT.raw,
+      source: tamperProfile.ttstatus_source,
+    },
   }));
 
   return {
