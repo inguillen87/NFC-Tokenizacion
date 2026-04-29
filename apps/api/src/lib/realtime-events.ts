@@ -10,8 +10,13 @@ type RealtimeEventPayload = {
   severity?: string;
   type?: string;
   tenant_slug?: string;
+  batch_id?: string;
+  tag_id?: string;
+  product_name?: string;
   bid?: string;
   uid_hex?: string;
+  verdict?: string;
+  risk_level?: string;
   result?: string;
   reason?: string | null;
   city?: string | null;

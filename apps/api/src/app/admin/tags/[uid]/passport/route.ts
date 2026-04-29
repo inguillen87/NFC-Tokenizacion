@@ -59,7 +59,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ uid: str
       SELECT created_at, city, country_code, lat, lng
       FROM events e
       WHERE e.batch_id = t.batch_id AND e.uid_hex = t.uid_hex
-        AND (${source} = '' OR e.source = ${source}::scan_source)
+        AND (${source} = '' OR e.source = ${source}::text)
         AND e.created_at >= now() - ${rangeSql}::interval
       ORDER BY created_at ASC
       LIMIT 1
@@ -68,7 +68,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ uid: str
       SELECT created_at, result, city, country_code, lat, lng, device_label
       FROM events e
       WHERE e.batch_id = t.batch_id AND e.uid_hex = t.uid_hex
-        AND (${source} = '' OR e.source = ${source}::scan_source)
+        AND (${source} = '' OR e.source = ${source}::text)
         AND e.created_at >= now() - ${rangeSql}::interval
       ORDER BY created_at DESC
       LIMIT 1
@@ -109,7 +109,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ uid: str
     WHERE e.uid_hex = ${uidHex}
       AND b.bid = ${profile.bid}
       AND (${tenant} = '' OR tn.slug = ${tenant})
-      AND (${source} = '' OR e.source = ${source}::scan_source)
+      AND (${source} = '' OR e.source = ${source}::text)
       AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
       AND e.created_at >= now() - ${rangeSql}::interval
     ORDER BY e.created_at DESC
