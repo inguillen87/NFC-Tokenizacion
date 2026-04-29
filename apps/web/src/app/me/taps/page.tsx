@@ -1,9 +1,10 @@
-import { asArray, fetchConsumerPath } from "../_components/consumer-api";
+import { asArray, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import { PortalShell } from "../_components/portal-shell";
 
-type Tap = { at?: string; city?: string; country?: string; result?: string; product_name?: string; bid?: string; };
+type Tap = { tap_event_id?: number; created_at?: string; city?: string; country?: string; verdict?: string; tenant_slug?: string; risk_level?: string };
 
 export default async function TapsTimelinePage() {
+  await requireConsumerSession("/me/taps");
   const payload = await fetchConsumerPath("taps");
   const taps = asArray<Tap>(payload);
 
@@ -19,46 +20,40 @@ export default async function TapsTimelinePage() {
            </div>
          ) : (
            taps.map((tap, idx) => {
-             const result = String(tap.result || "VALID").toUpperCase();
-             const isReplay = result.includes("REPLAY") || result.includes("BLOCK");
-             const isTamper = result.includes("TAMPER") || result.includes("BROKEN") || result.includes("REVOKE");
-
-             let icon = "✓";
-             let colorClass = "emerald";
-             let label = "AUTÉNTICO";
-             let desc = "Producto verificado de forma segura.";
-
-             if (isReplay) {
-                icon = "⚠️";
-                colorClass = "amber";
-                label = "REPLAY SUSPECT";
-                desc = "Este link fue escaneado múltiples veces. No suma puntos de Loyalty.";
-             } else if (isTamper) {
-                icon = "❌";
-                colorClass = "red";
-                label = "TAMPERED";
-                desc = "Alerta de seguridad: el sello físico parece comprometido o revocado.";
-             }
+             const verdict = String(tap.verdict || "VALID").toUpperCase();
+             const isReplay = verdict.includes("REPLAY") || verdict.includes("BLOCK");
+             const isTamper = verdict.includes("TAMPER") || verdict.includes("BROKEN") || verdict.includes("REVOKE");
+             const icon = isTamper ? "❌" : isReplay ? "⚠️" : "✓";
+             const palette = isTamper
+               ? { bubble: "bg-red-500/20 text-red-400", card: "border-red-500/20", chip: "bg-red-500/10 text-red-300 border-red-500/20" }
+               : isReplay
+                 ? { bubble: "bg-amber-500/20 text-amber-300", card: "border-amber-500/20", chip: "bg-amber-500/10 text-amber-200 border-amber-500/20" }
+                 : { bubble: "bg-emerald-500/20 text-emerald-300", card: "border-emerald-500/20", chip: "bg-emerald-500/10 text-emerald-200 border-emerald-500/20" };
+             const desc = isTamper
+               ? "Alerta de seguridad: sello comprometido/revocado."
+               : isReplay
+                 ? "Replay detectado: no claimable."
+                 : "Tap válido y claimable.";
 
              return (
                <div key={`tap-${idx}`} className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group ${idx === 0 ? "is-active" : ""}`}>
-                 <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-[#0a0a0c] bg-${colorClass}-500/20 text-${colorClass}-400 shadow-[0_0_15px_rgba(var(--color-${colorClass}-500),0.3)] shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10`}>
+                 <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-[#0a0a0c] ${palette.bubble} shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10`}>
                     <span className="text-xs">{icon}</span>
                  </div>
 
-                 <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-${colorClass}-500/20 bg-slate-900/60 backdrop-blur-sm shadow-xl group-hover:border-${colorClass}-500/40 transition-colors`}>
+                 <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border ${palette.card} bg-slate-900/60 backdrop-blur-sm shadow-xl transition-colors`}>
                     <div className="flex items-center justify-between mb-1">
-                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{tap.bid || "NEXID Network"}</span>
-                       <span className="text-[10px] font-mono text-slate-400">{tap.at ? new Date(tap.at).toLocaleString() : "Reciente"}</span>
+                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{tap.tenant_slug || "NEXID Network"}</span>
+                       <span className="text-[10px] font-mono text-slate-400">{tap.created_at ? new Date(tap.created_at).toLocaleString() : "Reciente"}</span>
                     </div>
-                    <h3 className="text-sm font-bold text-white">{tap.product_name || "Producto Conectado"}</h3>
+                    <h3 className="text-sm font-bold text-white">Tap #{tap.tap_event_id || "n/a"}</h3>
                     <p className="text-xs text-slate-400 mt-1">{tap.city || "Ciudad Desconocida"}, {tap.country || "País Desconocido"}</p>
                     <div className="mt-3 flex flex-col gap-2">
                        <div className="flex gap-2">
-                          <span className={`inline-flex px-2 py-0.5 rounded bg-${colorClass}-500/10 text-${colorClass}-400 border border-${colorClass}-500/20 text-[10px] font-bold uppercase`}>{label}</span>
-                          {!isReplay && !isTamper && <span className="inline-flex px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">+10 Pts</span>}
+                          <span className={`inline-flex px-2 py-0.5 rounded border text-[10px] font-bold uppercase ${palette.chip}`}>{verdict}</span>
+                          <span className="inline-flex px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[10px] font-bold">risk {String(tap.risk_level || "n/a")}</span>
                        </div>
-                       { (isReplay || isTamper) && <p className={`text-[10px] text-${colorClass}-200/70`}>{desc}</p> }
+                       <p className="text-[10px] text-slate-300">{desc}</p>
                     </div>
                  </div>
                </div>
