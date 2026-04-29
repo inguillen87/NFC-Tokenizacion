@@ -38,15 +38,24 @@ function parseDemoToken(token: string): DashboardSession | null {
   const encoded = token.slice("demo.".length);
   try {
     const raw = Buffer.from(encoded, "base64url").toString("utf8");
-    const data = JSON.parse(raw) as { email?: string; role?: UserRole };
-    if (!data.email || !data.role) return null;
+    let email = "";
+    let role: UserRole | "" = "";
+    try {
+      const data = JSON.parse(raw) as { email?: string; role?: UserRole };
+      email = String(data.email || "");
+      role = (data.role || "") as UserRole;
+    } catch {
+      email = raw.includes("@") ? raw : "";
+      role = email.includes("superadmin") ? "super-admin" : "tenant-admin";
+    }
+    if (!email || !role) return null;
     return {
-      id: `demo-${data.role}-${data.email}`,
-      email: data.email,
-      role: data.role,
-      tenantId: data.role === "tenant-admin" ? "demo-tenant-demobodega" : null,
-      tenantSlug: data.role === "tenant-admin" ? "demobodega" : null,
-      label: `${data.role} demo`,
+      id: `demo-${role}-${email}`,
+      email,
+      role,
+      tenantId: role === "tenant-admin" ? "demo-tenant-demobodega" : null,
+      tenantSlug: role === "tenant-admin" ? "demobodega" : null,
+      label: `${role} demo`,
       permissions: ["*"],
       mfaVerified: true,
     };
