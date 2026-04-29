@@ -6,6 +6,7 @@ import { getAccessProfiles } from "../../lib/access-profiles";
 import { LoginFormPanel } from "../../components/login-form-panel";
 import { getDashboardSession } from "../../lib/session";
 import { redirect } from "next/navigation";
+import { shouldAllowDemoFallback } from "../../lib/admin-proxy-policy";
 
 export default async function LoginPage() {
   const { t, locale } = await getDashboardI18n();
