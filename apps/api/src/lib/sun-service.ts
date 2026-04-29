@@ -59,6 +59,9 @@ type TamperProfile = {
   ttstatus_length: 2;
   ttstatus_plain_or_encrypted: "plain" | "encrypted";
   ttstatus_notes: string | null;
+  ttstatus_closed_values: string[];
+  ttstatus_opened_values: string[];
+  ttstatus_invalid_values: string[];
 };
 
 function resolveTamperProfile(raw: unknown): TamperProfile {
@@ -71,6 +74,9 @@ function resolveTamperProfile(raw: unknown): TamperProfile {
   })() as TamperProfile["tamper_status_source"];
   const closedRaw = Array.isArray(cfg.tamper_closed_values) ? cfg.tamper_closed_values : [];
   const openedRaw = Array.isArray(cfg.tamper_open_values) ? cfg.tamper_open_values : [];
+  const ttClosedRaw = Array.isArray(cfg.ttstatus_closed_values) ? cfg.ttstatus_closed_values : [];
+  const ttOpenedRaw = Array.isArray(cfg.ttstatus_opened_values) ? cfg.ttstatus_opened_values : [];
+  const ttInvalidRaw = Array.isArray(cfg.ttstatus_invalid_values) ? cfg.ttstatus_invalid_values : [];
   const closed = closedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
   const opened = openedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
   const offsetRaw = Number(cfg.ttstatus_offset ?? cfg.tamper_status_offset);
@@ -94,6 +100,9 @@ function resolveTamperProfile(raw: unknown): TamperProfile {
     ttstatus_length: 2,
     ttstatus_plain_or_encrypted: String(cfg.ttstatus_plain_or_encrypted || "encrypted").toLowerCase() === "plain" ? "plain" : "encrypted",
     ttstatus_notes: cfg.ttstatus_notes ? String(cfg.ttstatus_notes) : null,
+    ttstatus_closed_values: ttClosedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean),
+    ttstatus_opened_values: ttOpenedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean),
+    ttstatus_invalid_values: ttInvalidRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean),
   };
 }
 
@@ -423,7 +432,11 @@ export async function processSunScan(input: {
   const ttstatusParsed = (() => {
     if (!tamperProfile.ttstatus_enabled || tamperProfile.ttstatus_source === "none" || tamperProfile.ttstatus_offset == null || !res.ok) return null;
     const payloadHex = tamperProfile.ttstatus_source === "enc_decrypted" ? String(res.encPlainHex || "") : String(res.piccPlainHex || "");
-    return parseTTStatusFromDecryptedPayload(payloadHex, tamperProfile.ttstatus_offset);
+    return parseTTStatusFromDecryptedPayload(payloadHex, tamperProfile.ttstatus_offset, {
+      closedValues: tamperProfile.ttstatus_closed_values,
+      openedValues: tamperProfile.ttstatus_opened_values,
+      invalidValues: tamperProfile.ttstatus_invalid_values,
+    });
   })();
   // Backward-compatible alias used by some in-flight branches/deploys.
   const parsedTTStatus = ttstatusParsed;
@@ -453,7 +466,7 @@ export async function processSunScan(input: {
     : parsedTTStatus?.product_state === "VALID_OPENED" || parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
       ? 'OPENED'
     : parsedTTStatus?.product_state === "VALID_UNKNOWN_TAMPER"
-      ? 'TAMPER_RISK'
+      ? 'VALID'
     : tamperSignal.opened
       ? 'OPENED'
       : tamperSignal.tamper

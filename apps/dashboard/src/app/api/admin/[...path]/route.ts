@@ -347,7 +347,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       ok: true,
       batch: DEMO_BATCH,
       requested_quantity: Number(payload?.qty || DEMO_BATCH.qty),
-      ndef_url_template: "https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=...&enc=...&cmac=...",
+      ndef_url_template: "https://api.nexid.lat/sun?v=1&bid=<BATCH_ID>&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000",
       keys: {
         k_meta_hex: String(payload?.k_meta_hex || "0123456789ABCDEF0123456789ABCDEF"),
         k_file_hex: String(payload?.k_file_hex || "ABCDEF0123456789ABCDEF0123456789"),
@@ -358,7 +358,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     return NextResponse.json({
       ok: true,
       batch: { ...DEMO_BATCH, bid: String(payload?.bid || DEMO_BATCH.bid), tenant_id: String(payload?.tenant_slug || DEMO_BATCH.tenant_id) },
-      ndef_url_template: `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(String(payload?.bid || DEMO_BATCH.bid))}&picc_data=...&enc=...&cmac=...`,
+      ndef_url_template: `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(String(payload?.bid || DEMO_BATCH.bid))}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`,
       keys: {
         k_meta_hex: String(payload?.k_meta_hex || "0123456789ABCDEF0123456789ABCDEF"),
         k_file_hex: String(payload?.k_file_hex || "ABCDEF0123456789ABCDEF0123456789"),

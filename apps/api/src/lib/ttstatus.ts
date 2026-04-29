@@ -38,7 +38,15 @@ function mapStatusByte(hexByte: string): TTStatusState {
   return "UNKNOWN";
 }
 
-export function parseTTStatusFromDecryptedPayload(payloadHex: string, offset: number) {
+export function parseTTStatusFromDecryptedPayload(
+  payloadHex: string,
+  offset: number,
+  config?: {
+    closedValues?: string[];
+    openedValues?: string[];
+    invalidValues?: string[];
+  },
+) {
   const normalized = String(payloadHex || "").replace(/[^0-9a-f]/gi, "").toUpperCase();
   const start = Number.isInteger(offset) && offset >= 0 ? offset * 2 : -1;
   const raw = start >= 0 && normalized.length >= start + 4 ? normalized.slice(start, start + 4) : "";
@@ -56,17 +64,21 @@ export function parseTTStatusFromDecryptedPayload(payloadHex: string, offset: nu
     tamper_risk: false,
   };
 
-  if (raw === "4343") {
+  const closedValues = (config?.closedValues || ["4343"]).map((v) => String(v).toUpperCase());
+  const openedValues = (config?.openedValues || ["4F4F", "4F43"]).map((v) => String(v).toUpperCase());
+  const invalidValues = (config?.invalidValues || ["4949"]).map((v) => String(v).toUpperCase());
+
+  if (closedValues.includes(raw)) {
     parsed.product_state = "VALID_CLOSED";
     parsed.tamper_status = "CLOSED";
     return parsed;
   }
-  if (raw === "4F4F") {
+  if (raw === "4F4F" || openedValues.includes(raw) && raw !== "4F43") {
     parsed.product_state = "VALID_OPENED";
     parsed.tamper_status = "OPENED";
     return parsed;
   }
-  if (raw === "4F43") {
+  if (raw === "4F43" || openedValues.includes(raw) && raw === "4F43") {
     parsed.product_state = "VALID_OPENED_PREVIOUSLY";
     parsed.tamper_status = "OPENED_PREVIOUSLY";
     return parsed;
@@ -78,9 +90,9 @@ export function parseTTStatusFromDecryptedPayload(payloadHex: string, offset: nu
     parsed.reason = "TTStatus inconsistent (434F)";
     return parsed;
   }
-  if (raw === "4949") {
+  if (invalidValues.includes(raw)) {
     parsed.tamper_status = "INVALID";
-    parsed.reason = "TTStatus invalid/not enabled";
+    parsed.reason = "INVALID_TTSTATUS";
     return parsed;
   }
   if (!raw) {
