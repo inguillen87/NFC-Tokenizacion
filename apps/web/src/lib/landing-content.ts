@@ -81,12 +81,12 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     },
     plans: {
       eyebrow: "Basic vs Secure vs Enterprise",
-      title: "Packaging comercial por nivel de riesgo",
-      description: "Desde campañas de marketing hasta anti-counterfeit de exportación.",
+      title: "Planes por riesgo operativo y nivel de protección",
+      description: "Compará alcance técnico/comercial por plan o entrá a /pricing para ver el detalle completo.",
       cards: [
-        { name: "BASIC", badge: "NTAG215", price: "Cotización por volumen", body: "Eventos, accesos y tracking simple.", bullets: ["Tap-to-web", "Analítica de escaneos", "Sin criptografía SUN"] },
-        { name: "SECURE", badge: "NTAG 424 DNA TT", price: "Piloto + hardware codificado + SaaS", body: "Autenticación robusta para riesgo real.", bullets: ["SUN validation", "Duplicate alerts", "Tamper intelligence"] },
-        { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Operación enterprise con SLA y canal.", bullets: ["Branding white-label", "API keys y webhooks", "Identidad digital premium"] },
+        { name: "BASIC", badge: "NTAG215", price: "Cotización por volumen", body: "Para activaciones, eventos y journeys de marketing con trazabilidad base.", bullets: ["Tap-to-web", "Analítica de escaneos", "Sin criptografía SUN"] },
+        { name: "SECURE", badge: "NTAG 424 DNA TT", price: "Piloto + hardware codificado + SaaS", body: "Para marcas que necesitan autenticación criptográfica y control anti-clonado.", bullets: ["SUN validation", "Duplicate alerts", "Tamper intelligence"] },
+        { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Para multi-tenant, canal partner y operación con SLA + integraciones.", bullets: ["Branding white-label", "API keys y webhooks", "Capas premium de identidad digital"] },
       ],
     },
     secure: {
@@ -157,9 +157,9 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     },
     identity: {
       eyebrow: "Capa premium",
-      title: "Digital identity layer",
-      description: "Cada producto puede evolucionar de autenticación a activo digital con historial.",
-      bullets: ["Ownership passport", "Warranty y lifecycle events", "Registro de procedencia", "Roadmap ready for ownership/warranty/provenance"],
+      title: "Tokenización de activos físicos + capa blockchain",
+      description: "Cada unidad premium puede convertirse en un activo digital paralelo, verificable criptográficamente, con historial auditable y reglas de negocio.",
+      bullets: ["Token digital por producto premium (opcional por marca/SKU)", "Ownership passport + transferencias trazables", "Garantía, lifecycle events y procedencia verificable", "Anclaje blockchain para auditoría, antifraude y confianza en mercado secundario"],
     },
     calculator: {
       eyebrow: "Calculadora",
