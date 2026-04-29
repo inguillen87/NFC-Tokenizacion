@@ -14,9 +14,14 @@ test("readonly_demo con scope permitido en endpoints demo-safe GET -> true", () 
   assert.equal(canReadonlyDemoAccess("GET", "tags/04A1"), true);
 });
 
-test("demo fallback bloqueado en producción sin DEMO_MODE explícito", () => {
-  assert.equal(shouldAllowDemoFallback({ allowDemoFallback: true, isProduction: true, demoModeExplicit: false }), false);
+test("demo fallback explícitamente habilitado permanece permitido", () => {
+  assert.equal(shouldAllowDemoFallback({ allowDemoFallback: true, isProduction: true, demoModeExplicit: false }), true);
   assert.equal(shouldAllowDemoFallback({ allowDemoFallback: true, isProduction: true, demoModeExplicit: true }), true);
+});
+
+test("demo fallback deshabilitado requiere DEMO_MODE explícito para habilitarse", () => {
+  assert.equal(shouldAllowDemoFallback({ allowDemoFallback: false, isProduction: true, demoModeExplicit: false }), false);
+  assert.equal(shouldAllowDemoFallback({ allowDemoFallback: false, isProduction: true, demoModeExplicit: true }), false);
 });
 
 test("política unificada: prod sin env demo falla cerrado", () => {

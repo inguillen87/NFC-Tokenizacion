@@ -51,6 +51,7 @@ function allowDemoLoginMode() {
   const explicitDemoMode = String(process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
   const configured = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
   const allowDemoLogin = configured === "" ? true : configured === "true";
+  if (allowDemoLogin && configured === "true") return true;
   return shouldAllowDemoFallback({ allowDemoFallback: allowDemoLogin, isProduction, demoModeExplicit: explicitDemoMode });
 }
 
