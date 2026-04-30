@@ -196,7 +196,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   } as const;
 
   const expectedNdefTemplate = useMemo(
-    () => `${productUrls.api}/sun?v=1&bid=${encodeURIComponent(bid || DEMO_SUPPLIER_BATCH_ID)}&picc_data=...&enc=...&cmac=...`,
+    () => `${productUrls.api}/sun?v=1&bid=${encodeURIComponent(bid || DEMO_SUPPLIER_BATCH_ID)}&picc_data=<dynamic>&enc=<dynamic>&cmac=<dynamic>`,
     [bid],
   );
   const nextAction = !stepReady[1]

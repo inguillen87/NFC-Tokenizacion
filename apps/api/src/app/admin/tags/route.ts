@@ -46,7 +46,7 @@ export async function GET(req: Request) {
       FROM events e
       WHERE e.batch_id = t.batch_id
         AND e.uid_hex = t.uid_hex
-        AND (${source} = '' OR e.source = ${source}::scan_source)
+        AND (${source} = '' OR e.source = ${source}::text)
         AND e.created_at >= now() - ${rangeSql}::interval
       ORDER BY e.created_at DESC
       LIMIT 1
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
       FROM events e
       WHERE e.batch_id = t.batch_id
         AND e.uid_hex = t.uid_hex
-        AND (${source} = '' OR e.source = ${source}::scan_source)
+        AND (${source} = '' OR e.source = ${source}::text)
         AND e.created_at >= now() - ${rangeSql}::interval
       ORDER BY e.created_at DESC
       LIMIT 1

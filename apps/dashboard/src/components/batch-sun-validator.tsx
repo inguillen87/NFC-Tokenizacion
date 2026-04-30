@@ -24,7 +24,7 @@ function mapFriendlyStatus(result: ValidationResult) {
 }
 
 export function BatchSunValidator({ bid }: { bid: string }) {
-  const [url, setUrl] = useState(`https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(bid)}&picc_data=&enc=&cmac=`);
+  const [url, setUrl] = useState("");
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("Pegá URL SUN del proveedor y validá para confirmar estado real del lote/tag.");
   const [output, setOutput] = useState("{}");
@@ -52,7 +52,12 @@ export function BatchSunValidator({ bid }: { bid: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
       <p className="text-sm font-semibold text-white">Supplier sample URL validator</p>
-      <textarea value={url} onChange={(event) => setUrl(event.target.value)} className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" />
+      <textarea
+        value={url}
+        onChange={(event) => setUrl(event.target.value)}
+        placeholder="Pegá una URL /sun recién escaneada desde una tag física"
+        className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white"
+      />
       <div className="mt-3 flex items-center gap-3">
         <Button onClick={() => void validateNow()} disabled={pending}>{pending ? "Validando..." : "Validate /sun"}</Button>
         <span className="text-xs text-slate-300">{status}</span>

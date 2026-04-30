@@ -35,7 +35,7 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${eventSource} = '' OR e.source = ${eventSource}::scan_source)
+          AND (${eventSource} = '' OR e.source = ${eventSource}::text)
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${eventSource} = '' OR e.source = ${eventSource}::scan_source)
+          AND (${eventSource} = '' OR e.source = ${eventSource}::text)
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${eventSource} = '' OR e.source = ${eventSource}::scan_source)
+          AND (${eventSource} = '' OR e.source = ${eventSource}::text)
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
@@ -85,7 +85,7 @@ export async function GET(req: Request) {
           AND (${bid} = '' OR b.bid = ${bid})
           AND (${uid} = '' OR e.uid_hex = ${uid})
           AND (${result} = '' OR UPPER(e.result) = ${result})
-          AND (${eventSource} = '' OR e.source = ${eventSource}::scan_source)
+          AND (${eventSource} = '' OR e.source = ${eventSource}::text)
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
           AND e.created_at >= now() - ${rangeSql}::interval
         ORDER BY e.created_at DESC
