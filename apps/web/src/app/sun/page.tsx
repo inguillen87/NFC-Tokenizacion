@@ -201,11 +201,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
   const productState = String(result.status?.productState || "").toUpperCase();
   const ttStatus = String(result.tag_tamper?.status || "").toLowerCase();
+  const encPlainStatusByte = String((result.status as { encPlainStatusByte?: string | null } | undefined)?.encPlainStatusByte || "").toUpperCase();
+  const statusByteSignal = encPlainStatusByte === "43" ? "closed" : encPlainStatusByte === "4F" ? "opened" : "unknown";
   const pulseClass = isValid ? "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" : productState === "REPLAY_SUSPECT" ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]" : "bg-rose-300 shadow-[0_0_8px_rgba(253,164,175,0.8)]";
-  const statusHeadline = ttStatus === "closed" || productState === "VALID_CLOSED"
-    ? "Producto auténtico. Sello intacto."
-    : ttStatus === "opened"
-      ? "Producto auténtico, pero el sello fue abierto / manipulado."
+  const statusHeadline = statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED"
+    ? "Autenticidad confirmada. Sello intacto (CLOSED)."
+    : statusByteSignal === "opened" || ttStatus === "opened"
+      ? "Producto auténtico, pero el sello fue abierto (OPENED)."
     : ttStatus === "invalid"
       ? "TagTamper no inicializado o configuración inválida."
     : productState === "VALID_MANUAL_OPENED"

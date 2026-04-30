@@ -594,6 +594,7 @@ function buildPublicContract(params: {
       tamperStatus: params.result.tamper_status || "UNKNOWN",
       tamperSource: params.result.tamper_source || "unavailable",
       tamperReason: params.result.tamper_reason || null,
+      encPlainStatusByte: params.result.enc_plain_status_byte || null,
     },
     identity: {
       bid: params.bid,
