@@ -11,6 +11,7 @@ export default async function LoginPage() {
   const { t, locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const profiles = getAccessProfiles();
+  const demoLoginAllowed = true;
   const session = await getDashboardSession();
   if (session) redirect("/");
 
@@ -52,6 +53,7 @@ export default async function LoginPage() {
               forgotLabel={t.dashboard.forgotPassword}
               inviteLabel={copy.auth.inviteTitle}
               profiles={profiles}
+              demoLoginAllowed={demoLoginAllowed}
             />
           </div>
         </Card>

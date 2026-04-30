@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { BrandLockup, Button, Card } from "@product/ui";
+import { BrandLockup, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
+import { RegisterAccessPanel } from "../../components/register-access-panel";
 
 export default async function RegisterPage() {
   const { t } = await getDashboardI18n();
@@ -28,18 +29,7 @@ export default async function RegisterPage() {
               </div>
             </section>
             <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-6">
-              <div className="mt-2 grid gap-3 md:grid-cols-2">
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.companyPlaceholder} />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.emailPlaceholder} />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.dashboard.forms.fields.tenantSlug} />
-                <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={t.web.auth.passwordPlaceholder} />
-                <select className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" defaultValue="tenant-admin">
-                  <option value="tenant-admin">Tenant Admin</option>
-                  <option value="reseller">Reseller</option>
-                  <option value="viewer">Viewer / Cliente</option>
-                </select>
-                <Button className="w-full md:col-span-2">{t.common.register}</Button>
-              </div>
+              <RegisterAccessPanel submitLabel={t.common.register} />
               <p className="mt-4 text-xs text-slate-400">
                 ¿Ya tenés cuenta? <Link href="/login" className="text-cyan-300">{t.common.login}</Link>
               </p>
