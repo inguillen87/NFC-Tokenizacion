@@ -132,14 +132,20 @@ export async function getConsumerFromRequest(req: Request) {
   const match = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
   if (!match) return null;
   const token = decodeURIComponent(match[1]);
-  const rows = await sql/*sql*/`
-    SELECT c.*
-    FROM consumer_sessions s
-    JOIN consumers c ON c.id = s.consumer_id
-    WHERE s.session_token_hash = ${sha(token)}
-      AND s.expires_at >= now()
-    LIMIT 1
-  `;
+  let rows;
+  try {
+    rows = await sql/*sql*/`
+      SELECT c.*
+      FROM consumer_sessions s
+      JOIN consumers c ON c.id = s.consumer_id
+      WHERE s.session_token_hash = ${sha(token)}
+        AND s.expires_at >= now()
+      LIMIT 1
+    `;
+  } catch (error) {
+    if (String((error as { code?: string } | null)?.code || "") === "42P01") return null;
+    throw error;
+  }
   return rows[0] || null;
 }
 

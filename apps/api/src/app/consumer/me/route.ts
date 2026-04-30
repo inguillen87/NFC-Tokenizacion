@@ -9,13 +9,23 @@ export async function GET(req: Request) {
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
 
-  const stats = await sql/*sql*/`
+  let stats;
+  try {
+    stats = await sql/*sql*/`
     SELECT
       (SELECT COUNT(*)::int FROM consumer_products WHERE consumer_id = ${consumer.id}) AS products,
       (SELECT COUNT(*)::int FROM consumer_tap_history WHERE consumer_id = ${consumer.id}) AS taps,
       (SELECT COUNT(*)::int FROM tenant_consumer_memberships WHERE consumer_id = ${consumer.id}) AS memberships,
       (SELECT COUNT(*)::int FROM consumer_notifications WHERE consumer_id = ${consumer.id} AND read_at IS NULL) AS unread
   `;
+  } catch (error) {
+    const code = String((error as { code?: string } | null)?.code || "");
+    if (code === "42P01") {
+      stats = [{ products: 0, taps: 0, memberships: 0, unread: 0 }];
+    } else {
+      throw error;
+    }
+  }
 
   return json({ ok: true, consumer, stats: stats[0] });
 }

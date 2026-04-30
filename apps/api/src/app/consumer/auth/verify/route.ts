@@ -75,7 +75,7 @@ export async function POST(req: Request) {
     throw error;
   }
   if (!verified.ok) {
-    const status = verified.error === "rate_limited" ? 429 : verified.error === "locked" ? 423 : verified.error === "expired" ? 410 : 401;
+    const status = verified.error === "rate_limited" ? 429 : verified.error === "locked" ? 423 : verified.error === "expired" ? 410 : verified.error === "unavailable" ? 503 : 401;
     return new Response(JSON.stringify({ ok: false, error: verified.error }), { status });
   }
 
