@@ -323,10 +323,11 @@ function buildTroubleshooting(reason: string, bid: string) {
   return ['Revisá onboarding del batch.', 'Confirmá UID importado/activo.', 'Auditar eventos y llaves en dashboard.'];
 }
 
-function resolveTrustState(status: string, reason: string, productState?: string | null) {
+function resolveTrustState(status: string, reason: string, productState?: string | null, encPlainStatusByte?: string | null) {
   const normalizedStatus = status.toUpperCase();
   const normalizedReason = reason.toLowerCase();
   const normalizedProductState = String(productState || "").toUpperCase();
+  const statusByte = String(encPlainStatusByte || "").toUpperCase();
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay')) {
     return { code: 'REPLAY_SUSPECT', label: 'URL reutilizada', summary: 'Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
   }
@@ -340,6 +341,12 @@ function resolveTrustState(status: string, reason: string, productState?: string
     return { code: 'MANUAL_OPENED', label: 'Apertura registrada', summary: 'Producto auténtico. Sello marcado como abierto por operador.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_UNKNOWN_TAMPER") {
+    if (statusByte === "43") {
+      return { code: 'VALID', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Sello intacto (CLOSED).', tone: 'good' as const };
+    }
+    if (statusByte === "4F") {
+      return { code: 'OPENED', label: 'Sello abierto', summary: 'Producto auténtico, pero el sello fue abierto (OPENED).', tone: 'warn' as const };
+    }
     return { code: 'VALID_UNKNOWN_TAMPER', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Estado de apertura no disponible.', tone: 'good' as const };
   }
   if (normalizedStatus === 'TAMPER_RISK' || normalizedReason.includes('tamper')) {
@@ -537,7 +544,7 @@ function buildPublicContract(params: {
 }) {
   const status = params.result.result || (params.result.ok ? 'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
-  const trust = resolveTrustState(status, reason, params.result.product_state || null);
+  const trust = resolveTrustState(status, reason, params.result.product_state || null, params.result.enc_plain_status_byte || null);
   const verdictRisk = mapVerdictAndRisk({ statusCode: status, productState: params.result.product_state || null, reason });
   const actionMatrix = resolveActionMatrix(verdictRisk.verdict);
   const troubleshooting = buildTroubleshooting(reason, params.bid);
