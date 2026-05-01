@@ -74,6 +74,27 @@ function pct(value: number, total: number) {
   return `${((value / total) * 100).toFixed(1)}%`;
 }
 
+function distanceKm(fromLat: number | null, fromLng: number | null, toLat: number | null, toLng: number | null) {
+  if (fromLat == null || fromLng == null || toLat == null || toLng == null) return null;
+  const radiusKm = 6371;
+  const dLat = ((toLat - fromLat) * Math.PI) / 180;
+  const dLng = ((toLng - fromLng) * Math.PI) / 180;
+  const lat1 = (fromLat * Math.PI) / 180;
+  const lat2 = (toLat * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * radiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function fmtDistance(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return "n/a";
+  return `${new Intl.NumberFormat("es-AR", { maximumFractionDigits: value >= 100 ? 0 : 1 }).format(value)} km`;
+}
+
+function mapHref(lat: number | null, lng: number | null) {
+  if (lat == null || lng == null) return "";
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
 export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: AnalyticsPanelsProps) {
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [riskCategoryFilter, setRiskCategoryFilter] = useState<string>("ALL");
@@ -87,6 +108,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
   const products = data?.products || [];
   const tagJourney = data?.tagJourney || [];
   const devices = data?.devices;
+  const productByUid = useMemo(() => new Map(products.map((product) => [String(product.uidHex || "").toUpperCase(), product])), [products]);
   const scansTotal = Number(api.scans || 0);
   const riskSignals = Number(api.duplicates || 0) + Number(api.tamper || 0);
   const journeyCoverage = tagJourney.length ? Math.min(100, (tagJourney.length / Math.max(products.length, 1)) * 100) : 0;
@@ -131,6 +153,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
     ];
   }, [api.validRate, scansTotal, tagJourney.length]);
   const journeyMapPoints = tagJourney.flatMap((item, idx) => {
+    const product = productByUid.get(String(item.uid || "").toUpperCase());
     const originPoint = item.origin.lat != null && item.origin.lng != null
       ? [{
         id: `${item.uid}-origin-${idx}`,
@@ -145,6 +168,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         lastSeen: item.firstSeenAt || item.lastSeenAt || new Date().toISOString(),
         uid: item.uid,
         device: item.lastDevice || "unknown",
+        role: "origin" as const,
+        productName: product?.productName,
       }]
       : [];
     const currentPoint = item.current.lat != null && item.current.lng != null
@@ -161,6 +186,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         lastSeen: item.lastSeenAt || new Date().toISOString(),
         uid: item.uid,
         device: item.lastDevice || "unknown",
+        role: "tap" as const,
+        productName: product?.productName,
       }]
       : [];
     return [...originPoint, ...currentPoint];
@@ -168,18 +195,24 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
   const journeyRoutes = tagJourney
     .filter((item) => item.origin.lat != null && item.origin.lng != null && item.current.lat != null && item.current.lng != null)
     .slice(0, 120)
-    .map((item, idx) => ({
-      id: `journey-route-${idx}-${item.uid}`,
-      fromLat: Number(item.origin.lat),
-      fromLng: Number(item.origin.lng),
-      toLat: Number(item.current.lat),
-      toLng: Number(item.current.lng),
-      uid: item.uid,
-      risk: item.taps > 20 ? 0 : 1,
-      taps: item.taps,
-      firstSeenAt: item.firstSeenAt || item.lastSeenAt || new Date().toISOString(),
-      lastSeenAt: item.lastSeenAt || new Date().toISOString(),
-    }));
+    .map((item, idx) => {
+      const product = productByUid.get(String(item.uid || "").toUpperCase());
+      return {
+        id: `journey-route-${idx}-${item.uid}`,
+        fromLat: Number(item.origin.lat),
+        fromLng: Number(item.origin.lng),
+        toLat: Number(item.current.lat),
+        toLng: Number(item.current.lng),
+        uid: item.uid,
+        risk: item.taps > 20 ? 0 : 1,
+        taps: item.taps,
+        firstSeenAt: item.firstSeenAt || item.lastSeenAt || new Date().toISOString(),
+        lastSeenAt: item.lastSeenAt || new Date().toISOString(),
+        fromLabel: `${item.origin.city || "Origin"}, ${item.origin.country || "--"}`,
+        toLabel: `${item.current.city || "Tap"}, ${item.current.country || "--"}`,
+        productName: product?.productName,
+      };
+    });
 
   if (!hasOperationalData) {
     return (
@@ -325,7 +358,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       </div>
 
       <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({ city: point.city, country: point.country || "--", lat: point.lat, lng: point.lng, scans: point.scans || 1, risk: point.risk || 0 }))} />
-      <OpsPanel title="Journey map (tenant premium taps)" subtitle="Mapa interactivo de origen de bodega vs última ubicación verificada por UID, con playback de journeys.">
+      <OpsPanel title="Journey map (tenant premium taps)" subtitle="Origen del producto vs tap actual del cliente, con distancia estimada, linea punteada y links a ubicacion.">
         {journeyMapPoints.length ? (
           <GlobalOpsMap
             mode={mapMode === "global" ? "global" : "tenant"}
@@ -392,13 +425,26 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
 
         <OpsPanel title="Tag journey" subtitle="Origen de primer tap y última ubicación verificada por UID.">
           <div className="space-y-2">
-            {tagJourney.map((item) => (
-              <div key={item.uid} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
-                <div className="flex justify-between"><p className="font-semibold">{item.uid}</p><p>{item.taps} taps</p></div>
-                <p className="text-slate-300">Origen: <b>{item.origin.city}, {item.origin.country}</b> → Último verificado: <b>{item.current.city}, {item.current.country}</b></p>
-                <p className="text-slate-400">Primer tap: {fmtDate(item.firstSeenAt)} · Último tap: {fmtDate(item.lastSeenAt)} · {item.lastDevice}</p>
-              </div>
-            ))}
+            {tagJourney.map((item) => {
+              const product = productByUid.get(String(item.uid || "").toUpperCase());
+              const distance = distanceKm(item.origin.lat, item.origin.lng, item.current.lat, item.current.lng);
+              const originHref = mapHref(item.origin.lat, item.origin.lng);
+              const currentHref = mapHref(item.current.lat, item.current.lng);
+              return (
+                <div key={item.uid} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold">{product?.productName || item.uid}</p>
+                    <p>{item.taps} taps - {fmtDistance(distance)}</p>
+                  </div>
+                  <p className="mt-1 text-slate-300">Origen: <b>{item.origin.city}, {item.origin.country}</b> - tap actual: <b>{item.current.city}, {item.current.country}</b></p>
+                  <p className="text-slate-400">Primer tap: {fmtDate(item.firstSeenAt)} - ultimo tap: {fmtDate(item.lastSeenAt)} - {item.lastDevice}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {originHref ? <a href={originHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-400/10">Ver origen</a> : null}
+                    {currentHref ? <a href={currentHref} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/30 px-2 py-1 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-400/10">Ver tap</a> : null}
+                  </div>
+                </div>
+              );
+            })}
             {!tagJourney.length ? <p className="text-sm text-slate-400">Sin trazas de journey para el scope actual.</p> : null}
           </div>
         </OpsPanel>

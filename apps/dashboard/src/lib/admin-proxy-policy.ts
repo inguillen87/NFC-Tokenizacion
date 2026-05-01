@@ -29,6 +29,8 @@ const READONLY_DEMO_ALLOWED = [
   "analytics",
   "events",
   "events/stream",
+  "consumer-network",
+  "consumer-network/",
   "security-alerts",
   "tokenization/requests",
   "tags",

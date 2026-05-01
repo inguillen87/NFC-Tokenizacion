@@ -10,6 +10,7 @@ async function fetchJson(path: string) {
   const incomingHeaders = await headers();
   const cookie = incomingHeaders.get("cookie") || "";
   const demoCookie = /(?:^|;\s*)nexid_consumer_demo=1(?:;|$)/.test(cookie);
+  const demoFallbackEnabled = String(process.env.NEXT_PUBLIC_CONSUMER_DEMO_FALLBACK || process.env.CONSUMER_DEMO_FALLBACK || "").toLowerCase() === "true";
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
     headers: {
@@ -18,7 +19,7 @@ async function fetchJson(path: string) {
       "user-agent": incomingHeaders.get("user-agent") || "nexid-web-portal",
     },
   }).catch(() => null);
-  if ((!res || !res.ok) && demoCookie) {
+  if ((!res || !res.ok) && demoCookie && demoFallbackEnabled) {
     if (path === "/consumer/session") return { ok: true, authenticated: true, demo: true };
     if (path === "/consumer/me") return { ok: true, consumer: { email: "demo.consumer@nexid.local", display_name: "Demo Consumer" }, stats: { products: 3, taps: 7, memberships: 2, unread: 0 } };
     if (path === "/consumer/products") return [{ product_name: "Gran Reserva Malbec", tenant_slug: "demobodega", ownership_status: "claimed" }];

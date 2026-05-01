@@ -16,6 +16,8 @@ export type GlobalOpsPoint = {
   lastSeen: string;
   uid?: string;
   device?: string;
+  role?: "origin" | "tap" | "hub";
+  productName?: string;
 };
 
 export type GlobalOpsRoute = {
@@ -29,6 +31,9 @@ export type GlobalOpsRoute = {
   taps: number;
   firstSeenAt: string;
   lastSeenAt: string;
+  fromLabel?: string;
+  toLabel?: string;
+  productName?: string;
 };
 
 type Mode = "tenant" | "global" | "demo";
@@ -57,6 +62,31 @@ function curve(a: { x: number; y: number }, b: { x: number; y: number }, lift = 
   const cx = (a.x + b.x) / 2;
   const cy = Math.min(a.y, b.y) - lift;
   return `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+}
+
+function haversineKm(fromLat: number, fromLng: number, toLat: number, toLng: number) {
+  const radiusKm = 6371;
+  const dLat = ((toLat - fromLat) * Math.PI) / 180;
+  const dLng = ((toLng - fromLng) * Math.PI) / 180;
+  const lat1 = (fromLat * Math.PI) / 180;
+  const lat2 = (toLat * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * radiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(km: number) {
+  if (!Number.isFinite(km)) return "n/a";
+  return `${new Intl.NumberFormat("es-AR", { maximumFractionDigits: km >= 100 ? 0 : 1 }).format(km)} km`;
+}
+
+function mapLink(lat: number, lng: number) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
+function roleLabel(role?: GlobalOpsPoint["role"]) {
+  if (role === "origin") return "Origen producto";
+  if (role === "tap") return "Tap cliente";
+  return "Hub operativo";
 }
 
 function hasWebGlSupport() {
@@ -110,6 +140,8 @@ function pointsToFeatureCollection(points: GlobalOpsPoint[]) {
         verdict: point.verdict,
         tenantSlug: point.tenantSlug,
         lastSeen: point.lastSeen,
+        role: point.role || "hub",
+        productName: point.productName || "",
       },
       geometry: {
         type: "Point",
@@ -129,6 +161,9 @@ function routesToFeatureCollection(routes: GlobalOpsRoute[]) {
         risk: route.risk,
         taps: route.taps,
         uid: route.uid,
+        fromLabel: route.fromLabel || "",
+        toLabel: route.toLabel || "",
+        productName: route.productName || "",
       },
       geometry: {
         type: "LineString",
@@ -235,6 +270,27 @@ export function GlobalOpsMap({
   }, [cutoff, localRiskOnly, mode, progress, routes]);
 
   const selectedPoint = visiblePoints.find((point) => point.id === internalSelectedId) || visiblePoints[0] || null;
+  const selectedJourney = useMemo(() => {
+    if (!selectedPoint) return null;
+    const byUid = selectedPoint.uid ? visibleRoutes.find((route) => route.uid === selectedPoint.uid) : null;
+    const byCoordinates = visibleRoutes.find((route) => {
+      const startsHere = Math.abs(route.fromLat - selectedPoint.lat) < 0.001 && Math.abs(route.fromLng - selectedPoint.lng) < 0.001;
+      const endsHere = Math.abs(route.toLat - selectedPoint.lat) < 0.001 && Math.abs(route.toLng - selectedPoint.lng) < 0.001;
+      return startsHere || endsHere;
+    });
+    const route = byUid || byCoordinates;
+    if (!route) return null;
+    const fromPoint = visiblePoints.find((point) => point.uid === route.uid && point.role === "origin")
+      || visiblePoints.find((point) => Math.abs(point.lat - route.fromLat) < 0.001 && Math.abs(point.lng - route.fromLng) < 0.001);
+    const toPoint = visiblePoints.find((point) => point.uid === route.uid && point.role === "tap")
+      || visiblePoints.find((point) => Math.abs(point.lat - route.toLat) < 0.001 && Math.abs(point.lng - route.toLng) < 0.001);
+    return {
+      ...route,
+      fromPoint,
+      toPoint,
+      distanceKm: haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng),
+    };
+  }, [selectedPoint, visiblePoints, visibleRoutes]);
   const kpiCountries = new Set(visiblePoints.map((point) => point.country)).size;
   const replayTamper = visiblePoints.filter((point) => ["REPLAY_SUSPECT", "DUPLICATE", "TAMPER", "TAMPERED"].includes(point.verdict)).length;
 
@@ -274,7 +330,7 @@ export function GlobalOpsMap({
             type: "line",
             source: "ops-routes",
             filter: [">", ["get", "risk"], 0],
-            paint: { "line-color": "#fb7185", "line-width": 2.2, "line-opacity": 0.75 },
+            paint: { "line-color": "#fb7185", "line-width": 2.2, "line-opacity": 0.75, "line-dasharray": [1.6, 1.4] },
           });
 
           map.addLayer({
@@ -282,7 +338,7 @@ export function GlobalOpsMap({
             type: "line",
             source: "ops-routes",
             filter: ["<=", ["get", "risk"], 0],
-            paint: { "line-color": "#22d3ee", "line-width": 1.4, "line-opacity": 0.55 },
+            paint: { "line-color": "#22d3ee", "line-width": 1.4, "line-opacity": 0.55, "line-dasharray": [1.3, 1.6] },
           });
 
           map.addLayer({
@@ -316,7 +372,7 @@ export function GlobalOpsMap({
             source: "ops-points",
             filter: ["!", ["has", "point_count"]],
             paint: {
-              "circle-color": ["case", [">", ["get", "risk"], 0], "#fb7185", "#22d3ee"],
+              "circle-color": ["case", ["==", ["get", "role"], "origin"], "#34d399", [">", ["get", "risk"], 0], "#fb7185", "#22d3ee"],
               "circle-radius": ["interpolate", ["linear"], ["get", "scans"], 1, 4, 80, 10],
               "circle-stroke-width": 1.2,
               "circle-stroke-color": "#f8fafc",
@@ -389,7 +445,7 @@ export function GlobalOpsMap({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-white">Global Ops Map {canRenderMap ? "MapLibre GL" : "Fallback"}</p>
-          <p className="text-xs text-slate-400">Control plane operativo para hubs, journeys y riesgo ({mode}).</p>
+          <p className="text-xs text-slate-400">Origen del producto, tap del cliente, distancia estimada y riesgo ({mode}).</p>
         </div>
         <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
           <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Hubs: <b>{visiblePoints.length}</b></div>
@@ -439,9 +495,15 @@ export function GlobalOpsMap({
                 {visiblePoints.map((point) => {
                   const dot = project(point.lat, point.lng);
                   const isSelected = selectedPoint?.id === point.id;
+                  const pointFill = point.role === "origin" ? "rgba(52,211,153,.95)" : point.risk > 0 ? "rgba(251,113,133,.95)" : "rgba(56,189,248,.9)";
                   return (
                     <g key={point.id}>
-                      <circle cx={dot.x} cy={dot.y} r={isSelected ? 10 : Math.min(8, 4 + point.scans / 40)} fill={point.risk > 0 ? "rgba(251,113,133,.95)" : "rgba(56,189,248,.9)"} />
+                      <circle cx={dot.x} cy={dot.y} r={isSelected ? 10 : Math.min(8, 4 + point.scans / 40)} fill={pointFill} />
+                      {(isSelected || point.role === "origin" || point.role === "tap") ? (
+                        <text x={dot.x + 12} y={dot.y - 8} fill="rgba(226,232,240,.88)" fontSize="18" fontWeight="700">
+                          {point.role === "origin" ? "Origen" : point.role === "tap" ? "Tap cliente" : point.city}
+                        </text>
+                      ) : null}
                     </g>
                   );
                 })}
@@ -452,8 +514,14 @@ export function GlobalOpsMap({
                 WebGL/map runtime unavailable. Showing operational fallback view.
               </div>
             ) : null}
+            <div className="absolute right-3 top-3 grid gap-1 rounded-xl border border-white/10 bg-slate-950/80 p-2 text-[10px] text-slate-200 shadow-xl backdrop-blur-md">
+              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-300" /> PRODUCT ORIGIN</span>
+              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-cyan-300" /> CLIENT TAP</span>
+              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-rose-300" /> TAMPER-RISK</span>
+              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-violet-300" /> TOKENIZED</span>
+            </div>
             <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
-              Scatter/arc/trips rendering with clustered hubs and capped routes for performance ({visibleRoutes.length} routes rendered).
+              Dotted origin-to-tap journeys, clustered hubs and capped routes for performance ({visibleRoutes.length} routes rendered).
             </div>
           </div>
         </div>
@@ -463,13 +531,51 @@ export function GlobalOpsMap({
           {selectedPoint ? (
             <div className="mt-2 space-y-2 rounded-lg border border-cyan-300/25 bg-cyan-500/10 p-3">
               <p className="font-semibold text-cyan-100">{selectedPoint.city}, {selectedPoint.country}</p>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">{roleLabel(selectedPoint.role)}</p>
+              {selectedPoint.productName ? <p>Producto: <b>{selectedPoint.productName}</b></p> : null}
               <p>UID: <b>{selectedPoint.uid || "n/a"}</b></p>
               <p>Tenant: <b>{selectedPoint.tenantSlug || "n/a"}</b></p>
               <p>Último evento: <b>{selectedPoint.lastSeen || "n/a"}</b></p>
               <p>Device: <b>{selectedPoint.device || "n/a"}</b></p>
+              <a href={mapLink(selectedPoint.lat, selectedPoint.lng)} target="_blank" rel="noreferrer" className="inline-flex rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-2 py-1 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-400/20">
+                Abrir ubicacion
+              </a>
               <p>Risk: <b>{selectedPoint.risk}</b> · Verdict: <b>{selectedPoint.verdict}</b></p>
             </div>
           ) : <p className="mt-2 text-slate-400">Seleccioná un punto para ver detalle.</p>}
+
+          {selectedJourney ? (
+            <div className="mt-3 space-y-3 rounded-lg border border-emerald-300/25 bg-emerald-500/10 p-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.14em] text-emerald-200">Origin to client tap</p>
+                <p className="mt-1 font-semibold text-white">{selectedJourney.productName || selectedPoint?.productName || selectedJourney.uid}</p>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-[11px]">
+                <span className="rounded-lg bg-emerald-400/10 px-2 py-1 text-emerald-100">{selectedJourney.fromLabel || `${selectedJourney.fromPoint?.city || "Origin"}, ${selectedJourney.fromPoint?.country || "--"}`}</span>
+                <span className="text-slate-500">--</span>
+                <span className="rounded-lg bg-cyan-400/10 px-2 py-1 text-cyan-100">{selectedJourney.toLabel || `${selectedJourney.toPoint?.city || "Tap"}, ${selectedJourney.toPoint?.country || "--"}`}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-white/10 bg-slate-950/50 p-2">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Distancia</p>
+                  <p className="text-lg font-semibold text-emerald-100">{formatDistance(selectedJourney.distanceKm)}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-slate-950/50 p-2">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Taps</p>
+                  <p className="text-lg font-semibold text-cyan-100">{selectedJourney.taps}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <a href={mapLink(selectedJourney.fromLat, selectedJourney.fromLng)} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 px-2 py-1 text-center font-semibold text-emerald-100 hover:bg-emerald-400/10">
+                  Ver origen
+                </a>
+                <a href={mapLink(selectedJourney.toLat, selectedJourney.toLng)} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/30 px-2 py-1 text-center font-semibold text-cyan-100 hover:bg-cyan-400/10">
+                  Ver tap
+                </a>
+              </div>
+              <p className="text-[11px] text-slate-400">Primer tap: {selectedJourney.firstSeenAt || "n/a"} - ultimo tap: {selectedJourney.lastSeenAt || "n/a"}</p>
+            </div>
+          ) : null}
 
           <div className="mt-3 space-y-2">
             {fallbackRows.map((point) => (
@@ -478,6 +584,7 @@ export function GlobalOpsMap({
                 onPointSelect?.(point);
               }} className={`w-full rounded-lg border px-2 py-2 text-left ${selectedPoint?.id === point.id ? "border-cyan-300/35 bg-cyan-500/10" : "border-white/10 bg-slate-900/70"}`}>
                 <p className="font-semibold">{point.city}, {point.country}</p>
+                <p className="text-[11px] text-slate-300">{roleLabel(point.role)}{point.productName ? ` - ${point.productName}` : ""}</p>
                 <p className="text-[11px] text-slate-400">scans {point.scans} · risk {point.risk} · {point.tenantSlug || "--"}</p>
               </button>
             ))}

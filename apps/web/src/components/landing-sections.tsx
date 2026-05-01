@@ -1,9 +1,10 @@
 import { Card, SectionHeading, Badge, Button, WorldMapRealtime } from "@product/ui";
 import Link from "next/link";
+import { HeroScene } from "./hero-scene";
 
 type Content = any;
 
-export function HeroSection({ content, stats, locale, radar }: { content: Content; stats: any; locale: string; radar?: any }) {
+export function HeroSection({ content, stats, locale }: { content: Content; stats: any; locale: string; radar?: any }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const hero = content?.hero || {};
@@ -15,14 +16,10 @@ export function HeroSection({ content, stats, locale, radar }: { content: Conten
 
   return (
     <section className="relative overflow-hidden border-b border-white/5 bg-slate-950 pb-16 pt-16 lg:pb-24 lg:pt-24">
-      {/* Stripe-level Animated Background Glow */}
-      <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden pointer-events-none">
-        <div className="absolute top-[10%] w-[800px] h-[500px] bg-cyan-500/20 blur-[120px] rounded-[100%] animate-pulse" style={{ animationDuration: '6s' }} />
-        <div className="absolute top-[30%] left-[20%] w-[600px] h-[600px] bg-violet-600/10 blur-[100px] rounded-[100%] animate-pulse" style={{ animationDuration: '8s' }} />
-      </div>
+      <div className="hero-signal-field absolute inset-0 z-0 pointer-events-none" aria-hidden="true" />
 
       <div className="container-shell relative z-10">
-        <div className="mx-auto max-w-4xl text-center">
+        <div className="mx-auto max-w-6xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur-md transition-colors hover:bg-white/10">
              <span className="flex h-2 w-2 rounded-full bg-emerald-400" />
              <span className="text-xs font-medium text-slate-300 uppercase tracking-widest">{trustBadge}</span>
@@ -35,6 +32,19 @@ export function HeroSection({ content, stats, locale, radar }: { content: Conten
             {heroSubtitle}
           </p>
 
+          <div className="mx-auto mt-10 max-w-5xl text-left">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Interactive product experience</p>
+                <p className="mt-1 max-w-2xl text-sm text-slate-300">Botella, pulsera, sello y packaging con tap real, etiqueta, tamper y resultado mobile en una sola escena.</p>
+              </div>
+              <Link href="/demo-lab" className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
+                Abrir Demo Lab
+              </Link>
+            </div>
+            <HeroScene locale={locale as any} />
+          </div>
+
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-6 py-3.5 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
               {primaryCta}
@@ -44,7 +54,7 @@ export function HeroSection({ content, stats, locale, radar }: { content: Conten
             </Link>
           </div>
 
-          <div className="mt-14 grid grid-cols-2 gap-4 border-t border-white/10 pt-10 md:grid-cols-4">
+          <div className="mt-12 grid grid-cols-2 gap-4 border-t border-white/10 pt-8 md:grid-cols-4">
              <div className="text-center">
                 <p className="text-3xl font-bold text-white">{stats.scanSpeed}</p>
                 <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.scanSpeedLabel}</p>
@@ -63,26 +73,6 @@ export function HeroSection({ content, stats, locale, radar }: { content: Conten
              </div>
           </div>
 
-          <div className="mt-10 rounded-2xl border border-white/10 bg-slate-900/55 p-5 text-left backdrop-blur-xl md:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">{radar?.eyebrow || "Auth radar (Demo Lab)"}</p>
-                <p className="mt-2 text-base font-semibold text-white md:text-lg">{radar?.title || "Visualización operativa de eventos de verificación"}</p>
-                <p className="mt-2 text-sm text-slate-300">{radar?.description || "Demo guiada para equipos comerciales y técnicos."}</p>
-              </div>
-              <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
-                Abrir Demo Lab
-              </Link>
-            </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              {(radar?.signals || []).slice(0, 3).map((signal: { label: string; value: string }) => (
-                <div key={signal.label} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                  <p className="text-xs uppercase tracking-[0.12em] text-slate-400">{signal.label}</p>
-                  <p className="mt-1 text-lg font-semibold text-white">{signal.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </section>
@@ -264,25 +254,82 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
           </div>
         </div>
         <p className="mt-6 text-sm text-slate-400 text-center">{copy.footer}</p>
+        <div className="mt-8 rounded-2xl border border-white/10 bg-slate-950/65 p-4 md:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">Configuracion por riesgo</p>
+              <h3 className="mt-2 text-lg font-semibold text-white">De QR comun a NTAG 424 DNA TagTamper</h3>
+            </div>
+            <Link href="/stack" className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">
+              Ver stack tecnico
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-4">
+            {[
+              { name: "QR comun", tag: "Marketing", body: "Barato y rapido. Sirve para contenido, campanas y trazabilidad simple, pero se copia con una captura." },
+              { name: "NTAG215", tag: "Tap UX", body: "Ideal para pulseras, credenciales y activaciones donde importa velocidad, serializacion y control server-side." },
+              { name: "NTAG 424 DNA", tag: "Anti-clone", body: "Agrega SUN/SDM dinamico para que cada tap sea unico y verificable contra replay o copia." },
+              { name: "424 DNA TT", tag: "Tamper", body: "Para botellas, tapas, sellos y packaging premium: detecta apertura fisica y cambia el estado del passport." },
+            ].map((item, index) => (
+              <article key={item.name} className="relative rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="grid h-7 w-7 place-items-center rounded-lg border border-cyan-300/25 bg-cyan-500/10 text-xs font-black text-cyan-100">{index + 1}</span>
+                  <span className="rounded-full border border-white/10 bg-slate-950 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-300">{item.tag}</span>
+                </div>
+                <h4 className="text-sm font-semibold text-white">{item.name}</h4>
+                <p className="mt-2 text-xs leading-5 text-slate-400">{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </Card>
     </section>
   );
 }
 
 export function PlansSection({ content }: { content: Content }) {
+  const planEducation = [
+    {
+      visual: "qr",
+      title: "Basic real",
+      example: "QR comun o NFC UID para contenido, campañas, manuales, registro de garantia y primeras metricas.",
+      fit: "Cuando el riesgo de copia no es critico y lo importante es lanzar rapido.",
+    },
+    {
+      visual: "ntag",
+      title: "Secure tap",
+      example: "NTAG215 o NTAG 424 DNA con UID/SUN dinamico para serializacion, anti-replay y control server-side.",
+      fit: "Para eventos, credenciales, productos de valor medio y operaciones con validacion frecuente.",
+    },
+    {
+      visual: "tt",
+      title: "Premium tokenizado",
+      example: "NTAG 424 DNA TT + passport + token sandbox/Polygon para propiedad, historial y marketplace.",
+      fit: "Para vino, lujo, cosmetica, pharma y activos donde apertura, origen y postventa importan.",
+    },
+  ];
+
   return (
     <section className="container-shell py-20">
       <SectionHeading eyebrow={content.plans.eyebrow} title={content.plans.title} description={content.plans.description} />
       <div className="mt-12 grid gap-6 xl:grid-cols-3">
-        {content.plans.cards.map((plan: any) => {
+        {content.plans.cards.map((plan: any, index: number) => {
            const isPremium = plan.name.includes("ENTERPRISE") || plan.name.includes("PRO");
+           const education = planEducation[index] || planEducation[planEducation.length - 1];
            return (
              <Card key={plan.name} className={`relative p-8 overflow-hidden transition-transform duration-300 hover:-translate-y-2 ${isPremium ? 'border-cyan-500/30 bg-slate-900/80 shadow-[0_0_40px_rgba(6,182,212,0.1)]' : 'border-white/5 bg-slate-900/40'}`}>
                {isPremium && <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/20 blur-[50px] rounded-full pointer-events-none" />}
                <div className="mb-6 inline-block"><Badge tone={isPremium ? "cyan" : "default"}>{plan.badge}</Badge></div>
                <h3 className="text-3xl font-bold text-white tracking-tight">{plan.name}</h3>
-               <p className="mt-2 text-sm font-medium text-cyan-300">{plan.price}</p>
                <p className="mt-4 text-sm leading-6 text-slate-400">{plan.body}</p>
+               <div className="mt-5 flex items-center gap-4 rounded-xl border border-white/10 bg-slate-950/55 p-3">
+                 <span className={`plan-tag-visual plan-tag-visual--${education.visual}`} aria-hidden="true" />
+                 <div>
+                   <p className="text-sm font-semibold text-cyan-100">{education.title}</p>
+                   <p className="mt-1 text-xs leading-5 text-slate-400">{education.example}</p>
+                 </div>
+               </div>
+               <p className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs leading-5 text-emerald-50">{education.fit}</p>
                <div className="my-6 h-px w-full bg-gradient-to-r from-white/10 to-transparent" />
                <ul className="space-y-3 text-sm text-slate-300">
                  {plan.bullets.map((bullet: string) => (

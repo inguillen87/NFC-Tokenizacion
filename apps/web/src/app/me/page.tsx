@@ -23,16 +23,53 @@ export default async function MePage() {
   const latestTaps = taps.slice(0, 4);
   const savedProducts = products.slice(0, 4);
   const consumerName = String(me?.consumer?.display_name || "").trim() || String(me?.consumer?.email || "Consumer");
+  const passportReadiness = Math.min(100, 42 + verifiedProducts * 18 + activeMemberships * 12 + Math.min(20, latestTaps.length * 5));
+  const journey = [
+    ["Tap fisico", "Lectura NFC/QR desde producto real."],
+    ["Verificacion", "SUN, UID, tamper y reglas de replay."],
+    ["Ownership", "Producto guardado en Passport."],
+    ["Marketplace", "Beneficios, drops y reventa tokenizada."],
+  ];
 
   return (
     <PortalShell
       title="Tu pasaporte de productos auténticos"
       subtitle="Perfil premium conectado a tus taps reales, ownership verificable, memberships por tenant y marketplace contextual."
     >
-      <section className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-        <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Consumer profile</p>
-        <p className="mt-2 text-lg font-semibold text-white">{consumerName}</p>
-        <p className="text-xs text-cyan-50/90">{me?.consumer?.email || "email no disponible"} · locale {me?.consumer?.preferred_locale || "es-AR"}</p>
+      <section className="overflow-hidden rounded-2xl border border-cyan-300/25 bg-cyan-500/10">
+        <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Consumer profile</p>
+            <p className="mt-2 text-2xl font-semibold text-white">{consumerName}</p>
+            <p className="mt-1 text-xs text-cyan-50/90">{me?.consumer?.email || "email no disponible"} · locale {me?.consumer?.preferred_locale || "es-AR"}</p>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-slate-200">
+              Este portal une la prueba fisica del tap con identidad, ownership, beneficios y futura transferencia tokenizada.
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-950/55 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Passport readiness</p>
+              <p className="text-2xl font-black text-cyan-100">{passportReadiness}</p>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
+              <div className="h-full rounded-full bg-cyan-300" style={{ width: `${passportReadiness}%` }} />
+            </div>
+            <p className="mt-3 text-xs text-slate-300">Sube con productos claimados, marcas activas y taps verificables.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-4">
+        {journey.map(([title, desc], index) => (
+          <article key={title} className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-lg border border-cyan-300/25 bg-cyan-500/10 text-xs font-black text-cyan-100">{index + 1}</span>
+              <span className="text-[10px] uppercase tracking-[0.12em] text-slate-500">post tap</span>
+            </div>
+            <p className="mt-3 text-sm font-semibold text-white">{title}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-400">{desc}</p>
+          </article>
+        ))}
       </section>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">

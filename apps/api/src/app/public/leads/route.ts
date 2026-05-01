@@ -8,6 +8,62 @@ function clean(value: unknown) {
   return String(value || "").trim();
 }
 
+async function postJson(url: string, payload: unknown, token?: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    return { ok: response.ok, status: response.status };
+  } catch {
+    return { ok: false, status: 0 };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function notifyLead(payload: { lead: Record<string, unknown>; sourceBody: Record<string, unknown> }) {
+  const webhookUrl = clean(process.env.LEADS_WEBHOOK_URL);
+  const whatsappUrl = clean(process.env.WHATSAPP_API_URL || process.env.WHATSAPP_WEBHOOK_URL);
+  const whatsappToken = clean(process.env.WHATSAPP_API_TOKEN || process.env.WHATSAPP_ACCESS_TOKEN);
+  const salesWhatsappTo = clean(process.env.SALES_WHATSAPP_TO);
+  const lead = payload.lead;
+  const message = [
+    "Nuevo lead nexID",
+    `Nombre: ${clean(lead.name) || "n/a"}`,
+    `Empresa: ${clean(lead.company) || "n/a"}`,
+    `Contacto: ${clean(lead.email) || clean(lead.phone) || clean(lead.contact) || "n/a"}`,
+    `Vertical: ${clean(lead.vertical) || "n/a"}`,
+    `Interes: ${clean(lead.role_interest) || clean(lead.tag_type) || "n/a"}`,
+  ].join("\n");
+
+  const deliveries = await Promise.all([
+    webhookUrl
+      ? postJson(webhookUrl, { type: "lead.created", lead, sourceBody: payload.sourceBody })
+      : Promise.resolve({ ok: false, status: 0 }),
+    whatsappUrl
+      ? postJson(whatsappUrl, {
+        type: "lead.created",
+        to: salesWhatsappTo || clean(lead.phone),
+        text: message,
+        lead,
+      }, whatsappToken)
+      : Promise.resolve({ ok: false, status: 0 }),
+  ]);
+
+  return {
+    webhook: webhookUrl ? deliveries[0] : null,
+    whatsapp: whatsappUrl ? deliveries[1] : null,
+  };
+}
+
 export async function POST(req: Request) {
   const body: Record<string, unknown> = await req.json().catch(() => ({}));
   const locale = clean(body.locale) || "es-AR";
@@ -39,7 +95,8 @@ export async function POST(req: Request) {
       RETURNING *
     `;
 
-    return json({ ok: true, lead: rows[0] }, 201);
+    const delivery = await notifyLead({ lead: rows[0] as Record<string, unknown>, sourceBody: body });
+    return json({ ok: true, lead: rows[0], delivery }, 201);
   } catch {
     return json({ ok: false, reason: "lead insert failed" }, 500);
   }

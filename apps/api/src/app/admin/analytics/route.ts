@@ -62,6 +62,10 @@ type ProductRow = {
   tokenization_network: string | null;
   tokenization_tx_hash: string | null;
   tokenization_token_id: string | null;
+  winery_lat: number | null;
+  winery_lng: number | null;
+  winery_address: string | null;
+  provenance_text: string | null;
 };
 
 export async function GET(req: Request) {
@@ -514,10 +518,10 @@ export async function GET(req: Request) {
         SELECT
           t.uid_hex,
           b.bid,
-          COALESCE(tp.product_name, tp.sku, 'Unprofiled bottle') AS product_name,
-          tp.winery,
-          tp.region,
-          tp.vintage,
+          COALESCE(pp.product_name, tp.product_name, tp.sku, 'Unprofiled bottle') AS product_name,
+          COALESCE(pp.winery_name, tp.winery) AS winery,
+          COALESCE(pp.region, tp.region) AS region,
+          COALESCE(pp.vintage, tp.vintage) AS vintage,
           t.scan_count,
           t.first_seen_at::text AS first_seen_at,
           t.last_seen_at::text AS last_seen_at,
@@ -526,11 +530,16 @@ export async function GET(req: Request) {
           tok.status AS tokenization_status,
           tok.network AS tokenization_network,
           tok.tx_hash AS tokenization_tx_hash,
-          tok.token_id AS tokenization_token_id
+          tok.token_id AS tokenization_token_id,
+          pp.winery_lat,
+          pp.winery_lng,
+          pp.winery_address,
+          pp.provenance_text
         FROM tags t
         JOIN batches b ON b.id = t.batch_id
         JOIN tenants tn ON tn.id = b.tenant_id
         LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
+        LEFT JOIN product_passports pp ON pp.tag_id = t.id
         LEFT JOIN LATERAL (
           SELECT e.city, e.country_code, e.created_at
           FROM events e
@@ -556,10 +565,10 @@ export async function GET(req: Request) {
         SELECT
           t.uid_hex,
           b.bid,
-          COALESCE(tp.product_name, tp.sku, 'Unprofiled bottle') AS product_name,
-          tp.winery,
-          tp.region,
-          tp.vintage,
+          COALESCE(pp.product_name, tp.product_name, tp.sku, 'Unprofiled bottle') AS product_name,
+          COALESCE(pp.winery_name, tp.winery) AS winery,
+          COALESCE(pp.region, tp.region) AS region,
+          COALESCE(pp.vintage, tp.vintage) AS vintage,
           t.scan_count,
           t.first_seen_at::text AS first_seen_at,
           t.last_seen_at::text AS last_seen_at,
@@ -568,10 +577,15 @@ export async function GET(req: Request) {
           tok.status AS tokenization_status,
           tok.network AS tokenization_network,
           tok.tx_hash AS tokenization_tx_hash,
-          tok.token_id AS tokenization_token_id
+          tok.token_id AS tokenization_token_id,
+          pp.winery_lat,
+          pp.winery_lng,
+          pp.winery_address,
+          pp.provenance_text
         FROM tags t
         JOIN batches b ON b.id = t.batch_id
         LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
+        LEFT JOIN product_passports pp ON pp.tag_id = t.id
         LEFT JOIN LATERAL (
           SELECT e.city, e.country_code, e.created_at
           FROM events e
@@ -646,27 +660,43 @@ export async function GET(req: Request) {
     risk: Number(row.risk || 0),
   }));
 
+  const productOriginByUid = new Map(
+    (productRows as ProductRow[]).map((row) => [
+      String(row.uid_hex || "").toUpperCase(),
+      {
+        city: row.winery || row.region || "Product origin",
+        country: row.winery_address || row.provenance_text || row.region || "--",
+        lat: typeof row.winery_lat === "number" ? Number(row.winery_lat) : null,
+        lng: typeof row.winery_lng === "number" ? Number(row.winery_lng) : null,
+      },
+    ]),
+  );
+
   const tagJourney = (journeyRows as JourneyRow[])
     .filter((row) => row.uid_hex)
-    .map((row) => ({
-      uid: row.uid_hex as string,
-      taps: Number(row.taps || 0),
-      firstSeenAt: row.first_seen_at,
-      lastSeenAt: row.last_seen_at,
-      origin: {
-        city: row.origin_city || "Unknown",
-        country: row.origin_country || "--",
-        lat: typeof row.origin_lat === "number" ? Number(row.origin_lat) : null,
-        lng: typeof row.origin_lng === "number" ? Number(row.origin_lng) : null,
-      },
-      current: {
-        city: row.current_city || "Unknown",
-        country: row.current_country || "--",
-        lat: typeof row.current_lat === "number" ? Number(row.current_lat) : null,
-        lng: typeof row.current_lng === "number" ? Number(row.current_lng) : null,
-      },
-      lastDevice: row.last_device || "Unknown device",
-    }));
+    .map((row) => {
+      const productOrigin = productOriginByUid.get(String(row.uid_hex || "").toUpperCase());
+      const hasProductOriginCoords = productOrigin?.lat != null && productOrigin?.lng != null;
+      return {
+        uid: row.uid_hex as string,
+        taps: Number(row.taps || 0),
+        firstSeenAt: row.first_seen_at,
+        lastSeenAt: row.last_seen_at,
+        origin: {
+          city: hasProductOriginCoords ? productOrigin?.city || "Product origin" : row.origin_city || "Unknown",
+          country: hasProductOriginCoords ? productOrigin?.country || "--" : row.origin_country || "--",
+          lat: hasProductOriginCoords ? productOrigin?.lat ?? null : typeof row.origin_lat === "number" ? Number(row.origin_lat) : null,
+          lng: hasProductOriginCoords ? productOrigin?.lng ?? null : typeof row.origin_lng === "number" ? Number(row.origin_lng) : null,
+        },
+        current: {
+          city: row.current_city || "Unknown",
+          country: row.current_country || "--",
+          lat: typeof row.current_lat === "number" ? Number(row.current_lat) : null,
+          lng: typeof row.current_lng === "number" ? Number(row.current_lng) : null,
+        },
+        lastDevice: row.last_device || "Unknown device",
+      };
+    });
 
   const osBuckets = new Map<string, number>();
   for (const row of (deviceOsRows as DeviceBucketRow[])) addBucket(osBuckets, normalizeOs({ platform: row.label }), Number(row.count || 0));
@@ -752,6 +782,12 @@ export async function GET(req: Request) {
         network: row.tokenization_network || "-",
         txHash: row.tokenization_tx_hash || null,
         tokenId: row.tokenization_token_id || null,
+      },
+      origin: {
+        city: row.winery || row.region || null,
+        label: row.winery_address || row.provenance_text || row.region || null,
+        lat: typeof row.winery_lat === "number" ? Number(row.winery_lat) : null,
+        lng: typeof row.winery_lng === "number" ? Number(row.winery_lng) : null,
       },
     })),
     trend,

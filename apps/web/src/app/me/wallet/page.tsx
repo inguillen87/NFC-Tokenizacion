@@ -1,5 +1,6 @@
 import { fetchConsumerPath } from "../_components/consumer-api";
 import { PortalShell } from "../_components/portal-shell";
+import { MetamaskSandboxCard } from "./metamask-sandbox-card";
 
 type WalletPayload = { balance_points?: number; memberships?: number; saved_products?: number; trust_score?: number };
 
@@ -47,16 +48,22 @@ export default async function WalletLedgerPage() {
 
             <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs">⭐</div>
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[10px] font-black text-cyan-200">NX</div>
                   <p className="text-sm font-bold text-white">Consolidado</p>
                </div>
                <p className="text-2xl font-bold text-white">{wallet?.balance_points || 0} <span className="text-xs text-slate-500">pts</span></p>
             </div>
 
-            <div className="mt-6 p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 text-center">
-               <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-1">NexID Network</h4>
-               <p className="text-[10px] text-cyan-200/70">Pronto vas a poder utilizar créditos globales para ofertas cruzadas en el marketplace.</p>
+            <div className="mt-6 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4">
+               <h4 className="text-xs font-bold uppercase tracking-widest text-cyan-400">NexID Network</h4>
+               <p className="mt-1 text-[11px] leading-5 text-cyan-200/75">Creditos globales, beneficios cruzados y ownership transferible para marketplace.</p>
+               <div className="mt-3 grid gap-2 text-[10px] text-slate-200">
+                 {["Tap valido", "Request token", "Mint sandbox", "Passport link"].map((step) => (
+                   <div key={step} className="rounded-lg border border-white/10 bg-slate-950/55 px-2 py-1.5">{step}</div>
+                 ))}
+               </div>
             </div>
+            <MetamaskSandboxCard />
          </div>
 
       </div>

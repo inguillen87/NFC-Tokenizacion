@@ -1,13 +1,11 @@
 import { SectionHeading } from "@product/ui";
 import { DataTable } from "../../../../components/data-table";
 import { requireDashboardSession } from "../../../../lib/session";
+import { getServerOrigin } from "../../../../lib/server-origin";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
-
-async function adminGet(path: string) {
+async function adminGet(origin: string, path: string) {
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+    const response = await fetch(`${origin}/api/admin/${path.replace(/^\/?admin\//, "")}`, {
       cache: "no-store",
     });
     if (!response.ok) return null;
@@ -31,18 +29,23 @@ type OverviewPayload = {
   topProductsByClaims?: Array<{ product_name?: string; bid?: string; claims?: number }>;
 };
 
+function pct(value: unknown) {
+  return `${Number(value || 0).toFixed(1)}%`;
+}
+
 export default async function PortalUsuariosOverviewPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
   const requestedTenant = typeof query.tenant === "string" ? query.tenant : "";
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : requestedTenant;
   const tenantQuery = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
+  const origin = await getServerOrigin();
 
   const [overviewRaw, membersRaw, productsRaw, tapsRaw] = await Promise.all([
-    adminGet(`/admin/consumer-network/overview${tenantQuery}`),
-    adminGet(`/admin/consumer-network/members${tenantQuery}`),
-    adminGet(`/admin/consumer-network/products${tenantQuery}`),
-    adminGet(`/admin/consumer-network/taps${tenantQuery}`),
+    adminGet(origin, `/admin/consumer-network/overview${tenantQuery}`),
+    adminGet(origin, `/admin/consumer-network/members${tenantQuery}`),
+    adminGet(origin, `/admin/consumer-network/products${tenantQuery}`),
+    adminGet(origin, `/admin/consumer-network/taps${tenantQuery}`),
   ]);
 
   const overviewPayload = (overviewRaw || {}) as OverviewPayload;
@@ -52,6 +55,17 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
   const members = Array.isArray((membersRaw as { items?: unknown[] } | null)?.items) ? ((membersRaw as { items: Record<string, unknown>[] }).items) : [];
   const products = Array.isArray((productsRaw as { items?: unknown[] } | null)?.items) ? ((productsRaw as { items: Record<string, unknown>[] }).items) : [];
   const taps = Array.isArray((tapsRaw as { items?: unknown[] } | null)?.items) ? ((tapsRaw as { items: Record<string, unknown>[] }).items) : [];
+  const heatmapCells = Array.from({ length: 24 }).map((_, hour) => {
+    const count = taps.filter((item) => {
+      const date = item.created_at ? new Date(String(item.created_at)) : null;
+      return date && !Number.isNaN(date.getTime()) && date.getHours() === hour;
+    }).length;
+    const max = Math.max(1, ...Array.from({ length: 24 }).map((__, h) => taps.filter((item) => {
+      const date = item.created_at ? new Date(String(item.created_at)) : null;
+      return date && !Number.isNaN(date.getTime()) && date.getHours() === h;
+    }).length));
+    return { hour, count, intensity: count / max };
+  });
 
   return (
     <main className="space-y-6">
@@ -81,6 +95,38 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
           <p className="mt-1 text-xs text-violet-200">Sin revenue/GMV inventado.</p>
         </article>
       </div>
+
+      <section className="rounded-2xl border border-cyan-300/20 bg-slate-900/60 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Analytics command center</p>
+            <h2 className="mt-1 text-lg font-semibold text-white">Funnel real post tap</h2>
+            <p className="mt-1 text-sm text-slate-400">Mide conversion anonimo a registrado a miembro a producto guardado, usando eventos y asociaciones reales.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Tap a registro <b className="text-cyan-100">{pct(overview.tapToRegistrationRate)}</b></span>
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Registro a member <b className="text-violet-100">{pct(overview.registrationToMembershipRate)}</b></span>
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Guardados <b className="text-emerald-100">{Number(overview.savedProducts || 0)}</b></span>
+            <span className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-slate-200">Bloqueados <b className="text-rose-100">{Number(overview.riskBlockedClaims || 0)}</b></span>
+          </div>
+        </div>
+        <div className="mt-5">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Heatmap horario de taps asociados</p>
+          <div className="mt-2 grid grid-cols-12 gap-1">
+            {heatmapCells.map((cell) => (
+              <div
+                key={cell.hour}
+                title={`${cell.hour}:00 - ${cell.count} taps`}
+                className="h-9 rounded-md border border-white/10"
+                style={{ backgroundColor: `rgba(34, 211, 238, ${0.08 + cell.intensity * 0.62})` }}
+              >
+                <span className="sr-only">{cell.hour}:00 {cell.count} taps</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex justify-between text-[10px] text-slate-500"><span>00h</span><span>12h</span><span>23h</span></div>
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-3">
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">

@@ -70,6 +70,27 @@ function resolveOriginCoordinates(input: Array<string | null | undefined>) {
   return match ? { lat: match.lat, lng: match.lng } : null;
 }
 
+function haversineKm(fromLat?: number | null, fromLng?: number | null, toLat?: number | null, toLng?: number | null) {
+  if (fromLat == null || fromLng == null || toLat == null || toLng == null) return null;
+  const radiusKm = 6371;
+  const dLat = ((toLat - fromLat) * Math.PI) / 180;
+  const dLng = ((toLng - fromLng) * Math.PI) / 180;
+  const lat1 = (fromLat * Math.PI) / 180;
+  const lat2 = (toLat * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * radiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function fmtDistance(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return "N/A";
+  return `${new Intl.NumberFormat("es-AR", { maximumFractionDigits: value >= 100 ? 0 : 1 }).format(value)} km`;
+}
+
+function mapHref(lat?: number | null, lng?: number | null) {
+  if (lat == null || lng == null) return "";
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await getWebI18n();
   return {
@@ -159,19 +180,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     }]
     : [];
   const mapPoints = [...wineryPoint, ...timelinePoints, ...currentTapPoint];
-  const fallbackNetworkPoints = [
-    { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458, scans: 1, risk: 0, status: "AUTH_OK", source: "fallback_seed" },
-    { city: "Córdoba", country: "AR", lat: -31.4201, lng: -64.1888, scans: 1, risk: 0, status: "EVENT_OK", source: "fallback_seed" },
-    { city: "Mexico City", country: "MX", lat: 19.4326, lng: -99.1332, scans: 1, risk: 1, status: "DUPLICATE", source: "fallback_seed" },
-    { city: "Bogotá", country: "CO", lat: 4.711, lng: -74.0721, scans: 1, risk: 0, status: "PHARMA_OK", source: "fallback_seed" },
-  ];
-  const effectiveMapPoints = mapPoints.length ? mapPoints : fallbackNetworkPoints;
+  const effectiveMapPoints = mapPoints;
   const orderedTimelinePoints = [...timelinePoints].reverse();
   const mapRoutes = [
     ...(wineryPoint.length && orderedTimelinePoints.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: orderedTimelinePoints[0].lat, toLng: orderedTimelinePoints[0].lng, label: "Origen de bodega → primer evento registrado", tone: "info" as const }] : []),
+    ...(wineryPoint.length && !orderedTimelinePoints.length && currentTapPoint.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Origen del producto → tap actual", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
     ...(orderedTimelinePoints.length > 1 ? orderedTimelinePoints.slice(1).map((point, idx) => ({ fromLat: orderedTimelinePoints[idx].lat, fromLng: orderedTimelinePoints[idx].lng, toLat: point.lat, toLng: point.lng, tone: point.risk > 0 ? "warn" as const : "info" as const })) : []),
     ...(orderedTimelinePoints.length && currentTapPoint.length ? [{ fromLat: orderedTimelinePoints[orderedTimelinePoints.length - 1].lat, fromLng: orderedTimelinePoints[orderedTimelinePoints.length - 1].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Último evento → tap actual", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
   ];
+  const originToTapDistance = wineryPoint.length && currentTapPoint.length
+    ? haversineKm(wineryPoint[0].lat, wineryPoint[0].lng, currentTapPoint[0].lat, currentTapPoint[0].lng)
+    : null;
+  const originMapHref = wineryPoint.length ? mapHref(wineryPoint[0].lat, wineryPoint[0].lng) : "";
+  const tapMapHref = currentTapPoint.length ? mapHref(currentTapPoint[0].lat, currentTapPoint[0].lng) : "";
 
   const toneClass = result.status?.tone === "good"
     ? "text-emerald-300 border-emerald-300/30 bg-emerald-500/10"
@@ -240,14 +261,48 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     { id: "portal", label: "Portal", done: trustTone === "text-emerald-200" },
     { id: "club", label: "Club premium", done: Boolean(result.identity?.tenantSlug) && trustTone === "text-emerald-200" },
   ];
+  const sealOpened = statusByteSignal === "opened" || ttStatus === "opened" || productState.includes("OPENED");
+  const sealClosed = statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED";
+  const carrierLabel = result.status?.tamperSupported || result.tag_tamper?.available
+    ? "NTAG 424 DNA TT"
+    : result.technical?.raw
+      ? "NTAG 424 DNA"
+      : "QR / NFC";
+  const sealLabel = sealClosed ? "Sello intacto" : sealOpened ? "Sello abierto" : "Sello no informado";
+  const chainLabel = result.tokenization?.status
+    ? `${result.tokenization.network || "sandbox"} / ${result.tokenization.status}`
+    : "Token sandbox listo";
+  const productVisualClass = [
+    "sun-product-visual",
+    isValid ? "sun-product-visual--valid" : result.status?.tone === "risk" ? "sun-product-visual--risk" : "sun-product-visual--warn",
+    sealOpened ? "sun-product-visual--opened" : "",
+  ].filter(Boolean).join(" ");
+  const trustCopy = trustScore >= 85
+    ? "Lectura fresca, identidad consistente y lote activo."
+    : trustScore >= 65
+      ? "Lectura revisable: conviene mirar ruta y estado del sello."
+      : "Lectura de riesgo: no habilitamos ownership hasta repetir el tap.";
+  const carrierEducation = [
+    { name: "QR comun", mode: "Contenido", body: "Abre una URL y sirve para campañas simples. Es barato, pero se puede copiar o reenviar." },
+    { name: "NTAG215", mode: "Tap UX", body: "Mejora velocidad y serializacion para eventos, credenciales y activaciones con reglas server-side." },
+    { name: "NTAG 424 DNA", mode: "SUN/SDM", body: "Cada tap genera datos dinamicos verificables contra replay, clones y URLs reutilizadas." },
+    { name: "424 DNA TT", mode: "Tamper", body: "Suma estado fisico del sello: cerrado, abierto o no inicializado para botellas y packaging premium." },
+  ];
+  const activeCarrierIndex = carrierLabel.includes("424 DNA TT")
+    ? 3
+    : carrierLabel.includes("424 DNA")
+      ? 2
+      : carrierLabel.includes("NTAG215")
+        ? 1
+        : 0;
 
 
   return (
-    <main className="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center py-6 px-4 font-sans relative overflow-hidden pb-safe pb-12">
+    <main className="sun-mobile-surface min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center py-6 px-0 font-sans relative overflow-hidden pb-safe pb-32">
       {/* Dynamic Background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
 
-      <div className="w-full max-w-[420px] z-10 space-y-4">
+      <div className="w-full max-w-[390px] min-w-0 z-10 space-y-4 px-3">
          {/* Trust Header */}
          <div className="flex items-center justify-between px-2 mb-2">
             <div className="flex items-center gap-2">
@@ -263,24 +318,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          </div>
 
          <div className="grid grid-cols-3 gap-2">
-           <a href="#geo-trace" className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Geo trace</a>
-           <a href={`/login?consumer=1&next=${encodeURIComponent(marketplaceHref)}`} className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Registrarme</a>
-           <a href={`/login?consumer=1&next=${encodeURIComponent(tenantSlug ? `/me?tenant=${tenantSlug}` : "/me")}`} className="rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">Mi portal</a>
+           <a href="#geo-trace" className="min-w-0 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Geo trace</a>
+           <a href={`/login?consumer=1&next=${encodeURIComponent(marketplaceHref)}`} className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Registro</a>
+           <a href={`/login?consumer=1&next=${encodeURIComponent(tenantSlug ? `/me?tenant=${tenantSlug}` : "/me")}`} className="min-w-0 rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">Portal</a>
          </div>
 
          {/* Hero Product Card */}
-         <div className="rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-            {/* Verdict Glow */}
-            <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl opacity-30 ${trustTone === "text-emerald-200" ? "bg-emerald-500" : trustTone === "text-amber-200" ? "bg-amber-500" : "bg-red-500"}`}></div>
-
-            <div className="rounded-[1.75rem] border border-white/5 bg-slate-950 p-6 relative z-10 text-center">
-               <div className="w-24 h-24 mx-auto mb-4 bg-slate-900 rounded-full border-[4px] border-slate-800 flex items-center justify-center text-4xl shadow-inner relative">
-                  {trustTone === "text-emerald-200" ? "🍷" : trustTone === "text-amber-200" ? "⚠️" : "❌"}
-
-                  {/* Floating Trust Badge */}
-                  <div className={`absolute -bottom-2 -right-2 px-2 py-0.5 rounded-full border text-[9px] font-bold shadow-lg ${trustTone === "text-emerald-200" ? "border-emerald-500/30 bg-emerald-500/20 text-emerald-300" : trustTone === "text-amber-200" ? "border-amber-500/30 bg-amber-500/20 text-amber-300" : "border-red-500/30 bg-red-500/20 text-red-300"}`}>
-                     {trustScore}
+         <div className="sun-passport-card rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+            <div className="rounded-[1.75rem] border border-white/5 bg-slate-950 p-5 relative z-10 text-center">
+               <div className="sun-product-stage mx-auto mb-4">
+                  <div className={productVisualClass}>
+                     <span className="sun-product-visual__tag">NFC</span>
                   </div>
+                  <div className="sun-tap-wave" />
                </div>
 
                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-1">{result.product?.winery || "Bodega Premium"}</p>
@@ -293,8 +343,60 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   </span>
                   <span className="text-[10px] text-slate-500 mt-1">Tap #{result.identity?.scanCount ?? 1}</span>
                </div>
+
+               <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left">
+                  <div className="flex items-start justify-between gap-3">
+                     <div>
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300">Certificado vivo</p>
+                        <p className="mt-1 text-sm font-semibold text-white">{statusHeadline}</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-400">{trustCopy}</p>
+                     </div>
+                     <div className={`shrink-0 rounded-2xl border px-3 py-2 text-center ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/15" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/15" : "border-rose-300/30 bg-rose-500/15"}`}>
+                        <p className={`text-2xl font-black leading-none ${trustTone}`}>{trustScore}</p>
+                        <p className="mt-1 text-[9px] uppercase tracking-[0.12em] text-slate-400">trust</p>
+                     </div>
+                  </div>
+
+                 <div className="mt-4 grid grid-cols-3 gap-2">
+                     <div className="sun-signal-cell">
+                        <span>Carrier</span>
+                        <b>{carrierLabel}</b>
+                     </div>
+                     <div className="sun-signal-cell">
+                        <span>Seal</span>
+                        <b>{sealLabel}</b>
+                     </div>
+                     <div className="sun-signal-cell">
+                        <span>Chain</span>
+                        <b>{chainLabel}</b>
+                     </div>
+                  </div>
+               </div>
             </div>
          </div>
+
+         <section className="rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+           <div className="flex items-start justify-between gap-3">
+             <div>
+               <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Configuracion detectada</p>
+               <h2 className="mt-1 text-sm font-semibold text-white">{carrierLabel}</h2>
+             </div>
+             <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100">
+               perfil {activeCarrierIndex + 1}/4
+             </span>
+           </div>
+           <div className="mt-3 grid grid-cols-2 gap-2">
+             {carrierEducation.map((item, index) => (
+               <div key={item.name} className={`rounded-xl border p-2.5 ${index === activeCarrierIndex ? "border-cyan-300/35 bg-cyan-500/15" : "border-white/10 bg-slate-950/55"}`}>
+                 <div className="flex items-center justify-between gap-2">
+                   <p className="text-xs font-semibold text-white">{item.name}</p>
+                   <span className="rounded-full border border-white/10 bg-slate-950 px-1.5 py-0.5 text-[8px] uppercase tracking-[0.1em] text-slate-300">{item.mode}</span>
+                 </div>
+                 <p className="mt-1 text-[10px] leading-4 text-slate-300">{item.body}</p>
+               </div>
+             ))}
+           </div>
+         </section>
 
          <div className="rounded-2xl border border-white/10 bg-slate-900/55 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Journey post tap</p>
@@ -357,10 +459,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                     points={effectiveMapPoints}
                     routes={mapRoutes}
                     initialExpanded
-                    metadataRows={(point) => [
-                      { label: "Source", value: point.source || "trace" },
-                      { label: "Status", value: point.status || "REVIEW" },
-                    ]}
                   />
                ) : (
                   <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-400">
@@ -374,14 +472,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <p className="text-xs font-semibold text-white">{timelineCount}</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
-                <p className="text-[9px] uppercase text-slate-500">Cities</p>
-                <p className="text-xs font-semibold text-white">{timelineCities}</p>
+                <p className="text-[9px] uppercase text-slate-500">Distancia</p>
+                <p className="text-xs font-semibold text-white">{fmtDistance(originToTapDistance)}</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
                 <p className="text-[9px] uppercase text-slate-500">Last</p>
                 <p className="text-[10px] font-semibold text-white">{lastEventAt ? fmtDate(lastEventAt) : "N/A"}</p>
               </div>
             </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+              {originMapHref ? <a href={originMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-2 text-center font-semibold text-emerald-100">Visitar origen</a> : null}
+              {tapMapHref ? <a href={tapMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-2 text-center font-semibold text-cyan-100">Ver tap actual</a> : null}
+            </div>
+            <p className="mt-2 text-[10px] text-slate-500">{timelineCities} ciudades reales en timeline. Si no hay coordenadas del tap, el mapa queda vacío en vez de inventar ubicaciones.</p>
          </div>
 
          {/* Loyalty & Experiences Mini-app (Consumer Network) */}
@@ -393,7 +496,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                       <p className="text-[10px] text-indigo-300 uppercase tracking-widest mt-1">PROGRAMA DE LEALTAD</p>
                    </div>
                    <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center shadow-inner">
-                      <span className="text-lg">🍇</span>
+                      <span className="text-[11px] font-black tracking-[0.12em] text-indigo-200">VIP</span>
                    </div>
                 </div>
 
@@ -480,7 +583,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
       </div>
 
-      <div className="fixed inset-x-0 bottom-3 z-40 mx-auto w-full max-w-[375px] px-3">
+      <div className="fixed inset-x-0 bottom-3 z-40 mx-auto w-full max-w-[390px] px-3">
         <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
           <a href="/register" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Registro</a>
           <a href="/me" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">Portal</a>

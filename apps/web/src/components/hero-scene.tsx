@@ -7,6 +7,7 @@ type Vertical = "wine" | "events" | "cosmetics" | "agro";
 
 type Scene = {
   label: string;
+  profile: string;
   action: string;
   result: string;
   details: string[];
@@ -27,10 +28,10 @@ const labels: Record<AppLocale, {
     ctaBands: ["Para bodegas", "Para eventos", "Para cosmética", "Para agro", "Para pharma"],
     phoneLabel: "Resultado mobile",
     items: {
-      wine: { label: "Vino", action: "Botella descorchada", result: "Auténtico", details: ["Varietal: Malbec", "Alcohol: 14.5%", "Barrica: 18 meses", "Región: Mendoza · Estado: Abierta auténtica"], objectClass: "hero-bottle", phoneTag: "VINO · AUTENTICADO" },
-      events: { label: "Eventos", action: "Pulsera VIP escaneada", result: "Acceso VIP aprobado", details: ["Pase backstage", "Ticket de un solo uso", "Córdoba, Argentina", "Puerta A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTOS · ACCESO_OK" },
-      cosmetics: { label: "Cosmética", action: "Sello de tapa abierto", result: "Evento de apertura detectado", details: ["Sérum facial", "Lote CS-442", "Santiago, Chile", "Tamper: limpio"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMÉTICA · VERIFICADO" },
-      agro: { label: "Agro", action: "Apertura de bolsa detectada", result: "Lote y origen verificados", details: ["Semilla premium", "Lote AG-903", "Rosario, Argentina", "Almacenamiento: conforme"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOTE_OK" },
+      wine: { label: "Vino", profile: "NTAG 424 DNA TT", action: "Descorche: sello fiscal abierto + SUN validado", result: "Auténtico, sello abierto", details: ["Gran Reserva Malbec", "Origen: Valle de Uco, Mendoza", "Tap actual: Zurich, Suiza", "Distancia: 11.300 km aprox."], objectClass: "hero-bottle scanning tampered", phoneTag: "VINO · AUTH_OK" },
+      events: { label: "Eventos", profile: "NTAG215", action: "Pulsera VIP escaneada en puerta", result: "Acceso VIP aprobado", details: ["Pase backstage", "Ticket de un solo uso", "Córdoba, Argentina", "Puerta A-3 · UID serializado"], objectClass: "wristband-demo scanning", phoneTag: "EVENTOS · ENTRY_OK" },
+      cosmetics: { label: "Cosmética", profile: "NTAG 424 DNA", action: "Sello de tapa validado", result: "Producto genuino", details: ["Sérum facial", "Lote CS-442", "Santiago, Chile", "SUN dinámico contra replay"], objectClass: "cosmetic-demo scanning", phoneTag: "COSMÉTICA · VERIFIED" },
+      agro: { label: "Agro", profile: "QR + NFC UID", action: "Apertura de bolsa detectada", result: "Lote y origen verificados", details: ["Semilla premium", "Lote AG-903", "Rosario, Argentina", "Cadena logística conforme"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
     },
   },
   "pt-BR": {
@@ -39,10 +40,10 @@ const labels: Record<AppLocale, {
     ctaBands: ["Para vinícolas", "Para eventos", "Para cosméticos", "Para agro", "Para pharma"],
     phoneLabel: "Resultado mobile",
     items: {
-      wine: { label: "Vinho", action: "Garrafa aberta", result: "Autêntico", details: ["Varietal: Malbec", "Álcool: 14,5%", "Barrica: 18 meses", "Região: Mendoza · Estado: Aberta autêntica"], objectClass: "hero-bottle", phoneTag: "VINHO · AUTENTICADO" },
-      events: { label: "Eventos", action: "Pulseira VIP escaneada", result: "Acesso VIP liberado", details: ["Passe backstage", "Ingresso de uso único", "Córdoba, Argentina", "Portão A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTOS · ACESSO_OK" },
-      cosmetics: { label: "Cosméticos", action: "Lacre da tampa aberto", result: "Evento de abertura detectado", details: ["Sérum facial", "Lote CS-442", "Santiago, Chile", "Tamper: limpo"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMÉTICOS · VERIFICADO" },
-      agro: { label: "Agro", action: "Rasgo de saco detectado", result: "Lote e origem verificados", details: ["Semente premium", "Lote AG-903", "Rosario, Argentina", "Armazenamento: conforme"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOTE_OK" },
+      wine: { label: "Vinho", profile: "NTAG 424 DNA TT", action: "Rolha aberta: lacre + SUN validado", result: "Autêntico, lacre aberto", details: ["Gran Reserva Malbec", "Origem: Valle de Uco, Mendoza", "Tap atual: Zurique, Suica", "Distancia: 11.300 km aprox."], objectClass: "hero-bottle scanning tampered", phoneTag: "VINHO · AUTH_OK" },
+      events: { label: "Eventos", profile: "NTAG215", action: "Pulseira VIP escaneada", result: "Acesso VIP liberado", details: ["Passe backstage", "Ingresso de uso único", "Córdoba, Argentina", "Portão A-3 · UID serializado"], objectClass: "wristband-demo scanning", phoneTag: "EVENTOS · ENTRY_OK" },
+      cosmetics: { label: "Cosméticos", profile: "NTAG 424 DNA", action: "Lacre da tampa validado", result: "Produto genuíno", details: ["Sérum facial", "Lote CS-442", "Santiago, Chile", "SUN dinâmico contra replay"], objectClass: "cosmetic-demo scanning", phoneTag: "COSMÉTICOS · VERIFIED" },
+      agro: { label: "Agro", profile: "QR + NFC UID", action: "Rasgo de saco detectado", result: "Lote e origem verificados", details: ["Semente premium", "Lote AG-903", "Rosario, Argentina", "Cadeia logística conforme"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
     },
   },
   en: {
@@ -51,10 +52,10 @@ const labels: Record<AppLocale, {
     ctaBands: ["For wineries", "For events", "For cosmetics", "For agro", "For pharma"],
     phoneLabel: "Mobile output",
     items: {
-      wine: { label: "Wine", action: "Bottle uncorked", result: "Authentic", details: ["Varietal: Malbec", "Alcohol: 14.5%", "Barrel aging: 18 months", "Region: Mendoza · State: Opened authentic"], objectClass: "hero-bottle", phoneTag: "WINE · AUTH_OK" },
-      events: { label: "Events", action: "VIP wristband scanned", result: "VIP access granted", details: ["Backstage pass", "Single-use ticket", "Córdoba, Argentina", "Gate A-3"], objectClass: "wristband-demo scanning", phoneTag: "EVENTS · ENTRY_OK" },
-      cosmetics: { label: "Cosmetics", action: "Cap seal opened", result: "Seal event detected", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Tamper: clean"], objectClass: "cosmetic-demo tampered scanning", phoneTag: "COSMETICS · VERIFIED" },
-      agro: { label: "Agro", action: "Bag tear detected", result: "Lot + origin verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Storage: compliant"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
+      wine: { label: "Wine", profile: "NTAG 424 DNA TT", action: "Uncork: tax seal opened + SUN validated", result: "Authentic, opened seal", details: ["Gran Reserva Malbec", "Origin: Uco Valley, Mendoza", "Current tap: Zurich, Switzerland", "Distance: approx. 11,300 km"], objectClass: "hero-bottle scanning tampered", phoneTag: "WINE · AUTH_OK" },
+      events: { label: "Events", profile: "NTAG215", action: "VIP wristband scanned", result: "VIP access granted", details: ["Backstage pass", "Single-use ticket", "Córdoba, Argentina", "Gate A-3 · serialized UID"], objectClass: "wristband-demo scanning", phoneTag: "EVENTS · ENTRY_OK" },
+      cosmetics: { label: "Cosmetics", profile: "NTAG 424 DNA", action: "Cap seal validated", result: "Genuine product", details: ["Skin serum", "Batch CS-442", "Santiago, Chile", "Dynamic SUN anti-replay"], objectClass: "cosmetic-demo scanning", phoneTag: "COSMETICS · VERIFIED" },
+      agro: { label: "Agro", profile: "QR + NFC UID", action: "Bag tear detected", result: "Lot + origin verified", details: ["Premium seed", "Batch AG-903", "Rosario, Argentina", "Compliant logistics chain"], objectClass: "agro-demo tampered scanning", phoneTag: "AGRO · LOT_OK" },
     },
   },
 };
@@ -78,12 +79,21 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
 
         <div className="mt-4 grid gap-3 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="hero-scene-stage-card rounded-xl border border-white/10 bg-slate-950/70 p-3">
-            <p className="hero-scene-action text-xs text-slate-300">{data.action}</p>
-            <div className="hero-product-stage mt-3">
-              <div className={data.objectClass} />
+            <div className="flex items-center justify-between gap-3">
+              <p className="hero-scene-action text-xs text-slate-300">{data.action}</p>
+              <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100">{data.profile}</span>
+            </div>
+            <div className={`hero-product-stage hero-product-stage--${active} mt-3`}>
+              <div className="hero-object-frame">
+                <div className={data.objectClass} />
+                <div className="hero-cork-pop" />
+                <div className="hero-tamper-strip" />
+                <div className="hero-nfc-beam" />
+              </div>
               <div className="hero-scene-phone">
                 <span />
                 <em>{data.phoneTag}</em>
+                <strong>{data.result}</strong>
               </div>
             </div>
           </div>

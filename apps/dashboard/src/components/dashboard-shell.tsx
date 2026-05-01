@@ -108,6 +108,7 @@ export function DashboardShellInner({
     { href: "/batches", label: nav.batches },
     { href: "/tags", label: nav.tags },
     { href: "/events", label: nav.events },
+    { href: "/tokenization", label: "Tokenization" },
     { href: "/analytics", label: nav.analytics },
     { href: "/leads-tickets", label: nav.leadsTickets },
   ];
@@ -143,12 +144,13 @@ export function DashboardShellInner({
     { href: "/", label: nav.overview },
     { href: "/events", label: nav.events },
     { href: "/batches", label: nav.batches },
-    { href: "/analytics", label: "KPIs" },
+    { href: "/tokenization", label: "Chain" },
   ];
 
   const searchableLinks = [
     { href: "/onboarding", label: "Onboarding Setup" },
     ...items,
+    { href: "/tokenization", label: "Tokenization Queue" },
     { href: "/superadmin-network", label: "Consumer Network", role: "super-admin" },
     { href: "/loyalty/overview", label: "Loyalty Studio" },
     { href: "/consumer-network/overview", label: "Portal de Usuarios" },
