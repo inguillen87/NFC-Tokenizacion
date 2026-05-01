@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type EthereumProvider = {
   isMetaMask?: boolean;
+  providers?: EthereumProvider[];
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown> | unknown;
+  on?: (event: "accountsChanged" | "chainChanged", handler: (...args: unknown[]) => void) => void;
+  removeListener?: (event: "accountsChanged" | "chainChanged", handler: (...args: unknown[]) => void) => void;
 };
 
 declare global {
@@ -35,6 +38,9 @@ function walletErrorMessage(error: unknown, fallback: string) {
       : "";
 
   const normalized = message.toLowerCase();
+  if (normalized.includes("already processing") || normalized.includes("request already pending")) {
+    return "Ya hay una solicitud de wallet pendiente. Abrí MetaMask, resolvela y volvé a intentar.";
+  }
   if (normalized.includes("failed to connect to metamask")) {
     return "No pudimos abrir MetaMask. Desbloquea la extension o segui en modo sandbox sin wallet.";
   }
@@ -51,13 +57,22 @@ async function requestWallet(provider: EthereumProvider, args: { method: string;
   return Promise.resolve(provider.request(args));
 }
 
+function getInjectedProviders() {
+  if (typeof window === "undefined" || !window.ethereum) return [] as EthereumProvider[];
+  const root = window.ethereum;
+  return Array.isArray(root.providers) && root.providers.length ? root.providers : [root];
+}
+
+function findMetaMaskProvider() {
+  return getInjectedProviders().find((provider) => provider.isMetaMask) || null;
+}
+
 export function MetamaskSandboxCard() {
   const [address, setAddress] = useState("");
   const [chainId, setChainId] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("Listo para conectar wallet sandbox.");
-
-  const hasProvider = typeof window !== "undefined" && Boolean(window.ethereum);
+  const [hasMetaMask, setHasMetaMask] = useState(false);
   const isAmoy = chainId.toLowerCase() === POLYGON_AMOY.chainId.toLowerCase();
   const networkLabel = useMemo(() => {
     if (!chainId) return "Sin red";
@@ -65,14 +80,44 @@ export function MetamaskSandboxCard() {
     return `Chain ${chainId}`;
   }, [chainId, isAmoy]);
 
+  useEffect(() => {
+    const provider = findMetaMaskProvider();
+    setHasMetaMask(Boolean(provider));
+    if (!provider) return;
+
+    const onAccountsChanged = (...args: unknown[]) => {
+      const accounts = Array.isArray(args[0]) ? args[0] : [];
+      setAddress(typeof accounts[0] === "string" ? accounts[0] : "");
+    };
+    const onChainChanged = (...args: unknown[]) => {
+      setChainId(typeof args[0] === "string" ? args[0] : "");
+    };
+
+    provider.on?.("accountsChanged", onAccountsChanged);
+    provider.on?.("chainChanged", onChainChanged);
+    void requestWallet(provider, { method: "eth_chainId" })
+      .then((nextChain) => setChainId(typeof nextChain === "string" ? nextChain : ""))
+      .catch(() => undefined);
+
+    return () => {
+      provider.removeListener?.("accountsChanged", onAccountsChanged);
+      provider.removeListener?.("chainChanged", onChainChanged);
+    };
+  }, []);
+
   async function connectWallet() {
-    if (!window.ethereum) {
-      setMessage("MetaMask no esta disponible en este navegador.");
+    const injectedProviders = getInjectedProviders();
+    const provider = injectedProviders.find((entry) => entry.isMetaMask) || null;
+    const hasInjectedProvider = injectedProviders.length > 0;
+    setHasMetaMask(Boolean(provider));
+    if (!provider) {
+      setMessage(hasInjectedProvider
+        ? "Detectamos una wallet, pero no MetaMask. Podes usar sandbox o instalar/desbloquear MetaMask."
+        : "MetaMask no esta disponible en este navegador. Podes continuar en modo sandbox.");
       return;
     }
     setPending(true);
     try {
-      const provider = window.ethereum;
       const accounts = await requestWallet(provider, { method: "eth_requestAccounts" });
       const nextAddress = Array.isArray(accounts) && typeof accounts[0] === "string" ? accounts[0] : "";
       const nextChain = await requestWallet(provider, { method: "eth_chainId" });
@@ -87,14 +132,20 @@ export function MetamaskSandboxCard() {
   }
 
   async function addAmoy() {
-    if (!window.ethereum) {
-      setMessage("MetaMask no esta disponible en este navegador.");
+    const provider = findMetaMaskProvider();
+    if (!provider) {
+      setMessage("MetaMask no esta disponible. Podes mostrar el flujo con sandbox sin bloquear la demo.");
       return;
     }
     setPending(true);
     try {
-      const provider = window.ethereum;
-      await requestWallet(provider, { method: "wallet_addEthereumChain", params: [POLYGON_AMOY] });
+      try {
+        await requestWallet(provider, { method: "wallet_switchEthereumChain", params: [{ chainId: POLYGON_AMOY.chainId }] });
+      } catch (switchError) {
+        const code = typeof switchError === "object" && switchError && "code" in switchError ? Number((switchError as { code?: unknown }).code) : 0;
+        if (code !== 4902) throw switchError;
+        await requestWallet(provider, { method: "wallet_addEthereumChain", params: [POLYGON_AMOY] });
+      }
       const nextChain = await requestWallet(provider, { method: "eth_chainId" });
       setChainId(typeof nextChain === "string" ? nextChain : POLYGON_AMOY.chainId);
       setMessage("Polygon Amoy listo para pruebas de tokenizacion.");
@@ -121,8 +172,8 @@ export function MetamaskSandboxCard() {
             Demo de ownership y tokenizacion sin mainnet: conectar, agregar red y usar tokens de prueba.
           </p>
         </div>
-        <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${address ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-400"}`}>
-          {address ? "connected" : "local"}
+        <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${address ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : hasMetaMask ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-950/60 text-slate-400"}`}>
+          {address ? "connected" : hasMetaMask ? "metamask ready" : "local"}
         </span>
       </div>
 
@@ -148,7 +199,7 @@ export function MetamaskSandboxCard() {
         </button>
         <button suppressHydrationWarning
           type="button"
-          disabled={pending || !hasProvider}
+          disabled={pending || !hasMetaMask}
           onClick={() => void addAmoy()}
           className="rounded-lg border border-violet-300/35 bg-violet-500/15 px-3 py-2 text-xs font-semibold text-violet-100 transition hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-60"
         >

@@ -393,7 +393,13 @@ function HeroTraceMap({
   return (
     <div className="hero-trace-map" aria-label={txt.routeTitle}>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+        <rect className="hero-trace-map__water" x="0" y="0" width="100" height="100" rx="6" />
+        <path className="hero-trace-map__land hero-trace-map__land--americas" d="M 16 16 C 25 8 39 11 43 21 C 47 31 40 39 44 48 C 49 60 38 69 35 82 C 27 84 20 78 21 67 C 22 58 15 51 18 41 C 20 33 10 25 16 16 Z" />
+        <path className="hero-trace-map__land hero-trace-map__land--europe" d="M 63 22 C 72 13 87 18 90 29 C 83 34 79 40 80 49 C 73 48 66 44 62 37 C 59 31 57 27 63 22 Z" />
+        <path className="hero-trace-map__land hero-trace-map__land--africa" d="M 64 46 C 73 42 84 48 87 60 C 82 72 75 82 66 81 C 60 73 59 62 62 53 C 63 50 63 48 64 46 Z" />
+        <path className="hero-trace-map__coast" d="M 14 18 C 25 8 39 12 43 22 M 63 22 C 72 13 88 18 91 29 M 64 46 C 74 42 85 49 88 61" />
         <path className="hero-trace-map__grid" d="M 8 24 H 92 M 8 50 H 92 M 8 76 H 92 M 20 10 V 88 M 48 10 V 88 M 76 10 V 88" />
+        <path className="hero-trace-map__route-shadow" d={routePath} />
         <path className="hero-trace-map__route" d={routePath} />
         <circle className="hero-trace-map__origin" cx={originPoint.x} cy={originPoint.y} r="2.4" />
         <circle className="hero-trace-map__tap" cx={tapPoint.x} cy={tapPoint.y} r="3" />

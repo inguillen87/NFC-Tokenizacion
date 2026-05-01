@@ -91,6 +91,92 @@ function mapHref(lat?: number | null, lng?: number | null) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
 }
 
+function sunFallbackResult(params: Record<string, string | string[] | undefined>, isDemoPreview: boolean): SunContract {
+  const bidParam = typeof params.bid === "string" ? params.bid : "";
+  if (!isDemoPreview) {
+    return {
+      ok: false,
+      status: {
+        code: "SUN_UPSTREAM_UNAVAILABLE",
+        label: "Verificacion pendiente",
+        tone: "warn",
+        summary: "No pudimos contactar la API de SUN en este momento.",
+        reason: "api_unavailable",
+        productState: "NOT_REGISTERED",
+        tamperSupported: true,
+        tamperStatus: "UNKNOWN",
+      },
+      identity: {
+        bid: bidParam || null,
+        uid: null,
+        scanCount: 0,
+        tenantSlug: null,
+      },
+      product: {
+        name: "Producto conectado",
+        winery: "Tenant pendiente",
+        region: "Origen pendiente",
+        varietal: "N/A",
+      },
+      provenance: { origin: "Sin datos de origen", timelineSummary: [] },
+      tapContext: null,
+      tag_tamper: { available: true, status: "unknown" },
+      troubleshooting: ["La API de validacion no respondio. Reintentá el tap o revisá conectividad/API."],
+    };
+  }
+
+  return {
+    ok: true,
+    status: {
+      code: "AUTH_OK",
+      label: "Autentico, sello abierto",
+      tone: "good",
+      summary: "Demo SUN validado con TagTamper y trazabilidad de origen.",
+      reason: "demo_preview",
+      productState: "VALID_OPENED",
+      tamperSupported: true,
+      tamperStatus: "OPENED",
+    },
+    identity: {
+      bid: "DEMO-BODEGA-0424",
+      uid: "04A7****1090",
+      readCounter: 7,
+      tagStatus: "active",
+      scanCount: 7,
+      eventId: "demo-sun-preview",
+      tenantSlug: "demobodega",
+    },
+    product: {
+      name: "Gran Reserva Malbec",
+      winery: "Demo Bodega",
+      region: "Valle de Uco, Mendoza",
+      varietal: "Malbec",
+      vintage: "2021",
+      barrelMonths: 12,
+      storage: "Cava 16C",
+    },
+    provenance: {
+      origin: "Valle de Uco, Mendoza",
+      firstVerified: { at: "2026-04-24T14:00:00.000Z", city: "Tunuyan", country: "AR" },
+      lastVerifiedLocation: { at: "2026-05-01T18:30:00.000Z", city: "Buenos Aires", country: "AR", result: "VALID_OPENED" },
+      timelineSummary: [
+        { at: "2026-05-01T18:30:00.000Z", result: "VALID_OPENED", city: "Buenos Aires", country: "AR", device: "mobile", lat: -34.6037, lng: -58.3816 },
+        { at: "2026-04-30T22:20:00.000Z", result: "VALID_CLOSED", city: "Santiago", country: "CL", device: "mobile", lat: -33.4489, lng: -70.6693 },
+      ],
+    },
+    iot: {
+      wineryLocation: "Valle de Uco, Mendoza",
+      wineryCoordinates: { lat: -33.2095, lng: -69.1211 },
+    },
+    tapContext: { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
+    tokenization: { status: "sandbox_ready", network: "Polygon Amoy", txHash: "0xDEMO", tokenId: "NX-DEMO-0424" },
+    tag_tamper: { available: true, status: "opened", raw: "4F" },
+    cta: { claimOwnership: true, registerWarranty: true, provenance: true, tokenize: true },
+    troubleshooting: [],
+    technical: { raw: { piccDataPrefix: "04A7", encPrefix: "4F", cmacPrefix: "SUN" } },
+  };
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await getWebI18n();
   return {
@@ -115,8 +201,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     if (typeof value === "string") query.set(key, value);
   });
 
-  const response = await fetch(`${apiBase()}/sun?${query.toString()}`, { cache: "no-store" });
-  const result = await response.json().catch(() => ({ ok: false, status: { label: "Invalid response", summary: "No se pudo procesar la respuesta." } })) as SunContract;
+  const isDemoPreview = query.toString().length === 0;
+  const response = await fetch(`${apiBase()}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
+  const parsedResult = response?.ok
+    ? await response.json().catch(() => null) as SunContract | null
+    : null;
+  const result = parsedResult || sunFallbackResult(params, isDemoPreview);
 
   // Proactively fetch loyalty overview if we know the tenant
   let loyaltyData = null;

@@ -18,6 +18,9 @@ export async function proxyToApi(req: Request, targetPath: string) {
     },
     body,
     cache: "no-store",
+  }).catch((error) => {
+    const message = error instanceof Error ? error.message : "api_unavailable";
+    return Response.json({ ok: false, error: "api_unavailable", detail: message }, { status: 503 });
   });
   const text = await response.text();
   const next = new NextResponse(text, {
