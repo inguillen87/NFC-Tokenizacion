@@ -184,6 +184,35 @@ function wantsHtml(req: Request, url: URL) {
   return (req.headers.get('accept') || '').toLowerCase().includes('text/html');
 }
 
+function wantsInlineApiHtml(url: URL) {
+  const view = (url.searchParams.get('view') || '').toLowerCase();
+  return view === "api-html" || view === "legacy-html";
+}
+
+function webBaseUrl(sourceUrl?: URL) {
+  const configured = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || process.env.WEB_BASE_URL;
+  if (configured) return configured.replace(/\/$/, "");
+
+  const host = sourceUrl?.hostname || "";
+  if (host === "localhost" || host === "127.0.0.1") {
+    return `${sourceUrl?.protocol || "http:"}//${host}:3000`;
+  }
+
+  return "https://nexid.lat";
+}
+
+function buildWebSunSnapshotUrl(url: URL, diagnosticId: number | null, traceId: string, locale: SunLocale) {
+  if (!diagnosticId || !traceId) return null;
+  const target = new URL("/sun", webBaseUrl(url));
+  target.searchParams.set("snapshot", String(diagnosticId));
+  target.searchParams.set("trace", traceId);
+  target.searchParams.set("source", "nfc");
+  target.searchParams.set("lang", locale);
+  const bid = url.searchParams.get("bid");
+  if (bid) target.searchParams.set("bid", bid);
+  return target;
+}
+
 
 
 type SunLocale = "es-AR" | "pt-BR" | "en";
@@ -1475,6 +1504,10 @@ export async function GET(req: Request): Promise<Response> {
   if (diagnosticId) (contract as Record<string, unknown>).diagnostic_id = diagnosticId;
 
   if (wantsHtml(req, url)) {
+    const webTarget = wantsInlineApiHtml(url) ? null : buildWebSunSnapshotUrl(url, diagnosticId, traceId, locale);
+    if (webTarget) {
+      return Response.redirect(webTarget, 303);
+    }
     const shareToken = uid
       ? (() => {
           try {

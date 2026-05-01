@@ -119,7 +119,7 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
         varietal: "N/A",
       },
       provenance: { origin: "Sin datos de origen", timelineSummary: [] },
-      tapContext: null,
+      tapContext: undefined,
       tag_tamper: { available: true, status: "unknown" },
       troubleshooting: ["La API de validacion no respondio. Reintentá el tap o revisá conectividad/API."],
     };
@@ -201,12 +201,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     if (typeof value === "string") query.set(key, value);
   });
 
-  const isDemoPreview = query.toString().length === 0;
-  const response = await fetch(`${apiBase()}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
+  const snapshotId = typeof params.snapshot === "string" ? params.snapshot.trim() : "";
+  const snapshotTrace = typeof params.trace === "string" ? params.trace.trim() : "";
+  const snapshotResult = snapshotId && snapshotTrace
+    ? await fetch(`${apiBase()}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}`, { cache: "no-store" })
+      .then((res) => res.ok ? res.json() : null)
+      .then((payload) => payload?.contract || null)
+      .catch(() => null) as SunContract | null
+    : null;
+  const isDemoPreview = query.toString().length === 0 && !snapshotId;
+  const response = snapshotResult ? null : await fetch(`${apiBase()}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
   const parsedResult = response?.ok
     ? await response.json().catch(() => null) as SunContract | null
     : null;
-  const result = parsedResult || sunFallbackResult(params, isDemoPreview);
+  const result = snapshotResult || parsedResult || sunFallbackResult(params, isDemoPreview);
 
   // Proactively fetch loyalty overview if we know the tenant
   let loyaltyData = null;

@@ -88,3 +88,30 @@ export async function listSunDiagnostics(limit = 100) {
     LIMIT ${Math.max(1, Math.min(limit, 500))}
   `;
 }
+
+export async function getSunDiagnosticSnapshot(id: string | number, traceId: string) {
+  const numericId = Number(id);
+  const trace = String(traceId || "").trim();
+  if (!Number.isFinite(numericId) || numericId <= 0 || !trace) return null;
+
+  await ensureTable();
+  const rows = await sql/*sql*/`
+    SELECT id, trace_id, created_at::text AS created_at, result_json
+    FROM sun_diagnostics
+    WHERE id = ${numericId}
+      AND trace_id = ${trace}
+      AND tool_type = 'sun_scan'
+    LIMIT 1
+  `;
+  const row = rows[0] as { id?: number; trace_id?: string | null; created_at?: string | null; result_json?: unknown } | undefined;
+  if (!row || !row.result_json || typeof row.result_json !== "object") return null;
+  const result = row.result_json as { contract?: unknown };
+  if (!result.contract || typeof result.contract !== "object") return null;
+  return {
+    ok: true,
+    diagnostic_id: Number(row.id || numericId),
+    trace_id: row.trace_id || trace,
+    created_at: row.created_at || null,
+    contract: result.contract,
+  };
+}
