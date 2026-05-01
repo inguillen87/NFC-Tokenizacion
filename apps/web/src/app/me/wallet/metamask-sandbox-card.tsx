@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 type EthereumProvider = {
   isMetaMask?: boolean;
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown> | unknown;
 };
 
 declare global {
@@ -24,6 +24,31 @@ const POLYGON_AMOY = {
 function shortAddress(address: string) {
   if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function walletErrorMessage(error: unknown, fallback: string) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+
+  const normalized = message.toLowerCase();
+  if (normalized.includes("failed to connect to metamask")) {
+    return "No pudimos abrir MetaMask. Desbloquea la extension o segui en modo sandbox sin wallet.";
+  }
+  if (normalized.includes("already pending")) {
+    return "MetaMask ya tiene una solicitud pendiente. Revisala en la extension.";
+  }
+  if (normalized.includes("user rejected")) {
+    return "Conexion cancelada por el usuario.";
+  }
+  return message || fallback;
+}
+
+async function requestWallet(provider: EthereumProvider, args: { method: string; params?: unknown[] }) {
+  return Promise.resolve(provider.request(args));
 }
 
 export function MetamaskSandboxCard() {
@@ -47,14 +72,15 @@ export function MetamaskSandboxCard() {
     }
     setPending(true);
     try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const provider = window.ethereum;
+      const accounts = await requestWallet(provider, { method: "eth_requestAccounts" });
       const nextAddress = Array.isArray(accounts) && typeof accounts[0] === "string" ? accounts[0] : "";
-      const nextChain = await window.ethereum.request({ method: "eth_chainId" });
+      const nextChain = await requestWallet(provider, { method: "eth_chainId" });
       setAddress(nextAddress);
       setChainId(typeof nextChain === "string" ? nextChain : "");
       setMessage(nextAddress ? "Wallet conectada localmente. Todavia no se envia al backend." : "No se recibio una cuenta.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo conectar MetaMask.");
+      setMessage(walletErrorMessage(error, "No se pudo conectar MetaMask."));
     } finally {
       setPending(false);
     }
@@ -67,15 +93,22 @@ export function MetamaskSandboxCard() {
     }
     setPending(true);
     try {
-      await window.ethereum.request({ method: "wallet_addEthereumChain", params: [POLYGON_AMOY] });
-      const nextChain = await window.ethereum.request({ method: "eth_chainId" });
+      const provider = window.ethereum;
+      await requestWallet(provider, { method: "wallet_addEthereumChain", params: [POLYGON_AMOY] });
+      const nextChain = await requestWallet(provider, { method: "eth_chainId" });
       setChainId(typeof nextChain === "string" ? nextChain : POLYGON_AMOY.chainId);
       setMessage("Polygon Amoy listo para pruebas de tokenizacion.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo agregar Polygon Amoy.");
+      setMessage(walletErrorMessage(error, "No se pudo agregar Polygon Amoy."));
     } finally {
       setPending(false);
     }
+  }
+
+  function continueSandbox() {
+    setAddress("0xA11CE0000000000000000000000000000000424");
+    setChainId(POLYGON_AMOY.chainId);
+    setMessage("Modo sandbox activo: wallet simulada para mostrar ownership, garantia y tokenizacion sin extension.");
   }
 
   return (
@@ -122,6 +155,14 @@ export function MetamaskSandboxCard() {
           Agregar Polygon Amoy
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={continueSandbox}
+        className="mt-2 w-full rounded-lg border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+      >
+        Continuar sin wallet (sandbox)
+      </button>
 
       <p className="mt-3 rounded-lg border border-white/10 bg-slate-950/45 p-2 text-[11px] text-slate-300">{message}</p>
     </section>

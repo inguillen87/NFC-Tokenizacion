@@ -31,7 +31,8 @@ export function ThemeToggle() {
       // ignore
     }
 
-    const initial: Theme = "dark";
+    const serverTheme = document.documentElement.getAttribute("data-theme");
+    const initial: Theme = serverTheme === "light" || serverTheme === "dark" ? serverTheme : "dark";
     setTheme(initial);
     applyTheme(initial);
   }, []);

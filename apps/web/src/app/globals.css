@@ -154,6 +154,10 @@ html.theme-light .site-header {
   @apply border-slate-300/80 bg-white/90 text-slate-900;
 }
 
+html.theme-light .theme-toggle {
+  @apply border-slate-300 bg-white text-slate-900 hover:bg-slate-50;
+}
+
 html.theme-light .landing-root {
   color: #0f172a;
 }
@@ -163,8 +167,14 @@ html.theme-light .landing-root .text-white {
 }
 
 html.theme-light .landing-root .text-slate-300,
-html.theme-light .landing-root .text-slate-200 {
+html.theme-light .landing-root .text-slate-200,
+html.theme-light .landing-root .text-slate-100 {
   color: #334155 !important;
+}
+
+html.theme-light .landing-root .text-slate-400,
+html.theme-light .landing-root .text-slate-500 {
+  color: #64748b !important;
 }
 
 html.theme-light .landing-root .bg-slate-900\/60,
@@ -193,6 +203,15 @@ html.theme-light .quick-links-wrap {
 
 html.theme-light .worldmap-card {
   @apply border-slate-300/70 bg-white/85;
+}
+
+html.theme-light .worldmap-card .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .worldmap-card .text-slate-300,
+html.theme-light .worldmap-card .text-slate-400 {
+  color: #475569 !important;
 }
 
 /* Mobile & PWA ergonomics */
@@ -923,6 +942,212 @@ html.theme-light .animate-card-shift:hover {
 
 .hero-scene-band {
   white-space: nowrap;
+}
+
+html.theme-light .hero-scene {
+  background:
+    linear-gradient(135deg, rgba(248, 250, 252, 0.92), rgba(236, 245, 255, 0.95)),
+    repeating-linear-gradient(90deg, rgba(14, 116, 144, 0.08) 0 1px, transparent 1px 72px);
+  border-color: rgba(14, 165, 233, 0.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 24px 60px rgba(15, 23, 42, 0.12);
+}
+
+html.theme-light .hero-scene-stage-card,
+html.theme-light .hero-scene-result-card {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border-color: rgba(148, 163, 184, 0.36) !important;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .hero-object-frame {
+  background:
+    linear-gradient(160deg, rgba(241, 245, 249, 0.84), rgba(226, 232, 240, 0.9)),
+    repeating-linear-gradient(45deg, rgba(14, 116, 144, 0.06) 0 1px, transparent 1px 13px);
+  border-color: rgba(148, 163, 184, 0.38);
+}
+
+html.theme-light .hero-scene-phone {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.64), rgba(226, 232, 240, 0.96)),
+    linear-gradient(155deg, #f8fafc, #e2e8f0);
+  border-color: #cbd5e1;
+  box-shadow: 0 20px 42px rgba(15, 23, 42, 0.14);
+}
+
+html.theme-light .hero-scene-phone span {
+  background: #cbd5e1;
+}
+
+html.theme-light .hero-scene-phone strong,
+html.theme-light .hero-scene-result-state {
+  color: #0f172a !important;
+}
+
+html.theme-light .hero-scene-detail,
+html.theme-light .hero-scene-band {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border-color: rgba(148, 163, 184, 0.42) !important;
+  color: #334155 !important;
+}
+
+html.theme-light .hero-vertical-pill {
+  background: rgba(255, 255, 255, 0.76);
+  border-color: rgba(148, 163, 184, 0.38);
+  color: #334155;
+}
+
+html.theme-light .hero-vertical-pill--active {
+  background: rgba(8, 145, 178, 0.12);
+  border-color: rgba(14, 165, 233, 0.44);
+  color: #0f172a;
+}
+
+.demo-lab-shell {
+  min-height: 100vh;
+}
+
+.demo-lab-hero {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(34, 211, 238, 0.18), transparent 34%),
+    radial-gradient(circle at 88% 18%, rgba(139, 92, 246, 0.14), transparent 36%),
+    linear-gradient(150deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.96));
+  box-shadow: 0 28px 80px rgba(2, 6, 23, 0.42);
+}
+
+.demo-lab-panel {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 50px rgba(2, 6, 23, 0.22);
+}
+
+.demo-lab-product-stage {
+  position: relative;
+  min-height: 22rem;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(circle at 50% 40%, rgba(34, 211, 238, 0.16), transparent 32%),
+    linear-gradient(180deg, rgba(226, 232, 240, 0.1), rgba(15, 23, 42, 0.74));
+}
+
+.demo-lab-product-stage::before {
+  content: "";
+  position: absolute;
+  inset: 1.25rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(125, 211, 252, 0.22);
+}
+
+.demo-lab-product-stage .hero-bottle,
+.demo-lab-product-stage .uncork-demo,
+.demo-lab-product-stage .wristband-demo,
+.demo-lab-product-stage .cosmetic-demo,
+.demo-lab-product-stage .agro-demo {
+  transform: scale(1.35);
+}
+
+.demo-lab-product-label {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  transform: translateX(-50%) rotate(-2deg);
+  width: 5.4rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(186, 230, 253, 0.86));
+  color: #0f172a;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 0.32rem 0.38rem;
+  text-align: center;
+  text-transform: uppercase;
+  box-shadow: 0 10px 20px rgba(2, 6, 23, 0.24);
+}
+
+.demo-lab-tap-chip {
+  position: absolute;
+  right: 1.3rem;
+  top: 1.3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 211, 238, 0.42);
+  background: rgba(8, 47, 73, 0.82);
+  color: #cffafe;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  padding: 0.45rem 0.55rem;
+}
+
+.demo-lab-tap-wave {
+  position: absolute;
+  right: 1.1rem;
+  top: 1.1rem;
+  width: 3.8rem;
+  height: 3.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 211, 238, 0.36);
+  animation: sunTapWave 1.9s ease-out infinite;
+}
+
+.demo-lab-phone {
+  box-shadow: 0 24px 50px rgba(2, 6, 23, 0.34);
+}
+
+html.theme-light .demo-lab-shell {
+  color: #0f172a;
+}
+
+html.theme-light .demo-lab-hero {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(14, 165, 233, 0.14), transparent 34%),
+    radial-gradient(circle at 88% 18%, rgba(99, 102, 241, 0.12), transparent 36%),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(238, 244, 255, 0.98));
+  border-color: rgba(14, 165, 233, 0.32) !important;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.12);
+}
+
+html.theme-light .demo-lab-panel {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.38) !important;
+  box-shadow: 0 16px 44px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .demo-lab-shell .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-shell .text-slate-100,
+html.theme-light .demo-lab-shell .text-slate-200,
+html.theme-light .demo-lab-shell .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.theme-light .demo-lab-shell .text-slate-400,
+html.theme-light .demo-lab-shell .text-slate-500 {
+  color: #64748b !important;
+}
+
+html.theme-light .demo-lab-shell .bg-slate-950\/70,
+html.theme-light .demo-lab-shell .bg-slate-950\/60,
+html.theme-light .demo-lab-shell .bg-slate-950\/55,
+html.theme-light .demo-lab-shell .bg-slate-900\/60,
+html.theme-light .demo-lab-shell .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.76) !important;
+  border-color: rgba(148, 163, 184, 0.38) !important;
+}
+
+html.theme-light .demo-lab-product-stage {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(14, 165, 233, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(226, 232, 240, 0.92));
+  border-color: rgba(148, 163, 184, 0.38);
+}
+
+html.theme-light .demo-lab-phone {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
 }
 
 .plan-tag-visual {

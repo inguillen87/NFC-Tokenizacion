@@ -6,7 +6,68 @@ import { WorldMapRealtime } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
+type Vertical = "wine" | "events" | "cosmetics" | "agro";
 type DemoMode = "consumer_tap" | "consumer_tamper" | "consumer_opened" | "consumer_duplicate";
+type SimulationMode = "valid" | "tamper" | "replay";
+
+type DemoEvent = {
+  id?: string;
+  result?: string;
+  uidMasked?: string;
+  created_at?: string;
+  city?: string;
+  country_code?: string;
+  lat?: number | null;
+  lng?: number | null;
+  product_name?: string;
+  sku?: string;
+  vertical?: string;
+};
+
+type DemoSummary = {
+  ok?: boolean;
+  exists?: boolean;
+  source?: string;
+  tagCount?: number;
+  crm?: { leads?: number; tickets?: number; orders?: number };
+  events?: DemoEvent[];
+  generatedAt?: string;
+};
+
+const LOCATIONS = {
+  origin: {
+    city: "Valle de Uco",
+    country: "Argentina",
+    countryCode: "AR",
+    lat: -33.6131,
+    lng: -69.2075,
+    label: "Origen del producto",
+  },
+  mendoza: {
+    city: "Mendoza",
+    country: "Argentina",
+    countryCode: "AR",
+    lat: -32.8895,
+    lng: -68.8458,
+    label: "Bodega / control de calidad",
+  },
+  zurich: {
+    city: "Zurich",
+    country: "Switzerland",
+    countryCode: "CH",
+    lat: 47.3769,
+    lng: 8.5417,
+    label: "Tap del cliente",
+  },
+  miami: {
+    city: "Miami",
+    country: "USA",
+    countryCode: "US",
+    lat: 25.7617,
+    lng: -80.1918,
+    label: "Importador / retail",
+  },
+};
 
 const beatToMode: Record<Beat, DemoMode> = {
   0: "consumer_tap",
@@ -15,181 +76,429 @@ const beatToMode: Record<Beat, DemoMode> = {
   3: "consumer_opened",
 };
 
-const beatTitles = [
-  "1) Product value",
-  "2) Authentic scan",
-  "3) Risk event",
-  "4) Ownership / warranty / provenance / tokenization",
-];
+const beatCopy: Record<Beat, { title: string; body: string; event: string; mode: SimulationMode; location: keyof typeof LOCATIONS }> = {
+  0: {
+    title: "1. Producto nacido en origen",
+    body: "La bodega programa el lote, asocia cada UID fisico y deja lista la trazabilidad de origen.",
+    event: "Batch + tags reales de DemoBodega listos para operar.",
+    mode: "valid",
+    location: "mendoza",
+  },
+  1: {
+    title: "2. Tap del cliente en destino",
+    body: "El consumidor toca la etiqueta, ve autenticidad, origen y una ruta clara desde Mendoza hasta su ubicacion.",
+    event: "Tap valido en Zurich con distancia y link al origen.",
+    mode: "valid",
+    location: "zurich",
+  },
+  2: {
+    title: "3. Replay o duplicado bloqueado",
+    body: "La misma identidad fisica aparece con comportamiento sospechoso y el panel lo marca como riesgo.",
+    event: "Replay signal para mostrar antifraude y operaciones.",
+    mode: "replay",
+    location: "zurich",
+  },
+  3: {
+    title: "4. Apertura, ownership y tokenizacion",
+    body: "Al romper sello o descorchar, el passport cambia de estado y abre club, garantia, marketplace y token premium.",
+    event: "Sello abierto + CTA de ownership/tokenizacion.",
+    mode: "tamper",
+    location: "zurich",
+  },
+};
 
-const roleCopy: Record<Role, { title: string; focus: string; cta: string }> = {
+const roleCopy: Record<Role, { label: string; headline: string; focus: string }> = {
   ceo: {
-    title: "CEO / Investor",
-    focus: "Escalabilidad, revenue mix, mitigación de riesgo y expansión comercial.",
-    cta: "Solicitar reunión de rollout enterprise",
+    label: "CEO / investor",
+    headline: "Historia comercial clara: hardware + SaaS + datos + canal",
+    focus: "Mostra ROI, expansion reseller, proteccion de marca y fidelizacion post-tap.",
   },
   operator: {
-    title: "Operator",
-    focus: "Batch onboarding, manifest, activación y trazabilidad operativa con evidencia.",
-    cta: "Abrir flujo supplier /batches",
+    label: "Operaciones",
+    headline: "Control real de lotes, UIDs, mapas y alertas",
+    focus: "Aterriza el rollout: importacion, activacion, lecturas reales y excepciones de riesgo.",
   },
   buyer: {
-    title: "Buyer / Client",
-    focus: "Confianza, autenticidad visible, UX premium y postventa.",
-    cta: "Activar ownership y garantía",
+    label: "Comprador",
+    headline: "Confianza instantanea antes de comprar o consumir",
+    focus: "La persona entiende origen, estado del sello, beneficios y marketplace sin friccion.",
   },
 };
 
-const feedByBeat: Record<Beat, string[]> = {
-  0: [`Batch ${DEMO_CANONICAL_BATCH_ID} listo para piloto.`, "Tag profile secure cargado.", "Route map inicializado."],
-  1: ["SUN scan validado.", "Autenticidad confirmada para UID.", "Consumer trust score sube."],
-  2: ["Replay/tamper signal detectado.", "Riesgo marcado para revisión.", "Equipo de operaciones notificado."],
-  3: ["Ownership claim registrado.", "Warranty activada.", "Tokenization optional lead creado."],
+const verticals: Record<Vertical, { label: string; profile: string; product: string; visual: string; proof: string[] }> = {
+  wine: {
+    label: "Vino",
+    profile: "NTAG 424 DNA TT",
+    product: "Gran Reserva Malbec",
+    visual: "hero-bottle scanning tampered",
+    proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN dinamico anti-replay", "Origen Mendoza + tap global"],
+  },
+  events: {
+    label: "Eventos",
+    profile: "NTAG215",
+    product: "Pulsera VIP",
+    visual: "wristband-demo scanning",
+    proof: ["Check-in rapido", "UID serializado", "Zonas VIP", "Bloqueo de reingreso duplicado"],
+  },
+  cosmetics: {
+    label: "Cosmetica",
+    profile: "NTAG 424 DNA",
+    product: "Serum premium",
+    visual: "cosmetic-demo scanning",
+    proof: ["Tapa verificada", "Lote y vencimiento", "Garantia", "Anti grey-market"],
+  },
+  agro: {
+    label: "Agro",
+    profile: "QR + NFC UID",
+    product: "Bolsa semilla",
+    visual: "agro-demo tampered scanning",
+    proof: ["Lote trazable", "Ficha tecnica", "Custodia logistica", "Activacion rural offline-first"],
+  },
 };
 
-const kpisByRole: Record<Role, Array<{ label: string; value: string }>> = {
-  ceo: [
-    { label: "Pipeline", value: "Qualified" },
-    { label: "Risk control", value: "Active" },
-    { label: "Expansion", value: "LATAM-ready" },
-  ],
-  operator: [
-    { label: "Imported tags", value: "10 / 10" },
-    { label: "Active tags", value: "10" },
-    { label: "SUN status", value: "VALID" },
-  ],
-  buyer: [
-    { label: "Authenticity", value: "Verified" },
-    { label: "Warranty", value: "Available" },
-    { label: "Ownership", value: "Claimable" },
-  ],
-};
+function toFiniteNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
-const mapPointsByBeat: Record<Beat, Array<{ city: string; country: string; lat: number; lng: number; scans: number; risk: number; status: string; lastSeen: string }>> = {
-  0: [
-    { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 3, risk: 0, status: "BATCH_READY", lastSeen: new Date().toISOString() },
-    { city: "Córdoba", country: "Argentina", lat: -31.4201, lng: -64.1888, scans: 1, risk: 0, status: "DEMO_WINDOW", lastSeen: new Date().toISOString() },
-  ],
-  1: [
-    { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 8, risk: 0, status: "AUTH_OK", lastSeen: new Date().toISOString() },
-    { city: "Miami", country: "USA", lat: 25.7617, lng: -80.1918, scans: 3, risk: 0, status: "EXPORT_SCAN", lastSeen: new Date().toISOString() },
-  ],
-  2: [
-    { city: "São Paulo", country: "Brazil", lat: -23.5505, lng: -46.6333, scans: 2, risk: 2, status: "DUPLICATE_BLOCKED", lastSeen: new Date().toISOString() },
-    { city: "Mexico City", country: "Mexico", lat: 19.4326, lng: -99.1332, scans: 2, risk: 1, status: "REPLAY_SIGNAL", lastSeen: new Date().toISOString() },
-    { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 5, risk: 0, status: "AUTH_OK", lastSeen: new Date().toISOString() },
-  ],
-  3: [
-    { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 5, risk: 0, status: "OWNERSHIP_CLAIMED", lastSeen: new Date().toISOString() },
-    { city: "Bogotá", country: "Colombia", lat: 4.711, lng: -74.0721, scans: 2, risk: 0, status: "WARRANTY_ENABLED", lastSeen: new Date().toISOString() },
-    { city: "Lima", country: "Peru", lat: -12.0464, lng: -77.0428, scans: 1, risk: 0, status: "TOKEN_LEAD", lastSeen: new Date().toISOString() },
-  ],
-};
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const radiusKm = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return Math.round(radiusKm * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x)));
+}
+
+function mapsLink(location: { lat: number; lng: number }) {
+  return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
+}
+
+async function readDemoSummary(): Promise<DemoSummary> {
+  const response = await fetch("/api/demo/summary", { cache: "no-store" });
+  const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
+  if (!response.ok || data?.ok === false) {
+    throw new Error(String(data?.reason || "No se pudo leer DemoBodega."));
+  }
+  return data as DemoSummary;
+}
 
 export function DemoLabClient() {
   const [role, setRole] = useState<Role>("ceo");
-  const [beat, setBeat] = useState<Beat>(0);
-  const [running, setRunning] = useState<false | "30" | "90">(false);
+  const [vertical, setVertical] = useState<Vertical>("wine");
+  const [beat, setBeat] = useState<Beat>(1);
+  const [running, setRunning] = useState<false | "cinematic">(false);
+  const [summary, setSummary] = useState<DemoSummary | null>(null);
+  const [status, setStatus] = useState("Conectando con DemoBodega...");
+  const [simulating, setSimulating] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      try {
+        const next = await readDemoSummary();
+        if (!alive) return;
+        setSummary(next);
+        setStatus(next.exists === false ? "DemoBodega aun no existe en API." : next.source === "public-proof" ? "Feed publico real conectado. Para escribir scans del tenant falta ADMIN_API_KEY en web." : "DemoBodega sincronizado con backend.");
+      } catch (error) {
+        if (!alive) return;
+        setStatus(error instanceof Error ? error.message : "DemoBodega no disponible.");
+      }
+    }
+    void load();
+    const id = window.setInterval(() => void load(), 20000);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, []);
 
   useEffect(() => {
     if (!running) return;
-    const perBeatMs = running === "30" ? 7500 : 22500;
-    const timer = window.setInterval(() => {
-      setBeat((current) => (current >= 3 ? 0 : ((current + 1) as Beat)));
-    }, perBeatMs);
-    return () => window.clearInterval(timer);
+    const id = window.setInterval(() => setBeat((current) => (current >= 3 ? 0 : ((current + 1) as Beat))), 6500);
+    return () => window.clearInterval(id);
   }, [running]);
 
-  const activeCopy = roleCopy[role];
-  const kpis = kpisByRole[role];
-  const mobileMode = beatToMode[beat];
+  const activeBeat = beatCopy[beat];
+  const activeRole = roleCopy[role];
+  const activeVertical = verticals[vertical];
+  const destination = LOCATIONS[activeBeat.location];
+  const routeKm = haversineKm(LOCATIONS.origin, destination);
+  const liveEvents = Array.isArray(summary?.events) ? summary.events : [];
+  const latestEvent = liveEvents[0];
+  const livePoints = liveEvents.flatMap((event) => {
+    const lat = toFiniteNumber(event.lat);
+    const lng = toFiniteNumber(event.lng);
+    if (lat === null || lng === null) return [];
+    return [{
+      city: event.city || "Unknown",
+      country: event.country_code || "UNK",
+      lat,
+      lng,
+      scans: 1,
+      risk: /REPLAY|DUPLICATE|TAMPER|INVALID|REVOKED/i.test(event.result || "") ? 1 : 0,
+      status: event.result || "UNKNOWN",
+      lastSeen: event.created_at || new Date().toISOString(),
+      vertical: event.vertical || vertical,
+    }];
+  });
+
+  const mapPoints = useMemo(() => {
+    const originPoint = {
+      city: LOCATIONS.origin.city,
+      country: LOCATIONS.origin.country,
+      lat: LOCATIONS.origin.lat,
+      lng: LOCATIONS.origin.lng,
+      scans: 1,
+      risk: 0,
+      status: "PRODUCT_ORIGIN",
+      lastSeen: new Date().toISOString(),
+      vertical,
+    };
+    if (livePoints.length) return [originPoint, ...livePoints.slice(0, 18)];
+    return [
+      originPoint,
+      {
+        city: destination.city,
+        country: destination.country,
+        lat: destination.lat,
+        lng: destination.lng,
+        scans: 1,
+        risk: activeBeat.mode === "replay" ? 1 : 0,
+        status: activeBeat.mode === "tamper" ? "OPENED" : activeBeat.mode === "replay" ? "REPLAY_SIGNAL" : "AUTH_OK",
+        lastSeen: new Date().toISOString(),
+        vertical,
+      },
+    ];
+  }, [activeBeat.mode, destination.city, destination.country, destination.lat, destination.lng, livePoints, vertical]);
+
   const mobileUrl = useMemo(
-    () => `/demo-lab/mobile/${DEMO_TENANT_SLUG}/${DEMO_WINE_ITEM_ID}?pack=wine-secure&locale=es-AR&demoMode=${mobileMode}&bid=${DEMO_CANONICAL_BATCH_ID}`,
-    [mobileMode],
+    () => `/demo-lab/mobile/${DEMO_TENANT_SLUG}/${DEMO_WINE_ITEM_ID}?pack=wine-secure&locale=es-AR&demoMode=${beatToMode[beat]}&bid=${DEMO_CANONICAL_BATCH_ID}`,
+    [beat],
   );
 
+  async function refreshSummary() {
+    try {
+      const next = await readDemoSummary();
+      setSummary(next);
+      setStatus(next.source === "public-proof" ? "Feed publico real conectado. Para escribir scans del tenant falta ADMIN_API_KEY en web." : "DemoBodega sincronizado con backend.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "DemoBodega no disponible.");
+    }
+  }
+
+  async function simulate(mode: SimulationMode, locationKey: keyof typeof LOCATIONS) {
+    const location = LOCATIONS[locationKey];
+    setSimulating(true);
+    setStatus(`Enviando scan ${mode} desde ${location.city}...`);
+    try {
+      const response = await fetch("/api/demo/simulate-tap", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mode,
+          city: location.city,
+          countryCode: location.countryCode,
+          lat: location.lat,
+          lng: location.lng,
+          deviceLabel: `Demo Lab - ${location.label}`,
+        }),
+      });
+      const payload = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
+      if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "scan failed"));
+      setStatus(`Scan ${mode} registrado en DemoBodega.`);
+      await refreshSummary();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "No se pudo simular el tap.");
+    } finally {
+      setSimulating(false);
+    }
+  }
+
   return (
-    <main className="container-shell py-8 text-slate-100">
-      <section className="rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.14),transparent_40%),#020617] p-6">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Public Demo Lab</p>
-          <div className="flex flex-wrap gap-2">
-            <a href="/" className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs text-white">← Volver al landing</a>
-            <a href="/login" className="rounded-full border border-emerald-300/35 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">Login (roles)</a>
+    <main className="demo-lab-shell container-shell py-8 text-slate-100">
+      <section className="demo-lab-hero rounded-3xl border border-cyan-300/20 p-5 md:p-7">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">Demo Lab enterprise</p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">Una demo viva: producto fisico, tap, mapa, portal y marketplace.</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">
+              Esta consola usa el tenant {DEMO_TENANT_SLUG}, el batch {DEMO_CANONICAL_BATCH_ID} y eventos reales cuando el backend esta disponible. El objetivo es vender la experiencia completa, no solo mostrar pantallas.
+            </p>
+          </div>
+          <div className="grid min-w-[18rem] gap-2 text-xs sm:grid-cols-2">
+            <a href="/" className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-center font-semibold text-slate-100">Landing</a>
+            <a href="/login" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-center font-semibold text-emerald-100">Ingresar</a>
+            <a href="/sun" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-center font-semibold text-cyan-100">SUN mobile</a>
+            <a href="/me" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center font-semibold text-violet-100">Portal usuario</a>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {(["ceo", "operator", "buyer"] as Role[]).map((entry) => (
-            <button
-              key={entry}
-              type="button"
-              onClick={() => setRole(entry)}
-              className={`rounded-full border px-3 py-1 text-xs ${role === entry ? "border-cyan-300/50 bg-cyan-500/15 text-cyan-100" : "border-white/20 bg-white/5 text-slate-300"}`}
-            >
-              {roleCopy[entry].title}
-            </button>
-          ))}
-          <button type="button" onClick={() => setRunning("30")} className="rounded-full border border-violet-300/40 bg-violet-500/10 px-3 py-1 text-xs text-violet-100">Start cinematic 30s</button>
-          <button type="button" onClick={() => setRunning("90")} className="rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-100">Start cinematic 90s</button>
-          <button type="button" onClick={() => setRunning(false)} className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs text-white">Stop</button>
-        </div>
 
-        <h1 className="mt-4 text-2xl font-semibold">Demo Lab narrative engine</h1>
-        <p className="mt-1 text-sm text-slate-300">{activeCopy.focus}</p>
-
-        <div className="mt-4 grid gap-2 md:grid-cols-4">
-          {beatTitles.map((title, index) => (
-            <button
-              type="button"
-              key={title}
-              onClick={() => setBeat(index as Beat)}
-              className={`rounded-lg border px-3 py-2 text-left text-xs ${beat === index ? "border-emerald-300/50 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-300"}`}
-            >
-              {title}
-            </button>
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
+          {[
+            { label: "Tags fisicos", value: summary?.tagCount === undefined ? "--" : String(summary.tagCount), detail: "DemoBodega / proveedor" },
+            { label: "Eventos", value: String(liveEvents.length), detail: latestEvent ? `${latestEvent.city || "Unknown"} / ${latestEvent.result || "UNKNOWN"}` : "Sin feed reciente" },
+            { label: "Portal", value: String(summary?.crm?.leads ?? 0), detail: "Leads / asociaciones" },
+            { label: "Ruta origen-tap", value: `${routeKm.toLocaleString("es-AR")} km`, detail: `${LOCATIONS.origin.city} a ${destination.city}` },
+          ].map((kpi) => (
+            <div key={kpi.label} className="demo-lab-panel rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">{kpi.label}</p>
+              <p className="mt-2 text-2xl font-black text-white">{kpi.value}</p>
+              <p className="mt-1 text-xs text-slate-400">{kpi.detail}</p>
+            </div>
           ))}
         </div>
+      </section>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr_1fr]">
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Live feed</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-200">
-              {feedByBeat[beat].map((item) => <li key={item}>• {item}</li>)}
-            </ul>
+      <section className="mt-5 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">Narrativa por audiencia</p>
+              <h2 className="mt-2 text-2xl font-black text-white">{activeRole.headline}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-300">{activeRole.focus}</p>
+            </div>
+            <button type="button" onClick={() => setRunning(running ? false : "cinematic")} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-bold text-cyan-100">
+              {running ? "Pausar cinematic" : "Iniciar cinematic"}
+            </button>
+          </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {kpis.map((kpi) => (
-                <div key={kpi.label} className="rounded-lg border border-white/10 bg-slate-900/70 p-2">
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-slate-400">{kpi.label}</p>
-                  <p className="mt-1 text-sm font-semibold text-white">{kpi.value}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(Object.keys(roleCopy) as Role[]).map((item) => (
+              <button key={item} type="button" onClick={() => setRole(item)} className={`rounded-full border px-3 py-2 text-xs font-bold ${role === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+                {roleCopy[item].label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-4">
+            {([0, 1, 2, 3] as Beat[]).map((item) => (
+              <button key={item} type="button" onClick={() => setBeat(item)} className={`rounded-2xl border p-3 text-left ${beat === item ? "border-emerald-300/45 bg-emerald-500/10" : "border-white/10 bg-slate-900/60"}`}>
+                <p className="text-xs font-black text-white">{beatCopy[item].title}</p>
+                <p className="mt-2 text-[11px] leading-5 text-slate-400">{beatCopy[item].body}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_0.82fr]">
+            <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">Producto fisico</p>
+                  <h3 className="mt-1 text-xl font-black text-white">{activeVertical.product}</h3>
                 </div>
-              ))}
+                <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-[11px] font-bold text-violet-100">{activeVertical.profile}</span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(Object.keys(verticals) as Vertical[]).map((item) => (
+                  <button key={item} type="button" onClick={() => setVertical(item)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${vertical === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+                    {verticals[item].label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="demo-lab-product-stage mt-4">
+                <div className={activeVertical.visual} />
+                <span className="demo-lab-product-label">nexID secure</span>
+                <span className="demo-lab-tap-chip">SUN</span>
+                <span className="demo-lab-tap-wave" />
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {activeVertical.proof.map((item) => (
+                  <p key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">{item}</p>
+                ))}
+              </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-violet-300/25 bg-violet-500/10 p-3 text-xs text-violet-100">
-              Recommended CTA: {activeCopy.cta}
+            <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">Salida mobile sincronizada</p>
+              <div className="demo-lab-phone mt-4 rounded-[2rem] border-[10px] border-slate-800 bg-slate-950 p-3">
+                <div className="mx-auto mb-3 h-5 w-24 rounded-b-2xl bg-black" />
+                <iframe title="demo mobile preview" src={mobileUrl} className="h-[32rem] w-full rounded-2xl border border-white/10 bg-slate-950" />
+              </div>
             </div>
-            <div className="mt-3 rounded-lg border border-amber-300/25 bg-amber-500/10 p-3 text-xs text-amber-100">
-              <p className="font-semibold">TagTamper demo lane</p>
-              <p className="mt-1">1) Scan before opening · 2) Break/open loop · 3) Scan after opening · 4) Compare URLs · 5) Configure tamper parser offset/value mapping · 6) Re-open mobile preview and verify OPENED state.</p>
-              <p className="mt-1 text-amber-200/90">If tamper cannot be detected: Current batch validates authenticity and replay protection, but does not expose electronic TagTamper status. Ask supplier to include TagTamper status in the SDM payload.</p>
+          </div>
+        </article>
+
+        <aside className="space-y-5">
+          <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">Command feed</p>
+            <h2 className="mt-2 text-2xl font-black text-white">{activeBeat.event}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{status}</p>
+
+            <div className="mt-4 grid gap-2">
+              <button type="button" disabled={simulating} onClick={() => void simulate("valid", "zurich")} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-3 text-left text-xs font-bold text-emerald-100 disabled:opacity-60">
+                Registrar tap valido en Zurich
+              </button>
+              <button type="button" disabled={simulating} onClick={() => void simulate("tamper", "zurich")} className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-3 text-left text-xs font-bold text-amber-100 disabled:opacity-60">
+                Romper sello / descorchar
+              </button>
+              <button type="button" disabled={simulating} onClick={() => void simulate("replay", "zurich")} className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-3 text-left text-xs font-bold text-rose-100 disabled:opacity-60">
+                Simular replay duplicado
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-300">Eventos DemoBodega</p>
+                <button type="button" onClick={() => void refreshSummary()} className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-slate-200">Refresh</button>
+              </div>
+              <div className="mt-3 space-y-2">
+                {liveEvents.slice(0, 6).length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-white/15 p-3 text-xs text-slate-400">Todavia no hay eventos geolocalizados disponibles desde la API.</p>
+                ) : liveEvents.slice(0, 6).map((event) => (
+                  <div key={event.id || `${event.created_at}-${event.uidMasked}`} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs">
+                    <p className="font-bold text-white">{event.city || "Unknown"}, {event.country_code || "UNK"} / {event.result || "UNKNOWN"}</p>
+                    <p className="mt-1 text-slate-400">{event.product_name || activeVertical.product} / {event.uidMasked || "UID-NA"}</p>
+                    <p className="mt-1 text-slate-500">{event.created_at || "sin timestamp"}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </article>
 
-          <article className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-            <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Mobile preview synced to beat</p>
-            <iframe title="demo mobile preview" src={mobileUrl} className="mt-3 h-[620px] w-full rounded-xl border border-white/10 bg-slate-950" />
+          <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">Portal + marketplace</p>
+            <div className="mt-3 grid gap-2 text-xs text-slate-300">
+              <p className="rounded-xl border border-white/10 bg-white/5 p-3">El cliente anonimo puede asociarse al portal despues del tap sin romper la privacidad.</p>
+              <p className="rounded-xl border border-white/10 bg-white/5 p-3">El marketplace se abre por tenant: vouchers, club, recompra, garantia y experiencias.</p>
+              <p className="rounded-xl border border-white/10 bg-white/5 p-3">La capa premium permite ownership, trazabilidad y tokenizacion sandbox en Polygon Amoy.</p>
+            </div>
           </article>
-        </div>
+        </aside>
+      </section>
 
-        <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/70 p-3">
-          <WorldMapRealtime
-            title="Demo Lab geo-ops map"
-            subtitle="Mapa global dinámico por beat de narrativa (auth, risk, ownership)."
-            points={mapPointsByBeat[beat]}
-            initialExpanded={false}
-          />
-        </div>
+      <section className="mt-5 rounded-3xl border border-white/10 bg-slate-950/60 p-3 md:p-5">
+        <WorldMapRealtime
+          title="Mapa profesional origen vs tap"
+          subtitle={`Origen ${LOCATIONS.origin.city} -> tap actual ${destination.city}. Distancia aproximada: ${routeKm.toLocaleString("es-AR")} km.`}
+          points={mapPoints}
+          routes={[{ fromLat: LOCATIONS.origin.lat, fromLng: LOCATIONS.origin.lng, toLat: destination.lat, toLng: destination.lng, tone: activeBeat.mode === "replay" ? "warn" : "info" }]}
+          metadataRows={(point) => [
+            { label: "Google Maps", value: `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` },
+            { label: "Abrir", value: mapsLink(point) },
+          ]}
+          initialExpanded
+        />
+      </section>
+
+      <section className="mt-5 grid gap-4 lg:grid-cols-4">
+        {[
+          { title: "QR comun", body: "Barato y rapido para contenido o marketing. Sirve si el riesgo de copia es bajo." },
+          { title: "NTAG215", body: "Ideal para pulseras, tickets y activaciones donde importa velocidad + UID serializado." },
+          { title: "NTAG 424 DNA", body: "SUN dinamico por lectura para reducir replay, screenshots y clonacion simple." },
+          { title: "424 DNA TT + blockchain", body: "Tamper fisico, estado abierto/cerrado y token premium opcional para ownership." },
+        ].map((item) => (
+          <article key={item.title} className="demo-lab-panel rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+            <p className="text-sm font-black text-white">{item.title}</p>
+            <p className="mt-2 text-xs leading-6 text-slate-300">{item.body}</p>
+          </article>
+        ))}
       </section>
     </main>
   );
