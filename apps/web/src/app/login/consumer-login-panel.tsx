@@ -103,18 +103,19 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       <p className="mt-1 text-sm text-cyan-50/90">Ingresá con email o teléfono para asociar tu tap y abrir tu marketplace contextual.</p>
       <div className="mt-3 grid gap-2">
         <button
+          suppressHydrationWarning
           disabled={pending}
           onClick={() => void quickDemoPortal()}
           className="rounded-xl border border-violet-300/30 bg-violet-500/15 px-3 py-2.5 text-sm font-semibold text-violet-100 disabled:opacity-60"
         >
           Entrar 1-click al portal demo (sin tap NFC)
         </button>
-        <input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Email o teléfono" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500" />
-        {step === "verify" ? <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Código" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500" /> : null}
+        <input suppressHydrationWarning value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Email o teléfono" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500" />
+        {step === "verify" ? <input suppressHydrationWarning value={code} onChange={(e) => setCode(e.target.value)} placeholder="Código" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500" /> : null}
         {step === "start" ? (
-          <button disabled={pending || !parseContact(contact).valid} onClick={() => void start()} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60">Recibir código</button>
+          <button suppressHydrationWarning disabled={pending || !parseContact(contact).valid} onClick={() => void start()} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60">Recibir código</button>
         ) : (
-          <button disabled={pending || !code.trim()} onClick={() => void verify()} className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60">Entrar al portal</button>
+          <button suppressHydrationWarning disabled={pending || !code.trim()} onClick={() => void verify()} className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60">Entrar al portal</button>
         )}
       </div>
       {status ? <p className="mt-2 text-xs text-slate-200">{status}</p> : null}

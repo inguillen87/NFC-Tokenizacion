@@ -164,21 +164,21 @@ export function WorldMapRealtime({
 
       <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
         {(["5m", "1h", "24h", "all"] as TimeWindowMode[]).map((windowMode) => (
-          <button key={windowMode} type="button" onClick={() => setTimeWindowMode(windowMode)} className={`rounded-lg border px-3 py-1 ${timeWindowMode === windowMode ? "border-indigo-300/40 bg-indigo-500/15 text-indigo-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+          <button suppressHydrationWarning key={windowMode} type="button" onClick={() => setTimeWindowMode(windowMode)} className={`rounded-lg border px-3 py-1 ${timeWindowMode === windowMode ? "border-indigo-300/40 bg-indigo-500/15 text-indigo-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
             {windowMode === "all" ? "Window: all" : `Window: ${windowMode}`}
           </button>
         ))}
-        <button type="button" onClick={() => setExpanded((current) => !current)} className="rounded-lg border border-indigo-300/30 bg-indigo-500/10 px-3 py-1 text-indigo-100">
+        <button suppressHydrationWarning type="button" onClick={() => setExpanded((current) => !current)} className="rounded-lg border border-indigo-300/30 bg-indigo-500/10 px-3 py-1 text-indigo-100">
           {expanded ? "Compact view" : "Expand map"}
         </button>
-        <button type="button" onClick={() => setMapMode((prev) => (prev === "classic" ? "network" : "classic"))} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+        <button suppressHydrationWarning type="button" onClick={() => setMapMode((prev) => (prev === "classic" ? "network" : "classic"))} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
           {mapMode === "classic" ? "Mode: classic" : "Mode: network"}
         </button>
-        <button type="button" onClick={() => setRiskOnly((prev) => !prev)} className={`rounded-lg border px-3 py-1 ${riskOnly ? "border-rose-300/35 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+        <button suppressHydrationWarning type="button" onClick={() => setRiskOnly((prev) => !prev)} className={`rounded-lg border px-3 py-1 ${riskOnly ? "border-rose-300/35 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
           {riskOnly ? "Risk-only: on" : "Risk-only: off"}
         </button>
         {mapMode === "network" ? (
-          <button type="button" onClick={() => setSpinSpeed((prev) => (prev === "slow" ? "normal" : prev === "normal" ? "fast" : "slow"))} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-violet-100">
+          <button suppressHydrationWarning type="button" onClick={() => setSpinSpeed((prev) => (prev === "slow" ? "normal" : prev === "normal" ? "fast" : "slow"))} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-violet-100">
             Spin: {spinSpeed}
           </button>
         ) : null}
@@ -248,7 +248,7 @@ export function WorldMapRealtime({
           </div>
           <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} space-y-2 overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-2`}>
             {rankedPoints.slice(0, 30).map((point, index) => (
-              <button
+              <button suppressHydrationWarning
                 key={`${point.city}-${point.country || "--"}-${point.lat}-${point.lng}-${index}`}
                 type="button"
                 onClick={() => {

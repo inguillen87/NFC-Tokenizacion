@@ -81,7 +81,7 @@ export function DemoReadinessBoard({ locale }: Props) {
         {copy.items.map((item) => {
           const active = checked.includes(item.id);
           return (
-            <button
+            <button suppressHydrationWarning
               key={item.id}
               type="button"
               onClick={() => setChecked((current) => (current.includes(item.id) ? current.filter((value) => value !== item.id) : [...current, item.id]))}

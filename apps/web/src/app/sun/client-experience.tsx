@@ -65,7 +65,7 @@ export function TapClientExperience({ result }: { result: any }) {
       {/* Custom Animated Tabs */}
       <div className="flex bg-slate-900/50 p-1 rounded-2xl border border-white/5 mb-6 relative">
          {["passport", "loyalty", "history"].map((tab) => (
-            <button
+            <button suppressHydrationWarning
                key={tab}
                onClick={() => setActiveTab(tab as any)}
                className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest z-10 transition-colors ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
@@ -125,7 +125,7 @@ export function TapClientExperience({ result }: { result: any }) {
                   ) : (
                      <div className="rounded-2xl border border-rose-500/20 bg-rose-950/20 p-5 text-center">
                         <p className="text-[11px] text-rose-300 mb-4">Acciones premium bloqueadas por políticas de seguridad debido a riesgo de replay o tamper.</p>
-                        <button className="block w-full py-3.5 rounded-xl bg-slate-800 text-white text-sm font-bold transition-colors hover:bg-slate-700">
+                        <button suppressHydrationWarning className="block w-full py-3.5 rounded-xl bg-slate-800 text-white text-sm font-bold transition-colors hover:bg-slate-700">
                            Contactar Soporte
                         </button>
                      </div>

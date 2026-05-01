@@ -31,15 +31,15 @@ export function InviteUserPanel() {
 
   return (
     <div className="mt-4 grid gap-3">
-      <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
-      <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Nombre completo" value={form.fullName} onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))} />
-      <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Tenant slug (opcional)" value={form.tenantSlug} onChange={(e) => setForm((s) => ({ ...s, tenantSlug: e.target.value }))} />
-      <select className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}>
+      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
+      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Nombre completo" value={form.fullName} onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))} />
+      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Tenant slug (opcional)" value={form.tenantSlug} onChange={(e) => setForm((s) => ({ ...s, tenantSlug: e.target.value }))} />
+      <select suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}>
         <option value="tenant-admin">Tenant Admin</option>
         <option value="reseller">Reseller</option>
         <option value="viewer">Viewer</option>
       </select>
-      <textarea className="min-h-20 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={form.permissions} onChange={(e) => setForm((s) => ({ ...s, permissions: e.target.value }))} />
+      <textarea suppressHydrationWarning className="min-h-20 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={form.permissions} onChange={(e) => setForm((s) => ({ ...s, permissions: e.target.value }))} />
       <Button className="w-full" onClick={submit}>Crear invitación</Button>
       {status ? <p className="text-xs text-cyan-200">{status}</p> : null}
       {activationLink ? <code className="rounded-lg border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 break-all">{activationLink}</code> : null}

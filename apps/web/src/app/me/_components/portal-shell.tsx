@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { Home, PackageCheck, Radio, WalletCards } from "lucide-react";
+import { BrandLockup, ThemeToggle } from "@product/ui";
 import { TapAssociationBanner } from "./tap-association-banner";
 
 export function PortalShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
@@ -12,7 +13,7 @@ export function PortalShell({ title, subtitle, children }: { title: string; subt
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-slate-200 selection:bg-cyan-500/30 font-sans">
+    <div className="consumer-portal-root min-h-screen bg-[#0a0a0c] text-slate-200 selection:bg-cyan-500/30 font-sans">
       <div className="fixed bottom-0 inset-x-0 z-50 border-t border-white/10 bg-slate-950/90 pb-safe backdrop-blur-xl md:hidden">
         <div className="grid grid-cols-4 gap-1 p-2">
           {mobileItems.map((item) => {
@@ -27,13 +28,11 @@ export function PortalShell({ title, subtitle, children }: { title: string; subt
         </div>
       </div>
 
-      <nav className="sticky top-0 z-50 border-b border-white/5 bg-black/50 backdrop-blur-xl">
+      <nav className="consumer-portal-nav sticky top-0 z-50 border-b border-white/5 bg-black/50 backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 md:px-8">
           <Link href="/me" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-[0_0_15px_rgba(34,211,238,0.4)]">
-              <span className="text-sm font-bold text-white">NX</span>
-            </div>
-            <span className="hidden text-lg font-bold tracking-tight text-white sm:block">nexID <span className="font-light text-slate-400">Wallet</span></span>
+            <BrandLockup size={38} variant="ripple" theme="dark" className="consumer-portal-brand" />
+            <span className="hidden text-sm font-semibold tracking-tight text-white sm:block">Consumer Passport</span>
           </Link>
 
           <div className="hidden space-x-1 md:flex">
@@ -46,13 +45,15 @@ export function PortalShell({ title, subtitle, children }: { title: string; subt
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link href="/me/privacy" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs font-bold shadow-lg transition hover:bg-slate-700">US</Link>
           </div>
         </div>
       </nav>
 
       <main className="relative mx-auto max-w-5xl space-y-8 px-4 py-8 pb-24 md:px-8 md:py-12 md:pb-12">
-        <header className="relative z-10">
+        <header className="consumer-portal-hero relative z-10 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/55 p-5 md:p-7">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300">nexID consumer network</p>
           <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">{title}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400 md:text-base">{subtitle}</p>
         </header>

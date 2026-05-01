@@ -22,7 +22,7 @@ export function ForgotPasswordPanel({ emailPlaceholder, actionLabel }: { emailPl
 
   return (
     <div className="mt-6 grid gap-3">
-      <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={emailPlaceholder} value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={emailPlaceholder} value={email} onChange={(e) => setEmail(e.target.value)} />
       <Button className="w-full" onClick={submit}>{actionLabel}</Button>
       {message ? <p className="text-xs text-cyan-200">{message}</p> : null}
       {token ? <code className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">{token}</code> : null}

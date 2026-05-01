@@ -219,9 +219,9 @@ export default function TenantMarketplacePage() {
         <div className="flex flex-wrap gap-2">
           <label className="cursor-pointer rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10">
             {importing ? "Importando..." : "Importar JSON"}
-            <input disabled={importing} type="file" accept="application/json" className="hidden" onChange={(event) => importFromJson(event.target.files?.[0])} />
+            <input suppressHydrationWarning disabled={importing} type="file" accept="application/json" className="hidden" onChange={(event) => importFromJson(event.target.files?.[0])} />
           </label>
-          <button onClick={onCreate} className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
+          <button suppressHydrationWarning onClick={onCreate} className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
             + Publicar Producto
           </button>
         </div>
@@ -234,8 +234,8 @@ export default function TenantMarketplacePage() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto o vertical..." className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30" />
-        <select value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as "all" | Visibility)} className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30">
+        <input suppressHydrationWarning value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto o vertical..." className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30" />
+        <select suppressHydrationWarning value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as "all" | Visibility)} className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30">
           <option value="all">Todas las visibilidades</option>
           <option value="network">Público (Network)</option>
           <option value="private">Oculto</option>
@@ -285,13 +285,13 @@ export default function TenantMarketplacePage() {
                 <td className="px-4 py-3">{visibilityChip(item.visibility)}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="inline-flex gap-2">
-                    <button onClick={() => toggleVisibility(item)} className="rounded-md border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10">
+                    <button suppressHydrationWarning onClick={() => toggleVisibility(item)} className="rounded-md border border-white/15 px-2 py-1 text-xs text-slate-200 hover:bg-white/10">
                       {item.visibility === "network" ? "Ocultar" : "Publicar"}
                     </button>
-                    <button onClick={() => onEdit(item)} className="rounded-md border border-cyan-500/20 px-2 py-1 text-xs font-medium text-cyan-400 hover:bg-cyan-500/10">
+                    <button suppressHydrationWarning onClick={() => onEdit(item)} className="rounded-md border border-cyan-500/20 px-2 py-1 text-xs font-medium text-cyan-400 hover:bg-cyan-500/10">
                       Editar
                     </button>
-                    <button onClick={() => deleteItem(item.id)} className="rounded-md border border-rose-500/20 px-2 py-1 text-xs font-medium text-rose-300 hover:bg-rose-500/10">
+                    <button suppressHydrationWarning onClick={() => deleteItem(item.id)} className="rounded-md border border-rose-500/20 px-2 py-1 text-xs font-medium text-rose-300 hover:bg-rose-500/10">
                       Eliminar
                     </button>
                   </div>
@@ -311,25 +311,25 @@ export default function TenantMarketplacePage() {
         <div className="rounded-2xl border border-cyan-500/20 bg-slate-950/90 p-5">
           <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-cyan-300">{editingId ? "Editar producto" : "Nuevo producto"}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Nombre del producto" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
-            <input value={draft.vertical} onChange={(e) => setDraft((prev) => ({ ...prev, vertical: e.target.value }))} placeholder="Vertical (Wine, Events, Pharma...)" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
-            <input value={draft.emoji} onChange={(e) => setDraft((prev) => ({ ...prev, emoji: e.target.value }))} placeholder="Emoji" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
-            <input type="number" min={0} value={draft.priceArs} onChange={(e) => setDraft((prev) => ({ ...prev, priceArs: Number(e.target.value) || 0 }))} placeholder="Precio ARS" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
-            <select value={draft.checkout} onChange={(e) => setDraft((prev) => ({ ...prev, checkout: e.target.value as CheckoutMode }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40">
+            <input suppressHydrationWarning value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Nombre del producto" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
+            <input suppressHydrationWarning value={draft.vertical} onChange={(e) => setDraft((prev) => ({ ...prev, vertical: e.target.value }))} placeholder="Vertical (Wine, Events, Pharma...)" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
+            <input suppressHydrationWarning value={draft.emoji} onChange={(e) => setDraft((prev) => ({ ...prev, emoji: e.target.value }))} placeholder="Emoji" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
+            <input suppressHydrationWarning type="number" min={0} value={draft.priceArs} onChange={(e) => setDraft((prev) => ({ ...prev, priceArs: Number(e.target.value) || 0 }))} placeholder="Precio ARS" className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40" />
+            <select suppressHydrationWarning value={draft.checkout} onChange={(e) => setDraft((prev) => ({ ...prev, checkout: e.target.value as CheckoutMode }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40">
               <option value="request">Request to Buy</option>
               <option value="direct">Direct Checkout</option>
               <option value="external">External URL</option>
             </select>
-            <select value={draft.visibility} onChange={(e) => setDraft((prev) => ({ ...prev, visibility: e.target.value as Visibility }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40">
+            <select suppressHydrationWarning value={draft.visibility} onChange={(e) => setDraft((prev) => ({ ...prev, visibility: e.target.value as Visibility }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40">
               <option value="network">Público (Network)</option>
               <option value="private">Oculto</option>
             </select>
           </div>
           <div className="mt-4 flex gap-2">
-            <button disabled={saving} onClick={saveItem} className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70">
+            <button suppressHydrationWarning disabled={saving} onClick={saveItem} className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70">
               {saving ? "Guardando..." : "Guardar"}
             </button>
-            <button onClick={resetEditor} className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200 hover:bg-white/10">
+            <button suppressHydrationWarning onClick={resetEditor} className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200 hover:bg-white/10">
               Cancelar
             </button>
           </div>

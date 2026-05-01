@@ -51,8 +51,8 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Ingresar", requestDemo: "Solicitar demo" },
     hero: {
       badge: "Plataforma de identidad física verificable",
-      title: "Autenticá cada producto físico y convertí cada toque en confianza, trazabilidad y ventas.",
-      body: "nexID conecta NFC/SUN con validación criptográfica, pasaporte digital y flujos de propiedad, fidelización y marketplace en tiempo real.",
+      title: "Convertí cada producto físico en un pasaporte digital verificable.",
+      body: "Con NFC, QR y SUN, nexID valida autenticidad, muestra origen y activa club, garantía, marketplace y analytics desde un solo tap.",
       primary: "Pedir muestras",
       secondary: "Ver demo",
       tertiary: "Quiero ser reseller",
@@ -203,7 +203,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   "pt-BR": {
     nav: { product: "Produto", pricing: "Planos", reseller: "Revendedores", docs: "Arquitetura", cta: "Entrar", requestDemo: "Solicitar demo" },
-    hero: { badge: "Plataforma de identidade física verificável", title: "A camada premium para autenticar produto físico e operar revenue por tenant.", body: "A nexID conecta NFC/SUN com validação criptográfica, passport digital e fluxos de ownership, loyalty e marketplace em tempo real.", primary: "Solicitar amostras", secondary: "Ver demo", tertiary: "Quero ser revendedor" },
+    hero: { badge: "Plataforma de identidade física verificável", title: "Transforme cada produto fisico em um passaporte digital verificavel.", body: "Com NFC, QR e SUN, a nexID valida autenticidade, mostra origem e ativa clube, garantia, marketplace e analytics em um toque.", primary: "Solicitar amostras", secondary: "Ver demo", tertiary: "Quero ser revendedor" },
     trustBar: ["Programas NTAG215", "NTAG 424 DNA TagTamper", "API de autenticação", "SaaS de validación", "Canal white-label"],
     howItWorks: { eyebrow: "Como funciona", title: "Encosta, valida e vende melhor", description: "Explicação simples: cada tap vira prova, alerta e oportunidade comercial.", steps: [{ title: "1. Você ativa o lote", body: "Escolhe chip, quantidade e campanha em poucos cliques." }, { title: "2. O cliente encosta o celular", body: "A tela mostra rápido se o produto é autêntico." }, { title: "3. O sistema registra tudo", body: "Fica salvo local, horário e resultado da leitura." }, { title: "4. Você vende com dados", body: "Dispara ação de marketing, suporte ou revenda." }] },
     what: { eyebrow: "Plataforma", title: "Uma infraestrutura para validar objetos e ativar negócio", description: "Emita uma identidade digital por unidade e opere com dashboard, API e webhooks.", cards: [{ title: "Verify", body: "Confirma autenticidade, estado e regras a cada toque." }, { title: "Passport", body: "Monta o gêmeo digital com lote, origem, eventos, canal e garantia." }, { title: "Rights", body: "Ativa ownership, acesso, vouchers, benefícios, transferências e garantias." }] },
@@ -240,7 +240,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   },
   en: {
     nav: { product: "Product", pricing: "Pricing", reseller: "Resellers", docs: "Docs", cta: "Login", requestDemo: "Request demo" },
-    hero: { badge: "Verifiable physical identity platform", title: "The premium layer to authenticate physical products and run tenant-level revenue ops.", body: "nexID connects NFC/SUN with cryptographic validation, digital passport, and real-time ownership, loyalty, and marketplace flows.", primary: "Request samples", secondary: "View demo", tertiary: "Become a reseller" },
+    hero: { badge: "Verifiable physical identity platform", title: "Turn every physical product into a verifiable digital passport.", body: "With NFC, QR and SUN, nexID validates authenticity, shows origin, and activates club, warranty, marketplace and analytics in one tap.", primary: "Request samples", secondary: "View demo", tertiary: "Become a reseller" },
     trustBar: ["NTAG215 programs", "NTAG 424 DNA TagTamper", "Authentication API", "Multi-tenant SaaS", "White-label distribution"],
     howItWorks: { eyebrow: "How it works", title: "Tap, verify, and sell better", description: "Simple flow: each tap becomes proof, insight, and a sales action.", steps: [{ title: "1. Activate your batch", body: "Pick chip type, quantity, and campaign in minutes." }, { title: "2. Customer taps", body: "The phone shows authenticity instantly." }, { title: "3. Data is saved", body: "You keep place, time, and scan result." }, { title: "4. Teams take action", body: "Launch marketing, support, or reseller actions fast." }] },
     what: { eyebrow: "Platform value", title: "One infrastructure to validate physical assets and activate business flows", description: "Issue one digital identity per unit and operate it through dashboard, API and webhooks.", cards: [{ title: "Verify", body: "Prove authenticity, state and policy outcome on every touchpoint." }, { title: "Passport", body: "Build a digital twin with batch, origin, events, channel and warranty." }, { title: "Rights", body: "Activate ownership, access, perks, vouchers, transfers and warranties." }] },

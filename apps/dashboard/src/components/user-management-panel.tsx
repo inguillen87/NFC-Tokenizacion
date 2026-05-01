@@ -96,13 +96,13 @@ export function UserManagementPanel() {
                   </div>
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  <select className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={editor.role} onChange={(e) => setEditors((prev) => ({ ...prev, [user.id]: { ...editor, role: e.target.value } }))}>
+                  <select suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={editor.role} onChange={(e) => setEditors((prev) => ({ ...prev, [user.id]: { ...editor, role: e.target.value } }))}>
                     {ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
                   </select>
-                  <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant slug" value={editor.tenantSlug} onChange={(e) => setEditors((prev) => ({ ...prev, [user.id]: { ...editor, tenantSlug: e.target.value } }))} />
+                  <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant slug" value={editor.tenantSlug} onChange={(e) => setEditors((prev) => ({ ...prev, [user.id]: { ...editor, tenantSlug: e.target.value } }))} />
                   <Button className="px-3 py-2 text-sm" onClick={() => saveUser(user.id)}>Guardar cambios</Button>
                 </div>
-                <textarea className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={editor.permissions} onChange={(e) => setEditors((prev) => ({ ...prev, [user.id]: { ...editor, permissions: e.target.value } }))} />
+                <textarea suppressHydrationWarning className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={editor.permissions} onChange={(e) => setEditors((prev) => ({ ...prev, [user.id]: { ...editor, permissions: e.target.value } }))} />
               </div>
             );
           })}
@@ -111,14 +111,14 @@ export function UserManagementPanel() {
       <Card className="p-6">
         <h2 className="text-lg font-semibold text-white">Alta / actualización</h2>
         <div className="mt-4 grid gap-3">
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Work email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Full name" value={form.fullName} onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))} />
-          <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Temp password" value={form.password} onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))} />
-          <select className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}>
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Work email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Full name" value={form.fullName} onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))} />
+          <input suppressHydrationWarning type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Temp password" value={form.password} onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))} />
+          <select suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}>
             {ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
           </select>
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant slug (optional)" value={form.tenantSlug} onChange={(e) => setForm((s) => ({ ...s, tenantSlug: e.target.value }))} />
-          <textarea className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={permissionHint} value={form.permissions} onChange={(e) => setForm((s) => ({ ...s, permissions: e.target.value }))} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant slug (optional)" value={form.tenantSlug} onChange={(e) => setForm((s) => ({ ...s, tenantSlug: e.target.value }))} />
+          <textarea suppressHydrationWarning className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={permissionHint} value={form.permissions} onChange={(e) => setForm((s) => ({ ...s, permissions: e.target.value }))} />
           <Button className="w-full" onClick={createUser}>Guardar usuario</Button>
           {status ? <p className="text-xs text-cyan-200">{status}</p> : null}
         </div>

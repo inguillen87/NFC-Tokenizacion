@@ -52,7 +52,7 @@ export function BatchSunValidator({ bid }: { bid: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
       <p className="text-sm font-semibold text-white">Supplier sample URL validator</p>
-      <textarea
+      <textarea suppressHydrationWarning
         value={url}
         onChange={(event) => setUrl(event.target.value)}
         placeholder="Pegá una URL /sun recién escaneada desde una tag física"

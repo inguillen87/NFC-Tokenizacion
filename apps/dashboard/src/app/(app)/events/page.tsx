@@ -86,12 +86,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
 
       <Card className="p-5">
         <form className="grid gap-3 md:grid-cols-6">
-          <input name="uid" defaultValue={query.uid || ""} placeholder="UID" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <input name="bid" defaultValue={query.bid || ""} placeholder="BID" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <input name="result" defaultValue={query.result || ""} placeholder="VALID / TAMPER..." className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <select name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200"><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select>
-          {!isTenantAdmin ? <input name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input type="hidden" name="tenant" value={tenantScope} />}
-          <button className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
+          <input suppressHydrationWarning name="uid" defaultValue={query.uid || ""} placeholder="UID" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <input suppressHydrationWarning name="bid" defaultValue={query.bid || ""} placeholder="BID" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <input suppressHydrationWarning name="result" defaultValue={query.result || ""} placeholder="VALID / TAMPER..." className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <select suppressHydrationWarning name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200"><option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option></select>
+          {!isTenantAdmin ? <input suppressHydrationWarning name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input suppressHydrationWarning type="hidden" name="tenant" value={tenantScope} />}
+          <button suppressHydrationWarning className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
         </form>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
           <StatusChip label={`Events ${liveRows.length}`} tone="neutral" />

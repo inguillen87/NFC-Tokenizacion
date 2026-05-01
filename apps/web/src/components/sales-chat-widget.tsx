@@ -301,7 +301,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   };
 
   return (
-    <div className="fixed bottom-[6.8rem] right-3 z-[38] w-[calc(100vw-1.5rem)] md:bottom-4 md:right-4 md:z-[70] md:w-[360px] md:max-w-[calc(100vw-1.5rem)]">
+    <div className="fixed bottom-[6.8rem] right-3 z-[38] w-[calc(100vw-1.5rem)] md:bottom-4 md:left-4 md:right-auto md:z-[70] md:w-[360px] md:max-w-[calc(100vw-1.5rem)]">
       {open ? (
         <div className="sales-widget-panel rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
@@ -310,8 +310,8 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
               <p className="text-[11px] text-cyan-300">{t.subtitle}</p>
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={resetChat} className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-slate-300">{t.resetChat}</button>
-              <button onClick={() => setOpen(false)} className="rounded-md border border-white/20 px-2 py-1 text-xs text-slate-300">✕</button>
+              <button suppressHydrationWarning type="button" onClick={resetChat} className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-slate-300">{t.resetChat}</button>
+              <button suppressHydrationWarning onClick={() => setOpen(false)} className="rounded-md border border-white/20 px-2 py-1 text-xs text-slate-300">✕</button>
             </div>
           </div>
 
@@ -322,7 +322,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{t.quickActionsLabel}</p>
                   <div className="mt-2 space-y-2">
                     {t.starter.map((q) => (
-                      <button key={q} onClick={() => ask(q)} className="w-full rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-left text-xs text-cyan-100">
+                      <button suppressHydrationWarning key={q} onClick={() => ask(q)} className="w-full rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-left text-xs text-cyan-100">
                         {q}
                       </button>
                     ))}
@@ -332,7 +332,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{t.intentLabel}</p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     {[t.quoteIntent, t.demoIntent, t.integrateIntent, t.resellerIntent].map((intent) => (
-                      <button key={intent} onClick={() => ask(intent)} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left text-xs text-slate-200">
+                      <button suppressHydrationWarning key={intent} onClick={() => ask(intent)} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-left text-xs text-slate-200">
                         {intent}
                       </button>
                     ))}
@@ -365,27 +365,27 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
               <a href="https://meet.jit.si/nexid-realtime-support" target="_blank" rel="noreferrer" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-xs text-violet-100">{t.videoCall}</a>
             </div>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-              <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t.contactName} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-400" />
-              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.contactEmail} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-400" />
-              <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder={t.contactWhats} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-400" />
+              <input suppressHydrationWarning value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t.contactName} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-400" />
+              <input suppressHydrationWarning value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.contactEmail} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-400" />
+              <input suppressHydrationWarning value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder={t.contactWhats} className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-400" />
             </div>
-            <button disabled={loading} onClick={sendLead} className="w-full rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-200 disabled:opacity-40">
+            <button suppressHydrationWarning disabled={loading} onClick={sendLead} className="w-full rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-200 disabled:opacity-40">
               {t.submitLead}
             </button>
             {leadState === "error" ? <p className="text-[11px] text-rose-300">{t.leadError}</p> : null}
             {leadState === "ok" ? <p className="text-[11px] text-emerald-300">{t.leadOk}</p> : null}
 
             <div className="flex gap-2">
-              <input value={input} onKeyDown={onInputKeyDown} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} className="flex-1 rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400" />
-              <button type="button" onClick={startVoice} className="sales-voice-btn rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-xs text-violet-100">{voiceState === "listening" ? t.voiceStop : t.voiceStart}</button>
-              <button onClick={() => ask(input)} disabled={loading || !input.trim()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs text-cyan-100 disabled:opacity-40">{t.send}</button>
+              <input suppressHydrationWarning value={input} onKeyDown={onInputKeyDown} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} className="flex-1 rounded-lg border border-white/15 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400" />
+              <button suppressHydrationWarning type="button" onClick={startVoice} className="sales-voice-btn rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-xs text-violet-100">{voiceState === "listening" ? t.voiceStop : t.voiceStart}</button>
+              <button suppressHydrationWarning onClick={() => ask(input)} disabled={loading || !input.trim()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs text-cyan-100 disabled:opacity-40">{t.send}</button>
             </div>
             {voiceState === "unsupported" ? <p className="text-[11px] text-amber-300">{t.voiceUnsupported}</p> : null}
           </div>
         </div>
       ) : null}
 
-      <button
+      <button suppressHydrationWarning
         onClick={() => setOpen((prev) => !prev)}
         className="helpbot-toggle sales-widget-toggle ml-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm font-semibold text-cyan-200 shadow-[0_0_24px_rgba(47,225,195,.24)]"
       >

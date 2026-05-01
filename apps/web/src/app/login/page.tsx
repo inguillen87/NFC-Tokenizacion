@@ -31,8 +31,8 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
             <h1 className="mt-5 text-3xl font-bold text-white">{t.web.auth.loginTitle}</h1>
             <p className="mt-2 text-sm leading-6 text-slate-300">{content.hero.body}</p>
             <div className="mt-6 grid gap-3">
-              <input className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={t.web.auth.emailPlaceholder} />
-              <input type="password" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={t.web.auth.passwordPlaceholder} />
+              <input suppressHydrationWarning className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={t.web.auth.emailPlaceholder} />
+              <input suppressHydrationWarning type="password" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={t.web.auth.passwordPlaceholder} />
               <a href="https://app.nexid.lat/login"><Button className="w-full">{content.nav.cta}</Button></a>
             </div>
 

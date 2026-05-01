@@ -271,7 +271,7 @@ export function CtaActions({ bid, uid }: Props) {
         {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).map((key) => {
           const item = actionMeta[key];
           return (
-            <button
+            <button suppressHydrationWarning
               key={key}
               disabled={pending}
               onClick={() => void trigger(item.path, item.method, key)}
@@ -285,7 +285,7 @@ export function CtaActions({ bid, uid }: Props) {
             </button>
           );
         })}
-        <button
+        <button suppressHydrationWarning
           ref={tokenActionButtonRef}
           disabled={pending}
           onClick={() => {
@@ -308,7 +308,7 @@ export function CtaActions({ bid, uid }: Props) {
       {actionError ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-xs text-rose-100" aria-live="assertive">{actionError}</p> : null}
       {lastTraceId ? <p className="text-[11px] text-slate-400">trace_id: <span className="font-mono">{lastTraceId}</span></p> : null}
       {actionError && lastRequest ? (
-        <button onClick={retryLastAction} disabled={pending} className="rounded border border-white/20 px-2 py-1 text-[11px] text-white disabled:cursor-not-allowed disabled:opacity-60">
+        <button suppressHydrationWarning onClick={retryLastAction} disabled={pending} className="rounded border border-white/20 px-2 py-1 text-[11px] text-white disabled:cursor-not-allowed disabled:opacity-60">
           Reintentar última acción
         </button>
       ) : null}
@@ -335,7 +335,7 @@ export function CtaActions({ bid, uid }: Props) {
             <li>Infra opcional: smart contracts / blockchain solo cuando hay ROI claro.</li>
             <li>Se mantiene el core: autenticidad, trazabilidad y anti-fraude.</li>
           </ul>
-          <input
+          <input suppressHydrationWarning
             ref={emailInputRef}
             value={leadEmail}
             onChange={(event) => setLeadEmail(event.target.value)}
@@ -345,8 +345,8 @@ export function CtaActions({ bid, uid }: Props) {
           />
           {leadEmail.trim() && !isEmailValid ? <p className="mt-1 text-[11px] text-rose-300">Ingresá un email válido para guardar el interés.</p> : null}
           <div className="mt-2 flex gap-2">
-            <button disabled={pending || !leadEmail.trim() || !isEmailValid} onClick={() => void saveTokenizationLead()} className="rounded border border-emerald-300/40 bg-emerald-500/10 px-3 py-1 text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60">{getButtonLabel("Guardar interés", "tokenization")}</button>
-            <button onClick={() => setShowTokenModal(false)} className="rounded border border-white/20 px-3 py-1 text-white">Cerrar</button>
+            <button suppressHydrationWarning disabled={pending || !leadEmail.trim() || !isEmailValid} onClick={() => void saveTokenizationLead()} className="rounded border border-emerald-300/40 bg-emerald-500/10 px-3 py-1 text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60">{getButtonLabel("Guardar interés", "tokenization")}</button>
+            <button suppressHydrationWarning onClick={() => setShowTokenModal(false)} className="rounded border border-white/20 px-3 py-1 text-white">Cerrar</button>
           </div>
           {leadSaved ? <p className="mt-2 text-emerald-300">Interés guardado en pipeline comercial.</p> : null}
         </div>

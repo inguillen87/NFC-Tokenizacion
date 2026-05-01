@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { checkAdmin } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+import { publishRealtimeEvent } from "../../../lib/realtime-events";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -47,6 +48,16 @@ export async function POST(req: Request) {
       RETURNING *
     `;
 
+    publishRealtimeEvent({
+      event_type: "lead.created",
+      lead_id: String((rows[0] as Record<string, unknown>).id || ""),
+      contact,
+      company,
+      source,
+      status: "new",
+      created_at: String((rows[0] as Record<string, unknown>).created_at || new Date().toISOString()),
+    });
+
     return json(rows[0], 201);
   } catch {
     const rows = await sql/*sql*/`
@@ -54,6 +65,15 @@ export async function POST(req: Request) {
       VALUES (${locale}, ${contact}, ${company}, ${country}, ${vertical}, ${tagType}, ${volume}, ${source}, 'new', ${notes})
       RETURNING *
     `;
+    publishRealtimeEvent({
+      event_type: "lead.created",
+      lead_id: String((rows[0] as Record<string, unknown>).id || ""),
+      contact,
+      company,
+      source,
+      status: "new",
+      created_at: String((rows[0] as Record<string, unknown>).created_at || new Date().toISOString()),
+    });
     return json(rows[0], 201);
   }
 }

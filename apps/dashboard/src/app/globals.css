@@ -37,6 +37,34 @@ select {
   @apply border border-white/10 bg-slate-900/65 backdrop-blur-xl;
 }
 
+.admin-notification-bell__icon {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px 999px 999px 0;
+  border: 1px solid rgba(125, 211, 252, 0.72);
+  background: linear-gradient(145deg, rgba(34, 211, 238, 0.18), rgba(59, 130, 246, 0.1));
+  transform: rotate(-45deg);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.24);
+}
+
+.admin-notification-bell__badge {
+  position: absolute;
+  right: -0.45rem;
+  top: -0.45rem;
+  display: grid;
+  min-width: 1.18rem;
+  height: 1.18rem;
+  place-items: center;
+  border-radius: 999px;
+  border: 2px solid #020617;
+  background: #ef4444;
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.32);
+}
+
 .brand-lockup {
   color: #e2e8f0;
   --brand-accent: #2fe1c3;
@@ -365,6 +393,65 @@ html.theme-light header a.rounded-full {
   background: rgba(255,255,255,0.95) !important;
   border-color: rgba(15,23,42,0.2) !important;
   box-shadow: 0 6px 14px rgba(15,23,42,0.08);
+}
+
+html.theme-light .data-table-card,
+html.theme-light .data-table-shell {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.38) !important;
+}
+
+html.theme-light table thead {
+  background: rgba(241, 245, 249, 0.92) !important;
+  color: #475569 !important;
+}
+
+html.theme-light table td {
+  color: #1e293b !important;
+}
+
+html.theme-light input,
+html.theme-light select,
+html.theme-light textarea {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(148, 163, 184, 0.46) !important;
+  color: #0f172a !important;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  aside,
+  .dashboard-mobile-dock,
+  .helpbot-root,
+  .helpbot-shell,
+  .admin-notification-bell,
+  button,
+  input,
+  select {
+    display: none !important;
+  }
+
+  header {
+    position: static !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  main,
+  section,
+  article,
+  div {
+    box-shadow: none !important;
+  }
+
+  table {
+    break-inside: auto;
+  }
 }
 
 /* Dashboard responsive polish for tablet/mobile */

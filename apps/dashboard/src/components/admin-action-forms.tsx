@@ -420,12 +420,12 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
         <h3 className="text-base font-semibold text-white">Wine pilot launcher (10 physical tags)</h3>
         <p className="mt-1 text-xs text-slate-400">One-click enterprise setup from Super Admin: create tenant, register batch, import/activate 10 tags and create tenant-admin credentials.</p>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant name" value={pilot.tenantName} onChange={(event) => setPilot((current) => ({ ...current, tenantName: event.target.value }))} />
-          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant slug" value={pilot.tenantSlug} onChange={(event) => setPilot((current) => ({ ...current, tenantSlug: event.target.value }))} />
-          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="batch id" value={pilot.batchId} onChange={(event) => setPilot((current) => ({ ...current, batchId: event.target.value }))} />
-          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="ops user name" value={pilot.userName} onChange={(event) => setPilot((current) => ({ ...current, userName: event.target.value }))} />
-          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="ops email" value={pilot.userEmail} onChange={(event) => setPilot((current) => ({ ...current, userEmail: event.target.value }))} />
-          <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="temporary password (8+)" value={pilot.userPassword} onChange={(event) => setPilot((current) => ({ ...current, userPassword: event.target.value }))} />
+          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant name" value={pilot.tenantName} onChange={(event) => setPilot((current) => ({ ...current, tenantName: event.target.value }))} />
+          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant slug" value={pilot.tenantSlug} onChange={(event) => setPilot((current) => ({ ...current, tenantSlug: event.target.value }))} />
+          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="batch id" value={pilot.batchId} onChange={(event) => setPilot((current) => ({ ...current, batchId: event.target.value }))} />
+          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="ops user name" value={pilot.userName} onChange={(event) => setPilot((current) => ({ ...current, userName: event.target.value }))} />
+          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="ops email" value={pilot.userEmail} onChange={(event) => setPilot((current) => ({ ...current, userEmail: event.target.value }))} />
+          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="temporary password (8+)" value={pilot.userPassword} onChange={(event) => setPilot((current) => ({ ...current, userPassword: event.target.value }))} />
         </div>
         <Button
           className="mt-3"
@@ -454,9 +454,9 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
           <h3 className="text-base font-semibold text-white">{copy.createTenant} <span className="ml-1 text-cyan-300" title={hints.createTenant}>ⓘ</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.createTenant}</p>
           <div className="mt-4 grid gap-3">
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantName} value={tenant.name} onChange={(event) => setTenant({ ...tenant, name: event.target.value })} />
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantSlug} value={tenant.slug} onChange={(event) => setTenant({ ...tenant, slug: event.target.value })} />
-            <select disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={tenant.plan} onChange={(event) => setTenant({ ...tenant, plan: event.target.value })}>
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantName} value={tenant.name} onChange={(event) => setTenant({ ...tenant, name: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantSlug} value={tenant.slug} onChange={(event) => setTenant({ ...tenant, slug: event.target.value })} />
+            <select suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={tenant.plan} onChange={(event) => setTenant({ ...tenant, plan: event.target.value })}>
               <option value="basic">BASIC</option>
               <option value="secure">SECURE</option>
               <option value="enterprise">ENTERPRISE / RESELLER</option>
@@ -469,13 +469,13 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
           <h3 className="text-base font-semibold text-white">{copy.createBatch} <span className="ml-1 text-cyan-300" title={hints.createBatch}>ⓘ</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.createBatch}</p>
           <div className="mt-4 grid gap-3">
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantId} value={batch.tenantId} onChange={(event) => setBatch({ ...batch, tenantId: event.target.value })} />
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Chip model (e.g. NTAG 424 DNA TT)" value={batch.chipModel} onChange={(event) => setBatch({ ...batch, chipModel: event.target.value })} />
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_META_BATCH (32 hex, optional)" value={batch.kMetaHex} onChange={(event) => setBatch({ ...batch, kMetaHex: event.target.value })} />
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_FILE_BATCH (32 hex, optional)" value={batch.kFileHex} onChange={(event) => setBatch({ ...batch, kFileHex: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantId} value={batch.tenantId} onChange={(event) => setBatch({ ...batch, tenantId: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Chip model (e.g. NTAG 424 DNA TT)" value={batch.chipModel} onChange={(event) => setBatch({ ...batch, chipModel: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_META_BATCH (32 hex, optional)" value={batch.kMetaHex} onChange={(event) => setBatch({ ...batch, kMetaHex: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_FILE_BATCH (32 hex, optional)" value={batch.kFileHex} onChange={(event) => setBatch({ ...batch, kFileHex: event.target.value })} />
             <p className="text-[11px] text-slate-500">Supplier batch registration (no CLI): tenant + batch + chip + keys + quantity. Use tenant slug or tenant UUID.</p>
             <Button
               disabled={pending || !canEdit || !batch.tenantId || !batch.batchId}
@@ -504,7 +504,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
           <h3 className="text-base font-semibold text-white">{copy.importManifest} <span className="ml-1 text-cyan-300" title={hints.importManifest}>ⓘ</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.importManifest}</p>
           <div className="mt-4 grid gap-3">
-            <button
+            <button suppressHydrationWarning
               type="button"
               disabled={!canEdit}
               className="w-fit rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-100 disabled:opacity-50"
@@ -518,7 +518,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             </button>
             <label className="w-fit rounded-full border border-white/20 px-3 py-1 text-[11px] text-slate-200">
               Upload supplier TXT/CSV
-              <input
+              <input suppressHydrationWarning
                 disabled={!canEdit}
                 type="file"
                 accept=".txt,.csv,text/plain,text/csv"
@@ -530,8 +530,8 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
                 }}
               />
             </label>
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
-            <textarea disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={manifest.batchId} onChange={(event) => setManifest({ ...manifest, batchId: event.target.value })} />
+            <textarea suppressHydrationWarning disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
             <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Accepted formats: (1) CSV with uid_hex (+ optional batch_id, ic_type, roll_id, qc_status, timestamp) or (2) plain text UID list, one UID per line (optional first line: uid_hex).</div>
             <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-100">
               <p>Preview: format <b>{manifestPreview.format.toUpperCase()}</b> · rows <b>{manifestPreview.rows}</b> · unique UIDs <b>{manifestPreview.unique}</b> · duplicates <b>{manifestPreview.duplicates}</b></p>
@@ -539,7 +539,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
               {manifestPreview.sample.length ? <p className="mt-1">Sample UIDs: {manifestPreview.sample.join(", ")}</p> : null}
             </div>
             <label className="flex items-center gap-2 text-xs text-slate-300">
-              <input disabled={!canEdit} type="checkbox" checked={manifest.activateImported} onChange={(event) => setManifest({ ...manifest, activateImported: event.target.checked })} />
+              <input suppressHydrationWarning disabled={!canEdit} type="checkbox" checked={manifest.activateImported} onChange={(event) => setManifest({ ...manifest, activateImported: event.target.checked })} />
               Activate imported tags immediately when the supplier already encoded them
             </label>
             <Button disabled={pending || !canEdit || !manifest.batchId} onClick={() => submit(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv, activateImported: manifest.activateImported })}>{copy.actions.importManifest}</Button>
@@ -550,13 +550,13 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
           <h3 className="text-base font-semibold text-white">{copy.activateRevoke} <span className="ml-1 text-cyan-300" title={hints.activateRevoke}>ⓘ</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.activateRevoke}</p>
           <div className="mt-4 grid gap-3">
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={activation.batchId} onChange={(event) => setActivation({ ...activation, batchId: event.target.value })} />
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.count} value={activation.count} onChange={(event) => setActivation({ ...activation, count: event.target.value })} />
-            <textarea disabled={!canEdit} className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="Optional UID list, separated by commas or new lines" value={activation.uids} onChange={(event) => setActivation({ ...activation, uids: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={activation.batchId} onChange={(event) => setActivation({ ...activation, batchId: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.count} value={activation.count} onChange={(event) => setActivation({ ...activation, count: event.target.value })} />
+            <textarea suppressHydrationWarning disabled={!canEdit} className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="Optional UID list, separated by commas or new lines" value={activation.uids} onChange={(event) => setActivation({ ...activation, uids: event.target.value })} />
             <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Tip: paste one UID per line when QA wants to selectively activate audited units only.</div>
             <Button disabled={pending || !canEdit || !activation.batchId || (!activation.count && !activation.uids.trim())} onClick={() => submit("/admin/tags/activate", { bid: activation.batchId, count: Number(activation.count || 0), uids: activation.uids })}>{copy.actions.activateTags}</Button>
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
-            <input disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
+            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
             <Button disabled={pending || !canEdit || !revoke.batchId} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke? This can impact live validations.")) submit(`/admin/batches/${revoke.batchId}/revoke`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>
           </div>
         </Card>
@@ -565,7 +565,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
           <h3 className="text-base font-semibold text-white">Validate Supplier Sample URL <span className="ml-1 text-cyan-300" title={hints.validateSampleUrl}>ⓘ</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.validateSampleUrl}</p>
           <div className="mt-4 grid gap-3">
-            <textarea
+            <textarea suppressHydrationWarning
               disabled={!canEdit}
               className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
               placeholder="Pegá una URL /sun recién escaneada desde una tag física"
@@ -584,14 +584,14 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             <div className="rounded-xl border border-amber-300/20 bg-amber-500/5 p-3">
               <p className="text-xs font-semibold text-amber-100">Compare before/after tamper URLs</p>
               <div className="mt-2 grid gap-2">
-                <textarea
+                <textarea suppressHydrationWarning
                   disabled={!canEdit}
                   className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
                   placeholder="URL before breaking loop"
                   value={tamperCompare.beforeUrl}
                   onChange={(event) => setTamperCompare((prev) => ({ ...prev, beforeUrl: event.target.value }))}
                 />
-                <textarea
+                <textarea suppressHydrationWarning
                   disabled={!canEdit}
                   className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
                   placeholder="URL after breaking loop"
@@ -601,14 +601,14 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
                 <Button disabled={pending || !canEdit || !tamperCompare.beforeUrl.trim() || !tamperCompare.afterUrl.trim()} variant="secondary" onClick={() => void compareTamperUrls()}>
                   Compare before/after tamper
                 </Button>
-                <textarea
+                <textarea suppressHydrationWarning
                   disabled={!canEdit}
                   className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
                   placeholder="Closed URLs (one per line)"
                   value={tamperSamples.closedUrls}
                   onChange={(event) => setTamperSamples((prev) => ({ ...prev, closedUrls: event.target.value }))}
                 />
-                <textarea
+                <textarea suppressHydrationWarning
                   disabled={!canEdit}
                   className="min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
                   placeholder="Opened URLs (one per line)"
@@ -629,7 +629,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             </div>
             <div className="rounded-xl border border-indigo-300/20 bg-indigo-500/5 p-3">
               <p className="text-xs font-semibold text-indigo-100">Inspect SUN URL (super-admin diagnostics)</p>
-              <textarea
+              <textarea suppressHydrationWarning
                 disabled={!canEdit}
                 className="mt-2 min-h-16 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
                 placeholder="Full /sun URL for parsed payload + decrypted byte offsets"
@@ -643,12 +643,12 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/5 p-3">
               <p className="text-xs font-semibold text-emerald-100">TagTamper parser config</p>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.bid} onChange={(e) => setTamperConfig((v) => ({ ...v, bid: e.target.value }))} placeholder="batch bid" />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.source} onChange={(e) => setTamperConfig((v) => ({ ...v, source: e.target.value }))} placeholder="source: enc_decrypted" />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.offset} onChange={(e) => setTamperConfig((v) => ({ ...v, offset: e.target.value }))} placeholder="offset" />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.length} onChange={(e) => setTamperConfig((v) => ({ ...v, length: e.target.value }))} placeholder="length" />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.closed} onChange={(e) => setTamperConfig((v) => ({ ...v, closed: e.target.value }))} placeholder="closed values, comma separated" />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.opened} onChange={(e) => setTamperConfig((v) => ({ ...v, opened: e.target.value }))} placeholder="open values, comma separated" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.bid} onChange={(e) => setTamperConfig((v) => ({ ...v, bid: e.target.value }))} placeholder="batch bid" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.source} onChange={(e) => setTamperConfig((v) => ({ ...v, source: e.target.value }))} placeholder="source: enc_decrypted" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.offset} onChange={(e) => setTamperConfig((v) => ({ ...v, offset: e.target.value }))} placeholder="offset" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.length} onChange={(e) => setTamperConfig((v) => ({ ...v, length: e.target.value }))} placeholder="length" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.closed} onChange={(e) => setTamperConfig((v) => ({ ...v, closed: e.target.value }))} placeholder="closed values, comma separated" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.opened} onChange={(e) => setTamperConfig((v) => ({ ...v, opened: e.target.value }))} placeholder="open values, comma separated" />
               </div>
               <Button
                 disabled={pending || !canEdit || !tamperConfig.bid.trim()}
@@ -674,10 +674,10 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             <div className="rounded-xl border border-rose-300/20 bg-rose-500/5 p-3">
               <p className="text-xs font-semibold text-rose-100">Manual opened fallback (demo/evidence)</p>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={manualOpened.batchId} onChange={(e) => setManualOpened((v) => ({ ...v, batchId: e.target.value }))} placeholder="batch id" />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={manualOpened.uidHex} onChange={(e) => setManualOpened((v) => ({ ...v, uidHex: e.target.value }))} placeholder="uid hex" />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs md:col-span-2" value={manualOpened.reason} onChange={(e) => setManualOpened((v) => ({ ...v, reason: e.target.value }))} placeholder="reason" />
-                <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs md:col-span-2" value={manualOpened.note} onChange={(e) => setManualOpened((v) => ({ ...v, note: e.target.value }))} placeholder="evidence note" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={manualOpened.batchId} onChange={(e) => setManualOpened((v) => ({ ...v, batchId: e.target.value }))} placeholder="batch id" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={manualOpened.uidHex} onChange={(e) => setManualOpened((v) => ({ ...v, uidHex: e.target.value }))} placeholder="uid hex" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs md:col-span-2" value={manualOpened.reason} onChange={(e) => setManualOpened((v) => ({ ...v, reason: e.target.value }))} placeholder="reason" />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs md:col-span-2" value={manualOpened.note} onChange={(e) => setManualOpened((v) => ({ ...v, note: e.target.value }))} placeholder="evidence note" />
               </div>
               <Button
                 disabled={pending || !canEdit || !manualOpened.batchId.trim() || !manualOpened.uidHex.trim()}
@@ -714,7 +714,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
         {copyActions.length ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {copyActions.map((item) => (
-              <button key={item.label} type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(item.value)}>{item.label}</button>
+              <button suppressHydrationWarning key={item.label} type="button" className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100" onClick={() => void copyValue(item.value)}>{item.label}</button>
             ))}
           </div>
         ) : null}

@@ -575,9 +575,9 @@ export function MobileDemoClient({
           <Card className="p-4 text-xs text-slate-300">
             <h2 className="text-sm font-semibold text-white">Ownership · Warranty · Provenance</h2>
             <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <button type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.08)]" onClick={() => void activateOwnership()}>✅ Activar ownership</button>
-              <button type="button" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100 shadow-[0_0_0_1px_rgba(167,139,250,.10)]" onClick={() => void saveWarranty()}>🛡️ Registrar garantía</button>
-              <button type="button" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,.10)]" onClick={() => void (async () => {
+              <button suppressHydrationWarning type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.08)]" onClick={() => void activateOwnership()}>✅ Activar ownership</button>
+              <button suppressHydrationWarning type="button" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100 shadow-[0_0_0_1px_rgba(167,139,250,.10)]" onClick={() => void saveWarranty()}>🛡️ Registrar garantía</button>
+              <button suppressHydrationWarning type="button" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,.10)]" onClick={() => void (async () => {
                 try {
                   const data = await fetchProvenance();
                   const total = Array.isArray((data as { actions?: unknown[] }).actions) ? (data as { actions: unknown[] }).actions.length : 0;
@@ -590,10 +590,10 @@ export function MobileDemoClient({
                 }
                 setTimelineOpen((value) => !value);
               })()}>📜 Ver provenance</button>
-              <button type="button" className="rounded-xl border border-white/20 bg-white/5 px-3 py-2.5 text-left text-white" onClick={requestTokenization}>✨ Tokenización opcional</button>
+              <button suppressHydrationWarning type="button" className="rounded-xl border border-white/20 bg-white/5 px-3 py-2.5 text-left text-white" onClick={requestTokenization}>✨ Tokenización opcional</button>
             </div>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900 p-2">
-              <input value={warrantyName} onChange={(event) => setWarrantyName(event.target.value)} placeholder="Nombre para garantía" className="w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
+              <input suppressHydrationWarning value={warrantyName} onChange={(event) => setWarrantyName(event.target.value)} placeholder="Nombre para garantía" className="w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
               {warrantySaved ? <p className="mt-2 text-emerald-300">Garantía guardada y vinculada al lifecycle.</p> : null}
               <p className="mt-2 text-[11px] text-slate-400">Batch: {effectiveBid || "(missing)"} · UID: {activeItem.uidHex || activeItem.uid_hex || "-"}</p>
               {ctaPending ? <p className="mt-1 text-xs text-cyan-200">Procesando CTA...</p> : null}
@@ -604,10 +604,10 @@ export function MobileDemoClient({
           <Card className="p-4 text-xs text-slate-300">
             <h2 className="text-sm font-semibold text-white">Commercial CTA</h2>
             <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <button type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100" onClick={() => openLeadFlow("request_demo")}>🚀 Request Demo</button>
-              <button type="button" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100" onClick={() => openLeadFlow("talk_sales")}>💼 Talk to Sales</button>
-              <button type="button" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100" onClick={() => openLeadFlow("become_reseller")}>🤝 Become Reseller</button>
-              <button type="button" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2.5 text-left text-emerald-100" onClick={() => openLeadFlow("request_quote")}>📈 Request Quote</button>
+              <button suppressHydrationWarning type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100" onClick={() => openLeadFlow("request_demo")}>🚀 Request Demo</button>
+              <button suppressHydrationWarning type="button" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100" onClick={() => openLeadFlow("talk_sales")}>💼 Talk to Sales</button>
+              <button suppressHydrationWarning type="button" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100" onClick={() => openLeadFlow("become_reseller")}>🤝 Become Reseller</button>
+              <button suppressHydrationWarning type="button" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2.5 text-left text-emerald-100" onClick={() => openLeadFlow("request_quote")}>📈 Request Quote</button>
             </div>
           </Card>
 
@@ -636,10 +636,10 @@ export function MobileDemoClient({
         <Card className="mx-auto max-w-[430px] border border-cyan-300/25 bg-slate-950/95 p-4 text-xs text-slate-300">
           <p className="text-sm font-semibold text-white">Tokenization-ready (feature gate)</p>
           <p className="mt-1">El backend de emisión on-chain no está activado en este demo público. Capturamos interés comercial y lead para CRM.</p>
-          <input className="mt-3 w-full rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Email de contacto" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
+          <input suppressHydrationWarning className="mt-3 w-full rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Email de contacto" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
           <div className="mt-3 flex gap-2">
-            <button type="button" className="rounded border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-cyan-100" onClick={saveLeadInterest}>Guardar interés</button>
-            <button type="button" className="rounded border border-white/20 px-3 py-1 text-white" onClick={() => setShowTokenModal(false)}>Cerrar</button>
+            <button suppressHydrationWarning type="button" className="rounded border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-cyan-100" onClick={saveLeadInterest}>Guardar interés</button>
+            <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-1 text-white" onClick={() => setShowTokenModal(false)}>Cerrar</button>
           </div>
           {leadSaved ? <p className="mt-2 text-emerald-300">Lead capturado para seguimiento comercial.</p> : null}
         </Card>
@@ -650,18 +650,18 @@ export function MobileDemoClient({
           <p className="text-sm font-semibold text-white">Lead capture · {leadIntent}</p>
           <p className="mt-1">Este CTA crea una oportunidad real en CRM-lite (o fallback local si el backend no responde).</p>
           <div className="mt-3 grid gap-2">
-            <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Nombre" value={leadName} onChange={(event) => setLeadName(event.target.value)} />
-            <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Email" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
-            <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Compañía" value={leadCompany} onChange={(event) => setLeadCompany(event.target.value)} />
+            <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Nombre" value={leadName} onChange={(event) => setLeadName(event.target.value)} />
+            <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Email" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
+            <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Compañía" value={leadCompany} onChange={(event) => setLeadCompany(event.target.value)} />
             <div className="grid grid-cols-2 gap-2">
-              <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="País" value={leadCountry} onChange={(event) => setLeadCountry(event.target.value)} />
-              <input className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Rol" value={leadRole} onChange={(event) => setLeadRole(event.target.value)} />
+              <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="País" value={leadCountry} onChange={(event) => setLeadCountry(event.target.value)} />
+              <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Rol" value={leadRole} onChange={(event) => setLeadRole(event.target.value)} />
             </div>
-            <textarea className="min-h-20 rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Mensaje" value={leadMessage} onChange={(event) => setLeadMessage(event.target.value)} />
+            <textarea suppressHydrationWarning className="min-h-20 rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Mensaje" value={leadMessage} onChange={(event) => setLeadMessage(event.target.value)} />
           </div>
           <div className="mt-3 flex gap-2">
-            <button type="button" className="rounded border border-violet-300/40 bg-violet-500/10 px-3 py-1 text-violet-100" onClick={() => void saveLeadInterest()}>Guardar lead</button>
-            <button type="button" className="rounded border border-white/20 px-3 py-1 text-white" onClick={() => setShowLeadModal(false)}>Cerrar</button>
+            <button suppressHydrationWarning type="button" className="rounded border border-violet-300/40 bg-violet-500/10 px-3 py-1 text-violet-100" onClick={() => void saveLeadInterest()}>Guardar lead</button>
+            <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-1 text-white" onClick={() => setShowLeadModal(false)}>Cerrar</button>
           </div>
           {leadSaved ? <p className="mt-2 text-emerald-300">Lead guardado.</p> : null}
         </Card>

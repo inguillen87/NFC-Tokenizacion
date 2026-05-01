@@ -48,7 +48,7 @@ export function MfaSettingsPanel() {
         <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm">
           <p className="text-slate-200">Secret: <code className="text-cyan-200">{secret}</code></p>
           <p className="break-all text-xs text-slate-400">{otpauthUrl}</p>
-          <input className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} />
+          <input suppressHydrationWarning className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} />
           <Button className="w-full" onClick={confirm}>Confirmar MFA</Button>
         </div>
       ) : null}

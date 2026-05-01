@@ -13,7 +13,7 @@ export default function LoyaltyCampaignsPage() {
          <div className="space-y-4">
             <div className="flex items-center justify-between">
                <h2 className="text-lg font-bold text-white">Campañas Activas</h2>
-               <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-lg transition-colors">
+               <button suppressHydrationWarning className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-lg transition-colors">
                  + Nueva Campaña
                </button>
             </div>
@@ -50,7 +50,7 @@ export default function LoyaltyCampaignsPage() {
                   </div>
                </div>
                <div className="mt-4 pt-4 border-t border-white/5">
-                  <button className="text-xs text-cyan-400 hover:text-cyan-300 font-bold">Activar Campaña →</button>
+                  <button suppressHydrationWarning className="text-xs text-cyan-400 hover:text-cyan-300 font-bold">Activar Campaña →</button>
                </div>
             </div>
          </div>
@@ -73,10 +73,10 @@ export default function LoyaltyCampaignsPage() {
 
             <div className="p-3 border-t border-white/10 bg-slate-900/50">
                <div className="flex flex-wrap gap-2 mb-3">
-                  <button className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-[10px] text-cyan-300 hover:bg-slate-700 transition">Armar campaña de reactivación</button>
-                  <button className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-[10px] text-cyan-300 hover:bg-slate-700 transition">Generar quiz de terroir</button>
+                  <button suppressHydrationWarning className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-[10px] text-cyan-300 hover:bg-slate-700 transition">Armar campaña de reactivación</button>
+                  <button suppressHydrationWarning className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-[10px] text-cyan-300 hover:bg-slate-700 transition">Generar quiz de terroir</button>
                </div>
-               <input type="text" placeholder="Escribile a BotIA..." className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 transition-colors" />
+               <input suppressHydrationWarning type="text" placeholder="Escribile a BotIA..." className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 transition-colors" />
             </div>
          </div>
       </div>

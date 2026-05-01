@@ -6,7 +6,7 @@ export default function OrderRequestsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">Order Requests (Marketplace)</h1>
           <p className="mt-1 text-sm text-slate-400">Solicitudes de compra generadas desde la red de consumidores y el marketplace.</p>
         </div>
-        <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors">
+        <button suppressHydrationWarning className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors">
           Exportar CSV
         </button>
       </header>

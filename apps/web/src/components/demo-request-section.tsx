@@ -8,78 +8,98 @@ type LeadForm = {
   name: string;
   contact: string;
   company: string;
-  country: string;
   vertical: string;
-  volume: string;
   notes: string;
 };
+
+type LeadResponse = {
+  ok?: boolean;
+  queued_local?: boolean;
+  delivery?: {
+    webhook?: { ok?: boolean; status?: number } | null;
+    whatsapp?: { ok?: boolean; status?: number } | null;
+  };
+};
+
+const verticals = ["wine", "events", "cosmetics", "agro", "pharma"] as const;
 
 const copy: Record<AppLocale, {
   eyebrow: string;
   title: string;
   description: string;
   submit: string;
+  loading: string;
   sent: string;
+  queued: string;
   error: string;
+  delivery: string;
   fields: Record<keyof LeadForm, string>;
 }> = {
   "es-AR": {
-    eyebrow: "Agendar demo",
-    title: "Coordinemos una demo y guardemos tu caso en el super admin",
-    description: "Completá tus datos y te contactamos con el pack correcto (vino, eventos, cosmética, agro o pharma).",
-    submit: "Enviar solicitud",
-    sent: "Solicitud enviada. Tu lead quedó registrado para seguimiento comercial.",
-    error: "No se pudo enviar ahora. Intentá nuevamente.",
+    eyebrow: "Demo enterprise",
+    title: "Contanos el caso y activamos el seguimiento comercial",
+    description: "Formulario corto: guardamos el lead en super-admin y disparamos la notificacion comercial para responder rapido.",
+    submit: "Enviar demo",
+    loading: "Enviando...",
+    sent: "Lead creado en super-admin.",
+    queued: "Solicitud recibida. Quedo en cola local porque el backend comercial no respondio.",
+    error: "Falta un contacto valido o no pudimos enviar la solicitud.",
+    delivery: "Notificacion comercial enviada.",
     fields: {
-      name: "Nombre y apellido",
+      name: "Nombre",
       contact: "Email o WhatsApp",
       company: "Empresa",
-      country: "País",
-      vertical: "Vertical (wine/events/cosmetics/agro/pharma)",
-      volume: "Volumen estimado anual",
-      notes: "Notas del caso (opcional)",
+      vertical: "Vertical",
+      notes: "Que queres validar en la demo? (opcional)",
     },
   },
   "pt-BR": {
-    eyebrow: "Agendar demo",
-    title: "Vamos agendar uma demo e registrar seu caso no super admin",
-    description: "Preencha seus dados e nosso time retorna com o pack ideal (wine, events, cosmetics, agro ou pharma).",
-    submit: "Enviar solicitação",
-    sent: "Solicitação enviada. Seu lead foi salvo para acompanhamento comercial.",
-    error: "Não foi possível enviar agora. Tente novamente.",
+    eyebrow: "Demo enterprise",
+    title: "Conte o caso e ativamos o follow-up comercial",
+    description: "Formulario curto: salvamos o lead no super-admin e disparamos a notificacao comercial para responder rapido.",
+    submit: "Enviar demo",
+    loading: "Enviando...",
+    sent: "Lead criado no super-admin.",
+    queued: "Solicitacao recebida. Ficou em fila local porque o backend comercial nao respondeu.",
+    error: "Falta um contato valido ou nao foi possivel enviar.",
+    delivery: "Notificacao comercial enviada.",
     fields: {
       name: "Nome",
       contact: "Email ou WhatsApp",
       company: "Empresa",
-      country: "País",
-      vertical: "Vertical (wine/events/cosmetics/agro/pharma)",
-      volume: "Volume anual estimado",
-      notes: "Notas do caso (opcional)",
+      vertical: "Vertical",
+      notes: "O que voce quer validar na demo? (opcional)",
     },
   },
   en: {
-    eyebrow: "Schedule demo",
-    title: "Book a demo and store your case in super-admin leads",
-    description: "Share your data and we will follow up with the right pack (wine, events, cosmetics, agro or pharma).",
-    submit: "Submit request",
-    sent: "Request sent. Your lead is now stored for sales follow-up.",
-    error: "Could not submit right now. Please retry.",
+    eyebrow: "Enterprise demo",
+    title: "Share the case and we will trigger sales follow-up",
+    description: "Short form: we save the lead in super-admin and trigger the commercial notification so the team can respond fast.",
+    submit: "Send demo request",
+    loading: "Sending...",
+    sent: "Lead created in super-admin.",
+    queued: "Request received. It is locally queued because the commercial backend did not respond.",
+    error: "Add a valid contact or retry the request.",
+    delivery: "Commercial notification sent.",
     fields: {
-      name: "Full name",
+      name: "Name",
       contact: "Email or WhatsApp",
       company: "Company",
-      country: "Country",
-      vertical: "Vertical (wine/events/cosmetics/agro/pharma)",
-      volume: "Estimated annual volume",
-      notes: "Case notes (optional)",
+      vertical: "Vertical",
+      notes: "What should we validate in the demo? (optional)",
     },
   },
 };
 
+function deliveryWorked(data: LeadResponse) {
+  return Boolean(data.delivery?.webhook?.ok || data.delivery?.whatsapp?.ok);
+}
+
 export function DemoRequestSection({ locale }: { locale: AppLocale }) {
   const t = copy[locale] || copy["es-AR"];
-  const [status, setStatus] = useState<"idle" | "ok" | "error" | "loading">("idle");
-  const [form, setForm] = useState<LeadForm>({ name: "", contact: "", company: "", country: "", vertical: "wine", volume: "", notes: "" });
+  const [status, setStatus] = useState<"idle" | "ok" | "queued" | "error" | "loading">("idle");
+  const [deliveryOk, setDeliveryOk] = useState(false);
+  const [form, setForm] = useState<LeadForm>({ name: "", contact: "", company: "", vertical: "wine", notes: "" });
 
   async function submit() {
     if (!form.contact.trim()) {
@@ -87,16 +107,18 @@ export function DemoRequestSection({ locale }: { locale: AppLocale }) {
       return;
     }
     setStatus("loading");
+    setDeliveryOk(false);
     const payload = {
       locale,
+      name: form.name,
       contact: form.contact,
       company: form.company || form.name,
-      country: form.country,
       vertical: form.vertical,
-      volume: Number(form.volume || 0),
       tag_type: form.vertical === "events" ? "basic" : "secure",
-      source: "demo_request",
-      notes: [form.name ? `Name: ${form.name}` : "", form.notes].filter(Boolean).join(" | "),
+      source: "landing_demo_request",
+      role_interest: "enterprise_pilot",
+      message: `demo_request vertical=${form.vertical}`,
+      notes: form.notes,
     };
 
     const res = await fetch("/api/leads", {
@@ -110,28 +132,57 @@ export function DemoRequestSection({ locale }: { locale: AppLocale }) {
       return;
     }
 
-    setStatus("ok");
-    setForm({ name: "", contact: "", company: "", country: "", vertical: "wine", volume: "", notes: "" });
+    const data = await res.json().catch(() => ({} as LeadResponse));
+    setDeliveryOk(deliveryWorked(data));
+    setStatus(data.queued_local ? "queued" : "ok");
+    setForm({ name: "", contact: "", company: "", vertical: "wine", notes: "" });
   }
 
   return (
     <section id="agendar-demo" className="container-shell py-16">
-      <Card className="p-6 md:p-8">
-        <SectionHeading eyebrow={t.eyebrow} title={t.title} description={t.description} />
-        <div className="mt-6 grid gap-3 md:grid-cols-2">
-          <input className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white" placeholder={t.fields.name} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-          <input className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white" placeholder={t.fields.contact} value={form.contact} onChange={(event) => setForm({ ...form, contact: event.target.value })} />
-          <input className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white" placeholder={t.fields.company} value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} />
-          <input className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white" placeholder={t.fields.country} value={form.country} onChange={(event) => setForm({ ...form, country: event.target.value })} />
-          <input className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white" placeholder={t.fields.vertical} value={form.vertical} onChange={(event) => setForm({ ...form, vertical: event.target.value })} />
-          <input className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white" placeholder={t.fields.volume} value={form.volume} onChange={(event) => setForm({ ...form, volume: event.target.value })} />
-          <textarea className="md:col-span-2 min-h-28 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-white" placeholder={t.fields.notes} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
-        </div>
+      <Card className="demo-request-card p-6 md:p-8">
+        <div className="grid gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
+          <div>
+            <SectionHeading eyebrow={t.eyebrow} title={t.title} description={t.description} />
+            <div className="mt-5 grid gap-2 text-sm text-slate-300">
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">1. Lead nuevo en super-admin.</div>
+              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">2. Notificacion comercial por webhook/WhatsApp si esta configurado.</div>
+              <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3">3. Seguimiento desde tickets, cotizador y Demo Lab.</div>
+            </div>
+          </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button onClick={submit} disabled={status === "loading"}>{t.submit}</Button>
-          {status === "ok" ? <p className="text-sm text-emerald-300">{t.sent}</p> : null}
-          {status === "error" ? <p className="text-sm text-rose-300">{t.error}</p> : null}
+          <div className="grid gap-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <input suppressHydrationWarning className="demo-input" placeholder={t.fields.name} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+              <input suppressHydrationWarning className="demo-input" placeholder={t.fields.contact} value={form.contact} onChange={(event) => setForm({ ...form, contact: event.target.value })} />
+              <input suppressHydrationWarning className="demo-input md:col-span-2" placeholder={t.fields.company} value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} />
+            </div>
+
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-300">{t.fields.vertical}</p>
+              <div className="flex flex-wrap gap-2">
+                {verticals.map((vertical) => (
+                  <button suppressHydrationWarning
+                    key={vertical}
+                    type="button"
+                    onClick={() => setForm({ ...form, vertical })}
+                    className={`demo-vertical-pill ${form.vertical === vertical ? "demo-vertical-pill--active" : ""}`}
+                  >
+                    {vertical}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <textarea suppressHydrationWarning className="demo-input min-h-24" placeholder={t.fields.notes} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={submit} disabled={status === "loading"}>{status === "loading" ? t.loading : t.submit}</Button>
+              {status === "ok" ? <p className="text-sm text-emerald-300">{t.sent} {deliveryOk ? t.delivery : ""}</p> : null}
+              {status === "queued" ? <p className="text-sm text-amber-300">{t.queued}</p> : null}
+              {status === "error" ? <p className="text-sm text-rose-300">{t.error}</p> : null}
+            </div>
+          </div>
         </div>
       </Card>
     </section>

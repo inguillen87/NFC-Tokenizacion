@@ -225,7 +225,7 @@ export default function DemoMobileItemPage() {
         <p className="text-xs text-slate-400">UID: {uid}</p>
         <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
           {detail.ctas.map((cta) => (
-            <button key={cta} type="button" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">{cta}</button>
+            <button suppressHydrationWarning key={cta} type="button" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">{cta}</button>
           ))}
         </div>
       </Card>
@@ -292,10 +292,10 @@ export default function DemoMobileItemPage() {
       <Card className="p-4 text-xs text-slate-300">
         <h3 className="text-sm font-semibold text-white">CTA comerciales</h3>
         <div className="mt-2 grid gap-2 md:grid-cols-2">
-          <button type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-100">Activar ownership</button>
-          <button type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-violet-100">Registrar garantía</button>
-          <button type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-amber-100">Ver provenance</button>
-          <button type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Tokenización opcional (NFT/asset)</button>
+          <button suppressHydrationWarning type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-100">Activar ownership</button>
+          <button suppressHydrationWarning type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-violet-100">Registrar garantía</button>
+          <button suppressHydrationWarning type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-amber-100">Ver provenance</button>
+          <button suppressHydrationWarning type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Tokenización opcional (NFT/asset)</button>
         </div>
       </Card>
         </div>

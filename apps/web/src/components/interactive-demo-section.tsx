@@ -207,7 +207,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
 
       <div className="mt-6 flex flex-wrap gap-2">
         {(Object.keys(t.verticals) as Vertical[]).map((item) => (
-          <button key={item} onClick={() => { setVertical(item); setStage("idle"); }} className={`rounded-full border px-4 py-2 text-sm transition ${vertical === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+          <button suppressHydrationWarning key={item} onClick={() => { setVertical(item); setStage("idle"); }} className={`rounded-full border px-4 py-2 text-sm transition ${vertical === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
             {t.verticals[item]}
           </button>
         ))}
@@ -226,8 +226,8 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
               </div>
               <p className="mt-3 text-xs text-slate-300">{active.summary}</p>
               <div className="mt-3 flex gap-2">
-                <button onClick={run} className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200">{t.trigger}</button>
-                <button onClick={() => { setStage("idle"); setResult("valid"); }} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-slate-200">{t.reset}</button>
+                <button suppressHydrationWarning onClick={run} className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200">{t.trigger}</button>
+                <button suppressHydrationWarning onClick={() => { setStage("idle"); setResult("valid"); }} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-slate-200">{t.reset}</button>
               </div>
             </div>
 

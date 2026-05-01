@@ -456,23 +456,23 @@ export function GlobalOpsMap({
       </div>
 
       <div className="mt-3 grid gap-2 md:grid-cols-6">
-        <select className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={tenant} onChange={(event) => setTenant(event.target.value)}>
+        <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={tenant} onChange={(event) => setTenant(event.target.value)}>
           {tenants.map((item) => <option key={item} value={item}>{item === "ALL" ? "Tenant: all" : item}</option>)}
         </select>
-        <select className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
+        <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
           {countries.map((item) => <option key={item} value={item}>{item === "ALL" ? "Country: all" : item}</option>)}
         </select>
-        <select className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={windowMode} onChange={(event) => setWindowMode(event.target.value as TimeWindow)}>
+        <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={windowMode} onChange={(event) => setWindowMode(event.target.value as TimeWindow)}>
           <option value="1h">1h</option>
           <option value="24h">24h</option>
           <option value="7d">7d</option>
           <option value="all">all</option>
         </select>
-        <select className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={verdict} onChange={(event) => setVerdict(event.target.value)}>
+        <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={verdict} onChange={(event) => setVerdict(event.target.value)}>
           {verdicts.map((item) => <option key={item} value={item}>{item === "ALL" ? "Verdict: all" : item}</option>)}
         </select>
-        <button type="button" onClick={() => setLocalRiskOnly((v) => !v)} className={`rounded-lg border px-2 py-1 text-xs ${localRiskOnly ? "border-rose-300/30 bg-rose-500/10 text-rose-100" : "border-white/10 bg-white/5 text-slate-200"}`}>{localRiskOnly ? "Risk-only: on" : "Risk-only: off"}</button>
-        <button type="button" onClick={() => setPlayback((value) => !value)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100">{playback ? "Pause playback" : "Play playback"}</button>
+        <button suppressHydrationWarning type="button" onClick={() => setLocalRiskOnly((v) => !v)} className={`rounded-lg border px-2 py-1 text-xs ${localRiskOnly ? "border-rose-300/30 bg-rose-500/10 text-rose-100" : "border-white/10 bg-white/5 text-slate-200"}`}>{localRiskOnly ? "Risk-only: on" : "Risk-only: off"}</button>
+        <button suppressHydrationWarning type="button" onClick={() => setPlayback((value) => !value)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100">{playback ? "Pause playback" : "Play playback"}</button>
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">
@@ -579,7 +579,7 @@ export function GlobalOpsMap({
 
           <div className="mt-3 space-y-2">
             {fallbackRows.map((point) => (
-              <button key={point.id} type="button" onClick={() => {
+              <button suppressHydrationWarning key={point.id} type="button" onClick={() => {
                 setInternalSelectedId(point.id);
                 onPointSelect?.(point);
               }} className={`w-full rounded-lg border px-2 py-2 text-left ${selectedPoint?.id === point.id ? "border-cyan-300/35 bg-cyan-500/10" : "border-white/10 bg-slate-900/70"}`}>
@@ -594,7 +594,7 @@ export function GlobalOpsMap({
       </div>
 
       <div className="mt-3">
-        <input type="range" min={10} max={100} step={10} value={progress} onChange={(event) => setProgress(Number(event.target.value))} className="w-full" />
+        <input suppressHydrationWarning type="range" min={10} max={100} step={10} value={progress} onChange={(event) => setProgress(Number(event.target.value))} className="w-full" />
       </div>
     </Card>
   );

@@ -536,9 +536,9 @@ export function MultirubroOpsPanel() {
           <p className="font-semibold">Sin puntos en el heatmap todavía.</p>
           <p className="mt-1 text-cyan-50/90">Podés generar actividad demo para validar KPI, feed y mapa en menos de 30s.</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <button onClick={() => void runDemoAction('/api/internal/demo/seed', 'Seed demo ejecutada correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Seed demo</button>
-            <button onClick={() => void runDemoAction('/api/internal/demo/generate-live-scans', 'Scans demo generados.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Generate live scans</button>
-            <button onClick={() => void runDemoAction('/api/internal/demo/simulate-tap', 'Tap simulado correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Simulate tap</button>
+            <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/seed', 'Seed demo ejecutada correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Seed demo</button>
+            <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/generate-live-scans', 'Scans demo generados.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Generate live scans</button>
+            <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/simulate-tap', 'Tap simulado correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Simulate tap</button>
           </div>
           {demoActionStatus ? <p className="mt-2 text-[11px] text-cyan-100">{demoActionStatus}</p> : null}
         </div>
@@ -583,8 +583,8 @@ export function MultirubroOpsPanel() {
       <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/60 p-3">
         <p className="text-xs uppercase tracking-[0.14em] text-slate-400">BotIA operativo (tenant scope)</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          <input value={botQuestion} onChange={(e) => setBotQuestion(e.target.value)} className="min-w-[260px] flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-100" />
-          <button onClick={runBotAnalysis} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Analizar</button>
+          <input suppressHydrationWarning value={botQuestion} onChange={(e) => setBotQuestion(e.target.value)} className="min-w-[260px] flex-1 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-100" />
+          <button suppressHydrationWarning onClick={runBotAnalysis} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Analizar</button>
         </div>
         {botAnswer ? <p className="mt-2 rounded-lg border border-cyan-300/20 bg-cyan-500/5 px-3 py-2 text-xs text-cyan-100">{botAnswer}</p> : null}
       </div>
@@ -594,7 +594,7 @@ export function MultirubroOpsPanel() {
           <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Alert center (realtime)</p>
           <div className="flex flex-wrap gap-2 text-xs">
             <label className="text-slate-400">Severity
-              <select value={alertSeverityFilter} onChange={(event) => setAlertSeverityFilter(event.target.value)} className="ml-1 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">
+              <select suppressHydrationWarning value={alertSeverityFilter} onChange={(event) => setAlertSeverityFilter(event.target.value)} className="ml-1 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">
                 <option value="">all</option>
                 <option value="critical">critical</option>
                 <option value="high">high</option>
@@ -603,7 +603,7 @@ export function MultirubroOpsPanel() {
               </select>
             </label>
             <label className="text-slate-400">Type
-              <select value={alertTypeFilter} onChange={(event) => setAlertTypeFilter(event.target.value)} className="ml-1 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">
+              <select suppressHydrationWarning value={alertTypeFilter} onChange={(event) => setAlertTypeFilter(event.target.value)} className="ml-1 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">
                 <option value="">all</option>
                 <option value="replay_spike">replay_spike</option>
                 <option value="tamper_rate">tamper_rate</option>
@@ -625,7 +625,7 @@ export function MultirubroOpsPanel() {
               <p className="mt-1 text-slate-400">{item.type} · {item.severity} · {item.status} · tenant {item.tenant_slug || "n/a"}</p>
               <div className="mt-2 flex items-center gap-2">
                 {item.status !== "acknowledged" ? (
-                  <button onClick={() => void acknowledgeAlert(item.id)} className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">
+                  <button suppressHydrationWarning onClick={() => void acknowledgeAlert(item.id)} className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">
                     Ack
                   </button>
                 ) : null}
@@ -694,10 +694,10 @@ export function MultirubroOpsPanel() {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button onClick={() => void handleMassMint()} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">
+            <button suppressHydrationWarning onClick={() => void handleMassMint()} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">
               {busy ? "Ejecutando mint..." : "Mint Masivo (control calidad OK)"}
             </button>
-            <button onClick={exportPdfReport} className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">Exportar reporte PDF</button>
+            <button suppressHydrationWarning onClick={exportPdfReport} className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">Exportar reporte PDF</button>
             <StatusChip label={wallet?.mode || "simulated"} tone={wallet?.mode === "live" ? "good" : "warn"} />
           </div>
           {mintStatus ? <p className="mt-2 text-xs text-slate-300">{mintStatus}</p> : null}

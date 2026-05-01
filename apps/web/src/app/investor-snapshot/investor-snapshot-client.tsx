@@ -96,7 +96,7 @@ Upside opcional: ownership, warranty, provenance y tokenización premium.`;
             </article>
           ))}
         </div>
-        <button type="button" onClick={() => setOpen(true)} className="mt-4 rounded-lg border border-violet-300/35 bg-violet-500/10 px-3 py-2 text-sm text-violet-100">
+        <button suppressHydrationWarning type="button" onClick={() => setOpen(true)} className="mt-4 rounded-lg border border-violet-300/35 bg-violet-500/10 px-3 py-2 text-sm text-violet-100">
           Open one-pager modal
         </button>
       </section>
@@ -106,12 +106,12 @@ Upside opcional: ownership, warranty, provenance y tokenización premium.`;
           <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-slate-900 p-4">
             <p className="text-sm font-semibold text-white">One-pager quick export</p>
             <div className="mt-3 flex gap-2">
-              <button type="button" onClick={() => setChannel("whatsapp")} className={`rounded px-3 py-1 text-xs ${channel === "whatsapp" ? "bg-cyan-500/20 text-cyan-100" : "bg-white/5 text-slate-300"}`}>WhatsApp</button>
-              <button type="button" onClick={() => setChannel("mail")} className={`rounded px-3 py-1 text-xs ${channel === "mail" ? "bg-cyan-500/20 text-cyan-100" : "bg-white/5 text-slate-300"}`}>Mail</button>
+              <button suppressHydrationWarning type="button" onClick={() => setChannel("whatsapp")} className={`rounded px-3 py-1 text-xs ${channel === "whatsapp" ? "bg-cyan-500/20 text-cyan-100" : "bg-white/5 text-slate-300"}`}>WhatsApp</button>
+              <button suppressHydrationWarning type="button" onClick={() => setChannel("mail")} className={`rounded px-3 py-1 text-xs ${channel === "mail" ? "bg-cyan-500/20 text-cyan-100" : "bg-white/5 text-slate-300"}`}>Mail</button>
             </div>
             <pre className="mt-3 overflow-x-auto rounded border border-white/10 bg-slate-950/70 p-3 text-[11px] text-slate-200 whitespace-pre-wrap">{onePagerText}</pre>
             <div className="mt-3 flex justify-end">
-              <button type="button" onClick={() => setOpen(false)} className="rounded border border-white/20 px-3 py-1 text-xs text-white">Close</button>
+              <button suppressHydrationWarning type="button" onClick={() => setOpen(false)} className="rounded border border-white/20 px-3 py-1 text-xs text-white">Close</button>
             </div>
           </div>
         </div>

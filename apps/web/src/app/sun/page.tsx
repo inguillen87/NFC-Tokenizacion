@@ -533,7 +533,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="rounded-2xl border border-red-500/30 bg-red-950/20 p-5 mt-4 text-center">
                <h3 className="text-sm font-bold text-white mb-2">Acción Bloqueada</h3>
                <p className="text-xs text-red-200/70 mb-4">Por seguridad, este producto no puede ser guardado en la colección ni sumar puntos.</p>
-               <button className="block w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition-colors">
+               <button suppressHydrationWarning className="block w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition-colors">
                   Reportar Problema
                </button>
             </div>

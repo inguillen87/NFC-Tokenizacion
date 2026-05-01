@@ -95,6 +95,63 @@ function mapHref(lat: number | null, lng: number | null) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
 }
 
+function escapeCsv(value: unknown) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function downloadBlob(filename: string, type: string, content: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function analyticsCsvRows(data: AnalyticsPanelsProps["data"]) {
+  const rows: Array<Record<string, unknown>> = [];
+  const api = data?.kpis || {};
+  rows.push({ section: "kpi", metric: "scans", value: api.scans || 0 });
+  rows.push({ section: "kpi", metric: "validRate", value: api.validRate || 0 });
+  rows.push({ section: "kpi", metric: "duplicates", value: api.duplicates || 0 });
+  rows.push({ section: "kpi", metric: "tamper", value: api.tamper || 0 });
+  (data?.feed || []).forEach((item) => rows.push({ section: "feed", metric: item.uidHex, value: item.result, city: item.city, country: item.country, createdAt: item.createdAt }));
+  (data?.products || []).forEach((item) => rows.push({ section: "product", metric: item.uidHex, value: item.scanCount, product: item.productName, lastCity: item.lastVerifiedCity, token: item.tokenization?.status }));
+  (data?.tagJourney || []).forEach((item) => rows.push({ section: "journey", metric: item.uid, value: item.taps, origin: `${item.origin.city}, ${item.origin.country}`, current: `${item.current.city}, ${item.current.country}` }));
+  return rows;
+}
+
+function buildAnalyticsCsv(data: AnalyticsPanelsProps["data"]) {
+  const rows = analyticsCsvRows(data);
+  const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
+  const header = columns.map(escapeCsv).join(",");
+  const body = rows.map((row) => columns.map((column) => escapeCsv(row[column])).join(",")).join("\n");
+  return `${header}\n${body}`;
+}
+
+function buildAnalyticsExcel(data: AnalyticsPanelsProps["data"]) {
+  const rows = analyticsCsvRows(data);
+  const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
+  const header = columns.map((column) => `<th>${column}</th>`).join("");
+  const body = rows
+    .map((row) => `<tr>${columns.map((column) => `<td>${String(row[column] ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>`).join("")}</tr>`)
+    .join("");
+  return `<!doctype html><html><head><meta charset="utf-8" /><title>nexID analytics</title></head><body><table border="1"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+}
+
+function AnalyticsExportActions({ data }: { data?: AnalyticsPanelsProps["data"] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.csv", "text/csv;charset=utf-8", buildAnalyticsCsv(data))} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">Export CSV</button>
+      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.xls", "application/vnd.ms-excel;charset=utf-8", buildAnalyticsExcel(data))} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/20">Export Excel</button>
+      <button suppressHydrationWarning type="button" onClick={() => window.print()} className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/20">Export PDF</button>
+    </div>
+  );
+}
+
 export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: AnalyticsPanelsProps) {
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [riskCategoryFilter, setRiskCategoryFilter] = useState<string>("ALL");
@@ -217,6 +274,15 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
   if (!hasOperationalData) {
     return (
       <div className="space-y-6">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">Analytics exports</p>
+              <p className="mt-1 text-xs text-slate-400">CSV, Excel y PDF del scope activo.</p>
+            </div>
+            <AnalyticsExportActions data={data} />
+          </div>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label={kpis.scans} value={String(api.scans ?? 0)} delta={kpis.scansDelta} tone="good" />
           <StatCard label={kpis.validInvalid} value={`${api.validRate ?? 0} / ${api.invalidRate ?? 0}`} delta={kpis.validInvalidDelta} tone="good" />
@@ -240,7 +306,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           <div className="space-y-2 text-sm text-slate-200">
             {aiSummary.map((line) => <p key={line}>• {line}</p>)}
           </div>
-          <button type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
+          <button suppressHydrationWarning type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
             Exportar PDF (imprimir reporte)
           </button>
         </OpsPanel>
@@ -258,6 +324,15 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-white">Analytics exports</p>
+            <p className="mt-1 text-xs text-slate-400">Exporta KPIs, feed, productos y journeys del scope actual.</p>
+          </div>
+          <AnalyticsExportActions data={data} />
+        </div>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={kpis.scans} value={String(api.scans ?? 0)} delta={kpis.scansDelta} tone="good" />
         <StatCard label={kpis.validInvalid} value={`${api.validRate ?? 0} / ${api.invalidRate ?? 0}`} delta={kpis.validInvalidDelta} tone="good" />
@@ -297,7 +372,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         <div className="space-y-2 text-sm text-slate-200">
           {aiSummary.map((line) => <p key={line}>• {line}</p>)}
         </div>
-        <button type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
+        <button suppressHydrationWarning type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
           Exportar PDF (imprimir reporte)
         </button>
       </OpsPanel>
@@ -376,7 +451,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
             <p>Badge automático de alerta por severidad derivada del evento.</p>
             <label>
               Severity
-              <select value={feedSeverityFilter} onChange={(event) => setFeedSeverityFilter(event.target.value)} className="ml-2 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">
+              <select suppressHydrationWarning value={feedSeverityFilter} onChange={(event) => setFeedSeverityFilter(event.target.value)} className="ml-2 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">
                 <option value="all">all</option>
                 <option value="critical">critical</option>
                 <option value="high">high</option>

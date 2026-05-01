@@ -188,7 +188,7 @@ export function RealtimeOpsMonitor({
           <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.liveFeed}</h2>
           <div className="flex items-center gap-2">
             <label className="sr-only" htmlFor="tenant-live-filter">Filtrar tenant</label>
-            <select
+            <select suppressHydrationWarning
               id="tenant-live-filter"
               value={selectedTenant}
               onChange={(event) => setSelectedTenant(event.target.value)}

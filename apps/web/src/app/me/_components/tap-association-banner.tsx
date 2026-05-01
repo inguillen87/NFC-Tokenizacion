@@ -115,28 +115,28 @@ export function TapAssociationBanner() {
 
       {step !== "done" ? (
         <div className="mt-3 grid gap-2 md:grid-cols-2">
-          <button disabled={pending} onClick={() => void continueWithSession()} className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60">
+          <button suppressHydrationWarning disabled={pending} onClick={() => void continueWithSession()} className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60">
             Ya tengo sesión, asociar ahora
           </button>
-          <input
+          <input suppressHydrationWarning
             value={contact}
             onChange={(event) => setContact(event.target.value)}
             placeholder="Email o teléfono"
             className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
           />
           {step === "idle" ? (
-            <button disabled={pending || !contact.trim()} onClick={() => void sendCode()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60">
+            <button suppressHydrationWarning disabled={pending || !contact.trim()} onClick={() => void sendCode()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60">
               Registrarme y asociar
             </button>
           ) : (
             <>
-              <input
+              <input suppressHydrationWarning
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
                 placeholder="Código"
                 className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
               />
-              <button disabled={pending || !code.trim()} onClick={() => void verifyAndAssociate()} className="rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-violet-100 disabled:opacity-60">
+              <button suppressHydrationWarning disabled={pending || !code.trim()} onClick={() => void verifyAndAssociate()} className="rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-violet-100 disabled:opacity-60">
                 Verificar y finalizar
               </button>
             </>

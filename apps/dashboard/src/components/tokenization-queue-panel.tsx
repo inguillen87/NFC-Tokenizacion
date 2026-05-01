@@ -105,7 +105,7 @@ export function TokenizationQueuePanel() {
           </div>
           <div className="flex flex-wrap gap-2">
             {(["all", "pending", "processing", "failed", "anchored"] as const).map((item) => (
-              <button
+              <button suppressHydrationWarning
                 key={item}
                 type="button"
                 className={`rounded-lg border px-2 py-1 text-xs ${statusFilter === item ? "border-cyan-300/35 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`}
@@ -191,12 +191,12 @@ export function TokenizationQueuePanel() {
                 <p><b>{row.bid}</b> · {row.uid_hex} · <span className="text-cyan-200">{row.status}</span></p>
                 <div className="flex gap-2">
                   {row.status === "failed" ? (
-                    <button type="button" className="rounded-lg border border-amber-300/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100" onClick={() => void processRequest(row.id)}>
+                    <button suppressHydrationWarning type="button" className="rounded-lg border border-amber-300/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100" onClick={() => void processRequest(row.id)}>
                       Retry failed now
                     </button>
                   ) : null}
                   {row.status !== "anchored" ? (
-                    <button type="button" className="rounded-lg border border-emerald-300/40 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100" onClick={() => void processRequest(row.id)}>
+                    <button suppressHydrationWarning type="button" className="rounded-lg border border-emerald-300/40 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100" onClick={() => void processRequest(row.id)}>
                       Mint now
                     </button>
                   ) : null}

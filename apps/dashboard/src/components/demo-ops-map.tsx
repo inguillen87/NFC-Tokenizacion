@@ -95,21 +95,21 @@ export function DemoOpsMap({
           <h3 className="text-sm font-semibold text-white">Global Ops Map</h3>
           <p className="text-xs text-slate-400">Vista enterprise con hubs, rutas y playback para taps premium.</p>
         </div>
-        <button type="button" className="rounded-lg border border-white/10 px-3 py-1 text-xs text-slate-300" onClick={resetFilters}>Reset filters</button>
+        <button suppressHydrationWarning type="button" className="rounded-lg border border-white/10 px-3 py-1 text-xs text-slate-300" onClick={resetFilters}>Reset filters</button>
       </div>
 
       <div className="mt-3">
         <FilterBar contentClassName={mode === "demo" ? "md:grid-cols-3" : "md:grid-cols-2"}>
-          <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={eventFilter} onChange={(event) => setEventFilter(event.target.value as EventFilter)}>
+          <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={eventFilter} onChange={(event) => setEventFilter(event.target.value as EventFilter)}>
             <option value="all">Todos los eventos</option>
             <option value="clean">AUTH OK</option>
             <option value="risk">Solo riesgo</option>
           </select>
-          <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
+          <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
             {countries.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
           {mode === "demo" ? (
-            <select className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={scope} onChange={(event) => setScope(event.target.value as ScopeFilter)}>
+            <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 p-2 text-xs text-white" value={scope} onChange={(event) => setScope(event.target.value as ScopeFilter)}>
               <option value="selected">Solo demo seleccionado</option>
               <option value="all">Todo el tráfico demo</option>
             </select>

@@ -6,7 +6,7 @@ export default function ExperiencesPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">Experiencias y Eventos</h1>
           <p className="mt-1 text-sm text-slate-400">Gestioná visitas, catas, masterclasses y la capacidad de reservas para tus miembros.</p>
         </div>
-        <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors">
+        <button suppressHydrationWarning className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors">
           + Nueva Experiencia
         </button>
       </header>
@@ -37,7 +37,7 @@ export default function ExperiencesPage() {
 
                <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
                   <span className="text-sm font-bold text-white">Check-ins: 0</span>
-                  <button className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Ver Reservas →</button>
+                  <button suppressHydrationWarning className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Ver Reservas →</button>
                </div>
             </div>
          </div>
@@ -67,7 +67,7 @@ export default function ExperiencesPage() {
 
                <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">SOLD OUT</span>
-                  <button className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Ver Reservas →</button>
+                  <button suppressHydrationWarning className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Ver Reservas →</button>
                </div>
             </div>
          </div>

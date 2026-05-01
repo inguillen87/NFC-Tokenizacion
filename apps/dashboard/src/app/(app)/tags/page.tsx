@@ -107,23 +107,23 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
 
       <Card className="p-5">
         <form className="grid gap-3 md:grid-cols-6">
-          <input name="q" defaultValue={query.q || ""} placeholder="UID / BID / producto / status" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <select name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
+          <input suppressHydrationWarning name="q" defaultValue={query.q || ""} placeholder="UID / BID / producto / status" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <select suppressHydrationWarning name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
             <option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option>
           </select>
           {session.role !== "tenant-admin" ? (
-            <select name="source" defaultValue={source} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
+            <select suppressHydrationWarning name="source" defaultValue={source} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
               <option value="all">all</option>
               <option value="real">real</option>
               <option value="simulated">simulated</option>
             </select>
           ) : (
-            <input type="hidden" name="source" value="real" />
+            <input suppressHydrationWarning type="hidden" name="source" value="real" />
           )}
-          {session.role !== "tenant-admin" ? <input name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input type="hidden" name="tenant" value={tenantScope} />}
-          <input name="country" defaultValue={country} placeholder="country (AR, BR...)" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <input type="hidden" name="page" value="1" />
-          <button className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
+          {session.role !== "tenant-admin" ? <input suppressHydrationWarning name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input suppressHydrationWarning type="hidden" name="tenant" value={tenantScope} />}
+          <input suppressHydrationWarning name="country" defaultValue={country} placeholder="country (AR, BR...)" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <input suppressHydrationWarning type="hidden" name="page" value="1" />
+          <button suppressHydrationWarning className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
         </form>
         <p className="mt-3 text-xs text-slate-400">Scope: <b className="text-slate-200">{tenantScope || "global"}</b> · Source: <b className="text-slate-200">{source}</b> · Total: <b className="text-slate-200">{totalRows}</b> · Page: <b className="text-slate-200">{page}</b></p>
         {data.meta.demoMode ? (

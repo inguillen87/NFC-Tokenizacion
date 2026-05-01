@@ -6,7 +6,7 @@ export default function RewardsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">Catálogo de Beneficios</h1>
           <p className="mt-1 text-sm text-slate-400">Gestioná los premios, experiencias y descuentos disponibles para tus usuarios.</p>
         </div>
-        <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-colors">
+        <button suppressHydrationWarning className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-colors">
           + Nuevo Beneficio
         </button>
       </header>
@@ -30,7 +30,7 @@ export default function RewardsPage() {
                      <p className="text-sm font-bold text-white">300 pts</p>
                      <p className="text-[10px] text-slate-500">Stock: Ilimitado</p>
                   </div>
-                  <button className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Editar</button>
+                  <button suppressHydrationWarning className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Editar</button>
                </div>
             </div>
          </div>
@@ -53,7 +53,7 @@ export default function RewardsPage() {
                      <p className="text-sm font-bold text-white">1200 pts</p>
                      <p className="text-[10px] text-amber-400">Stock: 12 unidades</p>
                   </div>
-                  <button className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Editar</button>
+                  <button suppressHydrationWarning className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Editar</button>
                </div>
             </div>
          </div>
@@ -76,7 +76,7 @@ export default function RewardsPage() {
                      <p className="text-sm font-bold text-white">2500 pts</p>
                      <p className="text-[10px] text-slate-500">Stock: 0 unidades</p>
                   </div>
-                  <button className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Editar</button>
+                  <button suppressHydrationWarning className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Editar</button>
                </div>
             </div>
          </div>

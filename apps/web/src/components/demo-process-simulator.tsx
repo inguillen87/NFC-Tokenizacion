@@ -179,7 +179,7 @@ export function DemoProcessSimulator({ locale }: Props) {
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="text-xs uppercase tracking-[0.14em] text-slate-400">{copy.scenariosTitle}</span>
         {(Object.keys(copy.scenarios) as Scenario[]).map((item) => (
-          <button
+          <button suppressHydrationWarning
             key={item}
             type="button"
             onClick={() => setScenario(item)}
@@ -191,7 +191,7 @@ export function DemoProcessSimulator({ locale }: Props) {
       </div>
 
       <div className="mt-3">
-        <button
+        <button suppressHydrationWarning
           type="button"
           onClick={() => setPlaying((value) => !value)}
           className="inline-flex items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100 transition hover:bg-cyan-500/20"
@@ -203,7 +203,7 @@ export function DemoProcessSimulator({ locale }: Props) {
 
       <div className="mt-4 flex flex-wrap gap-2">
         {copy.actions.map((action) => (
-          <button
+          <button suppressHydrationWarning
             key={action.id}
             type="button"
             onClick={() => setStage(action.id)}

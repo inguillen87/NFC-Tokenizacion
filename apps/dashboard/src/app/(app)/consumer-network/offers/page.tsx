@@ -6,7 +6,7 @@ export default function TenantOffersPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">Ofertas & Drops</h1>
           <p className="mt-1 text-sm text-slate-400">Promociones exclusivas para usuarios de la red NexID y el Marketplace cruzado.</p>
         </div>
-        <button className="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white text-sm font-semibold rounded-lg transition-colors">
+        <button suppressHydrationWarning className="px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white text-sm font-semibold rounded-lg transition-colors">
           + Crear Oferta
         </button>
       </header>

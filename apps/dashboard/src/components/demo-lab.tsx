@@ -74,7 +74,7 @@ export function DemoLabControlCenter() {
             <p className="text-sm text-slate-400 mt-2">NFC Interaction Engine. Simulate taps, replay attacks, and tamper events globally.</p>
          </div>
          <div className="flex gap-3">
-            <button onClick={() => runAction(() => call("reset", "POST"))} disabled={pending} className="px-4 py-2 bg-slate-900 border border-white/10 hover:border-white/30 text-white text-xs font-semibold rounded-xl transition-all shadow-sm">
+            <button suppressHydrationWarning onClick={() => runAction(() => call("reset", "POST"))} disabled={pending} className="px-4 py-2 bg-slate-900 border border-white/10 hover:border-white/30 text-white text-xs font-semibold rounded-xl transition-all shadow-sm">
                Factory Reset
             </button>
             <a href="/analytics" className="px-4 py-2 bg-white text-slate-900 hover:bg-slate-200 text-xs font-bold rounded-xl transition-all shadow-md">
@@ -96,21 +96,21 @@ export function DemoLabControlCenter() {
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button onClick={() => triggerScenario("valid")} disabled={pending} className={`relative group p-5 rounded-2xl border transition-all duration-300 text-left overflow-hidden ${pulseScenario === "valid" ? "border-emerald-400 bg-emerald-500/10 scale-95" : "border-emerald-500/20 bg-slate-950/50 hover:border-emerald-400/50 hover:bg-emerald-950/40"}`}>
+                  <button suppressHydrationWarning onClick={() => triggerScenario("valid")} disabled={pending} className={`relative group p-5 rounded-2xl border transition-all duration-300 text-left overflow-hidden ${pulseScenario === "valid" ? "border-emerald-400 bg-emerald-500/10 scale-95" : "border-emerald-500/20 bg-slate-950/50 hover:border-emerald-400/50 hover:bg-emerald-950/40"}`}>
                      {pulseScenario === "valid" && <div className="absolute inset-0 bg-emerald-400/20 animate-ping" />}
                      <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 group-hover:scale-110 transition-transform">✓</div>
                      <p className="text-sm font-bold text-white mb-1">Valid Authentication</p>
                      <p className="text-[11px] text-slate-400 leading-relaxed">Simulate a perfect factory-sealed NFC tap in Mendoza.</p>
                   </button>
 
-                  <button onClick={() => triggerScenario("replay")} disabled={pending} className={`relative group p-5 rounded-2xl border transition-all duration-300 text-left overflow-hidden ${pulseScenario === "replay" ? "border-amber-400 bg-amber-500/10 scale-95" : "border-amber-500/20 bg-slate-950/50 hover:border-amber-400/50 hover:bg-amber-950/40"}`}>
+                  <button suppressHydrationWarning onClick={() => triggerScenario("replay")} disabled={pending} className={`relative group p-5 rounded-2xl border transition-all duration-300 text-left overflow-hidden ${pulseScenario === "replay" ? "border-amber-400 bg-amber-500/10 scale-95" : "border-amber-500/20 bg-slate-950/50 hover:border-amber-400/50 hover:bg-amber-950/40"}`}>
                      {pulseScenario === "replay" && <div className="absolute inset-0 bg-amber-400/20 animate-ping" />}
                      <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-4 group-hover:scale-110 transition-transform">⚠️</div>
                      <p className="text-sm font-bold text-white mb-1">Replay Attack</p>
                      <p className="text-[11px] text-slate-400 leading-relaxed">Trigger a cloned URL scan from a suspect IP address.</p>
                   </button>
 
-                  <button onClick={() => triggerScenario("tamper")} disabled={pending} className={`relative group p-5 rounded-2xl border transition-all duration-300 text-left overflow-hidden ${pulseScenario === "tamper" ? "border-rose-400 bg-rose-500/10 scale-95" : "border-rose-500/20 bg-slate-950/50 hover:border-rose-400/50 hover:bg-rose-950/40"}`}>
+                  <button suppressHydrationWarning onClick={() => triggerScenario("tamper")} disabled={pending} className={`relative group p-5 rounded-2xl border transition-all duration-300 text-left overflow-hidden ${pulseScenario === "tamper" ? "border-rose-400 bg-rose-500/10 scale-95" : "border-rose-500/20 bg-slate-950/50 hover:border-rose-400/50 hover:bg-rose-950/40"}`}>
                      {pulseScenario === "tamper" && <div className="absolute inset-0 bg-rose-400/20 animate-ping" />}
                      <div className="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4 group-hover:scale-110 transition-transform">❌</div>
                      <p className="text-sm font-bold text-white mb-1">Tamper Alert</p>

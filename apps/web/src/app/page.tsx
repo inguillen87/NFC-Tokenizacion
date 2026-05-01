@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { BrandLockup, BrandMark, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
+import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
-  BulletSection,
   CtaSection,
   EventsTagPositioningSection,
   HeroSection,
+  PremiumIdentitySection,
   PlansSection,
 } from "../components/landing-sections";
 import { SalesChatWidget } from "../components/sales-chat-widget";
@@ -218,23 +218,7 @@ export default async function HomePage() {
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
         <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <span className="inline-flex items-center gap-2 px-1 py-1">
-              <BrandMark
-                size={34}
-                variant="ripple"
-                theme="dark"
-                className="lg:hidden text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
-              />
-              <span className="hidden items-center gap-2 lg:inline-flex">
-                <BrandMark
-                  size={40}
-                  variant="ripple"
-                  theme="dark"
-                  className="text-white [--brand-mark-bg:transparent] [--brand-mark-border:transparent] [--brand-mark-plate:transparent]"
-                />
-                <span className="text-xl font-bold tracking-tight text-white">nex<span className="text-cyan-300">ID</span></span>
-              </span>
-            </span>
+            <BrandLockup size={44} variant="ripple" theme="dark" className="site-brand-lockup" />
           </Link>
 
           <nav className="hidden gap-6 text-sm lg:flex site-nav">
@@ -251,6 +235,8 @@ export default async function HomePage() {
               loginLabel={content.nav.cta}
               primaryCtaHref="/?contact=demo#contact-modal"
               primaryCtaLabel={labels.mobileCtaDemo}
+              locale={locale}
+              locales={[...locales]}
             />
             <div className="hidden lg:inline-flex">
               <LocaleSwitcher value={locale} options={[...locales]} />
@@ -272,10 +258,10 @@ export default async function HomePage() {
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
 
-      <PlansSection content={content} />
+      <PlansSection content={content} locale={locale} />
       <EventsTagPositioningSection locale={locale} />
 
-      <BulletSection eyebrow={content.identity.eyebrow} title={content.identity.title} description={content.identity.description} bullets={content.identity.bullets} />
+      <PremiumIdentitySection content={content} locale={locale} />
 
       <section className="container-shell py-10">
         <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 md:p-8">
@@ -304,7 +290,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <CtaSection content={content} />
+      <CtaSection content={content} locale={locale} />
       <DemoRequestSection locale={locale} />
       <SalesChatWidget locale={locale} />
       <CommercialContactModal />

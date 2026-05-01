@@ -11,5 +11,5 @@ export function Button({ variant = "primary", className = "", ...props }: Button
     secondary: "ui-btn--secondary border border-white/15 bg-white/5 text-white hover:bg-white/10 hover:shadow-[0_10px_28px_rgba(15,23,42,0.35)]",
     ghost: "ui-btn--ghost text-slate-200 hover:bg-white/5",
   };
-  return <button className={`${base} ${styles[variant]} ${className}`} {...props} />;
+  return <button {...props} suppressHydrationWarning={props.suppressHydrationWarning ?? true} className={`${base} ${styles[variant]} ${className}`} />;
 }

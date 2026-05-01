@@ -39,6 +39,7 @@ export function ThemeToggle() {
 
   return (
     <button
+      suppressHydrationWarning
       type="button"
       onClick={() => {
         const next: Theme = theme === "dark" ? "light" : "dark";
@@ -49,7 +50,7 @@ export function ThemeToggle() {
       aria-label="Toggle theme"
       title="Toggle theme"
     >
-      <span aria-hidden className="theme-toggle__icon">{theme === "dark" ? "☾" : "☼"}</span>
+      <span aria-hidden className={`theme-toggle__glyph theme-toggle__glyph--${theme}`} />
       <span>{theme === "dark" ? "Dark" : "Light"}</span>
     </button>
   );

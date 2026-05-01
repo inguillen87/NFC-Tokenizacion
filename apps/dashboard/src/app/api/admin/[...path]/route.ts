@@ -207,6 +207,25 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       ],
     }, "demo"));
   }
+  if (method === "GET" && normalized === "notifications") {
+    return NextResponse.json({
+      ok: true,
+      unreadCount: 1,
+      counts: { new_leads: 1, open_tickets: 0, new_orders: 0 },
+      latest: [
+        {
+          type: "lead",
+          id: "demo-lead-001",
+          contact: "demo@nexid.lat",
+          title: "Demo Bodega",
+          status: "new",
+          created_at: new Date().toISOString(),
+        },
+      ],
+      generatedAt: new Date().toISOString(),
+      demoMode: true,
+    });
+  }
   if (method === "GET" && normalized === "tags") {
     return NextResponse.json(annotatePayload({
       scope: { tenant: tenantFilter || "demobodega", source: "demo", range: "30d", country: "all", query: "", offset: 0, limit: 100 },

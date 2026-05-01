@@ -138,7 +138,7 @@ export function MetamaskSandboxCard() {
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <button
+        <button suppressHydrationWarning
           type="button"
           disabled={pending}
           onClick={() => void connectWallet()}
@@ -146,7 +146,7 @@ export function MetamaskSandboxCard() {
         >
           {address ? "Reconectar MetaMask" : "Conectar MetaMask"}
         </button>
-        <button
+        <button suppressHydrationWarning
           type="button"
           disabled={pending || !hasProvider}
           onClick={() => void addAmoy()}
@@ -156,7 +156,7 @@ export function MetamaskSandboxCard() {
         </button>
       </div>
 
-      <button
+      <button suppressHydrationWarning
         type="button"
         onClick={continueSandbox}
         className="mt-2 w-full rounded-lg border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/20"

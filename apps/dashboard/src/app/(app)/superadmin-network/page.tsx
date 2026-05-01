@@ -7,8 +7,8 @@ export default function SuperadminConsumerNetworkPage() {
           <p className="mt-1 text-sm text-slate-400">Visión portfolio de la adopción B2C, métricas agregadas y cruces de marketplace.</p>
         </div>
         <div className="flex items-center gap-3">
-           <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors">Exportar Reporte</button>
-           <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-colors">Configurar Settlement</button>
+           <button suppressHydrationWarning className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors">Exportar Reporte</button>
+           <button suppressHydrationWarning className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-colors">Configurar Settlement</button>
         </div>
       </header>
 
@@ -96,7 +96,7 @@ export default function SuperadminConsumerNetworkPage() {
             </div>
 
             <div className="p-3 border-t border-white/10 bg-slate-900/50">
-               <button className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white rounded transition">Generar Resumen Ejecutivo</button>
+               <button suppressHydrationWarning className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white rounded transition">Generar Resumen Ejecutivo</button>
             </div>
          </div>
       </div>

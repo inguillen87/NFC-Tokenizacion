@@ -28,9 +28,9 @@ export function ResetPasswordPanel({ passwordPlaceholder, actionLabel }: { passw
 
   return (
     <div className="mt-6 grid gap-3">
-      <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Reset token" value={token} onChange={(e) => setToken(e.target.value)} />
-      <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={passwordPlaceholder} value={password} onChange={(e) => setPassword(e.target.value)} />
-      <input type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Confirm password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Reset token" value={token} onChange={(e) => setToken(e.target.value)} />
+      <input suppressHydrationWarning type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={passwordPlaceholder} value={password} onChange={(e) => setPassword(e.target.value)} />
+      <input suppressHydrationWarning type="password" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Confirm password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
       <Button className="w-full" onClick={submit}>{actionLabel}</Button>
       {status ? <p className="text-xs text-cyan-200">{status}</p> : null}
     </div>

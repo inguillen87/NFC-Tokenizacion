@@ -7,6 +7,7 @@ import { useState, useRef, useEffect } from "react";
 import { dashboardContent } from "../lib/dashboard-content";
 import { productUrls } from "@product/config";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
+import { AdminNotificationBell } from "./admin-notification-bell";
 
 type DashboardText = typeof dashboardContent["es-AR"];
 
@@ -26,7 +27,7 @@ export function ThemeToggle() {
   };
 
   return (
-    <button onClick={toggle} className="rounded-lg border border-white/10 px-3 py-2 text-xs" title="Toggle theme">
+    <button suppressHydrationWarning onClick={toggle} className="rounded-lg border border-white/10 px-3 py-2 text-xs" title="Toggle theme">
       {theme === "dark" ? "☀️" : "🌙"}
     </button>
   );
@@ -34,7 +35,7 @@ export function ThemeToggle() {
 
 export function LocaleSwitcher({ value, options }: { value: string; options: readonly string[] }) {
   return (
-    <select
+    <select suppressHydrationWarning
       value={value}
       onChange={(e) => { document.cookie = `locale=${e.target.value}; path=/; max-age=31536000`; window.location.reload(); }}
       className="rounded-lg border border-white/10 bg-transparent px-2 py-2 text-xs text-inherit outline-none"
@@ -183,7 +184,7 @@ export function DashboardShellInner({
           </div>
 
           <div className="relative">
-            <input
+            <input suppressHydrationWarning
               ref={searchRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -203,7 +204,7 @@ export function DashboardShellInner({
               {filteredLinks.length ? (
                 <div className="space-y-1">
                   {filteredLinks.slice(0, 4).map((entry) => (
-                    <button key={entry.href} onClick={() => { router.push(entry.href); setQuery(""); }} className="block w-full rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-left text-cyan-100 hover:bg-cyan-500/15">
+                    <button suppressHydrationWarning key={entry.href} onClick={() => { router.push(entry.href); setQuery(""); }} className="block w-full rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-left text-cyan-100 hover:bg-cyan-500/15">
                       {entry.label}
                     </button>
                   ))}
@@ -308,6 +309,7 @@ export function DashboardShellInner({
               <h1 className="text-xl font-bold text-white tracking-tight">{title}</h1>
             </div>
             <div className="flex items-center gap-3">
+              <AdminNotificationBell />
               <Badge tone={audienceCopy.tone}>{audienceCopy.label}</Badge>
               <Badge tone="green">{shell.apiConnected}</Badge>
               <div className="h-6 w-px bg-white/10 mx-1" />

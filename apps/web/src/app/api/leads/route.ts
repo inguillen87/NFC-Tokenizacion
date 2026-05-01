@@ -7,6 +7,7 @@ const API_BASE = productUrls.api;
 
 export async function POST(req: Request) {
   const body = await req.text();
+  const adminKey = (process.env.ADMIN_API_KEY || "").trim();
 
   try {
     let response = await fetch(`${API_BASE}/public/leads`, {
@@ -16,10 +17,13 @@ export async function POST(req: Request) {
       cache: "no-store",
     });
 
-    if (response.status === 404 || response.status === 405) {
+    if (response.status === 404 || response.status === 405 || response.status >= 500) {
       response = await fetch(`${API_BASE}/admin/leads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(adminKey ? { Authorization: `Bearer ${adminKey}` } : {}),
+        },
         body,
         cache: "no-store",
       });

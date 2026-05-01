@@ -13,8 +13,8 @@ export default async function WebRegisterPage() {
         <h1 className="text-2xl font-bold text-white">{t.web.auth.registerTitle}</h1>
         <p className="mt-2 text-sm text-slate-400">{content.cta.body}</p>
         <div className="mt-6 grid gap-3">
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2" placeholder={t.web.auth.companyPlaceholder} />
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2" placeholder={t.web.auth.emailPlaceholder} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2" placeholder={t.web.auth.companyPlaceholder} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2" placeholder={t.web.auth.emailPlaceholder} />
           <Button className="w-full">{t.common.register}</Button>
         </div>
       </Card>

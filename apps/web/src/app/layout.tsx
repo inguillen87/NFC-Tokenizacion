@@ -8,6 +8,57 @@ import { PwaSetup } from "../components/pwa-setup";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { WalletExtensionGuard } from "../components/wallet-extension-guard";
 
+const extensionConsoleShieldScript = `
+(() => {
+  if (!/^(localhost|127\\.0\\.0\\.1|\\[::1\\])$/.test(window.location.hostname)) return;
+  if (window.__nexidExtensionShield) return;
+  window.__nexidExtensionShield = true;
+  const tokens = [
+    "fdprocessedid",
+    "chrome-extension://",
+    "evmask.js",
+    "inpage.js",
+    "contentscript.js",
+    "lockdown-install.js",
+    "ses removing unpermitted intrinsics",
+    "no matching tab found",
+    "polkadot{.js}",
+    "[phantom] failed to send message",
+    "attempting to use a disconnected port object"
+  ];
+  const normalize = (value) => {
+    if (!value) return "";
+    if (value instanceof Error) return String(value.message || "") + " " + String(value.stack || "");
+    if (typeof value === "object" && "message" in value) return String(value.message || "");
+    return String(value);
+  };
+  const isNoiseText = (text) => {
+    const normalized = String(text || "").toLowerCase();
+    return tokens.some((token) => normalized.includes(token)) ||
+      (normalized.includes("a tree hydrated") && normalized.includes("fdprocessedid"));
+  };
+  const isNoiseArgs = (args) => isNoiseText(args.map(normalize).join(" "));
+  ["error", "warn"].forEach((name) => {
+    const original = console[name];
+    if (typeof original !== "function") return;
+    console[name] = function(...args) {
+      if (isNoiseArgs(args)) return;
+      return original.apply(console, args);
+    };
+  });
+  window.addEventListener("error", (event) => {
+    const text = [event.message, event.filename, normalize(event.error)].join(" ");
+    if (!isNoiseText(text)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+  window.addEventListener("unhandledrejection", (event) => {
+    if (!isNoiseText(normalize(event.reason))) return;
+    event.preventDefault();
+  });
+})();
+`;
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -75,6 +126,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang={locale} suppressHydrationWarning className={theme === "light" ? "theme-light" : undefined} data-theme={theme}>
       <body>
+        {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}
         <MisconfigurationBanner />
         <PwaSetup />
         <WalletExtensionGuard />

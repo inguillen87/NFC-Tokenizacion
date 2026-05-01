@@ -18,6 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function DemoLabPage() {
-  return <DemoLabClient />;
+export default async function DemoLabPage() {
+  const { locale } = await getWebI18n();
+  return <DemoLabClient locale={locale} />;
 }

@@ -503,8 +503,8 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           <a href="/onboarding" className="rounded-lg border border-white/15 px-3 py-1 text-slate-100">← Volver a onboarding</a>
           <a href="/batches" className="rounded-lg border border-white/15 px-3 py-1 text-slate-100">Ver todos los batches</a>
-          <button type="button" className="rounded-lg border border-cyan-300/30 px-3 py-1 text-cyan-100" onClick={() => setActiveStep((prev) => Math.max(1, prev - 1) as WizardStep)}>Paso anterior</button>
-          <button type="button" className="rounded-lg border border-cyan-300/30 px-3 py-1 text-cyan-100" onClick={() => setActiveStep((prev) => Math.min(6, prev + 1) as WizardStep)}>Paso siguiente</button>
+          <button suppressHydrationWarning type="button" className="rounded-lg border border-cyan-300/30 px-3 py-1 text-cyan-100" onClick={() => setActiveStep((prev) => Math.max(1, prev - 1) as WizardStep)}>Paso anterior</button>
+          <button suppressHydrationWarning type="button" className="rounded-lg border border-cyan-300/30 px-3 py-1 text-cyan-100" onClick={() => setActiveStep((prev) => Math.min(6, prev + 1) as WizardStep)}>Paso siguiente</button>
         </div>
 
         <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3">
@@ -526,7 +526,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         </div>
         <div className="mt-3 grid gap-2 md:grid-cols-6">
           {steps.map((step, index) => (
-            <button
+            <button suppressHydrationWarning
               key={step}
               type="button"
               disabled={index + 1 > activeStep + 1}
@@ -555,7 +555,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
         <div className="mt-2 flex flex-wrap gap-2">
           {(["cosmetica", "reseller", "bodega", "custom"] as TenantSegment[]).map((segment) => (
-            <button
+            <button suppressHydrationWarning
               key={segment}
               type="button"
               className={`rounded-lg border px-2 py-1 text-xs ${tenantSegment === segment ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`}
@@ -567,13 +567,13 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         </div>
 
         <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_slug" value={tenantSlug} onChange={(event) => setTenantSlug(event.target.value)} />
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_name" value={tenantName} onChange={(event) => setTenantName(event.target.value)} />
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="bid" value={bid} onChange={(event) => setBid(event.target.value)} />
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="chip model" value={chipModel} onChange={(event) => setChipModel(event.target.value)} />
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="sku" value={sku} onChange={(event) => setSku(event.target.value)} />
-          <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="quantity" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
-          <textarea className="min-h-20 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white md:col-span-3" placeholder="notes" value={notes} onChange={(event) => setNotes(event.target.value)} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_slug" value={tenantSlug} onChange={(event) => setTenantSlug(event.target.value)} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="tenant_name" value={tenantName} onChange={(event) => setTenantName(event.target.value)} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="bid" value={bid} onChange={(event) => setBid(event.target.value)} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="chip model" value={chipModel} onChange={(event) => setChipModel(event.target.value)} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="sku" value={sku} onChange={(event) => setSku(event.target.value)} />
+          <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="quantity" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
+          <textarea suppressHydrationWarning className="min-h-20 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white md:col-span-3" placeholder="notes" value={notes} onChange={(event) => setNotes(event.target.value)} />
         </div>
 
         <div className="mt-4 flex justify-end">
@@ -586,13 +586,13 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <p className="mt-1 text-xs text-slate-400">Supplier mode exige K_META y K_FILE. Internal mode permite autogenerar.</p>
 
         <div className="mt-2 flex gap-2">
-          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "supplier" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("supplier")}>Supplier batch mode</button>
-          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "internal" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("internal")}>Internal batch mode</button>
+          <button suppressHydrationWarning type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "supplier" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("supplier")}>Supplier batch mode</button>
+          <button suppressHydrationWarning type="button" className={`rounded-lg border px-2 py-1 text-xs ${batchMode === "internal" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setBatchMode("internal")}>Internal batch mode</button>
         </div>
 
         <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_meta_hex" value={kMeta} onChange={(event) => setKMeta(event.target.value)} />
-          <input className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_file_hex" value={kFile} onChange={(event) => setKFile(event.target.value)} />
+          <input suppressHydrationWarning className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_meta_hex" value={kMeta} onChange={(event) => setKMeta(event.target.value)} />
+          <input suppressHydrationWarning className="rounded-xl border border-emerald-300/30 bg-slate-950 px-3 py-2 text-sm text-white" placeholder="k_file_hex" value={kFile} onChange={(event) => setKFile(event.target.value)} />
         </div>
 
         <p className="mt-3 text-xs text-cyan-200">NDEF preview: {expectedNdefTemplate}</p>
@@ -608,9 +608,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <p className="mt-1 text-sm text-slate-300">Subí .txt/.csv o pegá UIDs. Para smoke test recomendadas: 10 únicas.</p>
 
         <div className="mt-2 flex gap-2">
-          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "txt" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("txt")}>TXT UID list</button>
-          <button type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "csv" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("csv")}>CSV manifest</button>
-          <button
+          <button suppressHydrationWarning type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "txt" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("txt")}>TXT UID list</button>
+          <button suppressHydrationWarning type="button" className={`rounded-lg border px-2 py-1 text-xs ${manifestSourceType === "csv" ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-300"}`} onClick={() => setManifestSourceType("csv")}>CSV manifest</button>
+          <button suppressHydrationWarning
             type="button"
             className="rounded-lg border border-violet-200/40 px-3 py-1 text-xs text-violet-100"
             onClick={() => {
@@ -626,12 +626,12 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           </button>
         </div>
 
-        <textarea className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white transition-colors focus:border-cyan-400/50 focus:bg-slate-900/80" value={rawUidText} onChange={(event) => setRawUidText(event.target.value)} placeholder="Pegá aquí tu lista de UIDs (1 por línea o separados por coma)..." />
+        <textarea suppressHydrationWarning className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white transition-colors focus:border-cyan-400/50 focus:bg-slate-900/80" value={rawUidText} onChange={(event) => setRawUidText(event.target.value)} placeholder="Pegá aquí tu lista de UIDs (1 por línea o separados por coma)..." />
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-500/20" onClick={parseRawUidText}>Analizar texto copiado</button>
+          <button suppressHydrationWarning type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-500/20" onClick={parseRawUidText}>Analizar texto copiado</button>
           <span className="text-xs text-slate-500">o subí un archivo:</span>
-          <input type="file" accept=".txt,.csv,text/plain,text/csv" className="block w-full max-w-[240px] text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-white/20" onChange={(event) => void onUidFile(event)} />
+          <input suppressHydrationWarning type="file" accept=".txt,.csv,text/plain,text/csv" className="block w-full max-w-[240px] text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-white/20" onChange={(event) => void onUidFile(event)} />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3">
@@ -663,16 +663,16 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         </div>
 
         <label className="mt-3 flex items-center gap-2 text-xs text-slate-200">
-          <input type="checkbox" checked={adminEnabled} onChange={(event) => setAdminEnabled(event.target.checked)} />
+          <input suppressHydrationWarning type="checkbox" checked={adminEnabled} onChange={(event) => setAdminEnabled(event.target.checked)} />
           Crear/actualizar tenant-admin
         </label>
         {adminEnabled ? (
           <div className="mt-2 grid gap-2 md:grid-cols-3">
-            <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" placeholder="admin email" value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} />
-            <input className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" placeholder="admin name" value={adminName} onChange={(event) => setAdminName(event.target.value)} />
+            <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" placeholder="admin email" value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} />
+            <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" placeholder="admin name" value={adminName} onChange={(event) => setAdminName(event.target.value)} />
             <div className="flex gap-2">
-              <input className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" placeholder="admin password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} />
-              <button type="button" className="rounded-lg border border-white/20 px-2 text-xs text-slate-100" onClick={() => setAdminPassword(generatePassword())}>regen</button>
+              <input suppressHydrationWarning className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" placeholder="admin password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} />
+              <button suppressHydrationWarning type="button" className="rounded-lg border border-white/20 px-2 text-xs text-slate-100" onClick={() => setAdminPassword(generatePassword())}>regen</button>
             </div>
           </div>
         ) : null}
@@ -700,7 +700,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       <Card className={`p-6 ${activeStep === 5 ? "" : "hidden"}`}>
         <h3 className="text-lg font-semibold text-white">Step 5 · SUN pretest</h3>
         <p className="mt-1 text-sm text-slate-300">Pegá URL SUN completa y validá estado de negocio.</p>
-        <textarea className="mt-3 min-h-28 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" value={supplierUrl} onChange={(event) => setSupplierUrl(event.target.value)} placeholder="https://api.nexid.lat/sun?..." />
+        <textarea suppressHydrationWarning className="mt-3 min-h-28 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" value={supplierUrl} onChange={(event) => setSupplierUrl(event.target.value)} placeholder="https://api.nexid.lat/sun?..." />
         <Button className="mt-3" disabled={pending} onClick={() => void validateNow()}>Validate now</Button>
 
         <div className="mt-3 rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">

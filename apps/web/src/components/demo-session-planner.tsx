@@ -82,7 +82,7 @@ export function DemoSessionPlanner({ locale }: Props) {
 
       <div className="mt-4 flex flex-wrap gap-2">
         {copy.intents.map((option) => (
-          <button
+          <button suppressHydrationWarning
             key={option.id}
             type="button"
             onClick={() => setIntent(option.id)}

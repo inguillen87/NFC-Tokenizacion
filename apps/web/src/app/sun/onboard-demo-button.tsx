@@ -31,7 +31,7 @@ export function OnboardDemoButton({ bid }: { bid: string }) {
   return (
     <div className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3">
       <p className="text-xs text-cyan-100">¿Querés que lo haga por vos? Botón 1-click para crear tenant + batch + import + activate (modo demo).</p>
-      <button
+      <button suppressHydrationWarning
         type="button"
         disabled={pending}
         onClick={() => void onboard()}

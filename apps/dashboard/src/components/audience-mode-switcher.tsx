@@ -34,7 +34,7 @@ export function AudienceModeSwitcher() {
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           {Object.entries(AUDIENCE_COPY).map(([key, item]) => (
-            <button
+            <button suppressHydrationWarning
               key={key}
               type="button"
               onClick={() => setMode(key as keyof typeof AUDIENCE_COPY)}

@@ -18,7 +18,7 @@ export default async function WalletLedgerPage() {
          <div className="space-y-6">
             <div className="flex items-center justify-between">
                <h2 className="text-lg font-bold text-white">Movimientos Recientes</h2>
-               <select className="bg-slate-900 border border-slate-700 text-xs text-white rounded-lg px-2 py-1">
+               <select suppressHydrationWarning className="bg-slate-900 border border-slate-700 text-xs text-white rounded-lg px-2 py-1">
                   <option>Todas las marcas</option>
                </select>
             </div>

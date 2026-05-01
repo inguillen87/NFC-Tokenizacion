@@ -228,7 +228,7 @@ export function DemoPublicExperience() {
             <h3 className="text-sm font-semibold text-white">1) Elegir vertical</h3>
             <div className="mt-2 grid gap-2 md:grid-cols-3">
               {(["wine", "events", "docs"] as Vertical[]).map((item) => (
-                <button key={item} type="button" className={`rounded-lg border p-2 text-sm ${vertical === item ? "border-cyan-300/50 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900 text-white"}`} onClick={() => setVertical(item)}>
+                <button suppressHydrationWarning key={item} type="button" className={`rounded-lg border p-2 text-sm ${vertical === item ? "border-cyan-300/50 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900 text-white"}`} onClick={() => setVertical(item)}>
                   {item.toUpperCase()}
                 </button>
               ))}
@@ -243,16 +243,16 @@ export function DemoPublicExperience() {
                 ["tamper", "TAMPER RISK"],
                 ["replay", "DUPLICATE RISK"],
               ] as Array<[Scenario, string]>).map(([key, label]) => (
-                <button key={key} type="button" className={`rounded-lg border p-2 text-sm ${scenario === key ? "border-emerald-300/50 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900 text-white"}`} onClick={() => setScenario(key)}>
+                <button suppressHydrationWarning key={key} type="button" className={`rounded-lg border p-2 text-sm ${scenario === key ? "border-emerald-300/50 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-900 text-white"}`} onClick={() => setScenario(key)}>
                   {label}
                 </button>
               ))}
             </div>
             <div className="mt-3 flex gap-2">
-              <button type="button" className="flex-1 rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-3 text-sm text-cyan-100 disabled:opacity-50" onClick={() => void runScenario()} disabled={pendingScenario}>
+              <button suppressHydrationWarning type="button" className="flex-1 rounded-lg border border-cyan-300/40 bg-cyan-500/10 p-3 text-sm text-cyan-100 disabled:opacity-50" onClick={() => void runScenario()} disabled={pendingScenario}>
                 {pendingScenario ? "Corriendo…" : "3) Probar escenario"}
               </button>
-              <button type="button" className="rounded-lg border border-white/10 px-3 py-3 text-xs text-slate-300" onClick={() => void refresh(true)} disabled={loading || pendingScenario}>
+              <button suppressHydrationWarning type="button" className="rounded-lg border border-white/10 px-3 py-3 text-xs text-slate-300" onClick={() => void refresh(true)} disabled={loading || pendingScenario}>
                 Refresh
               </button>
             </div>

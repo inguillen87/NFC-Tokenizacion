@@ -253,7 +253,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
           {t.hints[hintIndex]}
         </div>
       ) : null}
-      <button className="helpbot-surface helpbot-trigger fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,.35)] sm:bottom-5 sm:right-5" onClick={() => setOpen((v) => !v)}>
+      <button suppressHydrationWarning className="helpbot-surface helpbot-trigger fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,.35)] sm:bottom-5 sm:right-5" onClick={() => setOpen((v) => !v)}>
         <span className="relative inline-flex">
           <BrandDot size={10} variant="ripple" theme="dark" />
         </span>
@@ -265,7 +265,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
           <p className="helpbot-text text-sm font-semibold text-white">{t.title}</p>
           <div className="mt-2 flex flex-wrap gap-1">
             {t.quick.map((q) => (
-              <button key={q} onClick={() => send(q)} className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-1 text-[10px] text-cyan-100">
+              <button suppressHydrationWarning key={q} onClick={() => send(q)} className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-1 text-[10px] text-cyan-100">
                 {q}
               </button>
             ))}
@@ -295,22 +295,22 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
             </div>
           ) : null}
 
-          <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="helpbot-input mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.fullNameLabel} />
+          <input suppressHydrationWarning value={fullName} onChange={(e) => setFullName(e.target.value)} className="helpbot-input mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.fullNameLabel} />
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <input value={email} onChange={(e) => setEmail(e.target.value)} className="helpbot-input w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.emailLabel} />
-            <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="helpbot-input w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.whatsappLabel} />
+            <input suppressHydrationWarning value={email} onChange={(e) => setEmail(e.target.value)} className="helpbot-input w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.emailLabel} />
+            <input suppressHydrationWarning value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="helpbot-input w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.whatsappLabel} />
           </div>
 
-          <button onClick={sendLead} disabled={busy || !leadReady} className="mt-2 w-full rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50">
+          <button suppressHydrationWarning onClick={sendLead} disabled={busy || !leadReady} className="mt-2 w-full rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50">
             {t.sendLead}
           </button>
 
-          <textarea value={question} onKeyDown={onQuestionKeyDown} onChange={(e) => setQuestion(e.target.value)} className="helpbot-input mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
+          <textarea suppressHydrationWarning value={question} onKeyDown={onQuestionKeyDown} onChange={(e) => setQuestion(e.target.value)} className="helpbot-input mt-2 min-h-20 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs" placeholder={t.placeholder} />
           <div className="mt-2 grid grid-cols-2 gap-2">
-          <button type="button" onClick={startVoice} className="helpbot-voice w-full rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">
+          <button suppressHydrationWarning type="button" onClick={startVoice} className="helpbot-voice w-full rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs text-violet-100">
               {voiceState === "listening" ? t.voiceStop : t.voiceStart}
             </button>
-            <button onClick={() => send()} disabled={busy} className="helpbot-send w-full rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
+            <button suppressHydrationWarning onClick={() => send()} disabled={busy} className="helpbot-send w-full rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
               {t.send}
             </button>
           </div>

@@ -463,24 +463,24 @@ export function CommercialContactModal() {
             </div>
             <p className="mt-1 text-sm text-slate-300">{intentCopy.subtitle || t.subtitle}</p>
           </div>
-          <button onClick={close} className="rounded-md border border-white/20 px-3 py-1 text-xs text-slate-300">{t.close}</button>
+          <button suppressHydrationWarning onClick={close} className="rounded-md border border-white/20 px-3 py-1 text-xs text-slate-300">{t.close}</button>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <input className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Empresa" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
-          <input className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="WhatsApp" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <input className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="País" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-          <input className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Rol / interés" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
-          <input className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Vertical" value={form.vertical} onChange={(e) => setForm({ ...form, vertical: e.target.value })} />
-          <input className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Volumen anual" value={form.volume} onChange={(e) => setForm({ ...form, volume: e.target.value })} />
-          <textarea className="md:col-span-2 min-h-[88px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Mensaje" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Empresa" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="WhatsApp" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="País" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Rol / interés" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Vertical" value={form.vertical} onChange={(e) => setForm({ ...form, vertical: e.target.value })} />
+          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Volumen anual" value={form.volume} onChange={(e) => setForm({ ...form, volume: e.target.value })} />
+          <textarea suppressHydrationWarning className="md:col-span-2 min-h-[88px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Mensaje" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <p className={`text-xs ${status === "error" ? "text-rose-300" : "text-emerald-300"}`}>{status === "ok" ? t.success : status === "error" ? t.error : ""}</p>
-          <button onClick={submit} disabled={status === "loading"} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100 disabled:opacity-40">{t.submit}</button>
+          <button suppressHydrationWarning onClick={submit} disabled={status === "loading"} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100 disabled:opacity-40">{t.submit}</button>
         </div>
       </div>
     </div>

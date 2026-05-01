@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Download, Share, X } from "lucide-react";
 
 type BeforeInstallPromptEvent = Event & {
@@ -9,10 +10,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 function isIosSafari() {
-  if (typeof navigator === "undefined") {
-    return false;
-  }
-
+  if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
   const isIos = /iPhone|iPad|iPod/i.test(ua);
   const isSafari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
@@ -20,20 +18,17 @@ function isIosSafari() {
 }
 
 export function PwaInstallPrompt() {
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+    if (typeof window === "undefined") return;
 
     const inStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
     setIsStandalone(inStandalone);
-
-    const storedDismissed = window.localStorage.getItem("nexid-pwa-prompt-dismissed") === "1";
-    setDismissed(storedDismissed);
+    setDismissed(window.localStorage.getItem("nexid-pwa-prompt-dismissed") === "1");
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -41,28 +36,18 @@ export function PwaInstallPrompt() {
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
   }, []);
 
   const showIosHint = useMemo(() => !isStandalone && !deferredPrompt && isIosSafari(), [deferredPrompt, isStandalone]);
 
-  if ((isStandalone || dismissed) || (!deferredPrompt && !showIosHint)) {
-    return null;
-  }
+  if (pathname === "/" || isStandalone || dismissed || (!deferredPrompt && !showIosHint)) return null;
 
   const onInstall = async () => {
-    if (!deferredPrompt) {
-      return;
-    }
-
+    if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
-    if (choice.outcome === "accepted") {
-      setDeferredPrompt(null);
-    }
+    if (choice.outcome === "accepted") setDeferredPrompt(null);
   };
 
   const onDismiss = () => {
@@ -81,17 +66,17 @@ export function PwaInstallPrompt() {
               : "Launch nexID in full-screen with faster access and app-like navigation."}
           </p>
         </div>
-        <button type="button" onClick={onDismiss} className="rounded-lg border border-white/15 p-1.5 text-slate-300" aria-label="Dismiss install prompt">
+        <button suppressHydrationWarning type="button" onClick={onDismiss} className="rounded-lg border border-white/15 p-1.5 text-slate-300" aria-label="Dismiss install prompt">
           <X className="h-4 w-4" />
         </button>
       </div>
 
       {showIosHint ? (
         <div className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100">
-          <Share className="h-4 w-4" /> Share → Add to Home Screen
+          <Share className="h-4 w-4" /> Share - Add to Home Screen
         </div>
       ) : (
-        <button type="button" onClick={onInstall} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100">
+        <button suppressHydrationWarning type="button" onClick={onInstall} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100">
           <Download className="h-4 w-4" /> Install nexID
         </button>
       )}

@@ -35,6 +35,8 @@ function productVisualClass(item: Listing, index: number) {
 export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, string>>({});
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState("all");
 
   const stats = useMemo(() => {
     const available = items.filter((item) => String(item.stock_status || "available") !== "out_of_stock").length;
@@ -42,6 +44,17 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
     const requestable = items.filter((item) => item.request_to_buy_enabled !== false).length;
     return { available, gated, requestable };
   }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((item, index) => {
+      const blob = `${item.title || ""} ${item.brand_name || item.brand || ""}`.toLowerCase();
+      const visual = productVisualClass(item, index);
+      const byQuery = q ? blob.includes(q) : true;
+      const byKind = kind === "all" ? true : visual.includes(kind);
+      return byQuery && byKind;
+    });
+  }, [items, kind, query]);
 
   async function requestToBuy(item: Listing) {
     if (!item.id || busyById[item.id]) return;
@@ -95,15 +108,25 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
           <div className="rounded-xl border border-white/10 bg-slate-950/55 p-3"><span className="text-slate-400">Request-to-buy</span><b className="mt-1 block text-lg text-white">{stats.requestable}</b></div>
           <div className="rounded-xl border border-white/10 bg-slate-950/55 p-3"><span className="text-slate-400">Age gate</span><b className="mt-1 block text-lg text-white">{stats.gated}</b></div>
         </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+          <input suppressHydrationWarning value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por producto o marca" className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/40" />
+          <div className="flex flex-wrap gap-2">
+            {["all", "bottle", "wristband", "cosmetic"].map((value) => (
+              <button suppressHydrationWarning key={value} type="button" onClick={() => setKind(value)} className={`rounded-xl border px-3 py-2 text-xs font-semibold capitalize ${kind === value ? "border-cyan-300/40 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-white/5 text-slate-300"}`}>
+                {value}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {items.map((item, idx) => {
+        {filteredItems.map((item, idx) => {
           const status = String(item.stock_status || "available");
           const requestDisabled = status === "out_of_stock" || item.request_to_buy_enabled === false;
           const cta = requestDisabled ? "No disponible" : busyById[item.id] ? "Enviando..." : "Solicitar compra";
           return (
-            <article key={item.id || `${item.title || idx}`} className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/70 shadow-xl shadow-black/20">
+            <article key={item.id || `${item.title || idx}`} className="marketplace-card overflow-hidden rounded-2xl border border-white/10 bg-slate-950/70 shadow-xl shadow-black/20">
               <div className="relative h-40 border-b border-white/10 bg-[linear-gradient(135deg,#111827,#020617)]">
                 <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-slate-950/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-200">
                   {status.replaceAll("_", " ")}
@@ -128,7 +151,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
                     Requiere confirmacion de edad antes de solicitar.
                   </p>
                 ) : null}
-                <button
+                <button suppressHydrationWarning
                   disabled={requestDisabled || busyById[item.id]}
                   onClick={() => requestToBuy(item)}
                   className="mt-4 w-full rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
@@ -140,6 +163,11 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
             </article>
           );
         })}
+        {!filteredItems.length ? (
+          <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 text-sm text-slate-300 md:col-span-2">
+            No hay productos para ese filtro.
+          </div>
+        ) : null}
       </div>
     </section>
   );
