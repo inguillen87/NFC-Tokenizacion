@@ -56,5 +56,14 @@ export function RealOpsMap({
     lastSeenAt: point.lastSeen,
   })), [normalizedPoints]);
 
-  return <GlobalOpsMap mode={scopeLabel.includes("multi") ? "global" : "tenant"} points={normalizedPoints} routes={routes} playbackEnabled />;
+  return (
+    <GlobalOpsMap
+      title={scopeLabel.includes("multi") ? "Heatmap global en vivo" : "Heatmap tenant en vivo"}
+      subtitle="Actividad real por ciudad, rutas punteadas entre taps y nodos de riesgo."
+      mode={scopeLabel.includes("multi") ? "global" : "tenant"}
+      points={normalizedPoints}
+      routes={routes}
+      playbackEnabled
+    />
+  );
 }

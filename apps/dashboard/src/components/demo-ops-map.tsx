@@ -122,6 +122,8 @@ export function DemoOpsMap({
           <EmptyState title="Sin hubs visibles" description="Probá cambiar país, scope o tipo de evento." className="border-dashed px-4 py-10 text-center text-sm text-slate-400" />
         ) : (
           <GlobalOpsMap
+            title={mode === "demo" ? "Heatmap operativo demo" : mode === "tenant" ? "Heatmap tenant en vivo" : "Heatmap global multi-tenant"}
+            subtitle="Mapa de calor, clusters y rutas punteadas entre eventos de tap."
             mode={mode}
             points={normalizedPoints}
             routes={routes}

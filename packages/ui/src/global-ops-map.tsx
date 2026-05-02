@@ -299,9 +299,9 @@ function installOperationalLayers(map: any, theme: MapTheme) {
         "text-field": [
           "case",
           ["==", ["get", "role"], "origin"],
-          ["concat", "ORIGEN · ", ["get", "city"]],
+          ["concat", "ORIGEN - ", ["get", "city"]],
           ["==", ["get", "role"], "tap"],
-          ["concat", "TAP · ", ["get", "city"]],
+          ["concat", "TAP - ", ["get", "city"]],
           ["get", "city"],
         ],
         "text-size": 11,
@@ -350,13 +350,24 @@ export function GlobalOpsMap({
   const [internalSelectedId, setInternalSelectedId] = useState(selectedPointId || "");
   const [webglReady, setWebglReady] = useState(false);
   const [mapRuntimeReady, setMapRuntimeReady] = useState(false);
+  const [mapTheme, setMapTheme] = useState<MapTheme>("dark");
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any | null>(null);
+  const activeStyleRef = useRef<MapTheme | null>(null);
 
   useEffect(() => setWebglReady(hasWebGlSupport()), []);
   useEffect(() => setInternalSelectedId(selectedPointId || ""), [selectedPointId]);
   useEffect(() => setLocalRiskOnly(Boolean(riskOnly)), [riskOnly]);
+
+  useEffect(() => {
+    const updateTheme = () => setMapTheme(readDocumentMapTheme());
+    updateTheme();
+    if (typeof MutationObserver === "undefined") return;
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!playback) return;
@@ -378,7 +389,7 @@ export function GlobalOpsMap({
     const tenantMatch = tenant === "ALL" ? true : point.tenantSlug === tenant;
     const countryMatch = country === "ALL" ? true : point.country === country;
     const verdictMatch = verdict === "ALL" ? true : point.verdict === verdict;
-    const timeMatch = cutoff === 0 ? true : ts >= cutoff;
+    const timeMatch = point.role === "origin" ? true : cutoff === 0 ? true : ts >= cutoff;
     const riskMatch = localRiskOnly ? point.risk > 0 : true;
     return tenantMatch && countryMatch && verdictMatch && timeMatch && riskMatch;
   }), [country, cutoff, localRiskOnly, points, tenant, verdict]);
@@ -409,7 +420,7 @@ export function GlobalOpsMap({
       .filter((route) => {
         if (localRiskOnly && route.risk <= 0) return false;
         const routeTime = toMs(route.lastSeenAt);
-        if (cutoff && routeTime < cutoff) return false;
+        if (cutoff && routeTime && routeTime < cutoff) return false;
         return true;
       })
       .sort((a, b) => toMs(a.lastSeenAt) - toMs(b.lastSeenAt));
@@ -461,6 +472,8 @@ export function GlobalOpsMap({
         }
 
         const initialTheme = readDocumentMapTheme();
+        const useLightBasemap = initialTheme === "light";
+        activeStyleRef.current = initialTheme;
         const map = new maplibregl.Map({
           container: mapContainerRef.current,
           style: MAP_STYLES[initialTheme],
@@ -483,8 +496,8 @@ export function GlobalOpsMap({
             maxzoom: 8,
             paint: {
               "heatmap-weight": ["interpolate", ["linear"], ["get", "scans"], 0, 0, 100, 1],
-              "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, 0.65, 8, 1.55],
-              "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 12, 8, 34],
+              "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, useLightBasemap ? 0.72 : 0.65, 8, useLightBasemap ? 1.75 : 1.55],
+              "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 14, 8, 38],
               "heatmap-color": [
                 "interpolate",
                 ["linear"],
@@ -492,15 +505,15 @@ export function GlobalOpsMap({
                 0,
                 "rgba(14, 165, 233, 0)",
                 0.18,
-                "rgba(34, 211, 238, 0.28)",
+                useLightBasemap ? "rgba(14, 165, 233, 0.34)" : "rgba(34, 211, 238, 0.28)",
                 0.42,
-                "rgba(52, 211, 153, 0.38)",
+                useLightBasemap ? "rgba(16, 185, 129, 0.42)" : "rgba(52, 211, 153, 0.38)",
                 0.68,
-                "rgba(168, 85, 247, 0.46)",
+                useLightBasemap ? "rgba(124, 58, 237, 0.42)" : "rgba(168, 85, 247, 0.46)",
                 1,
-                "rgba(251, 113, 133, 0.58)",
+                useLightBasemap ? "rgba(225, 29, 72, 0.55)" : "rgba(251, 113, 133, 0.58)",
               ],
-              "heatmap-opacity": 0.56,
+              "heatmap-opacity": useLightBasemap ? 0.64 : 0.56,
             },
           });
 
@@ -509,10 +522,10 @@ export function GlobalOpsMap({
             type: "line",
             source: "ops-routes",
             paint: {
-              "line-color": "#020617",
-              "line-width": 7,
-              "line-opacity": 0.54,
-              "line-blur": 3,
+              "line-color": useLightBasemap ? "#ffffff" : "#020617",
+              "line-width": useLightBasemap ? 8 : 8.5,
+              "line-opacity": useLightBasemap ? 0.86 : 0.62,
+              "line-blur": useLightBasemap ? 2.2 : 3,
             },
           });
 
@@ -521,7 +534,7 @@ export function GlobalOpsMap({
             type: "line",
             source: "ops-routes",
             filter: [">", ["get", "risk"], 0],
-            paint: { "line-color": "#fb7185", "line-width": 3, "line-opacity": 0.88, "line-dasharray": [1.2, 1.2] },
+            paint: { "line-color": useLightBasemap ? "#e11d48" : "#fb7185", "line-width": useLightBasemap ? 4 : 3.6, "line-opacity": 0.94, "line-dasharray": [1.1, 1.15] },
           });
 
           map.addLayer({
@@ -529,7 +542,7 @@ export function GlobalOpsMap({
             type: "line",
             source: "ops-routes",
             filter: ["<=", ["get", "risk"], 0],
-            paint: { "line-color": "#22d3ee", "line-width": 2.2, "line-opacity": 0.72, "line-dasharray": [1.2, 1.5] },
+            paint: { "line-color": useLightBasemap ? "#0891b2" : "#67e8f9", "line-width": useLightBasemap ? 3.4 : 3, "line-opacity": useLightBasemap ? 0.92 : 0.86, "line-dasharray": [1.1, 1.3] },
           });
 
           map.addLayer({
@@ -539,8 +552,10 @@ export function GlobalOpsMap({
             filter: ["has", "point_count"],
             paint: {
               "circle-color": ["step", ["get", "point_count"], "#0ea5e9", 10, "#2563eb", 30, "#7c3aed"],
-              "circle-radius": ["step", ["get", "point_count"], 11, 10, 16, 30, 22],
-              "circle-opacity": 0.82,
+              "circle-radius": ["step", ["get", "point_count"], 12, 10, 17, 30, 24],
+              "circle-stroke-width": 1.8,
+              "circle-stroke-color": useLightBasemap ? "#ffffff" : "#0f172a",
+              "circle-opacity": 0.9,
             },
           });
 
@@ -551,10 +566,10 @@ export function GlobalOpsMap({
             filter: ["!", ["has", "point_count"]],
             paint: {
               "circle-color": ["case", ["==", ["get", "role"], "origin"], "#34d399", [">", ["get", "risk"], 0], "#fb7185", "#22d3ee"],
-              "circle-radius": ["interpolate", ["linear"], ["get", "scans"], 1, 5, 80, 12],
-              "circle-stroke-width": 1.6,
-              "circle-stroke-color": "#f8fafc",
-              "circle-opacity": 0.93,
+              "circle-radius": ["interpolate", ["linear"], ["get", "scans"], 1, 6, 80, 13],
+              "circle-stroke-width": 2,
+              "circle-stroke-color": useLightBasemap ? "#ffffff" : "#f8fafc",
+              "circle-opacity": 0.96,
             },
           });
 
@@ -567,9 +582,9 @@ export function GlobalOpsMap({
               "text-field": [
                 "case",
                 ["==", ["get", "role"], "origin"],
-                ["concat", "ORIGEN · ", ["get", "city"]],
+                ["concat", "ORIGEN - ", ["get", "city"]],
                 ["==", ["get", "role"], "tap"],
-                ["concat", "TAP · ", ["get", "city"]],
+                ["concat", "TAP - ", ["get", "city"]],
                 ["get", "city"],
               ],
               "text-size": 11,
@@ -620,6 +635,35 @@ export function GlobalOpsMap({
       cancelled = true;
     };
   }, [onPointSelect, visiblePoints, webglReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapRuntimeReady || activeStyleRef.current === mapTheme) return;
+
+    let cancelled = false;
+    const animatedRoutes = playback
+      ? visibleRoutes.slice(0, Math.max(1, Math.floor((progress / 100) * visibleRoutes.length)))
+      : visibleRoutes;
+    const hydrateSources = () => {
+      if (cancelled) return;
+      installOperationalLayers(map, mapTheme);
+      map.getSource("ops-points")?.setData?.(pointsToFeatureCollection(visiblePoints));
+      map.getSource("ops-routes")?.setData?.(routesToFeatureCollection(animatedRoutes));
+      activeStyleRef.current = mapTheme;
+      setMapRuntimeReady(true);
+    };
+
+    setMapRuntimeReady(false);
+    map.once?.("style.load", hydrateSources);
+    map.setStyle?.(MAP_STYLES[mapTheme]);
+    const fallback = window.setTimeout(hydrateSources, 1500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fallback);
+      map.off?.("style.load", hydrateSources);
+    };
+  }, [mapRuntimeReady, mapTheme, playback, progress, visiblePoints, visibleRoutes]);
 
   useEffect(() => {
     const map = mapRef.current;

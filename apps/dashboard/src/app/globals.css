@@ -319,6 +319,91 @@ html.theme-light .worldmap-canvas div[class*="bg-slate-900"] {
   color: #0f172a !important;
 }
 
+.global-ops-map-card {
+  border-color: rgba(34, 211, 238, 0.16);
+  background:
+    radial-gradient(circle at 14% 12%, rgba(34, 211, 238, 0.11), transparent 18rem),
+    radial-gradient(circle at 88% 8%, rgba(139, 92, 246, 0.11), transparent 20rem),
+    rgba(2, 6, 23, 0.72);
+}
+
+.global-ops-map-card .maplibregl-canvas {
+  outline: none;
+}
+
+.global-ops-map-stage {
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.04), 0 22px 50px rgba(2, 6, 23, 0.26);
+}
+
+.global-ops-map-legend,
+.global-ops-map-caption,
+.global-ops-map-drawer {
+  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.3);
+}
+
+@media (max-width: 720px) {
+  .global-ops-map-card {
+    padding: 0.85rem !important;
+  }
+
+  .global-ops-map-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .global-ops-map-canvas,
+  .global-ops-map-drawer {
+    height: 23rem !important;
+  }
+
+  .global-ops-map-legend {
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+html.theme-light .global-ops-map-card {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(14, 165, 233, 0.13), transparent 16rem),
+    radial-gradient(circle at 88% 8%, rgba(139, 92, 246, 0.12), transparent 20rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(236, 253, 245, 0.78)) !important;
+  box-shadow: 0 24px 56px rgba(14, 116, 144, 0.12);
+}
+
+html.theme-light .global-ops-map-card select,
+html.theme-light .global-ops-map-card input[type="range"] {
+  color: #0f172a !important;
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(14, 116, 144, 0.22) !important;
+}
+
+html.theme-light .global-ops-map-stats > div,
+html.theme-light .global-ops-map-selected,
+html.theme-light .global-ops-map-journey,
+html.theme-light .global-ops-map-row {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.76) !important;
+  border-color: rgba(14, 116, 144, 0.16) !important;
+}
+
+html.theme-light .global-ops-map-stage {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(34, 211, 238, 0.2), transparent 19rem),
+    radial-gradient(circle at 82% 80%, rgba(167, 139, 250, 0.15), transparent 18rem),
+    linear-gradient(160deg, rgba(248, 252, 255, 0.96), rgba(224, 242, 254, 0.82)) !important;
+}
+
+html.theme-light .global-ops-map-legend,
+html.theme-light .global-ops-map-caption,
+html.theme-light .global-ops-map-drawer {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-color: rgba(14, 116, 144, 0.18) !important;
+}
+
 /* Light mode contrast hardening for white-label UX */
 html.theme-light .ui-btn--primary {
   color: #082f49 !important;

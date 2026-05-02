@@ -436,6 +436,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       <OpsPanel title="Journey map (tenant premium taps)" subtitle="Origen del producto vs tap actual del cliente, con distancia estimada, linea punteada y links a ubicacion.">
         {journeyMapPoints.length ? (
           <GlobalOpsMap
+            title="Journey heatmap premium"
+            subtitle="Origen del producto, tap actual, distancia y ruta punteada por UID."
             mode={mapMode === "global" ? "global" : "tenant"}
             points={journeyMapPoints}
             routes={journeyRoutes}
