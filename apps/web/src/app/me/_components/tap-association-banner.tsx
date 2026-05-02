@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type Step = "idle" | "code" | "done";
@@ -22,6 +22,7 @@ export function TapAssociationBanner() {
   const [code, setCode] = useState("");
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("");
+  const autoStarted = useRef(false);
 
   const visible = useMemo(() => Boolean(fromTap && eventId), [fromTap, eventId]);
 
@@ -29,6 +30,7 @@ export function TapAssociationBanner() {
     if (!eventId) return false;
     await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/consumer/join-tenant`, { method: "POST" }).catch(() => null);
     await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/consumer/save-product`, { method: "POST" }).catch(() => null);
+    await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/consumer/claim`, { method: "POST" }).catch(() => null);
     if (action === "rewards" && contactValue?.trim()) {
       await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/loyalty/enroll`, {
         method: "POST",
@@ -57,6 +59,14 @@ export function TapAssociationBanner() {
       setPending(false);
     }
   }
+
+  useEffect(() => {
+    if (!visible || autoStarted.current || step !== "idle") return;
+    autoStarted.current = true;
+    void continueWithSession();
+  // continueWithSession intentionally reads current query/state once when the tap banner appears.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, step]);
 
   async function sendCode() {
     if (!contact.trim()) return;

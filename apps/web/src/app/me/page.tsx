@@ -33,8 +33,9 @@ export default async function MePage() {
 
   return (
     <PortalShell
-      title="Tu pasaporte de productos auténticos"
+      title="Tu pasaporte de productos autenticos"
       subtitle="Perfil premium conectado a tus taps reales, ownership verificable, memberships por tenant y marketplace contextual."
+      notificationCount={Number(stats.unread || 0)}
     >
       <section className="overflow-hidden rounded-2xl border border-cyan-300/25 bg-cyan-500/10">
         <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.85fr]">

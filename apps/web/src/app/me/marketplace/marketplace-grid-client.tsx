@@ -51,6 +51,7 @@ const filterOptions = [
 export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, string>>({});
+  const [ageGateById, setAgeGateById] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
 
@@ -87,12 +88,13 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
     });
   }, [items, kind, query]);
 
-  async function requestToBuy(item: Listing) {
+  async function requestToBuy(item: Listing, ageGateAcceptedOverride = false) {
     if (!item.id || busyById[item.id]) return;
     const needsAgeGate = item.age_gate_required === true;
-    const ageGateAccepted = !needsAgeGate || window.confirm("Este producto requiere confirmacion de mayoria de edad. Confirmas que cumples con el requisito?");
+    const ageGateAccepted = !needsAgeGate || ageGateAcceptedOverride;
     if (needsAgeGate && !ageGateAccepted) {
-      setFeedbackById((prev) => ({ ...prev, [item.id]: "Confirmacion de edad requerida para continuar." }));
+      setAgeGateById((prev) => ({ ...prev, [item.id]: true }));
+      setFeedbackById((prev) => ({ ...prev, [item.id]: "Confirma mayoria de edad para enviar la solicitud al tenant." }));
       return;
     }
 
@@ -120,6 +122,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
     }
 
     setFeedbackById((prev) => ({ ...prev, [item.id]: "Solicitud enviada. La marca te contactara desde el portal." }));
+    setAgeGateById((prev) => ({ ...prev, [item.id]: false }));
     setBusyById((prev) => ({ ...prev, [item.id]: false }));
   }
 
@@ -194,7 +197,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
         {filteredItems.map((item, idx) => {
           const status = String(item.stock_status || item.status || "available");
           const requestDisabled = status === "out_of_stock" || item.request_to_buy_enabled === false;
-          const cta = requestDisabled ? "No disponible" : busyById[item.id] ? "Enviando..." : "Solicitar compra";
+          const cta = requestDisabled ? "No disponible" : busyById[item.id] ? "Enviando..." : item.age_gate_required ? "Confirmar y solicitar" : "Solicitar compra";
           return (
             <article key={item.id || `${item.title || idx}`} className="marketplace-card overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 shadow-xl shadow-black/20">
               <div className="relative h-44 border-b border-white/10 bg-[linear-gradient(135deg,#111827,#020617)]">
@@ -223,6 +226,34 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
                   <p className="mt-2 rounded-lg border border-amber-300/20 bg-amber-500/10 p-2 text-[11px] text-amber-100">
                     Requiere confirmacion de edad antes de solicitar.
                   </p>
+                ) : null}
+                {ageGateById[item.id] ? (
+                  <div className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-3">
+                    <p className="text-[11px] font-semibold text-amber-100">
+                      Este beneficio queda asociado al Passport y puede requerir validacion del tenant.
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        suppressHydrationWarning
+                        type="button"
+                        onClick={() => requestToBuy(item, true)}
+                        className="rounded-xl border border-amber-300/35 bg-amber-300/15 px-3 py-2 text-[11px] font-black text-amber-100 transition hover:bg-amber-300/25"
+                      >
+                        Confirmo
+                      </button>
+                      <button
+                        suppressHydrationWarning
+                        type="button"
+                        onClick={() => {
+                          setAgeGateById((prev) => ({ ...prev, [item.id]: false }));
+                          setFeedbackById((prev) => ({ ...prev, [item.id]: "" }));
+                        }}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-black text-slate-300 transition hover:bg-white/10"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
                 ) : null}
                 <button
                   suppressHydrationWarning

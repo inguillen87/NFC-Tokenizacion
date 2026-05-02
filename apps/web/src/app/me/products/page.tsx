@@ -62,6 +62,10 @@ export default async function ProductsPage() {
               const status = String(product.ownership_record_status || product.ownership_status || "viewed").toLowerCase();
               const visual = productVisualKind(product, idx);
               const tenant = product.tenant_slug || "";
+              const tokenStatus = String(product.tokenization_status || "none").toLowerCase();
+              const txHash = String(product.tokenization_tx_hash || "");
+              const hasTokenProof = Boolean(txHash && tokenStatus !== "none" && !txHash.toUpperCase().includes("DEMO"));
+              const tokenExplorerHref = hasTokenProof ? `https://amoy.polygonscan.com/tx/${encodeURIComponent(txHash)}` : "";
               return (
                 <article key={`${product.product_name || "product"}-${idx}`} className="consumer-product-card overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70">
                   <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
@@ -90,7 +94,7 @@ export default async function ProductsPage() {
                           ["1", "Autenticidad", "Tap validado contra reglas del tenant."],
                           ["2", "Ownership", status === "claimed" ? "Producto asociado al consumidor." : "Listo para reclamar ownership."],
                           ["3", "Marketplace", "Promos y vouchers segun marca."],
-                          ["4", "Wallet", "Tokenizacion opcional si aplica."],
+                          ["4", "Wallet", hasTokenProof ? `Certificado ${product.tokenization_network || "Polygon"} listo.` : tokenStatus !== "none" ? `Tokenizacion ${tokenStatus}.` : "Tokenizacion opcional si aplica."],
                         ].map(([step, title, desc]) => (
                           <div key={step} className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
                             <span className="grid h-7 w-7 place-items-center rounded-lg border border-cyan-300/25 bg-cyan-500/10 text-xs font-black text-cyan-100">{step}</span>
@@ -102,8 +106,27 @@ export default async function ProductsPage() {
 
                       <div className="mt-5 grid gap-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-xs text-slate-300 sm:grid-cols-3">
                         <p><span className="block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Primer tap</span>#{product.first_tap_event_id || "n/a"}</p>
-                        <p><span className="block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Ultimo tap</span>#{product.latest_tap_event_id || "n/a"}</p>
+                        <p><span className="block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Ultimo tap</span>{product.latest_verdict || `#${product.latest_tap_event_id || "n/a"}`} {product.latest_city ? `- ${product.latest_city}` : ""}</p>
                         <p><span className="block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Proxima accion</span>{status === "claimed" ? "Abrir beneficios" : "Reclamar"}</p>
+                      </div>
+                      <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-xs text-cyan-50">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Certificado blockchain</p>
+                            <p className="mt-1 font-semibold text-white">
+                              {hasTokenProof ? `${product.tokenization_network || "Polygon Amoy"} - token ${product.tokenization_token_id || "pendiente"}` : tokenStatus !== "none" ? `Estado ${tokenStatus}` : "Disponible cuando el tenant active tokenizacion premium."}
+                            </p>
+                          </div>
+                          {hasTokenProof ? (
+                            <a href={tokenExplorerHref} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-[11px] font-black text-emerald-100">
+                              Ver tx
+                            </a>
+                          ) : (
+                            <Link href="/me/wallet" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-black text-slate-200">
+                              Wallet
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

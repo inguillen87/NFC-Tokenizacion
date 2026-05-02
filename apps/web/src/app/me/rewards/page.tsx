@@ -32,7 +32,7 @@ export default async function RewardsPage() {
   ];
 
   return (
-    <PortalShell title="Rewards & beneficios" subtitle="Puntos, niveles, canjes y experiencias activadas por producto verificado.">
+    <PortalShell title="Rewards & beneficios" subtitle="Puntos, niveles, canjes y experiencias activadas por producto verificado." notificationCount={marketplaceRewards.length}>
       <section className="consumer-rewards-hero rounded-3xl border border-emerald-300/20 bg-emerald-500/10 p-5">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
           <div>

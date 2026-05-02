@@ -28,6 +28,15 @@ export type ConsumerPortalProduct = ConsumerProduct & {
   created_at?: string | null;
   first_tap_event_id?: number | string | null;
   latest_tap_event_id?: number | string | null;
+  latest_verdict?: string | null;
+  latest_city?: string | null;
+  latest_country?: string | null;
+  latest_tap_at?: string | null;
+  tokenization_status?: string | null;
+  tokenization_network?: string | null;
+  tokenization_tx_hash?: string | null;
+  tokenization_token_id?: string | null;
+  tokenization_processed_at?: string | null;
 };
 
 export type MarketplaceListing = {

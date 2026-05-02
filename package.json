@@ -10,6 +10,7 @@
     "dev:web": "npm run dev --workspace=web",
     "dev:dashboard": "npm run dev --workspace=dashboard",
     "dev:api": "npm run dev --workspace=api",
+    "dev:executor": "npm run dev --workspace=executor",
     "build:web": "npm run qa:static && npm run build --workspace=web",
     "build:dashboard": "npm run qa:static && npm run build --workspace=dashboard",
     "build:api": "npm run verify:routes && npm run build --workspace=api",
@@ -27,6 +28,7 @@
     "verify:routes": "npm run check:routes && npm run test:routes --workspace=api",
     "check:placeholders": "node scripts/check-no-placeholders.mjs",
     "demo:smoke": "npm run demo:smoke --workspace=api",
+    "executor:check": "npm run check --workspace=executor",
     "qa:static": "node scripts/qa-static.mjs"
   },
   "packageManager": "npm@10.9.0",

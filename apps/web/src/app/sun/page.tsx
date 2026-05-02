@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CtaActions } from "./cta-actions";
 import { OnboardDemoButton } from "./onboard-demo-button";
 import { productUrls } from "@product/config";
@@ -42,6 +43,7 @@ type ProductState =
 
 type SunContract = {
   ok?: boolean;
+  eventId?: string | null;
   status?: {
     code?: string;
     label?: string;
@@ -64,9 +66,19 @@ type SunContract = {
   };
   iot?: { wineryLocation?: string | null; wineryCoordinates?: { lat?: number | null; lng?: number | null } | null };
   tapContext?: { city?: string | null; country?: string | null; lat?: number | null; lng?: number | null };
-  tokenization?: { status?: string | null; network?: string | null; txHash?: string | null; tokenId?: string | null };
+  tokenization?: { status?: string | null; network?: string | null; txHash?: string | null; tokenId?: string | null; requestId?: string | null; anchorHash?: string | null };
   tag_tamper?: { available?: boolean; status?: "closed" | "opened" | "invalid" | "unknown" | "not_available" | string; raw?: string | null };
-  cta?: { claimOwnership?: boolean; registerWarranty?: boolean; provenance?: boolean; tokenize?: boolean };
+  cta?: {
+    claimOwnership?: boolean;
+    registerWarranty?: boolean;
+    provenance?: boolean;
+    tokenize?: boolean;
+    clubName?: string | null;
+    registerUrl?: string | null;
+    portalUrl?: string | null;
+    marketplaceUrl?: string | null;
+    rewardsUrl?: string | null;
+  };
   allowedActions?: string[];
   blockedActions?: string[];
   trustSignals?: { antiReplay?: boolean; tamperRisk?: boolean; tamperStatus?: string | null; tamperSupported?: boolean; lastEventResult?: string | null };
@@ -470,12 +482,34 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               : "Validación en revisión";
   const riskLevelLabel = trustScore >= 85 ? "Riesgo bajo" : trustScore >= 65 ? "Riesgo moderado" : "Riesgo alto";
   const recommendedAction = trustScore >= 85
-    ? { label: "Guardar en mi Passport", href: "/me", helper: "Autenticidad sólida. Continuá con ownership/club." }
+    ? { label: "Guardar en mi Passport", href: "/me", helper: "Autenticidad solida. Continuar activa ownership, club y marketplace." }
     : trustScore >= 65
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: "/?contact=sales&intent=sun_mobile#contact-modal", helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
   const tenantSlug = String(result.identity?.tenantSlug || "").trim();
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
+  const eventId = String(result.identity?.eventId || result.eventId || "").trim();
+  const localizeHref = (href?: string | null) => {
+    const raw = String(href || "").trim();
+    if (!raw) return "";
+    try {
+      const parsed = new URL(raw);
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return raw;
+    }
+  };
+  const tapParams = new URLSearchParams({ fromTap: "1" });
+  if (tenantSlug) tapParams.set("tenant", tenantSlug);
+  if (eventId) tapParams.set("eventId", eventId);
+  const tapQuery = tapParams.toString();
+  const withTapQuery = (path: string, action: string) => `${path}${path.includes("?") ? "&" : "?"}${tapQuery}&action=${encodeURIComponent(action)}`;
+  const portalHref = localizeHref(result.cta?.portalUrl) || withTapQuery("/me", "portal");
+  const registerHref = localizeHref(result.cta?.registerUrl) || withTapQuery("/me", "register");
+  const productsHref = withTapQuery("/me/products", "save-product");
+  const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");
+  const tapMarketplaceHref = localizeHref(result.cta?.marketplaceUrl) || withTapQuery(marketplaceHref, "marketplace");
+  const consumerLoginHref = (next: string) => `/login?consumer=1&next=${encodeURIComponent(next)}`;
   const blockedTapReason = isValid
     ? ""
     : isReplay
@@ -567,8 +601,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
          <div className="sun-quick-nav grid grid-cols-3 gap-2">
            <a href="#geo-trace" className="min-w-0 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Geo trace</a>
-           <a href={`/login?consumer=1&next=${encodeURIComponent(marketplaceHref)}`} className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Registro</a>
-           <a href={`/login?consumer=1&next=${encodeURIComponent(tenantSlug ? `/me?tenant=${tenantSlug}` : "/me")}`} className="min-w-0 rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">Portal</a>
+           <Link href={consumerLoginHref(tapMarketplaceHref)} className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Registro</Link>
+           <Link href={consumerLoginHref(portalHref)} className="min-w-0 rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">Portal</Link>
          </div>
 
          {/* Hero Product Card */}
@@ -737,15 +771,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          <section className="sun-actions-panel sun-panel-actions rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Acciones de passport</p>
            <div className="mt-3 grid gap-2">
-             <a href="/register" className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+             <Link href={registerHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
                Crear mi nexID Passport
-             </a>
-             <a href="/me/products" className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+             </Link>
+             <Link href={productsHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
                Guardar producto
-             </a>
-             <a href={marketplaceHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+             </Link>
+             <Link href={tapMarketplaceHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
                Unirme al club de esta marca
-             </a>
+             </Link>
            </div>
            {isValid ? (
              <p className="mt-2 text-[11px] text-slate-300">Después de iniciar sesión podés reclamar ownership, guardar producto y unirte al tenant automáticamente.</p>
@@ -830,9 +864,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                    </div>
                 </div>
 
-                <a href="/me" className="block w-full py-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-100 text-center text-sm font-bold transition-colors shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                <Link href={rewardsHref} className="block w-full py-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-100 text-center text-sm font-bold transition-colors shadow-[0_0_15px_rgba(99,102,241,0.2)]">
                    Unirme al Club y Sumar Puntos
-                </a>
+                </Link>
              </div>
          )}
    {/* Actions / Passport Banner */}
@@ -840,9 +874,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="sun-passport-banner rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 mt-4 text-center">
                <h3 className="text-sm font-bold text-white mb-2">Crear mi NexID Passport</h3>
                <p className="text-xs text-cyan-200/70 mb-4">Guardá este producto en tu colección, sumá puntos y accedé a recompensas exclusivas.</p>
-               <a href="/me" className="block w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-cyan-950 text-sm font-bold transition-colors">
+               <Link href={portalHref} className="block w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-cyan-950 text-sm font-bold transition-colors">
                   Guardar Producto
-               </a>
+               </Link>
             </div>
          ) : (
             <div className="sun-passport-banner rounded-2xl border border-red-500/30 bg-red-950/20 p-5 mt-4 text-center">
@@ -864,8 +898,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">3) Te unís al club del tenant ({result.identity?.tenantSlug || "tenant-demo"}) y desbloqueás beneficios.</div>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <a href="/register" className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center font-semibold text-emerald-100">Registrarme</a>
-              <a href="/me" className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">Abrir Portal</a>
+              <Link href={registerHref} className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center font-semibold text-emerald-100">Registrarme</Link>
+              <Link href={portalHref} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">Abrir Portal</Link>
             </div>
          </div>
 
@@ -883,7 +917,18 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </div>
                <div className="flex justify-between items-center">
                   <span className="text-xs text-slate-500">Token Blockchain</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold uppercase">{String(result.tokenization?.status || "none")}</span>
+                  {hasOnChainProof ? (
+                    <a
+                      href={`https://amoy.polygonscan.com/tx/${encodeURIComponent(tokenTx)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-100 font-bold uppercase"
+                    >
+                      {String(result.tokenization?.status || "minted")} · tx
+                    </a>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold uppercase">{String(result.tokenization?.status || "none")}</span>
+                  )}
                </div>
             </div>
          </div>
@@ -904,9 +949,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
       <div className="sun-bottom-nav z-10 mx-auto mt-4 w-full max-w-[390px] px-3 lg:hidden">
         <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
-          <a href="/register" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Registro</a>
-          <a href="/me" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">Portal</a>
-          <a href="/?contact=sales&intent=sun_mobile#contact-modal" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 text-center text-xs font-semibold text-violet-100">Club</a>
+          <Link href={registerHref} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Registro</Link>
+          <Link href={portalHref} className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">Portal</Link>
+          <Link href={tapMarketplaceHref} className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 text-center text-xs font-semibold text-violet-100">Club</Link>
         </div>
       </div>
     </main>

@@ -27,11 +27,13 @@ async function main() {
   const privateKey = required("POLYGON_MINTER_PRIVATE_KEY", process.env.POLYGON_MINTER_PRIVATE_KEY || "");
   const contractAddress = required("POLYGON_CONTRACT_ADDRESS", process.env.POLYGON_CONTRACT_ADDRESS || "");
 
-  const uidHex = required("uid", getArg("uid"));
+  const uidHex = getArg("uid");
+  const chipUidHashInput = getArg("chip_uid_hash");
   const salt = getArg("uid_salt", process.env.TOKENIZATION_UID_SALT || "");
   const to = required("to", getArg("to", process.env.POLYGON_DEFAULT_RECIPIENT || ""));
   const tokenUri = required("token_uri", getArg("token_uri"));
-  const assetRef = getArg("asset_ref", `nexid:${uidHex}`);
+  const assetRef = required("asset_ref", getArg("asset_ref"));
+  const chipUidHash = chipUidHashInput || hashUid(required("uid_or_chip_uid_hash", uidHex), salt);
 
   let ethers;
   try {
@@ -40,7 +42,6 @@ async function main() {
     throw new Error("ethers_not_installed: run `npm install ethers` in apps/api runtime");
   }
 
-  const chipUidHash = hashUid(uidHex, salt);
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const wallet = new ethers.Wallet(privateKey, provider);
   const contract = new ethers.Contract(contractAddress, abi, wallet);

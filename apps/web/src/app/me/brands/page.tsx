@@ -44,6 +44,7 @@ export default async function BrandsPage() {
     <PortalShell
       title="Marcas, loyalty y beneficios"
       subtitle="Cada tenant con el que interactuas tiene historial, productos, taps, promos y notificaciones conectadas a tu Passport."
+      notificationCount={notifications.length}
     >
       {!engagement.length ? (
         <section className="consumer-empty-state rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-6 text-sm text-cyan-50">
@@ -199,6 +200,40 @@ export default async function BrandsPage() {
                           Sin novedades todavia. Cuando el tenant cargue promos, noticias o productos, este feed se actualiza sin mezclarlo con otras marcas.
                         </div>
                       ) : null}
+                    </div>
+
+                    <div className="mt-5 grid gap-3 xl:grid-cols-2">
+                      <div className="rounded-2xl border border-cyan-300/15 bg-cyan-500/10 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Productos vinculados</p>
+                        <div className="mt-3 space-y-2">
+                          {item.products.slice(0, 3).map((product, index) => (
+                            <Link key={`${product.bid || product.product_name || index}`} href="/me/products" className="block rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                              <p className="text-xs font-black text-white">{product.product_name || "Producto verificado"}</p>
+                              <p className="mt-1 text-[11px] text-slate-300">
+                                {product.bid || "sin BID"} · {String(product.ownership_record_status || product.ownership_status || "viewed").toUpperCase()}
+                              </p>
+                              {product.latest_city || product.latest_country ? (
+                                <p className="mt-1 text-[11px] text-cyan-100">Ultimo tap: {product.latest_city || "--"}, {product.latest_country || "--"}</p>
+                              ) : null}
+                            </Link>
+                          ))}
+                          {!item.products.length ? <p className="text-xs text-slate-400">Todavia no hay productos de esta marca.</p> : null}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-emerald-300/15 bg-emerald-500/10 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200">Historial reciente</p>
+                        <div className="mt-3 space-y-2">
+                          {item.taps.slice(0, 3).map((tap, index) => (
+                            <Link key={`${tap.tap_event_id || tap.created_at || index}`} href="/me/taps" className="block rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                              <p className="text-xs font-black text-white">{String(tap.verdict || "tap").toUpperCase()}</p>
+                              <p className="mt-1 text-[11px] text-slate-300">{tap.city || "Ubicacion no informada"}, {tap.country || "--"}</p>
+                              <p className="mt-1 text-[11px] text-emerald-100">{tap.created_at || "sin fecha"}</p>
+                            </Link>
+                          ))}
+                          {!item.taps.length ? <p className="text-xs text-slate-400">Todavia no hay taps de esta marca.</p> : null}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

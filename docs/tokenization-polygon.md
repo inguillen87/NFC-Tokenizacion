@@ -2,6 +2,20 @@
 
 Esta guia es para activar tokenizacion real en Polygon Amoy para los taps SUN/NTAG 424 DNA TT de nexID, usando las 10 etiquetas fisicas actuales como piloto. La meta es que cada tap valido pueda generar o disparar un certificado/token verificable, sin exponer el UID crudo del chip en blockchain.
 
+Si manana queres ir directo a la ejecucion, usa tambien el checklist corto:
+
+```txt
+docs/blockchain-amoy-launch-checklist.md
+```
+
+Para la arquitectura premium de executor/KMS:
+
+```txt
+docs/executor-kms-architecture.md
+docs/security-kms-and-blockchain-tokenization.md
+apps/executor/README.md
+```
+
 ## Objetivo
 
 Activar este flujo:
@@ -23,11 +37,13 @@ Activar este flujo:
 - Scripts disponibles:
   - `npm run contracts:compile`
   - `npm run contracts:deploy:amoy`
+  - `npm run tokenization:check`
 - La API ya soporta:
   - modo demo/sandbox: `TOKENIZATION_MODE=simulated`
   - modo real Polygon: `TOKENIZATION_MODE=polygon`
   - minter local backend: `TOKENIZATION_USE_LOCAL_MINTER=true`
   - executor externo futuro: `TOKENIZATION_EXECUTOR_URL` + `TOKENIZATION_EXECUTOR_SECRET`
+- Executor separado incluido: `apps/executor`
 
 ## Links que vas a abrir
 
@@ -342,6 +358,14 @@ $env:POLYGON_DEFAULT_RECIPIENT="0xTU_RECIPIENT"
 $env:POLYGON_DEPLOY_OWNER="0xTU_OWNER"
 ```
 
+Validar configuracion local:
+
+```powershell
+npm run tokenization:check
+```
+
+El check confirma variables, chain id Amoy, bytecode del contrato y gas de la wallet minter sin imprimir private keys.
+
 ## Paso 9 - Migraciones y base de datos
 
 Desde raiz del repo:
@@ -524,6 +548,16 @@ chip_uid_real + TOKENIZATION_UID_SALT -> chipUidHash -> contrato
 
 Esto permite demostrar que el producto fue autenticado sin revelar el identificador fisico original.
 
+La ruta de metadata y el `asset_ref` tambien deben usar un identificador publico derivado:
+
+```txt
+public_asset_id = nx-<fragmento de chipUidHash>
+token_uri = ipfs://<prefix>/<BID>/<public_asset_id>.json
+asset_ref = <BID>:<public_asset_id>
+```
+
+No usar UID crudo en `token_uri` ni `asset_ref`.
+
 ## Metadata del token
 
 Para piloto:
@@ -642,4 +676,3 @@ Recipient: wallet demo o tenant wallet
 ```
 
 Cuando el piloto este estable, pasar a executor/KMS antes de mainnet.
-

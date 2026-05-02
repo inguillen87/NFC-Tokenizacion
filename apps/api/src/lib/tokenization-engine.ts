@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { sql } from "./db";
 import { buildChipUidHash } from "./tokenization-hash";
 
@@ -16,6 +17,11 @@ function buildSimulatedTxHash(requestId: string, uid: string) {
 
 function buildTokenId(uid: string) {
   return createHash("sha1").update(uid).digest("hex").slice(0, 16);
+}
+
+function buildPublicAssetId(chipUidHash: string) {
+  const digest = String(chipUidHash || "").split(":").pop() || chipUidHash;
+  return `nx-${digest.slice(0, 24)}`;
 }
 
 async function runExternalExecutor(payload: Record<string, unknown>) {
@@ -39,20 +45,21 @@ async function runExternalExecutor(payload: Record<string, unknown>) {
 async function runLocalPolygonScript(payload: Record<string, unknown>) {
   const enabled = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
   if (!enabled) return null;
+  const chipUidHash = String(payload.chip_uid_hash || "").trim();
   const uid = String(payload.uid_hex || "").trim();
-  if (!uid) return null;
+  if (!chipUidHash && !uid) return null;
 
   const recipient = String(payload.issuer_wallet || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
   const tokenUri = String(payload.token_uri || "").trim();
   if (!recipient || !tokenUri) return null;
 
-  const scriptPath = new URL("../../scripts/mint-on-valid-tap.mjs", import.meta.url);
+  const scriptPath = fileURLToPath(new URL("../../scripts/mint-on-valid-tap.mjs", import.meta.url));
   const args = [
-    scriptPath.pathname,
-    `--uid=${uid}`,
+    scriptPath,
     `--to=${recipient}`,
     `--token_uri=${tokenUri}`,
     `--asset_ref=${String(payload.asset_ref || "")}`,
+    ...(chipUidHash ? [`--chip_uid_hash=${chipUidHash}`] : [`--uid=${uid}`]),
   ];
 
   return await new Promise<Record<string, unknown> | null>((resolve, reject) => {
@@ -78,31 +85,46 @@ async function runLocalPolygonScript(payload: Record<string, unknown>) {
 export async function anchorTokenizationRequest(input: AnchorInput) {
   const tokenizationMode = String(process.env.TOKENIZATION_MODE || "simulated").trim().toLowerCase();
   const rows = await sql/*sql*/`
-    SELECT id, bid, uid_hex, status, network, issuer_wallet, attempt_count
+    SELECT id, bid, uid_hex, status, network, issuer_wallet, attempt_count, tx_hash, token_id, anchor_hash, external_ref
     FROM tokenization_requests
     WHERE id = ${input.requestId}::uuid
     LIMIT 1
   `;
   const existing = rows[0];
   if (!existing) return { ok: false, reason: "request_not_found" } as const;
-  if (existing.status === "anchored") return { ok: true, status: "anchored", already_processed: true, request: existing } as const;
+  if (existing.status === "anchored") {
+    return {
+      ok: true,
+      status: "anchored",
+      already_processed: true,
+      request_id: existing.id,
+      tx_hash: existing.tx_hash || null,
+      token_id: existing.token_id || null,
+      network: existing.network || input.network || "polygon-amoy",
+      anchor_hash: existing.anchor_hash || null,
+      external_ref: existing.external_ref || null,
+      request: existing,
+    } as const;
+  }
 
   const network = input.network || existing.network || "polygon-amoy";
   const issuerWallet = input.issuerWallet || existing.issuer_wallet || null;
   const processor = input.processor || "tokenization_engine";
 
   try {
-    const tokenUri = `ipfs://${(process.env.TOKENIZATION_METADATA_CID_PREFIX || "nexid-metadata")}/${existing.bid}/${existing.uid_hex}.json`;
-    const assetRef = `${existing.bid}:${existing.uid_hex}`;
+    const chipUidHash = buildChipUidHash(existing.uid_hex);
+    const publicAssetId = buildPublicAssetId(chipUidHash);
+    const tokenUri = `ipfs://${(process.env.TOKENIZATION_METADATA_CID_PREFIX || "nexid-metadata")}/${existing.bid}/${publicAssetId}.json`;
+    const assetRef = `${existing.bid}:${publicAssetId}`;
     const externalInput = {
       request_id: existing.id,
       bid: existing.bid,
-      uid_hex: existing.uid_hex,
       network,
       issuer_wallet: issuerWallet,
       token_uri: tokenUri,
       asset_ref: assetRef,
-      chip_uid_hash: buildChipUidHash(existing.uid_hex),
+      chip_uid_hash: chipUidHash,
+      public_asset_id: publicAssetId,
     };
 
     let external = null as Record<string, unknown> | null;

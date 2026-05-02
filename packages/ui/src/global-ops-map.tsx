@@ -170,6 +170,8 @@ function routesToFeatureCollection(routes: GlobalOpsRoute[]) {
         fromLabel: route.fromLabel || "",
         toLabel: route.toLabel || "",
         productName: route.productName || "",
+        distanceKm: Math.round(haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng)),
+        traceLabel: `${route.fromLabel || "Origen"} -> ${route.toLabel || "Tap cliente"}`,
       },
       geometry: {
         type: "LineString",
@@ -177,6 +179,15 @@ function routesToFeatureCollection(routes: GlobalOpsRoute[]) {
       },
     })),
   };
+}
+
+function emptyRouteFeatureCollection() {
+  return { type: "FeatureCollection", features: [] };
+}
+
+function routeToFeatureCollection(route?: GlobalOpsRoute | null) {
+  if (!route) return emptyRouteFeatureCollection();
+  return routesToFeatureCollection([route]);
 }
 
 function readDocumentMapTheme(): MapTheme {
@@ -237,13 +248,84 @@ function fitMapToOperationalData(map: any, points: GlobalOpsPoint[], routes: Glo
   );
 }
 
+function scheduleMapFit(map: any, points: GlobalOpsPoint[], routes: GlobalOpsRoute[], immediate = false) {
+  if (typeof window === "undefined") return;
+  const run = (forceImmediate = false) => {
+    map.resize?.();
+    fitMapToOperationalData(map, points, routes, immediate || forceImmediate);
+  };
+  window.requestAnimationFrame(() => run(true));
+  window.setTimeout(() => run(), 180);
+  window.setTimeout(() => run(), 700);
+}
+
+function setPaint(map: any, layerId: string, property: string, value: unknown) {
+  if (!map.getLayer?.(layerId)) return;
+  try {
+    map.setPaintProperty?.(layerId, property, value);
+  } catch {
+    // MapLibre can throw while a style is still loading; the next hydrate pass reapplies it.
+  }
+}
+
+function setLayout(map: any, layerId: string, property: string, value: unknown) {
+  if (!map.getLayer?.(layerId)) return;
+  try {
+    map.setLayoutProperty?.(layerId, property, value);
+  } catch {
+    // Keep the map resilient during live theme swaps.
+  }
+}
+
+function applyOperationalLayerTheme(map: any, theme: MapTheme) {
+  const isLight = theme === "light";
+  setPaint(map, "ops-heat", "heatmap-intensity", ["interpolate", ["linear"], ["zoom"], 1, isLight ? 0.72 : 0.65, 8, isLight ? 1.75 : 1.55]);
+  setPaint(map, "ops-heat", "heatmap-color", [
+    "interpolate",
+    ["linear"],
+    ["heatmap-density"],
+    0,
+    "rgba(14, 165, 233, 0)",
+    0.18,
+    isLight ? "rgba(14, 165, 233, 0.34)" : "rgba(34, 211, 238, 0.28)",
+    0.42,
+    isLight ? "rgba(16, 185, 129, 0.42)" : "rgba(52, 211, 153, 0.38)",
+    0.68,
+    isLight ? "rgba(124, 58, 237, 0.42)" : "rgba(168, 85, 247, 0.46)",
+    1,
+    isLight ? "rgba(225, 29, 72, 0.55)" : "rgba(251, 113, 133, 0.58)",
+  ]);
+  setPaint(map, "ops-heat", "heatmap-opacity", isLight ? 0.64 : 0.56);
+
+  setPaint(map, "ops-routes-halo", "line-color", isLight ? "#ffffff" : "#020617");
+  setPaint(map, "ops-routes-halo", "line-width", isLight ? 8 : 8.5);
+  setPaint(map, "ops-routes-halo", "line-opacity", isLight ? 0.86 : 0.62);
+  setPaint(map, "ops-routes-halo", "line-blur", isLight ? 2.2 : 3);
+  setPaint(map, "ops-routes-risk", "line-color", isLight ? "#e11d48" : "#fb7185");
+  setPaint(map, "ops-routes-clean", "line-color", isLight ? "#0891b2" : "#67e8f9");
+  setPaint(map, "ops-routes-flow", "line-color", isLight ? "rgba(14, 165, 233, 0.34)" : "rgba(103, 232, 249, 0.24)");
+  setPaint(map, "ops-route-labels", "text-color", isLight ? "#075985" : "#cffafe");
+  setPaint(map, "ops-route-labels", "text-halo-color", isLight ? "rgba(255,255,255,.96)" : "rgba(2,6,23,.94)");
+  setPaint(map, "ops-clusters", "circle-stroke-color", isLight ? "#ffffff" : "#0f172a");
+  setPaint(map, "ops-points-unclustered", "circle-stroke-color", isLight ? "#ffffff" : "#f8fafc");
+  setPaint(map, "ops-point-labels", "text-color", isLight ? "#0f172a" : "#e0f2fe");
+  setPaint(map, "ops-point-labels", "text-halo-color", isLight ? "rgba(255,255,255,.94)" : "rgba(2,6,23,.92)");
+  setPaint(map, "ops-focus-route-halo", "line-color", isLight ? "#ffffff" : "#020617");
+  setPaint(map, "ops-focus-route", "line-color", isLight ? "#0f766e" : "#5eead4");
+  setPaint(map, "ops-focus-route", "line-opacity", isLight ? 0.95 : 0.9);
+  setLayout(map, "ops-route-labels", "visibility", "visible");
+}
+
 function installOperationalLayers(map: any, theme: MapTheme) {
   const isLight = theme === "light";
   if (!map.getSource?.("ops-points")) {
     map.addSource("ops-points", { type: "geojson", data: pointsToFeatureCollection([]), cluster: true, clusterRadius: 40, clusterMaxZoom: 7 });
   }
   if (!map.getSource?.("ops-routes")) {
-    map.addSource("ops-routes", { type: "geojson", data: routesToFeatureCollection([]) });
+    map.addSource("ops-routes", { type: "geojson", data: routesToFeatureCollection([]), lineMetrics: true });
+  }
+  if (!map.getSource?.("ops-focus-route")) {
+    map.addSource("ops-focus-route", { type: "geojson", data: emptyRouteFeatureCollection(), lineMetrics: true });
   }
 
   if (!map.getLayer?.("ops-heat")) {
@@ -296,6 +378,7 @@ function installOperationalLayers(map: any, theme: MapTheme) {
       type: "line",
       source: "ops-routes",
       filter: [">", ["get", "risk"], 0],
+      layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": isLight ? "#e11d48" : "#fb7185", "line-width": isLight ? 4 : 3.6, "line-opacity": 0.94, "line-dasharray": [1.1, 1.15] },
     });
   }
@@ -306,7 +389,45 @@ function installOperationalLayers(map: any, theme: MapTheme) {
       type: "line",
       source: "ops-routes",
       filter: ["<=", ["get", "risk"], 0],
+      layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": isLight ? "#0891b2" : "#67e8f9", "line-width": isLight ? 3.4 : 3, "line-opacity": isLight ? 0.92 : 0.86, "line-dasharray": [1.1, 1.3] },
+    });
+  }
+
+  if (!map.getLayer?.("ops-routes-flow")) {
+    map.addLayer({
+      id: "ops-routes-flow",
+      type: "line",
+      source: "ops-routes",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": isLight ? "rgba(14, 165, 233, 0.34)" : "rgba(103, 232, 249, 0.24)",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 7, 7, 13],
+        "line-opacity": 0.34,
+        "line-blur": 7,
+      },
+    }, "ops-routes-risk");
+  }
+
+  if (!map.getLayer?.("ops-route-labels")) {
+    map.addLayer({
+      id: "ops-route-labels",
+      type: "symbol",
+      source: "ops-routes",
+      minzoom: 2.2,
+      layout: {
+        "symbol-placement": "line-center",
+        "text-field": ["concat", ["get", "distanceKm"], " km"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 2, 10, 6, 12],
+        "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+        "text-allow-overlap": false,
+        "text-ignore-placement": false,
+      },
+      paint: {
+        "text-color": isLight ? "#075985" : "#cffafe",
+        "text-halo-color": isLight ? "rgba(255,255,255,.96)" : "rgba(2,6,23,.94)",
+        "text-halo-width": 1.8,
+      },
     });
   }
 
@@ -370,6 +491,38 @@ function installOperationalLayers(map: any, theme: MapTheme) {
       },
     });
   }
+
+  if (!map.getLayer?.("ops-focus-route-halo")) {
+    map.addLayer({
+      id: "ops-focus-route-halo",
+      type: "line",
+      source: "ops-focus-route",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": isLight ? "#ffffff" : "#020617",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 13, 7, 18],
+        "line-opacity": isLight ? 0.92 : 0.76,
+        "line-blur": 2.5,
+      },
+    });
+  }
+
+  if (!map.getLayer?.("ops-focus-route")) {
+    map.addLayer({
+      id: "ops-focus-route",
+      type: "line",
+      source: "ops-focus-route",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": isLight ? "#0f766e" : "#5eead4",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 4, 7, 7],
+        "line-opacity": isLight ? 0.95 : 0.9,
+        "line-dasharray": [0.7, 1.2],
+      },
+    });
+  }
+
+  applyOperationalLayerTheme(map, theme);
 }
 
 export function GlobalOpsMap({
@@ -404,6 +557,8 @@ export function GlobalOpsMap({
   const [webglReady, setWebglReady] = useState(false);
   const [mapRuntimeReady, setMapRuntimeReady] = useState(false);
   const [mapTheme, setMapTheme] = useState<MapTheme>("dark");
+  const [nowMs, setNowMs] = useState(0);
+  const [fitRevision, setFitRevision] = useState(0);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any | null>(null);
@@ -412,6 +567,7 @@ export function GlobalOpsMap({
   const visiblePointsRef = useRef<GlobalOpsPoint[]>([]);
 
   useEffect(() => setWebglReady(hasWebGlSupport()), []);
+  useEffect(() => setNowMs(Date.now()), []);
   useEffect(() => setInternalSelectedId(selectedPointId || ""), [selectedPointId]);
   useEffect(() => setLocalRiskOnly(Boolean(riskOnly)), [riskOnly]);
 
@@ -432,8 +588,7 @@ export function GlobalOpsMap({
     return () => clearInterval(id);
   }, [playback]);
 
-  const now = Date.now();
-  const cutoff = windowMode === "1h" ? now - 3600_000 : windowMode === "24h" ? now - 24 * 3600_000 : windowMode === "7d" ? now - 7 * 24 * 3600_000 : 0;
+  const cutoff = !nowMs ? 0 : windowMode === "1h" ? nowMs - 3600_000 : windowMode === "24h" ? nowMs - 24 * 3600_000 : windowMode === "7d" ? nowMs - 7 * 24 * 3600_000 : 0;
 
   const tenants = useMemo(() => ["ALL", ...Array.from(new Set(points.map((p) => p.tenantSlug))).filter(Boolean).sort()], [points]);
   const countries = useMemo(() => ["ALL", ...Array.from(new Set(points.map((p) => p.country))).filter(Boolean).sort()], [points]);
@@ -548,13 +703,12 @@ export function GlobalOpsMap({
         map.on("load", () => {
           if (cancelled) return;
           installOperationalLayers(map, initialTheme);
+          applyOperationalLayerTheme(map, initialTheme);
           map.getSource("ops-points")?.setData?.(pointsToFeatureCollection(visiblePoints));
           map.getSource("ops-routes")?.setData?.(routesToFeatureCollection(visibleRoutes));
+          map.getSource("ops-focus-route")?.setData?.(routeToFeatureCollection(selectedJourney));
           lastFitKeyRef.current = boundsKey;
-          window.requestAnimationFrame(() => {
-            map.resize?.();
-            fitMapToOperationalData(map, visiblePoints, filteredRoutes, true);
-          });
+          scheduleMapFit(map, visiblePoints, filteredRoutes, true);
 
           map.on("click", "ops-points-unclustered", (event: any) => {
             const feature = event.features?.[0];
@@ -590,7 +744,7 @@ export function GlobalOpsMap({
     return () => {
       cancelled = true;
     };
-  }, [boundsKey, filteredRoutes, onPointSelect, visiblePoints, visibleRoutes, webglReady]);
+  }, [boundsKey, filteredRoutes, onPointSelect, selectedJourney, visiblePoints, visibleRoutes, webglReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -598,17 +752,17 @@ export function GlobalOpsMap({
 
     let cancelled = false;
     const animatedRoutes = visibleRoutes;
+    setMapRuntimeReady(false);
     const hydrateSources = () => {
       if (cancelled) return;
       installOperationalLayers(map, mapTheme);
+      applyOperationalLayerTheme(map, mapTheme);
       map.getSource("ops-points")?.setData?.(pointsToFeatureCollection(visiblePoints));
       map.getSource("ops-routes")?.setData?.(routesToFeatureCollection(animatedRoutes));
+      map.getSource("ops-focus-route")?.setData?.(routeToFeatureCollection(selectedJourney));
       activeStyleRef.current = mapTheme;
       setMapRuntimeReady(true);
-      window.requestAnimationFrame(() => {
-        map.resize?.();
-        fitMapToOperationalData(map, visiblePoints, filteredRoutes, true);
-      });
+      scheduleMapFit(map, visiblePoints, filteredRoutes, true);
     };
 
     map.once?.("style.load", hydrateSources);
@@ -621,7 +775,7 @@ export function GlobalOpsMap({
       window.clearTimeout(fallback);
       map.off?.("style.load", hydrateSources);
     };
-  }, [filteredRoutes, mapTheme, playback, progress, visiblePoints, visibleRoutes]);
+  }, [filteredRoutes, mapTheme, playback, progress, selectedJourney, visiblePoints, visibleRoutes]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -629,19 +783,19 @@ export function GlobalOpsMap({
 
     const pointsSource = map.getSource("ops-points");
     const routesSource = map.getSource("ops-routes");
+    const focusRouteSource = map.getSource("ops-focus-route");
 
+    applyOperationalLayerTheme(map, mapTheme);
     pointsSource?.setData?.(pointsToFeatureCollection(visiblePoints));
 
     const animatedRoutes = visibleRoutes;
     routesSource?.setData?.(routesToFeatureCollection(animatedRoutes));
+    focusRouteSource?.setData?.(routeToFeatureCollection(selectedJourney));
     if (boundsKey && lastFitKeyRef.current !== boundsKey) {
       lastFitKeyRef.current = boundsKey;
-      window.requestAnimationFrame(() => {
-        map.resize?.();
-        fitMapToOperationalData(map, visiblePoints, filteredRoutes);
-      });
+      scheduleMapFit(map, visiblePoints, filteredRoutes);
     }
-  }, [boundsKey, filteredRoutes, mapRuntimeReady, playback, progress, visiblePoints, visibleRoutes]);
+  }, [boundsKey, filteredRoutes, mapRuntimeReady, mapTheme, playback, progress, selectedJourney, visiblePoints, visibleRoutes]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -652,8 +806,7 @@ export function GlobalOpsMap({
     const refreshViewport = () => {
       if (frame) window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        map.resize?.();
-        fitMapToOperationalData(map, visiblePoints, filteredRoutes, true);
+        scheduleMapFit(map, visiblePoints, filteredRoutes, true);
       });
     };
 
@@ -667,7 +820,7 @@ export function GlobalOpsMap({
       window.removeEventListener("resize", refreshViewport);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [boundsKey, filteredRoutes, mapRuntimeReady, visiblePoints]);
+  }, [boundsKey, filteredRoutes, fitRevision, mapRuntimeReady, visiblePoints]);
 
   useEffect(() => {
     return () => {
@@ -676,6 +829,12 @@ export function GlobalOpsMap({
     };
   }, []);
 
+  const centerOperationalMap = () => {
+    setFitRevision((value) => value + 1);
+    const map = mapRef.current;
+    if (map) scheduleMapFit(map, visiblePoints, filteredRoutes, true);
+  };
+
   const canRenderMap = webglReady && mapRuntimeReady;
 
   return (
@@ -683,7 +842,7 @@ export function GlobalOpsMap({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-white">{title} {canRenderMap ? "MapLibre GL" : "Fallback"}</p>
-          <p className="text-xs text-slate-400">{subtitle} ({mode}).</p>
+          <p className="text-xs text-slate-400">{subtitle} ({mode}) · {mapTheme === "light" ? "mapa claro" : "mapa oscuro"}.</p>
         </div>
         <div className="global-ops-map-stats grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
           <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Nodos: <b>{visiblePoints.length}</b></div>
@@ -693,7 +852,7 @@ export function GlobalOpsMap({
         </div>
       </div>
 
-      <div className="global-ops-map-controls mt-3 grid gap-2 md:grid-cols-6">
+      <div className="global-ops-map-controls mt-3 grid gap-2 md:grid-cols-7">
         <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={tenant} onChange={(event) => setTenant(event.target.value)}>
           {tenants.map((item) => <option key={item} value={item}>{item === "ALL" ? "Tenant: todos" : item}</option>)}
         </select>
@@ -711,6 +870,7 @@ export function GlobalOpsMap({
         </select>
         <button suppressHydrationWarning type="button" onClick={() => setLocalRiskOnly((v) => !v)} className={`rounded-lg border px-2 py-1 text-xs ${localRiskOnly ? "border-rose-300/30 bg-rose-500/10 text-rose-100" : "border-white/10 bg-white/5 text-slate-200"}`}>{localRiskOnly ? "Solo riesgo: si" : "Solo riesgo: no"}</button>
         <button suppressHydrationWarning type="button" onClick={() => setPlayback((value) => !value)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100">{playback ? "Pausar ruta" : "Animar ruta"}</button>
+        <button suppressHydrationWarning type="button" onClick={centerOperationalMap} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-100">Centrar mapa</button>
       </div>
 
       <div className="global-ops-map-layout mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">

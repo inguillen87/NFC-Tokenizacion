@@ -31,14 +31,15 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
     <PortalShell
       title="Marketplace"
       subtitle={contextualTenant
-        ? `Catálogo contextual del tenant ${contextualTenant}: canje, reserva y request-to-buy.`
-        : "Catálogo curado para miembros NexID: canje, reserva y request-to-buy."}
+        ? `Catalogo contextual del tenant ${contextualTenant}: canje, reserva y request-to-buy.`
+        : "Catalogo curado para miembros NexID: canje, reserva y request-to-buy."}
+      notificationCount={items.length}
     >
       {!items.length ? (
         <section className="rounded-xl border border-violet-300/30 bg-violet-500/10 p-5 text-sm text-violet-100">
           {contextualTenant
-            ? `Sin catálogo publicado para ${contextualTenant} por ahora.`
-            : "Sin contexto de tenant para abrir catálogo contextual. Este placeholder usa solo estado real y no inventa productos."}
+            ? `Sin catalogo publicado para ${contextualTenant} por ahora.`
+            : "Sin contexto de tenant para abrir catalogo contextual. Este placeholder usa solo estado real y no inventa productos."}
         </section>
       ) : (
         <MarketplaceGridClient items={items} />

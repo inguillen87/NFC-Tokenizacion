@@ -1306,12 +1306,12 @@ async function dispatchValidScanWebhook(payload: Record<string, unknown>) {
   }).catch(() => null);
 }
 
-async function queueAutoTokenizationForValidTap(params: { bid: string; uid: string; traceId: string }) {
+async function queueAutoTokenizationForValidTap(params: { bid: string; uid: string; traceId: string; eventId?: number | null }) {
   const enabled = String(process.env.SUN_AUTO_TOKENIZE_ON_VALID_TAP || "false").toLowerCase() === "true";
   if (!enabled) return null;
 
   const row = (await sql/*sql*/`
-    SELECT tr.id, tr.status
+    SELECT tr.id, tr.status, tr.network, tr.tx_hash, tr.token_id, tr.anchor_hash, tr.external_ref
     FROM tokenization_requests tr
     WHERE tr.bid = ${params.bid}
       AND tr.uid_hex = ${params.uid}
@@ -1319,7 +1319,19 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
     ORDER BY tr.requested_at DESC
     LIMIT 1
   `)[0];
-  if (row?.status === "anchored") return { ok: true, deduplicated: true, status: "anchored" };
+  if (row?.status === "anchored") {
+    return {
+      ok: true,
+      deduplicated: true,
+      status: "anchored",
+      request_id: row.id,
+      network: row.network || "polygon-amoy",
+      tx_hash: row.tx_hash || null,
+      token_id: row.token_id || null,
+      anchor_hash: row.anchor_hash || null,
+      external_ref: row.external_ref || null,
+    };
+  }
   if (row?.id) return await anchorTokenizationRequest({ requestId: String(row.id), processor: "sun_auto_tokenization" });
 
   const batch = (await sql/*sql*/`
@@ -1342,7 +1354,7 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
       ${`${params.bid}:${params.uid}`},
       'sun_auto_valid_tap',
       now(),
-      ${JSON.stringify({ trace_id: params.traceId, source: "sun_valid_tap_auto_mint" })}::jsonb
+      ${JSON.stringify({ trace_id: params.traceId, event_id: params.eventId || null, source: "sun_valid_tap_auto_mint" })}::jsonb
     )
     RETURNING id
   `)[0];
@@ -1473,7 +1485,7 @@ export async function GET(req: Request): Promise<Response> {
     && contract.tapSecurity?.tokenizationEligible === true;
 
   if (canAutoTokenizeFreshTap && uid) {
-    const autoMint = await queueAutoTokenizationForValidTap({ bid, uid, traceId }).catch((error) => ({
+    const autoMint = await queueAutoTokenizationForValidTap({ bid, uid, traceId, eventId }).catch((error) => ({
       ok: false,
       reason: error instanceof Error ? error.message : "auto_tokenization_failed",
       status: "failed",
@@ -1489,6 +1501,11 @@ export async function GET(req: Request): Promise<Response> {
         ];
       } else if (autoMint.ok === true && "status" in autoMint && String(autoMint.status || "") === "anchored") {
         contract.tokenization.status = "minted";
+        if ("tx_hash" in autoMint && autoMint.tx_hash) contract.tokenization.txHash = String(autoMint.tx_hash);
+        if ("token_id" in autoMint && autoMint.token_id) contract.tokenization.tokenId = String(autoMint.token_id);
+        if ("network" in autoMint && autoMint.network) contract.tokenization.network = String(autoMint.network);
+        if ("anchor_hash" in autoMint && autoMint.anchor_hash) (contract.tokenization as Record<string, unknown>).anchorHash = String(autoMint.anchor_hash);
+        if ("request_id" in autoMint && autoMint.request_id) (contract.tokenization as Record<string, unknown>).requestId = String(autoMint.request_id);
       }
     }
   }

@@ -25,6 +25,13 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
 
   await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
 
+  const normalizedResult = String(event.result || "").toUpperCase();
+  const tapRiskLevel = normalizedResult.includes("REPLAY") || normalizedResult.includes("TAMPER") || normalizedResult.includes("INVALID")
+    ? "high"
+    : normalizedResult.includes("VALID") || normalizedResult === "OPENED"
+      ? "low"
+      : "medium";
+
   await sql/*sql*/`
     INSERT INTO consumer_tap_history (consumer_id, tenant_id, tap_event_id, verdict, risk_level, city, country)
     VALUES (
@@ -32,7 +39,7 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
       ${event.tenant_id},
       ${event.id},
       ${event.result || null},
-      ${event.result === "VALID" ? "low" : "high"},
+      ${tapRiskLevel},
       ${event.city || null},
       ${event.country_code || null}
     )
@@ -40,15 +47,56 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
   `;
 
   const tagRows = await sql/*sql*/`
-    SELECT t.id, b.bid
+    SELECT
+      t.id,
+      b.bid,
+      tp.product_name,
+      tp.sku,
+      tp.winery,
+      tp.region,
+      tp.grape_varietal
     FROM events e
     JOIN tags t ON t.uid_hex = e.uid_hex
     JOIN batches b ON b.id = t.batch_id
+    LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
     WHERE e.id = ${event.id}
       AND b.tenant_id = ${event.tenant_id}
     ORDER BY t.created_at ASC
     LIMIT 1
   `;
+  const tagProfile = tagRows[0];
+  const productName = String(tagProfile?.product_name || tagProfile?.sku || "").trim()
+    || (String(tagProfile?.grape_varietal || "").trim() && String(tagProfile?.region || "").trim()
+      ? `${String(tagProfile.grape_varietal).trim()} - ${String(tagProfile.region).trim()}`
+      : "")
+    || `Producto ${event.uid_hex || "NFC"}`;
+  const brandName = String(tagProfile?.winery || event.tenant_slug || "Tenant").trim();
+
+  const existingProduct = (await sql/*sql*/`
+    SELECT id
+    FROM consumer_products
+    WHERE consumer_id = ${input.consumerId}
+      AND tenant_id = ${event.tenant_id}
+      AND (
+        product_passport_id = ${event.uid_hex || null}
+        OR (${tagProfile?.id || null}::uuid IS NOT NULL AND tag_id = ${tagProfile?.id || null})
+      )
+    ORDER BY updated_at DESC
+    LIMIT 1
+  `)[0];
+
+  if (existingProduct?.id) {
+    await sql/*sql*/`
+      UPDATE consumer_products
+      SET latest_tap_event_id = ${event.id},
+          tag_id = COALESCE(${tagProfile?.id || null}, tag_id),
+          product_name = COALESCE(NULLIF(${productName}, ''), product_name),
+          brand_name = COALESCE(NULLIF(${brandName}, ''), brand_name),
+          updated_at = now()
+      WHERE id = ${existingProduct.id}
+    `;
+    return event;
+  }
 
   await sql/*sql*/`
     INSERT INTO consumer_products (consumer_id, tenant_id, product_passport_id, tag_id, first_tap_event_id, latest_tap_event_id, ownership_status, collection_type, product_name, brand_name)
@@ -56,13 +104,13 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
       ${input.consumerId},
       ${event.tenant_id},
       ${event.uid_hex || null},
-      ${tagRows[0]?.id || null},
+      ${tagProfile?.id || null},
       ${event.id},
       ${event.id},
       'viewed',
       'wine',
-      ${`Producto ${event.uid_hex || "NFC"}`},
-      ${event.tenant_slug || "Tenant"}
+      ${productName},
+      ${brandName}
     )
     ON CONFLICT DO NOTHING
   `;

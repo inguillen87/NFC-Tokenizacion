@@ -14,9 +14,12 @@ type NotificationSummary = {
 
 export function AdminNotificationBell() {
   const [summary, setSummary] = useState<NotificationSummary>({});
+  const [liveConnected, setLiveConnected] = useState(false);
+  const [lastPulseAt, setLastPulseAt] = useState("");
 
   useEffect(() => {
     let cancelled = false;
+    let stream: EventSource | null = null;
 
     async function load() {
       const response = await fetch("/api/admin/notifications", { cache: "no-store" }).catch(() => null);
@@ -25,11 +28,39 @@ export function AdminNotificationBell() {
       if (!cancelled && data) setSummary(data);
     }
 
+    function refreshFromRealtime() {
+      if (cancelled) return;
+      setLastPulseAt(new Date().toISOString());
+      void load();
+    }
+
     void load();
     const timer = window.setInterval(load, 5000);
+
+    if (typeof EventSource !== "undefined") {
+      const url = new URL("/api/admin/events/stream", window.location.origin);
+      url.searchParams.set("limit", "8");
+      url.searchParams.set("range", "24h");
+      url.searchParams.set("source", "all");
+      stream = new EventSource(url.toString());
+      stream.onopen = () => {
+        if (!cancelled) setLiveConnected(true);
+      };
+      stream.onerror = () => {
+        if (!cancelled) setLiveConnected(false);
+      };
+      stream.addEventListener("snapshot", refreshFromRealtime as EventListener);
+      stream.addEventListener("event", refreshFromRealtime as EventListener);
+      stream.addEventListener("heartbeat", refreshFromRealtime as EventListener);
+    }
+
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      stream?.removeEventListener("snapshot", refreshFromRealtime as EventListener);
+      stream?.removeEventListener("event", refreshFromRealtime as EventListener);
+      stream?.removeEventListener("heartbeat", refreshFromRealtime as EventListener);
+      stream?.close();
     };
   }, []);
 
@@ -44,6 +75,10 @@ export function AdminNotificationBell() {
     >
       <span className="admin-notification-bell__icon" aria-hidden />
       <span className="hidden xl:inline">Inbox</span>
+      <span className={`hidden rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] md:inline ${liveConnected ? "bg-emerald-500/15 text-emerald-200" : "bg-amber-500/15 text-amber-200"}`}>
+        {liveConnected ? "Live" : "Sync"}
+      </span>
+      {lastPulseAt ? <span className="sr-only">Last realtime pulse {lastPulseAt}</span> : null}
       {unread > 0 ? (
         <span className="admin-notification-bell__badge" aria-label={`${unread} unread notifications`}>
           {unread > 99 ? "99+" : unread}

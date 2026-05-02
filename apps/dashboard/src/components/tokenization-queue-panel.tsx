@@ -20,6 +20,20 @@ type TokenizationRow = {
   tenant_slug?: string | null;
 };
 
+type PolygonReadiness = {
+  ready?: boolean;
+  mode?: string;
+  network?: string;
+  autoTokenize?: boolean;
+  useLocalMinter?: boolean;
+  chainId?: string | null;
+  executor?: { configured?: boolean; url?: string | null; secretConfigured?: boolean };
+  contract?: { address?: string | null; deployed?: boolean };
+  minter?: { address?: string | null; configured?: boolean; balancePol?: number | null };
+  recipient?: { address?: string | null; balancePol?: number | null };
+  checks?: Array<{ key: string; label: string; status: "pass" | "warn" | "fail"; detail?: string }>;
+};
+
 async function parseJsonSafe(response: Response) {
   const text = await response.text();
   try {
@@ -35,6 +49,7 @@ export function TokenizationQueuePanel() {
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "processing" | "failed" | "anchored">("all");
   const [status, setStatus] = useState("Cargando tokenization queue...");
   const [lastResponse, setLastResponse] = useState("{}");
+  const [readiness, setReadiness] = useState<PolygonReadiness | null>(null);
   const apiRunway = [
     { method: "GET", path: "/admin/tokenization/requests", body: "Listar requests por estado y tenant." },
     { method: "POST", path: "/admin/tokenization/requests", body: "Procesar mint/anclaje en modo simulado o Amoy." },
@@ -57,6 +72,17 @@ export function TokenizationQueuePanel() {
       setStatus(error instanceof Error ? error.message : "failed to load queue");
     } finally {
       setPending(false);
+    }
+  }
+
+  async function loadReadiness() {
+    try {
+      const response = await fetch("/api/admin/polygon/wallet", { cache: "no-store" });
+      const data = await parseJsonSafe(response);
+      if (!response.ok || data?.ok === false) throw new Error(String(data?.reason || "polygon readiness failed"));
+      setReadiness(data as PolygonReadiness);
+    } catch {
+      setReadiness(null);
     }
   }
 
@@ -83,6 +109,7 @@ export function TokenizationQueuePanel() {
 
   useEffect(() => {
     void load();
+    void loadReadiness();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
@@ -156,6 +183,57 @@ export function TokenizationQueuePanel() {
               <p className="mt-1 font-semibold text-emerald-100">Digital Twin NFT</p>
             </div>
           </div>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200">Polygon Amoy readiness</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              Diagnostico operativo para saber si manana solo falta pegar RPC, wallet minter, contrato y redeploy.
+            </p>
+          </div>
+          <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${readiness?.ready ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100" : "border-amber-300/35 bg-amber-500/10 text-amber-100"}`}>
+            {readiness?.ready ? "ready" : readiness ? "needs env" : "offline"}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-2 text-xs text-slate-200 md:grid-cols-5">
+          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Mode</p>
+            <p className="mt-1 font-semibold text-white">{readiness?.mode || "unknown"}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Auto SUN</p>
+            <p className="mt-1 font-semibold text-white">{readiness?.autoTokenize ? "on" : "off"}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Signer</p>
+            <p className="mt-1 font-semibold text-white">{readiness?.executor?.configured ? "executor" : readiness?.useLocalMinter ? "local" : "pending"}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Contract</p>
+            <p className="mt-1 font-semibold text-white">{readiness?.contract?.deployed ? "deployed" : readiness?.contract?.address ? "configured" : "pending"}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Minter gas</p>
+            <p className="mt-1 font-semibold text-white">{typeof readiness?.minter?.balancePol === "number" ? `${readiness.minter.balancePol.toFixed(5)} POL` : "pending"}</p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-2 md:grid-cols-2">
+          {(readiness?.checks || []).map((item) => (
+            <div key={item.key} className={`rounded-xl border p-3 text-xs ${item.status === "pass" ? "border-emerald-300/20 bg-emerald-500/10" : item.status === "warn" ? "border-amber-300/20 bg-amber-500/10" : "border-rose-300/20 bg-rose-500/10"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-white">{item.label}</p>
+                <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-200">{item.status}</span>
+              </div>
+              {item.detail ? <p className="mt-1 text-slate-400">{item.detail}</p> : null}
+            </div>
+          ))}
+          {!readiness ? <p className="text-xs text-slate-400">No se pudo cargar readiness. Revisa API/admin proxy.</p> : null}
+        </div>
+        <div className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs leading-5 text-cyan-100">
+          Comando local equivalente: <code>cd apps/api && npm run tokenization:check</code>. El endpoint nunca devuelve private keys.
         </div>
       </Card>
 
