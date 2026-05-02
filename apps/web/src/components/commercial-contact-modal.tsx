@@ -453,8 +453,8 @@ export function CommercialContactModal() {
   if (!open || !intent) return null;
 
   return (
-    <div id="contact-modal" className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-slate-950 p-5">
+    <div id="contact-modal" className="contact-modal-overlay fixed inset-0 z-[90] grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm">
+      <div className="contact-modal-card w-full max-w-2xl rounded-2xl border border-white/15 bg-slate-950 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -463,24 +463,24 @@ export function CommercialContactModal() {
             </div>
             <p className="mt-1 text-sm text-slate-300">{intentCopy.subtitle || t.subtitle}</p>
           </div>
-          <button suppressHydrationWarning onClick={close} className="rounded-md border border-white/20 px-3 py-1 text-xs text-slate-300">{t.close}</button>
+          <button suppressHydrationWarning onClick={close} className="contact-modal-close rounded-md border border-white/20 px-3 py-1 text-xs text-slate-300">{t.close}</button>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Empresa" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
-          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="WhatsApp" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="País" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Rol / interés" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
-          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Vertical" value={form.vertical} onChange={(e) => setForm({ ...form, vertical: e.target.value })} />
-          <input suppressHydrationWarning className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Volumen anual" value={form.volume} onChange={(e) => setForm({ ...form, volume: e.target.value })} />
-          <textarea suppressHydrationWarning className="md:col-span-2 min-h-[88px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Mensaje" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+          <input suppressHydrationWarning className="contact-modal-field rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input suppressHydrationWarning className="contact-modal-field rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Empresa" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+          <input suppressHydrationWarning className="contact-modal-field rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input suppressHydrationWarning className="contact-modal-field rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="WhatsApp" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <input suppressHydrationWarning className="contact-modal-field rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="País" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+          <input suppressHydrationWarning className="contact-modal-field rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Rol / interés" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+          <input suppressHydrationWarning className="contact-modal-field rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Vertical" value={form.vertical} onChange={(e) => setForm({ ...form, vertical: e.target.value })} />
+          <input suppressHydrationWarning className="contact-modal-field rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Volumen anual" value={form.volume} onChange={(e) => setForm({ ...form, volume: e.target.value })} />
+          <textarea suppressHydrationWarning className="contact-modal-field md:col-span-2 min-h-[88px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Mensaje" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <p className={`text-xs ${status === "error" ? "text-rose-300" : "text-emerald-300"}`}>{status === "ok" ? t.success : status === "error" ? t.error : ""}</p>
-          <button suppressHydrationWarning onClick={submit} disabled={status === "loading"} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm text-cyan-100 disabled:opacity-40">{t.submit}</button>
+          <button suppressHydrationWarning onClick={submit} disabled={status === "loading"} className="contact-modal-submit rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-40">{t.submit}</button>
         </div>
       </div>
     </div>

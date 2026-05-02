@@ -5,7 +5,18 @@ import { productUrls } from "@product/config";
 import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail, WorldMapRealtime } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 
-function apiBase() {
+function apiBase(params?: Record<string, string | string[] | undefined>) {
+  const override = typeof params?.api === "string" ? params.api.trim() : "";
+  if (override) {
+    try {
+      const parsed = new URL(override);
+      if ((parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") && parsed.protocol === "http:") {
+        return parsed.origin;
+      }
+    } catch {
+      // Ignore invalid debug overrides and use the configured API.
+    }
+  }
   return productUrls.api;
 }
 
@@ -203,14 +214,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   const snapshotId = typeof params.snapshot === "string" ? params.snapshot.trim() : "";
   const snapshotTrace = typeof params.trace === "string" ? params.trace.trim() : "";
+  const resolvedApiBase = apiBase(params);
   const snapshotResult = snapshotId && snapshotTrace
-    ? await fetch(`${apiBase()}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}`, { cache: "no-store" })
+    ? await fetch(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}`, { cache: "no-store" })
       .then((res) => res.ok ? res.json() : null)
       .then((payload) => payload?.contract || null)
       .catch(() => null) as SunContract | null
     : null;
   const isDemoPreview = query.toString().length === 0 && !snapshotId;
-  const response = snapshotResult ? null : await fetch(`${apiBase()}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
+  const response = snapshotResult ? null : await fetch(`${resolvedApiBase}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
   const parsedResult = response?.ok
     ? await response.json().catch(() => null) as SunContract | null
     : null;
@@ -220,7 +232,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   let loyaltyData = null;
   if (result.ok && result.identity?.tenantSlug) {
     const memKey = "anonymous"; // using anonymous mode for the public passport
-    loyaltyData = await fetch(`${apiBase()}/mobile/loyalty/overview?tenantSlug=${result.identity.tenantSlug}&memberKey=${memKey}`, { cache: "no-store" })
+    loyaltyData = await fetch(`${resolvedApiBase}/mobile/loyalty/overview?tenantSlug=${result.identity.tenantSlug}&memberKey=${memKey}`, { cache: "no-store" })
       .then((res) => res.json())
       .catch(() => null);
   }
@@ -291,6 +303,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : null;
   const originMapHref = wineryPoint.length ? mapHref(wineryPoint[0].lat, wineryPoint[0].lng) : "";
   const tapMapHref = currentTapPoint.length ? mapHref(currentTapPoint[0].lat, currentTapPoint[0].lng) : "";
+  const originDisplay = wineryPoint.length
+    ? `${wineryPoint[0].city}, ${wineryPoint[0].country}`
+    : result.provenance?.origin || result.product?.region || "Origen no informado";
+  const tapDisplay = currentTapPoint.length
+    ? `${currentTapPoint[0].city}, ${currentTapPoint[0].country}`
+    : result.provenance?.lastVerifiedLocation?.city
+      ? `${result.provenance.lastVerifiedLocation.city}, ${result.provenance.lastVerifiedLocation.country || "--"}`
+      : "Tap actual no geolocalizado";
+  const distanceDisplay = fmtDistance(originToTapDistance);
+  const isApiHandoff = Boolean(snapshotResult);
 
   const toneClass = result.status?.tone === "good"
     ? "text-emerald-300 border-emerald-300/30 bg-emerald-500/10"
@@ -380,6 +402,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : trustScore >= 65
       ? "Lectura revisable: conviene mirar ruta y estado del sello."
       : "Lectura de riesgo: no habilitamos ownership hasta repetir el tap.";
+  const handoffCopy = isApiHandoff
+    ? "Tap fisico procesado por API y renderizado en experiencia web segura."
+    : isDemoPreview
+      ? "Vista demo del passport SUN para probar el flujo sin etiqueta fisica."
+      : "Validacion directa desde parametros SUN.";
   const carrierEducation = [
     { name: "QR comun", mode: "Contenido", body: "Abre una URL y sirve para campañas simples. Es barato, pero se puede copiar o reenviar." },
     { name: "NTAG215", mode: "Tap UX", body: "Mejora velocidad y serializacion para eventos, credenciales y activaciones con reglas server-side." },
@@ -396,33 +423,36 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
 
   return (
-    <main className="sun-mobile-surface min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center py-6 px-0 font-sans relative overflow-hidden pb-safe pb-32">
+    <main className="sun-mobile-surface min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center py-4 sm:py-6 lg:py-8 px-0 font-sans relative overflow-hidden pb-safe pb-32 lg:pb-10">
       {/* Dynamic Background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
 
-      <div className="w-full max-w-[390px] min-w-0 z-10 space-y-4 px-3">
+      <div className="sun-mobile-shell w-full max-w-[430px] min-w-0 z-10 space-y-4 px-3 lg:max-w-6xl lg:px-6">
          {/* Trust Header */}
-         <div className="flex items-center justify-between px-2 mb-2">
+         <div className="sun-topbar flex items-center justify-between px-2 mb-2">
             <div className="flex items-center gap-2">
-               <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_12px_rgba(34,211,238,0.4)]">
+               <div className="sun-nexid-mark w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-300 to-blue-600 flex items-center justify-center shadow-[0_0_18px_rgba(34,211,238,0.45)]">
                   <span className="text-[10px] font-bold text-white">NX</span>
                </div>
-               <span className="text-xs font-bold tracking-widest text-white uppercase">nexID Verified</span>
+               <div>
+                 <span className="text-sm font-bold tracking-[0.16em] text-white uppercase">nexID</span>
+                 <p className="text-[9px] uppercase tracking-[0.16em] text-cyan-200/70">verified passport</p>
+               </div>
             </div>
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-900 border border-slate-800">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-900/85 border border-slate-700">
                <span className={`w-1.5 h-1.5 rounded-full ${pulseClass}`}></span>
-               <span className="text-[9px] font-bold text-slate-400 uppercase">Live Tap</span>
+               <span className="text-[9px] font-bold text-slate-300 uppercase">{isApiHandoff ? "API handoff" : "Live tap"}</span>
             </div>
          </div>
 
-         <div className="grid grid-cols-3 gap-2">
+         <div className="sun-quick-nav grid grid-cols-3 gap-2">
            <a href="#geo-trace" className="min-w-0 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Geo trace</a>
            <a href={`/login?consumer=1&next=${encodeURIComponent(marketplaceHref)}`} className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Registro</a>
            <a href={`/login?consumer=1&next=${encodeURIComponent(tenantSlug ? `/me?tenant=${tenantSlug}` : "/me")}`} className="min-w-0 rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">Portal</a>
          </div>
 
          {/* Hero Product Card */}
-         <div className="sun-passport-card rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+         <div className="sun-passport-card sun-passport-hero rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
             <div className="rounded-[1.75rem] border border-white/5 bg-slate-950 p-5 relative z-10 text-center">
                <div className="sun-product-stage mx-auto mb-4">
                   <div className={productVisualClass}>
@@ -434,12 +464,24 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-1">{result.product?.winery || "Bodega Premium"}</p>
                <h1 className="text-xl font-bold text-white leading-tight mb-2">{result.product?.name || "Producto Verificado"}</h1>
                <p className="text-xs text-slate-500">{result.product?.region || "Mendoza, Argentina"} · {result.product?.varietal || "Blend"}</p>
+               <div className="sun-route-card mt-5">
+                 <div>
+                   <span>Origen</span>
+                   <strong>{originDisplay}</strong>
+                 </div>
+                 <div className="sun-route-card__line" aria-hidden="true" />
+                 <div>
+                   <span>Tap actual</span>
+                   <strong>{tapDisplay}</strong>
+                 </div>
+                 <b>{distanceDisplay}</b>
+               </div>
 
                <div className="mt-6 inline-flex flex-col items-center justify-center">
                   <span className={`text-xs font-bold uppercase tracking-widest ${trustTone === "text-emerald-200" ? "text-emerald-400" : trustTone === "text-amber-200" ? "text-amber-400" : "text-red-400"}`}>
                      {result.status?.label || "AUTÉNTICO"}
                   </span>
-                  <span className="text-[10px] text-slate-500 mt-1">Tap #{result.identity?.scanCount ?? 1}</span>
+                  <span className="text-[10px] text-slate-500 mt-1">Tap #{result.identity?.scanCount ?? 1} · {handoffCopy}</span>
                </div>
 
                <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left">
@@ -473,7 +515,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          </div>
 
-         <section className="rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+         <section className="sun-config-panel rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <div className="flex items-start justify-between gap-3">
              <div>
                <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Configuracion detectada</p>
@@ -496,7 +538,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            </div>
          </section>
 
-         <div className="rounded-2xl border border-white/10 bg-slate-900/55 p-4">
+         <div className="sun-journey-panel rounded-2xl border border-white/10 bg-slate-900/55 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Journey post tap</p>
            <div className="mt-3 grid grid-cols-4 gap-2">
              {journeySteps.map((step) => (
@@ -509,7 +551,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            <p className="mt-2 text-[11px] text-slate-300">{statusHeadline}</p>
          </div>
 
-         <section className="rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+         <section className="sun-priority-panel rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-violet-300">Prioridad operativa</p>
            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
              <span className={`rounded-full border px-2 py-1 font-semibold ${securityTone}`}>{result.status?.label || "Estado"}</span>
@@ -525,7 +567,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            </div>
          </section>
 
-         <section className="rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+         <section className="sun-actions-panel rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Acciones de passport</p>
            <div className="mt-3 grid gap-2">
              <a href="/register" className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
@@ -547,7 +589,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
 
          {/* Mobile Geo Trace / Enterprise Map */}
-         <div id="geo-trace" className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
+         <div id="geo-trace" className="sun-map-section rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
             <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
             <div className="mt-2">
                {effectiveMapPoints.length ? (
@@ -587,7 +629,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
          {/* Loyalty & Experiences Mini-app (Consumer Network) */}
          {trustTone === "text-emerald-200" && (
-             <div className="rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-5 mt-4">
+             <div className="sun-loyalty-panel rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-5 mt-4">
                 <div className="flex justify-between items-start mb-4">
                    <div>
                       <h3 className="text-sm font-bold text-white">Club Terroir</h3>
@@ -620,7 +662,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          )}
    {/* Actions / Passport Banner */}
          {trustTone === "text-emerald-200" ? (
-            <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 mt-4 text-center">
+            <div className="sun-passport-banner rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 mt-4 text-center">
                <h3 className="text-sm font-bold text-white mb-2">Crear mi NexID Passport</h3>
                <p className="text-xs text-cyan-200/70 mb-4">Guardá este producto en tu colección, sumá puntos y accedé a recompensas exclusivas.</p>
                <a href="/me" className="block w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-cyan-950 text-sm font-bold transition-colors">
@@ -628,7 +670,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </a>
             </div>
          ) : (
-            <div className="rounded-2xl border border-red-500/30 bg-red-950/20 p-5 mt-4 text-center">
+            <div className="sun-passport-banner rounded-2xl border border-red-500/30 bg-red-950/20 p-5 mt-4 text-center">
                <h3 className="text-sm font-bold text-white mb-2">Acción Bloqueada</h3>
                <p className="text-xs text-red-200/70 mb-4">Por seguridad, este producto no puede ser guardado en la colección ni sumar puntos.</p>
                <button suppressHydrationWarning className="block w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition-colors">
@@ -638,7 +680,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          )}
 
          {/* Post-tap journey (mobile-first) */}
-         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/15 p-5 mt-4">
+         <div className="sun-posttap-panel rounded-2xl border border-emerald-500/20 bg-emerald-950/15 p-5 mt-4">
             <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Flujo post tap · SUN mobile</p>
             <h3 className="mt-2 text-sm font-bold text-white">Asociá este tap al tenant y entrá al club premium</h3>
             <div className="mt-3 space-y-2 text-xs text-slate-200">
@@ -653,7 +695,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          </div>
 
          {/* Technical Spec */}
-         <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 mt-4">
+         <div className="sun-tech-panel rounded-2xl border border-white/5 bg-slate-900/40 p-5 mt-4">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Trazabilidad Técnica</h4>
             <div className="space-y-3">
                <div className="flex justify-between items-center border-b border-white/5 pb-2">
@@ -672,16 +714,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          </div>
 
          {bid && uid ? (
-           <div className="mt-4">
+           <div className="sun-cta-actions mt-4">
              <CtaActions bid={bid} uid={uid} />
            </div>
          ) : null}
 
-         {canAutoOnboard ? <OnboardDemoButton bid={bid} /> : null}
+         {canAutoOnboard ? (
+           <div className="sun-onboard-action">
+             <OnboardDemoButton bid={bid} />
+           </div>
+         ) : null}
 
       </div>
 
-      <div className="fixed inset-x-0 bottom-3 z-40 mx-auto w-full max-w-[390px] px-3">
+      <div className="fixed inset-x-0 bottom-3 z-40 mx-auto w-full max-w-[390px] px-3 lg:hidden">
         <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
           <a href="/register" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Registro</a>
           <a href="/me" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">Portal</a>

@@ -325,7 +325,7 @@ export default async function DocsPage() {
   const copy = docsCopy[locale];
 
   return (
-    <main className="container-shell space-y-8 py-16">
+    <main className="knowledge-page-surface docs-page container-shell space-y-8 py-16">
       <BackLink />
       <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 

@@ -11,9 +11,12 @@ test("browser SUN taps hand off to the web passport experience with a diagnostic
 
   assert.match(source, /buildWebSunSnapshotUrl/);
   assert.match(source, /target\.searchParams\.set\("snapshot"/);
+  assert.match(source, /target\.searchParams\.set\("handoff", "query"\)/);
   assert.match(source, /target\.searchParams\.set\("trace"/);
+  assert.match(source, /target\.searchParams\.set\("api", url\.origin\)/);
   assert.match(source, /Response\.redirect\(webTarget,\s*303\)/);
   assert.match(source, /view === "api-html" \|\| view === "legacy-html"/);
+  assert.match(source, /safeHitSunRateLimit/);
 });
 
 test("web SUN page can hydrate a snapshot created by the API tap route", async () => {

@@ -45,6 +45,7 @@ export async function hitSunRateLimit(scope: string, scopeKey: string, windowSec
     if (code === "42P01") {
       console.warn("[sun_rate_limit_store_missing]", JSON.stringify({ scope, scopeKey }));
       try {
+        console.warn("[sun_rate_limit_repair]", JSON.stringify({ scope, scopeKey }));
         await ensureSunRateLimitTable();
         const retry = await hitSunRateLimit(scope, scopeKey, windowSeconds, maxHits);
         return retry;

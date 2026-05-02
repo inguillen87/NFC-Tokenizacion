@@ -13,12 +13,12 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
   const content = landingContent[locale];
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950">
+    <main className="auth-surface relative min-h-screen overflow-hidden bg-slate-950">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(6,182,212,.2),transparent_30%),radial-gradient(circle_at_88%_82%,rgba(99,102,241,.16),transparent_34%)]" />
       <div className="container-shell relative z-10 grid min-h-screen items-center py-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
         <section className="order-2 mt-6 lg:order-1 lg:mt-0">
           <div className="w-full py-4"><BackLink /></div>
-          <Card className="w-full max-w-xl border border-white/10 bg-slate-900/70 p-6 md:p-8">
+          <Card className="auth-card w-full max-w-xl border border-white/10 bg-slate-900/70 p-6 md:p-8">
             <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2">
               <BrandMark size={32} variant="ripple" theme="dark" />
               <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">Access center</p>
@@ -45,7 +45,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
           </Card>
         </section>
 
-        <section className="order-1 rounded-3xl border border-white/10 bg-slate-900/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,.45)] lg:order-2 lg:p-7">
+        <section className="auth-info-panel order-1 rounded-3xl border border-white/10 bg-slate-900/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,.45)] lg:order-2 lg:p-7">
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">Portal premium + marketplace</p>
           <h2 className="mt-2 text-2xl font-semibold text-white">Una sola plataforma para autenticación, trazabilidad y fidelización.</h2>
           <div className="mt-5 grid gap-3 text-sm text-slate-200">

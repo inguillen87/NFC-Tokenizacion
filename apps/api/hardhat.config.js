@@ -5,7 +5,12 @@ const privateKey = (process.env.POLYGON_MINTER_PRIVATE_KEY || "").trim();
 
 /** @type {import("hardhat/config").HardhatUserConfig} */
 const config = {
-  solidity: "0.8.24",
+  solidity: {
+    version: "0.8.24",
+    settings: {
+      evmVersion: "cancun",
+    },
+  },
   defaultNetwork: "hardhat",
   networks: {
     amoy: {

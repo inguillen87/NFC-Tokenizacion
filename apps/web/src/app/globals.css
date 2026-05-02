@@ -832,11 +832,43 @@ html.theme-light .animate-card-shift:hover {
 
 /* SUN mobile passport surface */
 .sun-mobile-surface {
+  isolation: isolate;
   background:
     radial-gradient(circle at 50% -10%, rgba(34, 211, 238, 0.16), transparent 36rem),
     radial-gradient(circle at 12% 18%, rgba(16, 185, 129, 0.1), transparent 18rem),
     radial-gradient(circle at 88% 42%, rgba(124, 58, 237, 0.12), transparent 20rem),
     linear-gradient(180deg, #05070b 0%, #0a0a0c 52%, #030712 100%);
+}
+
+.sun-mobile-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.88), transparent 82%);
+}
+
+.sun-mobile-shell {
+  position: relative;
+}
+
+.sun-nexid-mark {
+  position: relative;
+}
+
+.sun-nexid-mark::after {
+  content: "";
+  position: absolute;
+  inset: -0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-left-color: transparent;
+  animation: sunLogoOrbit 4.8s linear infinite;
 }
 
 .sun-passport-card {
@@ -849,12 +881,16 @@ html.theme-light .animate-card-shift:hover {
   position: relative;
   display: grid;
   place-items: center;
-  width: 8.25rem;
-  height: 8.25rem;
+  width: min(100%, 14rem);
+  height: 13.25rem;
   border-radius: 2rem;
   background:
-    radial-gradient(circle at 50% 35%, rgba(148, 163, 184, 0.22), transparent 44%),
-    linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.8));
+    radial-gradient(circle at 22% 26%, rgba(34, 211, 238, 0.28), transparent 20%),
+    radial-gradient(circle at 78% 70%, rgba(16, 185, 129, 0.16), transparent 23%),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.82));
+  background-size: auto, auto, 3.2rem 3.2rem, 3.2rem 3.2rem, auto;
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
 }
@@ -862,47 +898,70 @@ html.theme-light .animate-card-shift:hover {
 .sun-product-stage::before {
   content: "";
   position: absolute;
+  z-index: 0;
   inset: 1rem;
   border-radius: 999px;
   border: 1px dashed rgba(125, 211, 252, 0.22);
 }
 
+.sun-product-stage::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 16%;
+  right: 12%;
+  top: 28%;
+  height: 44%;
+  border-top: 3px dashed rgba(103, 232, 249, 0.58);
+  border-radius: 999px 999px 0 0;
+  transform: rotate(-13deg);
+  animation: sunRouteFlow 2.8s linear infinite;
+}
+
 .sun-product-visual {
   position: relative;
-  width: 4.25rem;
-  height: 6.3rem;
-  border-radius: 1.15rem 1.15rem 1.4rem 1.4rem;
+  z-index: 1;
+  width: 5.2rem;
+  height: 8.1rem;
+  border-radius: 1.8rem 1.8rem 1.15rem 1.15rem;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 18%, transparent 72%, rgba(255, 255, 255, 0.08)),
-    linear-gradient(180deg, #111827 0%, #172033 38%, #334155 100%);
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2), transparent 17%, transparent 68%, rgba(255, 255, 255, 0.08)),
+    radial-gradient(circle at 35% 14%, rgba(185, 28, 28, 0.55), transparent 24%),
+    linear-gradient(180deg, #3f1116 0%, #261016 42%, #111827 100%);
   border: 1px solid rgba(226, 232, 240, 0.28);
   box-shadow:
     inset 0 0 24px rgba(2, 6, 23, 0.84),
     0 18px 32px rgba(0, 0, 0, 0.38);
+  transform-origin: 50% 80%;
+  animation: sunBottleFloat 4.5s ease-in-out infinite;
 }
 
 .sun-product-visual::before {
   content: "";
   position: absolute;
   left: 1.25rem;
-  top: -1.15rem;
-  width: 1.7rem;
-  height: 1.55rem;
+  top: -1.45rem;
+  width: 1.9rem;
+  height: 2rem;
   border-radius: 0.45rem 0.45rem 0.25rem 0.25rem;
-  background: linear-gradient(180deg, #d8b4fe 0%, #7c3aed 100%);
-  border: 1px solid rgba(233, 213, 255, 0.7);
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0 4px, transparent 4px 9px),
+    linear-gradient(180deg, #dc2626 0%, #7f1d1d 100%);
+  border: 1px solid rgba(254, 202, 202, 0.72);
   transition: transform 0.45s ease, opacity 0.45s ease;
 }
 
 .sun-product-visual::after {
   content: "";
   position: absolute;
-  inset: 2rem 0.55rem 1.1rem;
-  border-radius: 0.7rem;
+  inset: 3.4rem 0.45rem 1.45rem;
+  border-radius: 0.35rem;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.25), transparent 28%),
-    linear-gradient(180deg, rgba(8, 47, 73, 0.92), rgba(14, 116, 144, 0.76));
+    linear-gradient(105deg, transparent 0 43%, rgba(251, 113, 133, 0.0) 44% 54%, transparent 55%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
+    linear-gradient(180deg, rgba(226, 232, 240, 0.95), rgba(203, 213, 225, 0.9));
   border: 1px solid rgba(103, 232, 249, 0.3);
+  box-shadow: 0 10px 20px rgba(2, 6, 23, 0.28);
 }
 
 .sun-product-visual--valid {
@@ -927,15 +986,15 @@ html.theme-light .animate-card-shift:hover {
 }
 
 .sun-product-visual--opened::before {
-  transform: translate(-0.35rem, -0.6rem) rotate(-20deg);
+  transform: translate(-0.45rem, -0.75rem) rotate(-24deg);
   opacity: 0.78;
 }
 
 .sun-product-visual--opened::after {
   background:
     linear-gradient(110deg, transparent 0 47%, rgba(251, 113, 133, 0.7) 48% 52%, transparent 53%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.25), transparent 28%),
-    linear-gradient(180deg, rgba(8, 47, 73, 0.92), rgba(14, 116, 144, 0.76));
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
+    linear-gradient(180deg, rgba(226, 232, 240, 0.95), rgba(203, 213, 225, 0.9));
 }
 
 .sun-product-visual__tag {
@@ -945,9 +1004,9 @@ html.theme-light .animate-card-shift:hover {
   bottom: 1.45rem;
   transform: translateX(-50%);
   border-radius: 999px;
-  background: rgba(2, 6, 23, 0.84);
-  border: 1px solid rgba(125, 211, 252, 0.38);
-  color: #a5f3fc;
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.22);
+  color: #0f172a;
   font-size: 0.54rem;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -956,10 +1015,71 @@ html.theme-light .animate-card-shift:hover {
 
 .sun-tap-wave {
   position: absolute;
+  z-index: 0;
   inset: 1.1rem;
   border-radius: 999px;
   border: 1px solid rgba(34, 211, 238, 0.36);
   animation: sunTapWave 1.9s ease-out infinite;
+}
+
+.sun-route-card {
+  display: grid;
+  grid-template-columns: 1fr 2.5rem 1fr;
+  gap: 0.55rem;
+  align-items: center;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.16), transparent 70%),
+    rgba(2, 6, 23, 0.56);
+  padding: 0.7rem;
+  text-align: left;
+}
+
+.sun-route-card span {
+  display: block;
+  color: #7dd3fc;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sun-route-card strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: #f8fafc;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.sun-route-card__line {
+  position: relative;
+  height: 2px;
+  border-top: 2px dashed rgba(103, 232, 249, 0.62);
+}
+
+.sun-route-card__line::after {
+  content: "";
+  position: absolute;
+  top: -0.3rem;
+  right: -0.12rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: #34d399;
+  box-shadow: 0 0 18px rgba(52, 211, 153, 0.75);
+}
+
+.sun-route-card b {
+  grid-column: 1 / -1;
+  justify-self: center;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  background: rgba(16, 185, 129, 0.12);
+  color: #bbf7d0;
+  font-size: 0.72rem;
+  padding: 0.35rem 0.75rem;
 }
 
 .sun-signal-cell {
@@ -990,6 +1110,68 @@ html.theme-light .animate-card-shift:hover {
 @keyframes sunTapWave {
   0% { opacity: 0.8; transform: scale(0.7); }
   100% { opacity: 0; transform: scale(1.45); }
+}
+
+@keyframes sunBottleFloat {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-0.4rem) rotate(1.5deg); }
+}
+
+@keyframes sunRouteFlow {
+  0% { opacity: 0.28; background-position: 0 0; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.28; background-position: 40px 0; }
+}
+
+@keyframes sunLogoOrbit {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 1024px) {
+  .sun-mobile-shell {
+    display: grid;
+    grid-template-columns: minmax(360px, 430px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .sun-mobile-shell > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .sun-topbar,
+  .sun-quick-nav {
+    grid-column: 1 / -1;
+  }
+
+  .sun-passport-hero {
+    grid-column: 1;
+    grid-row: 3 / span 7;
+    position: sticky;
+    top: 1.25rem;
+  }
+
+  .sun-config-panel,
+  .sun-journey-panel,
+  .sun-priority-panel,
+  .sun-actions-panel,
+  .sun-map-section,
+  .sun-loyalty-panel,
+  .sun-passport-banner,
+  .sun-posttap-panel,
+  .sun-tech-panel,
+  .sun-cta-actions,
+  .sun-onboard-action {
+    grid-column: 2;
+  }
+
+  .sun-config-panel .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .sun-map-section .worldmap-card iframe {
+    min-height: 25rem;
+  }
 }
 
 /* Higher-fidelity physical demo assets */
@@ -2744,5 +2926,200 @@ html.theme-light .risk-stack-link {
 
   .hero-output-row strong {
     font-size: 0.72rem;
+  }
+}
+
+/* Cross-page UX system: readable light mode outside the landing hero */
+.site-brand-lockup .brand-wordmark-svg {
+  width: clamp(154px, 28vw, 210px);
+}
+
+.mobile-menu-brand .brand-wordmark-svg {
+  width: clamp(148px, 48vw, 198px);
+}
+
+.back-link {
+  min-height: 2.4rem;
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.16);
+}
+
+.back-link__icon {
+  font-weight: 900;
+}
+
+html.theme-light .back-link {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  color: #075985 !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .mobile-nav-overlay {
+  background: rgba(226, 242, 255, 0.78) !important;
+}
+
+html.theme-light .mobile-nav-sheet {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(34, 211, 238, 0.2), transparent 34%),
+    radial-gradient(circle at 92% 10%, rgba(139, 92, 246, 0.14), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(225, 244, 255, 0.96) 58%, rgba(238, 242, 255, 0.96)) !important;
+  border-color: rgba(14, 165, 233, 0.55) !important;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
+  color: #0f172a;
+}
+
+html.theme-light .mobile-menu-brand {
+  --brand-accent: #0891b2;
+  --brand-wordmark-main: #0f172a;
+  --brand-wordmark-accent: #0891b2;
+  --brand-wordmark-orbit: rgba(14, 165, 233, 0.45);
+  color: #0f172a;
+}
+
+html.theme-light .mobile-menu-close,
+html.theme-light .mobile-nav-login,
+html.theme-light .mobile-nav-link,
+html.theme-light .mobile-nav-action-link,
+html.theme-light .mobile-nav-action-muted,
+html.theme-light .mobile-menu-control .locale-switcher,
+html.theme-light .mobile-menu-control .theme-toggle {
+  background: rgba(255, 255, 255, 0.76) !important;
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  color: #0f172a !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+html.theme-light .mobile-nav-primary {
+  background: linear-gradient(120deg, rgba(103, 232, 249, 0.9), rgba(34, 211, 238, 0.78), rgba(125, 211, 252, 0.9)) !important;
+  border-color: rgba(14, 116, 144, 0.32) !important;
+  color: #083344 !important;
+  box-shadow: 0 14px 30px rgba(14, 165, 233, 0.18);
+}
+
+html.theme-light .mobile-nav-actions {
+  background: rgba(236, 254, 255, 0.58) !important;
+  border-color: rgba(14, 165, 233, 0.24) !important;
+}
+
+html.theme-light .mobile-nav-action-link--sales {
+  background: rgba(209, 250, 229, 0.72) !important;
+  color: #065f46 !important;
+}
+
+html.theme-light .mobile-menu-control select {
+  color: #0f172a !important;
+}
+
+.knowledge-page-surface {
+  color: #f8fafc;
+}
+
+html.theme-light .knowledge-page-surface {
+  color: #0f172a;
+}
+
+html.theme-light .knowledge-page-surface [class*="bg-slate-900"],
+html.theme-light .knowledge-page-surface [class*="bg-slate-950"],
+html.theme-light .knowledge-page-surface .bg-white\/5,
+html.theme-light .knowledge-page-surface .pricing-page-card {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(34, 211, 238, 0.08), transparent 30%),
+    radial-gradient(circle at 92% 8%, rgba(139, 92, 246, 0.08), transparent 34%),
+    rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.36) !important;
+  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.06);
+}
+
+html.theme-light .knowledge-page-surface .text-white,
+html.theme-light .knowledge-page-surface .text-slate-100,
+html.theme-light .knowledge-page-surface .text-slate-200 {
+  color: #0f172a !important;
+}
+
+html.theme-light .knowledge-page-surface .text-slate-300,
+html.theme-light .knowledge-page-surface .text-slate-400,
+html.theme-light .knowledge-page-surface .text-slate-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .knowledge-page-surface .border-white\/10,
+html.theme-light .knowledge-page-surface .border-white\/15,
+html.theme-light .knowledge-page-surface .border-white\/20 {
+  border-color: rgba(148, 163, 184, 0.36) !important;
+}
+
+html.theme-light .knowledge-page-surface details,
+html.theme-light .knowledge-page-surface pre,
+html.theme-light .knowledge-page-surface code {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .contact-modal-overlay {
+  background: rgba(226, 242, 255, 0.78) !important;
+}
+
+html.theme-light .contact-modal-card {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.14), transparent 34%),
+    radial-gradient(circle at 86% 0%, rgba(139, 92, 246, 0.1), transparent 34%),
+    rgba(255, 255, 255, 0.97) !important;
+  border-color: rgba(14, 116, 144, 0.26) !important;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+}
+
+html.theme-light .contact-modal-field,
+html.theme-light .contact-modal-close {
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-color: rgba(148, 163, 184, 0.42) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .contact-modal-field::placeholder {
+  color: #64748b !important;
+}
+
+html.theme-light .contact-modal-submit {
+  background: linear-gradient(120deg, #67e8f9, #22d3ee, #38bdf8) !important;
+  border-color: rgba(14, 116, 144, 0.36) !important;
+  color: #083344 !important;
+}
+
+html.theme-light .auth-surface {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(34, 211, 238, 0.14), transparent 32%),
+    radial-gradient(circle at 88% 78%, rgba(139, 92, 246, 0.12), transparent 36%),
+    linear-gradient(180deg, #f8fbff, #eef4ff) !important;
+}
+
+html.theme-light .auth-card,
+html.theme-light .auth-info-panel,
+html.theme-light .auth-surface [class*="bg-slate-900"],
+html.theme-light .auth-surface [class*="bg-slate-950"],
+html.theme-light .auth-surface .bg-white\/5 {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.38) !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 54px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .auth-surface input {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(148, 163, 184, 0.46) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .auth-surface input::placeholder {
+  color: #64748b !important;
+}
+
+@media (max-width: 640px) {
+  .site-brand-lockup {
+    min-width: 0;
+  }
+
+  .site-brand-lockup .brand-wordmark-svg {
+    width: clamp(126px, 42vw, 166px);
   }
 }

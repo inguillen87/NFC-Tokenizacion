@@ -201,7 +201,7 @@ export default async function PricingPage() {
         };
 
   return (
-    <main className="container-shell py-16 pricing-page">
+    <main className="knowledge-page-surface container-shell py-16 pricing-page">
       <BackLink />
       <SectionHeading eyebrow={content.plans.eyebrow} title={content.plans.title} description={content.plans.description} />
 

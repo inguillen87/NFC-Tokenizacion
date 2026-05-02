@@ -218,7 +218,7 @@ export default async function HomePage() {
       <header className="site-header mobile-optimized-header sticky top-0 z-50 border-b backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/70">
         <div className="container-shell header-main-row flex h-16 items-center justify-between gap-3 sm:h-16 lg:h-16">
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
-            <BrandLockup size={44} variant="ripple" theme="dark" className="site-brand-lockup" />
+            <BrandLockup size={52} variant="ripple" theme="dark" className="site-brand-lockup" />
           </Link>
 
           <nav className="hidden gap-6 text-sm lg:flex site-nav">

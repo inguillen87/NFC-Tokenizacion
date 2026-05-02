@@ -23,7 +23,7 @@ export function BrandWordmark({ size = 120, variant = "static", theme = "dark", 
         fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial"
         fontSize="72"
         fontWeight="700"
-        letterSpacing="-1.5"
+        letterSpacing="0"
         fill={wordColor}
       >
         nex
@@ -34,7 +34,7 @@ export function BrandWordmark({ size = 120, variant = "static", theme = "dark", 
         fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial"
         fontSize="72"
         fontWeight="700"
-        letterSpacing="-1.5"
+        letterSpacing="0"
         fill={accent}
       >
         ID

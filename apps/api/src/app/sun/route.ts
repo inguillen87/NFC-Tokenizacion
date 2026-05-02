@@ -202,15 +202,36 @@ function webBaseUrl(sourceUrl?: URL) {
 }
 
 function buildWebSunSnapshotUrl(url: URL, diagnosticId: number | null, traceId: string, locale: SunLocale) {
-  if (!diagnosticId || !traceId) return null;
+  if (!traceId) return null;
   const target = new URL("/sun", webBaseUrl(url));
-  target.searchParams.set("snapshot", String(diagnosticId));
+  if (diagnosticId) {
+    target.searchParams.set("snapshot", String(diagnosticId));
+  } else {
+    ["v", "bid", "picc_data", "enc", "cmac"].forEach((key) => {
+      const value = url.searchParams.get(key);
+      if (value) target.searchParams.set(key, value);
+    });
+    target.searchParams.set("handoff", "query");
+  }
   target.searchParams.set("trace", traceId);
   target.searchParams.set("source", "nfc");
   target.searchParams.set("lang", locale);
   const bid = url.searchParams.get("bid");
   if (bid) target.searchParams.set("bid", bid);
+  if ((url.hostname === "localhost" || url.hostname === "127.0.0.1") && (target.hostname === "localhost" || target.hostname === "127.0.0.1")) {
+    target.searchParams.set("api", url.origin);
+  }
   return target;
+}
+
+async function safeHitSunRateLimit(scope: string, scopeKey: string, windowSeconds: number, maxHits: number) {
+  try {
+    return await hitSunRateLimit(scope, scopeKey, windowSeconds, maxHits);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "rate_limit_unavailable";
+    console.warn("[sun_rate_limit_unavailable]", JSON.stringify({ scope, scopeKey, reason: sanitizePublicErrorReason(reason) }));
+    return { hits: 0, limited: false, unavailable: true };
+  }
 }
 
 
@@ -1340,9 +1361,9 @@ export async function GET(req: Request): Promise<Response> {
     .digest("hex")
     .slice(0, 32);
   const [ipRate, bidRate, payloadRate] = await Promise.all([
-    hitSunRateLimit('ip', ip || 'unknown', 60, RATE_LIMIT_MAX_IP),
-    hitSunRateLimit('bid', bid || 'unknown', 60, RATE_LIMIT_MAX_BID),
-    hitSunRateLimit('payload', payloadFingerprint, 60, RATE_LIMIT_MAX_UID_CTR),
+    safeHitSunRateLimit('ip', ip || 'unknown', 60, RATE_LIMIT_MAX_IP),
+    safeHitSunRateLimit('bid', bid || 'unknown', 60, RATE_LIMIT_MAX_BID),
+    safeHitSunRateLimit('payload', payloadFingerprint, 60, RATE_LIMIT_MAX_UID_CTR),
   ]);
   if (ipRate.limited || bidRate.limited || payloadRate.limited) {
     return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
@@ -1385,7 +1406,7 @@ export async function GET(req: Request): Promise<Response> {
   const eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
   const ctr = typeof result.body.ctr === 'number' ? result.body.ctr : null;
   if (uid && ctr != null) {
-    const uidCtrRate = await hitSunRateLimit('uid_ctr', `${uid}:${ctr}`, 60, RATE_LIMIT_MAX_UID_CTR);
+    const uidCtrRate = await safeHitSunRateLimit('uid_ctr', `${uid}:${ctr}`, 60, RATE_LIMIT_MAX_UID_CTR);
     if (uidCtrRate.limited) {
       return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
     }
