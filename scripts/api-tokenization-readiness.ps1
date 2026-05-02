@@ -1,6 +1,7 @@
 param(
   [string]$ApiBase = "https://api.nexid.lat",
-  [string]$AdminApiKey
+  [string]$AdminApiKey,
+  [switch]$AllowSimulated
 )
 
 $ErrorActionPreference = "Stop"
@@ -53,6 +54,11 @@ foreach ($check in $result.checks) {
 }
 
 Write-Host ""
+if (($result.mode -ne "polygon") -and (-not $AllowSimulated)) {
+  Write-Host "NOT READY: la API sigue en modo '$($result.mode)'. Para el piloto blockchain tiene que ser TOKENIZATION_MODE=polygon." -ForegroundColor Red
+  exit 3
+}
+
 if ($result.ready -eq $true) {
   Write-Host "READY: API puede tokenizar en Polygon Amoy." -ForegroundColor Green
   exit 0
