@@ -45,6 +45,12 @@ type MapLibreRuntime = {
 
 const MAPLIBRE_JS = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
 const MAPLIBRE_CSS = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+const MAP_STYLES = {
+  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+} as const;
+
+type MapTheme = keyof typeof MAP_STYLES;
 
 function toMs(value?: string) {
   if (!value) return 0;
@@ -171,6 +177,146 @@ function routesToFeatureCollection(routes: GlobalOpsRoute[]) {
       },
     })),
   };
+}
+
+function readDocumentMapTheme(): MapTheme {
+  if (typeof document === "undefined") return "dark";
+  return document.documentElement.classList.contains("theme-light") || document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+}
+
+function installOperationalLayers(map: any, theme: MapTheme) {
+  const isLight = theme === "light";
+  if (!map.getSource?.("ops-points")) {
+    map.addSource("ops-points", { type: "geojson", data: pointsToFeatureCollection([]), cluster: true, clusterRadius: 40, clusterMaxZoom: 7 });
+  }
+  if (!map.getSource?.("ops-routes")) {
+    map.addSource("ops-routes", { type: "geojson", data: routesToFeatureCollection([]) });
+  }
+
+  if (!map.getLayer?.("ops-heat")) {
+    map.addLayer({
+      id: "ops-heat",
+      type: "heatmap",
+      source: "ops-points",
+      maxzoom: 8,
+      paint: {
+        "heatmap-weight": ["interpolate", ["linear"], ["get", "scans"], 0, 0, 100, 1],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, isLight ? 0.72 : 0.65, 8, isLight ? 1.75 : 1.55],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 14, 8, 38],
+        "heatmap-color": [
+          "interpolate",
+          ["linear"],
+          ["heatmap-density"],
+          0,
+          "rgba(14, 165, 233, 0)",
+          0.18,
+          isLight ? "rgba(14, 165, 233, 0.34)" : "rgba(34, 211, 238, 0.28)",
+          0.42,
+          isLight ? "rgba(16, 185, 129, 0.42)" : "rgba(52, 211, 153, 0.38)",
+          0.68,
+          isLight ? "rgba(124, 58, 237, 0.42)" : "rgba(168, 85, 247, 0.46)",
+          1,
+          isLight ? "rgba(225, 29, 72, 0.55)" : "rgba(251, 113, 133, 0.58)",
+        ],
+        "heatmap-opacity": isLight ? 0.64 : 0.56,
+      },
+    });
+  }
+
+  if (!map.getLayer?.("ops-routes-halo")) {
+    map.addLayer({
+      id: "ops-routes-halo",
+      type: "line",
+      source: "ops-routes",
+      paint: {
+        "line-color": isLight ? "#ffffff" : "#020617",
+        "line-width": isLight ? 8 : 8.5,
+        "line-opacity": isLight ? 0.86 : 0.62,
+        "line-blur": isLight ? 2.2 : 3,
+      },
+    });
+  }
+
+  if (!map.getLayer?.("ops-routes-risk")) {
+    map.addLayer({
+      id: "ops-routes-risk",
+      type: "line",
+      source: "ops-routes",
+      filter: [">", ["get", "risk"], 0],
+      paint: { "line-color": isLight ? "#e11d48" : "#fb7185", "line-width": isLight ? 4 : 3.6, "line-opacity": 0.94, "line-dasharray": [1.1, 1.15] },
+    });
+  }
+
+  if (!map.getLayer?.("ops-routes-clean")) {
+    map.addLayer({
+      id: "ops-routes-clean",
+      type: "line",
+      source: "ops-routes",
+      filter: ["<=", ["get", "risk"], 0],
+      paint: { "line-color": isLight ? "#0891b2" : "#67e8f9", "line-width": isLight ? 3.4 : 3, "line-opacity": isLight ? 0.92 : 0.86, "line-dasharray": [1.1, 1.3] },
+    });
+  }
+
+  if (!map.getLayer?.("ops-clusters")) {
+    map.addLayer({
+      id: "ops-clusters",
+      type: "circle",
+      source: "ops-points",
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-color": ["step", ["get", "point_count"], "#0ea5e9", 10, "#2563eb", 30, "#7c3aed"],
+        "circle-radius": ["step", ["get", "point_count"], 12, 10, 17, 30, 24],
+        "circle-stroke-width": 1.8,
+        "circle-stroke-color": isLight ? "#ffffff" : "#0f172a",
+        "circle-opacity": 0.9,
+      },
+    });
+  }
+
+  if (!map.getLayer?.("ops-points-unclustered")) {
+    map.addLayer({
+      id: "ops-points-unclustered",
+      type: "circle",
+      source: "ops-points",
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-color": ["case", ["==", ["get", "role"], "origin"], "#34d399", [">", ["get", "risk"], 0], "#fb7185", "#22d3ee"],
+        "circle-radius": ["interpolate", ["linear"], ["get", "scans"], 1, 6, 80, 13],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": isLight ? "#ffffff" : "#f8fafc",
+        "circle-opacity": 0.96,
+      },
+    });
+  }
+
+  if (!map.getLayer?.("ops-point-labels")) {
+    map.addLayer({
+      id: "ops-point-labels",
+      type: "symbol",
+      source: "ops-points",
+      filter: ["!", ["has", "point_count"]],
+      layout: {
+        "text-field": [
+          "case",
+          ["==", ["get", "role"], "origin"],
+          ["concat", "ORIGEN · ", ["get", "city"]],
+          ["==", ["get", "role"], "tap"],
+          ["concat", "TAP · ", ["get", "city"]],
+          ["get", "city"],
+        ],
+        "text-size": 11,
+        "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+        "text-offset": [0, 1.35],
+        "text-anchor": "top",
+        "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": isLight ? "#0f172a" : "#e0f2fe",
+        "text-halo-color": isLight ? "rgba(255,255,255,.94)" : "rgba(2,6,23,.92)",
+        "text-halo-width": 1.6,
+      },
+    });
+  }
 }
 
 export function GlobalOpsMap({
@@ -314,12 +460,10 @@ export function GlobalOpsMap({
           return;
         }
 
-        const useLightBasemap = document.documentElement.classList.contains("theme-light");
+        const initialTheme = readDocumentMapTheme();
         const map = new maplibregl.Map({
           container: mapContainerRef.current,
-          style: useLightBasemap
-            ? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
-            : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+          style: MAP_STYLES[initialTheme],
           center: [-8, 18],
           zoom: 1.25,
           pitch: 25,
