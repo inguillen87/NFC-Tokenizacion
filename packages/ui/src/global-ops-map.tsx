@@ -184,6 +184,59 @@ function readDocumentMapTheme(): MapTheme {
   return document.documentElement.classList.contains("theme-light") || document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
 }
 
+function isValidCoordinate(lng: number, lat: number) {
+  return Number.isFinite(lng) && Number.isFinite(lat) && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
+}
+
+function collectBoundsCoordinates(points: GlobalOpsPoint[], routes: GlobalOpsRoute[]) {
+  const coords: Array<[number, number]> = [];
+  for (const point of points) {
+    if (isValidCoordinate(point.lng, point.lat)) coords.push([point.lng, point.lat]);
+  }
+  for (const route of routes) {
+    if (isValidCoordinate(route.fromLng, route.fromLat)) coords.push([route.fromLng, route.fromLat]);
+    if (isValidCoordinate(route.toLng, route.toLat)) coords.push([route.toLng, route.toLat]);
+  }
+  return coords;
+}
+
+function mapBoundsKey(points: GlobalOpsPoint[], routes: GlobalOpsRoute[]) {
+  const coords = collectBoundsCoordinates(points, routes);
+  return coords.map(([lng, lat]) => `${lng.toFixed(4)},${lat.toFixed(4)}`).join("|");
+}
+
+function fitMapToOperationalData(map: any, points: GlobalOpsPoint[], routes: GlobalOpsRoute[], immediate = false) {
+  const coords = collectBoundsCoordinates(points, routes);
+  if (!coords.length) return;
+  const isMobile = typeof window !== "undefined" ? window.innerWidth < 720 : false;
+  const padding = isMobile
+    ? { top: 92, right: 34, bottom: 78, left: 34 }
+    : { top: 82, right: 82, bottom: 78, left: 82 };
+  if (coords.length === 1) {
+    map.easeTo?.({
+      center: coords[0],
+      zoom: Math.max(5, Math.min(8, map.getZoom?.() || 5)),
+      duration: immediate ? 0 : 900,
+      essential: true,
+    });
+    return;
+  }
+  const lngs = coords.map(([lng]) => lng);
+  const lats = coords.map(([, lat]) => lat);
+  map.fitBounds?.(
+    [
+      [Math.min(...lngs), Math.min(...lats)],
+      [Math.max(...lngs), Math.max(...lats)],
+    ],
+    {
+      padding,
+      maxZoom: isMobile ? 7.25 : 6.5,
+      duration: immediate ? 0 : 950,
+      essential: true,
+    },
+  );
+}
+
 function installOperationalLayers(map: any, theme: MapTheme) {
   const isLight = theme === "light";
   if (!map.getSource?.("ops-points")) {
@@ -355,6 +408,8 @@ export function GlobalOpsMap({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any | null>(null);
   const activeStyleRef = useRef<MapTheme | null>(null);
+  const lastFitKeyRef = useRef("");
+  const visiblePointsRef = useRef<GlobalOpsPoint[]>([]);
 
   useEffect(() => setWebglReady(hasWebGlSupport()), []);
   useEffect(() => setInternalSelectedId(selectedPointId || ""), [selectedPointId]);
@@ -410,12 +465,13 @@ export function GlobalOpsMap({
     return Array.from(bins.values());
   }, [basePoints]);
 
-  const visiblePoints = useMemo(() => {
-    const limit = Math.max(1, Math.floor((progress / 100) * clusteredPoints.length));
-    return clusteredPoints.slice(0, limit);
-  }, [clusteredPoints, progress]);
+  const visiblePoints = useMemo(() => clusteredPoints, [clusteredPoints]);
 
-  const visibleRoutes = useMemo(() => {
+  useEffect(() => {
+    visiblePointsRef.current = visiblePoints;
+  }, [visiblePoints]);
+
+  const filteredRoutes = useMemo(() => {
     const filtered = routes
       .filter((route) => {
         if (localRiskOnly && route.risk <= 0) return false;
@@ -425,10 +481,16 @@ export function GlobalOpsMap({
       })
       .sort((a, b) => toMs(a.lastSeenAt) - toMs(b.lastSeenAt));
     const max = mode === "global" ? 140 : 80;
-    const sliced = filtered.slice(-max);
-    const limit = Math.max(1, Math.floor((progress / 100) * sliced.length));
-    return sliced.slice(0, limit);
-  }, [cutoff, localRiskOnly, mode, progress, routes]);
+    return filtered.slice(-max);
+  }, [cutoff, localRiskOnly, mode, routes]);
+
+  const visibleRoutes = useMemo(() => {
+    if (!playback) return filteredRoutes;
+    const limit = Math.max(1, Math.floor((progress / 100) * filteredRoutes.length));
+    return filteredRoutes.slice(0, limit);
+  }, [filteredRoutes, playback, progress]);
+
+  const boundsKey = useMemo(() => mapBoundsKey(visiblePoints, filteredRoutes), [filteredRoutes, visiblePoints]);
 
   const selectedPoint = visiblePoints.find((point) => point.id === internalSelectedId) || visiblePoints[0] || null;
   const selectedJourney = useMemo(() => {
@@ -472,7 +534,6 @@ export function GlobalOpsMap({
         }
 
         const initialTheme = readDocumentMapTheme();
-        const useLightBasemap = initialTheme === "light";
         activeStyleRef.current = initialTheme;
         const map = new maplibregl.Map({
           container: mapContainerRef.current,
@@ -486,125 +547,20 @@ export function GlobalOpsMap({
 
         map.on("load", () => {
           if (cancelled) return;
-          map.addSource("ops-points", { type: "geojson", data: pointsToFeatureCollection([]), cluster: true, clusterRadius: 40, clusterMaxZoom: 7 });
-          map.addSource("ops-routes", { type: "geojson", data: routesToFeatureCollection([]) });
-
-          map.addLayer({
-            id: "ops-heat",
-            type: "heatmap",
-            source: "ops-points",
-            maxzoom: 8,
-            paint: {
-              "heatmap-weight": ["interpolate", ["linear"], ["get", "scans"], 0, 0, 100, 1],
-              "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, useLightBasemap ? 0.72 : 0.65, 8, useLightBasemap ? 1.75 : 1.55],
-              "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 14, 8, 38],
-              "heatmap-color": [
-                "interpolate",
-                ["linear"],
-                ["heatmap-density"],
-                0,
-                "rgba(14, 165, 233, 0)",
-                0.18,
-                useLightBasemap ? "rgba(14, 165, 233, 0.34)" : "rgba(34, 211, 238, 0.28)",
-                0.42,
-                useLightBasemap ? "rgba(16, 185, 129, 0.42)" : "rgba(52, 211, 153, 0.38)",
-                0.68,
-                useLightBasemap ? "rgba(124, 58, 237, 0.42)" : "rgba(168, 85, 247, 0.46)",
-                1,
-                useLightBasemap ? "rgba(225, 29, 72, 0.55)" : "rgba(251, 113, 133, 0.58)",
-              ],
-              "heatmap-opacity": useLightBasemap ? 0.64 : 0.56,
-            },
-          });
-
-          map.addLayer({
-            id: "ops-routes-halo",
-            type: "line",
-            source: "ops-routes",
-            paint: {
-              "line-color": useLightBasemap ? "#ffffff" : "#020617",
-              "line-width": useLightBasemap ? 8 : 8.5,
-              "line-opacity": useLightBasemap ? 0.86 : 0.62,
-              "line-blur": useLightBasemap ? 2.2 : 3,
-            },
-          });
-
-          map.addLayer({
-            id: "ops-routes-risk",
-            type: "line",
-            source: "ops-routes",
-            filter: [">", ["get", "risk"], 0],
-            paint: { "line-color": useLightBasemap ? "#e11d48" : "#fb7185", "line-width": useLightBasemap ? 4 : 3.6, "line-opacity": 0.94, "line-dasharray": [1.1, 1.15] },
-          });
-
-          map.addLayer({
-            id: "ops-routes-clean",
-            type: "line",
-            source: "ops-routes",
-            filter: ["<=", ["get", "risk"], 0],
-            paint: { "line-color": useLightBasemap ? "#0891b2" : "#67e8f9", "line-width": useLightBasemap ? 3.4 : 3, "line-opacity": useLightBasemap ? 0.92 : 0.86, "line-dasharray": [1.1, 1.3] },
-          });
-
-          map.addLayer({
-            id: "ops-clusters",
-            type: "circle",
-            source: "ops-points",
-            filter: ["has", "point_count"],
-            paint: {
-              "circle-color": ["step", ["get", "point_count"], "#0ea5e9", 10, "#2563eb", 30, "#7c3aed"],
-              "circle-radius": ["step", ["get", "point_count"], 12, 10, 17, 30, 24],
-              "circle-stroke-width": 1.8,
-              "circle-stroke-color": useLightBasemap ? "#ffffff" : "#0f172a",
-              "circle-opacity": 0.9,
-            },
-          });
-
-          map.addLayer({
-            id: "ops-points-unclustered",
-            type: "circle",
-            source: "ops-points",
-            filter: ["!", ["has", "point_count"]],
-            paint: {
-              "circle-color": ["case", ["==", ["get", "role"], "origin"], "#34d399", [">", ["get", "risk"], 0], "#fb7185", "#22d3ee"],
-              "circle-radius": ["interpolate", ["linear"], ["get", "scans"], 1, 6, 80, 13],
-              "circle-stroke-width": 2,
-              "circle-stroke-color": useLightBasemap ? "#ffffff" : "#f8fafc",
-              "circle-opacity": 0.96,
-            },
-          });
-
-          map.addLayer({
-            id: "ops-point-labels",
-            type: "symbol",
-            source: "ops-points",
-            filter: ["!", ["has", "point_count"]],
-            layout: {
-              "text-field": [
-                "case",
-                ["==", ["get", "role"], "origin"],
-                ["concat", "ORIGEN - ", ["get", "city"]],
-                ["==", ["get", "role"], "tap"],
-                ["concat", "TAP - ", ["get", "city"]],
-                ["get", "city"],
-              ],
-              "text-size": 11,
-              "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-              "text-offset": [0, 1.35],
-              "text-anchor": "top",
-              "text-allow-overlap": false,
-            },
-            paint: {
-              "text-color": useLightBasemap ? "#0f172a" : "#e0f2fe",
-              "text-halo-color": useLightBasemap ? "rgba(255,255,255,.9)" : "rgba(2,6,23,.9)",
-              "text-halo-width": 1.4,
-            },
+          installOperationalLayers(map, initialTheme);
+          map.getSource("ops-points")?.setData?.(pointsToFeatureCollection(visiblePoints));
+          map.getSource("ops-routes")?.setData?.(routesToFeatureCollection(visibleRoutes));
+          lastFitKeyRef.current = boundsKey;
+          window.requestAnimationFrame(() => {
+            map.resize?.();
+            fitMapToOperationalData(map, visiblePoints, filteredRoutes, true);
           });
 
           map.on("click", "ops-points-unclustered", (event: any) => {
             const feature = event.features?.[0];
             if (!feature) return;
             const id = String(feature.properties?.id || "");
-            const selected = visiblePoints.find((item) => item.id === id);
+            const selected = visiblePointsRef.current.find((item) => item.id === id);
             if (!selected) return;
             setInternalSelectedId(selected.id);
             onPointSelect?.(selected);
@@ -634,16 +590,14 @@ export function GlobalOpsMap({
     return () => {
       cancelled = true;
     };
-  }, [onPointSelect, visiblePoints, webglReady]);
+  }, [boundsKey, filteredRoutes, onPointSelect, visiblePoints, visibleRoutes, webglReady]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapRuntimeReady || activeStyleRef.current === mapTheme) return;
+    if (!map || !activeStyleRef.current || activeStyleRef.current === mapTheme) return;
 
     let cancelled = false;
-    const animatedRoutes = playback
-      ? visibleRoutes.slice(0, Math.max(1, Math.floor((progress / 100) * visibleRoutes.length)))
-      : visibleRoutes;
+    const animatedRoutes = visibleRoutes;
     const hydrateSources = () => {
       if (cancelled) return;
       installOperationalLayers(map, mapTheme);
@@ -651,10 +605,14 @@ export function GlobalOpsMap({
       map.getSource("ops-routes")?.setData?.(routesToFeatureCollection(animatedRoutes));
       activeStyleRef.current = mapTheme;
       setMapRuntimeReady(true);
+      window.requestAnimationFrame(() => {
+        map.resize?.();
+        fitMapToOperationalData(map, visiblePoints, filteredRoutes, true);
+      });
     };
 
-    setMapRuntimeReady(false);
     map.once?.("style.load", hydrateSources);
+    activeStyleRef.current = mapTheme;
     map.setStyle?.(MAP_STYLES[mapTheme]);
     const fallback = window.setTimeout(hydrateSources, 1500);
 
@@ -663,7 +621,7 @@ export function GlobalOpsMap({
       window.clearTimeout(fallback);
       map.off?.("style.load", hydrateSources);
     };
-  }, [mapRuntimeReady, mapTheme, playback, progress, visiblePoints, visibleRoutes]);
+  }, [filteredRoutes, mapTheme, playback, progress, visiblePoints, visibleRoutes]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -674,11 +632,42 @@ export function GlobalOpsMap({
 
     pointsSource?.setData?.(pointsToFeatureCollection(visiblePoints));
 
-    const animatedRoutes = playback
-      ? visibleRoutes.slice(0, Math.max(1, Math.floor((progress / 100) * visibleRoutes.length)))
-      : visibleRoutes;
+    const animatedRoutes = visibleRoutes;
     routesSource?.setData?.(routesToFeatureCollection(animatedRoutes));
-  }, [mapRuntimeReady, playback, progress, visiblePoints, visibleRoutes]);
+    if (boundsKey && lastFitKeyRef.current !== boundsKey) {
+      lastFitKeyRef.current = boundsKey;
+      window.requestAnimationFrame(() => {
+        map.resize?.();
+        fitMapToOperationalData(map, visiblePoints, filteredRoutes);
+      });
+    }
+  }, [boundsKey, filteredRoutes, mapRuntimeReady, playback, progress, visiblePoints, visibleRoutes]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const container = mapContainerRef.current;
+    if (!map || !container || !mapRuntimeReady) return;
+
+    let frame = 0;
+    const refreshViewport = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        map.resize?.();
+        fitMapToOperationalData(map, visiblePoints, filteredRoutes, true);
+      });
+    };
+
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(refreshViewport) : null;
+    observer?.observe(container);
+    window.addEventListener("resize", refreshViewport);
+    refreshViewport();
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", refreshViewport);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [boundsKey, filteredRoutes, mapRuntimeReady, visiblePoints]);
 
   useEffect(() => {
     return () => {
@@ -724,7 +713,7 @@ export function GlobalOpsMap({
         <button suppressHydrationWarning type="button" onClick={() => setPlayback((value) => !value)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100">{playback ? "Pausar ruta" : "Animar ruta"}</button>
       </div>
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">
+      <div className="global-ops-map-layout mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">
         <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.25),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(167,139,250,.2),transparent_40%),linear-gradient(160deg,#020617,#0f172a,#111827)]">
           <div className="global-ops-map-canvas relative h-[29rem]">
             <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />

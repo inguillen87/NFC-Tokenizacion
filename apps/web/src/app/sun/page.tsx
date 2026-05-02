@@ -262,7 +262,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     || trustSignals.antiReplay === false;
   const isCommercialBlocked = blockedActions.some((action) => ["claim", "save", "join", "warranty", "rewards", "tokenization"].includes(action));
   const isTamperRisk = Boolean(trustSignals.tamperRisk) || result.status?.tone === "risk" || String(result.verdict || "").toLowerCase().includes("tamper");
-  const isValid = result.status?.tone === "good" && statusCode === "VALID" && !isReplay && !isCommercialBlocked && !isTamperRisk;
+  const isValid = result.status?.tone === "good" && ["VALID", "AUTH_OK"].includes(statusCode) && !isReplay && !isCommercialBlocked && !isTamperRisk;
   const troubleshooting = result.troubleshooting || [];
   const canAutoOnboard = String(result.status?.reason || "").toLowerCase().includes("unknown batch") && /^DEMO-[A-Z0-9-]{3,40}$/.test(bid);
   const timelinePoints = (result.provenance?.timelineSummary || [])
@@ -644,7 +644,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          </div>
 
-         <section className={`sun-security-ledger ${isReplay ? "sun-security-ledger--replay" : isValid ? "sun-security-ledger--fresh" : "sun-security-ledger--review"}`}>
+         <section className={`sun-security-ledger sun-panel-primary ${isReplay ? "sun-security-ledger--replay" : isValid ? "sun-security-ledger--fresh" : "sun-security-ledger--review"}`}>
            <div className="sun-security-ledger__header">
              <div>
                <p className="sun-security-eyebrow">Prueba criptografica NTAG 424 DNA TT</p>
@@ -682,7 +682,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            </div>
          </section>
 
-         <section className="sun-config-panel rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+         <section className="sun-config-panel sun-panel-education rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <div className="flex items-start justify-between gap-3">
              <div>
                <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Configuracion detectada</p>
@@ -705,7 +705,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            </div>
          </section>
 
-         <div className="sun-journey-panel rounded-2xl border border-white/10 bg-slate-900/55 p-4">
+         <div className="sun-journey-panel sun-panel-journey rounded-2xl border border-white/10 bg-slate-900/55 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Journey post tap</p>
            <div className="mt-3 grid grid-cols-4 gap-2">
              {journeySteps.map((step) => (
@@ -718,7 +718,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            <p className="mt-2 text-[11px] text-slate-300">{statusHeadline}</p>
          </div>
 
-         <section className="sun-priority-panel rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+         <section className="sun-priority-panel sun-panel-priority rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-violet-300">Prioridad operativa</p>
            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
              <span className={`rounded-full border px-2 py-1 font-semibold ${securityTone}`}>{result.status?.label || "Estado"}</span>
@@ -734,7 +734,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            </div>
          </section>
 
-         <section className="sun-actions-panel rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+         <section className="sun-actions-panel sun-panel-actions rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Acciones de passport</p>
            <div className="mt-3 grid gap-2">
              <a href="/register" className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
@@ -756,7 +756,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
 
          {/* Mobile Geo Trace / Enterprise Map */}
-         <div id="geo-trace" className="sun-map-section sun-map-section--enterprise rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
+         <div id="geo-trace" className="sun-map-section sun-map-section--enterprise sun-panel-map rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
             <div className="sun-map-section__header">
               <div>
                 <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>

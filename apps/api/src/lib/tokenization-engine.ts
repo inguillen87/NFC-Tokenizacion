@@ -105,23 +105,24 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
       chip_uid_hash: buildChipUidHash(existing.uid_hex),
     };
 
-    let external = null;
-    let fallbackToSimulated = false;
+    let external = null as Record<string, unknown> | null;
+    const polygonMode = tokenizationMode === "polygon";
 
-    if (tokenizationMode === "polygon") {
-      if (!process.env.POLYGON_RPC_URL) {
-        // Fallback elegantly without raw errors
-        fallbackToSimulated = true;
-      } else {
-        const localPolygonMint = network.startsWith("polygon") ? await runLocalPolygonScript(externalInput).catch(() => null) : null;
-        external = localPolygonMint || await runExternalExecutor(externalInput).catch(() => null);
-        if (!external) fallbackToSimulated = true; // If external fails, simulate to avoid breaking UX
+    if (polygonMode) {
+      const wantsLocalMinter = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
+      if (wantsLocalMinter && !process.env.POLYGON_RPC_URL) {
+        throw new Error("missing_POLYGON_RPC_URL_for_local_minter");
+      }
+      const localPolygonMint = network.startsWith("polygon") ? await runLocalPolygonScript(externalInput) : null;
+      external = localPolygonMint || await runExternalExecutor(externalInput);
+      if (!external?.tx_hash) {
+        throw new Error("polygon_anchor_unavailable_configure_local_minter_or_executor");
       }
     }
 
     const txHash = String(external?.tx_hash || buildSimulatedTxHash(existing.id, existing.uid_hex));
-    const tokenId = String(external?.token_id || buildTokenId(existing.uid_hex));
-    const anchorHash = String(external?.anchor_hash || `0x${randomBytes(32).toString("hex")}`);
+    const tokenId = external?.token_id ? String(external.token_id) : polygonMode ? null : buildTokenId(existing.uid_hex);
+    const anchorHash = String(external?.anchor_hash || (polygonMode ? txHash : `0x${randomBytes(32).toString("hex")}`));
     const externalRef = external?.external_ref ? String(external.external_ref) : null;
 
     await sql/*sql*/`
@@ -136,7 +137,7 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
           processed_at = now(),
           last_error = NULL,
           attempt_count = attempt_count + 1,
-          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, anchored_at: new Date().toISOString(), tokenization_mode: tokenizationMode })}::jsonb
+          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, anchored_at: new Date().toISOString(), tokenization_mode: tokenizationMode, simulated: !polygonMode })}::jsonb
       WHERE id = ${existing.id}::uuid
     `;
 
@@ -146,7 +147,7 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
         'ledger_anchored',
         ${existing.bid},
         ${existing.uid_hex},
-        ${JSON.stringify({ tx_hash: txHash, token_id: tokenId, network, anchor_hash: anchorHash, issuer_wallet: issuerWallet, external_ref: externalRef })}::jsonb
+        ${JSON.stringify({ tx_hash: txHash, token_id: tokenId, network, anchor_hash: anchorHash, issuer_wallet: issuerWallet, external_ref: externalRef, simulated: !polygonMode })}::jsonb
       )
     `;
 

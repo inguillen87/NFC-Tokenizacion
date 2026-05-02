@@ -16,6 +16,12 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["business", "productivity", "security"],
     shortcuts: [
       {
+        name: "SUN Passport",
+        short_name: "SUN",
+        description: "Abrir la experiencia mobile del tap NFC.",
+        url: "/sun",
+      },
+      {
         name: "Docs",
         short_name: "Docs",
         description: "Abrir documentación comercial y técnica.",
