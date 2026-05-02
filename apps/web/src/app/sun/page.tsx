@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { CtaActions } from "./cta-actions";
 import { OnboardDemoButton } from "./onboard-demo-button";
 import { productUrls } from "@product/config";
-import { BrandLockup, DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail, WorldMapRealtime } from "@product/ui";
+import { BrandLockup, DeviceSignatureBadge, EmptyState, GlobalOpsMap, KeyValueSpec, ThemeToggle, TimelineRail } from "@product/ui";
+import type { GlobalOpsPoint, GlobalOpsRoute } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
@@ -311,10 +312,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       source: "current_mobile_tap",
     }]
     : [];
-  const mapPoints = [...wineryPoint, ...timelinePoints, ...currentTapPoint];
-  const effectiveMapPoints = mapPoints;
   const orderedTimelinePoints = [...timelinePoints].reverse();
-  const mapRoutes = [
+  const mapRoutes: Array<{
+    fromLat: number;
+    fromLng: number;
+    toLat: number;
+    toLng: number;
+    label?: string;
+    tone: "warn" | "info";
+  }> = [
     ...(wineryPoint.length && orderedTimelinePoints.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: orderedTimelinePoints[0].lat, toLng: orderedTimelinePoints[0].lng, label: "Origen de bodega → primer evento registrado", tone: "info" as const }] : []),
     ...(wineryPoint.length && !orderedTimelinePoints.length && currentTapPoint.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Origen del producto → tap actual", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
     ...(orderedTimelinePoints.length > 1 ? orderedTimelinePoints.slice(1).map((point, idx) => ({ fromLat: orderedTimelinePoints[idx].lat, fromLng: orderedTimelinePoints[idx].lng, toLat: point.lat, toLng: point.lng, tone: point.risk > 0 ? "warn" as const : "info" as const })) : []),
@@ -334,6 +340,77 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? `${result.provenance.lastVerifiedLocation.city}, ${result.provenance.lastVerifiedLocation.country || "--"}`
       : "Tap actual no geolocalizado";
   const distanceDisplay = fmtDistance(originToTapDistance);
+  const mapUid = uid || bid || "sun-public-tap";
+  const mapTenant = String(result.identity?.tenantSlug || "public");
+  const mapProductName = result.product?.name || result.identity?.bid || "Producto verificado";
+  const mapTimelineSummary = result.provenance?.timelineSummary || [];
+  const firstMapSeenAt = result.provenance?.firstVerified?.at || mapTimelineSummary[mapTimelineSummary.length - 1]?.at || "";
+  const lastMapSeenAt = result.provenance?.lastVerifiedLocation?.at || mapTimelineSummary[0]?.at || "";
+  const opsMapPoints: GlobalOpsPoint[] = [
+    ...wineryPoint.map((point, index) => ({
+      id: `origin-${mapUid}-${index}`,
+      city: point.city,
+      country: point.country,
+      lat: point.lat,
+      lng: point.lng,
+      scans: Math.max(1, Number(result.identity?.scanCount || 1)),
+      risk: 0,
+      verdict: "ORIGIN",
+      tenantSlug: mapTenant,
+      lastSeen: firstMapSeenAt || new Date(0).toISOString(),
+      uid: mapUid,
+      device: "producer",
+      role: "origin" as const,
+      productName: mapProductName,
+    })),
+    ...orderedTimelinePoints.map((point, index) => ({
+      id: `timeline-${mapUid}-${index}`,
+      city: point.city,
+      country: point.country,
+      lat: point.lat,
+      lng: point.lng,
+      scans: Math.max(1, point.scans || 1),
+      risk: point.risk,
+      verdict: point.status,
+      tenantSlug: mapTenant,
+      lastSeen: point.lastSeen || new Date(index + 1).toISOString(),
+      uid: mapUid,
+      device: "mobile",
+      role: "hub" as const,
+      productName: mapProductName,
+    })),
+    ...currentTapPoint.map((point, index) => ({
+      id: `current-tap-${mapUid}-${index}`,
+      city: point.city,
+      country: point.country,
+      lat: point.lat,
+      lng: point.lng,
+      scans: Math.max(1, Number(result.identity?.scanCount || 1)),
+      risk: point.risk,
+      verdict: point.status,
+      tenantSlug: mapTenant,
+      lastSeen: lastMapSeenAt || new Date().toISOString(),
+      uid: mapUid,
+      device: "mobile",
+      role: "tap" as const,
+      productName: mapProductName,
+    })),
+  ];
+  const opsMapRoutes: GlobalOpsRoute[] = mapRoutes.map((route, index) => ({
+    id: `sun-route-${mapUid}-${index}`,
+    fromLat: route.fromLat,
+    fromLng: route.fromLng,
+    toLat: route.toLat,
+    toLng: route.toLng,
+    uid: mapUid,
+    risk: route.tone === "warn" ? 1 : 0,
+    taps: Math.max(1, Number(result.identity?.scanCount || orderedTimelinePoints.length || 1)),
+    firstSeenAt: firstMapSeenAt,
+    lastSeenAt: lastMapSeenAt,
+    fromLabel: index === 0 ? originDisplay : undefined,
+    toLabel: index === mapRoutes.length - 1 ? tapDisplay : undefined,
+    productName: route.label || mapProductName,
+  }));
   const isApiHandoff = Boolean(snapshotResult);
 
   const toneClass = result.status?.tone === "good"
@@ -479,9 +556,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                <BrandLockup size={38} variant="ripple" theme="dark" />
                <p className="sun-passport-brand__caption">verified passport</p>
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-900/85 border border-slate-700">
-               <span className={`w-1.5 h-1.5 rounded-full ${pulseClass}`}></span>
-               <span className="text-[9px] font-bold text-slate-300 uppercase">{isApiHandoff ? "API handoff" : "Live tap"}</span>
+            <div className="sun-topbar-actions flex items-center gap-1.5">
+              <ThemeToggle />
+              <div className="sun-live-tap-pill flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-900/85 border border-slate-700">
+                 <span className={`w-1.5 h-1.5 rounded-full ${pulseClass}`}></span>
+                 <span className="text-[9px] font-bold text-slate-300 uppercase">{isApiHandoff ? "API handoff" : "Live tap"}</span>
+              </div>
             </div>
          </div>
 
@@ -676,16 +756,24 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
 
          {/* Mobile Geo Trace / Enterprise Map */}
-         <div id="geo-trace" className="sun-map-section rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
-            <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
+         <div id="geo-trace" className="sun-map-section sun-map-section--enterprise rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
+            <div className="sun-map-section__header">
+              <div>
+                <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
+                <h2 className="px-1 text-lg font-black text-white">Mapa de confianza origen - tap</h2>
+              </div>
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">MapLibre + heatmap</span>
+            </div>
             <div className="mt-2">
-               {effectiveMapPoints.length ? (
-                  <WorldMapRealtime
-                    title="Ruta de autenticidad"
+               {opsMapPoints.length ? (
+                  <GlobalOpsMap
+                    title="Trazabilidad geografica SUN"
                     subtitle="Vista tipo network: origen, hops de verificación y tap actual en trazado global."
-                    points={effectiveMapPoints}
-                    routes={mapRoutes}
-                    initialExpanded
+                    points={opsMapPoints}
+                    routes={opsMapRoutes}
+                    mode="demo"
+                    selectedPointId={opsMapPoints.find((point) => point.role === "tap")?.id || opsMapPoints[0]?.id}
+                    playbackEnabled
                   />
                ) : (
                   <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-400">

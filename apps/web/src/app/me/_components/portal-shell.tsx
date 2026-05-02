@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ReactNode } from "react";
-import { Home, PackageCheck, Radio, WalletCards } from "lucide-react";
+import { Bell, Gift, Home, PackageCheck, Radio, Store, WalletCards } from "lucide-react";
 import { BrandLockup, ThemeToggle } from "@product/ui";
 import { TapAssociationBanner } from "./tap-association-banner";
 
@@ -9,13 +9,15 @@ export function PortalShell({ title, subtitle, children }: { title: string; subt
     { href: "/me", label: "Home", icon: Home },
     { href: "/me/products", label: "Products", icon: PackageCheck },
     { href: "/me/taps", label: "Taps", icon: Radio },
+    { href: "/me/brands", label: "Brands", icon: Gift },
+    { href: "/me/marketplace", label: "Market", icon: Store },
     { href: "/me/wallet", label: "Wallet", icon: WalletCards },
   ];
 
   return (
     <div className="consumer-portal-root min-h-screen bg-[#0a0a0c] text-slate-200 selection:bg-cyan-500/30 font-sans">
-      <div className="fixed bottom-0 inset-x-0 z-50 border-t border-white/10 bg-slate-950/90 pb-safe backdrop-blur-xl md:hidden">
-        <div className="grid grid-cols-4 gap-1 p-2">
+      <div className="consumer-bottom-nav fixed bottom-0 inset-x-0 z-50 border-t border-white/10 bg-slate-950/90 pb-safe backdrop-blur-xl md:hidden">
+        <div className="grid grid-cols-6 gap-1 p-2">
           {mobileItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -39,12 +41,17 @@ export function PortalShell({ title, subtitle, children }: { title: string; subt
             <Link href="/me" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Home</Link>
             <Link href="/me/passport" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Passport</Link>
             <Link href="/me/products" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Collection</Link>
+            <Link href="/me/brands" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Brands</Link>
             <Link href="/me/taps" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">History</Link>
-            <Link href="/me/wallet" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Wallet</Link>
-            <Link href="/me/marketplace" className="rounded-lg px-3 py-1.5 text-sm font-medium text-cyan-400 transition-colors hover:bg-cyan-950/30 hover:text-cyan-300">Network</Link>
+            <Link href="/me/rewards" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Rewards</Link>
+            <Link href="/me/marketplace" className="rounded-lg px-3 py-1.5 text-sm font-medium text-cyan-400 transition-colors hover:bg-cyan-950/30 hover:text-cyan-300">Marketplace</Link>
           </div>
 
           <div className="flex items-center gap-3">
+            <Link href="/me/brands" className="consumer-bell-link relative grid h-9 w-9 place-items-center rounded-full border border-cyan-300/20 bg-cyan-500/10 text-cyan-100 transition hover:bg-cyan-500/20" aria-label="Network notifications">
+              <Bell className="h-4 w-4" aria-hidden="true" />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-400 ring-2 ring-slate-950" />
+            </Link>
             <ThemeToggle />
             <Link href="/me/privacy" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs font-bold shadow-lg transition hover:bg-slate-700">US</Link>
           </div>

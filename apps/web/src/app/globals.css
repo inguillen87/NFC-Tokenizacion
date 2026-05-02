@@ -504,6 +504,101 @@ html.theme-light .worldmap-card button[class*="bg-violet"] {
   background: linear-gradient(135deg, rgba(207, 250, 254, 0.9), rgba(237, 233, 254, 0.88)) !important;
 }
 
+.global-ops-map-card {
+  border-color: rgba(34, 211, 238, 0.16);
+  background:
+    radial-gradient(circle at 14% 12%, rgba(34, 211, 238, 0.11), transparent 18rem),
+    radial-gradient(circle at 88% 8%, rgba(139, 92, 246, 0.11), transparent 20rem),
+    rgba(2, 6, 23, 0.72);
+}
+
+.global-ops-map-card .maplibregl-canvas {
+  outline: none;
+}
+
+.global-ops-map-stage {
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.04), 0 22px 50px rgba(2, 6, 23, 0.26);
+}
+
+.global-ops-map-legend,
+.global-ops-map-caption,
+.global-ops-map-drawer {
+  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.3);
+}
+
+@media (max-width: 720px) {
+  .global-ops-map-card {
+    padding: 0.85rem !important;
+  }
+
+  .global-ops-map-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .global-ops-map-canvas,
+  .global-ops-map-drawer {
+    height: 23rem !important;
+  }
+
+  .global-ops-map-legend {
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+html.theme-light .global-ops-map-card {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(14, 165, 233, 0.13), transparent 16rem),
+    radial-gradient(circle at 88% 8%, rgba(139, 92, 246, 0.12), transparent 20rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(236, 253, 245, 0.78)) !important;
+  box-shadow: 0 24px 56px rgba(14, 116, 144, 0.12);
+}
+
+html.theme-light .global-ops-map-card select,
+html.theme-light .global-ops-map-card input[type="range"] {
+  color: #0f172a !important;
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(14, 116, 144, 0.22) !important;
+}
+
+html.theme-light .global-ops-map-stats > div,
+html.theme-light .global-ops-map-selected,
+html.theme-light .global-ops-map-journey,
+html.theme-light .global-ops-map-row {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.76) !important;
+  border-color: rgba(14, 116, 144, 0.16) !important;
+}
+
+html.theme-light .global-ops-map-stage {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(34, 211, 238, 0.2), transparent 19rem),
+    radial-gradient(circle at 82% 80%, rgba(167, 139, 250, 0.15), transparent 18rem),
+    linear-gradient(160deg, rgba(248, 252, 255, 0.96), rgba(224, 242, 254, 0.82)) !important;
+}
+
+html.theme-light .global-ops-map-legend,
+html.theme-light .global-ops-map-caption,
+html.theme-light .global-ops-map-drawer {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-color: rgba(14, 116, 144, 0.18) !important;
+}
+
+html.theme-light .global-ops-map-drawer .text-cyan-100,
+html.theme-light .global-ops-map-card .text-cyan-100 {
+  color: #075985 !important;
+}
+
+html.theme-light .global-ops-map-drawer .text-emerald-100,
+html.theme-light .global-ops-map-drawer .text-emerald-200 {
+  color: #047857 !important;
+}
+
 body:has(.sun-mobile-surface) .helpbot-hint {
   display: none;
 }
@@ -513,6 +608,13 @@ body:has(.sun-mobile-surface) .helpbot-trigger {
   padding-inline: 0.9rem;
   transform: scale(0.92);
   transform-origin: bottom right;
+}
+
+@media (max-width: 720px) {
+  body:has(.sun-mobile-surface) .helpbot-trigger,
+  body:has(.sun-mobile-surface) .helpbot-panel {
+    display: none;
+  }
 }
 
 /* Mobile & PWA ergonomics */
@@ -1397,6 +1499,81 @@ html.theme-light .animate-card-shift:hover {
   letter-spacing: 0.08em;
 }
 
+.sun-topbar {
+  gap: 0.75rem;
+}
+
+.sun-topbar-actions {
+  flex: 0 0 auto;
+}
+
+.sun-topbar .theme-toggle {
+  min-height: 2rem;
+  border-color: rgba(125, 211, 252, 0.22);
+  background: rgba(15, 23, 42, 0.78);
+  padding: 0.42rem 0.62rem;
+  color: #e0f2fe;
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.18);
+}
+
+.sun-topbar .theme-toggle__glyph {
+  flex: 0 0 auto;
+}
+
+.sun-live-tap-pill {
+  min-height: 2rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 430px) {
+  .sun-topbar {
+    align-items: flex-start;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .sun-topbar-actions {
+    display: grid;
+    justify-items: end;
+    gap: 0.35rem;
+  }
+
+  .sun-topbar .theme-toggle {
+    padding: 0.38rem 0.55rem;
+    font-size: 0.66rem;
+  }
+}
+
+.sun-map-section--enterprise {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(34, 211, 238, 0.14), transparent 18rem),
+    radial-gradient(circle at 92% 0%, rgba(139, 92, 246, 0.14), transparent 20rem),
+    linear-gradient(145deg, rgba(8, 47, 73, 0.58), rgba(15, 23, 42, 0.86)) !important;
+}
+
+.sun-map-section__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.sun-map-section--enterprise .global-ops-map-card {
+  border-radius: 1.25rem;
+}
+
+.sun-map-section--enterprise .global-ops-map-card > div:first-child {
+  align-items: flex-start;
+}
+
+@media (max-width: 640px) {
+  .sun-map-section__header {
+    display: grid;
+  }
+}
+
 .sun-cta-tip {
   color: #cbd5e1 !important;
 }
@@ -1432,6 +1609,18 @@ html.theme-light .sun-passport-brand__caption {
   color: #0369a1;
 }
 
+html.theme-light .sun-topbar .theme-toggle,
+html.theme-light .sun-live-tap-pill {
+  color: #075985 !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  box-shadow: 0 12px 28px rgba(14, 116, 144, 0.1);
+}
+
+html.theme-light .sun-live-tap-pill span:last-child {
+  color: #075985 !important;
+}
+
 html.theme-light .sun-mobile-surface::before {
   background-image:
     linear-gradient(rgba(14, 116, 144, 0.07) 1px, transparent 1px),
@@ -1451,6 +1640,23 @@ html.theme-light .sun-tech-panel {
   border-color: rgba(14, 116, 144, 0.2) !important;
   background: rgba(255, 255, 255, 0.82) !important;
   box-shadow: 0 18px 50px rgba(14, 116, 144, 0.1);
+}
+
+html.theme-light .sun-map-section--enterprise {
+  background:
+    radial-gradient(circle at 10% 10%, rgba(14, 165, 233, 0.16), transparent 18rem),
+    radial-gradient(circle at 90% 4%, rgba(167, 139, 250, 0.16), transparent 22rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(224, 242, 254, 0.72)) !important;
+}
+
+html.theme-light .sun-map-section__header h2 {
+  color: #0f172a !important;
+}
+
+html.theme-light .sun-map-section__header span {
+  color: #075985 !important;
+  background: rgba(207, 250, 254, 0.78) !important;
+  border-color: rgba(14, 116, 144, 0.18) !important;
 }
 
 html.theme-light .sun-product-stage {
@@ -3065,6 +3271,262 @@ html.theme-light .marketplace-card {
 html.theme-light .marketplace-card > div:first-child {
   background: linear-gradient(135deg, #eef8ff, #f4f0ff) !important;
   border-color: rgba(148, 163, 184, 0.38) !important;
+}
+
+.consumer-bottom-nav {
+  box-shadow: 0 -18px 45px rgba(2, 6, 23, 0.28);
+}
+
+.consumer-bell-link {
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08), 0 12px 28px rgba(8, 145, 178, 0.16);
+}
+
+.consumer-network-overview,
+.consumer-marketplace-hero,
+.consumer-rewards-hero,
+.consumer-brand-card,
+.consumer-product-card,
+.consumer-notification-panel {
+  box-shadow: 0 24px 70px rgba(2, 6, 23, 0.28);
+}
+
+.consumer-network-overview {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(34, 211, 238, 0.16), transparent 34%),
+    radial-gradient(circle at 88% 10%, rgba(139, 92, 246, 0.14), transparent 36%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.9));
+}
+
+.consumer-notification-panel {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(168, 85, 247, 0.18), transparent 30%),
+    radial-gradient(circle at 92% 0%, rgba(34, 211, 238, 0.1), transparent 34%),
+    rgba(30, 27, 75, 0.22);
+}
+
+.consumer-loyalty-progress {
+  background:
+    linear-gradient(90deg, #22d3ee, #8b5cf6 54%, #34d399);
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.42);
+}
+
+.consumer-notification-card,
+.consumer-feed-row {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.consumer-notification-card--cyan,
+.consumer-feed-row--cyan {
+  background: linear-gradient(145deg, rgba(8, 145, 178, 0.2), rgba(15, 23, 42, 0.78));
+  border-color: rgba(34, 211, 238, 0.28);
+  color: #cffafe;
+}
+
+.consumer-notification-card--emerald,
+.consumer-feed-row--emerald {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.16), rgba(15, 23, 42, 0.78));
+  border-color: rgba(52, 211, 153, 0.28);
+  color: #d1fae5;
+}
+
+.consumer-notification-card--violet,
+.consumer-feed-row--violet {
+  background: linear-gradient(145deg, rgba(124, 58, 237, 0.18), rgba(15, 23, 42, 0.78));
+  border-color: rgba(167, 139, 250, 0.28);
+  color: #ede9fe;
+}
+
+.consumer-notification-card--amber,
+.consumer-feed-row--amber {
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.16), rgba(15, 23, 42, 0.78));
+  border-color: rgba(251, 191, 36, 0.28);
+  color: #fef3c7;
+}
+
+.consumer-brand-card-main {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(34, 211, 238, 0.12), transparent 34%),
+    rgba(2, 6, 23, 0.36);
+}
+
+.consumer-brand-activity {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(139, 92, 246, 0.14), transparent 34%),
+    rgba(15, 23, 42, 0.32);
+}
+
+.consumer-marketplace-hero {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(139, 92, 246, 0.18), transparent 32%),
+    radial-gradient(circle at 86% 22%, rgba(34, 211, 238, 0.12), transparent 32%),
+    rgba(30, 27, 75, 0.2);
+}
+
+.consumer-rewards-hero {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(52, 211, 153, 0.16), transparent 34%),
+    radial-gradient(circle at 88% 18%, rgba(34, 211, 238, 0.14), transparent 34%),
+    rgba(6, 78, 59, 0.18);
+}
+
+.consumer-product-visual-panel {
+  background:
+    radial-gradient(circle at 50% 55%, rgba(34, 211, 238, 0.22), transparent 30%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.52), rgba(15, 23, 42, 0.92));
+}
+
+.consumer-product-visual {
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  width: 14rem;
+  height: 14rem;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 30px 36px rgba(2, 6, 23, 0.5));
+}
+
+.consumer-product-visual::before,
+.consumer-product-visual::after {
+  content: "";
+  position: absolute;
+}
+
+.consumer-product-visual--bottle::before {
+  left: 5.2rem;
+  bottom: 1.4rem;
+  width: 3.8rem;
+  height: 8.2rem;
+  border-radius: 1.4rem 1.4rem 1.8rem 1.8rem;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.28), transparent 24%, transparent 68%, rgba(255,255,255,0.12)),
+    linear-gradient(180deg, #7f1d1d 0 18%, #3f1d1d 45%, #111827 100%);
+  border: 1px solid rgba(248, 250, 252, 0.34);
+}
+
+.consumer-product-visual--bottle::after {
+  left: 4.55rem;
+  top: 5.9rem;
+  width: 5rem;
+  height: 1.8rem;
+  border-radius: 0.5rem;
+  background:
+    linear-gradient(105deg, transparent 42%, rgba(244, 63, 94, 0.72) 43% 54%, transparent 55%),
+    linear-gradient(180deg, rgba(248,250,252,0.96), rgba(203,213,225,0.94));
+  border: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+.consumer-product-visual--wristband::before {
+  inset: 3.5rem 1.2rem 3.2rem;
+  border-radius: 999px;
+  border: 1.2rem solid rgba(34, 211, 238, 0.72);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.consumer-product-visual--wristband::after {
+  left: 5.35rem;
+  top: 5.85rem;
+  content: "NFC";
+  border-radius: 999px;
+  background: #082f49;
+  border: 1px solid rgba(125, 211, 252, 0.55);
+  color: #cffafe;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  padding: 0.28rem 0.55rem;
+}
+
+.consumer-product-visual--cosmetic::before {
+  left: 5.1rem;
+  bottom: 1.6rem;
+  width: 4rem;
+  height: 7.7rem;
+  border-radius: 1.2rem;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.52), transparent 38%),
+    linear-gradient(180deg, #f8fafc, #93c5fd 48%, #a78bfa);
+  border: 1px solid rgba(226, 232, 240, 0.62);
+}
+
+.consumer-product-visual--cosmetic::after {
+  left: 5.45rem;
+  top: 2.8rem;
+  width: 3.3rem;
+  height: 1.5rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, #f9a8d4, #db2777);
+  border: 1px solid rgba(251, 207, 232, 0.62);
+}
+
+.consumer-tap-row,
+.consumer-reward-card,
+.consumer-market-stat,
+.consumer-metric-card {
+  box-shadow: 0 14px 36px rgba(2, 6, 23, 0.18);
+}
+
+html.theme-light .consumer-network-overview,
+html.theme-light .consumer-marketplace-hero,
+html.theme-light .consumer-rewards-hero,
+html.theme-light .consumer-notification-panel,
+html.theme-light .consumer-brand-card,
+html.theme-light .consumer-product-card,
+html.theme-light .consumer-reward-card,
+html.theme-light .consumer-tap-row,
+html.theme-light .consumer-empty-state,
+html.theme-light .consumer-market-feed article,
+html.theme-light .consumer-metric-card,
+html.theme-light .consumer-market-stat {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.13), transparent 32%),
+    radial-gradient(circle at 90% 16%, rgba(139, 92, 246, 0.1), transparent 34%),
+    rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.36) !important;
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .consumer-notification-card,
+html.theme-light .consumer-feed-row,
+html.theme-light .consumer-brand-card-main,
+html.theme-light .consumer-brand-activity,
+html.theme-light .consumer-product-visual-panel {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(14, 165, 233, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(255,255,255,0.92), rgba(239,246,255,0.86)) !important;
+  border-color: rgba(148, 163, 184, 0.36) !important;
+}
+
+html.theme-light .consumer-bottom-nav {
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.1);
+}
+
+html.theme-light .consumer-bell-link {
+  color: #0369a1 !important;
+  background: rgba(14, 165, 233, 0.12) !important;
+  border-color: rgba(14, 165, 233, 0.24) !important;
+}
+
+html.theme-light .consumer-portal-root .bg-slate-800,
+html.theme-light .consumer-portal-root .bg-slate-900\/60,
+html.theme-light .consumer-portal-root .bg-slate-900\/70,
+html.theme-light .consumer-portal-root .bg-slate-950\/55,
+html.theme-light .consumer-portal-root .bg-slate-950\/60,
+html.theme-light .consumer-portal-root .bg-slate-950\/70,
+html.theme-light .consumer-portal-root .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.74) !important;
+  border-color: rgba(148, 163, 184, 0.36) !important;
+}
+
+html.theme-light .consumer-portal-root .text-cyan-50,
+html.theme-light .consumer-portal-root .text-cyan-100,
+html.theme-light .consumer-portal-root .text-violet-100,
+html.theme-light .consumer-portal-root .text-emerald-100,
+html.theme-light .consumer-portal-root .text-amber-100,
+html.theme-light .consumer-portal-root .text-rose-100,
+html.theme-light .consumer-portal-root .text-indigo-100 {
+  color: #0f172a !important;
 }
 
 html.theme-light .demo-lab-product-stage {

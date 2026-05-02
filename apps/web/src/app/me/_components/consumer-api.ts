@@ -12,6 +12,10 @@ async function fetchJson(path: string) {
   const cookie = incomingHeaders.get("cookie") || "";
   const demoCookie = hasDemoConsumerCookie(cookie);
   const demoFallbackEnabled = demoCookie && process.env.NODE_ENV !== "production";
+  if (demoFallbackEnabled) {
+    const demoPayload = demoConsumerPayload(path) || demoMarketplacePayload(path);
+    if (demoPayload) return demoPayload;
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
     headers: {

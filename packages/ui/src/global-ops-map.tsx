@@ -174,6 +174,8 @@ function routesToFeatureCollection(routes: GlobalOpsRoute[]) {
 }
 
 export function GlobalOpsMap({
+  title = "Global Ops Map",
+  subtitle = "Origen del producto, tap del cliente, distancia estimada y riesgo.",
   points,
   routes,
   mode,
@@ -182,6 +184,8 @@ export function GlobalOpsMap({
   playbackEnabled,
   riskOnly,
 }: {
+  title?: string;
+  subtitle?: string;
   points: GlobalOpsPoint[];
   routes: GlobalOpsRoute[];
   mode: Mode;
@@ -310,9 +314,12 @@ export function GlobalOpsMap({
           return;
         }
 
+        const useLightBasemap = document.documentElement.classList.contains("theme-light");
         const map = new maplibregl.Map({
           container: mapContainerRef.current,
-          style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+          style: useLightBasemap
+            ? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+            : "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
           center: [-8, 18],
           zoom: 1.25,
           pitch: 25,
@@ -326,11 +333,51 @@ export function GlobalOpsMap({
           map.addSource("ops-routes", { type: "geojson", data: routesToFeatureCollection([]) });
 
           map.addLayer({
+            id: "ops-heat",
+            type: "heatmap",
+            source: "ops-points",
+            maxzoom: 8,
+            paint: {
+              "heatmap-weight": ["interpolate", ["linear"], ["get", "scans"], 0, 0, 100, 1],
+              "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, 0.65, 8, 1.55],
+              "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 12, 8, 34],
+              "heatmap-color": [
+                "interpolate",
+                ["linear"],
+                ["heatmap-density"],
+                0,
+                "rgba(14, 165, 233, 0)",
+                0.18,
+                "rgba(34, 211, 238, 0.28)",
+                0.42,
+                "rgba(52, 211, 153, 0.38)",
+                0.68,
+                "rgba(168, 85, 247, 0.46)",
+                1,
+                "rgba(251, 113, 133, 0.58)",
+              ],
+              "heatmap-opacity": 0.56,
+            },
+          });
+
+          map.addLayer({
+            id: "ops-routes-halo",
+            type: "line",
+            source: "ops-routes",
+            paint: {
+              "line-color": "#020617",
+              "line-width": 7,
+              "line-opacity": 0.54,
+              "line-blur": 3,
+            },
+          });
+
+          map.addLayer({
             id: "ops-routes-risk",
             type: "line",
             source: "ops-routes",
             filter: [">", ["get", "risk"], 0],
-            paint: { "line-color": "#fb7185", "line-width": 2.2, "line-opacity": 0.75, "line-dasharray": [1.6, 1.4] },
+            paint: { "line-color": "#fb7185", "line-width": 3, "line-opacity": 0.88, "line-dasharray": [1.2, 1.2] },
           });
 
           map.addLayer({
@@ -338,20 +385,7 @@ export function GlobalOpsMap({
             type: "line",
             source: "ops-routes",
             filter: ["<=", ["get", "risk"], 0],
-            paint: { "line-color": "#22d3ee", "line-width": 1.4, "line-opacity": 0.55, "line-dasharray": [1.3, 1.6] },
-          });
-
-          map.addLayer({
-            id: "ops-heat",
-            type: "heatmap",
-            source: "ops-points",
-            maxzoom: 8,
-            paint: {
-              "heatmap-weight": ["interpolate", ["linear"], ["get", "scans"], 0, 0, 100, 1],
-              "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, 0.6, 8, 1.4],
-              "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 8, 8, 26],
-              "heatmap-opacity": 0.4,
-            },
+            paint: { "line-color": "#22d3ee", "line-width": 2.2, "line-opacity": 0.72, "line-dasharray": [1.2, 1.5] },
           });
 
           map.addLayer({
@@ -373,10 +407,37 @@ export function GlobalOpsMap({
             filter: ["!", ["has", "point_count"]],
             paint: {
               "circle-color": ["case", ["==", ["get", "role"], "origin"], "#34d399", [">", ["get", "risk"], 0], "#fb7185", "#22d3ee"],
-              "circle-radius": ["interpolate", ["linear"], ["get", "scans"], 1, 4, 80, 10],
-              "circle-stroke-width": 1.2,
+              "circle-radius": ["interpolate", ["linear"], ["get", "scans"], 1, 5, 80, 12],
+              "circle-stroke-width": 1.6,
               "circle-stroke-color": "#f8fafc",
               "circle-opacity": 0.93,
+            },
+          });
+
+          map.addLayer({
+            id: "ops-point-labels",
+            type: "symbol",
+            source: "ops-points",
+            filter: ["!", ["has", "point_count"]],
+            layout: {
+              "text-field": [
+                "case",
+                ["==", ["get", "role"], "origin"],
+                ["concat", "ORIGEN · ", ["get", "city"]],
+                ["==", ["get", "role"], "tap"],
+                ["concat", "TAP · ", ["get", "city"]],
+                ["get", "city"],
+              ],
+              "text-size": 11,
+              "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+              "text-offset": [0, 1.35],
+              "text-anchor": "top",
+              "text-allow-overlap": false,
+            },
+            paint: {
+              "text-color": useLightBasemap ? "#0f172a" : "#e0f2fe",
+              "text-halo-color": useLightBasemap ? "rgba(255,255,255,.9)" : "rgba(2,6,23,.9)",
+              "text-halo-width": 1.4,
             },
           });
 
@@ -441,26 +502,26 @@ export function GlobalOpsMap({
   const canRenderMap = webglReady && mapRuntimeReady;
 
   return (
-    <Card className="overflow-hidden p-4 md:p-6">
+    <Card className="worldmap-card global-ops-map-card overflow-hidden p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">Global Ops Map {canRenderMap ? "MapLibre GL" : "Fallback"}</p>
-          <p className="text-xs text-slate-400">Origen del producto, tap del cliente, distancia estimada y riesgo ({mode}).</p>
+          <p className="text-sm font-semibold text-white">{title} {canRenderMap ? "MapLibre GL" : "Fallback"}</p>
+          <p className="text-xs text-slate-400">{subtitle} ({mode}).</p>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
-          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Hubs: <b>{visiblePoints.length}</b></div>
-          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Countries: <b>{kpiCountries}</b></div>
-          <div className="rounded-lg border border-rose-300/25 bg-rose-500/10 px-2 py-1 text-rose-100">Risk nodes: <b>{visiblePoints.filter((p) => p.risk > 0).length}</b></div>
+        <div className="global-ops-map-stats grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
+          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Nodos: <b>{visiblePoints.length}</b></div>
+          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Regiones: <b>{kpiCountries}</b></div>
+          <div className="rounded-lg border border-rose-300/25 bg-rose-500/10 px-2 py-1 text-rose-100">Riesgo: <b>{visiblePoints.filter((p) => p.risk > 0).length}</b></div>
           <div className="rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-amber-100">Replay/tamper: <b>{replayTamper}</b></div>
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-6">
+      <div className="global-ops-map-controls mt-3 grid gap-2 md:grid-cols-6">
         <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={tenant} onChange={(event) => setTenant(event.target.value)}>
-          {tenants.map((item) => <option key={item} value={item}>{item === "ALL" ? "Tenant: all" : item}</option>)}
+          {tenants.map((item) => <option key={item} value={item}>{item === "ALL" ? "Tenant: todos" : item}</option>)}
         </select>
         <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
-          {countries.map((item) => <option key={item} value={item}>{item === "ALL" ? "Country: all" : item}</option>)}
+          {countries.map((item) => <option key={item} value={item}>{item === "ALL" ? "Pais: todos" : item}</option>)}
         </select>
         <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={windowMode} onChange={(event) => setWindowMode(event.target.value as TimeWindow)}>
           <option value="1h">1h</option>
@@ -469,27 +530,44 @@ export function GlobalOpsMap({
           <option value="all">all</option>
         </select>
         <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={verdict} onChange={(event) => setVerdict(event.target.value)}>
-          {verdicts.map((item) => <option key={item} value={item}>{item === "ALL" ? "Verdict: all" : item}</option>)}
+          {verdicts.map((item) => <option key={item} value={item}>{item === "ALL" ? "Estado: todos" : item}</option>)}
         </select>
-        <button suppressHydrationWarning type="button" onClick={() => setLocalRiskOnly((v) => !v)} className={`rounded-lg border px-2 py-1 text-xs ${localRiskOnly ? "border-rose-300/30 bg-rose-500/10 text-rose-100" : "border-white/10 bg-white/5 text-slate-200"}`}>{localRiskOnly ? "Risk-only: on" : "Risk-only: off"}</button>
-        <button suppressHydrationWarning type="button" onClick={() => setPlayback((value) => !value)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100">{playback ? "Pause playback" : "Play playback"}</button>
+        <button suppressHydrationWarning type="button" onClick={() => setLocalRiskOnly((v) => !v)} className={`rounded-lg border px-2 py-1 text-xs ${localRiskOnly ? "border-rose-300/30 bg-rose-500/10 text-rose-100" : "border-white/10 bg-white/5 text-slate-200"}`}>{localRiskOnly ? "Solo riesgo: si" : "Solo riesgo: no"}</button>
+        <button suppressHydrationWarning type="button" onClick={() => setPlayback((value) => !value)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100">{playback ? "Pausar ruta" : "Animar ruta"}</button>
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">
-        <div className="overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.25),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(167,139,250,.2),transparent_40%),linear-gradient(160deg,#020617,#0f172a,#111827)]">
-          <div className="relative h-[29rem]">
+        <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.25),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(167,139,250,.2),transparent_40%),linear-gradient(160deg,#020617,#0f172a,#111827)]">
+          <div className="global-ops-map-canvas relative h-[29rem]">
             <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
             {!canRenderMap ? (
               <svg viewBox="0 0 1200 620" className="absolute inset-0 h-full w-full">
+                <defs>
+                  <radialGradient id="opsHeatGood" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="rgba(34,211,238,.5)" />
+                    <stop offset="100%" stopColor="rgba(34,211,238,0)" />
+                  </radialGradient>
+                  <radialGradient id="opsHeatRisk" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="rgba(251,113,133,.52)" />
+                    <stop offset="100%" stopColor="rgba(251,113,133,0)" />
+                  </radialGradient>
+                </defs>
                 <rect x="0" y="0" width="1200" height="620" fill="rgba(15,23,42,.45)" />
                 <ellipse cx="600" cy="310" rx="410" ry="240" fill="none" stroke="rgba(148,163,184,.18)" strokeWidth="1.5" />
                 <ellipse cx="600" cy="310" rx="320" ry="190" fill="none" stroke="rgba(34,211,238,.18)" strokeWidth="1.2" />
+                {visiblePoints.map((point) => {
+                  const dot = project(point.lat, point.lng);
+                  return <circle key={`heat-${point.id}`} cx={dot.x} cy={dot.y} r={point.risk > 0 ? 64 : 52} fill={point.risk > 0 ? "url(#opsHeatRisk)" : "url(#opsHeatGood)"} opacity="0.9" />;
+                })}
                 {visibleRoutes.map((route) => {
                   const a = project(route.fromLat, route.fromLng);
                   const b = project(route.toLat, route.toLng);
                   const riskStroke = route.risk > 0 ? "rgba(251,113,133,.85)" : "rgba(34,211,238,.65)";
                   return (
-                    <path key={route.id} d={curve(a, b, route.risk > 0 ? 56 : 42)} stroke={riskStroke} strokeWidth={route.risk > 0 ? 2.8 : 2} fill="none" strokeDasharray="4 5" opacity="0.95" />
+                    <g key={route.id}>
+                      <path d={curve(a, b, route.risk > 0 ? 56 : 42)} stroke="rgba(2,6,23,.72)" strokeWidth={route.risk > 0 ? 7 : 5} fill="none" opacity="0.75" />
+                      <path d={curve(a, b, route.risk > 0 ? 56 : 42)} stroke={riskStroke} strokeWidth={route.risk > 0 ? 3.2 : 2.4} fill="none" strokeDasharray="5 7" opacity="0.95" />
+                    </g>
                   );
                 })}
                 {visiblePoints.map((point) => {
@@ -511,25 +589,25 @@ export function GlobalOpsMap({
             ) : null}
             {!canRenderMap ? (
               <div className="absolute left-3 top-3 rounded-lg border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100">
-                WebGL/map runtime unavailable. Showing operational fallback view.
+                WebGL/MapLibre no disponible. Mostrando vista operativa fallback.
               </div>
             ) : null}
-            <div className="absolute right-3 top-3 grid gap-1 rounded-xl border border-white/10 bg-slate-950/80 p-2 text-[10px] text-slate-200 shadow-xl backdrop-blur-md">
-              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-300" /> PRODUCT ORIGIN</span>
-              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-cyan-300" /> CLIENT TAP</span>
+            <div className="global-ops-map-legend absolute right-3 top-3 grid gap-1 rounded-xl border border-white/10 bg-slate-950/80 p-2 text-[10px] text-slate-200 shadow-xl backdrop-blur-md">
+              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-300" /> ORIGEN</span>
+              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-cyan-300" /> TAP CLIENTE</span>
               <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-rose-300" /> TAMPER-RISK</span>
               <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-violet-300" /> TOKENIZED</span>
             </div>
-            <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
-              Dotted origin-to-tap journeys, clustered hubs and capped routes for performance ({visibleRoutes.length} routes rendered).
+            <div className="global-ops-map-caption absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
+              Rutas punteadas origen-tap, calor de actividad y clusters optimizados ({visibleRoutes.length} rutas renderizadas).
             </div>
           </div>
         </div>
 
-        <aside className="h-[29rem] overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Node drawer</p>
+        <aside className="global-ops-map-drawer h-[29rem] overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Detalle del punto</p>
           {selectedPoint ? (
-            <div className="mt-2 space-y-2 rounded-lg border border-cyan-300/25 bg-cyan-500/10 p-3">
+            <div className="global-ops-map-selected mt-2 space-y-2 rounded-lg border border-cyan-300/25 bg-cyan-500/10 p-3">
               <p className="font-semibold text-cyan-100">{selectedPoint.city}, {selectedPoint.country}</p>
               <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">{roleLabel(selectedPoint.role)}</p>
               {selectedPoint.productName ? <p>Producto: <b>{selectedPoint.productName}</b></p> : null}
@@ -545,9 +623,9 @@ export function GlobalOpsMap({
           ) : <p className="mt-2 text-slate-400">Seleccioná un punto para ver detalle.</p>}
 
           {selectedJourney ? (
-            <div className="mt-3 space-y-3 rounded-lg border border-emerald-300/25 bg-emerald-500/10 p-3">
+            <div className="global-ops-map-journey mt-3 space-y-3 rounded-lg border border-emerald-300/25 bg-emerald-500/10 p-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-emerald-200">Origin to client tap</p>
+                <p className="text-[11px] uppercase tracking-[0.14em] text-emerald-200">Origen a tap del cliente</p>
                 <p className="mt-1 font-semibold text-white">{selectedJourney.productName || selectedPoint?.productName || selectedJourney.uid}</p>
               </div>
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-[11px]">
@@ -582,13 +660,13 @@ export function GlobalOpsMap({
               <button suppressHydrationWarning key={point.id} type="button" onClick={() => {
                 setInternalSelectedId(point.id);
                 onPointSelect?.(point);
-              }} className={`w-full rounded-lg border px-2 py-2 text-left ${selectedPoint?.id === point.id ? "border-cyan-300/35 bg-cyan-500/10" : "border-white/10 bg-slate-900/70"}`}>
+              }} className={`global-ops-map-row w-full rounded-lg border px-2 py-2 text-left ${selectedPoint?.id === point.id ? "border-cyan-300/35 bg-cyan-500/10" : "border-white/10 bg-slate-900/70"}`}>
                 <p className="font-semibold">{point.city}, {point.country}</p>
                 <p className="text-[11px] text-slate-300">{roleLabel(point.role)}{point.productName ? ` - ${point.productName}` : ""}</p>
                 <p className="text-[11px] text-slate-400">scans {point.scans} · risk {point.risk} · {point.tenantSlug || "--"}</p>
               </button>
             ))}
-            {!fallbackRows.length ? <p className="text-slate-400">No data for selected filters.</p> : null}
+            {!fallbackRows.length ? <p className="text-slate-400">Sin datos para los filtros seleccionados.</p> : null}
           </div>
         </aside>
       </div>

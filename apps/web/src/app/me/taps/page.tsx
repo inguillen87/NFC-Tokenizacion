@@ -1,65 +1,75 @@
+import { AlertTriangle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { asArray, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { formatPortalDate, type ConsumerTap } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
 
-type Tap = { tap_event_id?: number; created_at?: string; city?: string; country?: string; verdict?: string; tenant_slug?: string; risk_level?: string };
+function tapState(tap: ConsumerTap) {
+  const verdict = String(tap.verdict || "VALID").toUpperCase();
+  const isReplay = verdict.includes("REPLAY") || verdict.includes("BLOCK");
+  const isTamper = verdict.includes("TAMPER") || verdict.includes("BROKEN") || verdict.includes("REVOKE");
+  if (isTamper) return { verdict, Icon: ShieldAlert, title: "Alerta tamper", desc: "Sello comprometido o estado revocado.", card: "border-rose-300/25", chip: "border-rose-300/30 bg-rose-500/10 text-rose-100" };
+  if (isReplay) return { verdict, Icon: AlertTriangle, title: "Replay bloqueado", desc: "El evento no es claimable y queda auditado.", card: "border-amber-300/25", chip: "border-amber-300/30 bg-amber-500/10 text-amber-100" };
+  return { verdict, Icon: CheckCircle2, title: "Tap valido", desc: "Autenticidad verificada y lista para acciones post-tap.", card: "border-emerald-300/25", chip: "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" };
+}
 
 export default async function TapsTimelinePage() {
   await requireConsumerSession("/me/taps");
   const payload = await fetchConsumerPath("taps");
-  const taps = asArray<Tap>(payload);
+  const taps = asArray<ConsumerTap>(payload);
+  const valid = taps.filter((tap) => String(tap.verdict || "").toUpperCase().includes("VALID")).length;
+  const blocked = taps.length - valid;
 
   return (
     <PortalShell
-      title="Historial de Taps"
-      subtitle="La trazabilidad de todas tus interacciones físicas con productos de la red."
+      title="Historial de taps"
+      subtitle="Trazabilidad de interacciones fisicas: ubicacion, tenant, verdict, replay y estado de seguridad."
     >
-      <div className="relative max-w-3xl mx-auto space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-800 before:to-transparent">
-         {!taps.length ? (
-           <div className="relative p-5 text-sm text-center text-slate-400 bg-slate-900/60 rounded-xl border border-white/10 backdrop-blur-sm z-10">
-              Aún no tienes historial de interacciones. Tus próximos taps autenticados aparecerán aquí.
-           </div>
-         ) : (
-           taps.map((tap, idx) => {
-             const verdict = String(tap.verdict || "VALID").toUpperCase();
-             const isReplay = verdict.includes("REPLAY") || verdict.includes("BLOCK");
-             const isTamper = verdict.includes("TAMPER") || verdict.includes("BROKEN") || verdict.includes("REVOKE");
-             const icon = isTamper ? "❌" : isReplay ? "⚠️" : "✓";
-             const palette = isTamper
-               ? { bubble: "bg-red-500/20 text-red-400", card: "border-red-500/20", chip: "bg-red-500/10 text-red-300 border-red-500/20" }
-               : isReplay
-                 ? { bubble: "bg-amber-500/20 text-amber-300", card: "border-amber-500/20", chip: "bg-amber-500/10 text-amber-200 border-amber-500/20" }
-                 : { bubble: "bg-emerald-500/20 text-emerald-300", card: "border-emerald-500/20", chip: "bg-emerald-500/10 text-emerald-200 border-emerald-500/20" };
-             const desc = isTamper
-               ? "Alerta de seguridad: sello comprometido/revocado."
-               : isReplay
-                 ? "Replay detectado: no claimable."
-                 : "Tap válido y claimable.";
+      <section className="grid gap-3 md:grid-cols-3">
+        {[
+          ["Eventos", taps.length],
+          ["Validos", valid],
+          ["Alertas", blocked],
+        ].map(([label, value]) => (
+          <article key={String(label)} className="consumer-metric-card rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{label}</p>
+            <p className="mt-2 text-3xl font-black text-white">{value}</p>
+          </article>
+        ))}
+      </section>
 
-             return (
-               <div key={`tap-${idx}`} className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group ${idx === 0 ? "is-active" : ""}`}>
-                 <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-[#0a0a0c] ${palette.bubble} shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10`}>
-                    <span className="text-xs">{icon}</span>
-                 </div>
-
-                 <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border ${palette.card} bg-slate-900/60 backdrop-blur-sm shadow-xl transition-colors`}>
-                    <div className="flex items-center justify-between mb-1">
-                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{tap.tenant_slug || "NEXID Network"}</span>
-                       <span className="text-[10px] font-mono text-slate-400">{tap.created_at ? new Date(tap.created_at).toLocaleString() : "Reciente"}</span>
+      <div className="consumer-tap-timeline relative mx-auto max-w-3xl space-y-4">
+        {!taps.length ? (
+          <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-6 text-center text-sm text-slate-400">
+            Aun no tenes historial de interacciones. Tus proximos taps autenticados apareceran aca.
+          </div>
+        ) : (
+          taps.map((tap, idx) => {
+            const state = tapState(tap);
+            const Icon = state.Icon;
+            return (
+              <article key={`tap-${tap.tap_event_id || idx}`} className={`consumer-tap-row rounded-3xl border ${state.card} bg-slate-950/70 p-4`}>
+                <div className="grid gap-4 md:grid-cols-[auto_1fr_auto] md:items-center">
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/5">
+                    <Icon className="h-5 w-5 text-cyan-200" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${state.chip}`}>{state.verdict}</span>
+                      <span className="rounded-full border border-indigo-300/25 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-indigo-100">risk {String(tap.risk_level || "n/a")}</span>
                     </div>
-                    <h3 className="text-sm font-bold text-white">Tap #{tap.tap_event_id || "n/a"}</h3>
-                    <p className="text-xs text-slate-400 mt-1">{tap.city || "Ciudad Desconocida"}, {tap.country || "País Desconocido"}</p>
-                    <div className="mt-3 flex flex-col gap-2">
-                       <div className="flex gap-2">
-                          <span className={`inline-flex px-2 py-0.5 rounded border text-[10px] font-bold uppercase ${palette.chip}`}>{verdict}</span>
-                          <span className="inline-flex px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[10px] font-bold">risk {String(tap.risk_level || "n/a")}</span>
-                       </div>
-                       <p className="text-[10px] text-slate-300">{desc}</p>
-                    </div>
-                 </div>
-               </div>
-             );
-           })
-         )}
+                    <h2 className="mt-2 text-lg font-black text-white">{state.title} #{tap.tap_event_id || "n/a"}</h2>
+                    <p className="mt-1 text-xs leading-5 text-slate-300">{state.desc}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-3 text-xs text-slate-300 md:min-w-52">
+                    <p className="font-black text-white">{tap.city || "Ciudad no informada"}, {tap.country || "--"}</p>
+                    <p className="mt-1">tenant {tap.tenant_slug || "n/a"}</p>
+                    <p className="mt-1">{formatPortalDate(tap.created_at)}</p>
+                  </div>
+                </div>
+              </article>
+            );
+          })
+        )}
       </div>
     </PortalShell>
   );
