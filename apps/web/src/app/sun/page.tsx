@@ -263,6 +263,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const statusCode = String(result.status?.code || "").toUpperCase();
   const statusReason = String(result.status?.reason || "").toLowerCase();
   const productState = String(result.status?.productState || "").toUpperCase();
+  const ttStatus = String(result.tag_tamper?.status || "").toLowerCase();
+  const encPlainStatusByte = String(result.status?.encPlainStatusByte || "").toUpperCase();
+  const statusByteSignal = encPlainStatusByte === "43" ? "closed" : encPlainStatusByte === "4F" ? "opened" : "unknown";
   const blockedActions = result.blockedActions || [];
   const allowedActions = result.allowedActions || [];
   const trustSignals = result.trustSignals || {};
@@ -272,9 +275,27 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     || statusReason.includes("replay")
     || statusReason.includes("copied url")
     || trustSignals.antiReplay === false;
+  const isVerifiedOpenedState = ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(statusCode)
+    || productState === "VALID_OPENED"
+    || productState === "VALID_OPENED_PREVIOUSLY"
+    || productState === "VALID_MANUAL_OPENED"
+    || statusByteSignal === "opened"
+    || ttStatus === "opened";
   const isCommercialBlocked = blockedActions.some((action) => ["claim", "save", "join", "warranty", "rewards", "tokenization"].includes(action));
-  const isTamperRisk = Boolean(trustSignals.tamperRisk) || result.status?.tone === "risk" || String(result.verdict || "").toLowerCase().includes("tamper");
-  const isValid = result.status?.tone === "good" && ["VALID", "AUTH_OK"].includes(statusCode) && !isReplay && !isCommercialBlocked && !isTamperRisk;
+  const verdictName = String(result.verdict || "").toLowerCase();
+  const isTamperRisk = Boolean(trustSignals.tamperRisk)
+    || result.status?.tone === "risk"
+    || statusCode === "TAMPER_RISK"
+    || productState === "TAMPER_RISK"
+    || verdictName === "tampered";
+  const hasAuthenticTone = result.status?.tone === "good" || (result.status?.tone === "warn" && isVerifiedOpenedState);
+  const isTechnicallyAuthentic = result.ok !== false
+    && !isReplay
+    && !isTamperRisk
+    && (hasAuthenticTone || ["VALID", "AUTH_OK"].includes(statusCode) || isVerifiedOpenedState || verdictName === "valid" || verdictName === "valid_opened");
+  const isActionableTap = isTechnicallyAuthentic && !isCommercialBlocked;
+  const isValid = isTechnicallyAuthentic && !isVerifiedOpenedState && ["VALID", "AUTH_OK"].includes(statusCode);
+  const isRiskBlocked = isReplay || isTamperRisk || !isTechnicallyAuthentic;
   const troubleshooting = result.troubleshooting || [];
   const canAutoOnboard = String(result.status?.reason || "").toLowerCase().includes("unknown batch") && /^DEMO-[A-Z0-9-]{3,40}$/.test(bid);
   const timelinePoints = (result.provenance?.timelineSummary || [])
@@ -319,7 +340,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       lat: Number(result.tapContext.lat),
       lng: Number(result.tapContext.lng),
       scans: 1,
-      risk: isValid ? 0 : 1,
+      risk: isRiskBlocked ? 1 : 0,
       status: result.status?.code || "REVIEW",
       source: "current_mobile_tap",
     }]
@@ -425,21 +446,21 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   }));
   const isApiHandoff = Boolean(snapshotResult);
 
-  const toneClass = result.status?.tone === "good"
-    ? "text-emerald-300 border-emerald-300/30 bg-emerald-500/10"
-    : result.status?.tone === "risk"
-      ? "text-rose-300 border-rose-300/30 bg-rose-500/10"
-      : "text-amber-300 border-amber-300/30 bg-amber-500/10";
-  const securityTone = isValid ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-rose-300/20 bg-rose-500/10 text-rose-100";
+  const securityTone = isValid
+    ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
+    : isVerifiedOpenedState && isTechnicallyAuthentic
+      ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
+      : "border-rose-300/20 bg-rose-500/10 text-rose-100";
   const riskSignals = (result.provenance?.timelineSummary || []).filter((item) => {
     const verdict = String(item.result || "").toLowerCase();
     return verdict.includes("replay") || verdict.includes("tamper") || verdict.includes("risk");
   }).length;
+  const apiQualityScore = Number(result.quality?.score);
   const trustScore = Math.max(
     0,
     Math.min(
       100,
-      (isValid ? 92 : 48)
+      (Number.isFinite(apiQualityScore) ? apiQualityScore : isValid ? 94 : isVerifiedOpenedState && isTechnicallyAuthentic ? 84 : isTechnicallyAuthentic ? 76 : 48)
       - Math.min(30, riskSignals * 7)
       + (result.tokenization?.status ? 4 : 0)
       + ((result.identity?.scanCount || 0) > 3 ? 2 : 0),
@@ -454,13 +475,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "sun-status-dot--good"
     : isReplay
       ? "sun-status-dot--replay"
-      : result.status?.tone === "risk"
+      : isTamperRisk || result.status?.tone === "risk"
         ? "sun-status-dot--risk"
         : "sun-status-dot--warn";
-  const ttStatus = String(result.tag_tamper?.status || "").toLowerCase();
-  const encPlainStatusByte = String(result.status?.encPlainStatusByte || "").toUpperCase();
-  const statusByteSignal = encPlainStatusByte === "43" ? "closed" : encPlainStatusByte === "4F" ? "opened" : "unknown";
-  const pulseClass = isValid ? "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" : productState === "REPLAY_SUSPECT" ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]" : "bg-rose-300 shadow-[0_0_8px_rgba(253,164,175,0.8)]";
+  const pulseClass = isRiskBlocked
+    ? "bg-rose-300 shadow-[0_0_8px_rgba(253,164,175,0.8)]"
+    : isVerifiedOpenedState
+      ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
+      : "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]";
   const statusHeadline = statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED"
     ? "Autenticidad confirmada. Sello intacto (CLOSED)."
     : statusByteSignal === "opened" || ttStatus === "opened"
@@ -480,9 +502,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : result.status?.tone === "risk"
               ? "Se detectaron señales de riesgo"
               : "Validación en revisión";
-  const riskLevelLabel = trustScore >= 85 ? "Riesgo bajo" : trustScore >= 65 ? "Riesgo moderado" : "Riesgo alto";
-  const recommendedAction = trustScore >= 85
-    ? { label: "Guardar en mi Passport", href: "/me", helper: "Autenticidad solida. Continuar activa ownership, club y marketplace." }
+  const displayRiskLevelLabel = isRiskBlocked
+    ? "Riesgo alto"
+    : isVerifiedOpenedState
+      ? "Riesgo bajo | sello abierto"
+      : trustScore >= 85
+        ? "Riesgo bajo"
+        : trustScore >= 65
+          ? "Riesgo moderado"
+          : "Riesgo alto";
+  const displayStatusHeadline = isVerifiedOpenedState && isTechnicallyAuthentic
+    ? "Producto autentico. Sello abierto registrado como lifecycle event."
+    : statusHeadline;
+  const recommendedAction = isActionableTap
+    ? { label: isVerifiedOpenedState ? "Apropiar ownership" : "Guardar en mi Passport", href: "/me", helper: isVerifiedOpenedState ? "El sello abierto queda registrado como evento verificado. Podes reclamar ownership, garantia, club y tokenizacion opcional." : "Autenticidad solida. Continuar activa ownership, club y marketplace." }
     : trustScore >= 65
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: "/?contact=sales&intent=sun_mobile#contact-modal", helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
@@ -510,7 +543,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");
   const tapMarketplaceHref = localizeHref(result.cta?.marketplaceUrl) || withTapQuery(marketplaceHref, "marketplace");
   const consumerLoginHref = (next: string) => `/login?consumer=1&next=${encodeURIComponent(next)}`;
-  const blockedTapReason = isValid
+  const blockedTapReason = isActionableTap
     ? ""
     : isReplay
       ? "Replay detectado: por seguridad necesitás un nuevo tap físico para ownership, club, garantía o tokenización."
@@ -518,8 +551,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const journeySteps = [
     { id: "scan", label: "Tap NFC", done: true },
     { id: "verify", label: "Verificación", done: Boolean(result.status?.label) },
-    { id: "portal", label: "Portal", done: trustTone === "text-emerald-200" },
-    { id: "club", label: "Club premium", done: Boolean(result.identity?.tenantSlug) && trustTone === "text-emerald-200" },
+    { id: "portal", label: "Portal", done: isActionableTap },
+    { id: "club", label: "Club premium", done: Boolean(result.identity?.tenantSlug) && isActionableTap },
   ];
   const sealOpened = statusByteSignal === "opened" || ttStatus === "opened" || productState.includes("OPENED");
   const sealClosed = statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED";
@@ -536,7 +569,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "Replay detectado: esta URL/SUN ya fue usada. Ownership, garantia, rewards y tokenizacion quedan bloqueados hasta un nuevo tap fisico."
     : isValid
       ? "Lectura fresca: UID, contador SUN y CMAC pasan la politica anti-replay."
-      : "Lectura revisable: la prueba tecnica se conserva, pero las acciones comerciales quedan protegidas.";
+      : isVerifiedOpenedState && isTechnicallyAuthentic
+        ? "Sello abierto verificado: la apertura queda registrada como lifecycle event y conserva ownership, garantia, provenance y tokenizacion opcional."
+        : "Lectura revisable: la prueba tecnica se conserva, pero las acciones comerciales quedan protegidas.";
   const tokenEvidenceLabel = hasOnChainProof
     ? `On-chain ${tokenNetwork}`
     : tokenStatus.startsWith("blocked")
@@ -548,15 +583,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const chainLabel = tokenEvidenceLabel;
   const productVisualClass = [
     "sun-product-visual",
-    isReplay ? "sun-product-visual--replay" : isValid ? "sun-product-visual--valid" : result.status?.tone === "risk" ? "sun-product-visual--risk" : "sun-product-visual--warn",
+    isReplay ? "sun-product-visual--replay" : isRiskBlocked ? "sun-product-visual--risk" : isVerifiedOpenedState ? "sun-product-visual--warn" : "sun-product-visual--valid",
     sealOpened ? "sun-product-visual--opened" : "",
   ].filter(Boolean).join(" ");
   const trustCopy = isReplay
     ? "Anti-replay activo: el tap queda como evidencia, no como permiso comercial."
-    : trustScore >= 85
-    ? "Lectura fresca, identidad consistente y lote activo."
+    : isVerifiedOpenedState && isTechnicallyAuthentic
+      ? "Apertura verificada: el sello cambio de estado, pero la identidad SUN sigue siendo valida y accionable."
+    : isActionableTap
+      ? "Lectura fresca, identidad consistente y lote activo."
     : trustScore >= 65
-      ? "Lectura revisable: conviene mirar ruta y estado del sello."
+      ? "Lectura revisable: conviene mirar ruta y estado del sello antes de apropiar."
       : "Lectura de riesgo: no habilitamos ownership hasta repetir el tap.";
   const handoffCopy = isApiHandoff
     ? "Tap fisico procesado por API y renderizado en experiencia web segura."
@@ -651,7 +688,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   <div className="flex items-start justify-between gap-3">
                      <div>
                         <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300">Certificado vivo</p>
-                        <p className="mt-1 text-sm font-semibold text-white">{statusHeadline}</p>
+                         <p className="mt-1 text-sm font-semibold text-white">{displayStatusHeadline}</p>
                         <p className="mt-1 text-xs leading-5 text-slate-400">{trustCopy}</p>
                      </div>
                      <div className={`shrink-0 rounded-2xl border px-3 py-2 text-center ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/15" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/15" : "border-rose-300/30 bg-rose-500/15"}`}>
@@ -678,11 +715,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          </div>
 
-         <section className={`sun-security-ledger sun-panel-primary ${isReplay ? "sun-security-ledger--replay" : isValid ? "sun-security-ledger--fresh" : "sun-security-ledger--review"}`}>
+          <section className={`sun-security-ledger sun-panel-primary ${isReplay ? "sun-security-ledger--replay" : isRiskBlocked ? "sun-security-ledger--review" : isVerifiedOpenedState ? "sun-security-ledger--opened" : "sun-security-ledger--fresh"}`}>
            <div className="sun-security-ledger__header">
              <div>
                <p className="sun-security-eyebrow">Prueba criptografica NTAG 424 DNA TT</p>
-               <h2>{isReplay ? "Replay detectado y bloqueado" : isValid ? "Tap fresco verificado" : "Tap protegido en revision"}</h2>
+                <h2>{isReplay ? "Replay detectado y bloqueado" : isVerifiedOpenedState && isTechnicallyAuthentic ? "Sello abierto verificado" : isValid ? "Tap fresco verificado" : "Tap protegido en revision"}</h2>
              </div>
              <span className={`sun-status-dot ${statusDotClass}`} aria-hidden="true" />
            </div>
@@ -749,14 +786,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </div>
              ))}
            </div>
-           <p className="mt-2 text-[11px] text-slate-300">{statusHeadline}</p>
+           <p className="mt-2 text-[11px] text-slate-300">{displayStatusHeadline}</p>
          </div>
 
          <section className="sun-priority-panel sun-panel-priority rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-violet-300">Prioridad operativa</p>
            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
              <span className={`rounded-full border px-2 py-1 font-semibold ${securityTone}`}>{result.status?.label || "Estado"}</span>
-             <span className={`rounded-full border px-2 py-1 font-semibold ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>{riskLevelLabel}</span>
+              <span className={`rounded-full border px-2 py-1 font-semibold ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>{displayRiskLevelLabel}</span>
              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 font-semibold text-cyan-100">Trust {trustScore}/100</span>
            </div>
            <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/55 p-3">
@@ -771,18 +808,18 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          <section className="sun-actions-panel sun-panel-actions rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Acciones de passport</p>
            <div className="mt-3 grid gap-2">
-             <Link href={registerHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+              <Link href={registerHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isActionableTap ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
                Crear mi nexID Passport
              </Link>
-             <Link href={productsHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+              <Link href={productsHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isActionableTap ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
                Guardar producto
              </Link>
-             <Link href={tapMarketplaceHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isValid ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+              <Link href={tapMarketplaceHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isActionableTap ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
                Unirme al club de esta marca
              </Link>
            </div>
-           {isValid ? (
-             <p className="mt-2 text-[11px] text-slate-300">Después de iniciar sesión podés reclamar ownership, guardar producto y unirte al tenant automáticamente.</p>
+          {isActionableTap ? (
+            <p className="mt-2 text-[11px] text-slate-300">Despues de iniciar sesion podes reclamar ownership, guardar producto y unirte al tenant automaticamente.</p>
            ) : (
              <p className="mt-2 text-[11px] text-amber-200">{blockedTapReason}</p>
            )}
@@ -837,7 +874,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          </div>
 
          {/* Loyalty & Experiences Mini-app (Consumer Network) */}
-         {trustTone === "text-emerald-200" && (
+          {isActionableTap && (
              <div className="sun-loyalty-panel rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-5 mt-4">
                 <div className="flex justify-between items-start mb-4">
                    <div>
@@ -870,7 +907,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
              </div>
          )}
    {/* Actions / Passport Banner */}
-         {trustTone === "text-emerald-200" ? (
+          {isActionableTap ? (
             <div className="sun-passport-banner rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 mt-4 text-center">
                <h3 className="text-sm font-bold text-white mb-2">Crear mi NexID Passport</h3>
                <p className="text-xs text-cyan-200/70 mb-4">Guardá este producto en tu colección, sumá puntos y accedé a recompensas exclusivas.</p>
@@ -935,7 +972,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
          {bid && uid ? (
            <div className="sun-cta-actions mt-4">
-             <CtaActions bid={bid} uid={uid} />
+              <CtaActions bid={bid} uid={uid} canExecute={isActionableTap} tapState={isRiskBlocked ? "blocked" : isVerifiedOpenedState ? "opened" : "valid"} />
            </div>
          ) : null}
 

@@ -159,24 +159,24 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
   const [batch, setBatch] = useState({
-    tenantId: "demobodega",
-    batchId: DEMO_SUPPLIER_BATCH_ID,
+    tenantId: "",
+    batchId: "",
     sku: "",
-    quantity: "10",
+    quantity: "",
     chipModel: "NTAG 424 DNA TT",
     kMetaHex: "",
     kFileHex: "",
   });
-  const [manifest, setManifest] = useState({ batchId: DEMO_SUPPLIER_BATCH_ID, csv: DEMO_SUPPLIER_UID_TEXT, activateImported: true });
-  const [activation, setActivation] = useState({ batchId: DEMO_SUPPLIER_BATCH_ID, count: "", uids: "" });
+  const [manifest, setManifest] = useState({ batchId: "", csv: "", activateImported: false });
+  const [activation, setActivation] = useState({ batchId: "", count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
   const [urlValidation, setUrlValidation] = useState({ sampleUrl: "" });
   const [inspectUrl, setInspectUrl] = useState("");
   const [tamperCompare, setTamperCompare] = useState({ beforeUrl: "", afterUrl: "" });
   const [tamperSamples, setTamperSamples] = useState({ closedUrls: "", openedUrls: "" });
-  const [manualOpened, setManualOpened] = useState({ batchId: DEMO_SUPPLIER_BATCH_ID, uidHex: "", reason: "physical seal broken during demo", note: "" });
+  const [manualOpened, setManualOpened] = useState({ batchId: "", uidHex: "", reason: "physical seal opened with operator evidence", note: "" });
   const [tamperConfig, setTamperConfig] = useState({
-    bid: DEMO_SUPPLIER_BATCH_ID,
+    bid: "",
     source: "enc_decrypted",
     offset: "0",
     length: "1",
@@ -186,7 +186,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
   const [pilot, setPilot] = useState({
     tenantName: "Bodega Andes Pilot",
     tenantSlug: "bodega-andes-pilot",
-    batchId: DEMO_SUPPLIER_BATCH_ID,
+    batchId: "",
     userEmail: "ops@bodega-andes.com",
     userPassword: "Nexid!2026",
     userName: "Ops Bodega Andes",
@@ -278,6 +278,12 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
 
   async function provisionWinePilot() {
     if (!canEdit) return;
+    setSummary([]);
+    setLastResponse(null);
+    setStatus("El alta profesional de tenant + batch + manifest ahora vive en Supplier batches. Redirigiendo...");
+    window.location.assign("/batches/supplier");
+    return;
+    /*
     setPending(true);
     setSummary([]);
     setLastResponse(null);
@@ -285,9 +291,9 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     try {
       const tenantsRes = await fetch("/api/admin/tenants", { cache: "no-store" });
       const tenantsRaw = await tenantsRes.text();
-      const tenantsData = safeParseJson(tenantsRaw);
+      const tenantsData = safeParseJson(tenantsRaw) as ActionPayload[] | null;
       const existingTenant = Array.isArray(tenantsData)
-        ? tenantsData.find((item) => String((item as ActionPayload).slug || "").toLowerCase() === pilot.tenantSlug.toLowerCase())
+        ? tenantsData.find((item: ActionPayload) => String(item.slug || "").toLowerCase() === pilot.tenantSlug.toLowerCase())
         : null;
 
       const tenant = existingTenant
@@ -333,13 +339,15 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
       setBatch((current) => ({ ...current, tenantId: pilot.tenantSlug, batchId: pilot.batchId, quantity: "10" }));
       setManifest((current) => ({ ...current, batchId: pilot.batchId, csv: DEMO_SUPPLIER_UID_TEXT, activateImported: true }));
       setActivation((current) => ({ ...current, batchId: pilot.batchId, count: "10" }));
-    } catch (error) {
+    } catch (error: unknown) {
       setLastResponse(null);
       setSummary([]);
-      setStatus(error instanceof Error ? error.message : "Provisioning flow failed");
+      const message = error instanceof Error ? error.message : "Provisioning flow failed";
+      setStatus(message);
     } finally {
       setPending(false);
     }
+    */
   }
 
   async function runSupplierFlow() {
@@ -417,8 +425,8 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
       </Card>
 
       <Card className="p-5">
-        <h3 className="text-base font-semibold text-white">Wine pilot launcher (10 physical tags)</h3>
-        <p className="mt-1 text-xs text-slate-400">One-click enterprise setup from Super Admin: create tenant, register batch, import/activate 10 tags and create tenant-admin credentials.</p>
+        <h3 className="text-base font-semibold text-white">Alta profesional de tenant y batch</h3>
+        <p className="mt-1 text-xs text-slate-400">El flujo productivo completo se ejecuta desde Supplier batches: perfil SUN, llaves, manifest, activacion y validacion real.</p>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant name" value={pilot.tenantName} onChange={(event) => setPilot((current) => ({ ...current, tenantName: event.target.value }))} />
           <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant slug" value={pilot.tenantSlug} onChange={(event) => setPilot((current) => ({ ...current, tenantSlug: event.target.value }))} />
@@ -429,10 +437,10 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
         </div>
         <Button
           className="mt-3"
-          disabled={pending || !canEdit || !pilot.tenantSlug || !pilot.batchId || !pilot.userEmail || pilot.userPassword.length < 8}
+          disabled={pending || !canEdit}
           onClick={() => void provisionWinePilot()}
         >
-          Provision wine pilot (10 tags + tenant admin)
+          Abrir Supplier batches
         </Button>
       </Card>
 
@@ -672,7 +680,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
               <p className="mt-1 whitespace-pre-wrap">- Is TagTamper open/closed status included in SUN/SDM payload?\n- Where is it located?\n- Which byte/field indicates open vs closed?\n- Can you send before/after URLs from the same tag?\n- Can you confirm production batches include this field?</p>
             </div>
             <div className="rounded-xl border border-rose-300/20 bg-rose-500/5 p-3">
-              <p className="text-xs font-semibold text-rose-100">Manual opened fallback (demo/evidence)</p>
+              <p className="text-xs font-semibold text-rose-100">Manual opened evidence override</p>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
                 <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={manualOpened.batchId} onChange={(e) => setManualOpened((v) => ({ ...v, batchId: e.target.value }))} placeholder="batch id" />
                 <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={manualOpened.uidHex} onChange={(e) => setManualOpened((v) => ({ ...v, uidHex: e.target.value }))} placeholder="uid hex" />

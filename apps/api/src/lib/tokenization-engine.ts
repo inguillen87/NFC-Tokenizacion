@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { sql } from "./db";
 import { buildChipUidHash } from "./tokenization-hash";
+import { ensureTokenizationRequestsSchema } from "./tokenization-schema";
 
 type AnchorInput = {
   requestId: string;
@@ -83,6 +84,8 @@ async function runLocalPolygonScript(payload: Record<string, unknown>) {
 }
 
 export async function anchorTokenizationRequest(input: AnchorInput) {
+  await ensureTokenizationRequestsSchema();
+
   const tokenizationMode = String(process.env.TOKENIZATION_MODE || "simulated").trim().toLowerCase();
   const rows = await sql/*sql*/`
     SELECT id, bid, uid_hex, status, network, issuer_wallet, attempt_count, tx_hash, token_id, anchor_hash, external_ref

@@ -6,9 +6,12 @@ import { processSunScan } from '../../lib/sun-service';
 import { createDemoShareToken } from '../../lib/demo-share';
 import { sql } from '../../lib/db';
 import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
+import { ensureTokenizationRequestsSchema } from '../../lib/tokenization-schema';
 import { buildLifecycleState, listDemoCta } from '../../lib/demo-cta';
 import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
 import { mapVerdictAndRisk, resolveActionMatrix } from '../../lib/sun-passport-policy';
+import { resolveSunTenantProfile } from '../../lib/sun-tenant-profile';
+import { ensureSunTenantProfilesSchema } from '../../lib/sun-tenant-profile-schema';
 import { getRequestMeta } from '../../lib/request-meta';
 import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
 import crypto from "node:crypto";
@@ -61,6 +64,22 @@ type ProductState =
   | "NOT_ACTIVE";
 
 type PassportSnapshot = {
+  tenant_id: string | null;
+  tenant_slug: string | null;
+  tenant_name: string | null;
+  batch_status: string | null;
+  batch_sdm_config: Record<string, unknown> | null;
+  sun_profile_vertical: string | null;
+  sun_profile_club_name: string | null;
+  sun_profile_product_label: string | null;
+  sun_profile_origin_label: string | null;
+  sun_profile_origin_address: string | null;
+  sun_profile_origin_lat: number | null;
+  sun_profile_origin_lng: number | null;
+  sun_profile_tokenization_mode: string | null;
+  sun_profile_claim_policy: string | null;
+  sun_profile_ownership_policy: Record<string, unknown> | null;
+  sun_profile_manifest_policy: Record<string, unknown> | null;
   product_name: string | null;
   sku: string | null;
   winery: string | null;
@@ -455,8 +474,32 @@ function safeDecode(value: string | null) {
 
 async function getPassportSnapshot(bid: string, uid: string | undefined): Promise<PassportSnapshot> {
   if (!uid) return null;
+  await ensureTokenizationRequestsSchema().catch((error) => {
+    const reason = error instanceof Error ? error.message : "tokenization_schema_unavailable";
+    console.warn("[tokenization_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
+  });
+  await ensureSunTenantProfilesSchema().catch((error) => {
+    const reason = error instanceof Error ? error.message : "sun_tenant_profile_schema_unavailable";
+    console.warn("[sun_tenant_profile_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
+  });
   const rows = await sql/*sql*/`
     SELECT
+      b.tenant_id::text AS tenant_id,
+      b.status::text AS batch_status,
+      b.sdm_config AS batch_sdm_config,
+      tn.slug AS tenant_slug,
+      tn.name AS tenant_name,
+      tsp.vertical AS sun_profile_vertical,
+      tsp.club_name AS sun_profile_club_name,
+      tsp.product_label AS sun_profile_product_label,
+      tsp.origin_label AS sun_profile_origin_label,
+      tsp.origin_address AS sun_profile_origin_address,
+      tsp.origin_lat AS sun_profile_origin_lat,
+      tsp.origin_lng AS sun_profile_origin_lng,
+      tsp.tokenization_mode AS sun_profile_tokenization_mode,
+      tsp.claim_policy AS sun_profile_claim_policy,
+      tsp.ownership_policy AS sun_profile_ownership_policy,
+      tsp.manifest_policy AS sun_profile_manifest_policy,
       tp.product_name,
       tp.sku,
       tp.winery,
@@ -481,6 +524,8 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       tok.token_id AS tokenization_token_id
     FROM tags t
     JOIN batches b ON b.id = t.batch_id
+    JOIN tenants tn ON tn.id = b.tenant_id
+    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = b.tenant_id
     LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
     LEFT JOIN LATERAL (
       SELECT created_at, city, country_code
@@ -598,20 +643,160 @@ function buildPublicContract(params: {
   const verdictRisk = mapVerdictAndRisk({ statusCode: status, productState: params.result.product_state || null, reason });
   const actionMatrix = resolveActionMatrix(verdictRisk.verdict);
   const troubleshooting = buildTroubleshooting(reason, params.bid);
-  const preset = BID_PASSPORT_PRESETS[params.bid];
-  const fallbackName = preset?.name || `NexID Verified Asset · ${params.bid}`;
-  const fallbackWinery = preset?.winery || "Verified winery";
-  const fallbackRegion = preset?.region || "Origin region";
-  const fallbackVarietal = preset?.varietal || "Varietal pending";
-  const fallbackVintage = preset?.vintage || new Date().getUTCFullYear().toString();
-  const fallbackHarvestYear = preset?.harvestYear || null;
-  const fallbackBarrelMonths = preset?.barrelMonths || null;
-  const fallbackStorage = preset?.storage || null;
-  const fallbackAlcohol = preset?.alcohol || null;
-  const fallbackBottle = preset?.bottle || null;
-  const fallbackServing = preset?.serving || null;
-  const tenantSlug = preset?.tenantSlug || "demobodega";
-  const tenantId = ((params.result as { tenant_id?: string | null }).tenant_id || null);
+  const tenantResolution = resolveSunTenantProfile({ bid: params.bid, passport: params.passport, result: params.result as Record<string, unknown> });
+  const setupWebBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
+  const setupEventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
+  const setupUa = summarizeUserAgent(params.tap.userAgent);
+  if (!tenantResolution.ok) {
+    const tenantSlug = tenantResolution.tenantSlug || "tenant-setup-required";
+    const setupQuery = new URLSearchParams({ tenant: tenantSlug, fromTap: "1", action: "setup-required" });
+    if (setupEventId) setupQuery.set("eventId", setupEventId);
+    const setupProductName = params.passport?.product_name || params.passport?.sku || `Batch ${params.bid}`;
+    return {
+      ok: false,
+      status: {
+        code: "TENANT_SETUP_REQUIRED",
+        label: "Configuracion del tenant pendiente",
+        tone: "warn",
+        summary: "El tap fue procesado, pero el tenant no tiene perfil SUN/manifiesto/ownership completo para publicar CTAs de consumidor.",
+        reason: tenantResolution.message,
+        authStatus: params.result.auth_status || status,
+        productState: params.result.product_state || null,
+        tamperSupported: Boolean(params.result.tamper_supported),
+        tamperStatus: params.result.tamper_status || "UNKNOWN",
+        tamperSource: params.result.tamper_source || "unavailable",
+        tamperReason: params.result.tamper_reason || null,
+        encPlainStatusByte: params.result.enc_plain_status_byte || null,
+      },
+      identity: {
+        bid: params.bid,
+        uid: null,
+        uidMasked: maskIdentityValue(params.uid || ""),
+        readCounter: params.ctr,
+        eventId: setupEventId,
+        tagStatus: params.passport?.tag_status || null,
+        scanCount: params.passport?.scan_count || 0,
+        tenantSlug,
+        tenantId: tenantResolution.tenantId,
+      },
+      tenant: {
+        id: tenantResolution.tenantId,
+        slug: tenantSlug,
+        name: tenantResolution.tenantName || "Tenant sin onboarding completo",
+        vertical: null,
+        productLabel: null,
+        clubName: null,
+        tokenizationMode: "manual",
+        setupRequired: true,
+        missing: tenantResolution.missing,
+      },
+      product: {
+        name: setupProductName,
+        winery: params.passport?.winery || null,
+        region: params.passport?.region || null,
+        varietal: params.passport?.grape_varietal || null,
+        vintage: params.passport?.vintage || null,
+        harvestYear: params.passport?.harvest_year || null,
+        barrelMonths: params.passport?.barrel_months || null,
+        storage: params.passport?.temperature_storage || null,
+        alcohol: null,
+        bottle: null,
+        serving: null,
+        category: null,
+        vertical: null,
+      },
+      provenance: {
+        origin: params.passport?.region || null,
+        firstVerified: { at: params.passport?.first_verified_at || null, city: params.passport?.first_city || null, country: params.passport?.first_country || null },
+        lastVerifiedLocation: { at: params.passport?.last_verified_at || null, city: params.passport?.last_city || params.tap.city || null, country: params.passport?.last_country || params.tap.country || null, result: params.passport?.last_result || null },
+        timelineSummary: params.timeline,
+      },
+      tokenization: {
+        status: "blocked_tenant_setup",
+        network: params.passport?.tokenization_network || null,
+        txHash: params.passport?.tokenization_tx_hash || null,
+        tokenId: params.passport?.tokenization_token_id || null,
+      },
+      trustSignals: {
+        antiReplay: trust.code !== "REPLAY_SUSPECT",
+        tamperRisk: trust.code === "TAMPER_RISK",
+        tamperStatus: params.result.tamper_status || "UNKNOWN",
+        tamperSupported: Boolean(params.result.tamper_supported),
+        lastEventResult: params.passport?.last_result || null,
+      },
+      tapSecurity: {
+        replayDetected: trust.code === "REPLAY_SUSPECT" || verdictRisk.verdict === "replay_suspect",
+        freshTap: false,
+        tokenizationEligible: false,
+        policy: "blocked_tenant_setup",
+        reason: tenantResolution.message,
+      },
+      iot: {
+        wineryLocation: null,
+        wineryCoordinates: null,
+        altitude: null,
+        oakType: null,
+        originLabel: null,
+        originType: null,
+        sensorSnapshot: { cellarTemperature: null, humidity: null, lightExposure: null, transitShock: null },
+        sensorHistory: [],
+      },
+      tapContext: {
+        os: setupUa.os,
+        browser: setupUa.browser,
+        deviceType: setupUa.device,
+        city: params.tap.city,
+        country: params.tap.country,
+        lat: roundCoord(params.tap.lat, 2),
+        lng: roundCoord(params.tap.lng, 2),
+      },
+      quality: { score: 0, tier: "Setup Required" },
+      cta: {
+        claimOwnership: false,
+        registerWarranty: false,
+        provenance: false,
+        tokenize: false,
+        clubName: null,
+        registerUrl: `${setupWebBase}/admin/onboarding?${setupQuery.toString()}`,
+        portalUrl: `${setupWebBase}/admin/onboarding?${setupQuery.toString()}`,
+        marketplaceUrl: `${setupWebBase}/admin/onboarding?${setupQuery.toString()}`,
+        rewardsUrl: `${setupWebBase}/admin/onboarding?${setupQuery.toString()}`,
+      },
+      troubleshooting: [
+        ...troubleshooting,
+        "Completar perfil SUN del tenant antes de activar CTAs publicas.",
+        `Campos faltantes: ${tenantResolution.missing.join(", ")}`,
+        "Importar manifiesto real con product_name/sku por UID antes de habilitar ownership/tokenizacion.",
+      ],
+      eventId: setupEventId,
+      tenantId: tenantResolution.tenantId,
+      tenantSlug,
+      batchId: params.bid,
+      tagId: params.uid ? maskIdentityValue(params.uid) : null,
+      uidMasked: maskIdentityValue(params.uid || ""),
+      verdict: "tenant_setup_required",
+      riskLevel: "high",
+      tag_tamper: params.result.tag_tamper || null,
+      productName: setupProductName,
+      allowedActions: [],
+      blockedActions: ["claim", "warranty", "provenance", "tokenization", "marketplace", "rewards"],
+    };
+  }
+
+  const tenantProfile = tenantResolution.profile;
+  const fallbackName = tenantProfile.product.name || `NexID Verified Asset · ${params.bid}`;
+  const fallbackWinery = tenantProfile.product.winery || tenantProfile.tenantName;
+  const fallbackRegion = tenantProfile.product.region || tenantProfile.origin.label;
+  const fallbackVarietal = tenantProfile.product.varietal;
+  const fallbackVintage = tenantProfile.product.vintage;
+  const fallbackHarvestYear = tenantProfile.product.harvestYear;
+  const fallbackBarrelMonths = tenantProfile.product.barrelMonths;
+  const fallbackStorage = tenantProfile.product.storage || null;
+  const fallbackAlcohol = tenantProfile.product.alcohol || null;
+  const fallbackBottle = tenantProfile.product.bottle || null;
+  const fallbackServing = tenantProfile.product.serving || null;
+  const tenantSlug = tenantProfile.tenantSlug;
+  const tenantId = tenantProfile.tenantId;
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
   const eventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
   const tapQuery = new URLSearchParams({
@@ -619,16 +804,36 @@ function buildPublicContract(params: {
     fromTap: "1",
   });
   if (eventId) tapQuery.set("eventId", eventId);
-  const wineryLocation = preset?.wineryLocation || null;
+  const wineryLocation = tenantProfile.origin.address || tenantProfile.origin.label || null;
   const sensorHistory = buildDemoSensorHistory(params.timeline, fallbackStorage, params.passport?.barrel_months || fallbackBarrelMonths);
   const avgTemp = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
   const avgHumidity = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.humidityPct || 0), 0) / sensorHistory.length) : null;
   const timelineLatest = params.timeline[0] || null;
   const timelineOldest = params.timeline[params.timeline.length - 1] || null;
   const ua = summarizeUserAgent(params.tap.userAgent);
-  const trustPenalty = trust.code === "VALID" ? 0 : trust.code === "REPLAY_SUSPECT" ? 35 : 20;
+  const isVerifiedOpenedTap = verdictRisk.verdict === "valid_opened"
+    || ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(trust.code);
+  const isAuthenticTap = verdictRisk.verdict === "valid" || isVerifiedOpenedTap;
+  const trustPenalty = trust.code === "VALID"
+    ? 0
+    : isVerifiedOpenedTap
+      ? 8
+      : trust.code === "REPLAY_SUSPECT"
+        ? 35
+        : trust.code === "TAMPER_RISK"
+          ? 44
+          : 22;
   const sensorPenalty = sensorHistory.some((item) => item.alert) ? 10 : 0;
   const qualityScore = Math.max(0, Math.min(100, 92 - trustPenalty - sensorPenalty));
+  const tokenizationPolicy = actionMatrix.allowedActions.includes("tokenization")
+    ? isVerifiedOpenedTap
+      ? "verified_opened_tap"
+      : "fresh_valid_tap"
+    : verdictRisk.verdict === "replay_suspect"
+      ? "blocked_replay"
+      : verdictRisk.verdict === "tampered"
+        ? "blocked_tamper"
+        : "blocked_policy";
 
   return {
     ok: Boolean(params.result.ok),
@@ -657,6 +862,15 @@ function buildPublicContract(params: {
       tenantSlug,
       tenantId,
     },
+    tenant: {
+      id: tenantId,
+      slug: tenantSlug,
+      name: tenantProfile.tenantName,
+      vertical: tenantProfile.vertical,
+      productLabel: tenantProfile.productLabel,
+      clubName: tenantProfile.clubName,
+      tokenizationMode: tenantProfile.tokenizationMode,
+    },
     product: {
       name: params.passport?.product_name || params.passport?.sku || fallbackName,
       winery: params.passport?.winery || fallbackWinery,
@@ -669,6 +883,8 @@ function buildPublicContract(params: {
       alcohol: fallbackAlcohol,
       bottle: fallbackBottle,
       serving: fallbackServing,
+      category: tenantProfile.productLabel,
+      vertical: tenantProfile.vertical,
     },
     provenance: {
       origin: params.passport?.region || params.passport?.winery || wineryLocation || null,
@@ -700,22 +916,18 @@ function buildPublicContract(params: {
     },
     tapSecurity: {
       replayDetected: trust.code === "REPLAY_SUSPECT" || verdictRisk.verdict === "replay_suspect",
-      freshTap: trust.code === "VALID" && verdictRisk.verdict === "valid",
+      freshTap: isAuthenticTap && verdictRisk.verdict !== "replay_suspect",
       tokenizationEligible: actionMatrix.allowedActions.includes("tokenization"),
-      policy: actionMatrix.allowedActions.includes("tokenization")
-        ? "fresh_valid_tap"
-        : verdictRisk.verdict === "replay_suspect"
-          ? "blocked_replay"
-          : verdictRisk.verdict === "tampered"
-            ? "blocked_tamper"
-            : "blocked_policy",
+      policy: tokenizationPolicy,
       reason,
     },
     iot: {
       wineryLocation,
-      wineryCoordinates: preset?.wineryCoordinates || null,
-      altitude: preset?.altitude || null,
-      oakType: preset?.oakType || null,
+      wineryCoordinates: tenantProfile.origin.coordinates,
+      altitude: tenantProfile.origin.altitude || null,
+      oakType: tenantProfile.product.oakType || null,
+      originLabel: tenantProfile.origin.label,
+      originType: tenantProfile.vertical,
       sensorSnapshot: {
         cellarTemperature: avgTemp != null ? `${avgTemp.toFixed(1)}°C` : null,
         humidity: avgHumidity != null ? `${avgHumidity.toFixed(0)}%` : null,
@@ -735,14 +947,14 @@ function buildPublicContract(params: {
     },
     quality: {
       score: qualityScore,
-      tier: qualityScore >= 85 ? "Premium" : qualityScore >= 65 ? "Monitored" : "At Risk",
+      tier: qualityScore >= 85 ? "Premium" : qualityScore >= 75 ? "Verified Open" : qualityScore >= 65 ? "Monitored" : "At Risk",
     },
     cta: {
       claimOwnership: actionMatrix.allowedActions.includes("claim"),
       registerWarranty: actionMatrix.allowedActions.includes("warranty"),
       provenance: actionMatrix.allowedActions.includes("provenance"),
       tokenize: actionMatrix.allowedActions.includes("tokenization"),
-      clubName: preset?.clubName || "Club premium",
+      clubName: tenantProfile.clubName,
       registerUrl: `${webBase}/me?${tapQuery.toString()}&action=register`,
       portalUrl: `${webBase}/me?${tapQuery.toString()}&action=portal`,
       marketplaceUrl: `${webBase}/me/marketplace?${tapQuery.toString()}&action=marketplace`,
@@ -1310,6 +1522,7 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
   const enabled = String(process.env.SUN_AUTO_TOKENIZE_ON_VALID_TAP || "false").toLowerCase() === "true";
   if (!enabled) return null;
 
+  await ensureTokenizationRequestsSchema();
   const row = (await sql/*sql*/`
     SELECT tr.id, tr.status, tr.network, tr.tx_hash, tr.token_id, tr.anchor_hash, tr.external_ref
     FROM tokenization_requests tr
@@ -1475,9 +1688,17 @@ export async function GET(req: Request): Promise<Response> {
     ];
   }
 
+  const tenantTokenizationMode = String(contract.tenant?.tokenizationMode || "manual");
+  const tapTokenizationPolicy = String(contract.tapSecurity?.policy || "");
+  const tenantAllowsAutoTokenization =
+    tenantTokenizationMode === "valid_and_opened"
+      ? tapTokenizationPolicy === "fresh_valid_tap" || tapTokenizationPolicy === "verified_opened_tap"
+      : tenantTokenizationMode === "valid_only"
+        ? tapTokenizationPolicy === "fresh_valid_tap"
+        : false;
   const canAutoTokenizeFreshTap =
     Boolean(result.body.ok && uid)
-    && contract.status.code === "VALID"
+    && tenantAllowsAutoTokenization
     && contract.trustSignals?.antiReplay === true
     && !String(contract.status.reason || result.body.reason || "").toLowerCase().includes("replay")
     && !String(contract.status.reason || result.body.reason || "").toLowerCase().includes("copied url")
@@ -1566,7 +1787,7 @@ export async function GET(req: Request): Promise<Response> {
     eventId,
     diagnosticId,
     status: result.status,
-    tenant: bid.startsWith("DEMO-") ? "demobodega" : "unknown",
+    tenant: contract.tenantSlug || contract.tenant?.slug || "unknown",
     createdAt: new Date().toISOString(),
   }));
   if (diagnosticId) (contract as Record<string, unknown>).diagnostic_id = diagnosticId;

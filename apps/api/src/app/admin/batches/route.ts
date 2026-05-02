@@ -5,6 +5,7 @@ import { sql } from "../../../lib/db";
 import { checkAdmin } from "../../../lib/auth";
 import { encryptKey16 } from "../../../lib/keys";
 import { json } from "../../../lib/http";
+import { requireTenantSunProfile } from "../../../lib/tenant-onboarding";
 
 function normalizeHexKey(value: unknown, field: string) {
   if (value == null || value === "") return null;
@@ -31,7 +32,7 @@ function inferBatchProfile(config: Record<string, unknown>) {
   const icType = String(config.ic_type || config.tag_type || "").toUpperCase();
   if (icType.includes("424")) return "secure";
   if (icType.includes("215") || icType.includes("216") || icType.includes("213")) return "basic";
-  return "custom";
+  return null;
 }
 
 export async function GET(req: Request) {
@@ -49,8 +50,8 @@ export async function GET(req: Request) {
         b.status,
         b.created_at,
         t.slug AS tenant_slug,
-        COALESCE(b.sdm_config->>'profile', b.sdm_config->>'security_profile', 'custom') AS batch_profile,
-        COALESCE(NULLIF(b.sdm_config->>'sku', ''), '-') AS sku,
+        NULLIF(COALESCE(b.sdm_config->>'profile', b.sdm_config->>'security_profile'), '') AS batch_profile,
+        NULLIF(b.sdm_config->>'sku', '') AS sku,
         NULLIF(b.sdm_config->>'requested_quantity', '')::int AS requested_quantity,
         COUNT(tags.id)::int AS quantity,
         COUNT(tags.id) FILTER (WHERE tags.status = 'active')::int AS active_tags,
@@ -71,8 +72,8 @@ export async function GET(req: Request) {
         b.status,
         b.created_at,
         t.slug AS tenant_slug,
-        COALESCE(b.sdm_config->>'profile', b.sdm_config->>'security_profile', 'custom') AS batch_profile,
-        COALESCE(NULLIF(b.sdm_config->>'sku', ''), '-') AS sku,
+        NULLIF(COALESCE(b.sdm_config->>'profile', b.sdm_config->>'security_profile'), '') AS batch_profile,
+        NULLIF(b.sdm_config->>'sku', '') AS sku,
         NULLIF(b.sdm_config->>'requested_quantity', '')::int AS requested_quantity,
         COUNT(tags.id)::int AS quantity,
         COUNT(tags.id) FILTER (WHERE tags.status = 'active')::int AS active_tags,
@@ -100,6 +101,15 @@ export async function POST(req: Request) {
 
   const tenant = await resolveTenant(tenantInput);
   if (!tenant) return json({ ok: false, reason: "tenant not found" }, 404);
+  const readiness = await requireTenantSunProfile(String(tenant.id)).catch((error) => ({ ok: false, missing: (error as Error & { missing?: string[] }).missing || ["tenant_sun_profiles"] }));
+  if (!readiness.ok) {
+    return json({
+      ok: false,
+      reason: "tenant_sun_profile_incomplete",
+      message: "Create or complete the tenant SUN profile before creating batches. This prevents generic future-tenant fallbacks.",
+      missing: readiness.missing,
+    }, 409);
+  }
 
   try {
     const kMetaHex = normalizeHexKey(body.k_meta_hex, "k_meta_hex");
@@ -114,6 +124,9 @@ export async function POST(req: Request) {
     const requestedQuantity = Math.max(0, Math.trunc(Number(body.quantity || incomingConfig.requested_quantity || 0)));
     const sku = String(body.sku || incomingConfig.sku || "").trim();
     const profile = inferBatchProfile({ ...incomingConfig, profile: body.profile || incomingConfig.profile });
+    if (!profile) {
+      return json({ ok: false, reason: "batch_profile_required", message: "Set profile/security_profile or chip type before creating a batch." }, 400);
+    }
 
     const sdmConfig = {
       mac_input: "enc_plus_cmac_literal",

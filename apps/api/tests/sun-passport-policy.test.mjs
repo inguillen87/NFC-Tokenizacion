@@ -26,6 +26,26 @@ test("replay reason wins even when auth status is otherwise valid", () => {
   assert.equal(matrix.blockedActions.includes("tokenization"), true);
 });
 
+test("verified opened seal remains actionable as lifecycle event", () => {
+  const mapped = mapVerdictAndRisk({ statusCode: "OPENED", productState: "VALID_OPENED", reason: "sun_ok", encPlainStatusByte: "4F" });
+  const matrix = resolveActionMatrix(mapped.verdict);
+  assert.equal(mapped.verdict, "valid_opened");
+  assert.equal(mapped.riskLevel, "low");
+  assert.equal(matrix.allowedActions.includes("claim"), true);
+  assert.equal(matrix.allowedActions.includes("warranty"), true);
+  assert.equal(matrix.allowedActions.includes("tokenization"), true);
+  assert.equal(matrix.blockedActions.length, 0);
+});
+
+test("tamper risk still blocks commercial ownership and tokenization", () => {
+  const mapped = mapVerdictAndRisk({ statusCode: "TAMPER_RISK", productState: "TAMPER_RISK", reason: "invalid_tamper" });
+  const matrix = resolveActionMatrix(mapped.verdict);
+  assert.equal(mapped.verdict, "tampered");
+  assert.equal(mapped.riskLevel, "high");
+  assert.equal(matrix.blockedActions.includes("claim"), true);
+  assert.equal(matrix.blockedActions.includes("tokenization"), true);
+});
+
 test("invalid payload does not require leaking raw sun internals in public contract surface", () => {
   const mapped = mapVerdictAndRisk({ statusCode: "INVALID", productState: "INVALID", reason: "invalid_cmac" });
   const publicSurface = {

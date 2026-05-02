@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "./db";
+import { ensureLoyaltySchema } from "./loyalty-schema";
 
 type TapEligibility = {
   award: boolean;
@@ -21,6 +22,7 @@ export async function getTapEvent(eventId: string) {
 }
 
 export async function getActiveProgram(tenantId: string) {
+  await ensureLoyaltySchema();
   const rows = await sql/*sql*/`
     SELECT *
     FROM loyalty_programs
@@ -35,6 +37,7 @@ export async function getActiveProgram(tenantId: string) {
 }
 
 export async function getOrCreateMember(input: { tenantId: string; programId: string; eventId: string; memberKey: string; consumerId?: string | null; locale?: string; email?: string | null; phone?: string | null; displayName?: string | null; country?: string | null }) {
+  await ensureLoyaltySchema();
   const rows = await sql/*sql*/`
     INSERT INTO loyalty_members (tenant_id, program_id, event_id, member_key, consumer_id, preferred_locale, email, phone, display_name, country, status, first_tap_at, last_tap_at)
     VALUES (${input.tenantId}, ${input.programId}, ${input.eventId}, ${input.memberKey}, ${input.consumerId || null}, ${input.locale || "es-AR"}, ${input.email || null}, ${input.phone || null}, ${input.displayName || null}, ${input.country || null}, ${input.email || input.phone || input.consumerId ? "enrolled" : "anonymous"}, now(), now())
@@ -56,6 +59,7 @@ export async function getOrCreateMember(input: { tenantId: string; programId: st
 }
 
 export async function evaluateLoyaltyForTap(input: { eventId: string; memberId: string; program: any; event: any }): Promise<TapEligibility> {
+  await ensureLoyaltySchema();
   if (!input.event || BLOCKED_RESULTS.has(String(input.event.result || "").toUpperCase())) {
     return { award: false, reason: "blocked_validation" };
   }
@@ -92,6 +96,7 @@ export async function loyaltyFraudGuard(input: { eventId: string; result: string
 }
 
 export async function awardPoints(input: { tenantId: string; programId: string; memberId: string; tapEventId?: string; delta: number; source: string; idempotencyKey: string; reason?: string; metadata?: Record<string, unknown> }) {
+  await ensureLoyaltySchema();
   const existing = await sql/*sql*/`
     SELECT id, delta, balance_after
     FROM points_ledger
@@ -158,6 +163,7 @@ export async function claimTapPoints(input: { eventId: string; memberKey?: strin
 }
 
 export async function redeemReward(input: { eventId: string; memberId: string; rewardId: string; locale?: string }) {
+  await ensureLoyaltySchema();
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false, status: 404, error: "event_not_found" as const };
   if (BLOCKED_RESULTS.has(String(event.result || "").toUpperCase())) {
@@ -220,6 +226,7 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
 
 
 export async function getLoyaltyMemberById(input: { memberId: string; tenantId?: string | null }) {
+  await ensureLoyaltySchema();
   const rows = await sql/*sql*/`
     SELECT m.id, m.tenant_id, m.program_id, m.consumer_id, m.email, m.phone, m.display_name, m.country, m.preferred_locale,
            m.status, m.points_balance, m.lifetime_points, m.first_tap_at, m.last_tap_at, m.consent_json, m.profile_json,

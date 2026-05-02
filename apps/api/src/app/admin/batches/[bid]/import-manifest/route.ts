@@ -1,25 +1,16 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { parse } from "csv-parse/sync";
 import { sql } from "../../../../../lib/db";
 import { checkAdmin } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
+import { parseTagManifest } from "../../../../../lib/tag-manifest";
+import { requireTenantSunProfile } from "../../../../../lib/tenant-onboarding";
 
 type ManifestPayload = {
   csv?: string;
   activateImported?: boolean;
 };
-
-type ManifestRow = Record<string, string>;
-
-function normalizeUid(value: unknown) {
-  return String(value || "").trim().toUpperCase();
-}
-
-function normalizeBatchId(value: unknown) {
-  return String(value || "").trim();
-}
 
 async function readPayload(req: Request): Promise<ManifestPayload & { csv: string }> {
   const contentType = req.headers.get("content-type") || "";
@@ -32,94 +23,95 @@ async function readPayload(req: Request): Promise<ManifestPayload & { csv: strin
   return { csv: raw, activateImported: false };
 }
 
-function parseUidText(content: string): ManifestRow[] {
-  const lines = content
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (!lines.length) return [];
-
-  const first = lines[0].toLowerCase();
-  const startIndex = first === "uid_hex" || first === "uid" ? 1 : 0;
-  return lines.slice(startIndex).map((uid) => ({ uid_hex: uid }));
-}
-
-function parseManifestRows(content: string): ManifestRow[] {
-  try {
-    const rows = parse(content, { columns: true, skip_empty_lines: true, trim: true }) as ManifestRow[];
-    if (rows.length) return rows;
-  } catch {
-    // fall through and try plain UID list parsing
-  }
-
-  return parseUidText(content);
-}
-
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
   const { bid } = await params;
-  const batchRows = await sql/*sql*/`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
+  const batchRows = await sql/*sql*/`SELECT id, tenant_id FROM batches WHERE bid = ${bid} LIMIT 1`;
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
+  const readiness = await requireTenantSunProfile(String(batch.tenant_id)).catch((error) => ({ ok: false, missing: (error as Error & { missing?: string[] }).missing || ["tenant_sun_profiles"] }));
+  if (!readiness.ok) {
+    return json({
+      ok: false,
+      reason: "tenant_sun_profile_incomplete",
+      message: "Complete tenant SUN profile before importing manifests.",
+      missing: readiness.missing,
+    }, 409);
+  }
 
   const payload = await readPayload(req);
   if (!payload.csv.trim()) return json({ ok: false, reason: "empty csv body" }, 400);
 
-  const rows = parseManifestRows(payload.csv);
-  if (!rows.length) return json({ ok: false, reason: "manifest has no rows" }, 400);
-
-  const manifestBatchIds = Array.from(new Set(rows.map((row) => normalizeBatchId(row.batch_id || row.batchId)).filter(Boolean)));
-  const mismatchedBatchIds = manifestBatchIds.filter((value) => value !== bid);
-  if (mismatchedBatchIds.length > 0) {
-    return json({ ok: false, reason: "manifest batch_id does not match route batch", expected: bid, manifestBatchIds }, 400);
+  const manifest = parseTagManifest(payload.csv, bid);
+  if (!manifest.rows.length && !manifest.rejectedRows.length) return json({ ok: false, reason: "manifest has no rows" }, 400);
+  if (manifest.rejectedRows.length > 0) {
+    await sql/*sql*/`
+      INSERT INTO tenant_manifests (
+        tenant_id, batch_id, bid, manifest_type, row_count, duplicate_count, rejected_count, content_hash, import_status, errors_json
+      ) VALUES (
+        ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length}, ${manifest.duplicateUids.length}, ${manifest.rejectedRows.length}, ${manifest.contentHash}, 'rejected', ${JSON.stringify(manifest.rejectedRows)}::jsonb
+      )
+    `;
+    return json({ ok: false, reason: "manifest_validation_failed", rejectedRows: manifest.rejectedRows, duplicateUids: manifest.duplicateUids }, 400);
   }
 
-  const seen = new Set<string>();
-  const duplicates: string[] = [];
   let inserted = 0;
   let reactivated = 0;
-  let ignored = 0;
 
-  for (const row of rows) {
-    const uid = normalizeUid(row.uid_hex || row.UID || row.uid || row.uidHex);
-    if (!uid) {
-      ignored += 1;
-      continue;
-    }
-    if (seen.has(uid)) {
-      duplicates.push(uid);
-      continue;
-    }
-    seen.add(uid);
-
+  for (const row of manifest.rows) {
     const result = await sql/*sql*/`
       INSERT INTO tags (batch_id, uid_hex, status)
-      VALUES (${batch.id}, ${uid}, ${payload.activateImported ? 'active' : 'inactive'})
+      VALUES (${batch.id}, ${row.uidHex}, ${payload.activateImported ? 'active' : 'inactive'})
       ON CONFLICT (batch_id, uid_hex)
       DO UPDATE SET status = CASE
         WHEN ${payload.activateImported} THEN 'active'::tag_status
         ELSE tags.status
       END
-      RETURNING xmax = 0 AS inserted, status
+      RETURNING id, xmax = 0 AS inserted, status
     `;
     const current = result[0];
     if (current?.inserted) inserted += 1;
     else if (payload.activateImported) reactivated += 1;
+
+    if (row.productName || row.sku) {
+      await sql/*sql*/`
+        INSERT INTO tag_profiles (tag_id, sku, product_name, notes, locale_data)
+        VALUES (
+          ${current.id},
+          ${row.sku},
+          ${row.productName},
+          ${row.lot || row.serial || row.expiresAt ? JSON.stringify({ lot: row.lot, serial: row.serial, expires_at: row.expiresAt }) : null},
+          ${JSON.stringify({ manifest: { lot: row.lot, serial: row.serial, expires_at: row.expiresAt, raw: row.raw } })}::jsonb
+        )
+        ON CONFLICT (tag_id) DO UPDATE SET
+          sku = COALESCE(EXCLUDED.sku, tag_profiles.sku),
+          product_name = COALESCE(EXCLUDED.product_name, tag_profiles.product_name),
+          notes = COALESCE(EXCLUDED.notes, tag_profiles.notes),
+          locale_data = tag_profiles.locale_data || EXCLUDED.locale_data,
+          updated_at = now()
+      `;
+    }
   }
+
+  await sql/*sql*/`
+    INSERT INTO tenant_manifests (
+      tenant_id, batch_id, bid, manifest_type, row_count, inserted_count, reactivated_count, duplicate_count, rejected_count, content_hash, import_status, errors_json
+    ) VALUES (
+      ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length}, ${inserted}, ${reactivated}, 0, 0, ${manifest.contentHash}, 'imported', '[]'::jsonb
+    )
+  `;
 
   return json({
     ok: true,
     batch: bid,
-    manifestBatchIds: manifestBatchIds.length ? manifestBatchIds : [bid],
-    importedRows: rows.length,
+    manifestType: manifest.manifestType,
+    importedRows: manifest.rows.length,
     inserted,
     reactivated,
-    ignored,
-    duplicateUids: duplicates,
+    ignored: 0,
+    duplicateUids: [],
     activated: payload.activateImported,
   });
 }

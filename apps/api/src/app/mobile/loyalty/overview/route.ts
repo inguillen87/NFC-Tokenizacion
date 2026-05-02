@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
+import { ensureDefaultLoyaltyProgram, ensureLoyaltySchema } from "../../../../lib/loyalty-schema";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -11,13 +12,14 @@ export async function GET(req: Request) {
 
   if (!tenantSlug) return json({ ok: false, reason: "missing_tenant" }, 400);
 
+  await ensureLoyaltySchema();
+
   const tenantRows = await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`;
   if (!tenantRows[0]) return json({ ok: false, reason: "tenant_not_found" }, 404);
   const tenantId = tenantRows[0].id;
 
-  const programRows = await sql`SELECT id, name, points_name FROM loyalty_programs WHERE tenant_id = ${tenantId} AND status = 'active' LIMIT 1`;
-  if (!programRows[0]) return json({ ok: false, reason: "no_active_program" }, 404);
-  const program = programRows[0];
+  const program = await ensureDefaultLoyaltyProgram({ tenantId, tenantSlug });
+  if (!program) return json({ ok: false, reason: "no_active_program" }, 404);
 
   let member = null;
   if (memberKey) {

@@ -1210,6 +1210,17 @@ html.theme-light .animate-card-shift:hover {
     0 0 32px rgba(52, 211, 153, 0.18);
 }
 
+.sun-product-visual--valid::before {
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0 4px, transparent 4px 9px),
+    linear-gradient(180deg, #22d3ee 0%, #059669 100%);
+  border-color: rgba(110, 231, 183, 0.76);
+}
+
+.sun-product-visual--valid::after {
+  border-color: rgba(52, 211, 153, 0.44);
+}
+
 .sun-product-visual--warn {
   box-shadow:
     inset 0 0 24px rgba(2, 6, 23, 0.84),
@@ -1217,11 +1228,33 @@ html.theme-light .animate-card-shift:hover {
     0 0 32px rgba(251, 191, 36, 0.18);
 }
 
+.sun-product-visual--warn::before {
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0 4px, transparent 4px 9px),
+    linear-gradient(180deg, #fbbf24 0%, #b45309 100%);
+  border-color: rgba(253, 230, 138, 0.76);
+}
+
 .sun-product-visual--risk {
   box-shadow:
     inset 0 0 24px rgba(2, 6, 23, 0.84),
     0 18px 32px rgba(0, 0, 0, 0.38),
     0 0 34px rgba(251, 113, 133, 0.22);
+}
+
+.sun-product-visual--risk::before {
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0 4px, transparent 4px 9px),
+    linear-gradient(180deg, #fb7185 0%, #7f1d1d 100%);
+  border-color: rgba(254, 202, 202, 0.72);
+}
+
+.sun-product-visual--risk::after {
+  border-color: rgba(251, 113, 133, 0.56);
+  background:
+    linear-gradient(110deg, transparent 0 47%, rgba(251, 113, 133, 0.72) 48% 52%, transparent 53%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
+    linear-gradient(180deg, rgba(226, 232, 240, 0.95), rgba(203, 213, 225, 0.9));
 }
 
 .sun-product-visual--replay {
@@ -1245,10 +1278,16 @@ html.theme-light .animate-card-shift:hover {
 }
 
 .sun-product-visual--opened::after {
+  border-color: rgba(251, 191, 36, 0.52);
   background:
-    linear-gradient(110deg, transparent 0 47%, rgba(251, 113, 133, 0.7) 48% 52%, transparent 53%),
+    linear-gradient(110deg, transparent 0 47%, rgba(251, 191, 36, 0.72) 48% 52%, transparent 53%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
     linear-gradient(180deg, rgba(226, 232, 240, 0.95), rgba(203, 213, 225, 0.9));
+}
+
+.sun-product-visual--opened .sun-product-visual__tag {
+  border-color: rgba(251, 191, 36, 0.55);
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.22);
 }
 
 .sun-product-visual__tag {
@@ -1383,6 +1422,13 @@ html.theme-light .animate-card-shift:hover {
   background:
     radial-gradient(circle at 92% 8%, rgba(251, 191, 36, 0.2), transparent 18rem),
     linear-gradient(140deg, rgba(69, 26, 3, 0.56), rgba(15, 23, 42, 0.9));
+}
+
+.sun-security-ledger--opened {
+  border-color: rgba(251, 191, 36, 0.34);
+  background:
+    radial-gradient(circle at 90% 10%, rgba(251, 191, 36, 0.18), transparent 18rem),
+    linear-gradient(140deg, rgba(69, 26, 3, 0.42), rgba(15, 23, 42, 0.88));
 }
 
 .sun-security-ledger--review {
@@ -1884,6 +1930,13 @@ html.theme-light .sun-security-ledger--replay {
   background:
     radial-gradient(circle at 92% 8%, rgba(251, 191, 36, 0.28), transparent 18rem),
     linear-gradient(140deg, rgba(255, 251, 235, 0.94), rgba(255, 255, 255, 0.84));
+}
+
+html.theme-light .sun-security-ledger--opened {
+  border-color: rgba(217, 119, 6, 0.28);
+  background:
+    radial-gradient(circle at 92% 8%, rgba(251, 191, 36, 0.22), transparent 18rem),
+    linear-gradient(140deg, rgba(255, 251, 235, 0.95), rgba(255, 255, 255, 0.88));
 }
 
 html.theme-light .sun-security-copy,

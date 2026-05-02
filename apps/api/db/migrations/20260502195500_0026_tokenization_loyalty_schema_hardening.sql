@@ -1,202 +1,9 @@
+-- 0026_tokenization_loyalty_schema_hardening
+-- Production hardening for partially provisioned DBs.
+-- Adds the Polygon tokenization queue and the loyalty/rewards domain used by SUN mobile and consumer portal.
+-- Forward-only and idempotent: safe to run after older partial schema deployments.
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-DO $$ BEGIN
-  CREATE TYPE tag_status AS ENUM ('inactive', 'active', 'revoked');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  CREATE TYPE batch_status AS ENUM ('active', 'revoked');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  CREATE TYPE scan_source AS ENUM ('real', 'demo', 'imported');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-CREATE TABLE IF NOT EXISTS tenants (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  slug text NOT NULL UNIQUE,
-  name text NOT NULL,
-  root_key_ct text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS batches (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  bid text NOT NULL UNIQUE,
-  status batch_status NOT NULL DEFAULT 'active',
-  meta_key_ct text NOT NULL,
-  file_key_ct text NOT NULL,
-  sdm_config jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS tenant_sun_profiles (
-  tenant_id uuid PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
-  vertical text,
-  club_name text,
-  product_label text,
-  origin_label text,
-  origin_address text,
-  origin_lat double precision,
-  origin_lng double precision,
-  tokenization_mode text,
-  claim_policy text,
-  ownership_policy jsonb NOT NULL DEFAULT '{}'::jsonb,
-  manifest_policy jsonb NOT NULL DEFAULT '{}'::jsonb,
-  theme jsonb NOT NULL DEFAULT '{}'::jsonb,
-  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS tags (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  batch_id uuid NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
-  uid_hex text NOT NULL,
-  status tag_status NOT NULL DEFAULT 'inactive',
-  last_seen_ctr integer,
-  first_seen_at timestamptz,
-  last_seen_at timestamptz,
-  scan_count integer NOT NULL DEFAULT 0,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(batch_id, uid_hex)
-);
-
-CREATE TABLE IF NOT EXISTS events (
-  id bigserial PRIMARY KEY,
-  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  batch_id uuid NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
-  uid_hex text,
-  sdm_read_ctr integer,
-  read_counter integer,
-  cmac_ok boolean,
-  allowlisted boolean,
-  tag_status tag_status,
-  result text NOT NULL,
-  reason text,
-  ip inet,
-  user_agent text,
-  geo_city text,
-  geo_country text,
-  geo_lat double precision,
-  geo_lng double precision,
-  country_code text,
-  city text,
-  lat double precision,
-  lng double precision,
-  device_label text,
-  source scan_source NOT NULL DEFAULT 'real',
-  meta jsonb NOT NULL DEFAULT '{}'::jsonb,
-  raw_query jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_tags_batch_uid ON tags(batch_id, uid_hex);
-CREATE INDEX IF NOT EXISTS idx_tags_scan_count ON tags(scan_count DESC);
-CREATE INDEX IF NOT EXISTS idx_tenant_sun_profiles_vertical ON tenant_sun_profiles(vertical);
-CREATE TABLE IF NOT EXISTS tenant_manifests (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  batch_id uuid NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
-  bid text NOT NULL,
-  manifest_type text NOT NULL,
-  source_filename text,
-  row_count integer NOT NULL DEFAULT 0,
-  inserted_count integer NOT NULL DEFAULT 0,
-  reactivated_count integer NOT NULL DEFAULT 0,
-  duplicate_count integer NOT NULL DEFAULT 0,
-  rejected_count integer NOT NULL DEFAULT 0,
-  content_hash text NOT NULL,
-  imported_by text,
-  import_status text NOT NULL DEFAULT 'imported',
-  errors_json jsonb NOT NULL DEFAULT '[]'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_tenant_manifests_batch ON tenant_manifests(batch_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_tenant_manifests_tenant ON tenant_manifests(tenant_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_events_batch_created ON events(batch_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_events_batch_uid_ctr ON events(batch_id, uid_hex, sdm_read_ctr);
-CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_events_geo_lat_lng ON events(geo_lat, geo_lng) WHERE geo_lat IS NOT NULL AND geo_lng IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_events_source_created ON events(source, created_at DESC);
-CREATE TABLE IF NOT EXISTS knowledge_articles (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  locale text NOT NULL,
-  slug text NOT NULL,
-  title text NOT NULL,
-  body text NOT NULL,
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(locale, slug)
-);
-
-CREATE TABLE IF NOT EXISTS leads (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  locale text NOT NULL DEFAULT 'es-AR',
-  contact text NOT NULL,
-  company text,
-  country text,
-  vertical text,
-  tag_type text,
-  volume integer,
-  source text NOT NULL DEFAULT 'assistant',
-  status text NOT NULL DEFAULT 'new',
-  notes text,
-  assigned_to text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS tickets (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  locale text NOT NULL DEFAULT 'es-AR',
-  contact text NOT NULL,
-  title text NOT NULL,
-  detail text,
-  status text NOT NULL DEFAULT 'open',
-  assigned_to text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS order_requests (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  locale text NOT NULL DEFAULT 'es-AR',
-  contact text NOT NULL,
-  company text,
-  tag_type text,
-  volume integer,
-  notes text,
-  status text NOT NULL DEFAULT 'new',
-  assigned_to text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS tokenization_requests (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL,
-  batch_id uuid REFERENCES batches(id) ON DELETE SET NULL,
-  bid text NOT NULL,
-  uid_hex text NOT NULL,
-  status text NOT NULL DEFAULT 'pending',
-  network text NOT NULL DEFAULT 'polygon-amoy',
-  asset_ref text,
-  issuer_wallet text,
-  tx_hash text,
-  token_id text,
-  anchor_hash text,
-  requested_by text,
-  requested_at timestamptz NOT NULL DEFAULT now(),
-  processed_at timestamptz,
-  attempt_count integer NOT NULL DEFAULT 0,
-  last_error text,
-  next_attempt_at timestamptz,
-  external_ref text,
-  meta jsonb NOT NULL DEFAULT '{}'::jsonb
-);
-
-CREATE INDEX IF NOT EXISTS idx_tokenization_requests_bid_uid ON tokenization_requests(bid, uid_hex, requested_at DESC);
-CREATE INDEX IF NOT EXISTS idx_tokenization_requests_status ON tokenization_requests(status, requested_at DESC);
-CREATE INDEX IF NOT EXISTS idx_tokenization_requests_tenant ON tokenization_requests(tenant_id, requested_at DESC);
-CREATE INDEX IF NOT EXISTS idx_tokenization_requests_next_attempt ON tokenization_requests(status, next_attempt_at, requested_at);
 
 DO $$ BEGIN
   CREATE TYPE loyalty_program_status AS ENUM ('draft', 'active', 'paused', 'archived');
@@ -225,6 +32,51 @@ DO $$ BEGIN
     'ADMIN_ADJUSTMENT', 'FRAUD_REVERSAL', 'EXPIRATION'
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS tokenization_requests (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id uuid,
+  batch_id uuid,
+  bid text NOT NULL,
+  uid_hex text NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  network text NOT NULL DEFAULT 'polygon-amoy',
+  asset_ref text,
+  issuer_wallet text,
+  tx_hash text,
+  token_id text,
+  anchor_hash text,
+  requested_by text,
+  requested_at timestamptz NOT NULL DEFAULT now(),
+  processed_at timestamptz,
+  attempt_count integer NOT NULL DEFAULT 0,
+  last_error text,
+  next_attempt_at timestamptz,
+  external_ref text,
+  meta jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS tenant_id uuid;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS batch_id uuid;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS network text NOT NULL DEFAULT 'polygon-amoy';
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS asset_ref text;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS issuer_wallet text;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS tx_hash text;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS token_id text;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS anchor_hash text;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS requested_by text;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS requested_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS processed_at timestamptz;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS attempt_count integer NOT NULL DEFAULT 0;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS last_error text;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS next_attempt_at timestamptz;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS external_ref text;
+ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS meta jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+CREATE INDEX IF NOT EXISTS idx_tokenization_requests_bid_uid ON tokenization_requests(bid, uid_hex, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tokenization_requests_status ON tokenization_requests(status, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tokenization_requests_tenant ON tokenization_requests(tenant_id, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tokenization_requests_next_attempt ON tokenization_requests(status, next_attempt_at, requested_at);
 
 CREATE TABLE IF NOT EXISTS loyalty_programs (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -373,6 +225,28 @@ CREATE TABLE IF NOT EXISTS reward_redemptions (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS event_id bigint;
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS member_key text;
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS consumer_id uuid;
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS preferred_locale text NOT NULL DEFAULT 'es-AR';
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS display_name text;
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS country text;
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS tier_id uuid;
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS consent_json jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS profile_json jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS requires_age_gate boolean NOT NULL DEFAULT false;
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS network_visible boolean NOT NULL DEFAULT false;
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS redemption_limit_per_member integer;
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS eligibility_json jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS fulfillment_json jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+UPDATE loyalty_members
+SET member_key = COALESCE(member_key, 'event:' || event_id::text, 'member:' || id::text)
+WHERE member_key IS NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_loyalty_members_program_email ON loyalty_members(program_id, email);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_loyalty_members_program_member_key ON loyalty_members(program_id, member_key);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_loyalty_members_program_consumer ON loyalty_members(program_id, consumer_id) WHERE consumer_id IS NOT NULL;
@@ -381,3 +255,26 @@ CREATE INDEX IF NOT EXISTS idx_loyalty_members_consumer_program ON loyalty_membe
 CREATE INDEX IF NOT EXISTS idx_points_ledger_member_created ON points_ledger(member_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_rewards_program_status ON rewards(program_id, status, starts_at);
 CREATE INDEX IF NOT EXISTS idx_reward_redemptions_member ON reward_redemptions(member_id, created_at DESC);
+
+INSERT INTO loyalty_programs (tenant_id, name, vertical, status, mode, points_name, default_locale, allow_experience_booking, rules_json)
+SELECT t.id, 'Club Terroir', 'winery', 'active', 'demo', 'Uvas', 'es-AR', true, '{"pointsPerValidTap":10,"cooldownSeconds":3600}'::jsonb
+FROM tenants t
+WHERE t.slug = 'demobodega'
+  AND NOT EXISTS (
+    SELECT 1 FROM loyalty_programs lp
+    WHERE lp.tenant_id = t.id AND lp.status = 'active'
+  );
+
+INSERT INTO rewards (tenant_id, program_id, code, title, description, type, status, points_cost, stock_total, stock_remaining, network_visible)
+SELECT lp.tenant_id, lp.id, x.code, x.title, x.description, x.type::reward_type, 'active', x.points_cost, x.stock_total, x.stock_total, true
+FROM loyalty_programs lp
+JOIN (
+  VALUES
+    ('WELCOME-10', '10% off proxima compra', 'Descuento para compra directa de bodega.', 'DISCOUNT', 40, 500),
+    ('TASTING-UP', 'Upgrade de degustacion', 'Acceso a cata premium durante la visita.', 'TASTING', 80, 120),
+    ('TOUR-BARRICA', 'Tour de barrica', 'Visita guiada de barricas y proceso.', 'TOUR', 120, 80)
+) AS x(code, title, description, type, points_cost, stock_total) ON true
+WHERE lp.name = 'Club Terroir'
+  AND NOT EXISTS (
+    SELECT 1 FROM rewards r WHERE r.program_id = lp.id AND r.code = x.code
+  );

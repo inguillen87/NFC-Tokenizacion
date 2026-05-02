@@ -6,6 +6,7 @@ import { json } from '../../../../lib/http';
 import { sql } from '../../../../lib/db';
 import { encryptKey16 } from '../../../../lib/keys';
 import { randomBytes } from 'node:crypto';
+import { requireTenantSunProfile } from '../../../../lib/tenant-onboarding';
 
 function firstString(...values: unknown[]) {
   for (const value of values) {
@@ -57,13 +58,24 @@ export async function POST(req: Request) {
   if (auth) return auth;
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const mode = firstString(body.mode, 'supplier').toLowerCase();
+  const mode = firstString(body.mode).toLowerCase();
   const tenantSlug = firstString(body.tenant_slug, body.tenant, body.tenantId, body.tenant_id);
   const bid = firstString(body.bid, body.batch_id, body.batchId);
   if (!tenantSlug || !bid) return json({ ok: false, reason: 'tenant_slug and bid required' }, 400);
+  if (!mode) return json({ ok: false, reason: 'mode required', allowed: ['supplier', 'internal'] }, 400);
+  if (!['supplier', 'internal'].includes(mode)) return json({ ok: false, reason: 'invalid mode', allowed: ['supplier', 'internal'] }, 400);
 
   const tenant = await resolveTenant(tenantSlug);
   if (!tenant) return json({ ok: false, reason: 'tenant not found' }, 404);
+  const readiness = await requireTenantSunProfile(String(tenant.id)).catch((error) => ({ ok: false, missing: (error as Error & { missing?: string[] }).missing || ['tenant_sun_profiles'] }));
+  if (!readiness.ok) {
+    return json({
+      ok: false,
+      reason: 'tenant_sun_profile_incomplete',
+      message: 'Complete SUN tenant profile before registering supplier/internal batches.',
+      missing: readiness.missing,
+    }, 409);
+  }
 
   try {
     const metaInput = firstString(body.k_meta_hex, body.k_meta_batch, body.kMetaHex);
@@ -76,10 +88,17 @@ export async function POST(req: Request) {
     const fileCt = encryptKey16(Buffer.from(kFileHex, 'hex'));
 
     const apiOrigin = resolveApiOrigin(req);
+    const profile = firstString(body.profile, body.security_profile);
+    const sku = firstString(body.sku);
+    const chipModel = firstString(body.chip_model, body.chip, body.chip_type);
+    if (!profile || !sku || !chipModel) {
+      return json({ ok: false, reason: 'batch_identity_required', missing: ['profile', 'sku', 'chip_model'].filter((field) => field === 'profile' ? !profile : field === 'sku' ? !sku : !chipModel) }, 400);
+    }
+
     const sdmConfig = {
-      profile: firstString(body.profile, body.sku, 'supplier') || 'supplier',
-      sku: firstString(body.sku, body.profile) || undefined,
-      chip_model: firstString(body.chip_model, body.chip, body.chip_type) || undefined,
+      profile,
+      sku,
+      chip_model: chipModel,
       requested_quantity: Math.max(0, Math.trunc(Number(body.quantity || body.qty || body.requested_quantity || 0))) || undefined,
       notes: String(body.notes || '').trim() || undefined,
       source: 'supplier_wizard',

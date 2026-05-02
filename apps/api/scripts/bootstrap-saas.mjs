@@ -21,16 +21,17 @@ const sql = neon(dbUrl);
 
 const superAdminEmail = String(process.env.SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
 const superAdminPassword = String(process.env.SUPER_ADMIN_PASSWORD || '').trim();
-const demoTenantSlug = String(process.env.DEMO_TENANT_SLUG || process.env.DEMO_BODEGA_SLUG || 'demobodega').trim().toLowerCase();
-const demoTenantName = String(process.env.DEMO_TENANT_NAME || 'Demo Bodega').trim();
+const demoTenantSlug = String(process.env.DEMO_TENANT_SLUG || process.env.DEMO_BODEGA_SLUG || '').trim().toLowerCase();
+const demoTenantName = String(process.env.DEMO_TENANT_NAME || '').trim();
 const demoEnabled = shouldCreateDemoTenant({ demoModeEnv: process.env.DEMO_MODE, withDemoFlag: withDemo });
 
 async function ensureDemoTenant() {
+  if (!demoTenantSlug || !demoTenantName) {
+    throw new Error('Demo tenant bootstrap is explicit-only. Set DEMO_TENANT_SLUG and DEMO_TENANT_NAME, or run the supplier onboarding wizard for real tenants.');
+  }
   const existing = await sql`SELECT id, slug FROM tenants WHERE slug = ${demoTenantSlug} LIMIT 1`;
   if (existing[0]?.id) return existing[0];
-  const rootKey = randomBytes(24).toString('hex');
-  const inserted = await sql`INSERT INTO tenants (slug, name, root_key_ct) VALUES (${demoTenantSlug}, ${demoTenantName}, ${rootKey}) RETURNING id, slug`;
-  return inserted[0];
+  throw new Error(`Demo tenant "${demoTenantSlug}" does not exist. Create it through demo:demobodega or /batches/supplier so SUN profile, manifest policy and product identity are complete.`);
 }
 
 async function ensureSuperAdmin(demoTenantId = null) {

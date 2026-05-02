@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { sql } from "../../../../../../lib/db";
 import { json } from "../../../../../../lib/http";
-import { randomUUID } from "node:crypto";
+import { ensureDefaultLoyaltyProgram, ensureLoyaltySchema } from "../../../../../../lib/loyalty-schema";
 
 export async function POST(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
   const eventId = (await params).eventId;
@@ -27,15 +27,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   const event = eventRows[0];
   if (!event) return json({ ok: false, reason: "event_not_found" }, 404);
 
+  await ensureLoyaltySchema();
+
   // Replay, revoked, tampered can't enroll via this flow for security
   if (["REPLAY_SUSPECT", "INVALID", "TAMPER_RISK", "TAMPER", "REVOKED", "NOT_REGISTERED"].includes(String(event.result).toUpperCase())) {
     return json({ ok: false, reason: "event_security_blocked" }, 403);
   }
 
-  const programRows = await sql`
-    SELECT id FROM loyalty_programs WHERE tenant_id = ${event.tenant_id} AND status = 'active' LIMIT 1
-  `;
-  const program = programRows[0];
+  const program = await ensureDefaultLoyaltyProgram({ tenantId: event.tenant_id, tenantSlug: event.tenant_slug });
   if (!program) return json({ ok: false, reason: "no_active_program" }, 404);
 
   // Enroll member or update if exists

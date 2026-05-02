@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { anchorTokenizationRequest } from "../../../lib/tokenization-engine";
+import { ensureTokenizationRequestsSchema } from "../../../lib/tokenization-schema";
 
 type SimulateBody = {
   bid?: string;
@@ -76,6 +77,7 @@ export async function POST(req: Request): Promise<Response> {
 
   let tokenization: Record<string, unknown> | null = null;
   if (result === "VALID" && body.autoTokenize === true) {
+    await ensureTokenizationRequestsSchema();
     const request = (await sql/*sql*/`
       INSERT INTO tokenization_requests (
         tenant_id, batch_id, bid, uid_hex, status, network, asset_ref, requested_by, next_attempt_at, meta

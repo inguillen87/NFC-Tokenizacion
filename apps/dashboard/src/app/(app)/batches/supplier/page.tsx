@@ -7,16 +7,21 @@ export default async function SupplierBatchPage() {
 
   return (
     <main className="space-y-8">
-      <SectionHeading eyebrow="Supplier batches" title="Supplier-backed batch registration" description="Flujo seguro para lotes reales programados por proveedor usando las keys exactas acordadas." />
+      <SectionHeading
+        eyebrow="Supplier batches"
+        title="Registro profesional de lotes reales"
+        description="Flujo seguro para crear tenants completos, registrar batches de proveedor, importar manifests auditables y validar URLs SUN antes de entregar el rollout."
+      />
       <Card className="p-5 text-sm text-slate-300">
         <p className="font-semibold text-white">Uso recomendado</p>
         <ul className="mt-3 list-disc space-y-2 pl-5">
-          <li>Usar esta pantalla cuando el proveedor ya tiene o va a tener K_META_BATCH y K_FILE_BATCH definidos.</li>
-          <li>No crear el lote real desde el flujo rápido si las tags ya fueron negociadas con llaves concretas.</li>
-          <li>Registrar primero el batch con esas llaves; después importar manifest; recién después validar sample URLs reales.</li>
+          <li>Usa esta pantalla cuando el proveedor ya entrego o va a programar K_META_BATCH y K_FILE_BATCH concretas.</li>
+          <li>Completa primero el passport del tenant: vertical, producto, origen, politica de ownership y politica de manifest.</li>
+          <li>Importa TXT/CSV con preflight antes de activar: UID, batch, SKU, producto, lote y serial quedan auditados.</li>
+          <li>Valida una URL SUN real de muestra antes de habilitar portal, marketplace, tokenizacion u ownership claim.</li>
         </ul>
         <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Supplier mode: <b>K_META_BATCH</b> y <b>K_FILE_BATCH</b> son obligatorias. No se autogeneran keys.
+          Supplier mode: <b>K_META_BATCH</b> y <b>K_FILE_BATCH</b> son obligatorias. No se autogeneran llaves para batches de proveedor.
         </p>
       </Card>
       <SupplierBatchWizard locale={locale} />

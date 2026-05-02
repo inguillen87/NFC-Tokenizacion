@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
+import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
 
 function isAuthorized(req: Request) {
   const expected = (process.env.INTERNAL_TOKENIZATION_KEY || "").trim();
@@ -18,6 +19,7 @@ export async function POST(req: Request): Promise<Response> {
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
   const limit = Math.min(Math.max(Number(body.limit || 10), 1), 100);
 
+  await ensureTokenizationRequestsSchema();
   const rows = await sql/*sql*/`
     SELECT id
     FROM tokenization_requests

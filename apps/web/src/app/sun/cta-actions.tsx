@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Props = { bid: string; uid: string };
+type TapState = "valid" | "opened" | "blocked";
+type Props = { bid: string; uid: string; canExecute?: boolean; tapState?: TapState };
 type LeadIntent = "tokenization_optional";
 type ActionState = "idle" | "loading" | "success" | "error";
 type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokenization" | "report";
@@ -22,6 +23,7 @@ type ProvenanceResponse = {
   timeline?: Array<{ stage?: string; status?: string; at?: string | null }>;
   commercial_signals?: Record<string, unknown>;
 };
+const SECURITY_GATED_ACTIONS = new Set<ActionKey>(["claimOwnership", "registerWarranty", "tokenization"]);
 
 function normalizeUnknownError(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message;
@@ -47,7 +49,7 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
   };
 }
 
-export function CtaActions({ bid, uid }: Props) {
+export function CtaActions({ bid, uid, canExecute = true, tapState = "valid" }: Props) {
   const [status, setStatus] = useState<string>("");
   const [pending, setPending] = useState(false);
   const [actionStates, setActionStates] = useState<Record<ActionKey, ActionState>>({
@@ -71,10 +73,18 @@ export function CtaActions({ bid, uid }: Props) {
   const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail.trim());
+  const gatedCopy = tapState === "blocked"
+    ? "Ownership, garantia y tokenizacion quedan protegidos hasta tener un tap fisico valido y fresco."
+    : tapState === "opened"
+      ? "Sello abierto verificado: se habilita ownership, garantia, provenance y tokenizacion como lifecycle event."
+      : "Tap fresco verificado: listo para ownership, garantia, provenance y tokenizacion.";
+  const tokenModalCopy = tapState === "opened"
+    ? "El token ancla la apertura verificada, ownership y provenance sin exponer el UID crudo."
+    : "El token ancla ownership, provenance y garantia sin exponer el UID crudo.";
   const actionMeta: Record<string, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
     claimOwnership: {
-      title: "Activar ownership",
-      subtitle: "Asocia el activo digital a tu identidad de comprador.",
+      title: "Apropiar ownership",
+      subtitle: "Vincula este producto a tu Passport y deja registro de titularidad.",
       icon: "OWN",
       path: "/api/public-cta/claim-ownership",
       method: "POST",
@@ -82,15 +92,15 @@ export function CtaActions({ bid, uid }: Props) {
     },
     registerWarranty: {
       title: "Registrar garantia",
-      subtitle: "Registra cobertura y fecha de activacion de postventa.",
+      subtitle: "Activa cobertura, postventa y fecha de apertura o compra.",
       icon: "WAR",
       path: "/api/public-cta/register-warranty",
       method: "POST",
       tone: "border-violet-300/40 bg-violet-500/10 text-violet-100 transition hover:bg-violet-500/20",
     },
     provenance: {
-      title: "Ver procedencia",
-      subtitle: "Consulta timeline y senales de la marca.",
+      title: "Ver provenance",
+      subtitle: "Consulta origen, ruta, eventos del tenant y prueba tecnica.",
       icon: "PRO",
       path: "/api/public-cta/provenance",
       method: "GET",
@@ -98,7 +108,7 @@ export function CtaActions({ bid, uid }: Props) {
     },
     report: {
       title: "Reportar problema",
-      subtitle: "Crea un ticket si el tap o el sello parecen inconsistentes.",
+      subtitle: "Crea un ticket si el tap, replay o sello parecen inconsistentes.",
       icon: "RPT",
       path: "/api/public-cta/report-problem",
       method: "POST",
@@ -120,6 +130,10 @@ export function CtaActions({ bid, uid }: Props) {
     if (state === "success") return "ring-1 ring-emerald-300/45 shadow-[0_0_0_1px_rgba(52,211,153,0.2)]";
     if (state === "error") return "ring-1 ring-rose-300/45 shadow-[0_0_0_1px_rgba(251,113,133,0.2)]";
     return "ring-0";
+  }
+
+  function isActionDisabled(actionKey: ActionKey) {
+    return pending || (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey));
   }
 
   useEffect(() => {
@@ -179,6 +193,11 @@ export function CtaActions({ bid, uid }: Props) {
 
   const trigger = async (path: string, method: "POST" | "GET", actionKey: ActionKey) => {
     if (actionStates[actionKey] === "loading") return;
+    if (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey)) {
+      setActionError("Este tap no habilita ownership, garantia ni tokenizacion. Escanea nuevamente la etiqueta fisica.");
+      setActionStates((current) => ({ ...current, [actionKey]: "error" }));
+      return;
+    }
     setPending(true);
     setActionError("");
     setLastActionMessage("");
@@ -273,7 +292,7 @@ export function CtaActions({ bid, uid }: Props) {
           return (
             <button suppressHydrationWarning
               key={key}
-              disabled={pending}
+              disabled={isActionDisabled(key)}
               onClick={() => void trigger(item.path, item.method, key)}
               className={`sun-public-cta-card rounded-xl border px-3 py-3 text-left transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} ${cardStateClass(key)}`}
             >
@@ -287,7 +306,7 @@ export function CtaActions({ bid, uid }: Props) {
         })}
         <button suppressHydrationWarning
           ref={tokenActionButtonRef}
-          disabled={pending}
+          disabled={isActionDisabled("tokenization")}
           onClick={() => {
             setLeadIntent("tokenization_optional");
             setActionStates((current) => ({ ...current, tokenization: "idle" }));
@@ -296,13 +315,13 @@ export function CtaActions({ bid, uid }: Props) {
           className={`sun-public-cta-card rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-3 text-left text-emerald-100 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${cardStateClass("tokenization")}`}
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold"><span className="sun-public-cta-code">TOK</span> Tokenizacion opcional{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
+            <p className="text-sm font-semibold"><span className="sun-public-cta-code">TOK</span> Tokenizar en Polygon{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
             {renderStateBadge("tokenization")}
           </div>
-          <p className="mt-1 text-[11px] text-emerald-50/80">Lead comercial + request de tokenizacion en un solo paso.</p>
+          <p className="mt-1 text-[11px] text-emerald-50/80">Request de tokenizacion con UID hasheado, salt privado y proof Polygon.</p>
         </button>
       </div>
-      <p className="sun-cta-tip text-[11px] text-slate-300">Tip: estas acciones pueden tardar unos segundos en sincronizarse con backend.</p>
+      <p className="sun-cta-tip text-[11px] text-slate-300">{gatedCopy}</p>
       {pending ? <p className="text-xs text-cyan-200" aria-live="polite">Ejecutando acción...</p> : null}
       {lastActionMessage ? <p className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">{lastActionMessage}</p> : null}
       {actionError ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-xs text-rose-100" aria-live="assertive">{actionError}</p> : null}
@@ -329,7 +348,7 @@ export function CtaActions({ bid, uid }: Props) {
       {showTokenModal ? (
         <div ref={tokenModalRef} role="dialog" aria-modal="true" aria-labelledby="sun-token-modal-title" className="rounded-xl border border-emerald-300/30 bg-slate-950/90 p-3 text-xs text-slate-200">
           <p id="sun-token-modal-title" className="font-semibold text-emerald-100">Blockchain-ready · tokenización opcional</p>
-          <p className="mt-1 text-slate-300">No es un flujo crypto-first. Captura oportunidad comercial + registra TOKENIZATION_REQUESTED.</p>
+          <p className="mt-1 text-slate-300">{tokenModalCopy}</p>
           <ul className="mt-2 list-disc pl-4 text-[11px] text-slate-300">
             <li>Uso enterprise: provenance anclable, warranty ledger y ownership transfer.</li>
             <li>Infra opcional: smart contracts / blockchain solo cuando hay ROI claro.</li>
