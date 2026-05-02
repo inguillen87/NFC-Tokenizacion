@@ -1,0 +1,1 @@
+var e=`https://www.perplexity.ai/`;document.getElementById(`loginButton`)?.addEventListener(`click`,()=>{chrome.tabs.create({url:e,active:!0}),chrome.tabs.getCurrent(e=>{e&&e.id!==void 0&&chrome.tabs.remove(e.id)})});

@@ -378,7 +378,7 @@ function resolveTrustState(status: string, reason: string, productState?: string
   const normalizedReason = reason.toLowerCase();
   const normalizedProductState = String(productState || "").toUpperCase();
   const statusByte = String(encPlainStatusByte || "").toUpperCase();
-  if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay')) {
+  if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay') || normalizedReason.includes('copied url')) {
     return { code: 'REPLAY_SUSPECT', label: 'URL reutilizada', summary: 'Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
@@ -697,6 +697,19 @@ function buildPublicContract(params: {
       tamperStatus: params.result.tamper_status || "UNKNOWN",
       tamperSupported: Boolean(params.result.tamper_supported),
       lastEventResult: params.passport?.last_result || null,
+    },
+    tapSecurity: {
+      replayDetected: trust.code === "REPLAY_SUSPECT" || verdictRisk.verdict === "replay_suspect",
+      freshTap: trust.code === "VALID" && verdictRisk.verdict === "valid",
+      tokenizationEligible: actionMatrix.allowedActions.includes("tokenization"),
+      policy: actionMatrix.allowedActions.includes("tokenization")
+        ? "fresh_valid_tap"
+        : verdictRisk.verdict === "replay_suspect"
+          ? "blocked_replay"
+          : verdictRisk.verdict === "tampered"
+            ? "blocked_tamper"
+            : "blocked_policy",
+      reason,
     },
     iot: {
       wineryLocation,
@@ -1450,7 +1463,16 @@ export async function GET(req: Request): Promise<Response> {
     ];
   }
 
-  if (result.body.ok && uid) {
+  const canAutoTokenizeFreshTap =
+    Boolean(result.body.ok && uid)
+    && contract.status.code === "VALID"
+    && contract.trustSignals?.antiReplay === true
+    && !String(contract.status.reason || result.body.reason || "").toLowerCase().includes("replay")
+    && !String(contract.status.reason || result.body.reason || "").toLowerCase().includes("copied url")
+    && !contract.blockedActions?.includes("tokenization")
+    && contract.tapSecurity?.tokenizationEligible === true;
+
+  if (canAutoTokenizeFreshTap && uid) {
     const autoMint = await queueAutoTokenizationForValidTap({ bid, uid, traceId }).catch((error) => ({
       ok: false,
       reason: error instanceof Error ? error.message : "auto_tokenization_failed",
@@ -1471,12 +1493,20 @@ export async function GET(req: Request): Promise<Response> {
     }
   }
 
+  if ((contract.tokenization.status === "none" || !contract.tokenization.status) && contract.status.code === "REPLAY_SUSPECT") {
+    contract.tokenization.status = "blocked_replay";
+  }
+  if (
+    (contract.tokenization.status === "none" || !contract.tokenization.status)
+    && contract.blockedActions?.includes("tokenization")
+    && String(contract.tapSecurity?.policy || "").startsWith("blocked_")
+  ) {
+    contract.tokenization.status = contract.tapSecurity.policy;
+  }
+
   if ((contract.tokenization.status === "none" || !contract.tokenization.status) && ctaTimeline.some((item) => String(item.result || "").includes("TOKENIZE_REQUEST"))) {
     contract.tokenization.status = "requested";
     contract.tokenization.network = contract.tokenization.network || "polygon-amoy";
-  }
-  if ((contract.tokenization.status === "none" || !contract.tokenization.status) && contract.status.code === "REPLAY_SUSPECT") {
-    contract.tokenization.status = "blocked_replay";
   }
 
   if (result.body.ok) {

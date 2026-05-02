@@ -1,0 +1,24 @@
+import{T as I,k as $}from"./chunk-AAGSJDQ5.js";import"./chunk-WGZRCCGL.js";import"./chunk-DX4FRJOS.js";import"./chunk-UFK3ZRAC.js";import"./chunk-K26PVPY3.js";import"./chunk-K3AOJOH2.js";import{s as T}from"./chunk-GVYJJ5O4.js";import"./chunk-YKOUW7JH.js";import"./chunk-OITW6XPJ.js";import"./chunk-UWWKYXHB.js";import"./chunk-4KIYPLYV.js";import{a as h}from"./chunk-36FODMJL.js";import{e as H}from"./chunk-IH3OE2JK.js";import"./chunk-YEWLBR7H.js";import"./chunk-5M4YNGA7.js";import"./chunk-NQ2RSCCD.js";import"./chunk-STF3KHTR.js";import{a as b}from"./chunk-2OVY4GZB.js";import"./chunk-7NESUNEV.js";import"./chunk-QJJPRU5N.js";import"./chunk-UYPVVWVK.js";import"./chunk-H3NGPCQH.js";import"./chunk-ICLDN2IS.js";import"./chunk-IGADAGVB.js";import"./chunk-2EV2CEOV.js";import"./chunk-C3T65T2N.js";import"./chunk-BU6NS6DM.js";import"./chunk-EOII3ZM4.js";import"./chunk-4AQPJCXC.js";import{q as L}from"./chunk-S7OF43WY.js";import"./chunk-APRBWPN6.js";import"./chunk-FPYN3Z4M.js";import"./chunk-ODEKWZDQ.js";import"./chunk-4UZ62P35.js";import{c as u}from"./chunk-GMCPERTA.js";import"./chunk-YW5FUI3G.js";import"./chunk-JQE54VLJ.js";import"./chunk-IOZJ6Q2V.js";import"./chunk-2JKW6MYZ.js";import{Ea as k,G as P,mb as C}from"./chunk-TLOSW2ZV.js";import"./chunk-CM4IKBRQ.js";import"./chunk-35TCDNFL.js";import"./chunk-ABIAQLBL.js";import"./chunk-I2OEGV4C.js";import"./chunk-I3YV6OQV.js";import"./chunk-OJPBMZQC.js";import"./chunk-QVLP4NN7.js";import"./chunk-UPPQC44E.js";import"./chunk-CYENH7PC.js";import"./chunk-VVXI3XCM.js";import"./chunk-EET66OOP.js";import"./chunk-4LEFXYMU.js";import"./chunk-TU6Q222R.js";import"./chunk-BYU664DD.js";import{Aa as y,Ca as d,M as E,N as R,Qa as B,Ta as t,Z as S}from"./chunk-XKSNUIWB.js";import"./chunk-U7OZEJ4F.js";import"./chunk-ZRGHR2IN.js";import{a,g as w,i as v,n as x}from"./chunk-TSHWMJEM.js";v();x();var m=w(E(),1);var e=w(R(),1),A=72,F=52,_=u.ul`
+  margin: 0;
+  padding: 0;
+  height: ${o=>o.fullHeight?410:360}px;
+  overflow: auto;
+`,V=u.li`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  background: ${o=>o.isSelected?d.colors.legacy.spotBase:d.colors.legacy.elementBase};
+  border-radius: 6px;
+  min-height: ${F}px;
+  padding: 16px;
+  margin-bottom: 10px;
+  &:hover {
+    background: ${o=>o.isSelected?d.colors.legacy.spotAccent:d.colors.legacy.elementAccent};
+  }
+`,N=u(V)`
+  height: ${A}px;
+  padding: 12px;
+`,G=a(()=>{let{t:o}=S(),{handleHideModalVisibility:r}=I(),i=(0,m.useCallback)(()=>{r("swapProviders")},[r]),{selectQuote:n}=C(),s=k({selectQuote:n}),f=(0,m.useCallback)(l=>{s.setSelectedProviderIndex(l),i()},[i,s]),c=s.rows.some(P),g=o(c?"swapProvidersTitle":"swapTopQuotesTitle"),p=o("swapProvidersFee");return{...s,hideSwapProvidersModal:i,onClick:f,isBridge:c,title:g,feesLabel:p}},"useSwapProvidersPropsViewProps"),M=a(({isBridge:o})=>(0,e.jsx)(e.Fragment,{children:[...Array(5)].map((r,i)=>(0,e.jsx)(T,{align:"center",width:"100%",height:`${o?A:F}px`,backgroundColor:d.colors.legacy.elementBase,borderRadius:"8px",margin:"0 0 10px 0",padding:"10px"},`swap-provider-row-loader-${i}`))}),"SkeletonListLoader"),Q=m.default.memo(({rows:o,selectedProviderIndex:r,isLoadingProviders:i,title:n,isBridge:s,feesLabel:f,hideSwapProvidersModal:c,onClick:g})=>(0,e.jsxs)(L,{onReset:c,children:[(0,e.jsx)($,{leftButton:{type:"close",onClick:c},children:n}),i?(0,e.jsx)(M,{isBridge:s}):(0,e.jsx)(_,{fullHeight:s,children:o.map((p,l)=>{let D=l===r;return P(p)?(0,e.jsx)(j,{index:l,row:p,onClick:g,feesLabel:f},`bridge-provider-row-${l}`):(0,e.jsx)(W,{index:l,row:p,onClick:g,isSelected:D},`provider-row-${l}`)})})]})),U=a(()=>{let o=G();return(0,e.jsx)(Q,{...o})},"SwapProvidersPage"),ne=U,W=a(({index:o,row:r,isSelected:i,onClick:n})=>(0,e.jsxs)(V,{isSelected:i,onClick:()=>n(o),children:[(0,e.jsx)(t,{font:"label",children:r.name,align:"left",color:i?"areaBase":"white"}),(0,e.jsx)(t,{font:"label",children:r.amount,align:"right",color:i?"areaBase":"textDiminished",className:y({flexShrink:0})})]}),"ProviderRow"),j=a(({index:o,row:r,onClick:i,feesLabel:n})=>(0,e.jsxs)(N,{onClick:()=>i(o),children:[r.logoURI?(0,e.jsx)(b,{flex:0,margin:"0 4px 0 0",children:(0,e.jsx)(B,{src:r.logoURI,width:48,height:48})}):null,(0,e.jsxs)(b,{flex:1,children:[(0,e.jsxs)(h,{justify:"space-between",children:[(0,e.jsx)(t,{children:r.name,font:"labelSemibold",color:"white",align:"left"}),(0,e.jsx)(t,{children:r.amount,font:"labelSemibold",color:"white",align:"right"})]}),(0,e.jsxs)(h,{justify:"space-between",padding:"8px 0 0 0",children:[(0,e.jsx)(t,{children:r.time.text,font:"label",color:r.time.isFast?"textDiminished":"spotNegative"}),(0,e.jsxs)(t,{children:[(0,e.jsx)(H,{color:"textDiminished",font:"label",value:r.feeUsd}),(0,e.jsx)(t,{children:n,color:"textDiminished",font:"label",marginLeft:4})]})]})]})]}),"BridgeProviderRowComponent");export{U as SwapProvidersPage,ne as default};
+//# sourceMappingURL=SwapProvidersPage-UJZG4NTI.js.map

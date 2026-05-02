@@ -4,12 +4,14 @@ export function mapVerdictAndRisk(input: { statusCode: string; productState: str
   const code = String(input.statusCode || "").toUpperCase();
   const state = String(input.productState || "").toUpperCase();
   const reason = String(input.reason || "").toUpperCase();
+  if (code === "REVOKED" || reason.includes("REVOKED")) return { verdict: "revoked", riskLevel: "critical" as const };
+  if (code === "REPLAY_SUSPECT" || state === "REPLAY_SUSPECT" || reason.includes("REPLAY") || reason.includes("COPIED URL")) {
+    return { verdict: "replay_suspect", riskLevel: "high" as const };
+  }
+  if (code === "TAMPER_RISK" || state.includes("OPENED") || reason.includes("TAMPER")) return { verdict: "tampered", riskLevel: "high" as const };
   if (code === "VALID" || state === "VALID_CLOSED" || state === "VALID_UNKNOWN_TAMPER") return { verdict: "valid", riskLevel: "none" as const };
-  if (code === "REPLAY_SUSPECT" || reason.includes("REPLAY")) return { verdict: "replay_suspect", riskLevel: "high" as const };
-  if (code === "TAMPER_RISK" || state.includes("OPENED")) return { verdict: "tampered", riskLevel: "high" as const };
   if (code === "NOT_ACTIVE") return { verdict: "not_active", riskLevel: "medium" as const };
   if (code === "NOT_REGISTERED") return { verdict: "not_registered", riskLevel: "medium" as const };
-  if (reason.includes("REVOKED")) return { verdict: "revoked", riskLevel: "critical" as const };
   return { verdict: "invalid", riskLevel: "medium" as const };
 }
 

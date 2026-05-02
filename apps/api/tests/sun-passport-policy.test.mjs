@@ -18,6 +18,14 @@ test("replay blocks ownership/reward/tokenization actions", () => {
   assert.equal(matrix.blockedActions.includes("tokenization"), true);
 });
 
+test("replay reason wins even when auth status is otherwise valid", () => {
+  const mapped = mapVerdictAndRisk({ statusCode: "VALID", productState: "VALID_CLOSED", reason: "copied URL / replay suspected" });
+  const matrix = resolveActionMatrix(mapped.verdict);
+  assert.equal(mapped.verdict, "replay_suspect");
+  assert.equal(mapped.riskLevel, "high");
+  assert.equal(matrix.blockedActions.includes("tokenization"), true);
+});
+
 test("invalid payload does not require leaking raw sun internals in public contract surface", () => {
   const mapped = mapVerdictAndRisk({ statusCode: "INVALID", productState: "INVALID", reason: "invalid_cmac" });
   const publicSurface = {

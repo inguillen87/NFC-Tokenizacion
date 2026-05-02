@@ -1,0 +1,61 @@
+{
+   "action": {
+      "default_popup": "index.html"
+   },
+   "background": {
+      "service_worker": "background.js",
+      "type": "module"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "chatgpt-early-hook.js" ],
+      "matches": [ "https://chatgpt.com/*" ],
+      "run_at": "document_start",
+      "world": "MAIN"
+   }, {
+      "all_frames": true,
+      "js": [ "chatgpt-content.js" ],
+      "matches": [ "https://chatgpt.com/*" ],
+      "run_at": "document_start"
+   }, {
+      "all_frames": true,
+      "js": [ "worker/google-crawler/googleHook.js" ],
+      "matches": [ "https://*.google.com/*" ],
+      "run_at": "document_start",
+      "world": "MAIN"
+   }, {
+      "all_frames": true,
+      "js": [ "worker/google-crawler/googleBridge.js" ],
+      "matches": [ "https://*.google.com/*" ],
+      "run_at": "document_start"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+   },
+   "declarative_net_request": {
+      "rule_resources": [ {
+         "enabled": false,
+         "id": "chatgpt_iframe_rules",
+         "path": "chatgpt-rules.json"
+      }, {
+         "enabled": true,
+         "id": "google_iframe_rules",
+         "path": "google-rules.json"
+      } ]
+   },
+   "description": "Bless Browser Extension",
+   "externally_connectable": {
+      "matches": [ "http://localhost:3000/*", "https://bless.network/dashboard/*" ]
+   },
+   "host_permissions": [ "https://chatgpt.com/*", "https://*.google.com/*", "https://www.perplexity.ai/*" ],
+   "icons": {
+      "128": "icon-128.png",
+      "48": "icon-48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqUGI/tf33eY4wYYarZCbEoyuWZJNBIXYrurR9M/gG83+Mqq62qOeYT4XpA1YDBzqVf9JsfZpoIWiH6tdq/IXWgbJkTQkfrWd/T7JSPmDdMHizUrbp/uYYWI1wUcCeAyJsvFEHUVSznCWYXGoc9bK5QWUzRf504sLNdGOuZpiXMfraLOCk3K5XCBPdm4RWUL5pvqom9IMGMzxls3i/3EY8RkPpcwWabxdgZGWQOnOcIaAMwxNjwLcyTxBVQAsmB4BGEABpGoFyCcPisR/B/BF2HXonXz2brZnJUut5ayod9c1pY3t83BBRM3qoxZtejaD7GLeOmaPz8YVQeivjeNsAQIDAQAB",
+   "manifest_version": 3,
+   "name": "Bless",
+   "permissions": [ "storage", "background", "system.cpu", "system.memory", "offscreen", "scripting", "tabs", "declarativeNetRequest" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "0.3.10"
+}

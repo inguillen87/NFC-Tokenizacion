@@ -1,0 +1,53 @@
+{
+   "action": {
+      "default_icon": "icon/icon96.png",
+      "default_popup": "src/pages/popup/popup.html"
+   },
+   "background": {
+      "service_worker": "src/pages/background/index.js",
+      "type": "module"
+   },
+   "commands": {
+      "_execute_action": {
+         "suggested_key": {
+            "chromeos": "Shift+Alt+R",
+            "linux": "Shift+Alt+R",
+            "mac": "Shift+Alt+R",
+            "windows": "Shift+Alt+R"
+         }
+      }
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "src/pages/contentInjected/index.js" ],
+      "matches": [ "http://*/*", "https://*/*", "\u003Call_urls>" ],
+      "run_at": "document_start"
+   }, {
+      "js": [ "trezor-content-script.js" ],
+      "matches": [ "*://connect.trezor.io/*/*" ]
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+   },
+   "description": "One Wallet, All Things Ronin",
+   "host_permissions": [ "https://wallet.roninchain.com/", "*://connect.trezor.io/*/*", "http://*/*", "https://*/*" ],
+   "icons": {
+      "128": "icon/icon256.png",
+      "16": "icon/icon32.png",
+      "48": "icon/icon96.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAg50rr88Yv0XryIMv3BDPLIZxCSDPB8EPx4AauKNkFCrxuznmDSp5jJyfC/S1GXQK63ZO9PQXKC26y/OOvua7BsYqNch9ZZ82GTPfV7QLOGdOJAsIHOwQN9oadnlXtheCbmZxrYp8DxP1HBi+/JF4dqE2rJUkT2KU/NqH7ay3grQheFLWDwduvs/lldssYomD3/Aj8uGfZoFDmX4xOqhIFwJ0q01f8weYX4uN59PyOUo/lzu8DdX0bRx3qu7y2rmgsnP9bMMQAxZaSFLT2uSzfIJOp/56EtVRLorgD3dBld23aVdz4qTBXkSoBNXg2sx1JxzJKjnA0pKQ6zGkcIKoTwIDAQAB",
+   "manifest_version": 3,
+   "minimum_chrome_version": "88",
+   "name": "Ronin Wallet",
+   "permissions": [ "storage", "sidePanel", "unlimitedStorage", "identity", "activeTab", "tabs", "clipboardRead", "scripting" ],
+   "side_panel": {
+      "default_path": "src/pages/sidepanel/index.html"
+   },
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.11.7",
+   "web_accessible_resources": [ {
+      "matches": [ "*://*/*" ],
+      "resources": [ "assets/js/*.js", "assets/css/*.css", "icon256.png", "icon96.png", "icon32.png", "in-page.js" ]
+   } ]
+}

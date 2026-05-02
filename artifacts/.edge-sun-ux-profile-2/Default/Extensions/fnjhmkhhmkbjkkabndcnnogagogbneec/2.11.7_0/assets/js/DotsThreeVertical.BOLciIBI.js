@@ -1,0 +1,1 @@
+import{R as e}from"./index.CxJLds0B.js";import{c as t}from"./useActiveTimeStore.C8s04B17.js";const m=t(e.createElement(e.Fragment,null,e.createElement("path",{d:"M140 128a12 12 0 1 1-12-12 12 12 0 0 1 12 12Zm-12-56a12 12 0 1 0-12-12 12 12 0 0 0 12 12Zm0 112a12 12 0 1 0 12 12 12 12 0 0 0-12-12Z"})),"DotsThreeVerticalIcon");export{m as r};

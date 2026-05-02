@@ -1,0 +1,1 @@
+import{R as a}from"./index.CxJLds0B.js";import{c as t}from"./useActiveTimeStore.C8s04B17.js";const m=t(a.createElement(a.Fragment,null,a.createElement("path",{d:"M216 72H56a8 8 0 0 1 0-16h136a8 8 0 0 0 0-16H56a24 24 0 0 0-24 24v128a24 24 0 0 0 24 24h160a16 16 0 0 0 16-16V88a16 16 0 0 0-16-16Zm-36 80a12 12 0 1 1 12-12 12 12 0 0 1-12 12Z"})),"WalletFillIcon");export{m as t};

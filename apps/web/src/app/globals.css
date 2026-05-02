@@ -491,6 +491,30 @@ html.theme-light .worldmap-card .text-slate-400 {
   color: #475569 !important;
 }
 
+html.theme-light .worldmap-card button {
+  color: #075985 !important;
+  background: rgba(240, 249, 255, 0.88) !important;
+  border-color: rgba(14, 116, 144, 0.22) !important;
+}
+
+html.theme-light .worldmap-card button[class*="bg-indigo"],
+html.theme-light .worldmap-card button[class*="bg-cyan"],
+html.theme-light .worldmap-card button[class*="bg-violet"] {
+  color: #0f172a !important;
+  background: linear-gradient(135deg, rgba(207, 250, 254, 0.9), rgba(237, 233, 254, 0.88)) !important;
+}
+
+body:has(.sun-mobile-surface) .helpbot-hint {
+  display: none;
+}
+
+body:has(.sun-mobile-surface) .helpbot-trigger {
+  right: 0.85rem;
+  padding-inline: 0.9rem;
+  transform: scale(0.92);
+  transform-origin: bottom right;
+}
+
 /* Mobile & PWA ergonomics */
 body {
   padding-bottom: env(safe-area-inset-bottom);
@@ -857,6 +881,38 @@ html.theme-light .animate-card-shift:hover {
   position: relative;
 }
 
+.sun-passport-brand {
+  --brand-wordmark-main: #f8fafc;
+  --brand-wordmark-accent: #2fe1c3;
+  --brand-wordmark-orbit: rgba(45, 212, 191, 0.5);
+  min-width: 0;
+}
+
+.sun-passport-brand .brand-lockup {
+  gap: 0.55rem;
+}
+
+.sun-passport-brand .brand-mark {
+  border-radius: 1rem;
+  box-shadow: 0 12px 30px rgba(34, 211, 238, 0.18);
+}
+
+.sun-passport-brand .brand-wordmark-svg {
+  width: 7rem !important;
+  height: auto !important;
+  filter: drop-shadow(0 0 18px rgba(45, 212, 191, 0.15));
+}
+
+.sun-passport-brand__caption {
+  margin-left: 0.15rem;
+  color: rgba(186, 230, 253, 0.72);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
 .sun-nexid-mark {
   position: relative;
 }
@@ -916,6 +972,68 @@ html.theme-light .animate-card-shift:hover {
   border-radius: 999px 999px 0 0;
   transform: rotate(-13deg);
   animation: sunRouteFlow 2.8s linear infinite;
+}
+
+.sun-stage-pin {
+  position: absolute;
+  z-index: 3;
+  min-width: 4.9rem;
+  max-width: 7rem;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.68);
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.22);
+  backdrop-filter: blur(10px);
+}
+
+.sun-stage-pin b,
+.sun-stage-pin em {
+  display: block;
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sun-stage-pin b {
+  color: #67e8f9;
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sun-stage-pin em {
+  margin-top: 0.12rem;
+  color: #f8fafc;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.sun-stage-pin--origin {
+  left: 0.7rem;
+  bottom: 0.75rem;
+}
+
+.sun-stage-pin--tap {
+  right: 0.7rem;
+  top: 0.75rem;
+}
+
+.sun-stage-route-label {
+  position: absolute;
+  z-index: 3;
+  right: 0.75rem;
+  bottom: 0.85rem;
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  border-radius: 999px;
+  background: rgba(6, 78, 59, 0.58);
+  color: #bbf7d0;
+  font-size: 0.62rem;
+  font-weight: 900;
+  padding: 0.32rem 0.52rem;
 }
 
 .sun-product-visual {
@@ -983,6 +1101,21 @@ html.theme-light .animate-card-shift:hover {
     inset 0 0 24px rgba(2, 6, 23, 0.84),
     0 18px 32px rgba(0, 0, 0, 0.38),
     0 0 34px rgba(251, 113, 133, 0.22);
+}
+
+.sun-product-visual--replay {
+  box-shadow:
+    inset 0 0 24px rgba(2, 6, 23, 0.9),
+    0 18px 32px rgba(0, 0, 0, 0.42),
+    0 0 38px rgba(251, 191, 36, 0.26);
+}
+
+.sun-product-visual--replay::after {
+  border-color: rgba(251, 191, 36, 0.48);
+  background:
+    linear-gradient(110deg, transparent 0 42%, rgba(251, 191, 36, 0.68) 43% 48%, transparent 49%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 30%),
+    linear-gradient(180deg, rgba(226, 232, 240, 0.95), rgba(203, 213, 225, 0.9));
 }
 
 .sun-product-visual--opened::before {
@@ -1107,9 +1240,325 @@ html.theme-light .animate-card-shift:hover {
   overflow-wrap: anywhere;
 }
 
+.sun-security-ledger {
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 1.35rem;
+  background:
+    linear-gradient(140deg, rgba(8, 47, 73, 0.72), rgba(15, 23, 42, 0.88)),
+    rgba(2, 6, 23, 0.72);
+  padding: 1rem;
+  box-shadow: 0 18px 48px rgba(2, 6, 23, 0.28);
+}
+
+.sun-security-ledger--fresh {
+  border-color: rgba(52, 211, 153, 0.28);
+  background:
+    radial-gradient(circle at 90% 10%, rgba(52, 211, 153, 0.15), transparent 18rem),
+    linear-gradient(140deg, rgba(5, 46, 22, 0.5), rgba(15, 23, 42, 0.88));
+}
+
+.sun-security-ledger--replay {
+  border-color: rgba(251, 191, 36, 0.38);
+  background:
+    radial-gradient(circle at 92% 8%, rgba(251, 191, 36, 0.2), transparent 18rem),
+    linear-gradient(140deg, rgba(69, 26, 3, 0.56), rgba(15, 23, 42, 0.9));
+}
+
+.sun-security-ledger--review {
+  border-color: rgba(251, 113, 133, 0.26);
+}
+
+.sun-security-ledger__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sun-security-eyebrow {
+  color: #67e8f9;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sun-security-ledger h2 {
+  margin-top: 0.25rem;
+  color: #f8fafc;
+  font-size: 1.12rem;
+  line-height: 1.15;
+}
+
+.sun-security-copy {
+  margin-top: 0.75rem;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.sun-status-dot {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  margin-top: 0.2rem;
+  box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.34);
+  animation: sunStatusPulse 1.8s ease-out infinite;
+}
+
+.sun-status-dot--good { background: #34d399; }
+.sun-status-dot--warn { background: #fbbf24; }
+.sun-status-dot--risk { background: #fb7185; }
+.sun-status-dot--replay { background: #f59e0b; }
+
+.sun-security-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.sun-security-step {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.48);
+  padding: 0.75rem;
+}
+
+.sun-security-step span {
+  display: inline-grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.12);
+  color: #67e8f9;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.sun-security-step b {
+  display: block;
+  margin-top: 0.45rem;
+  color: #f8fafc;
+  font-size: 0.74rem;
+}
+
+.sun-security-step p {
+  margin-top: 0.2rem;
+  color: #94a3b8;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.sun-security-footer {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+}
+
+.sun-security-footer span {
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 0.9rem;
+  background: rgba(15, 23, 42, 0.58);
+  color: #bae6fd;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  padding: 0.55rem 0.7rem;
+  overflow-wrap: anywhere;
+}
+
+.sun-public-cta-card {
+  color: #e0f2fe !important;
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(15, 23, 42, 0.68)) !important;
+  border-color: rgba(125, 211, 252, 0.22) !important;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.18);
+}
+
+.sun-public-cta-card p {
+  color: inherit !important;
+}
+
+.sun-public-cta-code {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  height: 1.35rem;
+  margin-right: 0.35rem;
+  border-radius: 0.55rem;
+  background: rgba(2, 6, 23, 0.72);
+  color: #67e8f9;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.sun-cta-tip {
+  color: #cbd5e1 !important;
+}
+
+.sun-bottom-nav {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+.sun-bottom-nav > div {
+  box-shadow: 0 18px 50px rgba(2, 6, 23, 0.36);
+}
+
+html.theme-light .sun-mobile-surface {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(56, 189, 248, 0.22), transparent 28rem),
+    radial-gradient(circle at 88% 12%, rgba(167, 139, 250, 0.2), transparent 30rem),
+    radial-gradient(circle at 55% 80%, rgba(52, 211, 153, 0.16), transparent 24rem),
+    linear-gradient(180deg, #f8fcff 0%, #eef7ff 48%, #f8fbff 100%);
+  color: #0f172a;
+}
+
+html.theme-light .sun-passport-brand {
+  --brand-wordmark-main: #0f172a;
+  --brand-wordmark-accent: #0891b2;
+  --brand-wordmark-orbit: rgba(8, 145, 178, 0.42);
+}
+
+html.theme-light .sun-passport-brand .brand-wordmark-svg {
+  filter: drop-shadow(0 8px 18px rgba(14, 116, 144, 0.12));
+}
+
+html.theme-light .sun-passport-brand__caption {
+  color: #0369a1;
+}
+
+html.theme-light .sun-mobile-surface::before {
+  background-image:
+    linear-gradient(rgba(14, 116, 144, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 116, 144, 0.07) 1px, transparent 1px);
+}
+
+html.theme-light .sun-passport-card,
+html.theme-light .sun-config-panel,
+html.theme-light .sun-journey-panel,
+html.theme-light .sun-priority-panel,
+html.theme-light .sun-actions-panel,
+html.theme-light .sun-map-section,
+html.theme-light .sun-loyalty-panel,
+html.theme-light .sun-passport-banner,
+html.theme-light .sun-posttap-panel,
+html.theme-light .sun-tech-panel {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  box-shadow: 0 18px 50px rgba(14, 116, 144, 0.1);
+}
+
+html.theme-light .sun-product-stage {
+  border-color: rgba(14, 116, 144, 0.18);
+  background:
+    radial-gradient(circle at 22% 26%, rgba(56, 189, 248, 0.25), transparent 22%),
+    radial-gradient(circle at 78% 70%, rgba(52, 211, 153, 0.18), transparent 24%),
+    linear-gradient(90deg, rgba(14, 116, 144, 0.07) 1px, transparent 1px),
+    linear-gradient(rgba(14, 116, 144, 0.07) 1px, transparent 1px),
+    linear-gradient(160deg, rgba(240, 249, 255, 0.96), rgba(224, 242, 254, 0.86));
+  background-size: auto, auto, 3.2rem 3.2rem, 3.2rem 3.2rem, auto;
+}
+
+html.theme-light .sun-product-stage::before {
+  border-color: rgba(14, 116, 144, 0.2);
+}
+
+html.theme-light .sun-route-card,
+html.theme-light .sun-signal-cell,
+html.theme-light .sun-stage-pin,
+html.theme-light .sun-security-step,
+html.theme-light .sun-security-footer span {
+  border-color: rgba(14, 116, 144, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+html.theme-light .sun-route-card strong,
+html.theme-light .sun-signal-cell b,
+html.theme-light .sun-stage-pin em,
+html.theme-light .sun-security-ledger h2,
+html.theme-light .sun-security-step b {
+  color: #0f172a;
+}
+
+html.theme-light .sun-stage-pin b {
+  color: #0e7490;
+}
+
+html.theme-light .sun-stage-route-label {
+  background: rgba(220, 252, 231, 0.92);
+  color: #047857;
+}
+
+html.theme-light .sun-route-card b {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+html.theme-light .sun-security-ledger {
+  border-color: rgba(14, 116, 144, 0.2);
+  background:
+    radial-gradient(circle at 92% 8%, rgba(125, 211, 252, 0.24), transparent 18rem),
+    linear-gradient(140deg, rgba(255, 255, 255, 0.92), rgba(236, 253, 245, 0.82));
+  box-shadow: 0 18px 50px rgba(14, 116, 144, 0.12);
+}
+
+html.theme-light .sun-security-ledger--replay {
+  border-color: rgba(217, 119, 6, 0.3);
+  background:
+    radial-gradient(circle at 92% 8%, rgba(251, 191, 36, 0.28), transparent 18rem),
+    linear-gradient(140deg, rgba(255, 251, 235, 0.94), rgba(255, 255, 255, 0.84));
+}
+
+html.theme-light .sun-security-copy,
+html.theme-light .sun-security-step p {
+  color: #475569;
+}
+
+html.theme-light .sun-security-footer span {
+  color: #075985;
+}
+
+html.theme-light .sun-public-cta-card {
+  color: #0f172a !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(224, 242, 254, 0.86)) !important;
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  box-shadow: 0 14px 34px rgba(14, 116, 144, 0.1);
+}
+
+html.theme-light .sun-public-cta-card p {
+  color: #0f172a !important;
+}
+
+html.theme-light .sun-public-cta-code {
+  background: rgba(207, 250, 254, 0.86);
+  color: #0e7490;
+  border: 1px solid rgba(14, 116, 144, 0.14);
+}
+
+html.theme-light .sun-cta-tip {
+  color: #475569 !important;
+}
+
+html.theme-light .sun-bottom-nav > div {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
 @keyframes sunTapWave {
   0% { opacity: 0.8; transform: scale(0.7); }
   100% { opacity: 0; transform: scale(1.45); }
+}
+
+@keyframes sunStatusPulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.35); }
+  70% { box-shadow: 0 0 0 0.75rem rgba(34, 211, 238, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
 }
 
 @keyframes sunBottleFloat {
@@ -1142,6 +1591,19 @@ html.theme-light .animate-card-shift:hover {
   .sun-topbar,
   .sun-quick-nav {
     grid-column: 1 / -1;
+  }
+
+  .sun-quick-nav {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+  }
+
+  .sun-quick-nav a {
+    min-width: 9.5rem;
+    max-width: 13rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 
   .sun-passport-hero {

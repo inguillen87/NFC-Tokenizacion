@@ -1,0 +1,87 @@
+{
+   "action": {
+      "default_icon": {
+         "19": "images/browserButtons/default/not_logged_in.png",
+         "38": "images/browserButtons/default/not_logged_in_retina.png"
+      },
+      "default_popup": "popup.html?source=toolbar&setVia=manifest",
+      "default_title": "Checker Plus for Gmail™"
+   },
+   "background": {
+      "service_worker": "js/background.js"
+   },
+   "commands": {
+      "compose": {
+         "description": "__MSG_compose__"
+      },
+      "dnd": {
+         "description": "__MSG_doNotDisturb__"
+      },
+      "markAllAsRead": {
+         "description": "__MSG_markAllAsRead__"
+      },
+      "markAsReadInNotificationWindow": {
+         "description": "__MSG_markAsReadInNotificationWindow__"
+      },
+      "openEmailDisplayedInNotificationWindow": {
+         "description": "__MSG_openEmailDisplayedInNotificationWindow__"
+      },
+      "quickComposeEmail": {
+         "description": "__MSG_quickComposeEmail__"
+      },
+      "refresh": {
+         "description": "__MSG_refresh__"
+      }
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "include_globs": [ "https://mail.google.com/mail/mu/*mui=checkerPlusForGmail*" ],
+      "js": [ "js/tabletView.js" ],
+      "matches": [ "https://mail.google.com/mail/mu/mp/*" ],
+      "run_at": "document_start"
+   }, {
+      "all_frames": true,
+      "include_globs": [ "https://mail.google.com/mail/mu/*mui=checkerPlusForGmail*" ],
+      "js": [ "js/tabletViewScript.js" ],
+      "matches": [ "https://mail.google.com/mail/mu/mp/*" ],
+      "run_at": "document_start",
+      "world": "MAIN"
+   } ],
+   "default_locale": "en",
+   "description": "__MSG_description__",
+   "homepage_url": "https://jasonsavard.com?ref=homepage_url&ext=gmail",
+   "host_permissions": [ "https://mail.google.com/" ],
+   "icons": {
+      "128": "images/icons/icon_128.png",
+      "16": "images/icons/icon_16.png",
+      "32": "images/icons/icon_32.png",
+      "48": "images/icons/icon_48.png",
+      "64": "images/icons/icon_64.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArbHZcYGzfTthPXJhTmhFZl9l2Xx9P9ChFw5pw1U6YdrKEntrSnwwBdF5YaQDel9g35Avx+zExLX8Qgl+wrdORx9g5rvNEKMlE9qmToTqd1rdwZo+YZ6yhsjjaLVIaqziFDONP+kM0+dbZy8T4LlfqkqCdZNkGJKaeLD+A4S3tLT3EeEvj4dHxuqtXM5wsZ7DeNhgKvlnmNoBsd7M3xgLXCXMxZ/a+AtcO454zsI0MtjdPIpUPTPIcuwYL0OmRMN9wU7UDjQNSQoz4ylqSEDLSTVCjy0t4tDj/Ti0yMzLZULZSlugaxmTLJB7g54JBjrMERfa/gqpRUMXKFM4ogm88QIDAQAB",
+   "manifest_version": 3,
+   "name": "Checker Plus for Gmail™",
+   "oauth2": {
+      "client_id": "450788627700-b4u9la88b9jii904fet8l7p20c0iotv5.apps.googleusercontent.com",
+      "scopes": [ "https://www.googleapis.com/auth/gmail.modify" ]
+   },
+   "optional_host_permissions": [ "https://*.googleusercontent.com/" ],
+   "optional_permissions": [ "background", "webRequest" ],
+   "options_page": "options.html",
+   "permissions": [ "gcm", "alarms", "activeTab", "tts", "idle", "notifications", "storage", "contextMenus", "identity", "system.display", "cookies", "declarativeNetRequestWithHostAccess", "offscreen", "scripting", "sidePanel" ],
+   "side_panel": {
+      "default_path": "popup.html?source=sidepanel"
+   },
+   "storage": {
+      "managed_schema": "schema.json"
+   },
+   "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
+   "version": "35.0.1",
+   "web_accessible_resources": [ {
+      "matches": [ "https://jasonsavard.com/*", "https://checkout.stripe.com/*", "https://www.paypal.com/*", "https://commerce.coinbase.com/*" ],
+      "resources": [ "options.html", "contribute.html" ]
+   }, {
+      "matches": [ "https://mail.google.com/*" ],
+      "resources": [ "css/tabletView.css" ]
+   } ]
+}

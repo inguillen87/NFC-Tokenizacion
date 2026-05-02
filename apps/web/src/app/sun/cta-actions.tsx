@@ -74,32 +74,32 @@ export function CtaActions({ bid, uid }: Props) {
   const actionMeta: Record<string, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
     claimOwnership: {
       title: "Activar ownership",
-      subtitle: "Asociá el activo digital a tu identidad de comprador.",
-      icon: "✅",
+      subtitle: "Asocia el activo digital a tu identidad de comprador.",
+      icon: "OWN",
       path: "/api/public-cta/claim-ownership",
       method: "POST",
       tone: "border-indigo-300/40 bg-indigo-500/10 text-indigo-100 transition hover:bg-indigo-500/20",
     },
     registerWarranty: {
-      title: "Registrar garantía",
-      subtitle: "Registrá cobertura y fecha de activación de postventa.",
-      icon: "🛡️",
+      title: "Registrar garantia",
+      subtitle: "Registra cobertura y fecha de activacion de postventa.",
+      icon: "WAR",
       path: "/api/public-cta/register-warranty",
       method: "POST",
       tone: "border-violet-300/40 bg-violet-500/10 text-violet-100 transition hover:bg-violet-500/20",
     },
     provenance: {
-      title: "Ver provenance",
-      subtitle: "Consultá timeline y señales de la marca.",
-      icon: "📜",
+      title: "Ver procedencia",
+      subtitle: "Consulta timeline y senales de la marca.",
+      icon: "PRO",
       path: "/api/public-cta/provenance",
       method: "GET",
       tone: "border-amber-300/40 bg-amber-500/10 text-amber-100 transition hover:bg-amber-500/20",
     },
     report: {
       title: "Reportar problema",
-      subtitle: "Crea un ticket o repórtalo como defectuoso/roto.",
-      icon: "⚠️",
+      subtitle: "Crea un ticket si el tap o el sello parecen inconsistentes.",
+      icon: "RPT",
       path: "/api/public-cta/report-problem",
       method: "POST",
       tone: "border-rose-300/40 bg-rose-500/10 text-rose-100 transition hover:bg-rose-500/20",
@@ -109,7 +109,7 @@ export function CtaActions({ bid, uid }: Props) {
   function renderStateBadge(actionKey: ActionKey) {
     const state = actionStates[actionKey];
     if (state === "loading") return <span className="rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">Procesando...</span>;
-    if (state === "success") return <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">Hecho ✓</span>;
+    if (state === "success") return <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">Hecho</span>;
     if (state === "error") return <span className="rounded-full border border-rose-300/40 bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-100">Error</span>;
     return <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">Listo</span>;
   }
@@ -209,7 +209,7 @@ export function CtaActions({ bid, uid }: Props) {
   function getButtonLabel(idleLabel: string, actionKey: ActionKey) {
     const state = actionStates[actionKey];
     if (state === "loading") return "Procesando...";
-    if (state === "success") return "Hecho ✓";
+    if (state === "success") return "Hecho";
     if (state === "error") return "Error";
     return idleLabel;
   }
@@ -266,7 +266,7 @@ export function CtaActions({ bid, uid }: Props) {
   }
 
   return (
-    <div className="mt-4 space-y-2">
+    <div className="sun-public-cta mt-4 space-y-2">
       <div className="grid gap-2 text-xs md:grid-cols-2">
         {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).map((key) => {
           const item = actionMeta[key];
@@ -275,10 +275,10 @@ export function CtaActions({ bid, uid }: Props) {
               key={key}
               disabled={pending}
               onClick={() => void trigger(item.path, item.method, key)}
-              className={`rounded-xl border px-3 py-3 text-left transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} ${cardStateClass(key)}`}
+              className={`sun-public-cta-card rounded-xl border px-3 py-3 text-left transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} ${cardStateClass(key)}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold">{item.icon} {key === "report" ? "Reportar problema" : item.title}{actionStates[key] === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-200" /> : null}</p>
+                <p className="text-sm font-semibold"><span className="sun-public-cta-code">{item.icon}</span> {key === "report" ? "Reportar problema" : item.title}{actionStates[key] === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-200" /> : null}</p>
                 {renderStateBadge(key)}
               </div>
               <p className="mt-1 text-[11px] opacity-90">{item.subtitle}</p>
@@ -293,16 +293,16 @@ export function CtaActions({ bid, uid }: Props) {
             setActionStates((current) => ({ ...current, tokenization: "idle" }));
             setShowTokenModal(true);
           }}
-          className={`rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-3 text-left text-emerald-100 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${cardStateClass("tokenization")}`}
+          className={`sun-public-cta-card rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-3 text-left text-emerald-100 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${cardStateClass("tokenization")}`}
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold">✨ Tokenización opcional{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
+            <p className="text-sm font-semibold"><span className="sun-public-cta-code">TOK</span> Tokenizacion opcional{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
             {renderStateBadge("tokenization")}
           </div>
-          <p className="mt-1 text-[11px] text-emerald-50/80">Lead comercial + request de tokenización en un solo paso.</p>
+          <p className="mt-1 text-[11px] text-emerald-50/80">Lead comercial + request de tokenizacion en un solo paso.</p>
         </button>
       </div>
-      <p className="text-[11px] text-slate-300">Tip: estas acciones pueden tardar unos segundos en sincronizarse con backend.</p>
+      <p className="sun-cta-tip text-[11px] text-slate-300">Tip: estas acciones pueden tardar unos segundos en sincronizarse con backend.</p>
       {pending ? <p className="text-xs text-cyan-200" aria-live="polite">Ejecutando acción...</p> : null}
       {lastActionMessage ? <p className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">{lastActionMessage}</p> : null}
       {actionError ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-xs text-rose-100" aria-live="assertive">{actionError}</p> : null}

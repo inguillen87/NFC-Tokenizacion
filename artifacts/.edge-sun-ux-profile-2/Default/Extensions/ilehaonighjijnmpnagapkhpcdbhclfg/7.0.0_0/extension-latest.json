@@ -1,0 +1,14 @@
+{
+  "version": "7.0.0",
+  "pub_date": "2026-04-08T17:02:21Z",
+  "content_length": {
+    "macos": "0",
+    "windows": "0",
+    "linux": "0"
+  },
+  "links": {
+    "macos": "https://files.grass.io/file/grass-extension-upgrades/extension-latest/grass-community-node-macos-7.0.0.zip",
+    "windows": "https://files.grass.io/file/grass-extension-upgrades/extension-latest/grass-community-node-windows-7.0.0.zip",
+    "linux": "https://files.grass.io/file/grass-extension-upgrades/extension-latest/grass-community-node-linux-7.0.0.zip"
+  }
+}

@@ -1,0 +1,32 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g clip-path="url(#clip0_8149_1442)">
+    <path class="star star-1" fill-rule="evenodd" clip-rule="evenodd" d="M42.2917 39.9672C30.594 39.9672 21.1459 30.4815 21.1459 18.8213C21.1459 30.4815 11.6602 39.9672 0 39.9672C11.6602 39.9672 21.1459 49.4153 21.1459 61.0755C21.1459 49.4153 30.594 39.9672 42.2917 39.9672Z" fill="#16085F"/>
+    <path class="star star-2" opacity="0.2" fill-rule="evenodd" clip-rule="evenodd" d="M64.0001 50.8772C57.5888 50.8772 52.4148 45.6657 52.4148 39.292C52.4148 45.6657 47.2033 50.8772 40.8296 50.8772C47.2033 50.8772 52.4148 56.0512 52.4148 62.4625C52.4148 56.0512 57.5888 50.8772 64.0001 50.8772Z" fill="#16085F"/>
+    <path class="star star-3" opacity="0.2" fill-rule="evenodd" clip-rule="evenodd" d="M57.3263 15.6344C49.5279 15.6344 43.2291 9.33559 43.2291 1.53711C43.2291 9.33559 36.9303 15.6344 29.1318 15.6344C36.9303 15.6344 43.2291 21.9331 43.2291 29.7316C43.2291 21.9331 49.5279 15.6344 57.3263 15.6344Z" fill="#16085F"/>
+  </g>
+  <defs>
+    <clipPath id="clip0_8149_1442">
+      <rect width="64" height="64" fill="white"/>
+    </clipPath>
+  </defs>
+  <style>
+    .star {
+      opacity: 0.2;
+      animation: glow 1.5s infinite;
+    }
+    .star-1 {
+      animation-delay: 0s;
+    }
+    .star-2 {
+      animation-delay: 0.5s;
+    }
+    .star-3 {
+      animation-delay: 1s;
+    }
+    @keyframes glow {
+      0% { opacity: 0.2; }
+      50% { opacity: 1; }
+      100% { opacity: 0.2; }
+    }
+  </style>
+</svg>

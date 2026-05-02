@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CtaActions } from "./cta-actions";
 import { OnboardDemoButton } from "./onboard-demo-button";
 import { productUrls } from "@product/config";
-import { DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail, WorldMapRealtime } from "@product/ui";
+import { BrandLockup, DeviceSignatureBadge, EmptyState, KeyValueSpec, TimelineRail, WorldMapRealtime } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
@@ -51,6 +51,7 @@ type SunContract = {
     tamperSupported?: boolean;
     tamperStatus?: "CLOSED" | "OPENED" | "UNKNOWN" | string;
     tamperReason?: string | null;
+    encPlainStatusByte?: string | null;
   };
   identity?: { bid?: string | null; uid?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null; eventId?: string | null; tenantSlug?: string | null };
   product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null };
@@ -65,6 +66,13 @@ type SunContract = {
   tokenization?: { status?: string | null; network?: string | null; txHash?: string | null; tokenId?: string | null };
   tag_tamper?: { available?: boolean; status?: "closed" | "opened" | "invalid" | "unknown" | "not_available" | string; raw?: string | null };
   cta?: { claimOwnership?: boolean; registerWarranty?: boolean; provenance?: boolean; tokenize?: boolean };
+  allowedActions?: string[];
+  blockedActions?: string[];
+  trustSignals?: { antiReplay?: boolean; tamperRisk?: boolean; tamperStatus?: string | null; tamperSupported?: boolean; lastEventResult?: string | null };
+  tapSecurity?: { replayDetected?: boolean; freshTap?: boolean; tokenizationEligible?: boolean; policy?: string | null; reason?: string | null };
+  quality?: { score?: number | null; tier?: string | null };
+  verdict?: string | null;
+  riskLevel?: string | null;
   troubleshooting?: string[];
   technical?: { raw?: { piccDataPrefix?: string; encPrefix?: string; cmacPrefix?: string } };
 };
@@ -239,7 +247,21 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   const bid = String(result.identity?.bid || params.bid || "");
   const uid = String(result.identity?.uid || "");
-  const isValid = result.status?.tone === "good";
+  const statusCode = String(result.status?.code || "").toUpperCase();
+  const statusReason = String(result.status?.reason || "").toLowerCase();
+  const productState = String(result.status?.productState || "").toUpperCase();
+  const blockedActions = result.blockedActions || [];
+  const allowedActions = result.allowedActions || [];
+  const trustSignals = result.trustSignals || {};
+  const isReplay = Boolean(result.tapSecurity?.replayDetected)
+    || statusCode === "REPLAY_SUSPECT"
+    || productState === "REPLAY_SUSPECT"
+    || statusReason.includes("replay")
+    || statusReason.includes("copied url")
+    || trustSignals.antiReplay === false;
+  const isCommercialBlocked = blockedActions.some((action) => ["claim", "save", "join", "warranty", "rewards", "tokenization"].includes(action));
+  const isTamperRisk = Boolean(trustSignals.tamperRisk) || result.status?.tone === "risk" || String(result.verdict || "").toLowerCase().includes("tamper");
+  const isValid = result.status?.tone === "good" && statusCode === "VALID" && !isReplay && !isCommercialBlocked && !isTamperRisk;
   const troubleshooting = result.troubleshooting || [];
   const canAutoOnboard = String(result.status?.reason || "").toLowerCase().includes("unknown batch") && /^DEMO-[A-Z0-9-]{3,40}$/.test(bid);
   const timelinePoints = (result.provenance?.timelineSummary || [])
@@ -339,10 +361,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const timelineCount = result.provenance?.timelineSummary?.length || 0;
   const timelineCities = new Set((result.provenance?.timelineSummary || []).map((item) => `${item.city || "Unknown"}|${item.country || "--"}`)).size;
   const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
-  const statusIcon = result.status?.tone === "good" ? "🟢" : result.status?.tone === "risk" ? "🔴" : "🟠";
-  const productState = String(result.status?.productState || "").toUpperCase();
+  const statusDotClass = isValid
+    ? "sun-status-dot--good"
+    : isReplay
+      ? "sun-status-dot--replay"
+      : result.status?.tone === "risk"
+        ? "sun-status-dot--risk"
+        : "sun-status-dot--warn";
   const ttStatus = String(result.tag_tamper?.status || "").toLowerCase();
-  const encPlainStatusByte = String((result.status as { encPlainStatusByte?: string | null } | undefined)?.encPlainStatusByte || "").toUpperCase();
+  const encPlainStatusByte = String(result.status?.encPlainStatusByte || "").toUpperCase();
   const statusByteSignal = encPlainStatusByte === "43" ? "closed" : encPlainStatusByte === "4F" ? "opened" : "unknown";
   const pulseClass = isValid ? "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" : productState === "REPLAY_SUSPECT" ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]" : "bg-rose-300 shadow-[0_0_8px_rgba(253,164,175,0.8)]";
   const statusHeadline = statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED"
@@ -374,6 +401,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
   const blockedTapReason = isValid
     ? ""
+    : isReplay
+      ? "Replay detectado: por seguridad necesitás un nuevo tap físico para ownership, club, garantía o tokenización."
     : "Este tap no es apto para ownership/club. Necesitás un tap válido y fresco para continuar.";
   const journeySteps = [
     { id: "scan", label: "Tap NFC", done: true },
@@ -388,16 +417,32 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : result.technical?.raw
       ? "NTAG 424 DNA"
       : "QR / NFC";
+  const tokenStatus = String(result.tokenization?.status || "none");
+  const tokenNetwork = result.tokenization?.network || "Polygon Amoy";
+  const tokenTx = String(result.tokenization?.txHash || "");
+  const hasOnChainProof = Boolean(tokenTx && !tokenTx.toUpperCase().includes("DEMO") && tokenStatus !== "sandbox_ready");
+  const replayDecisionText = isReplay
+    ? "Replay detectado: esta URL/SUN ya fue usada. Ownership, garantia, rewards y tokenizacion quedan bloqueados hasta un nuevo tap fisico."
+    : isValid
+      ? "Lectura fresca: UID, contador SUN y CMAC pasan la politica anti-replay."
+      : "Lectura revisable: la prueba tecnica se conserva, pero las acciones comerciales quedan protegidas.";
+  const tokenEvidenceLabel = hasOnChainProof
+    ? `On-chain ${tokenNetwork}`
+    : tokenStatus.startsWith("blocked")
+      ? "Bloqueada por politica del tap"
+      : tokenStatus.includes("sandbox") || tokenStatus.includes("simulated")
+        ? "Sandbox, sin promesa on-chain"
+        : "Sin anclaje on-chain";
   const sealLabel = sealClosed ? "Sello intacto" : sealOpened ? "Sello abierto" : "Sello no informado";
-  const chainLabel = result.tokenization?.status
-    ? `${result.tokenization.network || "sandbox"} / ${result.tokenization.status}`
-    : "Token sandbox listo";
+  const chainLabel = tokenEvidenceLabel;
   const productVisualClass = [
     "sun-product-visual",
-    isValid ? "sun-product-visual--valid" : result.status?.tone === "risk" ? "sun-product-visual--risk" : "sun-product-visual--warn",
+    isReplay ? "sun-product-visual--replay" : isValid ? "sun-product-visual--valid" : result.status?.tone === "risk" ? "sun-product-visual--risk" : "sun-product-visual--warn",
     sealOpened ? "sun-product-visual--opened" : "",
   ].filter(Boolean).join(" ");
-  const trustCopy = trustScore >= 85
+  const trustCopy = isReplay
+    ? "Anti-replay activo: el tap queda como evidencia, no como permiso comercial."
+    : trustScore >= 85
     ? "Lectura fresca, identidad consistente y lote activo."
     : trustScore >= 65
       ? "Lectura revisable: conviene mirar ruta y estado del sello."
@@ -430,14 +475,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       <div className="sun-mobile-shell w-full max-w-[430px] min-w-0 z-10 space-y-4 px-3 lg:max-w-6xl lg:px-6">
          {/* Trust Header */}
          <div className="sun-topbar flex items-center justify-between px-2 mb-2">
-            <div className="flex items-center gap-2">
-               <div className="sun-nexid-mark w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-300 to-blue-600 flex items-center justify-center shadow-[0_0_18px_rgba(34,211,238,0.45)]">
-                  <span className="text-[10px] font-bold text-white">NX</span>
-               </div>
-               <div>
-                 <span className="text-sm font-bold tracking-[0.16em] text-white uppercase">nexID</span>
-                 <p className="text-[9px] uppercase tracking-[0.16em] text-cyan-200/70">verified passport</p>
-               </div>
+            <div className="sun-passport-brand flex items-center gap-2">
+               <BrandLockup size={38} variant="ripple" theme="dark" />
+               <p className="sun-passport-brand__caption">verified passport</p>
             </div>
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-900/85 border border-slate-700">
                <span className={`w-1.5 h-1.5 rounded-full ${pulseClass}`}></span>
@@ -455,6 +495,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          <div className="sun-passport-card sun-passport-hero rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
             <div className="rounded-[1.75rem] border border-white/5 bg-slate-950 p-5 relative z-10 text-center">
                <div className="sun-product-stage mx-auto mb-4">
+                  <span className="sun-stage-pin sun-stage-pin--origin">
+                    <b>Origen</b>
+                    <em>{originDisplay.split(",")[0]}</em>
+                  </span>
+                  <span className="sun-stage-pin sun-stage-pin--tap">
+                    <b>Tap</b>
+                    <em>{tapDisplay.split(",")[0]}</em>
+                  </span>
+                  <span className="sun-stage-route-label">{distanceDisplay}</span>
                   <div className={productVisualClass}>
                      <span className="sun-product-visual__tag">NFC</span>
                   </div>
@@ -514,6 +563,44 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </div>
             </div>
          </div>
+
+         <section className={`sun-security-ledger ${isReplay ? "sun-security-ledger--replay" : isValid ? "sun-security-ledger--fresh" : "sun-security-ledger--review"}`}>
+           <div className="sun-security-ledger__header">
+             <div>
+               <p className="sun-security-eyebrow">Prueba criptografica NTAG 424 DNA TT</p>
+               <h2>{isReplay ? "Replay detectado y bloqueado" : isValid ? "Tap fresco verificado" : "Tap protegido en revision"}</h2>
+             </div>
+             <span className={`sun-status-dot ${statusDotClass}`} aria-hidden="true" />
+           </div>
+           <p className="sun-security-copy">{replayDecisionText}</p>
+           <div className="sun-security-steps">
+             <div className="sun-security-step">
+               <span>01</span>
+               <b>UID fisico</b>
+               <p>{result.identity?.uid || result.identity?.bid || "Oculto por privacidad"}</p>
+             </div>
+             <div className="sun-security-step">
+               <span>02</span>
+               <b>Contador SUN</b>
+               <p>{result.identity?.readCounter ?? "N/A"}</p>
+             </div>
+             <div className="sun-security-step">
+               <span>03</span>
+               <b>CMAC / ENC</b>
+               <p>{result.technical?.raw?.cmacPrefix || "server"} / {result.technical?.raw?.encPrefix || "server"}</p>
+             </div>
+             <div className="sun-security-step">
+               <span>04</span>
+               <b>TagTamper</b>
+               <p>{sealLabel} {encPlainStatusByte ? `(${encPlainStatusByte})` : ""}</p>
+             </div>
+           </div>
+           <div className="sun-security-footer">
+             <span>{allowedActions.length ? `Permitido: ${allowedActions.join(", ")}` : "Permitido: provenance"}</span>
+             <span>{blockedActions.length ? `Bloqueado: ${blockedActions.join(", ")}` : "Sin bloqueos comerciales"}</span>
+             <span>{tokenEvidenceLabel}{hasOnChainProof ? ` · ${tokenTx.slice(0, 10)}...` : ""}</span>
+           </div>
+         </section>
 
          <section className="sun-config-panel rounded-2xl border border-white/10 bg-slate-900/65 p-4">
            <div className="flex items-start justify-between gap-3">
@@ -727,7 +814,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
       </div>
 
-      <div className="fixed inset-x-0 bottom-3 z-40 mx-auto w-full max-w-[390px] px-3 lg:hidden">
+      <div className="sun-bottom-nav z-10 mx-auto mt-4 w-full max-w-[390px] px-3 lg:hidden">
         <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
           <a href="/register" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Registro</a>
           <a href="/me" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">Portal</a>

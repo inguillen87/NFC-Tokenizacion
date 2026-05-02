@@ -1,0 +1,36 @@
+{
+   "action": {
+      "default_popup": "popup.html",
+      "default_title": "Venom Wallet"
+   },
+   "background": {
+      "service_worker": "js/worker.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "js/contentscript.js" ],
+      "matches": [ "file://*/*", "http://*/*", "https://*/*" ],
+      "run_at": "document_start"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+   },
+   "description": "Manage Venom wallets and access dApps directly from your browser",
+   "icons": {
+      "128": "icon128.png",
+      "16": "icon16.png",
+      "256": "icon256.png",
+      "48": "icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjCZ1X+UnLrXeBv0ORdmEmAgJlFcKUwCI3E4/rOjMUCLdtN+2P/+neGTP6z3oXVIDuVfsaCVlHKGt5FWp7x1yDpWUf6fPS4YkPrAGUJ6SJEmivoGCm911IC+YLWYa740jWN5Z1nFbchCC6u4Rd1eJeTMX5p28P+kMDkBAeJYXCgwqF1CKSXQR3clNmRhNO3usmfbXbSSuIvQV+qNAmYlAM+1c3jqyu3IBILnwEouwLHtY33vDN7Cde5yMfEcHchmBm90xyEVFQX/P2/6o9nWswDdA7OdczZpiCjimEMT/kaIgMwBkIcSGQVfhWrrrrmO9Z/UtcKTPIhhHnnm21kBZmwIDAQAB",
+   "manifest_version": 3,
+   "minimum_chrome_version": "102",
+   "name": "Venom Wallet",
+   "permissions": [ "storage", "unlimitedStorage", "notifications", "alarms", "activeTab" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "0.3.180",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "/js/*", "/assets/*", "phishing-warning.html" ]
+   } ]
+}

@@ -1,0 +1,5 @@
+2026/05/01-22:10:05.041 7b9c Creating DB C:\Users\guill\OneDrive\Documentos\GitHub\NFC-Tokenizacion\artifacts\.edge-sun-ux-profile-2\Default\EdgeCoupons/coupons_data.db since it was missing.
+2026/05/01-22:10:05.056 7b9c Reusing MANIFEST C:\Users\guill\OneDrive\Documentos\GitHub\NFC-Tokenizacion\artifacts\.edge-sun-ux-profile-2\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/05/01-22:10:05.277 62b4 Level-0 table #5: started
+2026/05/01-22:10:05.281 62b4 Level-0 table #5: 682129 bytes OK
+2026/05/01-22:10:05.283 62b4 Delete type=0 #3
