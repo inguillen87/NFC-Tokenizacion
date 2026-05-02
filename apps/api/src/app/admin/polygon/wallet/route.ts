@@ -43,6 +43,7 @@ export async function GET(req: Request): Promise<Response> {
   const useLocalMinter = boolEnv("TOKENIZATION_USE_LOCAL_MINTER");
   const rpcUrl = env("POLYGON_RPC_URL");
   const minterPrivateKey = env("POLYGON_MINTER_PRIVATE_KEY");
+  const configuredMinterAddress = env("POLYGON_MINTER_ADDRESS");
   const contractAddress = env("POLYGON_CONTRACT_ADDRESS");
   const defaultRecipient = env("POLYGON_DEFAULT_RECIPIENT");
   const deployOwner = env("POLYGON_DEPLOY_OWNER");
@@ -88,7 +89,7 @@ export async function GET(req: Request): Promise<Response> {
       rpc: { configured: Boolean(rpcUrl), url: maskUrl(rpcUrl) },
       executor: { configured: executorConfigured, url: maskUrl(executorUrl), secretConfigured: Boolean(executorSecret) },
       contract: { address: contractAddress || null, deployed: false },
-      minter: { address: null, configured: Boolean(minterPrivateKey), balancePol: simulated || null },
+      minter: { address: null, configuredAddress: configuredMinterAddress || null, configured: Boolean(minterPrivateKey), balancePol: simulated || null },
       recipient: { address: defaultRecipient || null, balancePol: recipientBalancePol },
       metadataPrefix,
       checks,
@@ -107,11 +108,19 @@ export async function GET(req: Request): Promise<Response> {
   checks.push(!deployOwner || isAddress(deployOwner)
     ? check("deploy_owner", "Deploy owner", deployOwner ? "pass" : "warn", deployOwner || "Needed for deploy, optional after runtime is live.")
     : check("deploy_owner", "Deploy owner", "fail", "POLYGON_DEPLOY_OWNER must be a valid address."));
+  checks.push(!configuredMinterAddress || isAddress(configuredMinterAddress)
+    ? check("minter_address", "Authorized minter", configuredMinterAddress ? "pass" : "warn", configuredMinterAddress || "Recommended for deploy so owner and minter are explicit.")
+    : check("minter_address", "Authorized minter", "fail", "POLYGON_MINTER_ADDRESS must be a valid address."));
 
   if (useLocalMinter) {
     try {
       minterAddress = new Wallet(minterPrivateKey).address;
       checks.push(check("minter_key", "Local minter private key", "pass", `Minter ${minterAddress}`));
+      if (configuredMinterAddress && configuredMinterAddress.toLowerCase() !== minterAddress.toLowerCase()) {
+        checks.push(check("minter_match", "Minter key/address match", "fail", `Private key resolves to ${minterAddress}.`));
+      } else if (configuredMinterAddress) {
+        checks.push(check("minter_match", "Minter key/address match", "pass", "Private key matches authorized minter."));
+      }
     } catch {
       checks.push(check("minter_key", "Local minter private key", "fail", "Invalid or missing POLYGON_MINTER_PRIVATE_KEY."));
     }
@@ -169,7 +178,7 @@ export async function GET(req: Request): Promise<Response> {
     rpc: { configured: Boolean(rpcUrl), url: maskUrl(rpcUrl) },
     executor: { configured: executorConfigured, url: maskUrl(executorUrl), secretConfigured: Boolean(executorSecret) },
     contract: { address: contractAddress || null, deployed: contractDeployed },
-    minter: { address: minterAddress, configured: Boolean(minterPrivateKey), balancePol: minterBalancePol },
+    minter: { address: minterAddress, configuredAddress: configuredMinterAddress || null, configured: Boolean(minterPrivateKey), balancePol: minterBalancePol },
     recipient: { address: defaultRecipient || null, balancePol: recipientBalancePol },
     metadataPrefix,
     checks,

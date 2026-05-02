@@ -13,6 +13,7 @@ contract NexidTraceabilityNFT is ERC721URIStorage, Ownable {
     error EmptyChipHash();
     error ChipAlreadyBound();
     error InvalidToken();
+    error UnauthorizedMinter();
 
     uint256 private _nextTokenId = 1;
 
@@ -24,6 +25,8 @@ contract NexidTraceabilityNFT is ERC721URIStorage, Ownable {
     mapping(uint256 => string) public traceabilityUriByTokenId;
     // tokenId => optional asset/business ref (BID:UID hash / SKU batch ref)
     mapping(uint256 => string) public assetRefByTokenId;
+    // backend/executor wallets allowed to mint without owning contract admin.
+    mapping(address => bool) public authorizedMinters;
 
     event DigitalTwinMinted(
         uint256 indexed tokenId,
@@ -33,15 +36,31 @@ contract NexidTraceabilityNFT is ERC721URIStorage, Ownable {
         string tokenUri
     );
     event TraceabilityUpdated(uint256 indexed tokenId, string traceabilityUri);
+    event MinterUpdated(address indexed minter, bool enabled);
 
-    constructor(address initialOwner) ERC721("Nexid Digital Twin", "NXDT") Ownable(initialOwner) {}
+    constructor(address initialOwner, address initialMinter) ERC721("Nexid Digital Twin", "NXDT") Ownable(initialOwner) {
+        if (initialMinter != address(0)) {
+            authorizedMinters[initialMinter] = true;
+            emit MinterUpdated(initialMinter, true);
+        }
+    }
+
+    modifier onlyOwnerOrMinter() {
+        if (owner() != msg.sender && !authorizedMinters[msg.sender]) revert UnauthorizedMinter();
+        _;
+    }
+
+    function setMinter(address minter, bool enabled) external onlyOwner {
+        authorizedMinters[minter] = enabled;
+        emit MinterUpdated(minter, enabled);
+    }
 
     function mintWithChipHash(
         address to,
         string calldata chipUidHash,
         string calldata tokenUri,
         string calldata assetRef
-    ) external onlyOwner returns (uint256 tokenId) {
+    ) external onlyOwnerOrMinter returns (uint256 tokenId) {
         if (bytes(chipUidHash).length == 0) revert EmptyChipHash();
         if (_tokenByChipHash[chipUidHash] != 0) revert ChipAlreadyBound();
 

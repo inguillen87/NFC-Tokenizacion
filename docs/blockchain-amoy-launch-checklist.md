@@ -21,7 +21,7 @@ Crea tres wallets separadas:
 2. `nexID Amoy Minter`: wallet backend que firma mints en testnet.
 3. `nexID Demo Recipient`: wallet default para tokens si el usuario aun no conecto wallet.
 
-No uses tu wallet personal como minter. No cargues seed phrase en Vercel. Solo private key de la wallet minter dedicada, y solo en el proyecto API.
+No uses tu wallet personal como minter. No cargues seed phrase en Vercel. Solo private key de la wallet minter dedicada, y solo en API o en el executor. El contrato permite separar roles: `owner` administra y `minter` firma certificados/tokens.
 
 ## 2. Polygon Amoy en MetaMask
 
@@ -34,6 +34,7 @@ Currency: POL
 Explorer: https://amoy.polygonscan.com/
 RPC recomendado: Alchemy, QuickNode o Infura
 RPC publico temporal: https://rpc-amoy.polygon.technology/
+RPC publico alternativo: https://polygon-amoy.drpc.org
 ```
 
 Agrega la red en MetaMask y manda POL testnet a `nexID Amoy Minter`.
@@ -42,6 +43,11 @@ Faucets:
 
 - https://www.alchemy.com/faucets/polygon-amoy
 - https://faucet.quicknode.com/polygon/amoy
+- https://ethglobal.com/faucet/polygon-amoy-80002
+- https://thirdweb.com/polygon-amoy-testnet
+- https://ghostchain.io/faucet/polygon-amoy/
+
+Nota: algunos faucets piden saldo minimo en Ethereum/Polygon mainnet para evitar abuso. Eso no significa que Amoy tenga costo real. Si un faucet bloquea la wallet por no tener balance mainnet, probar otro faucet o usar una wallet dev con historial. No comprar fondos solo para el piloto sin revisar antes.
 
 ## 3. Crear RPC
 
@@ -57,6 +63,12 @@ Ejemplo:
 
 ```txt
 https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
+```
+
+Crear un RPC propio no requiere gas ni saldo en la wallet. El gas solo se necesita para enviar transacciones desde la wallet minter. Si todavia no tenes RPC propio, se puede probar temporalmente con el RPC publico:
+
+```txt
+https://polygon-amoy.drpc.org
 ```
 
 ## 4. Generar privacy salt
@@ -84,6 +96,7 @@ cd C:\Users\guill\OneDrive\Documentos\GitHub\NFC-Tokenizacion\apps\api
 $env:POLYGON_RPC_URL="https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY"
 $env:POLYGON_MINTER_PRIVATE_KEY="0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER"
 $env:POLYGON_DEPLOY_OWNER="0xOWNER_DEL_CONTRATO"
+$env:POLYGON_MINTER_ADDRESS="0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER"
 npm run contracts:compile
 npm run contracts:deploy:amoy
 ```
@@ -95,7 +108,9 @@ El deploy devuelve:
   "ok": true,
   "network": "amoy",
   "contract": "NexidTraceabilityNFT",
-  "address": "0x..."
+  "address": "0x...",
+  "owner": "0x...",
+  "minter": "0x..."
 }
 ```
 
@@ -129,6 +144,7 @@ TOKENIZATION_UID_SALT=<random largo secreto>
 TOKENIZATION_METADATA_CID_PREFIX=nexid-metadata
 POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
 POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
+POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO_DESPLEGADO
 POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA_DEFAULT
 POLYGON_DEPLOY_OWNER=0xOWNER_DEL_CONTRATO
@@ -157,6 +173,7 @@ TOKENIZATION_EXECUTOR_SECRET=<mismo secreto>
 EXECUTOR_SIGNER_MODE=private_key
 POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
 POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
+POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO_DESPLEGADO
 POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA_DEFAULT
 ```
@@ -186,6 +203,8 @@ Debe mostrar:
 - `Polygon RPC`: pass.
 - `RPC chain`: Polygon Amoy 80002.
 - `Contract bytecode`: pass.
+- `Authorized minter`: pass.
+- `Minter key/address match`: pass si API firma localmente.
 - `Minter gas`: mayor a 0 POL.
 
 ## 8. Prueba manual sin NFC

@@ -45,6 +45,7 @@ async function main() {
   const useLocalMinter = boolEnv("TOKENIZATION_USE_LOCAL_MINTER");
   const rpcUrl = env("POLYGON_RPC_URL");
   const minterPrivateKey = env("POLYGON_MINTER_PRIVATE_KEY");
+  const configuredMinterAddress = env("POLYGON_MINTER_ADDRESS");
   const contractAddress = env("POLYGON_CONTRACT_ADDRESS");
   const defaultRecipient = env("POLYGON_DEFAULT_RECIPIENT");
   const deployOwner = env("POLYGON_DEPLOY_OWNER");
@@ -64,6 +65,7 @@ async function main() {
   console.log(`Local minter: ${useLocalMinter ? "true" : "false"}`);
   console.log(`RPC: ${maskUrl(rpcUrl) || "-"}`);
   console.log(`Contract: ${contractAddress || "-"}`);
+  console.log(`Authorized minter: ${configuredMinterAddress || "-"}`);
   console.log(`Default recipient: ${defaultRecipient || "-"}`);
   console.log(`Deploy owner: ${deployOwner || "-"}`);
   console.log(`Executor: ${maskUrl(executorUrl) || "-"}`);
@@ -114,12 +116,25 @@ async function main() {
     checks.push(makeCheck("deploy_owner", "POLYGON_DEPLOY_OWNER", "warn", "needed for deploy; runtime can use the already deployed contract"));
   }
 
+  if (configuredMinterAddress) {
+    checks.push(isAddress(configuredMinterAddress)
+      ? makeCheck("minter_address", "POLYGON_MINTER_ADDRESS", "pass", configuredMinterAddress)
+      : makeCheck("minter_address", "POLYGON_MINTER_ADDRESS", "fail", "must be a valid EVM address"));
+  } else {
+    checks.push(makeCheck("minter_address", "POLYGON_MINTER_ADDRESS", "warn", "recommended for deploy so owner and minter are explicit"));
+  }
+
   let minterAddress = "";
   if (useLocalMinter) {
     try {
       const wallet = new Wallet(minterPrivateKey);
       minterAddress = wallet.address;
       checks.push(makeCheck("minter_key", "POLYGON_MINTER_PRIVATE_KEY", "pass", `minter ${minterAddress}, key ${maskSecret(minterPrivateKey)}`));
+      if (configuredMinterAddress && configuredMinterAddress.toLowerCase() !== minterAddress.toLowerCase()) {
+        checks.push(makeCheck("minter_match", "Minter key/address match", "fail", `private key resolves to ${minterAddress}`));
+      } else if (configuredMinterAddress) {
+        checks.push(makeCheck("minter_match", "Minter key/address match", "pass", "private key matches POLYGON_MINTER_ADDRESS"));
+      }
     } catch {
       checks.push(makeCheck("minter_key", "POLYGON_MINTER_PRIVATE_KEY", "fail", "invalid or missing private key"));
     }
@@ -166,6 +181,7 @@ async function main() {
     mode,
     network: "polygon-amoy",
     minterAddress: minterAddress || null,
+    configuredMinterAddress: configuredMinterAddress || null,
     contractAddress: contractAddress || null,
     executorUrl: executorConfigured ? maskUrl(executorUrl) : null,
     failed: failed.map((check) => check.key),

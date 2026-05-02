@@ -1,11 +1,15 @@
 import hre from "hardhat";
+import { isAddress } from "ethers";
 
 async function main() {
-  const owner = process.env.POLYGON_DEPLOY_OWNER || process.env.POLYGON_DEFAULT_RECIPIENT || "";
-  if (!owner) throw new Error("missing_POLYGON_DEPLOY_OWNER_or_POLYGON_DEFAULT_RECIPIENT");
+  const [deployer] = await hre.ethers.getSigners();
+  const owner = process.env.POLYGON_DEPLOY_OWNER || deployer.address;
+  const minter = process.env.POLYGON_MINTER_ADDRESS || deployer.address;
+  if (!isAddress(owner)) throw new Error("invalid_POLYGON_DEPLOY_OWNER");
+  if (!isAddress(minter)) throw new Error("invalid_POLYGON_MINTER_ADDRESS");
 
   const factory = await hre.ethers.getContractFactory("NexidTraceabilityNFT");
-  const contract = await factory.deploy(owner);
+  const contract = await factory.deploy(owner, minter);
   await contract.waitForDeployment();
   const address = await contract.getAddress();
 
@@ -14,7 +18,9 @@ async function main() {
     network: hre.network.name,
     contract: "NexidTraceabilityNFT",
     address,
+    deployer: deployer.address,
     owner,
+    minter,
   }, null, 2));
 }
 

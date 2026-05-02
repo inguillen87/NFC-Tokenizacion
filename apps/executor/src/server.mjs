@@ -73,6 +73,7 @@ async function health() {
   const contractAddress = env("POLYGON_CONTRACT_ADDRESS");
   const defaultRecipient = env("POLYGON_DEFAULT_RECIPIENT");
   const privateKey = env("POLYGON_MINTER_PRIVATE_KEY");
+  const configuredMinterAddress = env("POLYGON_MINTER_ADDRESS");
   const live = env("EXECUTOR_HEALTH_LIVE", "false").toLowerCase() === "true";
 
   let minterAddress = null;
@@ -106,7 +107,15 @@ async function health() {
     network: "polygon-amoy",
     rpcConfigured: Boolean(rpcUrl),
     contract: { address: contractAddress || null, deployed: contractDeployed },
-    minter: { address: minterAddress, configured: Boolean(privateKey), balancePol: minterBalancePol },
+    minter: {
+      address: minterAddress,
+      configuredAddress: configuredMinterAddress || null,
+      matchesConfigured: configuredMinterAddress && minterAddress
+        ? configuredMinterAddress.toLowerCase() === minterAddress.toLowerCase()
+        : null,
+      configured: Boolean(privateKey),
+      balancePol: minterBalancePol,
+    },
     defaultRecipient: defaultRecipient || null,
     kmsReady: signerMode === "kms",
     note: signerMode === "kms" ? "KMS adapter must be wired by provider-specific signer." : "Private-key executor is for Amoy pilot only.",

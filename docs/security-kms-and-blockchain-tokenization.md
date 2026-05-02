@@ -133,6 +133,7 @@ TOKENIZATION_UID_SALT=<salt>
 Executor:
 POLYGON_RPC_URL=<amoy rpc>
 POLYGON_MINTER_PRIVATE_KEY=<wallet minter testnet>
+POLYGON_MINTER_ADDRESS=<address publica de la minter>
 POLYGON_CONTRACT_ADDRESS=<contrato>
 POLYGON_DEFAULT_RECIPIENT=<wallet default>
 TOKENIZATION_EXECUTOR_SECRET=<mismo secreto>

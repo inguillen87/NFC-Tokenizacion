@@ -87,7 +87,7 @@ Esta wallet queda como owner/admin del contrato. Puede ser una wallet controlada
 Uso:
 
 - desplegar contrato
-- administrar ownership/minter roles si despues se agregan permisos
+- administrar ownership/minter roles
 - guardar control del contrato
 
 ### 2. Wallet minter dedicada
@@ -181,6 +181,13 @@ https://amoy.polygonscan.com/address/TU_WALLET
 
 Si un faucet no funciona, probar el otro. Los faucets cambian disponibilidad y limites con frecuencia.
 
+Si aparece un error tipo `Invalid ETH mainnet balance`, el faucet esta aplicando una regla anti-abuso. No es un costo de Amoy. Opciones:
+
+- Probar otro faucet.
+- Usar una wallet dev con algo de historial.
+- Pedir a otro miembro del equipo que reclame gas testnet y lo transfiera a la wallet minter.
+- Seguir con RPC publico y modo `simulated` hasta tener POL testnet.
+
 ## Paso 4 - Crear RPC Amoy
 
 Opcion recomendada: Alchemy.
@@ -204,6 +211,12 @@ https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
 ```
 
 Tambien puede ser QuickNode o Infura. Lo importante es que sea RPC de Polygon Amoy y que responda `chainId 80002`.
+
+Crear el RPC no requiere POL ni saldo en la wallet. El gas solo se necesita para transacciones/mints. Para pruebas temporales se puede usar:
+
+```txt
+https://polygon-amoy.drpc.org
+```
 
 ## Paso 5 - Generar salt secreto para privacidad
 
@@ -242,6 +255,7 @@ Setear variables solo en esa terminal:
 $env:POLYGON_RPC_URL="https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY"
 $env:POLYGON_MINTER_PRIVATE_KEY="0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER"
 $env:POLYGON_DEPLOY_OWNER="0xOWNER_DEL_CONTRATO"
+$env:POLYGON_MINTER_ADDRESS="0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER"
 ```
 
 Compilar:
@@ -298,6 +312,7 @@ TOKENIZATION_UID_SALT=<random largo secreto>
 TOKENIZATION_METADATA_CID_PREFIX=nexid-metadata
 POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
 POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
+POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO_DESPLEGADO
 POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA_DEFAULT
 POLYGON_DEPLOY_OWNER=0xOWNER_DEL_CONTRATO
@@ -328,6 +343,7 @@ Importante:
 | `TOKENIZATION_METADATA_CID_PREFIX` | `nexid-metadata` o CID | Prefijo/base para metadata. En piloto puede ser local/logico; en premium usar IPFS/Arweave. |
 | `POLYGON_RPC_URL` | URL RPC Amoy | Nodo por donde la API envia transacciones. |
 | `POLYGON_MINTER_PRIVATE_KEY` | `0x...` | Private key de wallet minter dedicada. |
+| `POLYGON_MINTER_ADDRESS` | `0x...` | Address publica autorizada como minter en el contrato; debe coincidir con la private key si firma API/executor. |
 | `POLYGON_CONTRACT_ADDRESS` | `0x...` | Contrato NFT/certificado desplegado. |
 | `POLYGON_DEFAULT_RECIPIENT` | `0x...` | Wallet que recibe token si el usuario no conecto wallet. |
 | `POLYGON_DEPLOY_OWNER` | `0x...` | Owner/admin del contrato. |
@@ -353,6 +369,7 @@ $env:TOKENIZATION_UID_SALT="TU_SALT"
 $env:TOKENIZATION_METADATA_CID_PREFIX="nexid-metadata"
 $env:POLYGON_RPC_URL="TU_RPC"
 $env:POLYGON_MINTER_PRIVATE_KEY="0xTU_PRIVATE_KEY"
+$env:POLYGON_MINTER_ADDRESS="0xTU_MINTER_PUBLICO"
 $env:POLYGON_CONTRACT_ADDRESS="0xTU_CONTRATO"
 $env:POLYGON_DEFAULT_RECIPIENT="0xTU_RECIPIENT"
 $env:POLYGON_DEPLOY_OWNER="0xTU_OWNER"
@@ -621,6 +638,7 @@ Checklist para vos:
 6. Pasarme o cargar vos en Vercel:
    - RPC URL
    - private key minter
+   - address publica de la minter
    - owner address
    - recipient address
 7. Ejecutar deploy del contrato o dejarme los datos para correrlo local.
