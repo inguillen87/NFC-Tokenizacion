@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 const apiRoute = new URL("../src/app/sun/route.ts", import.meta.url);
 const snapshotRoute = new URL("../src/app/sun/snapshot/[diagnosticId]/route.ts", import.meta.url);
 const snapshotLib = new URL("../src/lib/sun-diagnostics.ts", import.meta.url);
+const freshHandoffLib = new URL("../src/lib/sun-fresh-handoff.ts", import.meta.url);
 const webSunPage = new URL("../../web/src/app/sun/page.tsx", import.meta.url);
 const webCtaProxy = new URL("../../web/src/app/api/public-cta/[action]/route.ts", import.meta.url);
 const webCtaActions = new URL("../../web/src/app/sun/cta-actions.tsx", import.meta.url);
@@ -14,6 +15,8 @@ test("browser SUN taps hand off to the web passport experience with a diagnostic
 
   assert.match(source, /buildWebSunSnapshotUrl/);
   assert.match(source, /target\.searchParams\.set\("snapshot"/);
+  assert.match(source, /target\.searchParams\.set\("fresh"/);
+  assert.match(source, /createSunFreshHandoffToken/);
   assert.match(source, /target\.searchParams\.set\("handoff", "query"\)/);
   assert.match(source, /target\.searchParams\.set\("trace"/);
   assert.match(source, /target\.searchParams\.set\("api", url\.origin\)/);
@@ -25,16 +28,24 @@ test("browser SUN taps hand off to the web passport experience with a diagnostic
 test("web SUN page can hydrate a snapshot created by the API tap route", async () => {
   const snapshotSource = await readFile(snapshotRoute, "utf8");
   const snapshotLibSource = await readFile(snapshotLib, "utf8");
+  const freshSource = await readFile(freshHandoffLib, "utf8");
   const webSource = await readFile(webSunPage, "utf8");
 
   assert.match(snapshotSource, /getSunDiagnosticSnapshot/);
+  assert.match(snapshotSource, /fresh/);
   assert.match(snapshotSource, /snapshot_not_found/);
   assert.match(snapshotLibSource, /markHistoricalSnapshotContract/);
+  assert.match(snapshotLibSource, /markFreshHandoffContract/);
+  assert.match(snapshotLibSource, /fresh_handoff/);
   assert.match(snapshotLibSource, /snapshot_view_only/);
   assert.match(snapshotLibSource, /requiresFreshTapForCommercialActions/);
+  assert.match(freshSource, /sun_fresh_handoff/);
+  assert.match(freshSource, /verifySunFreshHandoffToken/);
   assert.match(webSource, /snapshotId/);
+  assert.match(webSource, /freshToken/);
   assert.match(webSource, /\/sun\/snapshot\//);
   assert.match(webSource, /payload\?\.contract/);
+  assert.match(webSource, /isFreshHandoff/);
   assert.match(webSource, /isSnapshotView/);
   assert.match(webSource, /isFreshCommercialTap/);
   assert.match(webSource, /Vista guardada/);
@@ -48,5 +59,6 @@ test("web SUN CTAs can use event id without exposing raw UID", async () => {
   assert.match(proxySource, /event_id/);
   assert.match(proxySource, /resolveShareUid/);
   assert.match(actionSource, /eventId/);
+  assert.match(actionSource, /freshToken/);
   assert.match(actionSource, /basePayload/);
 });

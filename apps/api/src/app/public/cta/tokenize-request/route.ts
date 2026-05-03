@@ -4,6 +4,7 @@ import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { sql } from "../../../../lib/db";
 import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
+import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 
 const LEDGER_NETWORK_ALLOWED = new Set(["polygon-amoy", "polygon", "ethereum-sepolia", "ethereum-mainnet", "base-sepolia", "base-mainnet"]);
 
@@ -16,10 +17,21 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const target = await resolvePublicCtaTarget(body);
   if (!target.ok) return json({ ok: false, reason: target.reason, trace_id: traceId }, 400);
-  const { bid, uid } = target;
+  const { bid, uid, eventId } = target;
 
   const auth = requireShareToken(req, bid, target.shareUid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
+  const fresh = requireSunFreshHandoff(req, body, { bid, eventId });
+  if (!eventId || !fresh.ok) {
+    const freshReason = fresh.ok ? "fresh_event_required" : fresh.reason;
+    return json({
+      ok: false,
+      reason: "fresh_physical_tap_required_for_tokenization",
+      trace_id: traceId,
+      share_token_status: auth.share_token_status,
+      fresh_token_status: freshReason,
+    }, 403);
+  }
 
   await ensureTokenizationRequestsSchema();
 
@@ -80,12 +92,12 @@ export async function POST(req: Request) {
       ${ledger.anchor_hash},
       'public_cta',
       now(),
-      ${JSON.stringify({ trace_id: traceId, share_token_status: auth.share_token_status })}::jsonb
+      ${JSON.stringify({ trace_id: traceId, share_token_status: auth.share_token_status, fresh_handoff_exp: fresh.payload.exp })}::jsonb
     )
     RETURNING id, status, requested_at
   `;
   const tokenizationRequest = reqRows[0];
-  const saved = await recordDemoCta("tokenize_request", bid, uid, { ...body, ...ledger, tokenization_requested_at: new Date().toISOString() });
+  const saved = await recordDemoCta("tokenize_request", bid, uid, { ...body, ...ledger, fresh_handoff_exp: fresh.payload.exp, tokenization_requested_at: new Date().toISOString() });
   return json({
     ok: true,
     action: "tokenize_request",
@@ -95,5 +107,6 @@ export async function POST(req: Request) {
     tokenization_request: tokenizationRequest || null,
     trace_id: traceId,
     share_token_status: auth.share_token_status,
+    fresh_token_status: "accepted",
   });
 }

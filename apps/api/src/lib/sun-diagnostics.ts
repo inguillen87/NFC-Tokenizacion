@@ -1,4 +1,5 @@
 import { sql } from './db';
+import { verifySunFreshHandoffToken } from './sun-fresh-handoff';
 
 export type SunDiagnosticTool = 'sun_scan' | 'inspect' | 'compare_tamper' | 'compare_tamper_samples';
 
@@ -101,6 +102,37 @@ function markHistoricalSnapshotContract(input: unknown, snapshot: { id: number; 
   return contract;
 }
 
+function markFreshHandoffContract(input: unknown, snapshot: { id: number; traceId: string; createdAt: string | null; expiresAt: string | null }) {
+  const contract = cloneRecord(input);
+  const tapSecurity = asRecord(contract.tapSecurity);
+  contract.tapSecurity = {
+    ...tapSecurity,
+    snapshot: true,
+    freshTap: true,
+    actionability: "fresh_handoff",
+    requiresFreshTapForCommercialActions: false,
+    reason: tapSecurity.reason || "fresh_nfc_handoff",
+  };
+  contract.snapshot = {
+    mode: "fresh_handoff",
+    diagnosticId: snapshot.id,
+    traceId: snapshot.traceId,
+    createdAt: snapshot.createdAt,
+    expiresAt: snapshot.expiresAt,
+    requiresFreshTap: false,
+    commercialActions: "allowed_while_handoff_is_fresh",
+  };
+
+  const status = asRecord(contract.status);
+  contract.status = {
+    ...status,
+    snapshot: true,
+    actionability: "fresh_handoff",
+    reason: status.reason || "fresh_nfc_handoff",
+  };
+  return contract;
+}
+
 export async function insertSunDiagnostic(input: {
   trace_id?: string | null;
   tool_type: SunDiagnosticTool;
@@ -155,7 +187,7 @@ export async function listSunDiagnostics(limit = 100) {
   `;
 }
 
-export async function getSunDiagnosticSnapshot(id: string | number, traceId: string) {
+export async function getSunDiagnosticSnapshot(id: string | number, traceId: string, freshToken?: string | null) {
   const numericId = Number(id);
   const trace = String(traceId || "").trim();
   if (!Number.isFinite(numericId) || numericId <= 0 || !trace) return null;
@@ -176,11 +208,25 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
   const diagnosticId = Number(row.id || numericId);
   const traceIdValue = row.trace_id || trace;
   const createdAt = row.created_at || null;
+  const contract = result.contract as Record<string, unknown>;
+  const identity = asRecord(contract.identity);
+  const tokenizationEventId = String(contract.eventId || identity.eventId || "").trim();
+  const bid = String(identity.bid || contract.bid || "").trim();
+  const fresh = verifySunFreshHandoffToken(freshToken, {
+    bid: bid || undefined,
+    eventId: tokenizationEventId || undefined,
+    diagnosticId,
+    traceId: traceIdValue,
+  });
+  const freshExpiresAt = fresh.ok ? new Date(fresh.payload.exp * 1000).toISOString() : null;
   return {
     ok: true,
     diagnostic_id: diagnosticId,
     trace_id: traceIdValue,
     created_at: createdAt,
-    contract: markHistoricalSnapshotContract(result.contract, { id: diagnosticId, traceId: traceIdValue, createdAt }),
+    snapshot_access: fresh.ok ? "fresh_handoff" : "historical",
+    contract: fresh.ok
+      ? markFreshHandoffContract(result.contract, { id: diagnosticId, traceId: traceIdValue, createdAt, expiresAt: freshExpiresAt })
+      : markHistoricalSnapshotContract(result.contract, { id: diagnosticId, traceId: traceIdValue, createdAt }),
   };
 }

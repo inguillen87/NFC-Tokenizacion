@@ -14,6 +14,7 @@ import { resolveSunTenantProfile } from '../../lib/sun-tenant-profile';
 import { ensureSunTenantProfilesSchema } from '../../lib/sun-tenant-profile-schema';
 import { getRequestMeta } from '../../lib/request-meta';
 import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
+import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
 import crypto from "node:crypto";
 
 const RATE_LIMIT_MAX_IP = Number(process.env.SUN_RATE_LIMIT_IP_PER_MIN || 120);
@@ -220,11 +221,12 @@ function webBaseUrl(sourceUrl?: URL) {
   return "https://nexid.lat";
 }
 
-function buildWebSunSnapshotUrl(url: URL, diagnosticId: number | null, traceId: string, locale: SunLocale) {
+function buildWebSunSnapshotUrl(url: URL, diagnosticId: number | null, traceId: string, locale: SunLocale, freshToken?: string | null) {
   if (!traceId) return null;
   const target = new URL("/sun", webBaseUrl(url));
   if (diagnosticId) {
     target.searchParams.set("snapshot", String(diagnosticId));
+    if (freshToken) target.searchParams.set("fresh", freshToken);
   } else {
     ["v", "bid", "picc_data", "enc", "cmac"].forEach((key) => {
       const value = url.searchParams.get(key);
@@ -1801,7 +1803,28 @@ export async function GET(req: Request): Promise<Response> {
   if (diagnosticId) (contract as Record<string, unknown>).diagnostic_id = diagnosticId;
 
   if (wantsHtml(req, url)) {
-    const webTarget = wantsInlineApiHtml(url) ? null : buildWebSunSnapshotUrl(url, diagnosticId, traceId, locale);
+    const freshHandoffToken = diagnosticId && contract.tapSecurity?.freshTap && !contract.tapSecurity?.replayDetected && eventId
+      ? (() => {
+          try {
+            const now = Math.floor(Date.now() / 1000);
+            return createSunFreshHandoffToken({
+              bid,
+              eventId: String(eventId),
+              diagnosticId,
+              traceId,
+              exp: now + 60 * 5,
+            });
+          } catch (error) {
+            console.warn("[sun_fresh_handoff_unavailable]", JSON.stringify({
+              traceId,
+              diagnosticId,
+              reason: sanitizePublicErrorReason(error instanceof Error ? error.message : "fresh_handoff_error"),
+            }));
+            return null;
+          }
+        })()
+      : null;
+    const webTarget = wantsInlineApiHtml(url) ? null : buildWebSunSnapshotUrl(url, diagnosticId, traceId, locale, freshHandoffToken);
     if (webTarget) {
       return Response.redirect(webTarget, 303);
     }

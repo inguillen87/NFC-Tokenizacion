@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CtaActions } from "./cta-actions";
+import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { OnboardDemoButton } from "./onboard-demo-button";
 import { productUrls } from "@product/config";
 import { BrandLockup, DeviceSignatureBadge, EmptyState, GlobalOpsMap, KeyValueSpec, ThemeToggle, TimelineRail } from "@product/ui";
@@ -83,8 +84,8 @@ type SunContract = {
   allowedActions?: string[];
   blockedActions?: string[];
   trustSignals?: { antiReplay?: boolean; tamperRisk?: boolean; tamperStatus?: string | null; tamperSupported?: boolean; lastEventResult?: string | null };
-  tapSecurity?: { replayDetected?: boolean; freshTap?: boolean; tokenizationEligible?: boolean; policy?: string | null; reason?: string | null; snapshot?: boolean; requiresFreshTapForCommercialActions?: boolean };
-  snapshot?: { mode?: string | null; diagnosticId?: number | string | null; traceId?: string | null; createdAt?: string | null; requiresFreshTap?: boolean; commercialActions?: string | null };
+  tapSecurity?: { replayDetected?: boolean; freshTap?: boolean; tokenizationEligible?: boolean; policy?: string | null; reason?: string | null; snapshot?: boolean; actionability?: string | null; requiresFreshTapForCommercialActions?: boolean };
+  snapshot?: { mode?: string | null; diagnosticId?: number | string | null; traceId?: string | null; createdAt?: string | null; expiresAt?: string | null; requiresFreshTap?: boolean; commercialActions?: string | null };
   quality?: { score?: number | null; tier?: string | null };
   verdict?: string | null;
   riskLevel?: string | null;
@@ -237,9 +238,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   const snapshotId = typeof params.snapshot === "string" ? params.snapshot.trim() : "";
   const snapshotTrace = typeof params.trace === "string" ? params.trace.trim() : "";
+  const freshToken = typeof params.fresh === "string"
+    ? params.fresh.trim()
+    : typeof params.fresh_token === "string"
+      ? params.fresh_token.trim()
+      : "";
   const resolvedApiBase = apiBase(params);
   const snapshotResult = snapshotId && snapshotTrace
-    ? await fetch(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}`, { cache: "no-store" })
+    ? await fetch(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`, { cache: "no-store" })
       .then((res) => res.ok ? res.json() : null)
       .then((payload) => payload?.contract || null)
       .catch(() => null) as SunContract | null
@@ -272,7 +278,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const blockedActions = result.blockedActions || [];
   const allowedActions = result.allowedActions || [];
   const trustSignals = result.trustSignals || {};
-  const isSnapshotView = Boolean(snapshotResult || result.tapSecurity?.snapshot || result.snapshot?.mode === "historical" || result.snapshot?.requiresFreshTap);
+  const snapshotMode = String(result.snapshot?.mode || "");
+  const tapActionability = String(result.tapSecurity?.actionability || "");
+  const isFreshHandoff = snapshotMode === "fresh_handoff" || tapActionability === "fresh_handoff";
+  const isSnapshotView = Boolean((snapshotResult && !isFreshHandoff) || result.snapshot?.mode === "historical" || result.snapshot?.requiresFreshTap || (result.tapSecurity?.snapshot && !isFreshHandoff));
   const isReplay = Boolean(result.tapSecurity?.replayDetected)
     || statusCode === "REPLAY_SUSPECT"
     || productState === "REPLAY_SUSPECT"
@@ -298,7 +307,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     && !isTamperRisk
     && (hasAuthenticTone || ["VALID", "AUTH_OK"].includes(statusCode) || isVerifiedOpenedState || verdictName === "valid" || verdictName === "valid_opened");
   const isActionableTap = isTechnicallyAuthentic && !isCommercialBlocked;
-  const isFreshCommercialTap = isActionableTap && !isSnapshotView;
+  const isFreshCommercialTap = isActionableTap && (isFreshHandoff || !isSnapshotView);
   const isValid = isTechnicallyAuthentic && !isVerifiedOpenedState && ["VALID", "AUTH_OK"].includes(statusCode);
   const isRiskBlocked = isReplay || isTamperRisk || !isTechnicallyAuthentic;
   const troubleshooting = result.troubleshooting || [];
@@ -449,7 +458,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     toLabel: index === mapRoutes.length - 1 ? tapDisplay : undefined,
     productName: route.label || mapProductName,
   }));
-  const livePillLabel = isSnapshotView ? "Vista guardada" : "Tap en vivo";
+  const livePillLabel = isFreshHandoff ? "Tap fresco" : isSnapshotView ? "Vista guardada" : "Tap en vivo";
 
   const securityTone = isValid
     ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
@@ -511,7 +520,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : result.status?.tone === "risk"
               ? "Se detectaron señales de riesgo"
               : "Validación en revisión";
-  const displayRiskLevelLabel = isSnapshotView
+  const displayRiskLevelLabel = isFreshHandoff
+    ? "Tap fresco"
+    : isSnapshotView
     ? "Vista historica"
     : isRiskBlocked
     ? "Riesgo alto"
@@ -563,6 +574,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isReplay
       ? "Replay detectado: por seguridad necesitás un nuevo tap físico para ownership, club, garantía o tokenización."
     : "Este tap no es apto para ownership/club. Necesitás un tap válido y fresco para continuar.";
+  const protectedBannerTitle = isSnapshotView
+    ? "Vista protegida"
+    : isReplay
+      ? "Replay bloqueado"
+      : "Accion protegida";
+  const protectedBannerCopy = isSnapshotView
+    ? "Esta prueba se puede consultar y compartir, pero ownership, puntos, club y tokenizacion exigen tocar nuevamente la etiqueta."
+    : isReplay
+      ? "La URL/SUN ya fue usada. Conservamos la evidencia y pedimos un nuevo tap fisico para acciones comerciales."
+      : "Por seguridad, este producto no puede guardarse en la coleccion ni sumar puntos con esta lectura.";
+  const protectedBannerClass = isReplay || isTamperRisk
+    ? "border-red-500/30 bg-red-950/20 text-red-100"
+    : "border-amber-300/25 bg-amber-500/10 text-amber-50";
+  const reportProblemHref = "/?contact=sales&intent=sun_mobile#contact-modal";
   const journeySteps = [
     { id: "scan", label: "Tap NFC", done: true },
     { id: "verify", label: "Verificación", done: Boolean(result.status?.label) },
@@ -607,6 +632,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "Anti-replay activo: el tap queda como evidencia, no como permiso comercial."
     : isSnapshotView
       ? "Autenticidad visible en modo consulta. Para ownership, club y tokenizacion se necesita una lectura fresca del chip."
+    : isFreshHandoff
+      ? "Lectura fisica recien validada: podés reclamar ownership, club, garantia y tokenizacion opcional mientras el handoff sigue fresco."
     : isVerifiedOpenedState && isTechnicallyAuthentic
       ? "Apertura verificada: el sello cambio de estado, pero la identidad SUN sigue siendo valida y accionable."
     : isFreshCommercialTap
@@ -614,7 +641,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : trustScore >= 65
       ? "Lectura revisable: conviene mirar ruta y estado del sello antes de apropiar."
       : "Lectura de riesgo: no habilitamos ownership hasta repetir el tap.";
-  const handoffCopy = isSnapshotView
+  const handoffCopy = isFreshHandoff
+    ? "Tap fisico fresco: acciones habilitadas con prueba SUN y token temporal."
+    : isSnapshotView
     ? "Vista guardada del tap: segura para consultar, no para reclamar."
     : isDemoPreview
       ? "Vista demo del passport SUN para probar el flujo sin etiqueta fisica."
@@ -636,6 +665,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   return (
     <main className="sun-mobile-surface min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center py-4 sm:py-6 lg:py-8 px-0 font-sans relative overflow-hidden pb-safe pb-32 lg:pb-10">
+      <FreshHandoffUrlCleaner enabled={Boolean(isFreshHandoff && freshToken)} />
       {/* Dynamic Background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
 
@@ -942,12 +972,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </Link>
             </div>
          ) : (
-            <div className="sun-passport-banner rounded-2xl border border-red-500/30 bg-red-950/20 p-5 mt-4 text-center">
-               <h3 className="text-sm font-bold text-white mb-2">Acción Bloqueada</h3>
-               <p className="text-xs text-red-200/70 mb-4">Por seguridad, este producto no puede ser guardado en la colección ni sumar puntos.</p>
-               <button suppressHydrationWarning className="block w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition-colors">
-                  Reportar Problema
-               </button>
+            <div className={`sun-passport-banner rounded-2xl border p-5 mt-4 text-center ${protectedBannerClass}`}>
+               <h3 className="text-sm font-bold text-white mb-2">{protectedBannerTitle}</h3>
+               <p className="text-xs opacity-80 mb-4">{protectedBannerCopy}</p>
+               <Link href={reportProblemHref} className="block w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition-colors">
+                  Reportar problema
+               </Link>
             </div>
          )}
 
@@ -998,7 +1028,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
          {bid && (uid || eventId) ? (
            <div className="sun-cta-actions mt-4">
-              <CtaActions bid={bid} uid={uid} eventId={eventId} canExecute={isFreshCommercialTap} tapState={isSnapshotView || isRiskBlocked ? "blocked" : isVerifiedOpenedState ? "opened" : "valid"} />
+              <CtaActions bid={bid} uid={uid} eventId={eventId} freshToken={freshToken} canExecute={isFreshCommercialTap} tapState={isSnapshotView || isRiskBlocked ? "blocked" : isVerifiedOpenedState ? "opened" : "valid"} />
            </div>
          ) : null}
 

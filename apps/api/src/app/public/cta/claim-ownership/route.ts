@@ -4,6 +4,7 @@ import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { claimOwnershipForConsumer } from "../../../../lib/consumer-portal-service";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
+import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 
 export async function POST(req: Request) {
   const traceId = req.headers.get("x-nexid-trace-id") || `api_cta_${Date.now().toString(36)}`;
@@ -14,6 +15,17 @@ export async function POST(req: Request) {
 
   const auth = requireShareToken(req, bid, target.shareUid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
+  const fresh = requireSunFreshHandoff(req, body, { bid, eventId });
+  if (!eventId || !fresh.ok) {
+    const freshReason = fresh.ok ? "fresh_event_required" : fresh.reason;
+    return json({
+      ok: false,
+      reason: "fresh_physical_tap_required_for_ownership",
+      trace_id: traceId,
+      share_token_status: auth.share_token_status,
+      fresh_token_status: freshReason,
+    }, 403);
+  }
 
   const consumer = await getConsumerFromRequest(req);
   if (consumer && eventId) {
@@ -23,7 +35,7 @@ export async function POST(req: Request) {
       bid,
       uidHex: uid,
       source: "sun_passport",
-      trustSnapshot: { trace_id: traceId, share_token_status: auth.share_token_status },
+      trustSnapshot: { trace_id: traceId, share_token_status: auth.share_token_status, fresh_handoff_exp: fresh.payload.exp },
     });
     if (!claim.ok) {
       return json(
@@ -36,6 +48,7 @@ export async function POST(req: Request) {
       action: "claim_ownership",
       trace_id: traceId,
       share_token_status: auth.share_token_status,
+      fresh_token_status: "accepted",
       ownership: claim.ownership,
       ownership_status: claim.ownership?.status || "claimed",
       ownership_mode: "durable",
@@ -52,5 +65,5 @@ export async function POST(req: Request) {
     revocation_capability: "issuer-review",
   };
   const saved = await recordDemoCta("claim_ownership", bid, uid, { ...body, ...ownership, claimed_at: new Date().toISOString() });
-  return json({ ok: true, action: "claim_ownership", id: saved.id, created_at: saved.created_at, ownership, ownership_mode: "demo", trace_id: traceId, share_token_status: auth.share_token_status });
+  return json({ ok: true, action: "claim_ownership", id: saved.id, created_at: saved.created_at, ownership, ownership_mode: "demo", trace_id: traceId, share_token_status: auth.share_token_status, fresh_token_status: "accepted" });
 }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 type TapState = "valid" | "opened" | "blocked";
-type Props = { bid: string; uid?: string; eventId?: string; canExecute?: boolean; tapState?: TapState };
+type Props = { bid: string; uid?: string; eventId?: string; freshToken?: string; canExecute?: boolean; tapState?: TapState };
 type LeadIntent = "tokenization_optional";
 type ActionState = "idle" | "loading" | "success" | "error";
 type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokenization" | "report";
@@ -52,7 +52,7 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
   };
 }
 
-export function CtaActions({ bid, uid = "", eventId = "", canExecute = true, tapState = "valid" }: Props) {
+export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid" }: Props) {
   const [status, setStatus] = useState<string>("");
   const [pending, setPending] = useState(false);
   const [actionStates, setActionStates] = useState<Record<ActionKey, ActionState>>({
@@ -121,6 +121,9 @@ export function CtaActions({ bid, uid = "", eventId = "", canExecute = true, tap
 
   function renderStateBadge(actionKey: ActionKey) {
     const state = actionStates[actionKey];
+    if (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey) && state === "idle") {
+      return <span className="rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-100">Nuevo tap</span>;
+    }
     if (state === "loading") return <span className="rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">Procesando...</span>;
     if (state === "success") return <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">Hecho</span>;
     if (state === "error") return <span className="rounded-full border border-rose-300/40 bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-100">Error</span>;
@@ -146,6 +149,7 @@ export function CtaActions({ bid, uid = "", eventId = "", canExecute = true, tap
       uid,
     };
     if (eventId) payload.event_id = eventId;
+    if (freshToken) payload.fresh_token = freshToken;
     return payload;
   }
 
@@ -195,6 +199,9 @@ export function CtaActions({ bid, uid = "", eventId = "", canExecute = true, tap
 
   function normalizeReason(data: { reason?: string; _httpStatus?: number }) {
     const reason = String(data.reason || "").toLowerCase();
+    if (reason.includes("fresh") || reason.includes("physical") || reason.includes("expired")) {
+      return "Para ownership, garantia o tokenizacion necesitamos un tap fisico nuevo. Volve a tocar la etiqueta NFC.";
+    }
     if (reason.includes("share") || reason.includes("token")) {
       return "Acción no disponible en este enlace. Abrí el SUN desde un link firmado o escaneá nuevamente.";
     }
@@ -343,9 +350,9 @@ export function CtaActions({ bid, uid = "", eventId = "", canExecute = true, tap
         </button>
       ) : null}
       {provenance?.timeline?.length ? (
-        <div className="rounded border border-white/10 bg-slate-950/50 p-2 text-[11px] text-slate-200">
-          <p className="mb-1 text-cyan-100">Lifecycle timeline (enterprise)</p>
-          <ul className="space-y-1">
+        <details className="rounded border border-cyan-300/15 bg-slate-950/45 p-2 text-[11px] text-slate-200">
+          <summary className="cursor-pointer font-semibold text-cyan-100">Lifecycle timeline</summary>
+          <ul className="mt-2 space-y-1">
             {provenance.timeline.map((item, index) => (
               <li key={`${String(item.stage || "stage")}-${index}`}>
                 <span className="text-white">{String(item.stage || "-")}</span> · {String(item.status || "-")}
@@ -353,7 +360,7 @@ export function CtaActions({ bid, uid = "", eventId = "", canExecute = true, tap
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       ) : null}
       {status ? (
         <details className="rounded border border-white/10 bg-slate-950/55 p-2 text-[11px] text-slate-300">
