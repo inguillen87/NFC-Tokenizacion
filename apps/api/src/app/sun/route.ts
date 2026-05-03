@@ -530,25 +530,25 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
     LEFT JOIN LATERAL (
       SELECT created_at, city, country_code
       FROM events e
-      WHERE e.batch_id = t.batch_id AND e.uid_hex = t.uid_hex
+      WHERE e.batch_id = t.batch_id AND UPPER(e.uid_hex) = UPPER(t.uid_hex)
       ORDER BY created_at ASC
       LIMIT 1
     ) first_evt ON TRUE
     LEFT JOIN LATERAL (
       SELECT created_at, city, country_code, result
       FROM events e
-      WHERE e.batch_id = t.batch_id AND e.uid_hex = t.uid_hex
+      WHERE e.batch_id = t.batch_id AND UPPER(e.uid_hex) = UPPER(t.uid_hex)
       ORDER BY created_at DESC
       LIMIT 1
     ) last_evt ON TRUE
     LEFT JOIN LATERAL (
       SELECT status, network, tx_hash, token_id
       FROM tokenization_requests tr
-      WHERE tr.batch_id = t.batch_id AND tr.uid_hex = t.uid_hex
+      WHERE tr.batch_id = t.batch_id AND UPPER(tr.uid_hex) = UPPER(t.uid_hex)
       ORDER BY requested_at DESC
       LIMIT 1
     ) tok ON TRUE
-    WHERE b.bid = ${bid} AND t.uid_hex = ${uid}
+    WHERE b.bid = ${bid} AND UPPER(t.uid_hex) = UPPER(${uid})
     LIMIT 1
   `;
   return (rows[0] || null) as PassportSnapshot;
@@ -560,7 +560,7 @@ async function getTimelineSummary(bid: string, uid: string | undefined): Promise
     SELECT e.created_at::text AS at, e.result, e.city, e.country_code AS country, e.device_label AS device, e.lat, e.lng, e.meta
     FROM events e
     JOIN batches b ON b.id = e.batch_id
-    WHERE b.bid = ${bid} AND e.uid_hex = ${uid}
+    WHERE b.bid = ${bid} AND UPPER(e.uid_hex) = UPPER(${uid})
     ORDER BY e.created_at DESC
     LIMIT 6
   `;
@@ -652,6 +652,14 @@ function buildPublicContract(params: {
     const setupQuery = new URLSearchParams({ tenant: tenantSlug, fromTap: "1", action: "setup-required" });
     if (setupEventId) setupQuery.set("eventId", setupEventId);
     const setupProductName = params.passport?.product_name || params.passport?.sku || `Batch ${params.bid}`;
+    const setupIsAuthentic = ["VALID", "OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"].includes(trust.code);
+    const setupIsReplay = trust.code === "REPLAY_SUSPECT" || verdictRisk.verdict === "replay_suspect";
+    const setupScore = setupIsReplay ? 22 : setupIsAuthentic ? (trust.code === "VALID" ? 72 : 64) : 35;
+    const setupRiskLevel = setupIsReplay || verdictRisk.verdict === "tampered"
+      ? "high"
+      : setupIsAuthentic
+        ? "medium"
+        : verdictRisk.riskLevel;
     return {
       ok: false,
       status: {
@@ -750,7 +758,7 @@ function buildPublicContract(params: {
         lat: roundCoord(params.tap.lat, 2),
         lng: roundCoord(params.tap.lng, 2),
       },
-      quality: { score: 0, tier: "Setup Required" },
+      quality: { score: setupScore, tier: setupIsReplay ? "Replay Hold" : setupIsAuthentic ? "Setup Hold" : "Setup Required" },
       cta: {
         claimOwnership: false,
         registerWarranty: false,
@@ -774,8 +782,8 @@ function buildPublicContract(params: {
       batchId: params.bid,
       tagId: params.uid ? maskIdentityValue(params.uid) : null,
       uidMasked: maskIdentityValue(params.uid || ""),
-      verdict: "tenant_setup_required",
-      riskLevel: "high",
+      verdict: setupIsAuthentic ? "tenant_setup_required_authentic" : "tenant_setup_required",
+      riskLevel: setupRiskLevel,
       tag_tamper: params.result.tag_tamper || null,
       productName: setupProductName,
       allowedActions: [],
@@ -1370,7 +1378,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const ctaButtons = Array.from(document.querySelectorAll('[data-cta]'));
   const gatedLinks = Array.from(document.querySelectorAll('[data-gated-link]'));
   const eventId = ${JSON.stringify(contract.identity.eventId || null)};
-  const canAssociate = ${JSON.stringify(contract.status.tone === "good" && contract.status.code !== "REPLAY_SUSPECT")};
+  const canAssociate = ${JSON.stringify((contract.allowedActions as readonly string[]).includes("save") && contract.status.code !== "REPLAY_SUSPECT")};
   const appBase = (() => {
     const currentOrigin = window.location.origin;
     try {

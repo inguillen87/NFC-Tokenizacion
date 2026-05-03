@@ -10,19 +10,40 @@ export default function AppleIcon() {
         style={{
           width: "100%",
           height: "100%",
+          background: "linear-gradient(145deg,#050816,#0f172a 55%,#12304f)",
+          borderRadius: 38,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(145deg,#0b1220,#111b30)",
-          borderRadius: 40,
+          position: "relative",
         }}
       >
-        <svg width="126" height="126" viewBox="0 0 160 160" fill="none">
-          <path d="M48 102V58H58L85 91V58H96V102H86L59 69V102H48Z" fill="#E2E8F0" />
-          <path d="M107 58H118V102H107V58Z" fill="#2FE1C3" />
-        </svg>
+        <div
+          style={{
+            position: "absolute",
+            inset: 22,
+            borderRadius: 30,
+            background: "linear-gradient(145deg,rgba(47,225,195,.20),rgba(96,165,250,.14))",
+            border: "1px solid rgba(255,255,255,.12)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            right: 43,
+            top: 38,
+            width: 15,
+            height: 15,
+            borderRadius: 999,
+            background: "#2fe1c3",
+            boxShadow: "0 0 22px rgba(47,225,195,.75)",
+          }}
+        />
+        <div style={{ display: "flex", alignItems: "baseline", color: "#e2e8f0", fontSize: 38, fontWeight: 900, letterSpacing: -1 }}>
+          nex<span style={{ color: "#2fe1c3" }}>ID</span>
+        </div>
       </div>
     ),
-    { ...size }
+    { ...size },
   );
 }

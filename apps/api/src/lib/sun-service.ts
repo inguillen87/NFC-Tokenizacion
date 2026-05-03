@@ -7,6 +7,28 @@ import { decodeTTStatus, parseTTStatusFromDecryptedPayload } from './ttstatus';
 import { recordTapEvent } from './tap-event-service';
 import type { NexidEventVerdict } from '@product/core';
 
+const AUTHENTIC_SCAN_RESULTS = new Set([
+  "VALID",
+  "TAP_VALID",
+  "VALID_CLOSED",
+  "VALID_UNKNOWN_TAMPER",
+  "OPENED",
+  "OPENED_PREVIOUSLY",
+  "MANUAL_OPENED",
+  "VALID_OPENED",
+  "VALID_OPENED_PREVIOUSLY",
+  "VALID_MANUAL_OPENED",
+]);
+
+const OPENED_SCAN_RESULTS = new Set([
+  "OPENED",
+  "OPENED_PREVIOUSLY",
+  "MANUAL_OPENED",
+  "VALID_OPENED",
+  "VALID_OPENED_PREVIOUSLY",
+  "VALID_MANUAL_OPENED",
+]);
+
 export type ScanContext = {
   ip?: string | null;
   userAgent?: string | null;
@@ -283,7 +305,7 @@ export async function processSunScan(input: {
         SELECT id
         FROM events
         WHERE batch_id = ${batch.id}
-          AND uid_hex = ${payload.uidHex}
+          AND UPPER(uid_hex) = UPPER(${payload.uidHex})
           AND sdm_read_ctr = ${payload.ctr}
         ORDER BY created_at ASC
         LIMIT 1
@@ -291,12 +313,30 @@ export async function processSunScan(input: {
       const existingId = Number((existing?.[0] as { id?: number } | undefined)?.id || 0) || null;
       if (existingId) return existingId;
     }
-    const isReplay = payload.resultValue === 'REPLAY_SUSPECT';
-    const isInvalid = payload.resultValue !== 'VALID' && payload.resultValue !== 'TAP_VALID';
-    const riskLevelStr = payload.resultValue === 'TAMPER_RISK' || isReplay ? 'high' : isInvalid ? 'medium' : 'none';
+    const normalizedResult = String(payload.resultValue || "").toUpperCase();
+    const isReplay = normalizedResult === 'REPLAY_SUSPECT';
+    const isAuthentic = AUTHENTIC_SCAN_RESULTS.has(normalizedResult);
+    const isOpened = OPENED_SCAN_RESULTS.has(normalizedResult);
+    const isInvalid = !isAuthentic;
+    const riskLevelStr: 'none' | 'low' | 'medium' | 'high' =
+      normalizedResult === 'TAMPER_RISK' || isReplay
+        ? 'high'
+        : isInvalid
+          ? 'medium'
+          : isOpened
+            ? 'low'
+            : 'none';
     const verdictByResult: Record<string, NexidEventVerdict> = {
       VALID: "valid",
       TAP_VALID: "valid",
+      VALID_CLOSED: "valid",
+      VALID_UNKNOWN_TAMPER: "valid",
+      OPENED: "valid",
+      OPENED_PREVIOUSLY: "valid",
+      MANUAL_OPENED: "valid",
+      VALID_OPENED: "valid",
+      VALID_OPENED_PREVIOUSLY: "valid",
+      VALID_MANUAL_OPENED: "valid",
       REPLAY_SUSPECT: "replay_suspect",
       TAMPER_RISK: "tampered",
       NOT_REGISTERED: "not_registered",
@@ -306,7 +346,7 @@ export async function processSunScan(input: {
       BROKEN: "broken",
       INVALID: "invalid",
     };
-    const verdict = verdictByResult[payload.resultValue] || "invalid";
+    const verdict = verdictByResult[normalizedResult] || "invalid";
 
     return await recordTapEvent({
       tenantId: batch.tenant_id,
@@ -340,7 +380,7 @@ export async function processSunScan(input: {
   }
 
   const batchRows = await sql/*sql*/`
-    SELECT b.id, b.tenant_id, t.slug AS tenant_slug, b.status, b.meta_key_ct, b.file_key_ct, b.sdm_config
+    SELECT b.id, b.tenant_id, t.slug AS tenant_slug, t.name AS tenant_name, b.status, b.meta_key_ct, b.file_key_ct, b.sdm_config
     FROM batches b
     LEFT JOIN tenants t ON t.id = b.tenant_id
     WHERE b.bid = ${input.bid}
@@ -376,7 +416,7 @@ export async function processSunScan(input: {
       SELECT id
       FROM events
       WHERE batch_id = ${batch.id}
-        AND uid_hex = ${res.uidHex}
+        AND UPPER(uid_hex) = UPPER(${res.uidHex})
         AND sdm_read_ctr = ${res.ctr}
       LIMIT 1
     `;
@@ -385,7 +425,7 @@ export async function processSunScan(input: {
     const tagRows = await sql/*sql*/`
       SELECT id, status, last_seen_ctr
       FROM tags
-      WHERE batch_id = ${batch.id} AND uid_hex = ${res.uidHex}
+      WHERE batch_id = ${batch.id} AND UPPER(uid_hex) = UPPER(${res.uidHex})
       LIMIT 1
     `;
     const tag = tagRows[0];
@@ -463,16 +503,18 @@ export async function processSunScan(input: {
   })();
   const authStatus = !res.ok
     ? 'INVALID'
+    : replaySuspect
+      ? 'REPLAY_SUSPECT'
     : parsedTTStatus?.product_state === "VALID_OPENED" || parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
       ? 'OPENED'
     : parsedTTStatus?.product_state === "VALID_UNKNOWN_TAMPER"
       ? 'VALID'
+    : tamperStatus === "OPENED" || tamperStatus === "OPENED_PREVIOUSLY"
+      ? tamperStatus
     : tamperSignal.opened
       ? 'OPENED'
       : tamperSignal.tamper
         ? 'TAMPER_RISK'
-    : replaySuspect
-      ? 'REPLAY_SUSPECT'
       : !allowlisted
         ? 'NOT_REGISTERED'
         : tagStatus !== 'active'
@@ -484,7 +526,9 @@ export async function processSunScan(input: {
   const resolvedTamperStatus = manualOpened ? "MANUAL_OPENED" as const : tamperStatus;
   const tamperSource = manualOpened ? "manual" as const : (tamperConfigured ? "electronic" as const : "unavailable" as const);
 
-  const successReason = manualOpened
+  const successReason = replaySuspect
+    ? 'copied URL / replay suspected'
+    : manualOpened
     ? `manual_tamper_opened:${String(manualTamper?.reason || "operator_override")}`
     : tamperStatus === "OPENED"
     ? `tagtamper_opened:${configuredStatusHex || tamperSignal.raw || 'signal'}`
@@ -494,9 +538,7 @@ export async function processSunScan(input: {
       ? 'tagtamper_unconfigured'
     : tamperSignal.tamper
       ? `tagtamper_alert:${configuredStatusHex || tamperSignal.raw || 'signal'}`
-      : replaySuspect
-        ? 'copied URL / replay suspected'
-        : null;
+      : null;
   const resolvedReason = !res.ok ? res.reason : successReason;
   const ttStateRaw = ttstatusParsed?.product_state;
   const ttState: TTStatusProductState | null =
@@ -585,12 +627,17 @@ export async function processSunScan(input: {
     },
   }));
 
+  const publicResult = String(result || "").toUpperCase();
+  const publicOk = AUTHENTIC_SCAN_RESULTS.has(publicResult);
   return {
-    status: result === 'VALID' ? 200 : 403,
+    status: publicOk ? 200 : publicResult === 'REPLAY_SUSPECT' ? 409 : 403,
     body: {
-      ok: result === 'VALID',
+      ok: publicOk,
       request_id: requestId,
       result,
+      tenant_id: batch.tenant_id,
+      tenant_slug: (batch as { tenant_slug?: string }).tenant_slug || undefined,
+      tenant_name: (batch as { tenant_name?: string }).tenant_name || undefined,
       auth_status: authStatus,
       bid: input.bid,
       uid: res.ok ? res.uidHex : undefined,

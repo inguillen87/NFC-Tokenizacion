@@ -89,6 +89,48 @@ test("future tenant is resolved from explicit database passport/config without g
   assert.equal(result.profile.product.name, "Ampolla Serie A");
 });
 
+test("product identity can come from explicit batch SUN config when manifest row is not enriched yet", () => {
+  const result = resolveSunTenantProfile({
+    bid: "DEMO-2026-02",
+    passport: {
+      tenant_id: "00000000-0000-0000-0000-000000000001",
+      tenant_slug: "demobodega",
+      tenant_name: "Demo Bodega",
+      batch_sdm_config: {
+        sun: {
+          product: {
+            name: "Gran Reserva Malbec",
+            producer: "Demo Bodega",
+            varietal: "Malbec",
+            vintage: "2022",
+            serving: "16C - decantar 20 min",
+          },
+          origin: {
+            region: "Valle de Uco, Mendoza",
+            altitude: "1,050 msnm",
+          },
+        },
+      },
+      sun_profile_vertical: "wine",
+      sun_profile_club_name: "Club Terroir",
+      sun_profile_product_label: "Vino premium",
+      sun_profile_origin_label: "Valle de Uco, Mendoza",
+      sun_profile_origin_address: "Finca Altamira, Mendoza, AR",
+      sun_profile_origin_lat: -33.3667,
+      sun_profile_origin_lng: -69.15,
+      sun_profile_tokenization_mode: "valid_and_opened",
+      sun_profile_claim_policy: "purchase_proof_required",
+      sun_profile_ownership_policy: ownershipPolicy,
+      sun_profile_manifest_policy: manifestPolicy,
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profile.product.name, "Gran Reserva Malbec");
+  assert.equal(result.profile.product.winery, "Demo Bodega");
+  assert.equal(result.profile.product.varietal, "Malbec");
+});
+
 test("unknown or incomplete tenant requires setup instead of generic/manual fallback", () => {
   const result = resolveSunTenantProfile({ bid: "ACME-2026-001" });
   assert.equal(result.ok, false);
