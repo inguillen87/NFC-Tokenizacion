@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 type TapState = "valid" | "opened" | "blocked";
-type Props = { bid: string; uid: string; canExecute?: boolean; tapState?: TapState };
+type Props = { bid: string; uid?: string; eventId?: string; canExecute?: boolean; tapState?: TapState };
 type LeadIntent = "tokenization_optional";
 type ActionState = "idle" | "loading" | "success" | "error";
 type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokenization" | "report";
@@ -33,7 +33,10 @@ function normalizeUnknownError(error: unknown) {
 async function call(path: string, method: "POST" | "GET", payload: Record<string, unknown> | null): Promise<CallResponse> {
   const url = new URL(path, window.location.origin);
   if (method === "GET" && payload) {
-    Object.entries(payload).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value == null || value === "") return;
+      url.searchParams.set(key, String(value));
+    });
   }
   const res = await fetch(url.toString(), {
     method,
@@ -49,7 +52,7 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
   };
 }
 
-export function CtaActions({ bid, uid, canExecute = true, tapState = "valid" }: Props) {
+export function CtaActions({ bid, uid = "", eventId = "", canExecute = true, tapState = "valid" }: Props) {
   const [status, setStatus] = useState<string>("");
   const [pending, setPending] = useState(false);
   const [actionStates, setActionStates] = useState<Record<ActionKey, ActionState>>({
@@ -136,6 +139,16 @@ export function CtaActions({ bid, uid, canExecute = true, tapState = "valid" }: 
     return pending || (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey));
   }
 
+  function basePayload(extra?: Record<string, unknown>) {
+    const payload: Record<string, unknown> = {
+      ...(extra || {}),
+      bid,
+      uid,
+    };
+    if (eventId) payload.event_id = eventId;
+    return payload;
+  }
+
   useEffect(() => {
     const hasSuccess = Object.values(actionStates).some((item) => item === "success");
     if (!hasSuccess) return;
@@ -205,7 +218,7 @@ export function CtaActions({ bid, uid, canExecute = true, tapState = "valid" }: 
     setActionStates((current) => ({ ...current, [actionKey]: "loading" }));
     setLastRequest({ path, method, actionKey });
     try {
-      const data = await call(path, method, { bid, uid });
+      const data = await call(path, method, basePayload());
       setStatus(JSON.stringify(data));
       if (data._traceId) setLastTraceId(data._traceId);
       const ok = Boolean(data.ok && data._httpOk);
@@ -248,17 +261,15 @@ export function CtaActions({ bid, uid, canExecute = true, tapState = "valid" }: 
         source: "sun_validation_center",
         vertical: "premium",
         role: "buyer",
-        message: `Tokenization optional CTA from SUN page [bid=${bid}] [uid=${uid}] [intent=${leadIntent}]`,
-        notes: `commercial_signal=tokenization_optional | bid=${bid} | uid=${uid}`,
+        message: `Tokenization optional CTA from SUN page [bid=${bid}] [uid=${uid || "event:" + eventId}] [intent=${leadIntent}]`,
+        notes: `commercial_signal=tokenization_optional | bid=${bid} | uid=${uid || "event:" + eventId} | event_id=${eventId}`,
       };
       const lead = await call("/api/leads", "POST", leadPayload);
-      const tokenization = await call("/api/public-cta/tokenize-request", "POST", {
-        bid,
-        uid,
+      const tokenization = await call("/api/public-cta/tokenize-request", "POST", basePayload({
         claim_source: "sun_cta_modal",
         ledger_status: "simulated",
         ledger_network: "not_selected",
-      });
+      }));
       setStatus(JSON.stringify({ lead, tokenization }));
       if ((tokenization as CallResponse)._traceId) setLastTraceId(String((tokenization as CallResponse)._traceId));
       const ok = Boolean((lead as CallResponse).ok && (lead as CallResponse)._httpOk && (tokenization as CallResponse).ok && (tokenization as CallResponse)._httpOk);
@@ -344,7 +355,12 @@ export function CtaActions({ bid, uid, canExecute = true, tapState = "valid" }: 
           </ul>
         </div>
       ) : null}
-      {status ? <pre className="overflow-x-auto rounded border border-white/10 bg-slate-950/70 p-2 text-[11px] text-slate-200">{status}</pre> : null}
+      {status ? (
+        <details className="rounded border border-white/10 bg-slate-950/55 p-2 text-[11px] text-slate-300">
+          <summary className="cursor-pointer font-semibold text-slate-100">Detalle tecnico</summary>
+          <pre className="mt-2 overflow-x-auto text-slate-300">{status}</pre>
+        </details>
+      ) : null}
       {showTokenModal ? (
         <div ref={tokenModalRef} role="dialog" aria-modal="true" aria-labelledby="sun-token-modal-title" className="rounded-xl border border-emerald-300/30 bg-slate-950/90 p-3 text-xs text-slate-200">
           <p id="sun-token-modal-title" className="font-semibold text-emerald-100">Blockchain-ready · tokenización opcional</p>

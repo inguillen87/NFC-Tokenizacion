@@ -3,19 +3,19 @@ import { recordDemoCta } from "../../../../lib/demo-cta";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { claimOwnershipForConsumer } from "../../../../lib/consumer-portal-service";
+import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 
 export async function POST(req: Request) {
   const traceId = req.headers.get("x-nexid-trace-id") || `api_cta_${Date.now().toString(36)}`;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const bid = String(body.bid || "").trim();
-  const uid = String(body.uid || body.uid_hex || "").trim().toUpperCase();
-  if (!bid || !uid) return json({ ok: false, reason: "bid and uid required", trace_id: traceId }, 400);
+  const target = await resolvePublicCtaTarget(body);
+  if (!target.ok) return json({ ok: false, reason: target.reason, trace_id: traceId }, 400);
+  const { bid, uid, eventId } = target;
 
-  const auth = requireShareToken(req, bid, uid);
+  const auth = requireShareToken(req, bid, target.shareUid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
 
   const consumer = await getConsumerFromRequest(req);
-  const eventId = String(body.event_id || body.eventId || "").trim();
   if (consumer && eventId) {
     const claim = await claimOwnershipForConsumer({
       consumerId: consumer.id,

@@ -6,6 +6,11 @@ export function hasDemoConsumerCookie(cookie: string) {
   return /(?:^|;\s*)nexid_consumer_demo=1(?:;|$)/.test(cookie || "");
 }
 
+export function demoConsumerCookieEnabled() {
+  const flag = String(process.env.NEXT_PUBLIC_DEMO_CONSUMER_ENABLED || process.env.DEMO_CONSUMER_ENABLED || "true").toLowerCase();
+  return !["0", "false", "off", "no"].includes(flag);
+}
+
 export function demoConsumerPayload(path: string) {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   if (normalized === "/consumer/session") return { ok: true, authenticated: true, demo: true };

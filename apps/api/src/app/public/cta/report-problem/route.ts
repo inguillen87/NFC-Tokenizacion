@@ -13,6 +13,19 @@ export async function POST(req: Request) {
   const auth = requireShareToken(req, bid, target.shareUid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
 
-  const saved = await recordDemoCta("register_warranty", bid, uid, body);
-  return json({ ok: true, action: "register_warranty", id: saved.id, created_at: saved.created_at, trace_id: traceId, share_token_status: auth.share_token_status });
+  const saved = await recordDemoCta("report_problem", bid, uid, {
+    ...body,
+    reported_at: new Date().toISOString(),
+    trace_id: traceId,
+    share_token_status: auth.share_token_status,
+  });
+
+  return json({
+    ok: true,
+    action: "report_problem",
+    id: saved.id,
+    created_at: saved.created_at,
+    trace_id: traceId,
+    share_token_status: auth.share_token_status,
+  });
 }

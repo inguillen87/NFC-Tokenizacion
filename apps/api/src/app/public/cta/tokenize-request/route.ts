@@ -2,6 +2,8 @@ import { json } from "../../../../lib/http";
 import { recordDemoCta } from "../../../../lib/demo-cta";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { sql } from "../../../../lib/db";
+import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
+import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 
 const LEDGER_NETWORK_ALLOWED = new Set(["polygon-amoy", "polygon", "ethereum-sepolia", "ethereum-mainnet", "base-sepolia", "base-mainnet"]);
 
@@ -12,12 +14,14 @@ function sanitizeText(value: unknown, max = 120) {
 export async function POST(req: Request) {
   const traceId = req.headers.get("x-nexid-trace-id") || `api_cta_${Date.now().toString(36)}`;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const bid = String(body.bid || "").trim();
-  const uid = String(body.uid || body.uid_hex || "").trim().toUpperCase();
-  if (!bid || !uid) return json({ ok: false, reason: "bid and uid required", trace_id: traceId }, 400);
+  const target = await resolvePublicCtaTarget(body);
+  if (!target.ok) return json({ ok: false, reason: target.reason, trace_id: traceId }, 400);
+  const { bid, uid } = target;
 
-  const auth = requireShareToken(req, bid, uid);
+  const auth = requireShareToken(req, bid, target.shareUid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
+
+  await ensureTokenizationRequestsSchema();
 
   const requestedNetworkRaw = sanitizeText(body.ledger_network || "polygon-amoy", 40).toLowerCase();
   const ledgerNetwork = LEDGER_NETWORK_ALLOWED.has(requestedNetworkRaw) ? requestedNetworkRaw : "polygon-amoy";

@@ -35,6 +35,72 @@ async function ensureTable() {
   ensured = true;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function uniqueStrings(value: unknown, extra: string[] = []) {
+  const items = Array.isArray(value) ? value : [];
+  return Array.from(new Set([...items.filter((item): item is string => typeof item === "string" && item.trim().length > 0), ...extra]));
+}
+
+function cloneRecord(value: unknown): Record<string, unknown> {
+  try {
+    return JSON.parse(JSON.stringify(value || {})) as Record<string, unknown>;
+  } catch {
+    return { ...asRecord(value) };
+  }
+}
+
+function markHistoricalSnapshotContract(input: unknown, snapshot: { id: number; traceId: string; createdAt: string | null }) {
+  const contract = cloneRecord(input);
+  const tapSecurity = asRecord(contract.tapSecurity);
+  contract.tapSecurity = {
+    ...tapSecurity,
+    snapshot: true,
+    freshTap: false,
+    actionability: "view_only",
+    policy: "snapshot_view_only",
+    tokenizationEligible: false,
+    requiresFreshTapForCommercialActions: true,
+    reason: "historical_snapshot_requires_fresh_tap",
+  };
+  contract.snapshot = {
+    mode: "historical",
+    diagnosticId: snapshot.id,
+    traceId: snapshot.traceId,
+    createdAt: snapshot.createdAt,
+    requiresFreshTap: true,
+    commercialActions: "blocked_until_new_physical_tap",
+  };
+  contract.allowedActions = uniqueStrings(contract.allowedActions).filter((action) => action === "provenance" || action === "report");
+  contract.blockedActions = uniqueStrings(contract.blockedActions, ["claim", "save", "join", "warranty", "rewards", "tokenization"]);
+
+  const status = asRecord(contract.status);
+  const summary = String(status.summary || "Autenticidad visible en modo consulta.");
+  contract.status = {
+    ...status,
+    snapshot: true,
+    actionability: "view_only",
+    reason: status.reason || "historical_snapshot",
+    summary: `${summary} Vista historica: ownership, club, rewards y tokenizacion requieren un nuevo tap fisico.`,
+  };
+
+  const tokenization = asRecord(contract.tokenization);
+  contract.tokenization = {
+    ...tokenization,
+    status: String(tokenization.status || "").startsWith("minted") ? tokenization.status : "blocked_snapshot",
+  };
+
+  const troubleshooting = uniqueStrings(contract.troubleshooting, [
+    "Vista historica: no usar este snapshot para ownership, rewards, garantia o tokenizacion. Escanea fisicamente la etiqueta para generar un tap fresco.",
+  ]);
+  contract.troubleshooting = troubleshooting;
+  return contract;
+}
+
 export async function insertSunDiagnostic(input: {
   trace_id?: string | null;
   tool_type: SunDiagnosticTool;
@@ -107,11 +173,14 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
   if (!row || !row.result_json || typeof row.result_json !== "object") return null;
   const result = row.result_json as { contract?: unknown };
   if (!result.contract || typeof result.contract !== "object") return null;
+  const diagnosticId = Number(row.id || numericId);
+  const traceIdValue = row.trace_id || trace;
+  const createdAt = row.created_at || null;
   return {
     ok: true,
-    diagnostic_id: Number(row.id || numericId),
-    trace_id: row.trace_id || trace,
-    created_at: row.created_at || null,
-    contract: result.contract,
+    diagnostic_id: diagnosticId,
+    trace_id: traceIdValue,
+    created_at: createdAt,
+    contract: markHistoricalSnapshotContract(result.contract, { id: diagnosticId, traceId: traceIdValue, createdAt }),
   };
 }

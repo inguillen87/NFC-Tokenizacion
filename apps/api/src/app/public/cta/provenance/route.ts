@@ -1,15 +1,20 @@
 import { json } from "../../../../lib/http";
 import { buildLifecycleState, listDemoCta } from "../../../../lib/demo-cta";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
+import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 
 export async function GET(req: Request) {
   const traceId = req.headers.get("x-nexid-trace-id") || `api_cta_${Date.now().toString(36)}`;
   const url = new URL(req.url);
-  const bid = String(url.searchParams.get("bid") || "").trim();
-  const uid = String(url.searchParams.get("uid") || "").trim().toUpperCase();
-  if (!bid || !uid) return json({ ok: false, reason: "bid and uid required", trace_id: traceId }, 400);
+  const target = await resolvePublicCtaTarget({
+    bid: url.searchParams.get("bid"),
+    uid: url.searchParams.get("uid"),
+    event_id: url.searchParams.get("event_id") || url.searchParams.get("eventId"),
+  });
+  if (!target.ok) return json({ ok: false, reason: target.reason, trace_id: traceId }, 400);
+  const { bid, uid } = target;
 
-  const auth = requireShareToken(req, bid, uid);
+  const auth = requireShareToken(req, bid, target.shareUid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
 
   const actions = await listDemoCta(bid, uid);

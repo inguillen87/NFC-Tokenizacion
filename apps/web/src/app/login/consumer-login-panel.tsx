@@ -78,7 +78,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email: demoConsumerEmail }),
     }).then((res) => res.json().catch(() => null)).catch(() => null);
-    const demoCode = String(startPayload?.code || "").trim();
+    const demoCode = String(startPayload?.code || "000000").trim();
     if (!startPayload?.ok || !demoCode) {
       setPending(false);
       setStatus("No se pudo iniciar demo consumer. Verificá DEMO_MODE en API.");

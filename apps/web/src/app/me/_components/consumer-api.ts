@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { demoConsumerPayload, demoMarketplacePayload, hasDemoConsumerCookie } from "../../../lib/demo-consumer-data";
+import { demoConsumerCookieEnabled, demoConsumerPayload, demoMarketplacePayload, hasDemoConsumerCookie } from "../../../lib/demo-consumer-data";
 import { shouldRedirectToConsumerAuth } from "./consumer-portal-model";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.nexid.lat";
@@ -11,7 +11,7 @@ async function fetchJson(path: string) {
   const incomingHeaders = await headers();
   const cookie = incomingHeaders.get("cookie") || "";
   const demoCookie = hasDemoConsumerCookie(cookie);
-  const demoFallbackEnabled = demoCookie && process.env.NODE_ENV !== "production";
+  const demoFallbackEnabled = demoCookie && demoConsumerCookieEnabled();
   if (demoFallbackEnabled) {
     const demoPayload = demoConsumerPayload(path) || demoMarketplacePayload(path);
     if (demoPayload) return demoPayload;
