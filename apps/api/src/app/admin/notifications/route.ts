@@ -4,10 +4,12 @@ export const dynamic = "force-dynamic";
 import { checkAdmin } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+import { ensureCrmOpsSchema } from "../../../lib/commercial-runtime-schema";
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureCrmOpsSchema();
 
   const [counts, latest] = await Promise.all([
     sql/*sql*/`

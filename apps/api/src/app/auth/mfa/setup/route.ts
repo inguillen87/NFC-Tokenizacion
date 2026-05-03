@@ -4,6 +4,7 @@ import { sql } from '../../../../lib/db';
 import { json } from '../../../../lib/http';
 import { buildTotpUri, generateRecoveryCodes, generateTotpSecret, verifyTotpCode } from '../../../../lib/iam';
 import { requireApiSession } from '../../../../lib/auth-guard';
+import { ensureEnterpriseIamSchema } from '../../../../lib/commercial-runtime-schema';
 
 export async function POST(req: Request) {
   const { error, session } = await requireApiSession(req);
@@ -17,6 +18,7 @@ export async function POST(req: Request) {
   }
   if (!verifyTotpCode(secret, code)) return json({ ok: false, reason: 'invalid mfa code' }, 400);
   const recoveryCodes = generateRecoveryCodes();
+  await ensureEnterpriseIamSchema();
   await sql`INSERT INTO user_mfa_factors (user_id, secret, recovery_codes, enabled_at, updated_at)
     VALUES (${session.userId}::uuid, ${secret}, ${JSON.stringify(recoveryCodes)}::jsonb, now(), now())
     ON CONFLICT (user_id) DO UPDATE SET secret = EXCLUDED.secret, recovery_codes = EXCLUDED.recovery_codes, enabled_at = now(), updated_at = now()`;

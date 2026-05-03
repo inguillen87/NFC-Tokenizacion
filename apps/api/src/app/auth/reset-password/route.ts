@@ -5,6 +5,7 @@ import { json } from '../../../lib/http';
 import { auditAuthEvent, sha256 } from '../../../lib/iam';
 import { hashPassword } from '../../../lib/password';
 import { getRequestMeta } from '../../../lib/request-meta';
+import { ensureEnterpriseIamSchema } from '../../../lib/commercial-runtime-schema';
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({})) as { token?: string; password?: string };
@@ -12,6 +13,7 @@ export async function POST(req: Request) {
   const password = String(body.password || '');
   if (!token || password.length < 8) return json({ ok: false, reason: 'token and strong password required' }, 400);
   const meta = getRequestMeta(req);
+  await ensureEnterpriseIamSchema();
   const rows = await sql/*sql*/`
     SELECT prt.user_id, u.email, COALESCE(m.role::text, 'viewer') AS role
     FROM password_reset_tokens prt

@@ -25,6 +25,8 @@ type Scene = {
   security: string;
   nextAction: string;
   marketplace: string;
+  loyalty: string;
+  businessValue: string;
   objectClass: string;
   phoneTag: string;
   steps: string[];
@@ -62,12 +64,14 @@ const labels: Record<AppLocale, {
     security: string;
     nextAction: string;
     marketplace: string;
+    loyalty: string;
+    businessValue: string;
   };
   items: Record<Vertical, Scene>;
 }> = {
   "es-AR": {
     selectorTitle: "Elegi vertical",
-    microcopy: "La landing vende la idea simple: una accion fisica real se convierte en prueba, datos y venta post-tap.",
+    microcopy: "Cada tap convierte seguridad en relacion: prueba de origen, club, garantia, puntos, recompra y marketplace contextual para la marca.",
     ctaBands: ["Bodegas", "Eventos", "Cosmetica", "Agro", "Pharma"],
     phoneLabel: "Salida mobile",
     swapTap: "Cambiar tap",
@@ -88,6 +92,8 @@ const labels: Record<AppLocale, {
       security: "Seguridad",
       nextAction: "Siguiente accion",
       marketplace: "Marketplace",
+      loyalty: "Loyalty",
+      businessValue: "Valor empresa",
     },
     items: {
       wine: {
@@ -102,6 +108,8 @@ const labels: Record<AppLocale, {
         security: "SUN dinamico + tamper fisico + anti-replay",
         nextAction: "Club, garantia, ownership o token premium",
         marketplace: "Voucher post-compra + trazabilidad de coleccion",
+        loyalty: "320 pts, club de cosecha, voucher y recompra premium",
+        businessValue: "CRM post-tap + marketplace + tokenizacion opcional",
         objectClass: "hero-bottle scanning tampered",
         phoneTag: "WINE - AUTH_OK",
         steps: ["Se lee UID fisico", "SUN evita replay", "El sello cambia a OPENED", "Se abre club y marketplace"],
@@ -118,6 +126,8 @@ const labels: Record<AppLocale, {
         security: "UID + estado de acceso + bloqueo de reingreso",
         nextAction: "Beneficio backstage o upgrade de entrada",
         marketplace: "Promos de barra, merch y reventa controlada",
+        loyalty: "Puntos por asistencia, upgrades y merch",
+        businessValue: "Control de acceso + datos de audiencia + revenue post-evento",
         objectClass: "wristband-demo scanning",
         phoneTag: "EVENT - ENTRY_OK",
         steps: ["Tap en ingreso", "Backend valida UID", "Marca check-in", "Activa beneficio"],
@@ -134,6 +144,8 @@ const labels: Record<AppLocale, {
         security: "SUN dinamico + lote + garantia",
         nextAction: "Registro de garantia y recompra",
         marketplace: "Cross-sell, muestras y loyalty",
+        loyalty: "Garantia, muestras y recompra",
+        businessValue: "Antifalsificacion + first-party data + cross-sell",
         objectClass: "cosmetic-demo scanning",
         phoneTag: "COSMETIC - VERIFIED",
         steps: ["Tap en tapa", "SUN verifica autenticidad", "Muestra lote", "Activa garantia"],
@@ -150,6 +162,8 @@ const labels: Record<AppLocale, {
         security: "QR/NFC UID + trazabilidad logistica",
         nextAction: "Ficha tecnica, soporte y reclamo",
         marketplace: "Reposicion, asesor tecnico y cupon rural",
+        loyalty: "Soporte tecnico, reposicion y beneficios por lote",
+        businessValue: "Trazabilidad + asistencia + canal rural",
         objectClass: "agro-demo tampered scanning",
         phoneTag: "AGRO - LOT_OK",
         steps: ["Scan en campo", "Lote confirmado", "Origen visible", "Soporte activo"],
@@ -158,7 +172,7 @@ const labels: Record<AppLocale, {
   },
   "pt-BR": {
     selectorTitle: "Escolha o vertical",
-    microcopy: "A landing vende a ideia simples: uma acao fisica real vira prova, dados e venda pos-toque.",
+    microcopy: "Cada toque transforma seguranca em relacionamento: prova de origem, clube, garantia, pontos, recompra e marketplace contextual para a marca.",
     ctaBands: ["Vinhos", "Eventos", "Cosmeticos", "Agro", "Pharma"],
     phoneLabel: "Saida mobile",
     swapTap: "Trocar toque",
@@ -179,6 +193,8 @@ const labels: Record<AppLocale, {
       security: "Seguranca",
       nextAction: "Proxima acao",
       marketplace: "Marketplace",
+      loyalty: "Loyalty",
+      businessValue: "Valor empresa",
     },
     items: {
       wine: {
@@ -193,6 +209,8 @@ const labels: Record<AppLocale, {
         security: "SUN dinamico + tamper fisico + anti-replay",
         nextAction: "Clube, garantia, ownership ou token premium",
         marketplace: "Voucher pos-compra + rastreabilidade de colecao",
+        loyalty: "320 pts, clube de safra, voucher e recompra premium",
+        businessValue: "CRM pos-toque + marketplace + tokenizacao opcional",
         objectClass: "hero-bottle scanning tampered",
         phoneTag: "WINE - AUTH_OK",
         steps: ["Leitura de UID fisico", "SUN reduz replay", "Lacre muda para OPENED", "Clube e marketplace abrem"],
@@ -209,6 +227,8 @@ const labels: Record<AppLocale, {
         security: "UID + estado de acesso + bloqueio duplicado",
         nextAction: "Beneficio backstage ou upgrade",
         marketplace: "Promos, merch e revenda controlada",
+        loyalty: "Pontos por presenca, upgrades e merch",
+        businessValue: "Controle de acesso + dados de audiencia + receita pos-evento",
         objectClass: "wristband-demo scanning",
         phoneTag: "EVENT - ENTRY_OK",
         steps: ["Toque na entrada", "Backend valida UID", "Marca check-in", "Ativa beneficio"],
@@ -225,6 +245,8 @@ const labels: Record<AppLocale, {
         security: "SUN dinamico + lote + garantia",
         nextAction: "Registro de garantia e recompra",
         marketplace: "Cross-sell, amostras e loyalty",
+        loyalty: "Garantia, amostras e recompra",
+        businessValue: "Antifalsificacao + first-party data + cross-sell",
         objectClass: "cosmetic-demo scanning",
         phoneTag: "COSMETIC - VERIFIED",
         steps: ["Toque na tampa", "SUN verifica", "Lote aparece", "Garantia ativa"],
@@ -241,6 +263,8 @@ const labels: Record<AppLocale, {
         security: "QR/NFC UID + rastreabilidade logistica",
         nextAction: "Ficha tecnica, suporte e reclamo",
         marketplace: "Reposicao, tecnico e cupom rural",
+        loyalty: "Suporte tecnico, reposicao e beneficios por lote",
+        businessValue: "Rastreabilidade + assistencia + canal rural",
         objectClass: "agro-demo tampered scanning",
         phoneTag: "AGRO - LOT_OK",
         steps: ["Scan no campo", "Lote confirmado", "Origem visivel", "Suporte ativo"],
@@ -249,7 +273,7 @@ const labels: Record<AppLocale, {
   },
   en: {
     selectorTitle: "Choose vertical",
-    microcopy: "The landing sells the simple idea: one physical action becomes proof, data, and a post-tap sales moment.",
+    microcopy: "Every tap turns security into relationship: origin proof, club, warranty, points, reorder and a contextual marketplace for the brand.",
     ctaBands: ["Wineries", "Events", "Cosmetics", "Agro", "Pharma"],
     phoneLabel: "Mobile output",
     swapTap: "Change tap",
@@ -270,6 +294,8 @@ const labels: Record<AppLocale, {
       security: "Security",
       nextAction: "Next action",
       marketplace: "Marketplace",
+      loyalty: "Loyalty",
+      businessValue: "Business value",
     },
     items: {
       wine: {
@@ -284,6 +310,8 @@ const labels: Record<AppLocale, {
         security: "Dynamic SUN + physical tamper + anti-replay",
         nextAction: "Club, warranty, ownership or premium token",
         marketplace: "Post-purchase voucher + collectible provenance",
+        loyalty: "320 pts, harvest club, voucher and premium reorder",
+        businessValue: "Post-tap CRM + marketplace + optional tokenization",
         objectClass: "hero-bottle scanning tampered",
         phoneTag: "WINE - AUTH_OK",
         steps: ["Reads physical UID", "SUN blocks replay", "Seal becomes OPENED", "Club and marketplace open"],
@@ -300,6 +328,8 @@ const labels: Record<AppLocale, {
         security: "UID + access state + duplicate entry block",
         nextAction: "Backstage perk or ticket upgrade",
         marketplace: "Bar promos, merch and controlled resale",
+        loyalty: "Attendance points, upgrades and merch",
+        businessValue: "Access control + audience data + post-event revenue",
         objectClass: "wristband-demo scanning",
         phoneTag: "EVENT - ENTRY_OK",
         steps: ["Tap at access", "Backend validates UID", "Check-in is written", "Benefit is unlocked"],
@@ -316,6 +346,8 @@ const labels: Record<AppLocale, {
         security: "Dynamic SUN + batch + warranty",
         nextAction: "Warranty registration and reorder",
         marketplace: "Cross-sell, samples and loyalty",
+        loyalty: "Warranty, samples and reorder",
+        businessValue: "Anti-counterfeit + first-party data + cross-sell",
         objectClass: "cosmetic-demo scanning",
         phoneTag: "COSMETIC - VERIFIED",
         steps: ["Tap on cap", "SUN proves authenticity", "Batch appears", "Warranty opens"],
@@ -332,6 +364,8 @@ const labels: Record<AppLocale, {
         security: "QR/NFC UID + logistics traceability",
         nextAction: "Technical sheet, support and claim flow",
         marketplace: "Reorder, agronomist support and rural coupon",
+        loyalty: "Technical support, reorder and lot benefits",
+        businessValue: "Traceability + support + rural channel",
         objectClass: "agro-demo tampered scanning",
         phoneTag: "AGRO - LOT_OK",
         steps: ["Field scan", "Lot is confirmed", "Origin is visible", "Support opens"],
@@ -399,6 +433,14 @@ function HeroTraceMap({
         <path className="hero-trace-map__land hero-trace-map__land--africa" d="M 64 46 C 73 42 84 48 87 60 C 82 72 75 82 66 81 C 60 73 59 62 62 53 C 63 50 63 48 64 46 Z" />
         <path className="hero-trace-map__coast" d="M 14 18 C 25 8 39 12 43 22 M 63 22 C 72 13 88 18 91 29 M 64 46 C 74 42 85 49 88 61" />
         <path className="hero-trace-map__grid" d="M 8 24 H 92 M 8 50 H 92 M 8 76 H 92 M 20 10 V 88 M 48 10 V 88 M 76 10 V 88" />
+        <path className="hero-trace-map__road" d="M 8 70 C 25 61 34 66 47 58 S 75 49 94 55" />
+        <path className="hero-trace-map__road" d="M 14 36 C 29 34 45 42 58 37 S 78 25 92 31" />
+        <path className="hero-trace-map__road hero-trace-map__road--secondary" d="M 30 12 C 35 29 34 47 41 65 S 55 80 58 90" />
+        <circle className="hero-trace-map__city" cx="30" cy="64" r="1.2" />
+        <circle className="hero-trace-map__city" cx="66" cy="37" r="1" />
+        <circle className="hero-trace-map__city" cx="78" cy="58" r="1.1" />
+        <text className="hero-trace-map__label" x="10" y="89">LATAM</text>
+        <text className="hero-trace-map__label" x="62" y="17">GLOBAL</text>
         <path className="hero-trace-map__route-shadow" d={routePath} />
         <path className="hero-trace-map__route" d={routePath} />
         <circle className="hero-trace-map__origin" cx={originPoint.x} cy={originPoint.y} r="2.4" />
@@ -447,6 +489,8 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
     { label: txt.labels.security, value: data.security },
     { label: txt.labels.nextAction, value: data.nextAction },
     { label: txt.labels.marketplace, value: data.marketplace },
+    { label: txt.labels.loyalty, value: data.loyalty },
+    { label: txt.labels.businessValue, value: data.businessValue },
   ];
 
   return (

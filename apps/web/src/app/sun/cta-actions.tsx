@@ -18,6 +18,8 @@ type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokeniz
 type CallResponse = {
   ok?: boolean;
   reason?: string;
+  anchor?: { ok?: boolean; status?: string; tx_hash?: string | null; token_id?: string | null; reason?: string | null; next_attempt_at?: string | null } | null;
+  tokenization_request?: { status?: string | null; tx_hash?: string | null; token_id?: string | null; next_attempt_at?: string | null } | null;
   _httpStatus?: number;
   _httpOk?: boolean;
   _traceId?: string | null;
@@ -156,6 +158,25 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     report: "Ticket creado para revisar el tap.",
   };
 
+  function successMessageFor(actionKey: ActionKey, data: CallResponse) {
+    if (actionKey !== "tokenization") return successCopy[actionKey];
+    const anchorStatus = String(data.anchor?.status || data.tokenization_request?.status || "").toLowerCase();
+    const tokenId = data.anchor?.token_id || data.tokenization_request?.token_id;
+    const txHash = data.anchor?.tx_hash || data.tokenization_request?.tx_hash;
+    if (data.anchor?.ok || anchorStatus === "anchored") {
+      return tokenId
+        ? `Token anclado en Polygon Amoy (#${tokenId}${txHash ? ", tx lista" : ""}).`
+        : "Tokenizacion anclada en Polygon Amoy.";
+    }
+    if (anchorStatus === "pending" || anchorStatus === "processing" || anchorStatus.includes("retry")) {
+      return "Tokenizacion en cola: el minter va a reintentar en Polygon Amoy.";
+    }
+    if (anchorStatus === "failed") {
+      return "Solicitud guardada, pero el mint requiere revision operativa.";
+    }
+    return successCopy.tokenization;
+  }
+
   function renderStateBadge(actionKey: ActionKey) {
     const state = actionStates[actionKey];
     if (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey) && state === "idle") {
@@ -275,7 +296,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       if (!ok) {
         setActionError(normalizeReason(data));
       } else {
-        setLastActionMessage(successCopy[actionKey]);
+        setLastActionMessage(successMessageFor(actionKey, data));
       }
       if (method === "GET" && path.includes("provenance")) setProvenance(data as ProvenanceResponse);
     } catch (error) {
@@ -328,7 +349,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         const reason = normalizeReason(tokenization as CallResponse) || normalizeReason(lead as CallResponse);
         setActionError(reason);
       } else {
-        setLastActionMessage(successCopy.tokenization);
+        setLastActionMessage(successMessageFor("tokenization", tokenization as CallResponse));
       }
     } catch (error) {
       setActionStates((current) => ({ ...current, tokenization: "error" }));

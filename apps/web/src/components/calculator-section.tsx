@@ -32,9 +32,9 @@ const protectedUnitValue: Record<ProductType, number> = {
 };
 
 const securityCosts: Record<SecurityLevel, { hardware: number; encoding: number; monthlySaas: number; setup: number; scope: "base" | "extended" | "advanced"; plan: string }> = {
-  basic: { hardware: 0.18, encoding: 0.03, monthlySaas: 249, setup: 900, scope: "base", plan: "BASIC" },
-  secure: { hardware: 0.42, encoding: 0.08, monthlySaas: 790, setup: 2600, scope: "extended", plan: "SECURE" },
-  enterprise: { hardware: 0.55, encoding: 0.12, monthlySaas: 1800, setup: 6200, scope: "advanced", plan: "ENTERPRISE / RESELLER" },
+  basic: { hardware: 0.06, encoding: 0.02, monthlySaas: 199, setup: 650, scope: "base", plan: "BASIC QR/NTAG213" },
+  secure: { hardware: 0.34, encoding: 0.07, monthlySaas: 690, setup: 2200, scope: "extended", plan: "SECURE NTAG215/424 DNA" },
+  enterprise: { hardware: 1.0, encoding: 0.14, monthlySaas: 1650, setup: 5600, scope: "advanced", plan: "ENTERPRISE 424 DNA TT + TOKEN" },
 };
 
 const currencyRate: Record<Currency, number> = {
@@ -116,7 +116,7 @@ const investmentCopy: Record<AppLocale, {
     annualSaas: "SaaS anual",
     activationScope: "Tags activables",
     assumptions: "Supuestos",
-    assumptionsBody: "Incluye tag fisico, encoding, SaaS anual y setup. El valor protegido usa ticket promedio por vertical para explicar el ROI.",
+    assumptionsBody: "Incluye etiqueta fisica estimada (QR/GS1 desde centavos, NTAG213/215 bajo costo, NTAG424 DNA TT hasta ~USD 1 puesto en Argentina), encoding, SaaS anual y setup. El valor protegido usa ticket promedio por vertical para explicar ROI, loyalty y ventas post-tap.",
     investorTitle: "Fast lane inversores",
     investorBody: "Podemos modelar USD 25k o USD 50k en chips, encoding o software-only con escenarios de margen y rollout.",
     askBot: "Hablar con IA",
@@ -158,7 +158,7 @@ const investmentCopy: Record<AppLocale, {
     annualSaas: "SaaS anual",
     activationScope: "Tags ativaveis",
     assumptions: "Premissas",
-    assumptionsBody: "Inclui tag fisica, encoding, SaaS anual e setup. O valor protegido usa ticket medio por vertical.",
+    assumptionsBody: "Inclui etiqueta fisica estimada (QR/GS1 desde centavos, NTAG213/215 baixo custo, NTAG424 DNA TT ate ~USD 1 landed na Argentina), encoding, SaaS anual e setup. O valor protegido usa ticket medio por vertical para explicar ROI, loyalty e vendas pos-toque.",
     investorTitle: "Fast lane investidores",
     investorBody: "Podemos modelar USD 25k ou USD 50k em chips, encoding ou software-only com cenarios de margem.",
     askBot: "Falar com IA",
@@ -200,7 +200,7 @@ const investmentCopy: Record<AppLocale, {
     annualSaas: "Annual SaaS",
     activationScope: "Activatable tags",
     assumptions: "Assumptions",
-    assumptionsBody: "Includes physical tag, encoding, annual SaaS and setup. Protected value uses an average ticket by vertical.",
+    assumptionsBody: "Includes estimated physical tag cost (QR/GS1 from cents, NTAG213/215 low cost, NTAG424 DNA TT up to about USD 1 landed in Argentina), encoding, annual SaaS and setup. Protected value uses average ticket by vertical to explain ROI, loyalty and post-tap sales.",
     investorTitle: "Investor fast lane",
     investorBody: "We can model USD 25k or USD 50k across chips, encoding or software-only with margin and rollout scenarios.",
     askBot: "Talk to AI",

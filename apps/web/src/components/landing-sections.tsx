@@ -15,10 +15,10 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
   const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza Enterprise";
   const demoEyebrow = isEn ? "Interactive product experience" : isBr ? "Experiencia interativa do produto" : "Experiencia interactiva de producto";
   const demoBody = isEn
-    ? "Bottle, wristband, seal and package: tap, authenticity and consumer action in one guided scene."
+    ? "Bottle, wristband, seal and package: real tap, origin map, authenticity, club, points and marketplace in one guided scene."
     : isBr
-    ? "Garrafa, pulseira, lacre e embalagem: toque, autenticidade e acao do consumidor em uma cena guiada."
-    : "Botella, pulsera, sello y packaging: tap, autenticidad y accion del consumidor en una escena guiada.";
+    ? "Garrafa, pulseira, lacre e embalagem: toque real, mapa de origem, autenticidade, clube, pontos e marketplace em uma cena guiada."
+    : "Botella, pulsera, sello y packaging: tap real, autenticidad, mapa de origen, club, puntos y marketplace en una escena guiada.";
   const demoCta = isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir Demo Lab";
 
   return (
@@ -273,10 +273,10 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-4">
             {[
-              { name: "QR comun", tag: "Marketing", body: "Barato y rapido. Sirve para contenido, campanas y trazabilidad simple, pero se copia con una captura." },
-              { name: "NTAG215", tag: "Tap UX", body: "Ideal para pulseras, credenciales y activaciones donde importa velocidad, serializacion y control server-side." },
-              { name: "NTAG 424 DNA", tag: "Anti-clone", body: "Agrega SUN/SDM dinamico para que cada tap sea unico y verificable contra replay o copia." },
-              { name: "424 DNA TT", tag: "Tamper", body: "Para botellas, tapas, sellos y packaging premium: detecta apertura fisica y cambia el estado del passport." },
+              { name: "QR / GS1 Digital Link", tag: "Contenido", body: "La entrada mas barata: URL verificable, packaging masivo, campanas, manuales y analitica basica. Ideal cuando no se necesita anti-clon fuerte." },
+              { name: "NTAG213 / NTAG215", tag: "Tap UX", body: "Bajo costo NFC para tickets, credenciales, loyalty y productos de rotacion: UID serializado, reglas server-side y experiencia sin camara." },
+              { name: "NTAG 424 DNA", tag: "SUN/SDM", body: "Cada tap genera datos dinamicos verificables contra replay, clones y URLs reutilizadas. Recomendado para autenticidad fuerte sin tamper fisico." },
+              { name: "424 DNA TT + token", tag: "Tamper + chain", body: "Para vino, lujo, pharma y activos premium: detecta apertura fisica, cambia el passport y habilita ownership/tokenizacion segun politica de compra." },
             ].map((item, index) => (
               <article key={item.name} className="risk-stack-card relative rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">

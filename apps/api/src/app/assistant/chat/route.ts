@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+import { ensureCrmOpsSchema } from "../../../lib/commercial-runtime-schema";
 
 type Body = {
   locale?: string;
@@ -261,6 +262,7 @@ async function upsertLeadCompat(params: {
 }
 
 export async function POST(req: Request) {
+  await ensureCrmOpsSchema();
   const body: Body = await req.json().catch(() => ({}));
   const locale = body.locale || "es-AR";
   const question = String(body.question || "").trim();

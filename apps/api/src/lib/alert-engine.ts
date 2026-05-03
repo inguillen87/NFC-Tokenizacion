@@ -1,6 +1,7 @@
 import { sql } from "./db";
 import { publishRealtimeEvent } from "./realtime-events";
 import { normalizeTypeFromResult, toRealtimeAlertEvent, type AlertType } from "./alert-events";
+import { ensureAlertsSchema } from "./commercial-runtime-schema";
 
 type EvaluateInput = {
   eventId: number;
@@ -58,6 +59,7 @@ async function createAlert(input: {
 
 export async function evaluateSecurityAlerts(input: EvaluateInput) {
   if (!input.eventId || !input.tenantId) return;
+  await ensureAlertsSchema();
   const baseType = normalizeTypeFromResult(String(input.result || ""));
   if (baseType) {
     const rule = await getRule(input.tenantId, baseType);

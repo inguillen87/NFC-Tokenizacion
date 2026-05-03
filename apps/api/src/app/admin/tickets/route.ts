@@ -4,10 +4,12 @@ export const dynamic = "force-dynamic";
 import { checkAdmin } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+import { ensureTicketsSchema } from "../../../lib/commercial-runtime-schema";
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureTicketsSchema();
   const rows = await sql/*sql*/`SELECT * FROM tickets ORDER BY created_at DESC LIMIT 300`;
   return json(rows);
 }
@@ -20,6 +22,7 @@ export async function POST(req: Request) {
   const detail = String(body.detail || "");
   if (!contact) return json({ ok: false, reason: "contact required" }, 400);
 
+  await ensureTicketsSchema();
   const rows = await sql/*sql*/`
     INSERT INTO tickets (locale, contact, title, detail, status)
     VALUES (${locale}, ${contact}, ${title}, ${detail}, 'open')

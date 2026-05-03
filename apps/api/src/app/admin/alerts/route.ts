@@ -5,10 +5,12 @@ import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { normalizeAlertSeverity, normalizeAlertType, resolveAlertsTenant } from "../../../lib/alerts-query";
+import { ensureAlertsSchema } from "../../../lib/commercial-runtime-schema";
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureAlertsSchema();
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const { searchParams } = new URL(req.url);
   const tenant = resolveAlertsTenant({ forcedTenantSlug, requestedTenantSlug: searchParams.get("tenant") });

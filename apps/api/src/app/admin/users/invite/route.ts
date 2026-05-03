@@ -4,12 +4,14 @@ import { sql } from '../../../../lib/db';
 import { json } from '../../../../lib/http';
 import { createResetToken, sha256 } from '../../../../lib/iam';
 import { requireApiSession } from '../../../../lib/auth-guard';
+import { ensureEnterpriseIamSchema } from '../../../../lib/commercial-runtime-schema';
 
 const INVITE_TTL_MINUTES = Number(process.env.ADMIN_INVITE_TTL_MINUTES || 60 * 24 * 3);
 
 export async function POST(req: Request) {
   const { error, session } = await requireApiSession(req, 'users:manage');
   if (error || !session) return error;
+  await ensureEnterpriseIamSchema();
 
   const body = await req.json().catch(() => ({})) as { email?: string; role?: string; tenantSlug?: string | null; permissions?: string[]; fullName?: string };
   const email = String(body.email || '').trim().toLowerCase();

@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { ensureEnterpriseIamSchema } from "./commercial-runtime-schema";
 
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 export const SESSION_IDLE_MS = 1000 * 60 * 30;
@@ -144,6 +145,7 @@ export function hasPermission(session: { role: string; permissions: string[] }, 
 }
 
 export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthUser | null> {
+  await ensureEnterpriseIamSchema();
   const rows = await sql/*sql*/`
     SELECT
       u.id,
@@ -174,6 +176,7 @@ export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthU
 }
 
 export async function auditAuthEvent(sql: Sql, payload: { email: string; eventName: string; ok: boolean; role?: string | null; ip?: string | null; userAgent?: string | null; meta?: Record<string, unknown> }) {
+  await ensureEnterpriseIamSchema();
   await sql/*sql*/`
     INSERT INTO user_auth_events (email, event_name, ok, role, ip, user_agent, meta)
     VALUES (${payload.email}, ${payload.eventName}, ${payload.ok}, ${payload.role || null}, ${payload.ip || null}, ${payload.userAgent || null}, ${JSON.stringify(payload.meta || {})}::jsonb)
@@ -181,6 +184,7 @@ export async function auditAuthEvent(sql: Sql, payload: { email: string; eventNa
 }
 
 export async function createSession(sql: Sql, payload: { user: AuthUser; ip?: string | null; userAgent?: string | null; mfaVerified: boolean; }) {
+  await ensureEnterpriseIamSchema();
   const secret = createSessionSecret();
   const rows = await sql/*sql*/`
     INSERT INTO auth_sessions (user_id, session_token_hash, role, tenant_id, permissions, mfa_verified, expires_at, last_seen_at, created_ip, user_agent, meta)
@@ -205,6 +209,7 @@ export async function createSession(sql: Sql, payload: { user: AuthUser; ip?: st
 export async function resolveSession(sql: Sql, cookieValue: string | undefined | null) : Promise<SessionRecord | null> {
   const parsed = parseSessionCookie(cookieValue);
   if (!parsed) return null;
+  await ensureEnterpriseIamSchema();
   const rows = await sql/*sql*/`
     SELECT s.id, s.user_id, s.session_token_hash, s.role::text AS role, s.tenant_id, s.permissions, s.mfa_verified, s.expires_at, s.last_seen_at, s.revoked_at,
       tn.slug AS tenant_slug,
@@ -251,6 +256,7 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
 export async function revokeSession(sql: Sql, cookieValue: string | undefined | null) {
   const parsed = parseSessionCookie(cookieValue);
   if (!parsed) return null;
+  await ensureEnterpriseIamSchema();
   const rows = await sql/*sql*/`
     UPDATE auth_sessions
     SET revoked_at = now(), last_seen_at = now()

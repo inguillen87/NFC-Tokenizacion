@@ -4,10 +4,12 @@ export const dynamic = "force-dynamic";
 import { checkAdmin, getAdminTenantScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
+import { ensureAlertsSchema } from "../../../../../lib/commercial-runtime-schema";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureAlertsSchema();
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

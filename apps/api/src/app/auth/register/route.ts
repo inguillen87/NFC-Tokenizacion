@@ -3,8 +3,10 @@ export const runtime = 'nodejs';
 import { sql } from '../../../lib/db';
 import { json } from '../../../lib/http';
 import { createResetToken, sha256 } from '../../../lib/iam';
+import { ensureEnterpriseIamSchema } from '../../../lib/commercial-runtime-schema';
 
 export async function POST(req: Request) {
+  await ensureEnterpriseIamSchema();
   const body = await req.json().catch(() => ({})) as { email?: string; fullName?: string; company?: string; tenantSlug?: string; role?: string };
   const email = String(body.email || '').trim().toLowerCase();
   const fullName = String(body.fullName || '').trim() || null;

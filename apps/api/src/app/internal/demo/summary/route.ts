@@ -4,10 +4,12 @@ export const dynamic = 'force-dynamic';
 import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 import { sql } from '../../../../lib/db';
+import { ensureCrmOpsSchema } from '../../../../lib/commercial-runtime-schema';
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureCrmOpsSchema();
 
   const tenant = (await sql`SELECT id, slug, name FROM tenants WHERE slug='demobodega' LIMIT 1`)[0];
   if (!tenant) return json({ ok: true, exists: false });
