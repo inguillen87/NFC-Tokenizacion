@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { sessionCookieHeader, verifyConsumerAuth } from "../../../../lib/consumer-auth";
 import { sql } from "../../../../lib/db";
 import { ensureTenantMembership } from "../../../../lib/consumer-portal-service";
+import { ensureConsumerAuthSchema } from "../../../../lib/commercial-runtime-schema";
 import { randomBytes, createHash } from "node:crypto";
 
 function sha(value: string) {
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
   const normalized = contact.toLowerCase();
   const demoMode = String(process.env.DEMO_MODE || "").toLowerCase() === "true";
   if (demoMode && normalized === "demo.consumer@nexid.local" && code === "000000") {
+    await ensureConsumerAuthSchema();
     const consumerRows = await sql/*sql*/`
       INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
       VALUES (${normalized}, ${null}, ${"Demo Consumer"}, 'registered', 'es-AR', now())
@@ -57,23 +59,7 @@ export async function POST(req: Request) {
     });
   }
 
-  let verified;
-  try {
-    verified = await verifyConsumerAuth(contact, code, { userAgent: req.headers.get("user-agent"), ip: req.headers.get("x-forwarded-for") });
-  } catch (error) {
-    const dbCode = String((error as { code?: string } | null)?.code || "");
-    if (dbCode === "42P01" && normalized === "demo.consumer@nexid.local" && code === "000000") {
-      const token = randomBytes(24).toString("hex");
-      return new Response(JSON.stringify({ ok: true, demo: true, fallback: "missing_consumer_auth_challenges", consumer: { email: normalized, display_name: "Demo Consumer" } }, null, 2), {
-        status: 200,
-        headers: {
-          "content-type": "application/json; charset=utf-8",
-          "set-cookie": sessionCookieHeader(token),
-        },
-      });
-    }
-    throw error;
-  }
+  const verified = await verifyConsumerAuth(contact, code, { userAgent: req.headers.get("user-agent"), ip: req.headers.get("x-forwarded-for") });
   if (!verified.ok) {
     const status = verified.error === "rate_limited" ? 429 : verified.error === "locked" ? 423 : verified.error === "expired" ? 410 : verified.error === "unavailable" ? 503 : 401;
     return new Response(JSON.stringify({ ok: false, error: verified.error }), { status });

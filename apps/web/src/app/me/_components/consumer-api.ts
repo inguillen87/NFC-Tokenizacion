@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { demoConsumerCookieEnabled, demoConsumerPayload, demoMarketplacePayload, hasDemoConsumerCookie } from "../../../lib/demo-consumer-data";
 import { shouldRedirectToConsumerAuth } from "./consumer-portal-model";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.nexid.lat";
@@ -10,12 +9,6 @@ type JsonMap = Record<string, unknown>;
 async function fetchJson(path: string) {
   const incomingHeaders = await headers();
   const cookie = incomingHeaders.get("cookie") || "";
-  const demoCookie = hasDemoConsumerCookie(cookie);
-  const demoFallbackEnabled = demoCookie && demoConsumerCookieEnabled();
-  if (demoFallbackEnabled) {
-    const demoPayload = demoConsumerPayload(path) || demoMarketplacePayload(path);
-    if (demoPayload) return demoPayload;
-  }
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
     headers: {
@@ -24,9 +17,6 @@ async function fetchJson(path: string) {
       "user-agent": incomingHeaders.get("user-agent") || "nexid-web-portal",
     },
   }).catch(() => null);
-  if ((!res || !res.ok) && demoFallbackEnabled) {
-    return demoConsumerPayload(path) || demoMarketplacePayload(path);
-  }
   if (!res || !res.ok) return null;
   return res.json().catch(() => null);
 }

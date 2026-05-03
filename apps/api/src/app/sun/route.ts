@@ -9,7 +9,7 @@ import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
 import { ensureTokenizationRequestsSchema } from '../../lib/tokenization-schema';
 import { buildLifecycleState, listDemoCta } from '../../lib/demo-cta';
 import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
-import { mapVerdictAndRisk, resolveActionMatrix } from '../../lib/sun-passport-policy';
+import { mapVerdictAndRisk, resolveActionMatrix, resolveRightsPolicy } from '../../lib/sun-passport-policy';
 import { resolveSunTenantProfile } from '../../lib/sun-tenant-profile';
 import { ensureSunTenantProfilesSchema } from '../../lib/sun-tenant-profile-schema';
 import { getRequestMeta } from '../../lib/request-meta';
@@ -642,8 +642,7 @@ function buildPublicContract(params: {
   const status = params.result.result || (params.result.ok ? 'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
   const trust = resolveTrustState(status, reason, params.result.product_state || null, params.result.enc_plain_status_byte || null);
-  const verdictRisk = mapVerdictAndRisk({ statusCode: status, productState: params.result.product_state || null, reason });
-  const actionMatrix = resolveActionMatrix(verdictRisk.verdict);
+  const verdictRisk = mapVerdictAndRisk({ statusCode: status, productState: params.result.product_state || null, reason, encPlainStatusByte: params.result.enc_plain_status_byte || null });
   const troubleshooting = buildTroubleshooting(reason, params.bid);
   const tenantResolution = resolveSunTenantProfile({ bid: params.bid, passport: params.passport, result: params.result as Record<string, unknown> });
   const setupWebBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
@@ -700,6 +699,33 @@ function buildPublicContract(params: {
         setupRequired: true,
         missing: tenantResolution.missing,
       },
+      condition: {
+        state: "setup_required",
+        label: "Onboarding pendiente",
+        summary: "La prueba SUN fue procesada, pero faltan datos del tenant/manifiesto para habilitar acciones comerciales.",
+        claimMode: "not_public",
+        tokenizationPolicy: "blocked_tenant_setup",
+        marketplaceMode: "proof_only",
+        recommendedNextStep: "Completar perfil SUN, manifiesto y politica de ownership del tenant.",
+        requirements: ["tenant activo", "perfil SUN completo", "manifiesto importado"],
+      },
+      rightsPolicy: {
+        vertical: "generic",
+        verticalLabel: "Tenant sin perfil SUN",
+        conditionState: "setup_required",
+        claimMode: "not_public",
+        marketplaceMode: "proof_only",
+        tokenizationPolicy: "blocked_tenant_setup",
+        requirements: ["tenant activo", "perfil SUN completo", "manifiesto importado"],
+        canClaimPublicly: false,
+        canTokenize: false,
+        requiresReview: true,
+        statusTitle: "Onboarding pendiente",
+        statusSummary: "La trazabilidad queda visible, pero ownership, marketplace, rewards y tokenizacion se bloquean hasta configurar el tenant.",
+        consumerCopy: "Este producto fue procesado por SUN, pero la marca todavia debe completar su perfil antes de habilitar beneficios.",
+        enterpriseCopy: "Completar tenant SUN profile, manifiesto por UID y ownership policy antes de publicar CTAs.",
+        recommendedNextStep: "Completar perfil SUN, manifiesto y politica de ownership del tenant.",
+      },
       product: {
         name: setupProductName,
         winery: params.passport?.winery || null,
@@ -739,6 +765,11 @@ function buildPublicContract(params: {
         freshTap: false,
         tokenizationEligible: false,
         policy: "blocked_tenant_setup",
+        commercialPolicy: "blocked_tenant_setup",
+        conditionState: "setup_required",
+        claimMode: "not_public",
+        marketplaceMode: "proof_only",
+        requirements: ["tenant activo", "perfil SUN completo", "manifiesto importado"],
         reason: tenantResolution.message,
       },
       iot: {
@@ -824,6 +855,21 @@ function buildPublicContract(params: {
   const isVerifiedOpenedTap = verdictRisk.verdict === "valid_opened"
     || ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(trust.code);
   const isAuthenticTap = verdictRisk.verdict === "valid" || isVerifiedOpenedTap;
+  const rightsPolicy = resolveRightsPolicy({
+    verdict: verdictRisk.verdict,
+    vertical: tenantProfile.vertical,
+    tokenizationMode: tenantProfile.tokenizationMode,
+    claimPolicy: tenantProfile.claimPolicy,
+    ownershipPolicy: tenantProfile.ownershipPolicy,
+    statusCode: trust.code,
+    productState: params.result.product_state || null,
+    reason,
+    encPlainStatusByte: params.result.enc_plain_status_byte || null,
+  });
+  const actionMatrix = {
+    allowedActions: rightsPolicy.allowedActions,
+    blockedActions: rightsPolicy.blockedActions,
+  };
   const trustPenalty = trust.code === "VALID"
     ? 0
     : isVerifiedOpenedTap
@@ -835,15 +881,18 @@ function buildPublicContract(params: {
           : 22;
   const sensorPenalty = sensorHistory.some((item) => item.alert) ? 10 : 0;
   const qualityScore = Math.max(0, Math.min(100, 92 - trustPenalty - sensorPenalty));
-  const tokenizationPolicy = actionMatrix.allowedActions.includes("tokenization")
+  const compatibilityTokenizationPolicy = actionMatrix.allowedActions.includes("tokenization")
     ? isVerifiedOpenedTap
       ? "verified_opened_tap"
       : "fresh_valid_tap"
-    : verdictRisk.verdict === "replay_suspect"
-      ? "blocked_replay"
-      : verdictRisk.verdict === "tampered"
-        ? "blocked_tamper"
-        : "blocked_policy";
+    : String(rightsPolicy.tokenizationPolicy || "").startsWith("blocked_")
+      ? rightsPolicy.tokenizationPolicy
+      : verdictRisk.verdict === "replay_suspect"
+        ? "blocked_replay"
+        : verdictRisk.verdict === "tampered"
+          ? "blocked_tamper"
+          : "blocked_policy";
+  const tokenizationPolicy = compatibilityTokenizationPolicy;
 
   return {
     ok: Boolean(params.result.ok),
@@ -880,6 +929,33 @@ function buildPublicContract(params: {
       productLabel: tenantProfile.productLabel,
       clubName: tenantProfile.clubName,
       tokenizationMode: tenantProfile.tokenizationMode,
+    },
+    condition: {
+      state: rightsPolicy.conditionState,
+      label: rightsPolicy.statusTitle,
+      summary: rightsPolicy.statusSummary,
+      claimMode: rightsPolicy.claimMode,
+      tokenizationPolicy: rightsPolicy.tokenizationPolicy,
+      marketplaceMode: rightsPolicy.marketplaceMode,
+      recommendedNextStep: rightsPolicy.recommendedNextStep,
+      requirements: rightsPolicy.requirements,
+    },
+    rightsPolicy: {
+      vertical: rightsPolicy.vertical,
+      verticalLabel: rightsPolicy.verticalLabel,
+      conditionState: rightsPolicy.conditionState,
+      claimMode: rightsPolicy.claimMode,
+      marketplaceMode: rightsPolicy.marketplaceMode,
+      tokenizationPolicy: rightsPolicy.tokenizationPolicy,
+      requirements: rightsPolicy.requirements,
+      canClaimPublicly: rightsPolicy.canClaimPublicly,
+      canTokenize: rightsPolicy.canTokenize,
+      requiresReview: rightsPolicy.requiresReview,
+      statusTitle: rightsPolicy.statusTitle,
+      statusSummary: rightsPolicy.statusSummary,
+      consumerCopy: rightsPolicy.consumerCopy,
+      enterpriseCopy: rightsPolicy.enterpriseCopy,
+      recommendedNextStep: rightsPolicy.recommendedNextStep,
     },
     product: {
       name: params.passport?.product_name || params.passport?.sku || fallbackName,
@@ -929,6 +1005,11 @@ function buildPublicContract(params: {
       freshTap: isAuthenticTap && verdictRisk.verdict !== "replay_suspect",
       tokenizationEligible: actionMatrix.allowedActions.includes("tokenization"),
       policy: tokenizationPolicy,
+      commercialPolicy: rightsPolicy.tokenizationPolicy,
+      conditionState: rightsPolicy.conditionState,
+      claimMode: rightsPolicy.claimMode,
+      marketplaceMode: rightsPolicy.marketplaceMode,
+      requirements: rightsPolicy.requirements,
       reason,
     },
     iot: {
@@ -1381,27 +1462,19 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const gatedLinks = Array.from(document.querySelectorAll('[data-gated-link]'));
   const eventId = ${JSON.stringify(contract.identity.eventId || null)};
   const canAssociate = ${JSON.stringify((contract.allowedActions as readonly string[]).includes("save") && contract.status.code !== "REPLAY_SUSPECT")};
-  const appBase = (() => {
-    const currentOrigin = window.location.origin;
-    try {
-      const portalOrigin = new URL(${JSON.stringify(contract.cta.portalUrl)}).origin;
-      return portalOrigin || currentOrigin;
-    } catch {
-      return currentOrigin;
-    }
-  })();
+  const appBase = window.location.origin;
   const nfcBtn = document.getElementById('nfc-scan');
   const jsonFetch = (path, init = {}) => fetch(appBase + path, { credentials: 'include', ...init }).then((r) => r.json());
   async function ensureAuthAndTenant(action) {
     if (!canAssociate) return { ok: false, reason: 'tap_not_verified' };
-    const me = await jsonFetch('/api/consumer/me', { cache: 'no-store' }).catch(() => null);
+    const me = await jsonFetch('/consumer/me', { cache: 'no-store' }).catch(() => null);
     let contact = '';
     if (!me?.ok) {
       contact = window.prompt(ui.askContact) || '';
       if (!contact.trim()) return { ok: false, reason: 'cancelled' };
       const normalizedContact = contact.trim();
       const payload = normalizedContact.includes('@') ? { email: normalizedContact } : { phone: normalizedContact };
-      const start = await jsonFetch('/api/consumer/auth/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => null);
+      const start = await jsonFetch('/consumer/auth/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => null);
       if (!start?.ok) return { ok: false, reason: 'start_failed' };
       let entered = String(start.code || '').trim();
       if (!entered) {
@@ -1411,22 +1484,22 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       const buildVerifyPayload = (code) => normalizedContact.includes('@')
         ? { email: normalizedContact, code }
         : { phone: normalizedContact, code };
-      let verify = await jsonFetch('/api/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildVerifyPayload(entered)) }).catch(() => null);
+      let verify = await jsonFetch('/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildVerifyPayload(entered)) }).catch(() => null);
       if (!verify?.ok && start?.code) {
         const manual = (window.prompt(ui.askCode, String(start.code || '')) || '').trim();
         if (manual) {
-          verify = await jsonFetch('/api/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildVerifyPayload(manual)) }).catch(() => null);
+          verify = await jsonFetch('/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildVerifyPayload(manual)) }).catch(() => null);
         }
       }
       if (!verify?.ok) return { ok: false, reason: 'verify_failed' };
     }
     if (eventId) {
-      await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/join-tenant', { method: 'POST' }).catch(() => null);
-      await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/save-product', { method: 'POST' }).catch(() => null);
+      await jsonFetch('/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/join-tenant', { method: 'POST' }).catch(() => null);
+      await jsonFetch('/mobile/passport/' + encodeURIComponent(eventId) + '/consumer/save-product', { method: 'POST' }).catch(() => null);
       if (action === 'rewards') {
         const contactForEnroll = contact || window.prompt(ui.askRewards) || '';
         if (contactForEnroll.trim()) {
-          await jsonFetch('/api/mobile/passport/' + encodeURIComponent(eventId) + '/loyalty/enroll', {
+          await jsonFetch('/mobile/passport/' + encodeURIComponent(eventId) + '/loyalty/enroll', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(contactForEnroll.includes('@') ? { email: contactForEnroll } : { phone: contactForEnroll }),
@@ -1534,11 +1607,12 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
 
   await ensureTokenizationRequestsSchema();
   const row = (await sql/*sql*/`
-    SELECT tr.id, tr.status, tr.network, tr.tx_hash, tr.token_id, tr.anchor_hash, tr.external_ref
+    SELECT tr.id, tr.status, tr.network, tr.tx_hash, tr.token_id, tr.anchor_hash, tr.external_ref,
+           tr.last_error, tr.next_attempt_at, tr.attempt_count
     FROM tokenization_requests tr
     WHERE tr.bid = ${params.bid}
       AND tr.uid_hex = ${params.uid}
-      AND tr.status IN ('pending', 'processing', 'anchored')
+      AND tr.status IN ('pending', 'processing', 'anchored', 'failed')
     ORDER BY tr.requested_at DESC
     LIMIT 1
   `)[0];
@@ -1724,12 +1798,35 @@ export async function GET(req: Request): Promise<Response> {
     if (autoMint && typeof autoMint === "object" && "ok" in autoMint) {
       if (autoMint.ok === false) {
         const mintReason = "reason" in autoMint ? String(autoMint.reason || "unknown_error") : "unknown_error";
-        contract.tokenization.status = "mint_failed";
-        contract.troubleshooting = [
-          ...contract.troubleshooting,
-          `Tokenización automática falló (${sanitizePublicErrorReason(mintReason)}).`,
-          "Revisá balance de gas, RPC de Polygon y clave minter en variables de entorno.",
-        ];
+        const autoStatus = "status" in autoMint ? String(autoMint.status || "failed").toLowerCase() : "failed";
+        const publicReason = sanitizePublicErrorReason(mintReason);
+        const tokenizationMeta = contract.tokenization as Record<string, unknown>;
+        if ("request_id" in autoMint && autoMint.request_id) tokenizationMeta.requestId = String(autoMint.request_id);
+        if ("next_attempt_at" in autoMint && autoMint.next_attempt_at) tokenizationMeta.nextAttemptAt = String(autoMint.next_attempt_at);
+        tokenizationMeta.reason = publicReason;
+        console.warn("[sun_auto_tokenization]", JSON.stringify({
+          traceId,
+          bid,
+          uidMasked: maskIdentityValue(uid),
+          status: autoStatus,
+          requestId: tokenizationMeta.requestId || null,
+          reason: publicReason,
+        }));
+        if (autoStatus === "pending" || autoStatus === "processing") {
+          contract.tokenization.status = "mint_pending_retry";
+          contract.troubleshooting = [
+            ...contract.troubleshooting,
+            `Tokenizacion Polygon en cola (${publicReason}).`,
+            "La lectura sigue siendo valida; el minter reintentara sin mostrar fallo final al consumidor.",
+          ];
+        } else {
+          contract.tokenization.status = "mint_failed";
+          contract.troubleshooting = [
+            ...contract.troubleshooting,
+            `Tokenizacion automatica fallo (${publicReason}).`,
+            "Revisa balance de gas, RPC de Polygon y clave minter en variables de entorno.",
+          ];
+        }
       } else if (autoMint.ok === true && "status" in autoMint && String(autoMint.status || "") === "anchored") {
         contract.tokenization.status = "minted";
         if ("tx_hash" in autoMint && autoMint.tx_hash) contract.tokenization.txHash = String(autoMint.tx_hash);

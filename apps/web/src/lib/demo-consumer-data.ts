@@ -7,7 +7,7 @@ export function hasDemoConsumerCookie(cookie: string) {
 }
 
 export function demoConsumerCookieEnabled() {
-  const flag = String(process.env.NEXT_PUBLIC_DEMO_CONSUMER_ENABLED || process.env.DEMO_CONSUMER_ENABLED || "true").toLowerCase();
+  const flag = String(process.env.NEXT_PUBLIC_DEMO_CONSUMER_ENABLED || process.env.DEMO_CONSUMER_ENABLED || "false").toLowerCase();
   return !["0", "false", "off", "no"].includes(flag);
 }
 

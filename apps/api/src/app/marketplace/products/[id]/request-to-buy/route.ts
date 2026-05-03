@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../../../lib/http";
 import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { sql } from "../../../../../lib/db";
+import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtime-schema";
 
 function parseRequestToBuyPayload(payload: Record<string, unknown> | null | undefined) {
   const quantity = Number.parseInt(String(payload?.quantity ?? 1), 10);
@@ -27,6 +28,7 @@ function parseRequestToBuyPayload(payload: Record<string, unknown> | null | unde
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
 

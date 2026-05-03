@@ -1,5 +1,5 @@
 import { sql } from './db';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { decryptKey16 } from './keys';
 import { verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
@@ -28,6 +28,33 @@ const OPENED_SCAN_RESULTS = new Set([
   "VALID_OPENED_PREVIOUSLY",
   "VALID_MANUAL_OPENED",
 ]);
+
+function sha256Fingerprint(value: string) {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function normalizeHashInput(value: string | undefined | null) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function buildSunPayloadHashes(input: {
+  bid: string;
+  piccDataHex: string;
+  encHex: string;
+  cmacHex: string;
+}) {
+  const bid = String(input.bid || "").trim();
+  const picc = normalizeHashInput(input.piccDataHex);
+  const enc = normalizeHashInput(input.encHex);
+  const cmac = normalizeHashInput(input.cmacHex);
+  const canonicalPayload = `bid=${bid}&picc_data=${picc}&enc=${enc}&cmac=${cmac}`;
+  return {
+    piccDataHash: sha256Fingerprint(picc),
+    encHash: sha256Fingerprint(enc),
+    cmacHash: sha256Fingerprint(cmac),
+    rawUrlHash: sha256Fingerprint(canonicalPayload),
+  };
+}
 
 export type ScanContext = {
   ip?: string | null;
@@ -219,6 +246,9 @@ export async function processSunScan(input: {
   rawQuery?: Record<string, string>;
   context?: ScanContext;
 }) {
+  const scanHashes = buildSunPayloadHashes(input);
+  let replayOriginalEventId: number | null = null;
+
   async function getManualTamperOverride(uidHex: string | null) {
     if (!uidHex) return null;
     try {
@@ -300,19 +330,6 @@ export async function processSunScan(input: {
     hasGeoValue: boolean;
   }): Promise<number | null> {
     if (!batch) return null;
-    if (payload.resultValue === "REPLAY_SUSPECT" && payload.uidHex && payload.ctr != null) {
-      const existing = await sql/*sql*/`
-        SELECT id
-        FROM events
-        WHERE batch_id = ${batch.id}
-          AND UPPER(uid_hex) = UPPER(${payload.uidHex})
-          AND sdm_read_ctr = ${payload.ctr}
-        ORDER BY created_at ASC
-        LIMIT 1
-      `;
-      const existingId = Number((existing?.[0] as { id?: number } | undefined)?.id || 0) || null;
-      if (existingId) return existingId;
-    }
     const normalizedResult = String(payload.resultValue || "").toUpperCase();
     const isReplay = normalizedResult === 'REPLAY_SUSPECT';
     const isAuthentic = AUTHENTIC_SCAN_RESULTS.has(normalizedResult);
@@ -369,7 +386,14 @@ export async function processSunScan(input: {
       lat: payload.hasGeoValue ? input.context?.lat : null,
       lng: payload.hasGeoValue ? input.context?.lng : null,
       reason: payload.reasonValue,
-      meta: input.context?.meta || {},
+      piccDataHash: scanHashes.piccDataHash,
+      cmacHash: scanHashes.cmacHash,
+      rawUrlHash: scanHashes.rawUrlHash,
+      meta: {
+        ...(input.context?.meta || {}),
+        enc_data_hash: scanHashes.encHash,
+        replay_original_event_id: replayOriginalEventId,
+      },
       traceId: typeof input.context?.meta?.trace_id === 'string' ? String(input.context.meta.trace_id) : null,
       ip: input.context?.ip,
       geoCity: input.context?.city,
@@ -416,11 +440,18 @@ export async function processSunScan(input: {
       SELECT id
       FROM events
       WHERE batch_id = ${batch.id}
-        AND UPPER(uid_hex) = UPPER(${res.uidHex})
-        AND sdm_read_ctr = ${res.ctr}
+        AND (
+          (UPPER(uid_hex) = UPPER(${res.uidHex}) AND sdm_read_ctr = ${res.ctr})
+          OR (picc_data_hash = ${scanHashes.piccDataHash} AND cmac_hash = ${scanHashes.cmacHash})
+          OR raw_url_hash = ${scanHashes.rawUrlHash}
+        )
+      ORDER BY created_at ASC
       LIMIT 1
     `;
-    if (priorEventRows[0]) replaySuspect = true;
+    if (priorEventRows[0]) {
+      replaySuspect = true;
+      replayOriginalEventId = Number((priorEventRows[0] as { id?: number }).id || 0) || null;
+    }
 
     const tagRows = await sql/*sql*/`
       SELECT id, status, last_seen_ctr
@@ -562,6 +593,14 @@ export async function processSunScan(input: {
     if (authValid) return "VALID_UNKNOWN_TAMPER";
     return "INVALID";
   })();
+  const resolvedTamperOpened =
+    resolvedTamperStatus === "OPENED"
+    || resolvedTamperStatus === "OPENED_PREVIOUSLY"
+    || resolvedTamperStatus === "MANUAL_OPENED"
+    || productState === "VALID_OPENED"
+    || productState === "VALID_OPENED_PREVIOUSLY"
+    || productState === "VALID_MANUAL_OPENED";
+  const resolvedTamperRisk = Boolean(tamperSignal.tamper || resolvedTamperStatus === "INVALID" || productState === "TAMPER_RISK");
 
   if (input.context?.forceResult) result = input.context.forceResult;
 
@@ -647,8 +686,8 @@ export async function processSunScan(input: {
       allowlisted,
       tag_status: tagStatus,
       tamper_signal: tamperSignal.raw || undefined,
-      tamper_opened: tamperSignal.opened,
-      tamper_risk: tamperSignal.tamper,
+      tamper_opened: resolvedTamperOpened,
+      tamper_risk: resolvedTamperRisk,
       tamper_supported: tagTamperEnabled,
       tamper_configured: tamperConfigured,
       tamper_status: resolvedTamperStatus,

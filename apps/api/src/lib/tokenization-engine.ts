@@ -12,6 +12,11 @@ type AnchorInput = {
   processor?: string;
 };
 
+const POLYGON_MINT_ABI = [
+  "function mintWithChipHash(address to, string chipUidHash, string tokenUri, string assetRef) external returns (uint256)",
+  "function tokenByChipHash(string chipUidHash) external view returns (uint256)",
+] as const;
+
 function buildSimulatedTxHash(requestId: string, uid: string) {
   return `0x${createHash("sha256").update(`${requestId}:${uid}:${Date.now()}`).digest("hex")}`;
 }
@@ -41,6 +46,76 @@ async function runExternalExecutor(payload: Record<string, unknown>) {
   });
   if (!response.ok) throw new Error(`executor_http_${response.status}`);
   return response.json().catch(() => null) as Promise<Record<string, unknown> | null>;
+}
+
+function normalizePrivateKey(raw: string) {
+  const value = raw.trim();
+  if (/^0x[0-9a-fA-F]{64}$/.test(value)) return value;
+  if (/^[0-9a-fA-F]{64}$/.test(value)) return `0x${value}`;
+  return value;
+}
+
+async function runDirectPolygonMint(payload: Record<string, unknown>) {
+  const enabled = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
+  if (!enabled) return null;
+
+  const rpcUrl = String(process.env.POLYGON_RPC_URL || "").trim();
+  const privateKey = normalizePrivateKey(String(process.env.POLYGON_MINTER_PRIVATE_KEY || ""));
+  const contractAddress = String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim();
+  const chipUidHash = String(payload.chip_uid_hash || "").trim();
+  const recipient = String(payload.issuer_wallet || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
+  const tokenUri = String(payload.token_uri || "").trim();
+  const assetRef = String(payload.asset_ref || "").trim();
+
+  if (!rpcUrl) throw new Error("missing_POLYGON_RPC_URL_for_direct_minter");
+  if (!privateKey) throw new Error("missing_POLYGON_MINTER_PRIVATE_KEY_for_direct_minter");
+  if (!contractAddress) throw new Error("missing_POLYGON_CONTRACT_ADDRESS_for_direct_minter");
+  if (!chipUidHash) throw new Error("missing_chip_uid_hash_for_direct_minter");
+  if (!recipient) throw new Error("missing_recipient_for_direct_minter");
+  if (!tokenUri) throw new Error("missing_token_uri_for_direct_minter");
+  if (!assetRef) throw new Error("missing_asset_ref_for_direct_minter");
+
+  const { ethers } = await import("ethers");
+  if (!ethers.isAddress(contractAddress)) throw new Error("invalid_POLYGON_CONTRACT_ADDRESS");
+  if (!ethers.isAddress(recipient)) throw new Error("invalid_polygon_recipient");
+
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const wallet = new ethers.Wallet(privateKey, provider);
+  const contract = new ethers.Contract(contractAddress, POLYGON_MINT_ABI, wallet);
+
+  const existingTokenId = await contract.tokenByChipHash(chipUidHash);
+  const existingTokenIdText = String(existingTokenId || "0");
+  if (BigInt(existingTokenIdText) > 0n) {
+    return {
+      ok: true,
+      network: "polygon",
+      tx_hash: null,
+      token_id: existingTokenIdText,
+      chip_uid_hash: chipUidHash,
+      anchor_hash: `polygon-token:${contractAddress}:${existingTokenIdText}`,
+      external_ref: `polygon-amoy:${contractAddress}:${existingTokenIdText}`,
+      already_minted: true,
+    };
+  }
+
+  const tx = await contract.mintWithChipHash(recipient, chipUidHash, tokenUri, assetRef);
+  const receipt = await tx.wait();
+  if (!receipt) throw new Error("polygon_receipt_missing");
+
+  const transferTopic = ethers.id("Transfer(address,address,uint256)");
+  const transferLog = receipt.logs.find((log: { topics?: string[] }) => log.topics?.[0] === transferTopic && log.topics?.[3]);
+  const tokenId = transferLog?.topics?.[3] ? String(BigInt(transferLog.topics[3])) : null;
+
+  return {
+    ok: true,
+    network: "polygon",
+    tx_hash: tx.hash,
+    token_id: tokenId,
+    chip_uid_hash: chipUidHash,
+    block_number: receipt.blockNumber,
+    anchor_hash: tx.hash,
+    external_ref: `polygon-amoy:${contractAddress}:${tokenId || tx.hash}`,
+  };
 }
 
 async function runLocalPolygonScript(payload: Record<string, unknown>) {
@@ -138,16 +213,18 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
       if (wantsLocalMinter && !process.env.POLYGON_RPC_URL) {
         throw new Error("missing_POLYGON_RPC_URL_for_local_minter");
       }
-      const localPolygonMint = network.startsWith("polygon") ? await runLocalPolygonScript(externalInput) : null;
-      external = localPolygonMint || await runExternalExecutor(externalInput);
-      if (!external?.tx_hash) {
+      external = await runExternalExecutor(externalInput);
+      const directPolygonMint = !external && network.startsWith("polygon") ? await runDirectPolygonMint(externalInput) : null;
+      const localPolygonMint = !external && !directPolygonMint && network.startsWith("polygon") ? await runLocalPolygonScript(externalInput) : null;
+      external = external || directPolygonMint || localPolygonMint;
+      if (!external?.tx_hash && !external?.token_id) {
         throw new Error("polygon_anchor_unavailable_configure_local_minter_or_executor");
       }
     }
 
-    const txHash = String(external?.tx_hash || buildSimulatedTxHash(existing.id, existing.uid_hex));
+    const txHash = external?.tx_hash ? String(external.tx_hash) : polygonMode ? null : buildSimulatedTxHash(existing.id, existing.uid_hex);
     const tokenId = external?.token_id ? String(external.token_id) : polygonMode ? null : buildTokenId(existing.uid_hex);
-    const anchorHash = String(external?.anchor_hash || (polygonMode ? txHash : `0x${randomBytes(32).toString("hex")}`));
+    const anchorHash = String(external?.anchor_hash || (polygonMode ? txHash || `polygon-token:${tokenId || existing.id}` : `0x${randomBytes(32).toString("hex")}`));
     const externalRef = external?.external_ref ? String(external.external_ref) : null;
 
     await sql/*sql*/`

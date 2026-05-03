@@ -3,6 +3,7 @@ import { recordDemoCta } from "../../../../lib/demo-cta";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { sql } from "../../../../lib/db";
 import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
+import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 
@@ -10,6 +11,21 @@ const LEDGER_NETWORK_ALLOWED = new Set(["polygon-amoy", "polygon", "ethereum-sep
 
 function sanitizeText(value: unknown, max = 120) {
   return String(value || "").trim().slice(0, max);
+}
+
+function shouldAutoAnchorPublicTokenization() {
+  return String(process.env.SUN_AUTO_TOKENIZE_ON_VALID_TAP || "").toLowerCase() === "true"
+    || String(process.env.PUBLIC_CTA_AUTO_TOKENIZE || "").toLowerCase() === "true";
+}
+
+async function maybeAnchorPublicRequest(requestId: string | undefined, network: string, issuerWallet: string | null) {
+  if (!requestId || !shouldAutoAnchorPublicTokenization()) return null;
+  return anchorTokenizationRequest({
+    requestId,
+    network,
+    issuerWallet,
+    processor: "public_cta_tokenize_request",
+  });
 }
 
 export async function POST(req: Request) {
@@ -46,6 +62,15 @@ export async function POST(req: Request) {
     issuer_wallet: sanitizeText(body.issuer_wallet, 180) || null,
     last_anchor_at: sanitizeText(body.last_anchor_at, 80) || null,
   };
+  const policyMeta = {
+    condition_state: sanitizeText(body.condition_state, 80) || null,
+    claim_mode: sanitizeText(body.claim_mode, 80) || null,
+    tokenization_policy: sanitizeText(body.tokenization_policy, 80) || null,
+    marketplace_mode: sanitizeText(body.marketplace_mode, 80) || null,
+    requirements: Array.isArray(body.requirements)
+      ? body.requirements.map((item) => sanitizeText(item, 120)).filter(Boolean).slice(0, 8)
+      : [],
+  };
 
   const batchRows = await sql/*sql*/`
     SELECT b.id, b.tenant_id
@@ -56,22 +81,26 @@ export async function POST(req: Request) {
   const batch = batchRows[0];
 
   const existingRows = await sql/*sql*/`
-    SELECT id, status, requested_at, network, asset_ref, issuer_wallet, anchor_hash
+    SELECT id, status, requested_at, network, asset_ref, issuer_wallet, anchor_hash, tx_hash, token_id, last_error, next_attempt_at
     FROM tokenization_requests
     WHERE bid = ${bid}
       AND uid_hex = ${uid}
-      AND status = 'pending'
+      AND status IN ('pending', 'processing', 'failed', 'anchored')
     ORDER BY requested_at DESC
     LIMIT 1
   `;
-  const existingPending = existingRows[0];
-  if (existingPending) {
+  const existingRequest = existingRows[0];
+  if (existingRequest) {
+    const alreadyAnchored = String(existingRequest.status || "") === "anchored";
+    const anchor = alreadyAnchored ? null : await maybeAnchorPublicRequest(String(existingRequest.id || ""), ledger.ledger_network, ledger.issuer_wallet);
+    const anchorStatus = anchor && typeof anchor === "object" && "status" in anchor ? String(anchor.status || "") : "";
     return json({
       ok: true,
       action: "tokenize_request",
       deduplicated: true,
-      reason: "existing pending request reused",
-      tokenization_request: existingPending,
+      reason: alreadyAnchored ? "existing request already anchored" : anchor?.ok ? "existing request anchored" : anchorStatus === "pending" ? "existing request queued for retry" : "existing request reused",
+      tokenization_request: { ...existingRequest, status: anchor?.ok ? "anchored" : anchorStatus || existingRequest.status },
+      anchor,
       trace_id: traceId,
       share_token_status: auth.share_token_status,
     });
@@ -92,12 +121,13 @@ export async function POST(req: Request) {
       ${ledger.anchor_hash},
       'public_cta',
       now(),
-      ${JSON.stringify({ trace_id: traceId, share_token_status: auth.share_token_status, fresh_handoff_exp: fresh.payload.exp })}::jsonb
+      ${JSON.stringify({ trace_id: traceId, share_token_status: auth.share_token_status, fresh_handoff_exp: fresh.payload.exp, ...policyMeta })}::jsonb
     )
     RETURNING id, status, requested_at
   `;
   const tokenizationRequest = reqRows[0];
-  const saved = await recordDemoCta("tokenize_request", bid, uid, { ...body, ...ledger, fresh_handoff_exp: fresh.payload.exp, tokenization_requested_at: new Date().toISOString() });
+  const anchor = await maybeAnchorPublicRequest(String(tokenizationRequest?.id || ""), ledger.ledger_network, ledger.issuer_wallet);
+  const saved = await recordDemoCta("tokenize_request", bid, uid, { ...body, ...ledger, ...policyMeta, fresh_handoff_exp: fresh.payload.exp, tokenization_requested_at: new Date().toISOString() });
   return json({
     ok: true,
     action: "tokenize_request",
@@ -105,6 +135,7 @@ export async function POST(req: Request) {
     created_at: saved.created_at,
     ledger,
     tokenization_request: tokenizationRequest || null,
+    anchor,
     trace_id: traceId,
     share_token_status: auth.share_token_status,
     fresh_token_status: "accepted",

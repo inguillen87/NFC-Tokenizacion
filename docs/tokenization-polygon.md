@@ -31,7 +31,7 @@ Activar este flujo:
 
 - `tsc` API, web y dashboard: OK.
 - `qa-static`: OK.
-- Tests SUN: 15/15 OK.
+- Tests SUN/TT: 31/31 OK.
 - `http://127.0.0.1:3000/sun`: 200 OK.
 - Contrato disponible: `apps/api/contracts/NexidTraceabilityNFT.sol`.
 - Scripts disponibles:
@@ -44,6 +44,11 @@ Activar este flujo:
   - minter local backend: `TOKENIZATION_USE_LOCAL_MINTER=true`
   - executor externo futuro: `TOKENIZATION_EXECUTOR_URL` + `TOKENIZATION_EXECUTOR_SECRET`
 - Executor separado incluido: `apps/executor`
+- Piloto Amoy actual:
+  - RPC: `https://polygon-amoy.g.alchemy.com/v2/lkdR5ChJ14TarIAHeZKxj`
+  - Owner/minter/recipient: `0x644c5D77a34182Db01257bC4C469B01850bc6B2d`
+  - Contrato: `0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C`
+  - Mint manual probado: `0x15dc4cb688eae448d0bfd8582b3fe8d5cb8003bc682c440114d10ea4a4645679`
 
 ## Links que vas a abrir
 

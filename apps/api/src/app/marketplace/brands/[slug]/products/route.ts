@@ -3,8 +3,10 @@ export const dynamic = "force-dynamic";
 
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
+import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtime-schema";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+  await ensureConsumerPortalSchema();
   const { slug } = await params;
   const brandSlug = String(slug || "").trim().toLowerCase();
   if (!brandSlug) return json({ ok: false, error: "brand_required" }, 400);

@@ -4,8 +4,10 @@ import { randomUUID } from "node:crypto";
 import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
+import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtime-schema";
 
 export async function POST(req: Request, { params }: { params: Promise<{ rewardId: string }> }) {
+  await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
   const { rewardId } = await params;

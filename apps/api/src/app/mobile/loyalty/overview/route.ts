@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { ensureDefaultLoyaltyProgram, ensureLoyaltySchema } from "../../../../lib/loyalty-schema";
+import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -13,6 +14,7 @@ export async function GET(req: Request) {
   if (!tenantSlug) return json({ ok: false, reason: "missing_tenant" }, 400);
 
   await ensureLoyaltySchema();
+  await ensureConsumerPortalSchema();
 
   const tenantRows = await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`;
   if (!tenantRows[0]) return json({ ok: false, reason: "tenant_not_found" }, 404);

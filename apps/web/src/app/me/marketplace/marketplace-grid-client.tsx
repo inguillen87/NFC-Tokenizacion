@@ -103,6 +103,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
 
     const res = await fetch(`/api/marketplace/products/${encodeURIComponent(item.id)}/request-to-buy`, {
       method: "POST",
+      credentials: "include",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ quantity: 1, ageGateAccepted }),
     }).catch(() => null);
@@ -114,6 +115,14 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
     }
 
     const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+    if (res.status === 401) {
+      setFeedbackById((prev) => ({ ...prev, [item.id]: "Necesitas entrar al portal para solicitar este beneficio. Te llevo al acceso consumer." }));
+      setBusyById((prev) => ({ ...prev, [item.id]: false }));
+      window.setTimeout(() => {
+        window.location.assign(`/login?consumer=1&next=${encodeURIComponent("/me/marketplace")}`);
+      }, 650);
+      return;
+    }
     if (!res.ok || !payload?.ok) {
       const errorLabel = payload?.error ? `Error: ${payload.error}` : "No fue posible registrar la solicitud.";
       setFeedbackById((prev) => ({ ...prev, [item.id]: errorLabel }));

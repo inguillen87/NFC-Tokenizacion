@@ -3,8 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 
 type TapState = "valid" | "opened" | "blocked";
-type Props = { bid: string; uid?: string; eventId?: string; freshToken?: string; canExecute?: boolean; tapState?: TapState };
-type LeadIntent = "tokenization_optional";
+type RightsPolicy = {
+  conditionState?: string | null;
+  claimMode?: string | null;
+  tokenizationPolicy?: string | null;
+  marketplaceMode?: string | null;
+  requirements?: string[];
+  consumerCopy?: string | null;
+  recommendedNextStep?: string | null;
+};
+type Props = { bid: string; uid?: string; eventId?: string; freshToken?: string; canExecute?: boolean; tapState?: TapState; rightsPolicy?: RightsPolicy };
 type ActionState = "idle" | "loading" | "success" | "error";
 type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokenization" | "report";
 type CallResponse = {
@@ -30,6 +38,11 @@ function normalizeUnknownError(error: unknown) {
   return "No se pudo completar la acción por un problema de conexión. Reintentá en unos segundos.";
 }
 
+function labelPolicy(value?: string | null) {
+  const raw = String(value || "").replace(/_/g, " ").trim();
+  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "No configurado";
+}
+
 async function call(path: string, method: "POST" | "GET", payload: Record<string, unknown> | null): Promise<CallResponse> {
   const url = new URL(path, window.location.origin);
   if (method === "GET" && payload) {
@@ -40,6 +53,7 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
   }
   const res = await fetch(url.toString(), {
     method,
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: method === "POST" ? JSON.stringify(payload || {}) : undefined,
   });
@@ -52,7 +66,7 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
   };
 }
 
-export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid" }: Props) {
+export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid", rightsPolicy }: Props) {
   const [status, setStatus] = useState<string>("");
   const [pending, setPending] = useState(false);
   const [actionStates, setActionStates] = useState<Record<ActionKey, ActionState>>({
@@ -66,7 +80,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [leadEmail, setLeadEmail] = useState("");
   const [leadSaved, setLeadSaved] = useState(false);
-  const [leadIntent, setLeadIntent] = useState<LeadIntent>("tokenization_optional");
+  const leadIntent = "tokenization_optional";
   const [provenance, setProvenance] = useState<ProvenanceResponse | null>(null);
   const [lastActionMessage, setLastActionMessage] = useState("");
   const [lastTraceId, setLastTraceId] = useState<string>("");
@@ -76,12 +90,28 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail.trim());
+  const tokenPolicy = String(rightsPolicy?.tokenizationPolicy || "").toLowerCase();
+  const claimMode = String(rightsPolicy?.claimMode || "").toLowerCase();
+  const policySummary = rightsPolicy?.consumerCopy || "";
+  const tokenSubtitle = tokenPolicy === "issuer_transfer"
+    ? "Tokenizacion por transferencia del issuer: requiere prueba documental antes del mint."
+    : tokenPolicy === "lot_anchor"
+      ? "Ancla de lote: tokeniza trazabilidad y lifecycle sin prometer ownership individual."
+      : tokenPolicy === "manual_review"
+        ? "Solicitud a revision: el tenant aprueba antes de mintear en Polygon."
+        : "Request de tokenizacion con UID hasheado, salt privado y proof Polygon.";
   const gatedCopy = tapState === "blocked"
     ? "Ownership, garantia y tokenizacion quedan protegidos hasta tener un tap fisico valido y fresco."
-    : tapState === "opened"
+    : policySummary || (tapState === "opened"
       ? "Sello abierto verificado: se habilita ownership, garantia, provenance y tokenizacion como lifecycle event."
-      : "Tap fresco verificado: listo para ownership, garantia, provenance y tokenizacion.";
-  const tokenModalCopy = tapState === "opened"
+      : "Tap fresco verificado: listo para ownership, garantia, provenance y tokenizacion.");
+  const tokenModalCopy = tokenPolicy === "issuer_transfer"
+    ? "El token se solicita como transferencia del issuer: no se mintea ownership publico sin proof of purchase o autorizacion."
+    : tokenPolicy === "lot_anchor"
+      ? "El token ancla un lote, origen y lifecycle. No convierte automaticamente cada unidad fisica en propiedad individual."
+      : tokenPolicy === "manual_review"
+        ? "La solicitud queda en revision comercial antes de mintear. Es ideal para pharma, cosmetica o casos con riesgo regulatorio."
+        : tapState === "opened"
     ? "El token ancla la apertura verificada, ownership y provenance sin exponer el UID crudo."
     : "El token ancla ownership, provenance y garantia sin exponer el UID crudo.";
   const actionMeta: Record<string, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
@@ -118,16 +148,23 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       tone: "border-rose-300/40 bg-rose-500/10 text-rose-100 transition hover:bg-rose-500/20",
     }
   };
+  const successCopy: Record<ActionKey, string> = {
+    claimOwnership: "Ownership registrado en tu nexID Passport.",
+    registerWarranty: "Garantia registrada para postventa y lifecycle.",
+    provenance: "Provenance consultada correctamente.",
+    tokenization: "Tokenizacion enviada: el ledger va a anclar o mintear en Polygon Amoy.",
+    report: "Ticket creado para revisar el tap.",
+  };
 
   function renderStateBadge(actionKey: ActionKey) {
     const state = actionStates[actionKey];
     if (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey) && state === "idle") {
-      return <span className="rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-100">Nuevo tap</span>;
+      return <span className="rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-100">Requiere tap</span>;
     }
     if (state === "loading") return <span className="rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">Procesando...</span>;
     if (state === "success") return <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">Hecho</span>;
     if (state === "error") return <span className="rounded-full border border-rose-300/40 bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-100">Error</span>;
-    return <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">Listo</span>;
+    return <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">Disponible</span>;
   }
 
   function cardStateClass(actionKey: ActionKey) {
@@ -150,6 +187,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     };
     if (eventId) payload.event_id = eventId;
     if (freshToken) payload.fresh_token = freshToken;
+    if (rightsPolicy?.conditionState) payload.condition_state = rightsPolicy.conditionState;
+    if (rightsPolicy?.claimMode) payload.claim_mode = rightsPolicy.claimMode;
+    if (rightsPolicy?.tokenizationPolicy) payload.tokenization_policy = rightsPolicy.tokenizationPolicy;
+    if (rightsPolicy?.marketplaceMode) payload.marketplace_mode = rightsPolicy.marketplaceMode;
+    if (Array.isArray(rightsPolicy?.requirements)) payload.requirements = rightsPolicy.requirements.slice(0, 8);
     return payload;
   }
 
@@ -233,7 +275,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       if (!ok) {
         setActionError(normalizeReason(data));
       } else {
-        setLastActionMessage("Acción completada correctamente.");
+        setLastActionMessage(successCopy[actionKey]);
       }
       if (method === "GET" && path.includes("provenance")) setProvenance(data as ProvenanceResponse);
     } catch (error) {
@@ -268,8 +310,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         source: "sun_validation_center",
         vertical: "premium",
         role: "buyer",
-        message: `Tokenization optional CTA from SUN page [bid=${bid}] [uid=${uid || "event:" + eventId}] [intent=${leadIntent}]`,
-        notes: `commercial_signal=tokenization_optional | bid=${bid} | uid=${uid || "event:" + eventId} | event_id=${eventId}`,
+        message: `Tokenization optional CTA from SUN page [bid=${bid}] [uid=${uid || "event:" + eventId}] [intent=${leadIntent}] [token_policy=${tokenPolicy || "default"}] [claim_mode=${claimMode || "default"}]`,
+        notes: `commercial_signal=tokenization_optional | bid=${bid} | uid=${uid || "event:" + eventId} | event_id=${eventId} | token_policy=${tokenPolicy || "default"} | claim_mode=${claimMode || "default"}`,
       };
       const lead = await call("/api/leads", "POST", leadPayload);
       const tokenization = await call("/api/public-cta/tokenize-request", "POST", basePayload({
@@ -286,7 +328,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         const reason = normalizeReason(tokenization as CallResponse) || normalizeReason(lead as CallResponse);
         setActionError(reason);
       } else {
-        setLastActionMessage("Interés registrado y tokenización solicitada.");
+        setLastActionMessage(successCopy.tokenization);
       }
     } catch (error) {
       setActionStates((current) => ({ ...current, tokenization: "error" }));
@@ -304,6 +346,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
 
   return (
     <div className="sun-public-cta mt-4 space-y-2">
+      {rightsPolicy ? (
+        <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-2 text-[11px] text-cyan-100">
+          Politica: ownership {labelPolicy(rightsPolicy.claimMode)} · token {labelPolicy(rightsPolicy.tokenizationPolicy)} · marketplace {labelPolicy(rightsPolicy.marketplaceMode)}
+        </div>
+      ) : null}
       <div className="grid gap-2 text-xs md:grid-cols-2">
         {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).map((key) => {
           const item = actionMeta[key];
@@ -325,18 +372,14 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         <button suppressHydrationWarning
           ref={tokenActionButtonRef}
           disabled={isActionDisabled("tokenization")}
-          onClick={() => {
-            setLeadIntent("tokenization_optional");
-            setActionStates((current) => ({ ...current, tokenization: "idle" }));
-            setShowTokenModal(true);
-          }}
+          onClick={() => void trigger("/api/public-cta/tokenize-request", "POST", "tokenization")}
           className={`sun-public-cta-card rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-3 text-left text-emerald-100 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${cardStateClass("tokenization")}`}
         >
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold"><span className="sun-public-cta-code">TOK</span> Tokenizar en Polygon{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
             {renderStateBadge("tokenization")}
           </div>
-          <p className="mt-1 text-[11px] text-emerald-50/80">Request de tokenizacion con UID hasheado, salt privado y proof Polygon.</p>
+          <p className="mt-1 text-[11px] text-emerald-50/80">{tokenSubtitle}</p>
         </button>
       </div>
       <p className="sun-cta-tip text-[11px] text-slate-300">{gatedCopy}</p>

@@ -2,12 +2,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
+import { ensureConsumerPortalSchema } from "../../../lib/commercial-runtime-schema";
 
 function normalizeTenantSlug(input: string) {
   return String(input || "").trim().toLowerCase();
 }
 
 export async function GET(req: Request) {
+  await ensureConsumerPortalSchema();
   const url = new URL(req.url);
   const vertical = url.searchParams.get("vertical");
   const tenant = normalizeTenantSlug(url.searchParams.get("tenant") || "");

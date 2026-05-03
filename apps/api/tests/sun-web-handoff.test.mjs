@@ -48,7 +48,7 @@ test("web SUN page can hydrate a snapshot created by the API tap route", async (
   assert.match(webSource, /isFreshHandoff/);
   assert.match(webSource, /isSnapshotView/);
   assert.match(webSource, /isFreshCommercialTap/);
-  assert.match(webSource, /Vista guardada/);
+  assert.match(webSource, /Consulta segura/);
 });
 
 test("web SUN CTAs can use event id without exposing raw UID", async () => {

@@ -5,6 +5,7 @@ import { checkAdmin } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { publishRealtimeEvent } from "../../../lib/realtime-events";
+import { ensureLeadsSchema } from "../../../lib/commercial-runtime-schema";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -13,6 +14,7 @@ function clean(value: unknown) {
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureLeadsSchema();
   const rows = await sql/*sql*/`SELECT * FROM leads ORDER BY created_at DESC LIMIT 500`;
   return json(rows);
 }
@@ -41,6 +43,7 @@ export async function POST(req: Request) {
 
   if (!contact) return json({ ok: false, reason: "contact required" }, 400);
 
+  await ensureLeadsSchema();
   try {
     const rows = await sql/*sql*/`
       INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes)

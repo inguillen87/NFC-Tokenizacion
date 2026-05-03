@@ -1,4 +1,4 @@
-export const SUN_VERTICALS = ["wine", "events", "cosmetics", "agro", "pharma", "luxury"] as const;
+export const SUN_VERTICALS = ["wine", "spirits", "events", "cosmetics", "agro", "pharma", "luxury", "art", "documents"] as const;
 export type SunVertical = typeof SUN_VERTICALS[number];
 
 export const SUN_TOKENIZATION_MODES = ["valid_only", "valid_and_opened", "manual"] as const;
@@ -134,11 +134,14 @@ export function normalizeSunVertical(value: unknown): SunVertical | null {
   const raw = firstString(value)?.toLowerCase().replace(/[\s-]+/g, "_") || "";
   if (!raw) return null;
   if (raw === "vino" || raw === "bodega" || raw === "winery") return "wine";
+  if (raw === "destilados" || raw === "spirits" || raw === "whisky" || raw === "tequila" || raw === "gin") return "spirits";
   if (raw === "event" || raw === "eventos" || raw === "tickets" || raw === "ticket") return "events";
   if (raw === "cosmetica" || raw === "beauty" || raw === "perfume") return "cosmetics";
   if (raw === "seed" || raw === "crop" || raw === "campo") return "agro";
   if (raw === "medicamento" || raw === "laboratorio" || raw === "lab") return "pharma";
   if (raw === "lujo" || raw === "jewelry" || raw === "watch") return "luxury";
+  if (raw === "arte" || raw === "art" || raw === "gallery" || raw === "certificate") return "art";
+  if (raw === "docs" || raw === "documents" || raw === "documentos" || raw === "presence" || raw === "identity") return "documents";
   return (SUN_VERTICALS as readonly string[]).includes(raw) ? raw as SunVertical : null;
 }
 

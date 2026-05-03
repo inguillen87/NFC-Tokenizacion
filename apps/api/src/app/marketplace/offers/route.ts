@@ -2,8 +2,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
+import { ensureConsumerPortalSchema } from "../../../lib/commercial-runtime-schema";
 
 export async function GET() {
+  await ensureConsumerPortalSchema();
   const rows = await sql/*sql*/`
     SELECT o.*, t.slug AS tenant_slug, p.title AS product_title
     FROM marketplace_offers o

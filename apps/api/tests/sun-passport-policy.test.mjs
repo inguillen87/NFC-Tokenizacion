@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { mapVerdictAndRisk, resolveActionMatrix } = await import("../src/lib/sun-passport-policy.ts");
+const { mapVerdictAndRisk, resolveActionMatrix, resolveRightsPolicy } = await import("../src/lib/sun-passport-policy.ts");
 
 test("view=json contract keys mapping remains stable for valid verdict", () => {
   const mapped = mapVerdictAndRisk({ statusCode: "VALID", productState: "VALID_CLOSED", reason: "sun_ok" });
@@ -60,4 +60,79 @@ test("invalid payload does not require leaking raw sun internals in public contr
   assert.equal(serialized.includes("picc_data"), false);
   assert.equal(serialized.includes("enc"), false);
   assert.equal(serialized.includes("cmac"), false);
+});
+
+test("wine opened remains authentic but commercial rights require proof", () => {
+  const policy = resolveRightsPolicy({
+    verdict: "valid_opened",
+    vertical: "wine",
+    tokenizationMode: "valid_and_opened",
+    claimPolicy: "purchase_proof_required",
+    statusCode: "OPENED",
+    encPlainStatusByte: "4F",
+  });
+  assert.equal(policy.conditionState, "opened_verified");
+  assert.equal(policy.canTokenize, true);
+  assert.equal(policy.claimMode, "purchase_or_custody_proof");
+  assert.match(policy.statusSummary, /Sello abierto/i);
+});
+
+test("pharma opened keeps provenance but blocks public tokenization", () => {
+  const policy = resolveRightsPolicy({
+    verdict: "valid_opened",
+    vertical: "pharma",
+    statusCode: "OPENED",
+    encPlainStatusByte: "4F",
+  });
+  assert.equal(policy.allowedActions.includes("provenance"), true);
+  assert.equal(policy.allowedActions.includes("tokenization"), false);
+  assert.equal(policy.tokenizationPolicy, "blocked_opened_policy");
+});
+
+test("luxury opened supports issuer-governed ownership", () => {
+  const policy = resolveRightsPolicy({
+    verdict: "valid_opened",
+    vertical: "luxury",
+    statusCode: "OPENED",
+    encPlainStatusByte: "4F",
+  });
+  assert.equal(policy.claimMode, "issuer_transfer_required");
+  assert.equal(policy.allowedActions.includes("claim"), true);
+  assert.equal(policy.tokenizationPolicy, "verified_opened_tap");
+});
+
+test("events activation avoids tokenization by default", () => {
+  const policy = resolveRightsPolicy({
+    verdict: "valid",
+    vertical: "events",
+    statusCode: "VALID",
+    encPlainStatusByte: "43",
+  });
+  assert.equal(policy.marketplaceMode, "ticket_activation");
+  assert.equal(policy.allowedActions.includes("tokenization"), false);
+  assert.equal(policy.tokenizationPolicy, "blocked_policy");
+});
+
+test("agro uses lot anchor tokenization policy", () => {
+  const policy = resolveRightsPolicy({
+    verdict: "valid",
+    vertical: "agro",
+    statusCode: "VALID",
+    encPlainStatusByte: "43",
+  });
+  assert.equal(policy.canTokenize, true);
+  assert.equal(policy.tokenizationPolicy, "lot_anchor");
+  assert.equal(policy.marketplaceMode, "lot_traceability");
+});
+
+test("documents require issuer transfer", () => {
+  const policy = resolveRightsPolicy({
+    verdict: "valid",
+    vertical: "documents",
+    statusCode: "VALID",
+    encPlainStatusByte: "43",
+  });
+  assert.equal(policy.claimMode, "issuer_transfer_required");
+  assert.equal(policy.tokenizationPolicy, "issuer_transfer");
+  assert.equal(policy.marketplaceMode, "issuer_private");
 });

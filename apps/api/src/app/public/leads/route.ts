@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { publishRealtimeEvent } from "../../../lib/realtime-events";
+import { ensureLeadsSchema } from "../../../lib/commercial-runtime-schema";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
 
   if (!contact) return json({ ok: false, reason: "contact required" }, 400);
 
+  await ensureLeadsSchema();
   try {
     const rows = await sql/*sql*/`
       INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes)

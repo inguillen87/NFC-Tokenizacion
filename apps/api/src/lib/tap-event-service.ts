@@ -53,7 +53,7 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
         picc_data_hash, cmac_hash, raw_url_hash, ip_hash, geo_precision, product_name,
         ip, geo_city, geo_country, device_label, raw_query
       ) VALUES (
-        ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr || payload.readCounter || null}, ${payload.readCounter || null}, ${payload.cmacOk || null}, ${payload.allowlisted || null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
+        ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr ?? payload.readCounter ?? null}, ${payload.readCounter ?? null}, ${payload.cmacOk ?? null}, ${payload.allowlisted ?? null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
         ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${payload.lat || null}, ${payload.lng || null}, ${sourceStr}::text, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::text, ${payload.verdict}, ${payload.riskLevel}::text,
         ${payload.piccDataHash || null}, ${payload.cmacHash || null}, ${payload.rawUrlHash || null}, ${payload.ipHash || null}, ${payload.geoPrecision || 'none'}::text, ${payload.productName || null},
         ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${payload.rawQuery || null}::jsonb
@@ -67,7 +67,7 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
         picc_data_hash, cmac_hash, raw_url_hash, ip_hash, geo_precision, product_name,
         ip, geo_city, geo_country, device_label, raw_query
       ) VALUES (
-        ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr || payload.readCounter || null}, ${payload.cmacOk || null}, ${payload.allowlisted || null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
+        ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr ?? payload.readCounter ?? null}, ${payload.cmacOk ?? null}, ${payload.allowlisted ?? null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
         ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${payload.lat || null}, ${payload.lng || null}, ${sourceStr}::text, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::text, ${payload.verdict}, ${payload.riskLevel}::text,
         ${payload.piccDataHash || null}, ${payload.cmacHash || null}, ${payload.rawUrlHash || null}, ${payload.ipHash || null}, ${payload.geoPrecision || 'none'}::text, ${payload.productName || null},
         ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${payload.rawQuery || null}::jsonb

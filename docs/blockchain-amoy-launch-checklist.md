@@ -4,7 +4,7 @@ Este documento es el checklist corto para activar blockchain manana sin tocar UX
 
 ## 0. Estado del producto
 
-Listo para conectar:
+Estado actual del piloto Amoy:
 
 - Tap SUN/NTAG 424 DNA TT valida autenticidad, anti-replay y tamper server-side.
 - Replay bloquea ownership, rewards y tokenizacion hasta un tap fisico fresco.
@@ -12,6 +12,21 @@ Listo para conectar:
 - Portal consumidor guarda producto, historial, tenant, promos y certificado si existe.
 - Admin/superadmin ven cola de tokenizacion y readiness de Polygon Amoy.
 - La blockchain usa hash de UID + salt. No publica UID crudo.
+- El contrato Amoy ya fue desplegado y un mint manual ya funciono.
+- La API puede mintear directo con `ethers` cuando `TOKENIZATION_USE_LOCAL_MINTER=true`.
+- `tsc` API/web, `qa-static` y tests SUN pasan.
+
+Valores del piloto actual:
+
+```txt
+Network: Polygon Amoy
+Chain ID: 80002
+RPC: https://polygon-amoy.g.alchemy.com/v2/lkdR5ChJ14TarIAHeZKxj
+Owner/Minter/Recipient: 0x644c5D77a34182Db01257bC4C469B01850bc6B2d
+Contract: 0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C
+Manual test tx: 0x15dc4cb688eae448d0bfd8582b3fe8d5cb8003bc682c440114d10ea4a4645679
+Manual test token_id: 1
+```
 
 ## 1. Cuentas que vas a crear
 
@@ -142,12 +157,15 @@ SUN_AUTO_TOKENIZE_ON_VALID_TAP=true
 TOKENIZATION_USE_LOCAL_MINTER=true
 TOKENIZATION_UID_SALT=<random largo secreto>
 TOKENIZATION_METADATA_CID_PREFIX=nexid-metadata
-POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
+POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/lkdR5ChJ14TarIAHeZKxj
 POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
-POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
-POLYGON_CONTRACT_ADDRESS=0xCONTRATO_DESPLEGADO
-POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA_DEFAULT
-POLYGON_DEPLOY_OWNER=0xOWNER_DEL_CONTRATO
+POLYGON_MINTER_ADDRESS=0x644c5D77a34182Db01257bC4C469B01850bc6B2d
+POLYGON_CONTRACT_ADDRESS=0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C
+POLYGON_DEFAULT_RECIPIENT=0x644c5D77a34182Db01257bC4C469B01850bc6B2d
+POLYGON_DEPLOY_OWNER=0x644c5D77a34182Db01257bC4C469B01850bc6B2d
+PUBLIC_DEMO_SHARE_SECRET=<mismo secreto fuerte en web y api>
+SUN_HANDOFF_SECRET=<mismo secreto fuerte o uno dedicado>
+CONSUMER_SESSION_COOKIE_DOMAIN=.nexid.lat
 ```
 
 ### Opcion B - executor separado
@@ -179,6 +197,15 @@ POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA_DEFAULT
 ```
 
 No poner ninguna de estas como `NEXT_PUBLIC_*`.
+
+En el proyecto web (`https://nexid.lat`) usar el mismo secreto publico de CTA, pero nunca private keys:
+
+```txt
+NEXT_PUBLIC_API_BASE_URL=https://api.nexid.lat
+PUBLIC_DEMO_SHARE_SECRET=<mismo secreto fuerte que API>
+```
+
+Si web y API no comparten `PUBLIC_DEMO_SHARE_SECRET`, los botones publicos de `/sun` pueden fallar aunque el tap sea valido.
 
 ## 7. Diagnostico antes de probar tags
 
@@ -246,6 +273,23 @@ https://api.nexid.lat/sun?v=1&bid=...&picc_data=...&enc=...&cmac=...
 6. Confirmar que admin/superadmin ve la request.
 7. Abrir tx en Amoy Polygonscan.
 
+Secuencia esperada:
+
+- Tap fresco cerrado: `VALID`, sello intacto, acciones comerciales permitidas por politica del tenant.
+- Tap fresco abierto: `OPENED`, autentico como lifecycle event; ownership/tokenizacion dependen de vertical y politica.
+- Snapshot, refresh o link copiado: modo consulta historica. Muestra trazabilidad, pero bloquea ownership, puntos, marketplace y tokenizacion hasta otro tap fisico.
+- Replay criptografico real: queda marcado como riesgo y bloquea acciones comerciales.
+
+Para probar el boton real de tokenizacion:
+
+1. Abrir la pantalla que viene de un tap fisico fresco, no una snapshot vieja.
+2. Tocar `Tokenizar en Polygon`.
+3. Esperar respuesta OK.
+4. Revisar `/admin/tokenization/requests`.
+5. Abrir `https://amoy.polygonscan.com/tx/0xTX_HASH`.
+
+Si aparece `anchor.ok=false`, mirar logs de `api.nexid.lat` y revisar: private key, gas, contrato, RPC o secreto de handoff.
+
 ## 10. Prueba con las 10 etiquetas
 
 No probar todas de golpe.
@@ -284,3 +328,23 @@ Blockchain queda lista cuando:
 - Un mint manual genera `tx_hash`.
 - Un tap real genera request y proof.
 - `/sun` y `/me/products` muestran el certificado con link a Polygonscan.
+
+## 13. Verificacion rapida desde Codex/local
+
+```powershell
+cd C:\Users\guill\OneDrive\Documentos\GitHub\NFC-Tokenizacion
+$node="C:\Users\guill\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe"
+& $node node_modules\typescript\bin\tsc -p apps\api\tsconfig.json --noEmit
+& $node node_modules\typescript\bin\tsc -p apps\web\tsconfig.json --noEmit
+& $node scripts\qa-static.mjs
+& $node --test apps\api\tests\sun-*.test.mjs apps\api\tests\ttstatus-decode.test.mjs
+```
+
+Resultado esperado actual:
+
+```txt
+API tsc: OK
+Web tsc: OK
+Static QA: OK
+SUN tests: 31/31 OK
+```

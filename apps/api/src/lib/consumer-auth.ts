@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { sql } from "./db";
 import { resolveConsumerOtpProvider } from "./consumer-auth-provider";
+import { ensureConsumerAuthSchema } from "./commercial-runtime-schema";
 
 const SESSION_COOKIE = "nexid_consumer_session";
 const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
@@ -37,6 +38,7 @@ function audit(event: string, payload: Record<string, unknown>) {
 }
 
 export async function startConsumerAuth(contact: string, meta?: { ip?: string | null }) {
+  await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
   const allowedContact = consumeRate(startRate, `contact:${contact}`, 5, 10 * 60 * 1000);
   const allowedIp = consumeRate(startRate, `ip:${ip}`, 20, 10 * 60 * 1000);
@@ -58,6 +60,7 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
 }
 
 export async function verifyConsumerAuth(contact: string, code: string, meta?: { userAgent?: string | null; ip?: string | null }) {
+  await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
   const allowedContact = consumeRate(verifyRate, `contact:${contact}`, 15, 10 * 60 * 1000);
   const allowedIp = consumeRate(verifyRate, `ip:${ip}`, 40, 10 * 60 * 1000);
@@ -94,13 +97,21 @@ export async function verifyConsumerAuth(contact: string, code: string, meta?: {
   const normalizedEmail = contact.includes("@") ? contact.toLowerCase() : null;
   const normalizedPhone = contact.includes("@") ? null : contact;
 
-  const consumerRows = await sql/*sql*/`
-    INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
-    VALUES (${normalizedEmail}, ${normalizedPhone}, ${null}, 'registered', 'es-AR', now())
-    ON CONFLICT (email)
-    DO UPDATE SET last_login_at = now(), status = 'registered'
-    RETURNING *
-  `;
+  const consumerRows = normalizedEmail
+    ? await sql/*sql*/`
+      INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
+      VALUES (${normalizedEmail}, ${null}, ${null}, 'registered', 'es-AR', now())
+      ON CONFLICT (email)
+      DO UPDATE SET last_login_at = now(), status = 'registered'
+      RETURNING *
+    `
+    : await sql/*sql*/`
+      INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
+      VALUES (${null}, ${normalizedPhone}, ${null}, 'registered', 'es-AR', now())
+      ON CONFLICT (phone) WHERE phone IS NOT NULL
+      DO UPDATE SET last_login_at = now(), status = 'registered'
+      RETURNING *
+    `;
   const consumer = consumerRows[0];
 
   await sql/*sql*/`
@@ -128,6 +139,7 @@ export async function verifyConsumerAuth(contact: string, code: string, meta?: {
 }
 
 export async function getConsumerFromRequest(req: Request) {
+  await ensureConsumerAuthSchema();
   const cookie = req.headers.get("cookie") || "";
   const match = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
   if (!match) return null;
@@ -149,7 +161,13 @@ export async function getConsumerFromRequest(req: Request) {
   return rows[0] || null;
 }
 
+function sessionCookieAttributes() {
+  const isSecure = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+  const domain = String(process.env.CONSUMER_SESSION_COOKIE_DOMAIN || "").trim();
+  return `${domain ? `; Domain=${domain}` : ""}; Path=/; HttpOnly; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+}
+
 export function sessionCookieHeader(token: string | null) {
-  if (!token) return `${SESSION_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`;
-  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; SameSite=Lax`;
+  if (!token) return `${SESSION_COOKIE}=; Max-Age=0${sessionCookieAttributes()}`;
+  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Max-Age=${60 * 60 * 24 * 30}${sessionCookieAttributes()}`;
 }

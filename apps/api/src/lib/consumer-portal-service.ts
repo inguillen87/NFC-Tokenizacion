@@ -1,8 +1,10 @@
 import { sql } from "./db";
 import { claimTapPoints, getTapEvent } from "./loyalty-service";
 import { evaluateOwnershipEligibility } from "./ownership-policy";
+import { ensureConsumerPortalSchema } from "./commercial-runtime-schema";
 
 export async function ensureTenantMembership(input: { consumerId: string; tenantId: string; tapEventId?: string; source?: string }) {
+  await ensureConsumerPortalSchema();
   const programRows = await sql/*sql*/`SELECT id FROM loyalty_programs WHERE tenant_id = ${input.tenantId} AND status='active' ORDER BY created_at DESC LIMIT 1`;
   const loyaltyProgramId = programRows[0]?.id || null;
   const rows = await sql/*sql*/`
@@ -20,6 +22,7 @@ export async function ensureTenantMembership(input: { consumerId: string; tenant
 }
 
 export async function saveTapForConsumer(input: { consumerId: string; eventId: string }) {
+  await ensureConsumerPortalSchema();
   const event = await getTapEvent(input.eventId);
   if (!event) return null;
 
@@ -128,6 +131,7 @@ type ClaimOwnershipInput = {
 };
 
 export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
+  await ensureConsumerPortalSchema();
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false as const, status: 404, error: "event_not_found" as const };
   if (!event.tenant_id || !event.uid_hex) return { ok: false as const, status: 400, error: "event_missing_identity" as const };
@@ -201,6 +205,7 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
 }
 
 export async function claimPointsForConsumer(input: { consumerId: string; eventId: string; locale?: string }) {
+  await ensureConsumerPortalSchema();
   const event = await saveTapForConsumer(input);
   if (!event) return { ok: false, error: "event_not_found" };
   const claim = await claimTapPoints({ eventId: input.eventId, locale: input.locale || "es-AR" });

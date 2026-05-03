@@ -28,12 +28,13 @@ export function TapAssociationBanner() {
 
   async function associate(action: string, contactValue?: string) {
     if (!eventId) return false;
-    await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/consumer/join-tenant`, { method: "POST" }).catch(() => null);
-    await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/consumer/save-product`, { method: "POST" }).catch(() => null);
-    await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/consumer/claim`, { method: "POST" }).catch(() => null);
+    await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/consumer/join-tenant`, { method: "POST", credentials: "include" }).catch(() => null);
+    await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/consumer/save-product`, { method: "POST", credentials: "include" }).catch(() => null);
+    await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/consumer/claim`, { method: "POST", credentials: "include" }).catch(() => null);
     if (action === "rewards" && contactValue?.trim()) {
       await fetch(`/api/mobile/passport/${encodeURIComponent(eventId)}/loyalty/enroll`, {
         method: "POST",
+        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(contactValue.includes("@") ? { email: contactValue } : { phone: contactValue }),
       }).catch(() => null);
@@ -46,7 +47,7 @@ export function TapAssociationBanner() {
     setPending(true);
     setStatus("Asociando este tap verificado con tu cuenta...");
     try {
-      const me = await fetch("/api/consumer/me", { cache: "no-store" }).then((res) => res.json()).catch(() => null);
+      const me = await fetch("/api/consumer/me", { cache: "no-store", credentials: "include" }).then((res) => res.json()).catch(() => null);
       if (!me?.ok) {
         setStatus("Necesitamos que te registres/inicies sesión para asociar este producto.");
         setPending(false);
@@ -75,6 +76,7 @@ export function TapAssociationBanner() {
     try {
       const start = await fetch("/api/consumer/auth/start", {
         method: "POST",
+        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(contact.includes("@") ? { email: contact } : { phone: contact }),
       }).then((res) => res.json()).catch(() => null);
@@ -97,6 +99,7 @@ export function TapAssociationBanner() {
     try {
       const verify = await fetch("/api/consumer/auth/verify", {
         method: "POST",
+        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(contact.includes("@") ? { email: contact, code } : { phone: contact, code }),
       }).then((res) => res.json()).catch(() => null);
