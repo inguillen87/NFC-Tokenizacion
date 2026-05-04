@@ -6,5 +6,6 @@ export * from "./use-cases";
 export * from "./i18n";
 
 export * from "./urls";
+export * from "./scheduling";
 
 export * from "./demo";

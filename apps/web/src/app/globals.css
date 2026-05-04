@@ -610,6 +610,27 @@ body:has(.sun-mobile-surface) .helpbot-trigger {
   transform-origin: bottom right;
 }
 
+@media (max-width: 820px) {
+  body:has(.landing-root) .sales-widget-root {
+    right: 1rem !important;
+    bottom: calc(8.6rem + env(safe-area-inset-bottom)) !important;
+    z-index: 34 !important;
+    max-width: calc(100vw - 2rem);
+  }
+
+  body:has(.landing-root) .sales-widget-root .sales-widget-toggle {
+    min-height: 2.55rem;
+    padding-inline: 0.8rem;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 520px) {
+  body:has(.landing-root) .sales-widget-root .sales-widget-toggle span:last-child {
+    display: none;
+  }
+}
+
 @media (max-width: 720px) {
   body:has(.sun-mobile-surface) .helpbot-trigger,
   body:has(.sun-mobile-surface) .helpbot-panel {
@@ -644,6 +665,36 @@ body:has(.consumer-portal-root) .helpbot-trigger {
   body:has(.consumer-portal-root) .sales-widget-root,
   body:has(.sun-mobile-surface) .sales-widget-root {
     display: none !important;
+  }
+
+  body:has(.consumer-bottom-nav) .helpbot-hint,
+  body:has(.consumer-bottom-nav) .helpbot-trigger,
+  body:has(.consumer-bottom-nav) .helpbot-panel,
+  body:has(.consumer-bottom-nav) .sales-widget-root,
+  body:has(.sun-bottom-nav) .helpbot-hint,
+  body:has(.sun-bottom-nav) .helpbot-trigger,
+  body:has(.sun-bottom-nav) .helpbot-panel,
+  body:has(.sun-bottom-nav) .sales-widget-root {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  body:has(.landing-root) .helpbot-hint {
+    display: none !important;
+  }
+
+  body:has(.landing-root) .helpbot-trigger {
+    bottom: calc(5.8rem + env(safe-area-inset-bottom)) !important;
+    z-index: 35 !important;
+  }
+
+  body:has(.landing-root) .sales-widget-root {
+    bottom: calc(7rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .consumer-bottom-nav,
+  .sun-bottom-nav {
+    z-index: 120 !important;
   }
 }
 
@@ -2352,15 +2403,15 @@ html.theme-light .sun-priority-panel a {
   position: absolute;
   z-index: 5;
   left: 50%;
-  top: 18%;
-  width: 0.9rem;
-  height: 1.35rem;
+  top: 14.5%;
+  width: 1.02rem;
+  height: 1.52rem;
   border-radius: 0.22rem;
   background:
     linear-gradient(90deg, rgba(255,255,255,0.24), transparent 48%),
     repeating-linear-gradient(45deg, #a16207 0 3px, #854d0e 3px 6px);
   box-shadow: 0 8px 18px rgba(2, 6, 23, 0.35);
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, 0.1rem);
   animation: corkPop 2.8s ease-in-out infinite;
 }
 
@@ -2389,9 +2440,9 @@ html.theme-light .sun-priority-panel a {
 }
 
 @keyframes corkPop {
-  0%, 62%, 100% { opacity: 0; transform: translate(-50%, 0.2rem) rotate(0deg); }
-  10% { opacity: 1; transform: translate(-50%, -1.25rem) rotate(-12deg); }
-  28% { opacity: 1; transform: translate(calc(-50% + 1.3rem), -2rem) rotate(18deg); }
+  0%, 58%, 100% { opacity: 0.72; transform: translate(-50%, 0.1rem) rotate(0deg); }
+  10% { opacity: 1; transform: translate(-50%, -1.25rem) rotate(-10deg); }
+  28% { opacity: 0.96; transform: translate(calc(-50% + 1.05rem), -2.2rem) rotate(18deg); }
 }
 
 @keyframes heroProductFloat {
@@ -2979,6 +3030,42 @@ html.theme-light .demo-vertical-pill--active {
   line-height: 1.35;
 }
 
+.hero-commercial-rail {
+  display: grid;
+  gap: 0.55rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  background:
+    radial-gradient(circle at 12% 20%, rgba(52, 211, 153, 0.14), transparent 34%),
+    rgba(6, 78, 59, 0.2);
+  padding: 0.75rem;
+}
+
+.hero-commercial-rail span {
+  color: #a7f3d0;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hero-commercial-rail div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.hero-commercial-rail em {
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  background: rgba(15, 23, 42, 0.5);
+  color: #dffcff;
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 850;
+  padding: 0.34rem 0.52rem;
+}
+
 .hero-output-grid {
   display: grid;
   gap: 0.5rem;
@@ -3024,14 +3111,12 @@ html.theme-light .demo-vertical-pill--active {
     display: none;
   }
 
-  .hero-product-stage--wine .hero-bottle {
-    margin-left: clamp(2.5rem, 10vw, 7.8rem);
-  }
-
+  .hero-product-stage--wine .hero-bottle,
   .hero-product-stage--events .wristband-demo,
   .hero-product-stage--cosmetics .cosmetic-demo,
   .hero-product-stage--agro .agro-demo {
-    margin-left: clamp(1.75rem, 8vw, 6rem);
+    justify-self: center;
+    margin-left: 0;
   }
 }
 
@@ -3172,6 +3257,23 @@ html.theme-light .hero-flow-step p,
 html.theme-light .hero-output-row span,
 html.theme-light .hero-scene-phone small {
   color: #475569 !important;
+}
+
+html.theme-light .hero-commercial-rail {
+  background:
+    radial-gradient(circle at 12% 20%, rgba(16, 185, 129, 0.18), transparent 34%),
+    rgba(236, 253, 245, 0.86);
+  border-color: rgba(20, 184, 166, 0.28);
+}
+
+html.theme-light .hero-commercial-rail span {
+  color: #047857;
+}
+
+html.theme-light .hero-commercial-rail em {
+  background: rgba(255, 255, 255, 0.74);
+  border-color: rgba(14, 116, 144, 0.18);
+  color: #0f172a;
 }
 
 html.theme-light .hero-vertical-pill {
@@ -4434,7 +4536,7 @@ html.theme-light .risk-stack-link {
   }
 
   .hero-product-stage--wine .hero-cork-pop {
-    top: 16%;
+    top: 14%;
   }
 
   .hero-map-pin {
@@ -4842,7 +4944,7 @@ html.theme-light .auth-surface input::placeholder {
 
 @keyframes demoCorkPopPremium {
   0%, 34% { transform: translate(-50%, 0.2rem) rotate(0deg); opacity: 1; }
-  62%, 100% { transform: translate(calc(-50% + 2.2rem), -5.2rem) rotate(38deg); opacity: 0.72; }
+  62%, 100% { transform: translate(calc(-50% + 1.55rem), -4.55rem) rotate(32deg); opacity: 0.72; }
 }
 
 @media (max-width: 760px) {
@@ -4967,6 +5069,169 @@ html.theme-light .journey-heat {
   opacity: 0.55;
 }
 
+/* Commercial layer: carrier profiles, marketplace network, reseller OS and unit economics. */
+.landing-value-panel,
+.market-network-shell {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 28px 80px rgba(2, 6, 23, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.landing-value-panel::before,
+.market-network-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 16% 12%, rgba(34, 211, 238, 0.16), transparent 30%),
+    radial-gradient(circle at 90% 10%, rgba(139, 92, 246, 0.14), transparent 32%),
+    radial-gradient(circle at 70% 84%, rgba(16, 185, 129, 0.12), transparent 28%),
+    repeating-linear-gradient(0deg, rgba(125, 211, 252, 0.055) 0 1px, transparent 1px 4.8rem),
+    repeating-linear-gradient(90deg, rgba(125, 211, 252, 0.045) 0 1px, transparent 1px 5.2rem);
+  opacity: 0.94;
+}
+
+.landing-value-panel > *,
+.market-network-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.carrier-profile-card,
+.market-network-node,
+.white-label-step,
+.unit-economics-card {
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.carrier-profile-card::before,
+.unit-economics-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(34, 211, 238, 0.12), transparent 36%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.025), transparent 54%);
+}
+
+.carrier-profile-card:hover,
+.market-network-node:hover,
+.white-label-step:hover,
+.unit-economics-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(103, 232, 249, 0.28);
+}
+
+.market-network-node {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.market-network-node > span,
+.white-label-step > span {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  background: rgba(8, 145, 178, 0.16);
+  color: #a5f3fc;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.white-label-step {
+  display: grid;
+  gap: 0.75rem;
+  min-height: 8.5rem;
+}
+
+.white-label-step p {
+  color: #e2e8f0;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.unit-economics-card strong {
+  display: block;
+  color: #67e8f9;
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+html.theme-light .landing-value-panel,
+html.theme-light .market-network-shell,
+html.theme-light .carrier-profile-card,
+html.theme-light .market-network-node,
+html.theme-light .white-label-step,
+html.theme-light .unit-economics-card {
+  background:
+    radial-gradient(circle at 14% 8%, rgba(34, 211, 238, 0.16), transparent 30%),
+    radial-gradient(circle at 90% 10%, rgba(139, 92, 246, 0.1), transparent 32%),
+    rgba(255, 255, 255, 0.86) !important;
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  box-shadow: 0 22px 58px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .landing-value-panel::before,
+html.theme-light .market-network-shell::before {
+  background:
+    radial-gradient(circle at 16% 12%, rgba(14, 165, 233, 0.16), transparent 30%),
+    radial-gradient(circle at 90% 10%, rgba(139, 92, 246, 0.12), transparent 32%),
+    radial-gradient(circle at 70% 84%, rgba(16, 185, 129, 0.11), transparent 28%),
+    repeating-linear-gradient(0deg, rgba(14, 116, 144, 0.05) 0 1px, transparent 1px 4.8rem),
+    repeating-linear-gradient(90deg, rgba(14, 116, 144, 0.04) 0 1px, transparent 1px 5.2rem);
+}
+
+html.theme-light .carrier-profile-card p,
+html.theme-light .market-network-shell p,
+html.theme-light .landing-value-panel p,
+html.theme-light .white-label-step p,
+html.theme-light .unit-economics-card p,
+html.theme-light .carrier-profile-card li,
+html.theme-light .unit-economics-card li {
+  color: #334155 !important;
+}
+
+html.theme-light .carrier-profile-card h2,
+html.theme-light .carrier-profile-card h3,
+html.theme-light .carrier-profile-card .text-white,
+html.theme-light .market-network-shell .text-white,
+html.theme-light .landing-value-panel .text-white,
+html.theme-light .unit-economics-card .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .market-network-node > span,
+html.theme-light .white-label-step > span {
+  background: rgba(224, 242, 254, 0.78);
+  border-color: rgba(14, 165, 233, 0.28);
+  color: #0369a1;
+}
+
+@media (max-width: 720px) {
+  .market-network-node {
+    gap: 0.7rem;
+  }
+
+  .market-network-node > span,
+  .white-label-step > span {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
 /* Calculator carrier matrix and white-mode sales polish */
 #calculator .calculator-carrier-card {
   min-height: 100%;
@@ -5082,7 +5347,7 @@ html.theme-light #calculator select {
 .demo-lab-product-stage--wine .demo-lab-cork {
   display: block;
   left: 50%;
-  top: calc(50% - 7.85rem);
+  top: calc(50% - 7.55rem);
   opacity: 0.9;
   animation: none;
 }
@@ -5111,7 +5376,7 @@ html.theme-light .demo-lab-product-stage::before {
 
 @media (max-width: 760px) {
   .demo-lab-product-stage--wine .demo-lab-cork {
-    top: calc(50% - 6.95rem);
+    top: calc(50% - 6.65rem);
   }
 
   .demo-lab-stage-route-card {

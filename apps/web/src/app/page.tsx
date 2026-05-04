@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
+  CarrierProfileMatrixSection,
   CtaSection,
   EventsTagPositioningSection,
   HeroSection,
+  MarketplaceNetworkSection,
   PremiumIdentitySection,
   PlansSection,
+  UnitEconomicsSection,
+  WhiteLabelOperatingSystemSection,
 } from "../components/landing-sections";
 import { SalesChatWidget } from "../components/sales-chat-widget";
 import { DemoRequestSection } from "../components/demo-request-section";
@@ -15,7 +19,7 @@ import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { ProductExitLink } from "../components/product-exit-link";
-import { productUrls } from "@product/config";
+import { productUrls, schedulingUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
 import { ArrowRight } from "lucide-react";
 
@@ -46,6 +50,8 @@ export default async function HomePage() {
       mobileCtaDemo: "Book demo",
       mobileCtaDocs: "Docs",
       mobileCtaLogin: "Sign in",
+      mobileCtaMeeting: "Meeting",
+      scheduleMeeting: "Schedule meeting",
       intentTitle: "Choose your path",
       intentCards: [
         { title: "Use it in my company", body: "See rollout, chip profiles and operating model.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
@@ -93,6 +99,8 @@ export default async function HomePage() {
       mobileCtaDemo: "Agendar demo",
       mobileCtaDocs: "Docs",
       mobileCtaLogin: "Entrar",
+      mobileCtaMeeting: "Reuniao",
+      scheduleMeeting: "Agendar reuniao",
       intentTitle: "Escolha seu caminho",
       intentCards: [
         { title: "Usar na minha empresa", body: "Veja rollout, perfis de chip e operação.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
@@ -139,6 +147,8 @@ export default async function HomePage() {
       mobileCtaDemo: "Agendar demo",
       mobileCtaDocs: "Docs",
       mobileCtaLogin: "Ingresar",
+      mobileCtaMeeting: "Reunion",
+      scheduleMeeting: "Agendar reunion",
       intentTitle: "Elegí tu camino",
       intentCards: [
         { title: "Usarlo en mi empresa", body: "Mirá rollout, perfiles de chip y modelo operativo.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
@@ -165,6 +175,7 @@ export default async function HomePage() {
     };
 
   const loginHref = `${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`;
+  const meetingHref = schedulingUrls.meeting;
 
   const mobileNavItems = [
     { label: content.nav.product, href: "/" },
@@ -172,6 +183,7 @@ export default async function HomePage() {
     { label: content.nav.reseller, href: "/resellers" },
     { label: content.nav.docs, href: "/docs" },
     { label: labels.quickDemoLab, href: productExitHref.demoLab },
+    { label: labels.scheduleMeeting, href: meetingHref, external: true },
     { label: labels.quickInvestor, href: productExitHref.investorSnapshot },
     { label: labels.quickAudiences, href: "/audiences" },
     { label: labels.quickGlossary, href: "/glossary" },
@@ -235,6 +247,8 @@ export default async function HomePage() {
               loginLabel={content.nav.cta}
               primaryCtaHref="/?contact=demo#contact-modal"
               primaryCtaLabel={labels.mobileCtaDemo}
+              meetingHref={meetingHref}
+              meetingLabel={labels.scheduleMeeting}
               locale={locale}
               locales={[...locales]}
             />
@@ -244,6 +258,9 @@ export default async function HomePage() {
             <div className="hidden lg:inline-flex">
               <ThemeToggle />
             </div>
+            <a href={meetingHref} target="_blank" rel="noreferrer" className="hidden sm:inline-flex">
+              <Button variant="secondary">{labels.scheduleMeeting}</Button>
+            </a>
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
@@ -259,11 +276,15 @@ export default async function HomePage() {
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
 
       <PlansSection content={content} locale={locale} />
+      <CarrierProfileMatrixSection locale={locale} />
       <EventsTagPositioningSection locale={locale} />
 
       <PremiumIdentitySection content={content} locale={locale} />
+      <MarketplaceNetworkSection locale={locale} />
+      <WhiteLabelOperatingSystemSection locale={locale} />
+      <UnitEconomicsSection locale={locale} />
 
-      <section className="container-shell py-10">
+      <section className="hidden">
         <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 md:p-8">
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Canal y arquitectura comercial</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">Una sola propuesta clara: autenticación + trazabilidad + operación reseller</h2>
@@ -305,14 +326,16 @@ export default async function HomePage() {
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
             <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</Link>
+            <a href={meetingHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/40 px-3 py-2 text-xs text-emerald-300">{labels.scheduleMeeting}</a>
           </div>
         </div>
       </footer>
 
       <div className="fixed inset-x-0 bottom-3 z-40 px-3 pb-[max(env(safe-area-inset-bottom),0px)] md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-3 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
+        <div className="mx-auto grid max-w-md grid-cols-4 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
           <Link href="/docs" className="flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center text-xs font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
           <Link href="/?contact=demo#contact-modal" className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-xs font-medium text-cyan-100">{labels.mobileCtaDemo}<ArrowRight className="h-4 w-4" /></Link>
+          <a href={meetingHref} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-xs font-semibold text-violet-100">{labels.mobileCtaMeeting}</a>
           <a href={loginHref} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-xs font-semibold text-emerald-100">{labels.mobileCtaLogin}</a>
         </div>
       </div>

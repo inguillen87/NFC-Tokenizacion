@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
-import { ArrowRight, FileText, LogIn, Menu, MessageCircle, Moon, PlayCircle, X } from "lucide-react";
+import { ArrowRight, CalendarDays, FileText, LogIn, Menu, MessageCircle, Moon, PlayCircle, X } from "lucide-react";
 import { BrandLockup, LocaleSwitcher, ThemeToggle } from "@product/ui";
 
-type NavItem = { label: string; href: string };
+type NavItem = { label: string; href: string; external?: boolean };
 
 type MobileNavSheetProps = {
   items: NavItem[];
@@ -15,6 +15,8 @@ type MobileNavSheetProps = {
   loginLabel: string;
   primaryCtaHref: string;
   primaryCtaLabel: string;
+  meetingHref: string;
+  meetingLabel: string;
   locale: string;
   locales: string[];
 };
@@ -25,6 +27,8 @@ export function MobileNavSheet({
   loginLabel,
   primaryCtaHref,
   primaryCtaLabel,
+  meetingHref,
+  meetingLabel,
   locale,
   locales,
 }: MobileNavSheetProps) {
@@ -64,6 +68,17 @@ export function MobileNavSheet({
     window.addEventListener("resize", closeOnDesktop);
     return () => window.removeEventListener("resize", closeOnDesktop);
   }, []);
+
+  const navLinkClass = "mobile-nav-link flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-slate-100 transition-colors hover:border-cyan-300/30 hover:bg-cyan-500/10";
+  const renderNavItem = (item: NavItem) => item.external ? (
+    <a key={item.href + item.label} href={item.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className={navLinkClass}>
+      {item.label}
+    </a>
+  ) : (
+    <Link key={item.href + item.label} href={item.href} onClick={() => setOpen(false)} className={navLinkClass}>
+      {item.label}
+    </Link>
+  );
 
   const sheet = open ? (
     <div className="mobile-nav-overlay fixed inset-0 z-[999] bg-slate-950/88 backdrop-blur-md lg:hidden" onClick={() => setOpen(false)}>
@@ -112,18 +127,10 @@ export function MobileNavSheet({
 
         <nav className="mt-4 grid flex-1 auto-rows-min content-start gap-2 overflow-y-auto pb-2">
           <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Navegacion principal</p>
-          {items.slice(0, 5).map((item) => (
-            <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className="mobile-nav-link flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-slate-100 transition-colors hover:border-cyan-300/30 hover:bg-cyan-500/10">
-              {item.label}
-            </Link>
-          ))}
+          {items.slice(0, 5).map(renderNavItem)}
 
           <p className="mt-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Recursos y accesos</p>
-          {items.slice(5).map((item) => (
-            <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className="mobile-nav-link flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-slate-100 transition-colors hover:border-cyan-300/30 hover:bg-cyan-500/10">
-              {item.label}
-            </Link>
-          ))}
+          {items.slice(5).map(renderNavItem)}
 
           <div className="mobile-nav-actions mt-2 grid gap-2 rounded-xl border border-cyan-300/15 bg-cyan-500/10 p-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200">Acciones rapidas</p>
@@ -135,6 +142,10 @@ export function MobileNavSheet({
               <MessageCircle className="h-4 w-4" />
               Hablar con ventas
             </Link>
+            <a href={meetingHref} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className="mobile-nav-action-link flex min-h-10 items-center gap-2 rounded-lg border border-violet-300/20 bg-violet-500/10 px-3 text-sm font-semibold text-violet-100">
+              <CalendarDays className="h-4 w-4" />
+              {meetingLabel}
+            </a>
             <div className="mobile-nav-action-muted flex min-h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-slate-300">
               <Moon className="h-4 w-4" />
               Dark / white mode incluido

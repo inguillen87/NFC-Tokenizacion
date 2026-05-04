@@ -27,6 +27,7 @@ type RealtimeEventPayload = {
   created_at?: string;
   trace_id?: string | null;
   lead_id?: string;
+  ticket_id?: string;
   contact?: string;
   company?: string;
   status?: string;

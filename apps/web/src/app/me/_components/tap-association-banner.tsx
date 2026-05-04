@@ -13,6 +13,8 @@ type AssociationResult = {
   error?: string;
 };
 
+const DEMO_CONSUMER_EMAIL = "demo.consumer@nexid.local";
+
 function parseBoolean(value: string | null) {
   if (!value) return false;
   return ["1", "true", "yes"].includes(value.toLowerCase());
@@ -25,13 +27,49 @@ function parseContactPayload(contactValue: string) {
 
 function summarizeAssociation(results: AssociationResult[]) {
   const success = results.filter((item) => item.ok).map((item) => item.action);
-  const blocked = results.filter((item) => !item.ok && ["tap_not_claimable", "blocked_replay", "revoked"].includes(String(item.error || "")));
+  const blocked = results.filter((item) => !item.ok && ["tap_not_claimable", "blocked_replay", "revoked", "snapshot_blocked"].includes(String(item.error || "")));
   const unauthorized = results.some((item) => item.status === 401);
-  if (unauthorized) return "La sesión no quedó activa. Ingresá otra vez para asociar el tap.";
+  if (unauthorized) return "La sesion no quedo activa. Activamos el portal demo y reintentamos.";
   if (success.includes("claim")) return "Producto asociado, titularidad registrada y marketplace habilitado.";
-  if (success.includes("save") || success.includes("join")) return "Producto guardado y club habilitado. Titularidad/token pueden requerir compra o validación del tenant.";
-  if (blocked.length) return "El tap fue verificado, pero las acciones comerciales quedaron protegidas por política de seguridad.";
-  return "No se pudo completar la asociación. Reintentá desde un tap físico fresco.";
+  if (success.includes("save") || success.includes("join")) return "Producto guardado y club habilitado. Titularidad/token pueden requerir compra o validacion del tenant.";
+  if (blocked.length) return "El tap fue verificado, pero las acciones comerciales quedaron protegidas por politica de seguridad.";
+  return "No se pudo completar la asociacion. Reintenta desde un tap fisico fresco.";
+}
+
+async function loadConsumerMe() {
+  const response = await fetch("/api/consumer/me", {
+    cache: "no-store",
+    credentials: "include",
+  }).catch(() => null);
+  return response?.json().catch(() => null);
+}
+
+async function ensureDemoConsumerSession() {
+  const start = await fetch("/api/consumer/auth/start", {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: DEMO_CONSUMER_EMAIL, source: "tap-association" }),
+  }).then((res) => res.json()).catch(() => null);
+
+  if (!start?.ok) return false;
+
+  const verify = await fetch("/api/consumer/auth/verify", {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      email: DEMO_CONSUMER_EMAIL,
+      code: String(start.code || "000000"),
+      displayName: "nexID Demo Consumer",
+    }),
+  }).then((res) => res.json()).catch(() => null);
+
+  return Boolean(verify?.ok);
+}
+
+function needsConsumerSession(results: AssociationResult[]) {
+  return results.some((item) => item.status === 401);
 }
 
 export function TapAssociationBanner() {
@@ -71,6 +109,9 @@ export function TapAssociationBanner() {
     const payload = {
       ...(tenant ? { tenantId: tenant } : {}),
       ...(bid ? { bid } : {}),
+      demoConsumer: true,
+      consumerMode: "demo",
+      demoConsumerEmail: DEMO_CONSUMER_EMAIL,
     };
     const encodedEventId = encodeURIComponent(eventId);
     const results: AssociationResult[] = [];
@@ -83,18 +124,32 @@ export function TapAssociationBanner() {
     return { ok: results.some((item) => item.ok), results };
   }
 
+  async function associateWithRecovery(action: string, contactValue?: string) {
+    let association = await associate(action, contactValue);
+    if (needsConsumerSession(association.results)) {
+      setStatus("Activando portal demo seguro y reintentando...");
+      const ready = await ensureDemoConsumerSession();
+      if (ready) association = await associate(action, contactValue);
+    }
+    return association;
+  }
+
   async function continueWithSession() {
     if (!eventId) return;
     setPending(true);
     setStatus("Asociando este tap verificado con tu cuenta...");
     try {
-      const me = await fetch("/api/consumer/me", { cache: "no-store", credentials: "include" }).then((res) => res.json()).catch(() => null);
+      let me = await loadConsumerMe();
+      if (!me?.ok) {
+        setStatus("Activando portal demo seguro para completar la experiencia...");
+        const ready = await ensureDemoConsumerSession();
+        if (ready) me = await loadConsumerMe();
+      }
       if (!me?.ok) {
         setStatus("Necesitamos que ingreses o te registres para asociar este producto.");
-        setPending(false);
         return;
       }
-      const association = await associate(preferredAction);
+      const association = await associateWithRecovery(preferredAction);
       setStatus(summarizeAssociation(association.results));
       if (association.ok) setStep("done");
     } finally {
@@ -106,14 +161,14 @@ export function TapAssociationBanner() {
     if (!visible || autoStarted.current || step !== "idle") return;
     autoStarted.current = true;
     void continueWithSession();
-  // continueWithSession intentionally reads current query/state once when the tap banner appears.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // continueWithSession intentionally reads current query/state once when the tap banner appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, step]);
 
   async function sendCode() {
     if (!contact.trim()) return;
     setPending(true);
-    setStatus("Enviando código...");
+    setStatus("Enviando codigo...");
     try {
       const start = await fetch("/api/consumer/auth/start", {
         method: "POST",
@@ -122,12 +177,12 @@ export function TapAssociationBanner() {
         body: JSON.stringify(parseContactPayload(contact)),
       }).then((res) => res.json()).catch(() => null);
       if (!start?.ok) {
-        setStatus("No se pudo iniciar verificación. Probá con otro email o teléfono.");
+        setStatus("No se pudo iniciar verificacion. Proba con otro email o telefono.");
         return;
       }
       setCode(String(start.code || ""));
       setStep("code");
-      setStatus("Código enviado. Verificá para terminar la asociación.");
+      setStatus("Codigo enviado. Verifica para terminar la asociacion.");
     } finally {
       setPending(false);
     }
@@ -145,10 +200,10 @@ export function TapAssociationBanner() {
         body: JSON.stringify({ ...parseContactPayload(contact), code }),
       }).then((res) => res.json()).catch(() => null);
       if (!verify?.ok) {
-        setStatus("Código inválido o expirado.");
+        setStatus("Codigo invalido o expirado.");
         return;
       }
-      const association = await associate(preferredAction, contact);
+      const association = await associateWithRecovery(preferredAction, contact);
       setStatus(summarizeAssociation(association.results));
       if (association.ok) setStep("done");
     } finally {
@@ -161,22 +216,22 @@ export function TapAssociationBanner() {
   return (
     <section className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
       <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Tap verificado detectado</p>
-      <h2 className="mt-1 text-lg font-semibold text-white">Activá tu experiencia de marca</h2>
+      <h2 className="mt-1 text-lg font-semibold text-white">Activa tu experiencia de marca</h2>
       <p className="mt-1 text-sm text-cyan-50/90">
-        Evento: <span className="font-mono">{eventId}</span>{tenant ? <> · Tenant: <span className="font-semibold">{tenant}</span></> : null}
+        Evento: <span className="font-mono">{eventId}</span>{tenant ? <> - Tenant: <span className="font-semibold">{tenant}</span></> : null}
       </p>
-      <p className="mt-2 text-sm text-slate-200">Asociá este producto a tu cuenta para desbloquear promos, marketplace, puntos y passport post-tap.</p>
+      <p className="mt-2 text-sm text-slate-200">Asocia este producto a tu cuenta para desbloquear promos, marketplace, puntos y passport post-tap.</p>
 
       {step !== "done" ? (
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           <button suppressHydrationWarning disabled={pending} onClick={() => void continueWithSession()} className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60">
-            Ya tengo sesión, asociar ahora
+            Asociar ahora
           </button>
           <input
             suppressHydrationWarning
             value={contact}
             onChange={(event) => setContact(event.target.value)}
-            placeholder="Email o teléfono"
+            placeholder="Email o telefono"
             className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
           />
           {step === "idle" ? (
@@ -189,7 +244,7 @@ export function TapAssociationBanner() {
                 suppressHydrationWarning
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
-                placeholder="Código"
+                placeholder="Codigo"
                 className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
               />
               <button suppressHydrationWarning disabled={pending || !code.trim()} onClick={() => void verifyAndAssociate()} className="rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-violet-100 disabled:opacity-60">

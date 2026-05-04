@@ -27,7 +27,7 @@ export function PortalShell({
 
   return (
     <div className="consumer-portal-root min-h-screen bg-[#0a0a0c] text-slate-200 selection:bg-cyan-500/30 font-sans">
-      <div className="consumer-bottom-nav fixed bottom-0 inset-x-0 z-50 border-t border-white/10 bg-slate-950/90 pb-safe backdrop-blur-xl md:hidden">
+      <div className="consumer-bottom-nav fixed bottom-0 inset-x-0 z-[120] border-t border-white/10 bg-slate-950/90 pb-safe backdrop-blur-xl md:hidden">
         <div className="grid grid-cols-6 gap-1 p-2">
           {mobileItems.map((item) => {
             const Icon = item.icon;
@@ -80,7 +80,7 @@ export function PortalShell({
         </div>
       </nav>
 
-      <main className="relative mx-auto max-w-5xl space-y-8 px-4 py-8 pb-24 md:px-8 md:py-12 md:pb-12">
+      <main className="relative mx-auto max-w-5xl space-y-8 px-4 py-8 pb-32 md:px-8 md:py-12 md:pb-12">
         <header className="consumer-portal-hero relative z-10 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/55 p-5 md:p-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300">nexID consumer network</p>
           <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">{title}</h1>

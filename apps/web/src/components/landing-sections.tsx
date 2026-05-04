@@ -1,4 +1,5 @@
 import { Card, SectionHeading, Badge, Button, WorldMapRealtime } from "@product/ui";
+import { schedulingUrls } from "@product/config";
 import Link from "next/link";
 import { HeroScene } from "./hero-scene";
 
@@ -20,6 +21,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
     ? "Garrafa, pulseira, lacre e embalagem: toque real, mapa de origem, autenticidade, clube, pontos e marketplace em uma cena guiada."
     : "Botella, pulsera, sello y packaging: tap real, autenticidad, mapa de origen, club, puntos y marketplace en una escena guiada.";
   const demoCta = isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir Demo Lab";
+  const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reuniao" : "Agendar reunion";
 
   return (
     <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-16 pt-16 lg:pb-24 lg:pt-24">
@@ -45,9 +47,14 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>
                 <p className="mt-1 max-w-2xl text-sm text-slate-300">{demoBody}</p>
               </div>
-              <Link href="/demo-lab" className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
-                {demoCta}
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
+                  {meetingCta}
+                </a>
+                <Link href="/demo-lab" className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
+                  {demoCta}
+                </Link>
+              </div>
             </div>
             <HeroScene locale={locale as any} />
           </div>
@@ -56,6 +63,9 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
             <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-6 py-3.5 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
               {primaryCta}
             </Link>
+            <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-6 py-3.5 text-sm font-semibold text-emerald-100 transition-all hover:bg-emerald-500/20">
+              {meetingCta}
+            </a>
             <Link href="/docs" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
               {secondaryCta}
             </Link>
@@ -618,12 +628,291 @@ export function RoiCredibilitySection({ content }: { content: Content }) {
   );
 }
 
+export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+      eyebrow: "Carrier profiles",
+      title: "One platform for QR, GS1, NFC, tamper and blockchain-ready products",
+      body: "nexID lets a small brand start with a low-cost QR passport and grow into cryptographic NFC, TagTamper and tokenization without rebuilding the operating model.",
+      note: "Planning ranges for pilots. Final quotes depend on volume, printing, encoding, import, support and SLA.",
+      action: "See technical docs",
+    }
+    : isBr
+    ? {
+      eyebrow: "Perfis de carrier",
+      title: "Uma plataforma para QR, GS1, NFC, tamper e produtos prontos para blockchain",
+      body: "nexID permite comecar com QR passport de baixo custo e evoluir para NFC criptografico, TagTamper e tokenizacao sem refazer a operacao.",
+      note: "Faixas de planejamento para pilotos. A cotacao final depende de volume, impressao, encoding, importacao, suporte e SLA.",
+      action: "Ver docs tecnicos",
+    }
+    : {
+      eyebrow: "Perfiles de carrier",
+      title: "Una sola plataforma para QR, GS1, NFC, tamper y productos blockchain-ready",
+      body: "nexID permite arrancar con un QR passport de bajo costo y subir a NFC criptografico, TagTamper y tokenizacion sin rehacer la operacion.",
+      note: "Rangos de planificacion para pilotos. La cotizacion final depende de volumen, impresion, encoding, importacion, soporte y SLA.",
+      action: "Ver docs tecnicos",
+    };
+
+  const profiles = [
+    {
+      name: "QR comun",
+      range: "0.005 - 0.03",
+      level: "Marketing",
+      promise: isEn ? "Content, lead capture and analytics." : isBr ? "Conteudo, leads e analytics." : "Contenido, leads y analytics.",
+      best: isEn ? "Menus, promos, small batches." : isBr ? "Menus, promos, pequenos lotes." : "Menus, promos, lotes chicos.",
+      risk: isEn ? "Can be copied by screenshot." : isBr ? "Pode ser copiado por print." : "Se puede copiar con una captura.",
+    },
+    {
+      name: "QR GS1 Digital Link",
+      range: "0.01 - 0.05",
+      level: "Retail",
+      promise: isEn ? "GTIN, lot, serial and export-friendly identity." : isBr ? "GTIN, lote, serie e identidade para retail/exportacao." : "GTIN, lote, serie e identidad retail/exportacion.",
+      best: isEn ? "Food, pharma, agro, export." : isBr ? "Alimentos, pharma, agro, exportacao." : "Alimentos, pharma, agro, exportacion.",
+      risk: isEn ? "Traceability declared by platform." : isBr ? "Rastreabilidade declarada pela plataforma." : "Trazabilidad declarada por plataforma.",
+    },
+    {
+      name: "NTAG213",
+      range: "0.08 - 0.20",
+      level: "Tap-to-web",
+      promise: isEn ? "Low-cost NFC for campaigns and basic warranty." : isBr ? "NFC economico para campanhas e garantia basica." : "NFC economico para campanas y garantia basica.",
+      best: isEn ? "Tourism, local brands, simple activation." : isBr ? "Turismo, marcas locais, ativacao simples." : "Turismo, marcas locales, activacion simple.",
+      risk: isEn ? "Not cryptographic anti-fraud." : isBr ? "Nao e antifraude criptografico." : "No es antifraude criptografico.",
+    },
+    {
+      name: "NTAG215 / 216",
+      range: "0.12 - 0.45",
+      level: "Operations",
+      promise: isEn ? "Serialized UID, events, credentials and high-frequency validation." : isBr ? "UID serializado, eventos, credenciais e validacao frequente." : "UID serializado, eventos, credenciales y validacion frecuente.",
+      best: isEn ? "Wristbands, tickets, access and mid-value products." : isBr ? "Pulseiras, tickets, acesso e produtos medios." : "Pulseras, tickets, accesos y productos medios.",
+      risk: isEn ? "Server-side control, not premium clone proof." : isBr ? "Controle server-side, nao premium anti-clone." : "Control server-side, no anti-clon premium.",
+    },
+    {
+      name: "NTAG424 DNA",
+      range: "0.55 - 0.90",
+      level: "Secure",
+      promise: isEn ? "SUN/SDM, dynamic URL and anti-replay evidence." : isBr ? "SUN/SDM, URL dinamica e evidencia anti-replay." : "SUN/SDM, URL dinamica y evidencia anti-replay.",
+      best: isEn ? "Premium products, documents, warranty." : isBr ? "Produtos premium, documentos, garantia." : "Productos premium, documentos, garantia.",
+      risk: isEn ? "Strong cryptographic authenticity." : isBr ? "Autenticidade criptografica forte." : "Autenticidad criptografica fuerte.",
+    },
+    {
+      name: "NTAG424 DNA TT",
+      range: "0.85 - 1.25",
+      level: "Luxury",
+      promise: isEn ? "Cryptographic tap plus physical opened/closed seal." : isBr ? "Toque criptografico mais selo fisico aberto/fechado." : "Tap criptografico mas sello fisico abierto/cerrado.",
+      best: isEn ? "Wine, luxury, pharma, collectibles." : isBr ? "Vinho, luxo, pharma, colecionaveis." : "Vino, lujo, pharma, coleccionables.",
+      risk: isEn ? "Best fit for ownership and token gates." : isBr ? "Ideal para ownership e token gates." : "Ideal para ownership y token gates.",
+    },
+  ];
+
+  return (
+    <section id="carrier-profiles" className="container-shell py-16">
+      <div className="landing-value-panel rounded-[2rem] border border-cyan-300/15 bg-slate-900/55 p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">{copy.eyebrow}</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">{copy.title}</h2>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300 md:text-base">{copy.body}</p>
+          </div>
+          <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4 text-sm leading-6 text-amber-100">
+            {copy.note}
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {profiles.map((item) => (
+            <article key={item.name} className="carrier-profile-card rounded-2xl border border-white/10 bg-slate-950/55 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-lg font-black text-white">{item.name}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-300">{item.level}</p>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-slate-200">USD {item.range}</span>
+              </div>
+              <p className="mt-4 text-sm font-semibold leading-6 text-cyan-100">{item.promise}</p>
+              <div className="mt-4 grid gap-2 text-xs leading-5 text-slate-300">
+                <span><strong className="text-slate-100">Best for:</strong> {item.best}</span>
+                <span><strong className="text-slate-100">Policy:</strong> {item.risk}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/docs#carrier-profiles" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-100">{copy.action}</Link>
+          <Link href="/?contact=quote&intent=carrier_matrix#contact-modal" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100">
+            {isEn ? "Quote a rollout" : isBr ? "Cotar rollout" : "Cotizar rollout"}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function MarketplaceNetworkSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const title = isEn
+    ? "Security is only the first tap. The real value is the premium network after it."
+    : isBr
+    ? "A seguranca e apenas o primeiro toque. O valor real e a rede premium depois dele."
+    : "La seguridad es solo el primer tap. El valor real es la red premium despues.";
+  const body = isEn
+    ? "Every verified product can open a consumer passport, tenant club, marketplace offers, CRM tickets and cross-brand loyalty. That turns anti-fraud into retention and sales."
+    : isBr
+    ? "Cada produto verificado abre passport do consumidor, clube do tenant, ofertas de marketplace, tickets CRM e loyalty entre marcas."
+    : "Cada producto verificado abre passport del usuario, club del tenant, ofertas de marketplace, tickets CRM y loyalty entre marcas.";
+  const nodes = [
+    { k: "01", title: isEn ? "Trust tap" : isBr ? "Toque confiavel" : "Tap confiable", body: isEn ? "Authenticity, seal state, origin and risk." : isBr ? "Autenticidade, lacre, origem e risco." : "Autenticidad, sello, origen y riesgo." },
+    { k: "02", title: "Passport", body: isEn ? "Product history, warranty and owner context." : isBr ? "Historico, garantia e contexto do dono." : "Historial, garantia y contexto del dueno." },
+    { k: "03", title: isEn ? "Club & points" : isBr ? "Clube e pontos" : "Club y puntos", body: isEn ? "Rewards, vouchers and private drops by tenant." : isBr ? "Rewards, vouchers e drops privados por tenant." : "Rewards, vouchers y drops privados por tenant." },
+    { k: "04", title: "Marketplace", body: isEn ? "Premium products, reorder, resale and partner offers." : isBr ? "Produtos premium, recompra, revenda e ofertas." : "Productos premium, recompra, reventa y ofertas." },
+    { k: "05", title: "CRM", body: isEn ? "Leads, tickets, buyer intent and live notifications." : isBr ? "Leads, tickets, intencao e notificacoes." : "Leads, tickets, intencion y notificaciones." },
+  ];
+
+  return (
+    <section className="container-shell py-16">
+      <div className="market-network-shell rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 md:p-8">
+        <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">{isEn ? "Loyalty network" : isBr ? "Rede loyalty" : "Red loyalty"}</p>
+        <div className="mt-3 grid gap-5 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+          <div>
+            <h2 className="text-3xl font-black tracking-tight text-white md:text-5xl">{title}</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300 md:text-base">{body}</p>
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              {[
+                ["320", isEn ? "avg points" : isBr ? "pontos medios" : "pts promedio"],
+                ["5", isEn ? "live actions" : isBr ? "acoes live" : "acciones live"],
+                ["1", isEn ? "network login" : isBr ? "login de rede" : "login de red"],
+              ].map(([value, label]) => (
+                <div key={label} className="rounded-2xl border border-cyan-300/15 bg-cyan-500/10 p-4">
+                  <p className="text-2xl font-black text-white">{value}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-cyan-200">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-3">
+            {nodes.map((node) => (
+              <article key={node.k} className="market-network-node rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+                <span>{node.k}</span>
+                <div>
+                  <p className="font-black text-white">{node.title}</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-300">{node.body}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function WhiteLabelOperatingSystemSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const steps = [
+    isEn ? "Create tenant and brand rules" : isBr ? "Criar tenant e regras de marca" : "Crear tenant y reglas de marca",
+    isEn ? "Choose carrier profile by risk" : isBr ? "Escolher carrier por risco" : "Elegir carrier por riesgo",
+    isEn ? "Import manifest CSV/TXT" : isBr ? "Importar manifest CSV/TXT" : "Importar manifest CSV/TXT",
+    isEn ? "Activate audited batch" : isBr ? "Ativar lote auditado" : "Activar batch auditado",
+    isEn ? "Operate leads, tickets and analytics" : isBr ? "Operar leads, tickets e analytics" : "Operar leads, tickets y analytics",
+    isEn ? "Export reports and reseller revenue" : isBr ? "Exportar relatorios e receita reseller" : "Exportar reportes y revenue reseller",
+  ];
+
+  return (
+    <section className="container-shell py-16">
+      <div className="landing-value-panel rounded-[2rem] border border-violet-300/15 bg-gradient-to-br from-slate-900/80 via-slate-950/80 to-cyan-950/50 p-6 md:p-8">
+        <div className="max-w-4xl">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-200">White-label OS</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">
+            {isEn ? "A reseller can sell nexID without becoming a cryptography engineer." : isBr ? "Um reseller pode vender nexID sem virar engenheiro de criptografia." : "Un reseller puede vender nexID sin volverse ingeniero de criptografia."}
+          </h2>
+          <p className="mt-4 text-sm leading-7 text-slate-300 md:text-base">
+            {isEn
+              ? "The platform should guide printers, agencies, distributors and field teams with simple buttons, batch manifests, approval states, alerts and dashboards."
+              : isBr
+              ? "A plataforma guia graficas, agencias, distribuidores e times de campo com botoes simples, manifests, aprovacoes, alertas e dashboards."
+              : "La plataforma guia imprentas, agencias, distribuidores y equipos de campo con botones simples, manifests, aprobaciones, alertas y dashboards."}
+          </p>
+        </div>
+        <div className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {steps.map((step, index) => (
+            <div key={step} className="white-label-step rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <p>{step}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/resellers" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-100">
+            {isEn ? "Open reseller model" : isBr ? "Abrir modelo reseller" : "Abrir modelo reseller"}
+          </Link>
+          <Link href="/?contact=sales&intent=white_label#contact-modal" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-100">
+            {isEn ? "Prepare white-label demo" : isBr ? "Preparar demo white-label" : "Preparar demo white-label"}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function UnitEconomicsSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const cards = [
+    { title: "Starter QR / GS1", hardware: "USD 0.01 - 0.05", saas: "SaaS + landing + analytics", margin: "Baja barrera, alto volumen" },
+    { title: "NFC Basic", hardware: "USD 0.08 - 0.45", saas: "Tap-to-web + garantia + leads", margin: "Eventos, turismo, retail local" },
+    { title: "Secure 424 DNA", hardware: "USD 0.55 - 0.90", saas: "SUN + anti-replay + dashboard", margin: "Antifraude real y auditoria" },
+    { title: "DNA TT Premium", hardware: "USD 0.85 - 1.25", saas: "Tamper + ownership + token", margin: "Luxury, pharma, vino, coleccionables" },
+  ];
+  const title = isEn ? "A pricing story that works for small brands and enterprise rollouts" : isBr ? "Uma historia comercial para marcas pequenas e rollouts enterprise" : "Una historia comercial para marcas chicas y rollouts enterprise";
+  const body = isEn
+    ? "The expensive chip is not the only product. The ladder starts with low-cost QR/GS1 and grows into NFC, tamper, dashboards, marketplace, loyalty and optional Polygon tokenization."
+    : isBr
+    ? "O chip caro nao e o unico produto. A escada comeca em QR/GS1 e evolui para NFC, tamper, dashboards, marketplace, loyalty e tokenizacao Polygon opcional."
+    : "El chip caro no es el unico producto. La escalera arranca con QR/GS1 y sube a NFC, tamper, dashboards, marketplace, loyalty y tokenizacion Polygon opcional.";
+
+  return (
+    <section className="container-shell py-16">
+      <div className="rounded-[2rem] border border-emerald-300/15 bg-slate-900/55 p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">{isEn ? "Unit economics" : isBr ? "Unit economics" : "Unit economics"}</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">{title}</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300 md:text-base">{body}</p>
+            <p className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-sm leading-6 text-cyan-100">
+              {isEn ? "Argentina planning assumption: premium TT landed around USD 1 per encoded unit, then add SaaS, setup, support and reseller margin." : isBr ? "Premissa Argentina: TT premium desembarcado perto de USD 1 por unidade codificada, somando SaaS, setup, suporte e margem reseller." : "Supuesto Argentina: TT premium puesto alrededor de USD 1 por unidad codificada, sumando SaaS, setup, soporte y margen reseller."}
+            </p>
+          </div>
+          <div className="grid gap-3">
+            {cards.map((item) => (
+              <article key={item.title} className="unit-economics-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-black text-white">{item.title}</p>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-slate-200">{item.hardware}</span>
+                </div>
+                <div className="mt-3 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
+                  <span>{item.saas}</span>
+                  <strong className="text-emerald-200">{item.margin}</strong>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function CtaSection({ content, locale }: { content: Content; locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const ctaLinks = isEn
     ? [
       { href: "/demo-lab", label: "View live demo", body: "Bottle, seal, tap route, portal and marketplace in one guided scene." },
+      { href: schedulingUrls.meeting, label: "Schedule meeting", body: "Open the calendar and reserve a slot for business, reseller or customer pilots.", external: true },
       { href: "/?contact=demo#contact-modal", label: "Book a demo", body: "Create the lead and save the case in the admin flow." },
       { href: "/?contact=sales#contact-modal", label: "Talk to sales", body: "Discuss tags, volumes, tenant setup and rollout." },
       { href: "/docs", label: "Read docs", body: "API, SUN, NTAG, dashboard and integration architecture." },
@@ -631,12 +920,14 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
     : isBr
     ? [
       { href: "/demo-lab", label: "Ver demo ao vivo", body: "Garrafa, lacre, rota, portal e marketplace em uma cena guiada." },
+      { href: schedulingUrls.meeting, label: "Agendar reuniao", body: "Abre o calendario para reservar horario com marcas, resellers ou clientes.", external: true },
       { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Cria o lead e salva o caso no fluxo admin." },
       { href: "/?contact=sales#contact-modal", label: "Falar com vendas", body: "Tags, volume, tenant e rollout comercial." },
       { href: "/docs", label: "Ler docs", body: "API, SUN, NTAG, dashboard e arquitetura de integracao." },
     ]
     : [
       { href: "/demo-lab", label: "Ver demo en vivo", body: "Botella, sello, ruta del tap, portal y marketplace en una escena guiada." },
+      { href: schedulingUrls.meeting, label: "Agendar reunion", body: "Abre el calendario y reserva una reunion con empresarios, resellers o clientes.", external: true },
       { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Crea el lead y guarda el caso en el flujo admin." },
       { href: "/?contact=sales#contact-modal", label: "Hablar con ventas", body: "Tags, volumen, tenant y rollout comercial." },
       { href: "/docs", label: "Ver docs", body: "API, SUN, NTAG, dashboard y arquitectura de integracion." },
@@ -653,6 +944,9 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
              <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-sm font-bold text-slate-950 transition hover:bg-slate-200 hover:scale-105 shadow-xl">
                 {isEn ? "View live demo" : isBr ? "Ver demo ao vivo" : "Ver demo en vivo"}
              </Link>
+             <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-8 py-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
+                {isEn ? "Schedule meeting" : isBr ? "Agendar reuniao" : "Agendar reunion"}
+             </a>
              <Link href="/?contact=sales#contact-modal" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-4 text-sm font-semibold text-white transition hover:bg-white/10">
                 {content.cta?.secondary || (isEn ? "Talk to sales" : isBr ? "Falar com vendas" : "Hablar con ventas")}
              </Link>
@@ -660,12 +954,19 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
                 {content.cta?.primary || "Empezar"}
              </Link>
            </div>
-           <div className="mt-8 grid gap-3 text-left md:grid-cols-4">
+           <div className="mt-8 grid gap-3 text-left md:grid-cols-5">
              {ctaLinks.map((item) => (
-               <Link key={item.href + item.label} href={item.href} className="rounded-2xl border border-white/10 bg-slate-950/45 p-4 transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
-                 <p className="text-sm font-black text-white">{item.label}</p>
-                 <p className="mt-2 text-xs leading-5 text-slate-400">{item.body}</p>
-               </Link>
+               item.external ? (
+                 <a key={item.href + item.label} href={item.href} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 transition hover:border-emerald-300/40 hover:bg-emerald-500/15">
+                   <p className="text-sm font-black text-white">{item.label}</p>
+                   <p className="mt-2 text-xs leading-5 text-slate-300">{item.body}</p>
+                 </a>
+               ) : (
+                 <Link key={item.href + item.label} href={item.href} className="rounded-2xl border border-white/10 bg-slate-950/45 p-4 transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
+                   <p className="text-sm font-black text-white">{item.label}</p>
+                   <p className="mt-2 text-xs leading-5 text-slate-400">{item.body}</p>
+                 </Link>
+               )
              ))}
            </div>
          </div>

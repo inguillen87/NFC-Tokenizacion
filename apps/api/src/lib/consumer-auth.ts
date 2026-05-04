@@ -10,6 +10,7 @@ const OTP_LOCKOUT_MINUTES = 15;
 
 const startRate = new Map<string, { count: number; resetAt: number }>();
 const verifyRate = new Map<string, { count: number; resetAt: number }>();
+const DEMO_CONSUMER_EMAIL = "demo.consumer@nexid.local";
 
 function sha(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -35,6 +36,56 @@ function consumeRate(map: Map<string, { count: number; resetAt: number }>, key: 
 
 function audit(event: string, payload: Record<string, unknown>) {
   console.log("[consumer_auth_audit]", JSON.stringify({ event, ...payload, at: new Date().toISOString() }));
+}
+
+export type ConsumerAuthDemoPayload = {
+  demoConsumer?: unknown;
+  consumerMode?: unknown;
+  demoConsumerEmail?: unknown;
+  email?: unknown;
+  contact?: unknown;
+};
+
+export type ConsumerAuthDemoEvent = {
+  bid?: unknown;
+  tenant_slug?: unknown;
+};
+
+export function wantsDemoConsumer(payload?: ConsumerAuthDemoPayload | null) {
+  if (!payload) return false;
+  return payload.demoConsumer === true || String(payload.consumerMode || "").toLowerCase() === "demo";
+}
+
+export function canUseDemoConsumerForTap(payload?: ConsumerAuthDemoPayload | null, event?: ConsumerAuthDemoEvent | null) {
+  if (!wantsDemoConsumer(payload)) return false;
+  const demoMode = String(process.env.DEMO_MODE || "").toLowerCase();
+  const consumerAuthMode = String(process.env.CONSUMER_AUTH_MODE || "").toLowerCase();
+  const envDemo = ["1", "true", "yes", "demo"].includes(demoMode) || consumerAuthMode === "demo";
+  const bid = String(event?.bid || "").toUpperCase();
+  const tenantSlug = String(event?.tenant_slug || "").toLowerCase();
+  return envDemo || bid.startsWith("DEMO-") || tenantSlug.startsWith("demo");
+}
+
+export async function getOrCreateDemoConsumer(contact = DEMO_CONSUMER_EMAIL) {
+  await ensureConsumerAuthSchema();
+  const normalizedContact = String(contact || DEMO_CONSUMER_EMAIL).trim().toLowerCase() || DEMO_CONSUMER_EMAIL;
+  const normalizedEmail = normalizedContact.includes("@") ? normalizedContact : DEMO_CONSUMER_EMAIL;
+  const rows = await sql/*sql*/`
+    INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
+    VALUES (${normalizedEmail}, ${null}, 'nexID Demo Consumer', 'registered', 'es-AR', now())
+    ON CONFLICT (email)
+    DO UPDATE SET last_login_at = now(), status = 'registered', display_name = COALESCE(consumers.display_name, 'nexID Demo Consumer')
+    RETURNING *
+  `;
+  const consumer = rows[0];
+  await sql/*sql*/`
+    INSERT INTO consumer_identities (consumer_id, provider, provider_subject, verified_at)
+    VALUES (${consumer.id}, 'demo_consumer', ${normalizedEmail}, now())
+    ON CONFLICT (provider, provider_subject)
+    DO UPDATE SET verified_at = now(), updated_at = now()
+  `;
+  audit("consumer_auth_demo_ready", { contact: normalizedEmail, consumerId: consumer.id });
+  return consumer;
 }
 
 export async function startConsumerAuth(contact: string, meta?: { ip?: string | null }) {

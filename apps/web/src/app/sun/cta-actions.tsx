@@ -186,13 +186,13 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     const txHash = tokenizationTx(data);
     const tokenId = tokenizationTokenId(data);
     const hasMint = Boolean(data.mint_ok || status === "anchored" || data.anchor?.ok || txHash || tokenId);
-    const hasSavedRequest = Boolean(data.tokenization_request || data.tokenization_status || data.anchor);
+    const hasSavedRequest = Boolean(data.tokenization_request || data.tokenization_status || data.anchor || data._httpOk || data.ok === true || status);
     const nextAttempt = data.next_attempt_at || data.anchor?.next_attempt_at || data.tokenization_request?.next_attempt_at;
 
-    if (status === "pending_retry") {
+    if (status === "pending_retry" || (status === "failed" && hasSavedRequest)) {
       return {
         ok: true,
-        message: data.explainer || `Solicitud guardada; Polygon Amoy quedo en reintento operativo${nextAttempt ? ` para ${nextAttempt}` : ""}.`,
+        message: data.explainer || `Solicitud protegida guardada. Polygon Amoy queda en reintento operativo${nextAttempt ? ` para ${nextAttempt}` : ""}; no se pierde el tap.`,
       };
     }
 
@@ -200,22 +200,17 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       return {
         ok: false,
         message: status === "failed"
-          ? `Mint fallido: ${tokenizationError(data) || "revisar gas, RPC o minter"}`
+          ? `No se pudo guardar la solicitud de tokenizacion: ${tokenizationError(data) || "revisar gas, RPC o minter"}`
           : normalizeReason(data),
-      };
-    }
-
-    if (status === "failed" && hasSavedRequest) {
-      return {
-        ok: true,
-        message: `Solicitud guardada; el mint quedo en reintento operativo${nextAttempt ? ` para ${nextAttempt}` : ""}.`,
       };
     }
 
     if (status === "failed" || data.ok === false) {
       return {
-        ok: false,
-        message: `Solicitud guardada, pero el mint fallo: ${tokenizationError(data) || "reintento operativo requerido"}.`,
+        ok: hasSavedRequest,
+        message: hasSavedRequest
+          ? `Solicitud protegida guardada. El anclaje queda en reintento operativo${nextAttempt ? ` para ${nextAttempt}` : ""}.`
+          : `No se pudo guardar la solicitud de tokenizacion: ${tokenizationError(data) || "reintento operativo requerido"}.`,
       };
     }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { schedulingUrls } from "@product/config";
 
 type AppLocale = "es-AR" | "pt-BR" | "en";
 
@@ -42,6 +43,8 @@ const copy: Record<AppLocale, Record<string, string>> = {
     success: "Lead guardado correctamente.",
     error: "No se pudo enviar. Reintentá en unos segundos.",
     hint: "Contexto detectado",
+    meeting: "Agendar reunion",
+    meetingHint: "Reservar horario directo",
   },
   "pt-BR": {
     demo: "Solicitar demo",
@@ -54,6 +57,8 @@ const copy: Record<AppLocale, Record<string, string>> = {
     success: "Lead salvo com sucesso.",
     error: "Não foi possível enviar agora.",
     hint: "Contexto detectado",
+    meeting: "Agendar reuniao",
+    meetingHint: "Reservar horario direto",
   },
   en: {
     demo: "Request demo",
@@ -66,6 +71,8 @@ const copy: Record<AppLocale, Record<string, string>> = {
     success: "Lead saved successfully.",
     error: "Could not submit right now.",
     hint: "Detected context",
+    meeting: "Schedule meeting",
+    meetingHint: "Reserve live slot",
   },
 };
 
@@ -478,9 +485,19 @@ export function CommercialContactModal() {
           <textarea suppressHydrationWarning className="contact-modal-field md:col-span-2 min-h-[88px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="Mensaje" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className={`text-xs ${status === "error" ? "text-rose-300" : "text-emerald-300"}`}>{status === "ok" ? t.success : status === "error" ? t.error : ""}</p>
-          <button suppressHydrationWarning onClick={submit} disabled={status === "loading"} className="contact-modal-submit rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-40">{t.submit}</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={schedulingUrls.meeting}
+              target="_blank"
+              rel="noreferrer"
+              className="contact-modal-calendar rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+            >
+              {t.meeting}
+            </a>
+            <button suppressHydrationWarning onClick={submit} disabled={status === "loading"} className="contact-modal-submit rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-40">{t.submit}</button>
+          </div>
         </div>
       </div>
     </div>

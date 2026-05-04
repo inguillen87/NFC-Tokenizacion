@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { AppLocale } from "@product/config";
+import { schedulingUrls, type AppLocale } from "@product/config";
 import { Button, Card, SectionHeading } from "@product/ui";
 
 type LeadForm = {
@@ -33,6 +33,8 @@ const copy: Record<AppLocale, {
   queued: string;
   error: string;
   delivery: string;
+  meeting: string;
+  meetingHint: string;
   fields: Record<keyof LeadForm, string>;
 }> = {
   "es-AR": {
@@ -45,6 +47,8 @@ const copy: Record<AppLocale, {
     queued: "Solicitud recibida. Quedo en cola local porque el backend comercial no respondio.",
     error: "Falta un contacto valido o no pudimos enviar la solicitud.",
     delivery: "Notificacion comercial enviada.",
+    meeting: "Agendar reunion",
+    meetingHint: "Agenda directa para empresarios, resellers o clientes finales.",
     fields: {
       name: "Nombre",
       contact: "Email o WhatsApp",
@@ -63,6 +67,8 @@ const copy: Record<AppLocale, {
     queued: "Solicitacao recebida. Ficou em fila local porque o backend comercial nao respondeu.",
     error: "Falta um contato valido ou nao foi possivel enviar.",
     delivery: "Notificacao comercial enviada.",
+    meeting: "Agendar reuniao",
+    meetingHint: "Agenda direta para empresas, resellers ou clientes finais.",
     fields: {
       name: "Nome",
       contact: "Email ou WhatsApp",
@@ -81,6 +87,8 @@ const copy: Record<AppLocale, {
     queued: "Request received. It is locally queued because the commercial backend did not respond.",
     error: "Add a valid contact or retry the request.",
     delivery: "Commercial notification sent.",
+    meeting: "Schedule meeting",
+    meetingHint: "Direct calendar for business owners, resellers or final customers.",
     fields: {
       name: "Name",
       contact: "Email or WhatsApp",
@@ -148,6 +156,7 @@ export function DemoRequestSection({ locale }: { locale: AppLocale }) {
               <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">1. Lead nuevo en super-admin.</div>
               <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">2. Notificacion comercial por webhook/WhatsApp si esta configurado.</div>
               <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3">3. Seguimiento desde tickets, cotizador y Demo Lab.</div>
+              <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 p-3">4. Agenda directa si el lead quiere hablar ahora.</div>
             </div>
           </div>
 
@@ -178,6 +187,10 @@ export function DemoRequestSection({ locale }: { locale: AppLocale }) {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button onClick={submit} disabled={status === "loading"}>{status === "loading" ? t.loading : t.submit}</Button>
+              <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
+                {t.meeting}
+              </a>
+              <p className="text-xs text-slate-400">{t.meetingHint}</p>
               {status === "ok" ? <p className="text-sm text-emerald-300">{t.sent} {deliveryOk ? t.delivery : ""}</p> : null}
               {status === "queued" ? <p className="text-sm text-amber-300">{t.queued}</p> : null}
               {status === "error" ? <p className="text-sm text-rose-300">{t.error}</p> : null}

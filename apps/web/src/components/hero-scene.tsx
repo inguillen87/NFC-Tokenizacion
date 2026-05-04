@@ -44,6 +44,8 @@ const tapLocations: LocationPoint[] = [
 const labels: Record<AppLocale, {
   selectorTitle: string;
   microcopy: string;
+  commercialRail: string;
+  valuePills: string[];
   ctaBands: string[];
   phoneLabel: string;
   swapTap: string;
@@ -72,6 +74,8 @@ const labels: Record<AppLocale, {
   "es-AR": {
     selectorTitle: "Elegi vertical",
     microcopy: "Cada tap convierte seguridad en relacion: prueba de origen, club, garantia, puntos, recompra y marketplace contextual para la marca.",
+    commercialRail: "Capa comercial que se activa despues del tap",
+    valuePills: ["Club VIP", "Puntos", "Garantia", "CRM lead", "Marketplace", "Token opcional"],
     ctaBands: ["Bodegas", "Eventos", "Cosmetica", "Agro", "Pharma"],
     phoneLabel: "Salida mobile",
     swapTap: "Cambiar tap",
@@ -173,6 +177,8 @@ const labels: Record<AppLocale, {
   "pt-BR": {
     selectorTitle: "Escolha o vertical",
     microcopy: "Cada toque transforma seguranca em relacionamento: prova de origem, clube, garantia, pontos, recompra e marketplace contextual para a marca.",
+    commercialRail: "Camada comercial ativada depois do toque",
+    valuePills: ["Clube VIP", "Pontos", "Garantia", "CRM lead", "Marketplace", "Token opcional"],
     ctaBands: ["Vinhos", "Eventos", "Cosmeticos", "Agro", "Pharma"],
     phoneLabel: "Saida mobile",
     swapTap: "Trocar toque",
@@ -274,6 +280,8 @@ const labels: Record<AppLocale, {
   en: {
     selectorTitle: "Choose vertical",
     microcopy: "Every tap turns security into relationship: origin proof, club, warranty, points, reorder and a contextual marketplace for the brand.",
+    commercialRail: "Commercial layer unlocked after the tap",
+    valuePills: ["VIP club", "Points", "Warranty", "CRM lead", "Marketplace", "Optional token"],
     ctaBands: ["Wineries", "Events", "Cosmetics", "Agro", "Pharma"],
     phoneLabel: "Mobile output",
     swapTap: "Change tap",
@@ -541,6 +549,14 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
                   <p>{step}</p>
                 </div>
               ))}
+            </div>
+            <div className="hero-commercial-rail mt-3">
+              <span>{txt.commercialRail}</span>
+              <div>
+                {txt.valuePills.map((pill) => (
+                  <em key={pill}>{pill}</em>
+                ))}
+              </div>
             </div>
           </div>
 
