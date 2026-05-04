@@ -5,6 +5,19 @@ import { BatchSunValidator } from "../../../../components/batch-sun-validator";
 
 const API_BASE = productUrls.api;
 
+function formatCarrierAdminCopy(value: unknown) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value !== "object") return String(value);
+  const copy = value as Record<string, unknown>;
+  const parts = [
+    copy.positioning ? `Posicionamiento: ${String(copy.positioning)}` : "",
+    copy.bestFor ? `Ideal para: ${String(copy.bestFor)}` : "",
+    copy.avoid ? `No prometer: ${String(copy.avoid)}` : "",
+  ].filter(Boolean);
+  return parts.join(" ");
+}
+
 async function getBatch(bid: string) {
   try {
     const response = await fetch(`${API_BASE}/admin/batches`, {
@@ -23,6 +36,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
   const { bid } = await params;
   const batch = await getBatch(bid);
   const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
+  const carrierAdminCopy = formatCarrierAdminCopy(batch?.carrier_admin_copy);
 
   return (
     <main className="space-y-8">
@@ -46,9 +60,9 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
               <div><dt className="text-slate-400">Active tags</dt><dd className="text-white">{String(batch.active_count || batch.tags_active || "unknown")}</dd></div>
               <div><dt className="text-slate-400">Keys loaded</dt><dd className="text-white">{batch.k_meta_hex || batch.k_file_hex ? "yes" : "unknown"}</dd></div>
             </dl>
-            {batch.carrier_admin_copy ? (
+            {carrierAdminCopy ? (
               <div className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs leading-5 text-cyan-100">
-                {String(batch.carrier_admin_copy)}
+                {carrierAdminCopy}
               </div>
             ) : null}
           </Card>

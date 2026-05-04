@@ -703,7 +703,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? rawCarrierConsumerCopy
     : rawCarrierConsumerCopy && typeof rawCarrierConsumerCopy === "object"
       ? String(
-          (rawCarrierConsumerCopy as { summary?: unknown }).summary
+          (rawCarrierConsumerCopy as { body?: unknown }).body
+          || (rawCarrierConsumerCopy as { headline?: unknown }).headline
+          || (rawCarrierConsumerCopy as { disclaimer?: unknown }).disclaimer
+          || (rawCarrierConsumerCopy as { summary?: unknown }).summary
           || (rawCarrierConsumerCopy as { title?: unknown }).title
           || "",
         )
