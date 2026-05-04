@@ -12,6 +12,14 @@ type ManifestMode = "paste" | "file";
 type Vertical = "wine" | "events" | "cosmetics" | "agro" | "pharma" | "luxury";
 type TokenizationMode = "valid_only" | "valid_and_opened" | "manual";
 type ClaimPolicy = "purchase_proof_required" | "retailer_attested" | "inside_pack_secret" | "admin_approved";
+type CarrierProfileCode =
+  | "qr_basic"
+  | "gs1_digital_link"
+  | "ntag213"
+  | "ntag215"
+  | "ntag216"
+  | "ntag424_dna"
+  | "ntag424_dna_tt";
 
 type BatchSummary = {
   bid: string;
@@ -25,11 +33,16 @@ type BatchSummary = {
   inactive_tags: number;
   has_meta_key: boolean;
   has_file_key: boolean;
+  carrier_profile_code?: string | null;
+  carrier_label?: string | null;
+  carrier_security_level?: number | null;
+  carrier_capabilities?: Record<string, unknown> | null;
 };
 
 type ManifestRow = {
   uidHex: string;
   batchId: string;
+  carrierProfileCode: CarrierProfileCode | "";
   productName: string;
   sku: string;
   lot: string;
@@ -58,6 +71,141 @@ const claimPolicies: Array<{ value: ClaimPolicy; label: string; hint: string }> 
   { value: "inside_pack_secret", label: "Codigo interno", hint: "El cliente abre el producto y usa un codigo dentro del pack." },
   { value: "admin_approved", label: "Aprobacion admin", hint: "El tenant aprueba manualmente claims sensibles." },
 ];
+
+const carrierProfileOptions: Array<{
+  value: CarrierProfileCode;
+  label: string;
+  tier: string;
+  defaultChip: string;
+  defaultProfile: string;
+  defaultSku: string;
+  headline: string;
+  bestFor: string;
+  promise: string;
+  blocked: string;
+}> = [
+  {
+    value: "qr_basic",
+    label: "QR comun",
+    tier: "Contenido / leads",
+    defaultChip: "QR URL",
+    defaultProfile: "QR_BASIC_MARKETING",
+    defaultSku: "qr-basic",
+    headline: "Entrada comercial barata",
+    bestFor: "Marketing, menus, promos, catalogos, leads y marketplace.",
+    promise: "Identificacion web, trazabilidad declarada, analytics y conversion.",
+    blocked: "No promete autenticidad criptografica, anti-clone ni anti-replay.",
+  },
+  {
+    value: "gs1_digital_link",
+    label: "QR GS1 Digital Link",
+    tier: "Retail / export",
+    defaultChip: "GS1 Digital Link QR",
+    defaultProfile: "GS1_DIGITAL_LINK_TRACE",
+    defaultSku: "gs1-link",
+    headline: "Retail-ready con datos GS1",
+    bestFor: "GTIN, lote, serie, vencimiento, exportacion y retail.",
+    promise: "Pasaporte digital interoperable con trazabilidad declarada y campos GS1.",
+    blocked: "No es prueba criptografica por si solo; se puede combinar con NFC.",
+  },
+  {
+    value: "ntag213",
+    label: "NTAG213",
+    tier: "NFC basic",
+    defaultChip: "NTAG213",
+    defaultProfile: "NTAG213_TAP_TO_WEB",
+    defaultSku: "ntag213-basic",
+    headline: "Tap-to-web economico",
+    bestFor: "Campanas, garantias basicas, turismo y productos de bajo costo.",
+    promise: "UX por tap y medicion de interacciones con reglas server-side.",
+    blocked: "No habilita SUN dinamico, anti-replay criptografico ni tamper fisico.",
+  },
+  {
+    value: "ntag215",
+    label: "NTAG215",
+    tier: "Eventos / UID",
+    defaultChip: "NTAG215",
+    defaultProfile: "NTAG215_UID_RULES",
+    defaultSku: "ntag215-ux",
+    headline: "Serializacion para operaciones frecuentes",
+    bestFor: "Pulseras, credenciales, tickets, activaciones y productos medios.",
+    promise: "UID fisico + reglas de plataforma para control operativo.",
+    blocked: "No debe venderse como autenticidad criptografica.",
+  },
+  {
+    value: "ntag216",
+    label: "NTAG216",
+    tier: "NFC memoria extendida",
+    defaultChip: "NTAG216",
+    defaultProfile: "NTAG216_UID_RULES",
+    defaultSku: "ntag216-ux",
+    headline: "Mas memoria para experiencias",
+    bestFor: "Activaciones con mas metadata local y journeys largos.",
+    promise: "Tap UX con mas capacidad y control server-side.",
+    blocked: "No reemplaza SUN/CMAC ni tamper fisico.",
+  },
+  {
+    value: "ntag424_dna",
+    label: "NTAG424 DNA",
+    tier: "Secure SUN",
+    defaultChip: "NTAG 424 DNA",
+    defaultProfile: "NTAG424_DNA_SUN",
+    defaultSku: "ntag424-secure",
+    headline: "Autenticidad criptografica",
+    bestFor: "Vino premium, cosmetica, documentos, lujo y pharma ligera.",
+    promise: "SUN/SDM, anti-replay, UID protegido y validacion criptografica.",
+    blocked: "Tamper fisico requiere variante TT.",
+  },
+  {
+    value: "ntag424_dna_tt",
+    label: "NTAG424 DNA TT",
+    tier: "Premium tamper",
+    defaultChip: "NTAG 424 DNA TagTamper",
+    defaultProfile: "NTAG424_DNA_TT_PREMIUM",
+    defaultSku: "ntag424-tt",
+    headline: "Maxima seguridad fisica + digital",
+    bestFor: "Botellas, sellos, cajas premium, pharma, documentos y activos de alto valor.",
+    promise: "SUN/SDM + anti-replay + estado fisico de sello abierto/cerrado.",
+    blocked: "Ownership requiere politica comercial, compra o prueba del tenant.",
+  },
+];
+
+function getCarrierOption(value: CarrierProfileCode | "") {
+  return carrierProfileOptions.find((option) => option.value === value) || null;
+}
+
+function isCarrierProfileCode(value: unknown): value is CarrierProfileCode {
+  return typeof value === "string" && carrierProfileOptions.some((option) => option.value === value);
+}
+
+function normalizeCarrierProfileInput(value: string) {
+  const raw = value.trim().toLowerCase().replace(/\s+/g, "_").replace(/-/g, "_");
+  const aliases: Record<string, CarrierProfileCode> = {
+    qr: "qr_basic",
+    qr_basic: "qr_basic",
+    qr_comun: "qr_basic",
+    qr_common: "qr_basic",
+    gs1: "gs1_digital_link",
+    gs1_digital_link: "gs1_digital_link",
+    digital_link: "gs1_digital_link",
+    ntag213: "ntag213",
+    ntag_213: "ntag213",
+    ntag215: "ntag215",
+    ntag_215: "ntag215",
+    ntag216: "ntag216",
+    ntag_216: "ntag216",
+    ntag424: "ntag424_dna",
+    ntag_424: "ntag424_dna",
+    ntag424_dna: "ntag424_dna",
+    ntag_424_dna: "ntag424_dna",
+    ntag424_tt: "ntag424_dna_tt",
+    ntag424_dna_tt: "ntag424_dna_tt",
+    ntag_424_dna_tt: "ntag424_dna_tt",
+    tagtamper: "ntag424_dna_tt",
+    tt424: "ntag424_dna_tt",
+  };
+  return aliases[raw] || (isCarrierProfileCode(raw) ? raw : null);
+}
 
 function normalizeHex(value: string) {
   return value.trim().toUpperCase();
@@ -106,7 +254,7 @@ function getColumn(row: Record<string, string>, names: string[]) {
   return "";
 }
 
-function parseManifestInput(raw: string, expectedBid: string, productLabel: string, fallbackSku: string) {
+function parseManifestInput(raw: string, expectedBid: string, productLabel: string, fallbackSku: string, fallbackCarrierProfileCode: CarrierProfileCode | "") {
   const content = raw.replace(/^\uFEFF/, "").trim();
   const issues: ManifestIssue[] = [];
   if (!content) return { rows: [] as ManifestRow[], issues, type: "txt" as "txt" | "csv" };
@@ -146,6 +294,12 @@ function parseManifestInput(raw: string, expectedBid: string, productLabel: stri
       seen.add(uidHex);
       const productName = getColumn(record, ["product_name", "productname", "name"]) || productLabel.trim();
       const sku = getColumn(record, ["sku"]) || fallbackSku.trim();
+      const rawCarrier = getColumn(record, ["carrier_profile_code", "carrier_profile", "carrier", "chip_model", "chip", "chip_type", "tag_type", "ic_type"]);
+      const carrierProfileCode = rawCarrier ? normalizeCarrierProfileInput(rawCarrier) : fallbackCarrierProfileCode;
+      if (rawCarrier && !carrierProfileCode) {
+        issues.push({ row: rowNumber, reason: "invalid_carrier_profile", value: rawCarrier });
+        continue;
+      }
       if (!productName && !sku) {
         issues.push({ row: rowNumber, reason: "product_name_or_sku_required", value: uidHex });
         continue;
@@ -153,6 +307,7 @@ function parseManifestInput(raw: string, expectedBid: string, productLabel: stri
       rows.push({
         uidHex,
         batchId: batchId || expectedBid,
+        carrierProfileCode,
         productName,
         sku,
         lot: getColumn(record, ["lot", "lote", "lot_id"]),
@@ -182,6 +337,7 @@ function parseManifestInput(raw: string, expectedBid: string, productLabel: stri
     rows.push({
       uidHex,
       batchId: expectedBid,
+      carrierProfileCode: fallbackCarrierProfileCode,
       productName: productLabel.trim(),
       sku: fallbackSku.trim(),
       lot: "",
@@ -202,10 +358,11 @@ function manifestRowsToCsv(rows: ManifestRow[]) {
     if (!value.includes(",") && !value.includes("\"") && !value.includes("\n")) return value;
     return `"${value.replace(/"/g, "\"\"")}"`;
   };
-  const header = "batch_id,uid_hex,product_name,sku,lot,serial,expires_at";
+  const header = "batch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at";
   const body = rows.map((row) => [
     row.batchId,
     row.uidHex,
+    row.carrierProfileCode,
     row.productName,
     row.sku,
     row.lot,
@@ -254,7 +411,7 @@ function buildManifestPolicy() {
   return {
     accepted_formats: ["csv", "txt"],
     required_columns_csv: ["uid_hex"],
-    recommended_columns_csv: ["batch_id", "product_name", "sku", "lot", "serial", "expires_at"],
+    recommended_columns_csv: ["batch_id", "carrier_profile_code", "product_name", "sku", "lot", "serial", "expires_at"],
     txt_requires_product_identity_from_wizard: true,
     reject_duplicates: true,
     reject_batch_mismatch: true,
@@ -307,6 +464,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   const [batchMode, setBatchMode] = useState<BatchMode>("supplier");
   const [bid, setBid] = useState("");
+  const [carrierProfileCode, setCarrierProfileCode] = useState<CarrierProfileCode | "">("");
   const [chipModel, setChipModel] = useState("");
   const [securityProfile, setSecurityProfile] = useState("");
   const [sku, setSku] = useState("");
@@ -335,9 +493,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [batchSummary, setBatchSummary] = useState<BatchSummary | null>(null);
 
   const manifest = useMemo(
-    () => parseManifestInput(manifestText, bid.trim(), productLabel.trim(), sku.trim()),
-    [manifestText, bid, productLabel, sku],
+    () => parseManifestInput(manifestText, bid.trim(), productLabel.trim(), sku.trim(), carrierProfileCode),
+    [manifestText, bid, productLabel, sku, carrierProfileCode],
   );
+  const selectedCarrier = getCarrierOption(carrierProfileCode);
 
   const uniqueUidCount = manifest.rows.length;
   const firstUid = manifest.rows[0]?.uidHex || "";
@@ -352,7 +511,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     && Number.isFinite(Number(originLat))
     && Number.isFinite(Number(originLng)),
   );
-  const batchIdentityReady = Boolean(bid.trim() && chipModel.trim() && securityProfile.trim() && sku.trim());
+  const batchIdentityReady = Boolean(bid.trim() && carrierProfileCode && chipModel.trim() && securityProfile.trim() && sku.trim());
   const manifestReady = manifest.rows.length > 0 && manifest.issues.length === 0;
   const provisionReady = tenantProfileReady && batchIdentityReady && keysReady && manifestReady;
 
@@ -378,7 +537,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const nextAction = !stepReady[1]
     ? "Completa identidad, origen y politica de ownership del tenant."
     : !stepReady[2]
-      ? "Carga BID, perfil, SKU, chip y llaves de proveedor."
+      ? "Carga BID, carrier, perfil, SKU, chip y llaves de proveedor."
       : !stepReady[3]
         ? "Pega TXT/CSV o sube archivo y corrige conflictos antes de importar."
         : !stepReady[4]
@@ -402,6 +561,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       if (typeof draft.originLat === "string") setOriginLat(draft.originLat);
       if (typeof draft.originLng === "string") setOriginLng(draft.originLng);
       if (typeof draft.bid === "string") setBid(draft.bid);
+      if (typeof draft.carrierProfileCode === "string" && isCarrierProfileCode(draft.carrierProfileCode)) setCarrierProfileCode(draft.carrierProfileCode);
       if (typeof draft.chipModel === "string") setChipModel(draft.chipModel);
       if (typeof draft.securityProfile === "string") setSecurityProfile(draft.securityProfile);
       if (typeof draft.sku === "string") setSku(draft.sku);
@@ -429,6 +589,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         originLat,
         originLng,
         bid,
+        carrierProfileCode,
         chipModel,
         securityProfile,
         sku,
@@ -442,7 +603,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     } catch {
       // Ignore storage write failures.
     }
-  }, [tenantSlug, tenantName, vertical, clubName, productLabel, originLabel, originAddress, originLat, originLng, bid, chipModel, securityProfile, sku, quantity, notes, manifestText, supplierUrl, adminEmail, adminName]);
+  }, [tenantSlug, tenantName, vertical, clubName, productLabel, originLabel, originAddress, originLat, originLng, bid, carrierProfileCode, chipModel, securityProfile, sku, quantity, notes, manifestText, supplierUrl, adminEmail, adminName]);
 
   async function run(path: string, init?: RequestInit) {
     const response = await fetch(path, {
@@ -464,6 +625,23 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     return data as Record<string, unknown>;
   }
 
+  function selectCarrierProfile(value: CarrierProfileCode) {
+    const option = getCarrierOption(value);
+    setCarrierProfileCode(value);
+    if (!option) return;
+    setChipModel(option.defaultChip);
+    setSecurityProfile(option.defaultProfile);
+    setSku((current) => current.trim() ? current : option.defaultSku);
+    if (value === "ntag424_dna" || value === "ntag424_dna_tt") {
+      setTokenizationMode("valid_and_opened");
+      setRequireAntiReplay(true);
+    } else {
+      setTokenizationMode("manual");
+      setRequireAntiReplay(false);
+    }
+    setStatus(`${option.label}: ${option.promise} ${option.blocked}`);
+  }
+
   function applyDemobodegaPilot() {
     setTenantSlug("demobodega");
     setTenantName("Demo Bodega");
@@ -480,6 +658,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setRequireAntiReplay(true);
     setBatchMode("supplier");
     setBid(DEMO_SUPPLIER_BATCH_ID);
+    setCarrierProfileCode("ntag424_dna_tt");
     setChipModel("NTAG 424 DNA TagTamper");
     setSecurityProfile("NTAG424_DNA_TT_WINE");
     setSku("wine-secure");
@@ -490,6 +669,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setManifestText(manifestRowsToCsv(DEMO_SUPPLIER_UIDS.map((uid, index) => ({
       uidHex: uid,
       batchId: DEMO_SUPPLIER_BATCH_ID,
+      carrierProfileCode: "ntag424_dna_tt",
       productName: "Gran Reserva Malbec",
       sku: "wine-secure",
       lot: "MZA-2026-0424",
@@ -511,6 +691,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setOriginLat("");
     setOriginLng("");
     setBid("");
+    setCarrierProfileCode("");
     setChipModel("");
     setSecurityProfile("");
     setSku("");
@@ -542,7 +723,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   function downloadCsvTemplate() {
     downloadText(
       `${bid.trim() || "batch"}-manifest-template.csv`,
-      "batch_id,uid_hex,product_name,sku,lot,serial,expires_at\n",
+      `batch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at\n${bid.trim() || "<BID>"},<UID_HEX>,${carrierProfileCode || "<carrier_profile_code>"},${productLabel.trim() || "<product_name>"},${sku.trim() || "<sku>"},<lot>,<serial>,<expires_at>\n`,
       "text/csv;charset=utf-8",
     );
   }
@@ -587,7 +768,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   }
 
   async function registerBatch() {
-    if (!batchIdentityReady) throw new Error("Completa BID, perfil, SKU y chip.");
+    if (!batchIdentityReady) throw new Error("Completa BID, carrier, perfil, SKU y chip.");
     if (!keysReady) throw new Error("K_META y K_FILE deben ser hex de 32 caracteres para supplier mode.");
     const data = await run("/api/admin/batches/register", {
       method: "POST",
@@ -595,6 +776,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         tenant_slug: tenantSlug.trim().toLowerCase(),
         mode: batchMode,
         bid: bid.trim(),
+        carrier_profile_code: carrierProfileCode,
         profile: securityProfile.trim(),
         chip_model: chipModel.trim(),
         sku: sku.trim(),
@@ -607,6 +789,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           url_template: expectedNdefTemplate,
           vertical,
           claim_policy: claimPolicy,
+          carrier_profile_code: carrierProfileCode,
+          carrier_label: selectedCarrier?.label,
+          carrier_tier: selectedCarrier?.tier,
         },
       }),
     });
@@ -762,8 +947,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             );
           })}
         </div>
-        <div className="mt-4 grid gap-2 md:grid-cols-5">
+        <div className="mt-4 grid gap-2 md:grid-cols-6">
           <Metric label="Tenant profile" value={tenantProfileReady ? "Ready" : "Missing"} tone={tenantProfileReady ? "good" : "warn"} />
+          <Metric label="Carrier" value={selectedCarrier?.label || "Required"} tone={selectedCarrier ? "good" : "warn"} />
           <Metric label="Keys" value={keysReady ? "Ready" : "Required"} tone={keysReady ? "good" : "warn"} />
           <Metric label="Manifest rows" value={String(uniqueUidCount)} tone={manifestReady ? "good" : "neutral"} />
           <Metric label="Issues" value={String(manifest.issues.length)} tone={manifest.issues.length ? "bad" : "good"} />
@@ -828,7 +1014,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       </Card>
 
       <Card className={`p-5 sm:p-6 ${activeStep === 2 ? "" : "hidden"}`}>
-        <StepHeader step="2" title="Batch security y llaves del proveedor" description="Supplier mode exige K_META y K_FILE reales. Internal mode queda para lotes generados por nexID." />
+        <StepHeader step="2" title="Batch security, carrier y llaves del proveedor" description="Cada lote declara un carrier profile. Asi un QR barato, un GS1 retail o un NTAG424 TT premium prometen solo lo que pueden cumplir." />
         <div className="mt-4 grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
           <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Modo de batch</p>
@@ -839,6 +1025,33 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">Para tags que llegan de China, usar supplier batch y pegar exactamente las llaves del proveedor.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-cyan-300/20 bg-slate-950/55 p-4 md:col-span-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Carrier profile obligatorio</p>
+              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {carrierProfileOptions.map((option) => (
+                  <button
+                    suppressHydrationWarning
+                    key={option.value}
+                    type="button"
+                    className={`rounded-xl border p-3 text-left transition ${carrierProfileCode === option.value ? "border-cyan-300/60 bg-cyan-500/15 text-cyan-50" : "border-white/10 bg-slate-900/55 text-slate-300 hover:border-cyan-300/30"}`}
+                    onClick={() => selectCarrierProfile(option.value)}
+                  >
+                    <span className="text-sm font-semibold">{option.label}</span>
+                    <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-200">{option.tier}</span>
+                    <span className="mt-2 block text-xs leading-5 opacity-80">{option.headline}</span>
+                  </button>
+                ))}
+              </div>
+              {selectedCarrier ? (
+                <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs leading-5 text-slate-200 md:grid-cols-3">
+                  <p><b className="text-cyan-100">Ideal para:</b><br />{selectedCarrier.bestFor}</p>
+                  <p><b className="text-emerald-100">Promete:</b><br />{selectedCarrier.promise}</p>
+                  <p><b className="text-amber-100">No vender como:</b><br />{selectedCarrier.blocked}</p>
+                </div>
+              ) : (
+                <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">Elegir carrier es obligatorio para evitar defaults invisibles y promesas de seguridad incorrectas.</p>
+              )}
+            </div>
             <Field label="BID / Batch ID" value={bid} onChange={setBid} placeholder="BODEGA-2026-001" />
             <Field label="Chip model" value={chipModel} onChange={setChipModel} placeholder="NTAG 424 DNA TagTamper" />
             <Field label="Security profile" value={securityProfile} onChange={setSecurityProfile} placeholder="NTAG424_DNA_TT_WINE" />
@@ -871,7 +1084,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
                 setManifestMode("paste");
                 setManifestText(event.target.value);
               }}
-              placeholder={"CSV recomendado:\nbatch_id,uid_hex,product_name,sku,lot,serial,expires_at\nBODEGA-2026-001,04A7FFFF1090,Gran Reserva Malbec,wine-secure,MZA-2026-01,0001,\n\nTXT permitido:\n04A7FFFF1090\n04B8FFFF1090"}
+              placeholder={"CSV recomendado:\nbatch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at\nBODEGA-2026-001,04A7FFFF1090,ntag424_dna_tt,Gran Reserva Malbec,wine-secure,MZA-2026-01,0001,\n\nTXT permitido:\n04A7FFFF1090\n04B8FFFF1090"}
             />
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <input suppressHydrationWarning type="file" accept=".txt,.csv,text/plain,text/csv" className="block w-full max-w-md text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-white/20" onChange={(event) => void onManifestFile(event)} />
@@ -883,6 +1096,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
               <Metric label="Rows validas" value={String(manifest.rows.length)} tone={manifest.rows.length ? "good" : "neutral"} />
               <Metric label="Issues" value={String(manifest.issues.length)} tone={manifest.issues.length ? "bad" : "good"} />
               <Metric label="Tipo" value={manifest.type.toUpperCase()} tone="neutral" />
+              <Metric label="Carrier" value={selectedCarrier?.label || "Pendiente"} tone={selectedCarrier ? "good" : "warn"} />
               <Metric label="Producto" value={productLabel || sku || "Pendiente"} tone={productLabel || sku ? "good" : "warn"} />
             </div>
             <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-xs text-slate-200">
@@ -911,7 +1125,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
                 {manifest.rows.slice(0, 8).map((row) => (
                   <div key={row.uidHex} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
                     <b className="text-white">{row.uidHex}</b>
-                    <span className="mt-1 block text-slate-400">{row.productName || row.sku} / {row.batchId}</span>
+                    <span className="mt-1 block text-slate-400">{row.productName || row.sku} / {row.batchId} / {row.carrierProfileCode || "carrier pendiente"}</span>
                   </div>
                 ))}
                 {!manifest.rows.length ? <p className="text-xs text-slate-400">Sin rows validas todavia.</p> : null}
@@ -926,7 +1140,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <StepHeader step="4" title="Provision controlado" description="Ejecuta paso por paso o todo junto. Si algo falla, queda claro que campo falta y no se importan datos incompletos." />
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <ActionCard title="1. Tenant" body="Crea o actualiza SUN profile, origen, claim policy y manifest policy." ready={tenantReady} action={<Button disabled={pending || !tenantProfileReady} onClick={() => void createTenantIfMissing().then(() => setStatus("Tenant listo.")).catch((error) => setStatus(error instanceof Error ? error.message : "tenant failed"))}>Crear tenant</Button>} />
-          <ActionCard title="2. Batch" body="Registra BID, chip, perfil, SKU y llaves." ready={batchReady} action={<Button disabled={pending || !tenantProfileReady || !stepReady[2]} onClick={() => void registerBatch().then(() => setStatus("Batch listo.")).catch((error) => setStatus(error instanceof Error ? error.message : "batch failed"))}>Registrar batch</Button>} />
+          <ActionCard title="2. Batch" body="Registra BID, carrier, chip, perfil, SKU y llaves." ready={batchReady} action={<Button disabled={pending || !tenantProfileReady || !stepReady[2]} onClick={() => void registerBatch().then(() => setStatus("Batch listo.")).catch((error) => setStatus(error instanceof Error ? error.message : "batch failed"))}>Registrar batch</Button>} />
           <ActionCard title="3. Manifest" body="Importa CSV auditado y crea identidad por tag." ready={importedCount > 0} action={<Button disabled={pending || !batchReady || !manifestReady} onClick={() => void importManifest().then(() => setStatus("Manifest importado.")).catch((error) => setStatus(error instanceof Error ? error.message : "manifest failed"))}>Importar manifest</Button>} />
           <ActionCard title="4. Activacion" body="Activa tags importadas para taps reales." ready={activeCount > 0} action={<Button disabled={pending || !importedCount} onClick={() => void activateAll().then(() => setStatus("Tags activadas.")).catch((error) => setStatus(error instanceof Error ? error.message : "activation failed"))}>Activar tags</Button>} />
         </div>
@@ -981,6 +1195,8 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             <p>Batch: <b className="text-white">{batchSummary.bid}</b></p>
             <p>Tenant: <b className="text-white">{batchSummary.tenant_slug}</b></p>
             <p>SKU: <b className="text-white">{batchSummary.sku || "Sin SKU"}</b></p>
+            <p>Carrier: <b className="text-white">{batchSummary.carrier_label || batchSummary.carrier_profile_code || "Sin carrier"}</b></p>
+            <p>Security level: <b className="text-white">{batchSummary.carrier_security_level ?? "Sin nivel"}</b></p>
             <p>Chip: <b className="text-white">{batchSummary.chip_model || "Sin chip"}</b></p>
             <p>Planificadas: <b className="text-white">{batchSummary.requested_quantity}</b></p>
             <p>Importadas: <b className="text-white">{batchSummary.imported_tags}</b></p>

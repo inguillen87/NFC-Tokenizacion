@@ -1,5 +1,6 @@
 import { sql } from "./db";
 import { ensureLoyaltySchema } from "./loyalty-schema";
+import { CARRIER_PROFILES } from "./carrier-profiles";
 
 let authSchemaReady: Promise<void> | null = null;
 let portalSchemaReady: Promise<void> | null = null;
@@ -8,6 +9,7 @@ let ticketsSchemaReady: Promise<void> | null = null;
 let orderRequestsSchemaReady: Promise<void> | null = null;
 let alertsSchemaReady: Promise<void> | null = null;
 let enterpriseIamSchemaReady: Promise<void> | null = null;
+let carrierProfilesSchemaReady: Promise<void> | null = null;
 
 async function ensureUuidExtensions() {
   await sql/*sql*/`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
@@ -201,6 +203,114 @@ export async function ensureOrderRequestsSchema() {
 export async function ensureCrmOpsSchema() {
   await ensureLeadsSchema();
   await Promise.all([ensureTicketsSchema(), ensureOrderRequestsSchema()]);
+}
+
+export async function ensureCarrierProfileSchema() {
+  if (!carrierProfilesSchemaReady) {
+    carrierProfilesSchemaReady = (async () => {
+      await ensureUuidExtensions();
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS carrier_profiles (
+          code text PRIMARY KEY,
+          label text NOT NULL,
+          family text NOT NULL CHECK (family IN ('qr', 'gs1', 'nfc')),
+          security_level integer NOT NULL DEFAULT 1,
+          cost_band text NOT NULL DEFAULT 'entry',
+          estimated_unit_cost_usd_min numeric(10,4),
+          estimated_unit_cost_usd_max numeric(10,4),
+          capabilities jsonb NOT NULL DEFAULT '{}'::jsonb,
+          recommended_verticals jsonb NOT NULL DEFAULT '[]'::jsonb,
+          allowed_actions jsonb NOT NULL DEFAULT '[]'::jsonb,
+          blocked_actions jsonb NOT NULL DEFAULT '[]'::jsonb,
+          consumer_copy jsonb NOT NULL DEFAULT '{}'::jsonb,
+          admin_copy jsonb NOT NULL DEFAULT '{}'::jsonb,
+          default_policy jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS tenant_carrier_policies (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          carrier_profile_code text NOT NULL REFERENCES carrier_profiles(code) ON DELETE RESTRICT,
+          vertical text NOT NULL DEFAULT 'default',
+          enabled boolean NOT NULL DEFAULT true,
+          claim_mode text NOT NULL DEFAULT 'verified_purchase',
+          tokenization_mode text NOT NULL DEFAULT 'request_only',
+          requires_fresh_tap boolean NOT NULL DEFAULT true,
+          requires_purchase_proof boolean NOT NULL DEFAULT true,
+          allowed_actions jsonb NOT NULL DEFAULT '[]'::jsonb,
+          blocked_actions jsonb NOT NULL DEFAULT '[]'::jsonb,
+          notes text,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE (tenant_id, carrier_profile_code, vertical)
+        )
+      `;
+      await sql/*sql*/`ALTER TABLE batches ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
+      await sql/*sql*/`ALTER TABLE tags ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
+      await sql/*sql*/`ALTER TABLE tenant_manifests ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
+      await sql/*sql*/`ALTER TABLE tag_profiles ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_batches_carrier_profile ON batches(carrier_profile_code)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tags_carrier_profile ON tags(carrier_profile_code)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tenant_manifests_carrier_profile ON tenant_manifests(carrier_profile_code)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tag_profiles_carrier_profile ON tag_profiles(carrier_profile_code)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tenant_carrier_policies_tenant ON tenant_carrier_policies(tenant_id, enabled)`;
+
+      for (const profile of CARRIER_PROFILES) {
+        await sql/*sql*/`
+          INSERT INTO carrier_profiles (
+            code,
+            label,
+            family,
+            security_level,
+            cost_band,
+            estimated_unit_cost_usd_min,
+            estimated_unit_cost_usd_max,
+            capabilities,
+            recommended_verticals,
+            allowed_actions,
+            blocked_actions,
+            consumer_copy,
+            admin_copy,
+            default_policy
+          ) VALUES (
+            ${profile.code},
+            ${profile.label},
+            ${profile.family},
+            ${profile.securityLevel},
+            ${profile.costBand},
+            ${profile.estimatedUnitCostUsdMin},
+            ${profile.estimatedUnitCostUsdMax},
+            ${JSON.stringify(profile.capabilities)}::jsonb,
+            ${JSON.stringify(profile.recommendedVerticals)}::jsonb,
+            ${JSON.stringify(profile.allowedActions)}::jsonb,
+            ${JSON.stringify(profile.blockedActions)}::jsonb,
+            ${JSON.stringify(profile.consumerCopy)}::jsonb,
+            ${JSON.stringify(profile.adminCopy)}::jsonb,
+            ${JSON.stringify(profile.defaultPolicy)}::jsonb
+          )
+          ON CONFLICT (code) DO UPDATE SET
+            label = EXCLUDED.label,
+            family = EXCLUDED.family,
+            security_level = EXCLUDED.security_level,
+            cost_band = EXCLUDED.cost_band,
+            estimated_unit_cost_usd_min = EXCLUDED.estimated_unit_cost_usd_min,
+            estimated_unit_cost_usd_max = EXCLUDED.estimated_unit_cost_usd_max,
+            capabilities = EXCLUDED.capabilities,
+            recommended_verticals = EXCLUDED.recommended_verticals,
+            allowed_actions = EXCLUDED.allowed_actions,
+            blocked_actions = EXCLUDED.blocked_actions,
+            consumer_copy = EXCLUDED.consumer_copy,
+            admin_copy = EXCLUDED.admin_copy,
+            default_policy = EXCLUDED.default_policy,
+            updated_at = now()
+        `;
+      }
+    })();
+  }
+  return carrierProfilesSchemaReady;
 }
 
 export async function ensureAlertsSchema() {

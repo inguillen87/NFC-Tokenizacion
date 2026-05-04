@@ -36,6 +36,8 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
             <dl className="mt-4 space-y-3 text-sm text-slate-300">
               <div><dt className="text-slate-400">Tenant</dt><dd className="text-white">{String(batch.tenant_slug || "-")}</dd></div>
               <div><dt className="text-slate-400">Status</dt><dd className="text-white">{String(batch.status || "-")}</dd></div>
+              <div><dt className="text-slate-400">Carrier</dt><dd className="text-white">{String(batch.carrier_label || batch.carrier_profile_code || "Sin carrier")}</dd></div>
+              <div><dt className="text-slate-400">Security level</dt><dd className="text-white">{batch.carrier_security_level ? `L${String(batch.carrier_security_level)}` : "-"}</dd></div>
               <div><dt className="text-slate-400">Profile</dt><dd className="text-white">{String(batch.batch_profile || "custom")}</dd></div>
               <div><dt className="text-slate-400">Chip model</dt><dd className="text-white">{String(batch.chip_model || batch.type || "-")}</dd></div>
               <div><dt className="text-slate-400">SKU</dt><dd className="text-white">{String(batch.sku || "-")}</dd></div>
@@ -44,6 +46,11 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
               <div><dt className="text-slate-400">Active tags</dt><dd className="text-white">{String(batch.active_count || batch.tags_active || "unknown")}</dd></div>
               <div><dt className="text-slate-400">Keys loaded</dt><dd className="text-white">{batch.k_meta_hex || batch.k_file_hex ? "yes" : "unknown"}</dd></div>
             </dl>
+            {batch.carrier_admin_copy ? (
+              <div className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs leading-5 text-cyan-100">
+                {String(batch.carrier_admin_copy)}
+              </div>
+            ) : null}
           </Card>
           <Card className="p-6">
             <h2 className="text-lg font-semibold text-white">Ops next</h2>

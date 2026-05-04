@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { parse } from "csv-parse/sync";
+import { normalizeCarrierProfileCode, type CarrierProfileCode } from "./carrier-profiles";
 
 export type ParsedManifestRow = {
   uidHex: string;
@@ -9,6 +10,7 @@ export type ParsedManifestRow = {
   lot: string | null;
   serial: string | null;
   expiresAt: string | null;
+  carrierProfileCode: CarrierProfileCode | null;
   raw: Record<string, string>;
 };
 
@@ -105,6 +107,21 @@ export function parseTagManifest(content: string, expectedBid: string): Manifest
       rejectedRows.push({ row: index + 1, reason: "duplicate_uid_in_manifest", value: uidHex });
       return;
     }
+    const carrierProfileInput = getColumn(row, [
+      "carrier_profile_code",
+      "carrier_profile",
+      "carrier",
+      "chip_model",
+      "chip",
+      "chip_type",
+      "tag_type",
+      "ic_type",
+    ]);
+    const carrierProfileCode = normalizeCarrierProfileCode(carrierProfileInput);
+    if (carrierProfileInput && !carrierProfileCode) {
+      rejectedRows.push({ row: index + 1, reason: "invalid_carrier_profile", value: carrierProfileInput });
+      return;
+    }
     seen.add(uidHex);
     rows.push({
       uidHex,
@@ -114,6 +131,7 @@ export function parseTagManifest(content: string, expectedBid: string): Manifest
       lot: getColumn(row, ["lot", "lote", "lot_id"]) || null,
       serial: getColumn(row, ["serial", "serial_number"]) || null,
       expiresAt: getColumn(row, ["expires_at", "expiry", "expiration"]) || null,
+      carrierProfileCode,
       raw: row,
     });
   });

@@ -60,10 +60,21 @@ type SunRightsPolicy = {
   recommendedNextStep?: string | null;
 };
 
+type SunCarrierFields = {
+  carrierProfileCode?: string | null;
+  carrier_profile_code?: string | null;
+  carrierLabel?: string | null;
+  carrier_label?: string | null;
+  carrierSecurityLevel?: number | null;
+  carrier_security_level?: number | null;
+  carrierConsumerCopy?: string | null;
+  carrier_consumer_copy?: string | null;
+};
+
 type SunContract = {
   ok?: boolean;
   eventId?: string | null;
-  status?: {
+  status?: SunCarrierFields & {
     code?: string;
     label?: string;
     tone?: "good" | "warn" | "risk";
@@ -75,9 +86,9 @@ type SunContract = {
     tamperReason?: string | null;
     encPlainStatusByte?: string | null;
   };
-  identity?: { bid?: string | null; uid?: string | null; uidMasked?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null; eventId?: string | null; tenantSlug?: string | null; tenantId?: string | null };
+  identity?: SunCarrierFields & { bid?: string | null; uid?: string | null; uidMasked?: string | null; readCounter?: number | null; tagStatus?: string | null; scanCount?: number | null; eventId?: string | null; tenantSlug?: string | null; tenantId?: string | null };
   tenant?: { id?: string | null; slug?: string | null; name?: string | null; vertical?: string | null; productLabel?: string | null; clubName?: string | null; tokenizationMode?: string | null };
-  condition?: { state?: string | null; label?: string | null; summary?: string | null; claimMode?: string | null; tokenizationPolicy?: string | null; marketplaceMode?: string | null; recommendedNextStep?: string | null; requirements?: string[] };
+  condition?: SunCarrierFields & { state?: string | null; label?: string | null; summary?: string | null; claimMode?: string | null; tokenizationPolicy?: string | null; marketplaceMode?: string | null; recommendedNextStep?: string | null; requirements?: string[] };
   rightsPolicy?: SunRightsPolicy;
   product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null; category?: string | null; vertical?: string | null };
   provenance?: {
@@ -110,7 +121,7 @@ type SunContract = {
   verdict?: string | null;
   riskLevel?: string | null;
   troubleshooting?: string[];
-  technical?: { raw?: { piccDataPrefix?: string; encPrefix?: string; cmacPrefix?: string } };
+  technical?: SunCarrierFields & { raw?: { piccDataPrefix?: string; encPrefix?: string; cmacPrefix?: string } };
 };
 
 function fmtDate(value?: string | null) {
@@ -639,11 +650,64 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   ];
   const sealOpened = statusByteSignal === "opened" || ttStatus === "opened" || productState.includes("OPENED");
   const sealClosed = statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED";
-  const carrierLabel = result.status?.tamperSupported || result.tag_tamper?.available
-    ? "NTAG 424 DNA TT"
-    : result.technical?.raw
-      ? "NTAG 424 DNA"
-      : "QR / NFC";
+  const rawCarrierProfileCode = String(
+    result.status?.carrierProfileCode ||
+      result.status?.carrier_profile_code ||
+      result.identity?.carrierProfileCode ||
+      result.identity?.carrier_profile_code ||
+      result.condition?.carrierProfileCode ||
+      result.condition?.carrier_profile_code ||
+      result.technical?.carrierProfileCode ||
+      result.technical?.carrier_profile_code ||
+      "",
+  ).toLowerCase();
+  const carrierLabels: Record<string, string> = {
+    qr_basic: "QR comun",
+    gs1_digital_link: "QR GS1 Digital Link",
+    ntag213: "NTAG213",
+    ntag215: "NTAG215",
+    ntag216: "NTAG216",
+    ntag424_dna: "NTAG 424 DNA",
+    ntag424_dna_tt: "NTAG 424 DNA TT",
+  };
+  const carrierLabel =
+    result.status?.carrierLabel ||
+    result.status?.carrier_label ||
+    result.identity?.carrierLabel ||
+    result.identity?.carrier_label ||
+    result.condition?.carrierLabel ||
+    result.condition?.carrier_label ||
+    result.technical?.carrierLabel ||
+    result.technical?.carrier_label ||
+    carrierLabels[rawCarrierProfileCode] ||
+    (result.status?.tamperSupported || result.tag_tamper?.available
+      ? "NTAG 424 DNA TT"
+      : result.technical?.raw
+        ? "NTAG 424 DNA"
+        : "QR / NFC");
+  const isCryptoCarrier =
+    rawCarrierProfileCode === "ntag424_dna" ||
+    rawCarrierProfileCode === "ntag424_dna_tt" ||
+    (!rawCarrierProfileCode && Boolean(result.technical?.raw || result.status?.tamperSupported || result.tag_tamper?.available));
+  const isTamperCarrier =
+    rawCarrierProfileCode === "ntag424_dna_tt" ||
+    (!rawCarrierProfileCode && Boolean(result.status?.tamperSupported || result.tag_tamper?.available));
+  const rawCarrierConsumerCopy = (
+    result.status?.carrierConsumerCopy ||
+    result.status?.carrier_consumer_copy ||
+    result.condition?.carrierConsumerCopy ||
+    result.condition?.carrier_consumer_copy ||
+    ""
+  ) as unknown;
+  const carrierConsumerCopy = typeof rawCarrierConsumerCopy === "string"
+    ? rawCarrierConsumerCopy
+    : rawCarrierConsumerCopy && typeof rawCarrierConsumerCopy === "object"
+      ? String(
+          (rawCarrierConsumerCopy as { summary?: unknown }).summary
+          || (rawCarrierConsumerCopy as { title?: unknown }).title
+          || "",
+        )
+      : "";
   const tokenStatus = String(result.tokenization?.status || "none");
   const normalizedTokenStatus = tokenStatus.toLowerCase();
   const tokenNetwork = result.tokenization?.network || "Polygon Amoy";
@@ -681,7 +745,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isSnapshotView
       ? "Consulta segura: la prueba queda disponible para revisar y compartir. Para reclamar propiedad, sumar puntos o mintear, toca otra vez la etiqueta."
     : isValid
-      ? rightsSummary || "Lectura fresca: UID, contador SUN y CMAC pasan la politica anti-replay."
+      ? rightsSummary || (isCryptoCarrier
+        ? "Lectura fresca: UID, contador SUN y CMAC pasan la politica anti-replay."
+        : "Lectura fresca: identidad registrada y trazabilidad declarada por plataforma.")
       : isVerifiedOpenedState && isTechnicallyAuthentic
         ? rightsSummary || "Sello abierto verificado: la apertura queda registrada como lifecycle event y conserva ownership, garantia, provenance y tokenizacion opcional."
         : rightsSummary || "Lectura revisable: la prueba tecnica se conserva, pero las acciones comerciales quedan protegidas.";
@@ -732,18 +798,35 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "Vista demo del passport SUN para probar el flujo sin etiqueta fisica."
       : "Validacion directa desde parametros SUN.";
   const carrierEducation = [
+    { code: "qr_basic", name: "QR comun", mode: "Contenido", body: "Abre una URL para contenido, leads, marketplace y analytics. Bajo costo, pero puede copiarse con una foto." },
+    { code: "gs1_digital_link", name: "QR GS1 Digital Link", mode: "Retail", body: "GTIN, lote, serie y vencimiento para retail/exportacion. Profesionaliza trazabilidad, no es anti-clon por si solo." },
+    { code: "ntag213", name: "NTAG213", mode: "Tap web", body: "NFC economico para tap-to-web, garantias basicas y medicion. Sin SUN dinamico." },
+    { code: "ntag215", name: "NTAG215", mode: "UID", body: "UID + reglas server-side para eventos, credenciales y productos de valor medio. No es cripto premium." },
+    { code: "ntag216", name: "NTAG216", mode: "Memoria", body: "Mas memoria para journeys, payload local y activaciones con control operativo." },
+    { code: "ntag424_dna", name: "NTAG 424 DNA", mode: "SUN/SDM", body: "Cada tap genera datos dinamicos verificables contra replay, clones y URLs reutilizadas." },
+    { code: "ntag424_dna_tt", name: "424 DNA TT", mode: "Tamper", body: "Suma estado fisico del sello: cerrado, abierto o no inicializado para botellas y packaging premium." },
     { name: "QR comun", mode: "Contenido", body: "Abre una URL y sirve para campañas simples. Es barato, pero se puede copiar o reenviar." },
     { name: "NTAG215", mode: "Tap UX", body: "Mejora velocidad y serializacion para eventos, credenciales y activaciones con reglas server-side." },
     { name: "NTAG 424 DNA", mode: "SUN/SDM", body: "Cada tap genera datos dinamicos verificables contra replay, clones y URLs reutilizadas." },
     { name: "424 DNA TT", mode: "Tamper", body: "Suma estado fisico del sello: cerrado, abierto o no inicializado para botellas y packaging premium." },
   ];
-  const activeCarrierIndex = carrierLabel.includes("424 DNA TT")
-    ? 3
-    : carrierLabel.includes("424 DNA")
-      ? 2
-      : carrierLabel.includes("NTAG215")
-        ? 1
-        : 0;
+  const activeCarrierIndex = rawCarrierProfileCode === "ntag424_dna_tt"
+    ? 6
+    : rawCarrierProfileCode === "ntag424_dna"
+      ? 5
+      : rawCarrierProfileCode === "ntag216"
+        ? 4
+        : rawCarrierProfileCode === "ntag215"
+          ? 3
+          : rawCarrierProfileCode === "ntag213"
+            ? 2
+            : rawCarrierProfileCode === "gs1_digital_link"
+              ? 1
+        : isTamperCarrier
+          ? 6
+          : isCryptoCarrier
+            ? 5
+            : 0;
 
 
   return (
@@ -857,7 +940,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           <section className={`sun-security-ledger sun-panel-primary ${isReplay ? "sun-security-ledger--replay" : isRiskBlocked ? "sun-security-ledger--review" : isVerifiedOpenedState ? "sun-security-ledger--opened" : "sun-security-ledger--fresh"}`}>
            <div className="sun-security-ledger__header">
              <div>
-               <p className="sun-security-eyebrow">Prueba criptografica NTAG 424 DNA TT</p>
+               <p className="sun-security-eyebrow">{isCryptoCarrier ? `Prueba criptografica ${carrierLabel}` : `Identidad operativa ${carrierLabel}`}</p>
                 <h2>{isReplay ? "Replay detectado y bloqueado" : isSnapshotView ? "Prueba guardada para consulta" : isVerifiedOpenedState && isTechnicallyAuthentic ? "Sello abierto verificado" : isValid ? "Tap fresco verificado" : "Tap protegido en revision"}</h2>
              </div>
              <span className={`sun-status-dot ${statusDotClass}`} aria-hidden="true" />
@@ -932,11 +1015,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                <h2 className="mt-1 text-sm font-semibold text-white">{carrierLabel}</h2>
              </div>
              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100">
-               perfil {activeCarrierIndex + 1}/4
+               perfil {activeCarrierIndex + 1}/7
              </span>
            </div>
            <div className="mt-3 grid grid-cols-2 gap-2">
-             {carrierEducation.map((item, index) => (
+             {carrierEducation.slice(0, 7).map((item, index) => (
                <div key={item.name} className={`rounded-xl border p-2.5 ${index === activeCarrierIndex ? "border-cyan-300/35 bg-cyan-500/15" : "border-white/10 bg-slate-950/55"}`}>
                  <div className="flex items-center justify-between gap-2">
                    <p className="text-xs font-semibold text-white">{item.name}</p>
@@ -946,6 +1029,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </div>
              ))}
            </div>
+           {carrierConsumerCopy ? (
+             <p className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-[11px] leading-4 text-cyan-50">{carrierConsumerCopy}</p>
+           ) : null}
          </section>
 
          <div className="sun-journey-panel sun-panel-journey rounded-2xl border border-white/10 bg-slate-900/55 p-4">
@@ -1105,12 +1191,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
          {/* Post-tap journey (mobile-first) */}
          <div className="sun-posttap-panel rounded-2xl border border-emerald-500/20 bg-emerald-950/15 p-5 mt-4">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Flujo post tap · SUN mobile</p>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Flujo post tap - carrier profile</p>
             <h3 className="mt-2 text-sm font-bold text-white">{isFreshCommercialTap ? "Asocia este tap al tenant y entra al club premium" : "Acciones protegidas hasta un nuevo tap fisico"}</h3>
             <div className="mt-3 space-y-2 text-xs text-slate-200">
-              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">1) Verificás autenticidad con NTAG424 DNA TT y estado anti-tamper.</div>
-              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">2) Activás ownership + garantía para abrir portal de usuario premium.</div>
-              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">3) Te unís al club del tenant ({result.identity?.tenantSlug || "tenant-demo"}) y desbloqueás beneficios.</div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">1) {isCryptoCarrier ? `Verificas autenticidad con ${carrierLabel}${isTamperCarrier ? " y estado anti-tamper" : ""}.` : `Confirmas identidad ${carrierLabel} y trazabilidad declarada.`}</div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">2) {isCryptoCarrier ? "Activacion de ownership, garantia y tokenizacion segun politica del tenant." : "Leads, marketplace, garantia basica y analytics sin prometer anti-clon criptografico."}</div>
+              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">3) La marca ({result.identity?.tenantSlug || "tenant-demo"}) habilita club, rewards y beneficios segun el perfil.</div>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
               <Link href={registerHref} className={`rounded-lg border px-2 py-2 text-center font-semibold ${isFreshCommercialTap ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "pointer-events-none border-white/10 bg-slate-950/60 text-slate-500"}`}>Registrarme</Link>

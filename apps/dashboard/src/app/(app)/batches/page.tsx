@@ -39,9 +39,11 @@ export default async function BatchesPage() {
     const requested = Number(row.requested_quantity || 0);
     const sku = row.sku ? String(row.sku) : "SKU pendiente";
     const profile = row.batch_profile ? String(row.batch_profile) : "Perfil pendiente";
+    const carrier = row.carrier_label ? String(row.carrier_label) : row.carrier_profile_code ? String(row.carrier_profile_code) : "Carrier pendiente";
+    const security = row.carrier_security_level ? ` L${String(row.carrier_security_level)}` : "";
     return {
       batch: `${String(row.bid || "BID pendiente")} - ${sku}`,
-      type: `${profile} - ${String(row.tenant_slug || "tenant pendiente")}`,
+      type: `${carrier}${security} - ${profile} - ${String(row.tenant_slug || "tenant pendiente")}`,
       status: String(row.status || "pending"),
       quantity: `${quantity.toLocaleString()} imported / ${requested.toLocaleString()} planned - ${active.toLocaleString()} active - ${inactive.toLocaleString()} pending`,
     };
@@ -87,7 +89,7 @@ export default async function BatchesPage() {
             <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-amber-200">Modo 2</p>
               <p className="mt-1 text-base font-semibold text-white">Register supplier batch</p>
-              <p className="mt-2 text-xs text-slate-300">Para tags programadas por proveedor. K_META_BATCH y K_FILE_BATCH obligatorias.</p>
+              <p className="mt-2 text-xs text-slate-300">Para tags programadas por proveedor. Carrier profile + K_META_BATCH y K_FILE_BATCH obligatorias.</p>
               <Link href="/batches/supplier" className="mt-3 inline-block rounded-lg border border-amber-300/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">Open supplier wizard</Link>
             </div>
           </div>
@@ -98,7 +100,7 @@ export default async function BatchesPage() {
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {[
             "1) Crear tenant passport completo",
-            "2) Registrar batch proveedor",
+            "2) Elegir carrier profile y registrar batch proveedor",
             "3) Cargar llaves K_META/K_FILE",
             "4) Importar TXT/CSV con preflight",
             "5) Activar tags importadas",

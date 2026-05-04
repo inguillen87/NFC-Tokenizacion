@@ -12,6 +12,7 @@ import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
 import { mapVerdictAndRisk, resolveActionMatrix, resolveRightsPolicy } from '../../lib/sun-passport-policy';
 import { resolveSunTenantProfile } from '../../lib/sun-tenant-profile';
 import { ensureSunTenantProfilesSchema } from '../../lib/sun-tenant-profile-schema';
+import { ensureCarrierProfileSchema } from '../../lib/commercial-runtime-schema';
 import { getRequestMeta } from '../../lib/request-meta';
 import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
 import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
@@ -70,6 +71,12 @@ type PassportSnapshot = {
   tenant_name: string | null;
   batch_status: string | null;
   batch_sdm_config: Record<string, unknown> | null;
+  carrier_profile_code: string | null;
+  carrier_label: string | null;
+  carrier_security_level: number | null;
+  carrier_capabilities: Record<string, unknown> | null;
+  carrier_consumer_copy: string | null;
+  carrier_admin_copy: string | null;
   sun_profile_vertical: string | null;
   sun_profile_club_name: string | null;
   sun_profile_product_label: string | null;
@@ -484,6 +491,10 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
     const reason = error instanceof Error ? error.message : "sun_tenant_profile_schema_unavailable";
     console.warn("[sun_tenant_profile_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
   });
+  await ensureCarrierProfileSchema().catch((error) => {
+    const reason = error instanceof Error ? error.message : "carrier_profile_schema_unavailable";
+    console.warn("[carrier_profile_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
+  });
   const rows = await sql/*sql*/`
     SELECT
       b.tenant_id::text AS tenant_id,
@@ -491,6 +502,12 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       b.sdm_config AS batch_sdm_config,
       tn.slug AS tenant_slug,
       tn.name AS tenant_name,
+      COALESCE(t.carrier_profile_code, b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', '')) AS carrier_profile_code,
+      cp.label AS carrier_label,
+      cp.security_level AS carrier_security_level,
+      cp.capabilities AS carrier_capabilities,
+      cp.consumer_copy AS carrier_consumer_copy,
+      cp.admin_copy AS carrier_admin_copy,
       tsp.vertical AS sun_profile_vertical,
       tsp.club_name AS sun_profile_club_name,
       tsp.product_label AS sun_profile_product_label,
@@ -527,6 +544,7 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
     FROM tags t
     JOIN batches b ON b.id = t.batch_id
     JOIN tenants tn ON tn.id = b.tenant_id
+    LEFT JOIN carrier_profiles cp ON cp.code = COALESCE(t.carrier_profile_code, b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', ''))
     LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = b.tenant_id
     LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
     LEFT JOIN LATERAL (
@@ -648,6 +666,38 @@ function buildPublicContract(params: {
   const setupWebBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
   const setupEventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
   const setupUa = summarizeUserAgent(params.tap.userAgent);
+  const resultMeta = params.result as Record<string, unknown>;
+  const carrierProfileCode = params.passport?.carrier_profile_code || null;
+  const inferredCryptoCarrier = Boolean(resultMeta.tamper_supported || resultMeta.enc_plain_status_byte || resultMeta.tag_tamper);
+  const carrierLabel = params.passport?.carrier_label
+    || (carrierProfileCode === "ntag424_dna_tt" ? "NTAG 424 DNA TagTamper TT" : null)
+    || (carrierProfileCode === "ntag424_dna" ? "NTAG 424 DNA" : null)
+    || (carrierProfileCode === "ntag216" ? "NTAG216" : null)
+    || (carrierProfileCode === "ntag215" ? "NTAG215" : null)
+    || (carrierProfileCode === "ntag213" ? "NTAG213" : null)
+    || (carrierProfileCode === "gs1_digital_link" ? "QR GS1 Digital Link" : null)
+    || (carrierProfileCode === "qr_basic" ? "QR comun" : null)
+    || (inferredCryptoCarrier ? "NTAG 424 DNA" : "Carrier sin configurar");
+  const carrierSecurityLevel = params.passport?.carrier_security_level || null;
+  const rawCarrierConsumerCopy = params.passport?.carrier_consumer_copy as unknown;
+  const carrierConsumerCopy = typeof rawCarrierConsumerCopy === "string"
+    ? rawCarrierConsumerCopy
+    : rawCarrierConsumerCopy && typeof rawCarrierConsumerCopy === "object"
+      ? String(
+          (rawCarrierConsumerCopy as { summary?: unknown }).summary
+          || (rawCarrierConsumerCopy as { title?: unknown }).title
+          || "",
+        )
+      : null;
+  const carrierCapabilities = (params.passport?.carrier_capabilities || {}) as Record<string, unknown>;
+  const readCarrierCapability = (camelKey: string, snakeKey: string, fallback: boolean) => {
+    const value = carrierCapabilities[camelKey] ?? carrierCapabilities[snakeKey];
+    return typeof value === "boolean" ? value : fallback;
+  };
+  const carrierSupportsOwnership = readCarrierCapability("supportsOwnership", "supports_ownership", inferredCryptoCarrier);
+  const carrierSupportsTokenization = readCarrierCapability("supportsTokenization", "supports_tokenization", inferredCryptoCarrier);
+  const carrierSupportsLoyalty = readCarrierCapability("supportsLoyalty", "supports_loyalty", true);
+  const carrierSupportsMarketplace = readCarrierCapability("supportsMarketplace", "supports_marketplace", true);
   if (!tenantResolution.ok) {
     const tenantSlug = tenantResolution.tenantSlug || "tenant-setup-required";
     const setupQuery = new URLSearchParams({ tenant: tenantSlug, fromTap: "1", action: "setup-required" });
@@ -676,6 +726,10 @@ function buildPublicContract(params: {
         tamperSource: params.result.tamper_source || "unavailable",
         tamperReason: params.result.tamper_reason || null,
         encPlainStatusByte: params.result.enc_plain_status_byte || null,
+        carrierProfileCode,
+        carrierLabel,
+        carrierSecurityLevel,
+        carrierConsumerCopy,
       },
       identity: {
         bid: params.bid,
@@ -687,6 +741,9 @@ function buildPublicContract(params: {
         scanCount: params.passport?.scan_count || 0,
         tenantSlug,
         tenantId: tenantResolution.tenantId,
+        carrierProfileCode,
+        carrierLabel,
+        carrierSecurityLevel,
       },
       tenant: {
         id: tenantResolution.tenantId,
@@ -708,6 +765,9 @@ function buildPublicContract(params: {
         marketplaceMode: "proof_only",
         recommendedNextStep: "Completar perfil SUN, manifiesto y politica de ownership del tenant.",
         requirements: ["tenant activo", "perfil SUN completo", "manifiesto importado"],
+        carrierProfileCode,
+        carrierLabel,
+        carrierSecurityLevel,
       },
       rightsPolicy: {
         vertical: "generic",
@@ -866,9 +926,30 @@ function buildPublicContract(params: {
     reason,
     encPlainStatusByte: params.result.enc_plain_status_byte || null,
   });
+  const carrierAllowedActions = new Set(rightsPolicy.allowedActions);
+  const carrierBlockedActions = new Set(rightsPolicy.blockedActions);
+  const blockCarrierAction = (action: (typeof rightsPolicy.allowedActions)[number]) => {
+    carrierAllowedActions.delete(action);
+    carrierBlockedActions.add(action);
+  };
+  if (!carrierSupportsOwnership) blockCarrierAction("claim");
+  if (!carrierSupportsTokenization) blockCarrierAction("tokenization");
+  if (!carrierSupportsLoyalty) {
+    blockCarrierAction("join");
+    blockCarrierAction("rewards");
+  }
+  if (!carrierSupportsMarketplace) {
+    blockCarrierAction("save");
+    blockCarrierAction("join");
+  }
+  const carrierRequirements = [
+    !carrierSupportsOwnership ? `${carrierLabel}: ownership publico requiere compra/custodia o carrier seguro.` : "",
+    !carrierSupportsTokenization ? `${carrierLabel}: tokenizacion automatica requiere NTAG 424 DNA/TT o aprobacion manual.` : "",
+  ].filter(Boolean);
+  const effectiveRequirements = Array.from(new Set([...rightsPolicy.requirements, ...carrierRequirements]));
   const actionMatrix = {
-    allowedActions: rightsPolicy.allowedActions,
-    blockedActions: rightsPolicy.blockedActions,
+    allowedActions: Array.from(carrierAllowedActions),
+    blockedActions: Array.from(carrierBlockedActions),
   };
   const trustPenalty = trust.code === "VALID"
     ? 0
@@ -885,7 +966,9 @@ function buildPublicContract(params: {
     ? isVerifiedOpenedTap
       ? "verified_opened_tap"
       : "fresh_valid_tap"
-    : String(rightsPolicy.tokenizationPolicy || "").startsWith("blocked_")
+    : !carrierSupportsTokenization
+      ? "blocked_carrier_profile"
+      : String(rightsPolicy.tokenizationPolicy || "").startsWith("blocked_")
       ? rightsPolicy.tokenizationPolicy
       : verdictRisk.verdict === "replay_suspect"
         ? "blocked_replay"
@@ -909,6 +992,10 @@ function buildPublicContract(params: {
       tamperSource: params.result.tamper_source || "unavailable",
       tamperReason: params.result.tamper_reason || null,
       encPlainStatusByte: params.result.enc_plain_status_byte || null,
+      carrierProfileCode,
+      carrierLabel,
+      carrierSecurityLevel,
+      carrierConsumerCopy,
     },
     identity: {
       bid: params.bid,
@@ -920,6 +1007,9 @@ function buildPublicContract(params: {
       scanCount: params.passport?.scan_count || 0,
       tenantSlug,
       tenantId,
+      carrierProfileCode,
+      carrierLabel,
+      carrierSecurityLevel,
     },
     tenant: {
       id: tenantId,
@@ -935,10 +1025,13 @@ function buildPublicContract(params: {
       label: rightsPolicy.statusTitle,
       summary: rightsPolicy.statusSummary,
       claimMode: rightsPolicy.claimMode,
-      tokenizationPolicy: rightsPolicy.tokenizationPolicy,
+      tokenizationPolicy,
       marketplaceMode: rightsPolicy.marketplaceMode,
       recommendedNextStep: rightsPolicy.recommendedNextStep,
-      requirements: rightsPolicy.requirements,
+      requirements: effectiveRequirements,
+      carrierProfileCode,
+      carrierLabel,
+      carrierSecurityLevel,
     },
     rightsPolicy: {
       vertical: rightsPolicy.vertical,
@@ -946,10 +1039,10 @@ function buildPublicContract(params: {
       conditionState: rightsPolicy.conditionState,
       claimMode: rightsPolicy.claimMode,
       marketplaceMode: rightsPolicy.marketplaceMode,
-      tokenizationPolicy: rightsPolicy.tokenizationPolicy,
-      requirements: rightsPolicy.requirements,
-      canClaimPublicly: rightsPolicy.canClaimPublicly,
-      canTokenize: rightsPolicy.canTokenize,
+      tokenizationPolicy,
+      requirements: effectiveRequirements,
+      canClaimPublicly: rightsPolicy.canClaimPublicly && actionMatrix.allowedActions.includes("claim"),
+      canTokenize: actionMatrix.allowedActions.includes("tokenization"),
       requiresReview: rightsPolicy.requiresReview,
       statusTitle: rightsPolicy.statusTitle,
       statusSummary: rightsPolicy.statusSummary,
@@ -1005,11 +1098,11 @@ function buildPublicContract(params: {
       freshTap: isAuthenticTap && verdictRisk.verdict !== "replay_suspect",
       tokenizationEligible: actionMatrix.allowedActions.includes("tokenization"),
       policy: tokenizationPolicy,
-      commercialPolicy: rightsPolicy.tokenizationPolicy,
+      commercialPolicy: tokenizationPolicy,
       conditionState: rightsPolicy.conditionState,
       claimMode: rightsPolicy.claimMode,
       marketplaceMode: rightsPolicy.marketplaceMode,
-      requirements: rightsPolicy.requirements,
+      requirements: effectiveRequirements,
       reason,
     },
     iot: {

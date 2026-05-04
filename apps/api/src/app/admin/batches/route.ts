@@ -6,6 +6,8 @@ import { checkAdmin } from "../../../lib/auth";
 import { encryptKey16 } from "../../../lib/keys";
 import { json } from "../../../lib/http";
 import { requireTenantSunProfile } from "../../../lib/tenant-onboarding";
+import { ensureCarrierProfileSchema } from "../../../lib/commercial-runtime-schema";
+import { getCarrierProfile, inferCarrierProfileFromPayload } from "../../../lib/carrier-profiles";
 
 function normalizeHexKey(value: unknown, field: string) {
   if (value == null || value === "") return null;
@@ -38,6 +40,7 @@ function inferBatchProfile(config: Record<string, unknown>) {
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureCarrierProfileSchema();
 
   const { searchParams } = new URL(req.url);
   const tenantSlug = searchParams.get("tenant") || "";
@@ -52,6 +55,11 @@ export async function GET(req: Request) {
         t.slug AS tenant_slug,
         NULLIF(COALESCE(b.sdm_config->>'profile', b.sdm_config->>'security_profile'), '') AS batch_profile,
         NULLIF(b.sdm_config->>'sku', '') AS sku,
+        COALESCE(b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', '')) AS carrier_profile_code,
+        cp.label AS carrier_label,
+        cp.security_level AS carrier_security_level,
+        cp.capabilities AS carrier_capabilities,
+        cp.admin_copy AS carrier_admin_copy,
         NULLIF(b.sdm_config->>'requested_quantity', '')::int AS requested_quantity,
         COUNT(tags.id)::int AS quantity,
         COUNT(tags.id) FILTER (WHERE tags.status = 'active')::int AS active_tags,
@@ -59,9 +67,10 @@ export async function GET(req: Request) {
         COUNT(tags.id) FILTER (WHERE tags.status = 'revoked')::int AS revoked_tags
       FROM batches b
       JOIN tenants t ON t.id = b.tenant_id
+      LEFT JOIN carrier_profiles cp ON cp.code = COALESCE(b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', ''))
       LEFT JOIN tags ON tags.batch_id = b.id
       WHERE t.slug = ${tenantSlug}
-      GROUP BY b.id, t.slug
+      GROUP BY b.id, t.slug, cp.code, cp.label, cp.security_level, cp.capabilities, cp.admin_copy
       ORDER BY b.created_at DESC
       LIMIT 300
     `
@@ -74,6 +83,11 @@ export async function GET(req: Request) {
         t.slug AS tenant_slug,
         NULLIF(COALESCE(b.sdm_config->>'profile', b.sdm_config->>'security_profile'), '') AS batch_profile,
         NULLIF(b.sdm_config->>'sku', '') AS sku,
+        COALESCE(b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', '')) AS carrier_profile_code,
+        cp.label AS carrier_label,
+        cp.security_level AS carrier_security_level,
+        cp.capabilities AS carrier_capabilities,
+        cp.admin_copy AS carrier_admin_copy,
         NULLIF(b.sdm_config->>'requested_quantity', '')::int AS requested_quantity,
         COUNT(tags.id)::int AS quantity,
         COUNT(tags.id) FILTER (WHERE tags.status = 'active')::int AS active_tags,
@@ -81,8 +95,9 @@ export async function GET(req: Request) {
         COUNT(tags.id) FILTER (WHERE tags.status = 'revoked')::int AS revoked_tags
       FROM batches b
       JOIN tenants t ON t.id = b.tenant_id
+      LEFT JOIN carrier_profiles cp ON cp.code = COALESCE(b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', ''))
       LEFT JOIN tags ON tags.batch_id = b.id
-      GROUP BY b.id, t.slug
+      GROUP BY b.id, t.slug, cp.code, cp.label, cp.security_level, cp.capabilities, cp.admin_copy
       ORDER BY b.created_at DESC
       LIMIT 300
     `;
@@ -93,6 +108,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureCarrierProfileSchema();
 
   const body: Record<string, unknown> = await req.json().catch(() => ({}));
   const tenantInput = String(body.tenant_slug || body.tenantId || "").trim();
@@ -121,9 +137,18 @@ export async function POST(req: Request) {
     const fileCt = encryptKey16(Buffer.from(kFileHex, "hex"));
 
     const incomingConfig = typeof body.sdm_config === "object" && body.sdm_config ? { ...(body.sdm_config as Record<string, unknown>) } : {};
+    const carrierProfileCode = inferCarrierProfileFromPayload({ ...incomingConfig, ...body });
+    const carrierProfile = getCarrierProfile(carrierProfileCode);
+    if (!carrierProfileCode || !carrierProfile) {
+      return json({
+        ok: false,
+        reason: "carrier_profile_required",
+        message: "Set carrier_profile_code (qr_basic, gs1_digital_link, ntag213, ntag215, ntag216, ntag424_dna, ntag424_dna_tt) before creating a batch.",
+      }, 400);
+    }
     const requestedQuantity = Math.max(0, Math.trunc(Number(body.quantity || incomingConfig.requested_quantity || 0)));
     const sku = String(body.sku || incomingConfig.sku || "").trim();
-    const profile = inferBatchProfile({ ...incomingConfig, profile: body.profile || incomingConfig.profile });
+    const profile = inferBatchProfile({ ...incomingConfig, profile: body.profile || incomingConfig.profile }) || carrierProfile.label;
     if (!profile) {
       return json({ ok: false, reason: "batch_profile_required", message: "Set profile/security_profile or chip type before creating a batch." }, 400);
     }
@@ -141,17 +166,21 @@ export async function POST(req: Request) {
       requested_quantity: requestedQuantity || undefined,
       sku: sku || undefined,
       profile,
+      carrier_profile_code: carrierProfileCode,
+      carrier_label: carrierProfile.label,
+      carrier_capabilities: carrierProfile.capabilities,
       ...incomingConfig,
     };
 
     const rows = await sql/*sql*/`
-      INSERT INTO batches (tenant_id, bid, meta_key_ct, file_key_ct, sdm_config)
-      VALUES (${tenant.id}, ${bid}, ${metaCt}, ${fileCt}, ${JSON.stringify(sdmConfig)}::jsonb)
+      INSERT INTO batches (tenant_id, bid, meta_key_ct, file_key_ct, sdm_config, carrier_profile_code)
+      VALUES (${tenant.id}, ${bid}, ${metaCt}, ${fileCt}, ${JSON.stringify(sdmConfig)}::jsonb, ${carrierProfileCode})
       RETURNING id, bid, status, created_at
     `;
 
     return json({
-      batch: { ...rows[0], tenant_slug: tenant.slug, profile, requested_quantity: requestedQuantity, sku },
+      batch: { ...rows[0], tenant_slug: tenant.slug, profile, requested_quantity: requestedQuantity, sku, carrier_profile_code: carrierProfileCode, carrier_label: carrierProfile.label },
+      carrier: carrierProfile,
       keys: { k_meta_hex: kMetaHex, k_file_hex: kFileHex },
       ndef_url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`
     }, 201);

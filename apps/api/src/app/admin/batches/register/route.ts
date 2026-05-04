@@ -7,6 +7,8 @@ import { sql } from '../../../../lib/db';
 import { encryptKey16 } from '../../../../lib/keys';
 import { randomBytes } from 'node:crypto';
 import { requireTenantSunProfile } from '../../../../lib/tenant-onboarding';
+import { ensureCarrierProfileSchema } from '../../../../lib/commercial-runtime-schema';
+import { getCarrierProfile, inferCarrierProfileFromPayload } from '../../../../lib/carrier-profiles';
 
 function firstString(...values: unknown[]) {
   for (const value of values) {
@@ -56,6 +58,7 @@ function resolveApiOrigin(req: Request) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureCarrierProfileSchema();
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const mode = firstString(body.mode).toLowerCase();
@@ -91,14 +94,28 @@ export async function POST(req: Request) {
     const profile = firstString(body.profile, body.security_profile);
     const sku = firstString(body.sku);
     const chipModel = firstString(body.chip_model, body.chip, body.chip_type);
-    if (!profile || !sku || !chipModel) {
-      return json({ ok: false, reason: 'batch_identity_required', missing: ['profile', 'sku', 'chip_model'].filter((field) => field === 'profile' ? !profile : field === 'sku' ? !sku : !chipModel) }, 400);
+    const carrierProfileCode = inferCarrierProfileFromPayload(body);
+    const carrierProfile = getCarrierProfile(carrierProfileCode);
+    if (!profile || !sku || !chipModel || !carrierProfileCode || !carrierProfile) {
+      return json({
+        ok: false,
+        reason: 'batch_identity_required',
+        missing: [
+          'profile',
+          'sku',
+          'chip_model',
+          'carrier_profile_code',
+        ].filter((field) => field === 'profile' ? !profile : field === 'sku' ? !sku : field === 'chip_model' ? !chipModel : !carrierProfileCode),
+      }, 400);
     }
 
     const sdmConfig = {
       profile,
       sku,
       chip_model: chipModel,
+      carrier_profile_code: carrierProfileCode,
+      carrier_label: carrierProfile.label,
+      carrier_capabilities: carrierProfile.capabilities,
       requested_quantity: Math.max(0, Math.trunc(Number(body.quantity || body.qty || body.requested_quantity || 0))) || undefined,
       notes: String(body.notes || '').trim() || undefined,
       source: 'supplier_wizard',
@@ -107,21 +124,23 @@ export async function POST(req: Request) {
     };
 
     const rows = await sql`
-      INSERT INTO batches (tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config)
-      VALUES (${tenant.id}, ${bid}, 'active', ${metaCt}, ${fileCt}, ${JSON.stringify(sdmConfig)}::jsonb)
+      INSERT INTO batches (tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config, carrier_profile_code)
+      VALUES (${tenant.id}, ${bid}, 'active', ${metaCt}, ${fileCt}, ${JSON.stringify(sdmConfig)}::jsonb, ${carrierProfileCode})
       ON CONFLICT (bid)
       DO UPDATE SET
         tenant_id = EXCLUDED.tenant_id,
         status = 'active',
         meta_key_ct = EXCLUDED.meta_key_ct,
         file_key_ct = EXCLUDED.file_key_ct,
-        sdm_config = EXCLUDED.sdm_config
+        sdm_config = EXCLUDED.sdm_config,
+        carrier_profile_code = EXCLUDED.carrier_profile_code
       RETURNING id, bid, status, created_at
     `;
 
     return json({
       ok: true,
-      batch: { ...rows[0], tenant_slug: tenant.slug },
+      batch: { ...rows[0], tenant_slug: tenant.slug, carrier_profile_code: carrierProfileCode, carrier_label: carrierProfile.label },
+      carrier: carrierProfile,
       keys: { k_meta_hex: kMetaHex, k_file_hex: kFileHex },
       ndef_url_template: sdmConfig.url_template,
     });
