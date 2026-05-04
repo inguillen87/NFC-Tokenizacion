@@ -5,6 +5,7 @@ import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { claimOwnershipForConsumer } from "../../../../lib/consumer-portal-service";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
+import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
 
 export async function POST(req: Request) {
   const traceId = req.headers.get("x-nexid-trace-id") || `api_cta_${Date.now().toString(36)}`;
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
     }, 403);
   }
 
+  await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (consumer && eventId) {
     const claim = await claimOwnershipForConsumer({

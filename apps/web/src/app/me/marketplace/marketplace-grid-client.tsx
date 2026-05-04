@@ -48,6 +48,28 @@ const filterOptions = [
   { value: "gated", label: "Age gate" },
 ];
 
+async function ensureDemoConsumerSession() {
+  const email = "demo.consumer@nexid.local";
+  const start = await fetch("/api/consumer/auth/start", {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email }),
+  }).catch(() => null);
+  if (!start?.ok) return false;
+
+  const challenge = (await start.json().catch(() => null)) as { code?: string } | null;
+  const code = String(challenge?.code || "000000");
+  const verify = await fetch("/api/consumer/auth/verify", {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  }).catch(() => null);
+
+  return Boolean(verify?.ok);
+}
+
 export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, string>>({});
@@ -101,12 +123,27 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
     setBusyById((prev) => ({ ...prev, [item.id]: true }));
     setFeedbackById((prev) => ({ ...prev, [item.id]: "" }));
 
-    const res = await fetch(`/api/marketplace/products/${encodeURIComponent(item.id)}/request-to-buy`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ quantity: 1, ageGateAccepted }),
-    }).catch(() => null);
+    const sendRequest = () =>
+      fetch(`/api/marketplace/products/${encodeURIComponent(item.id)}/request-to-buy`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          quantity: 1,
+          ageGateAccepted,
+          demoConsumer: true,
+          consumerMode: "demo",
+          demoConsumerEmail: "demo.consumer@nexid.local",
+        }),
+      }).catch(() => null);
+
+    let res = await sendRequest();
+
+    if (res?.status === 401) {
+      setFeedbackById((prev) => ({ ...prev, [item.id]: "Creando sesion consumer demo y reenviando solicitud..." }));
+      const sessionReady = await ensureDemoConsumerSession();
+      if (sessionReady) res = await sendRequest();
+    }
 
     if (!res) {
       setFeedbackById((prev) => ({ ...prev, [item.id]: "No se pudo conectar con el servicio." }));

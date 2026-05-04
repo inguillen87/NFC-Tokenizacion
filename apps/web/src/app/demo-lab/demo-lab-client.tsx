@@ -7,7 +7,7 @@ import { WorldMapRealtime } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
-type Vertical = "wine" | "events" | "cosmetics" | "agro";
+type Vertical = "wine" | "events" | "cosmetics" | "agro" | "pharma";
 type SimulationMode = "valid" | "tamper" | "replay";
 
 type DemoEvent = {
@@ -49,6 +49,7 @@ const copy: Record<AppLocale, {
   heroBody: string;
   nav: { landing: string; login: string; sun: string; portal: string };
   kpis: { tags: string; events: string; portal: string; route: string; noFeed: string; leads: string };
+  valueCards: Array<{ metric: string; title: string; body: string }>;
   roles: Record<Role, { label: string; headline: string; focus: string }>;
   beats: Record<Beat, { title: string; body: string; event: string; mode: SimulationMode; location: keyof typeof LOCATIONS; status: string; cta: string }>;
   verticals: Record<Vertical, { label: string; profile: string; product: string; visual: string; proof: string[] }>;
@@ -60,6 +61,12 @@ const copy: Record<AppLocale, {
     heroBody: "Una demo para vender la historia completa: origen, tap del cliente, seguridad, portal, marketplace y datos de negocio.",
     nav: { landing: "Landing", login: "Ingresar", sun: "SUN mobile", portal: "Portal usuario" },
     kpis: { tags: "Tags fisicos", events: "Eventos", portal: "Portal", route: "Ruta origen-tap", noFeed: "Sin feed reciente", leads: "Leads / asociaciones" },
+    valueCards: [
+      { metric: "CRM + club", title: "Fidelizacion post-tap", body: "Puntos, garantias, recompra y promos del tenant quedan conectados al passport del consumidor." },
+      { metric: "Marketplace", title: "Red luxury por marca y zona", body: "Cada marca conserva su tienda, pero convive en una red nexID para descubrir productos premium cercanos." },
+      { metric: "Reseller ready", title: "White-label operable", body: "Imprentas, integradores y agencias pueden cargar lotes, operar tenants y ver leads sin tocar criptografia." },
+      { metric: "Datos vivos", title: "Ventas con analitica", body: "Scans, rutas, riesgo, clicks y solicitudes llegan al CRM y al dashboard en tiempo real." },
+    ],
     roles: {
       ceo: { label: "CEO / inversor", headline: "Del tap al revenue: proteccion de marca, datos y fidelizacion.", focus: "Usalo para mostrar margen, canal reseller y valor recurrente sin entrar en jerga tecnica." },
       operator: { label: "Operaciones", headline: "Control real de lotes, UIDs, mapas y alertas.", focus: "Aterriza importacion, activacion, lecturas reales y excepciones de riesgo." },
@@ -76,13 +83,14 @@ const copy: Record<AppLocale, {
       events: { label: "Eventos", profile: "NTAG215", product: "Pulsera VIP", visual: "wristband-demo", proof: ["Check-in rapido", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       cosmetics: { label: "Cosmetica", profile: "NTAG 424 DNA", product: "Serum premium", visual: "cosmetic-demo", proof: ["Tapa verificada", "Lote y vencimiento", "Garantia", "Anti grey-market"] },
       agro: { label: "Agro", profile: "QR + NFC UID", product: "Bolsa semilla", visual: "agro-demo", proof: ["Lote trazable", "Ficha tecnica", "Custodia logistica", "Uso rural"] },
+      pharma: { label: "Pharma", profile: "GS1 Digital Link + NTAG 424 DNA", product: "Estuche pharma serializado", visual: "pharma-demo", proof: ["GS1/QR fallback", "Serial y lote", "Cadena de custodia", "Farmacovigilancia"] },
     },
     controls: {
       narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Producto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar tap valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular replay duplicado", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origen del producto vs tap del cliente", mapSubtitle: "Linea animada, distancia y links de ubicacion para construir confianza.", realFeed: "Feed publico real conectado.", adminKey: "Para escribir scans del tenant falta ADMIN_API_KEY en web.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Tap actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir tap", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Tokenizar premium", syncing: "Conectando con DemoBodega...", synced: "DemoBodega sincronizado con backend.", unavailable: "DemoBodega no disponible.", sendingScan: "Enviando scan", registeredScan: "Scan registrado en DemoBodega.", failedScan: "No se pudo simular el tap.", configs: [
-        { title: "QR comun", body: "Rapido y barato para contenido o marketing; no protege contra copia." },
-        { title: "NTAG215", body: "Perfecto para pulseras, tickets y activaciones con UID serializado." },
-        { title: "NTAG 424 DNA", body: "SUN dinamico para bajar replay, screenshots y clonacion simple." },
-        { title: "424 DNA TT + blockchain", body: "Tamper fisico, estado abierto/cerrado y token premium opcional." },
+        { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, recall y trazabilidad GS1. Ideal como fallback visible; cualquiera puede copiarlo, por eso no habilita ownership premium por si solo." },
+        { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseras, garantias simples y activaciones masivas. Sube la friccion contra screenshot y permite reglas server-side por lote." },
+        { title: "NTAG 424 DNA", body: "Cada tap genera SUN dinamico con CMAC para detectar replay, links reutilizados y copias. Es la capa recomendada para productos de valor medio/alto." },
+        { title: "NTAG 424 DNA TT + tokenizacion", body: "Suma estado fisico del sello: cerrado, abierto o manipulado. Permite passport, garantia, marketplace y token Polygon solo cuando la politica de compra/claim lo habilita." },
       ] },
   },
   "pt-BR": {
@@ -91,6 +99,12 @@ const copy: Record<AppLocale, {
     heroBody: "Uma demo para vender a historia completa: origem, toque do cliente, seguranca, portal, marketplace e dados de negocio.",
     nav: { landing: "Landing", login: "Entrar", sun: "SUN mobile", portal: "Portal usuario" },
     kpis: { tags: "Tags fisicas", events: "Eventos", portal: "Portal", route: "Rota origem-toque", noFeed: "Sem feed recente", leads: "Leads / associacoes" },
+    valueCards: [
+      { metric: "CRM + clube", title: "Fidelizacao pos-toque", body: "Pontos, garantias, recompra e promos do tenant ficam conectados ao passport do consumidor." },
+      { metric: "Marketplace", title: "Rede luxury por marca e regiao", body: "Cada marca mantem sua loja, mas convive em uma rede nexID para descobrir produtos premium proximos." },
+      { metric: "Reseller ready", title: "White-label operavel", body: "Graficas, integradores e agencias carregam lotes, operam tenants e veem leads sem tocar criptografia." },
+      { metric: "Dados vivos", title: "Vendas com analitica", body: "Scans, rotas, risco, cliques e solicitacoes chegam ao CRM e ao dashboard em tempo real." },
+    ],
     roles: {
       ceo: { label: "CEO / investidor", headline: "Do toque ao revenue: marca protegida, dados e fidelizacao.", focus: "Use para mostrar margem, canal revendedor e receita recorrente sem jargao tecnico." },
       operator: { label: "Operacoes", headline: "Controle de lotes, UIDs, mapas e alertas.", focus: "Mostra importacao, ativacao, leituras reais e excecoes de risco." },
@@ -107,12 +121,13 @@ const copy: Record<AppLocale, {
       events: { label: "Eventos", profile: "NTAG215", product: "Pulseira VIP", visual: "wristband-demo", proof: ["Check-in rapido", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
       cosmetics: { label: "Cosmeticos", profile: "NTAG 424 DNA", product: "Serum premium", visual: "cosmetic-demo", proof: ["Tampa verificada", "Lote e validade", "Garantia", "Anti grey-market"] },
       agro: { label: "Agro", profile: "QR + NFC UID", product: "Saco de semente", visual: "agro-demo", proof: ["Lote rastreavel", "Ficha tecnica", "Custodia logistica", "Uso rural"] },
+      pharma: { label: "Pharma", profile: "GS1 Digital Link + NTAG 424 DNA", product: "Cartucho pharma serializado", visual: "pharma-demo", proof: ["GS1/QR fallback", "Serial e lote", "Cadeia de custodia", "Farmacovigilancia"] },
     },
     controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Para gravar scans do tenant falta ADMIN_API_KEY no web.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao DemoBodega...", synced: "DemoBodega sincronizado com backend.", unavailable: "DemoBodega indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no DemoBodega.", failedScan: "Nao foi possivel simular o toque.", configs: [
-      { title: "QR comum", body: "Rapido e barato para conteudo; nao protege contra copia." },
-      { title: "NTAG215", body: "Ideal para pulseiras, tickets e ativacoes com UID serializado." },
-      { title: "NTAG 424 DNA", body: "SUN dinamico contra replay, screenshots e clonagem simples." },
-      { title: "424 DNA TT + blockchain", body: "Tamper fisico, estado aberto/fechado e token premium opcional." },
+      { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera ownership premium sozinho." },
+      { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
+      { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
+      { title: "NTAG 424 DNA TT + tokenizacao", body: "Soma estado fisico do lacre: fechado, aberto ou manipulado. Habilita passport, garantia, marketplace e token Polygon conforme politica comercial." },
     ] },
   },
   en: {
@@ -121,6 +136,12 @@ const copy: Record<AppLocale, {
     heroBody: "A sales-ready demo for origin, customer tap, security, portal, marketplace and business analytics.",
     nav: { landing: "Landing", login: "Login", sun: "SUN mobile", portal: "User portal" },
     kpis: { tags: "Physical tags", events: "Events", portal: "Portal", route: "Origin-tap route", noFeed: "No recent feed", leads: "Leads / associations" },
+    valueCards: [
+      { metric: "CRM + club", title: "Post-tap loyalty", body: "Points, warranty, repurchase and tenant promos stay attached to the consumer passport." },
+      { metric: "Marketplace", title: "Luxury network by brand and region", body: "Each brand keeps its own store while joining a nexID network for nearby premium discovery." },
+      { metric: "Reseller ready", title: "Operational white-label", body: "Printers, integrators and agencies can load batches, operate tenants and see leads without touching cryptography." },
+      { metric: "Live data", title: "Sales with analytics", body: "Scans, routes, risk, clicks and requests land in CRM and dashboards in real time." },
+    ],
     roles: {
       ceo: { label: "CEO / investor", headline: "From tap to revenue: protected brand, data and loyalty.", focus: "Show margin, reseller channel and recurring value without technical friction." },
       operator: { label: "Operations", headline: "Real control for batches, UIDs, maps and alerts.", focus: "Ground the rollout: import, activation, live scans and risk exceptions." },
@@ -137,12 +158,13 @@ const copy: Record<AppLocale, {
       events: { label: "Events", profile: "NTAG215", product: "VIP wristband", visual: "wristband-demo", proof: ["Fast check-in", "Serialized UID", "VIP zones", "Duplicate block"] },
       cosmetics: { label: "Cosmetics", profile: "NTAG 424 DNA", product: "Premium serum", visual: "cosmetic-demo", proof: ["Verified cap", "Batch and expiry", "Warranty", "Anti grey-market"] },
       agro: { label: "Agro", profile: "QR + NFC UID", product: "Seed bag", visual: "agro-demo", proof: ["Traceable lot", "Technical sheet", "Logistics custody", "Rural use"] },
+      pharma: { label: "Pharma", profile: "GS1 Digital Link + NTAG 424 DNA", product: "Serialized pharma carton", visual: "pharma-demo", proof: ["GS1/QR fallback", "Serial and lot", "Custody chain", "Pharmacovigilance"] },
     },
     controls: { narrative: "Audience narrative", cinematicStart: "Start cinematic", cinematicStop: "Pause cinematic", product: "Physical product", mobile: "Mobile result", feed: "Command feed", valid: "Register valid Zurich tap", tamper: "Break seal / uncork", replay: "Simulate duplicate replay", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Live map: product origin vs customer tap", mapSubtitle: "Animated route, distance and location links to build trust.", realFeed: "Real public feed connected.", adminKey: "ADMIN_API_KEY is required in web to write tenant scans.", noGeo: "No geolocated API events yet.", origin: "Origin", currentTap: "Current tap", distance: "Distance", openOrigin: "Open origin", openTap: "Open tap", joinClub: "Join club", warranty: "Activate warranty", tokenize: "Tokenize premium", syncing: "Connecting to DemoBodega...", synced: "DemoBodega synced with backend.", unavailable: "DemoBodega unavailable.", sendingScan: "Sending scan", registeredScan: "Scan registered in DemoBodega.", failedScan: "Could not simulate the tap.", configs: [
-      { title: "Common QR", body: "Fast and cheap for content; does not protect against copying." },
-      { title: "NTAG215", body: "Best for wristbands, tickets and serialized activations." },
-      { title: "NTAG 424 DNA", body: "Dynamic SUN to reduce replay, screenshots and simple cloning." },
-      { title: "424 DNA TT + blockchain", body: "Physical tamper, open/closed state and optional premium token." },
+      { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
+      { title: "NTAG213 / NTAG215", body: "Serialized physical UID for tickets, wristbands, simple warranty and mass activations. Adds server-side rules by batch." },
+      { title: "NTAG 424 DNA", body: "Every tap creates dynamic SUN + CMAC proof to detect replay, reused links and simple copies. Recommended for mid/high-value products." },
+      { title: "NTAG 424 DNA TT + tokenization", body: "Adds physical seal state: closed, opened or tampered. Enables passport, warranty, marketplace and Polygon token only when claim policy allows it." },
     ] },
   },
 };
@@ -308,6 +330,16 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
             </div>
           ))}
         </div>
+
+        <div className="demo-lab-value-grid mt-4 grid gap-3 md:grid-cols-4">
+          {txt.valueCards.map((item) => (
+            <article key={item.title} className="demo-lab-value-card rounded-2xl border border-cyan-300/15 bg-slate-950/45 p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-300">{item.metric}</p>
+              <h3 className="mt-2 text-sm font-black text-white">{item.title}</h3>
+              <p className="mt-2 text-xs leading-5 text-slate-300">{item.body}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
@@ -351,6 +383,9 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                 ))}
               </div>
               <div className={`demo-lab-product-stage demo-lab-product-stage--${vertical} demo-lab-product-stage--beat-${beat} mt-4`}>
+                <span className="demo-lab-stage-map-chip demo-lab-stage-map-chip--origin">{txt.controls.origin}: {LOCATIONS.origin.city}</span>
+                <span className="demo-lab-stage-map-chip demo-lab-stage-map-chip--tap">{txt.controls.currentTap}: {destination.city}</span>
+                <span className="demo-lab-stage-route-card">{routeKm.toLocaleString(locale)} km</span>
                 <div className={`${activeVertical.visual} demo-lab-live-visual ${beat === 3 ? "tampered" : "scanning"}`} />
                 <span className="demo-lab-cork" />
                 <span className="demo-lab-product-label">nexID secure</span>
@@ -473,12 +508,33 @@ function DemoJourneyMap({ txt, routeKm, status, destination }: { txt: DemoCopy; 
       <p className="mt-2 text-sm leading-6 text-slate-300">{txt.controls.mapSubtitle}</p>
       <div className="demo-lab-journey-map mt-4">
         <svg viewBox="0 0 760 330" role="img" aria-label={txt.controls.mapTitle}>
-          <path className="journey-land journey-land-a" d="M76 126 C130 66 235 76 268 136 C302 196 211 232 130 218 C66 207 35 171 76 126Z" />
-          <path className="journey-land journey-land-b" d="M450 74 C557 46 687 96 700 181 C711 253 603 281 510 244 C420 209 365 97 450 74Z" />
+          <defs>
+            <linearGradient id="journeyRouteGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+              <stop offset="0%" stopColor="#34d399" />
+              <stop offset="52%" stopColor="#22d3ee" />
+              <stop offset="100%" stopColor="#a78bfa" />
+            </linearGradient>
+            <filter id="journeyGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <path className="journey-map-coast" d="M68 262 C118 212 152 172 185 122 C221 68 283 54 331 72 C384 92 398 148 382 207 C362 282 284 318 210 306 C157 298 112 286 68 262Z" />
+          <path className="journey-map-border" d="M126 248 C178 238 215 220 245 182 C274 145 323 126 370 138" />
+          <path className="journey-map-coast journey-map-coast--right" d="M456 64 C543 36 663 73 704 154 C748 240 656 300 563 280 C470 260 404 190 416 126 C421 98 433 76 456 64Z" />
+          <path className="journey-map-road" d="M95 236 C148 224 189 204 235 166 C274 134 323 112 366 116" />
+          <path className="journey-map-road" d="M452 104 C506 122 548 159 579 207 C606 248 646 262 688 250" />
+          <path className="journey-map-road" d="M504 78 C542 132 550 185 532 252" />
+          <path className="journey-map-river" d="M156 78 C178 118 190 153 181 200 C176 226 184 252 204 282" />
           <path className="journey-route-shadow" d="M218 218 C318 99 455 66 584 128" />
           <path className="journey-route" d="M218 218 C318 99 455 66 584 128" />
-          <circle className="journey-dot origin" cx="218" cy="218" r="9" />
-          <circle className="journey-dot tap" cx="584" cy="128" r="9" />
+          <circle className="journey-heat journey-heat--origin" cx="218" cy="218" r="46" />
+          <circle className="journey-heat journey-heat--tap" cx="584" cy="128" r="52" />
+          <circle className="journey-dot origin" cx="218" cy="218" r="9" filter="url(#journeyGlow)" />
+          <circle className="journey-dot tap" cx="584" cy="128" r="9" filter="url(#journeyGlow)" />
           <circle className="journey-pulse" cx="584" cy="128" r="16" />
           <circle className="journey-plane" r="6">
             <animateMotion dur="3.8s" repeatCount="indefinite" path="M218 218 C318 99 455 66 584 128" />

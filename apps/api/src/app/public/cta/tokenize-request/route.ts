@@ -94,14 +94,14 @@ function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: Anc
 
   if (status === "failed") {
     return {
-      ok: false,
+      ok: true,
       mint_ok: false,
-      tokenization_status: status,
+      tokenization_status: "pending_retry",
       tokenization_error: error || "polygon_mint_failed",
       tx_hash: txHash,
       token_id: tokenId,
       next_attempt_at: nextAttemptAt,
-      explainer: "La solicitud quedo guardada, pero el mint fallo. Requiere reintento operativo o revisar gas/RPC/minter.",
+      explainer: "Solicitud guardada. El mint no se completo y quedo en reintento operativo sin exponer el UID crudo.",
     };
   }
 

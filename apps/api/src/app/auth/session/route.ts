@@ -4,14 +4,17 @@ import { sql } from '../../../lib/db';
 import { json } from '../../../lib/http';
 import { auditAuthEvent, revokeSession } from '../../../lib/iam';
 import { requireApiSession } from '../../../lib/auth-guard';
+import { ensureEnterpriseIamSchema } from '../../../lib/commercial-runtime-schema';
 
 export async function GET(req: Request) {
+  await ensureEnterpriseIamSchema();
   const { error, session } = await requireApiSession(req);
   if (error || !session) return error;
   return json({ ok: true, session, rotatedSessionToken: session.rotatedCookieValue });
 }
 
 export async function DELETE(req: Request) {
+  await ensureEnterpriseIamSchema();
   const { error, session, meta, token } = await requireApiSession(req);
   if (error || !session) return json({ ok: true });
   await revokeSession(sql as any, token);

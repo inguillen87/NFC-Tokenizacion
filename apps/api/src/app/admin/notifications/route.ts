@@ -6,12 +6,19 @@ import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { ensureConsumerPortalSchema, ensureCrmOpsSchema } from "../../../lib/commercial-runtime-schema";
 
-export async function GET(req: Request) {
-  const auth = checkAdmin(req);
-  if (auth) return auth;
-  await Promise.all([ensureCrmOpsSchema(), ensureConsumerPortalSchema()]);
+function isMissingRelation(error: unknown) {
+  const code = String((error as { code?: unknown })?.code || "");
+  const message = String((error as Error)?.message || "");
+  return code === "42P01" || message.includes("does not exist") || message.includes("relation ");
+}
 
-  const [counts, latest] = await Promise.all([
+async function ensureOpsSchemas() {
+  await ensureCrmOpsSchema();
+  await ensureConsumerPortalSchema();
+}
+
+async function loadNotificationData() {
+  return Promise.all([
     sql/*sql*/`
       SELECT
         (SELECT count(*)::int FROM leads WHERE status = 'new') AS new_leads,
@@ -50,6 +57,22 @@ export async function GET(req: Request) {
       LIMIT 8
     `,
   ]);
+}
+
+export async function GET(req: Request) {
+  const auth = checkAdmin(req);
+  if (auth) return auth;
+  await ensureOpsSchemas();
+
+  let counts: Awaited<ReturnType<typeof loadNotificationData>>[0];
+  let latest: Awaited<ReturnType<typeof loadNotificationData>>[1];
+  try {
+    [counts, latest] = await loadNotificationData();
+  } catch (error) {
+    if (!isMissingRelation(error)) throw error;
+    await ensureOpsSchemas();
+    [counts, latest] = await loadNotificationData();
+  }
 
   const summary = counts[0] as Record<string, number>;
   const unreadCount = Number(summary.new_leads || 0) + Number(summary.open_tickets || 0) + Number(summary.new_orders || 0);

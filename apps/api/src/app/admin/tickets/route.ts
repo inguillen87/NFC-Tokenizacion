@@ -6,11 +6,24 @@ import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { ensureTicketsSchema } from "../../../lib/commercial-runtime-schema";
 
+function isMissingRelation(error: unknown) {
+  const code = String((error as { code?: unknown })?.code || "");
+  const message = String((error as Error)?.message || "");
+  return code === "42P01" || message.includes("does not exist") || message.includes("relation ");
+}
+
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
   await ensureTicketsSchema();
-  const rows = await sql/*sql*/`SELECT * FROM tickets ORDER BY created_at DESC LIMIT 300`;
+  let rows;
+  try {
+    rows = await sql/*sql*/`SELECT * FROM tickets ORDER BY created_at DESC LIMIT 300`;
+  } catch (error) {
+    if (!isMissingRelation(error)) throw error;
+    await ensureTicketsSchema();
+    rows = await sql/*sql*/`SELECT * FROM tickets ORDER BY created_at DESC LIMIT 300`;
+  }
   return json(rows);
 }
 
@@ -23,11 +36,22 @@ export async function POST(req: Request) {
   if (!contact) return json({ ok: false, reason: "contact required" }, 400);
 
   await ensureTicketsSchema();
-  const rows = await sql/*sql*/`
-    INSERT INTO tickets (locale, contact, title, detail, status)
-    VALUES (${locale}, ${contact}, ${title}, ${detail}, 'open')
-    RETURNING *
-  `;
+  let rows;
+  try {
+    rows = await sql/*sql*/`
+      INSERT INTO tickets (locale, contact, title, detail, status)
+      VALUES (${locale}, ${contact}, ${title}, ${detail}, 'open')
+      RETURNING *
+    `;
+  } catch (error) {
+    if (!isMissingRelation(error)) throw error;
+    await ensureTicketsSchema();
+    rows = await sql/*sql*/`
+      INSERT INTO tickets (locale, contact, title, detail, status)
+      VALUES (${locale}, ${contact}, ${title}, ${detail}, 'open')
+      RETURNING *
+    `;
+  }
 
   return json(rows[0], 201);
 }

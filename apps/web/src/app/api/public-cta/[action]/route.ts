@@ -16,6 +16,38 @@ function traceId() {
   return `cta_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function buildForwardHeaders(req: Request, trace: string) {
+  const headers: Record<string, string> = {
+    "Content-Type": req.headers.get("content-type") || "application/json",
+    "x-nexid-trace-id": trace,
+  };
+
+  const cookie = req.headers.get("cookie");
+  const userAgent = req.headers.get("user-agent");
+  const forwardedFor = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
+  const authorization = req.headers.get("authorization");
+  if (cookie) headers.cookie = cookie;
+  if (userAgent) headers["user-agent"] = userAgent;
+  if (forwardedFor) headers["x-forwarded-for"] = forwardedFor;
+  if (authorization) headers.authorization = authorization;
+  return headers;
+}
+
+function getSetCookies(response: Response) {
+  const headers = response.headers as Headers & { getSetCookie?: () => string[] };
+  if (typeof headers.getSetCookie === "function") return headers.getSetCookie();
+  const one = response.headers.get("set-cookie");
+  return one ? [one] : [];
+}
+
+function rewriteApiCookie(cookie: string, req: Request) {
+  const host = req.headers.get("host") || "";
+  const isLocalHttp = new URL(req.url).protocol === "http:" && /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
+  let nextCookie = cookie.replace(/;\s*Domain=[^;]+/gi, "");
+  if (isLocalHttp) nextCookie = nextCookie.replace(/;\s*Secure/gi, "");
+  return nextCookie;
+}
+
 function safeBuildShare(bid: string, uid: string) {
   const now = Math.floor(Date.now() / 1000);
   try {
@@ -34,7 +66,7 @@ function resolveShareUid(uid: string, eventId: string) {
   return /^\d+$/.test(normalizedEventId) ? `EVENT-${normalizedEventId}` : "";
 }
 
-async function forward(action: string, method: "GET" | "POST", bid: string, uid: string, eventId: string, trace: string, payload?: Record<string, unknown>) {
+async function forward(req: Request, action: string, method: "GET" | "POST", bid: string, uid: string, eventId: string, trace: string, payload?: Record<string, unknown>) {
   if (!ALLOWED.has(action)) return NextResponse.json({ ok: false, reason: "unsupported CTA action", trace_id: trace }, { status: 404 });
   const shareUid = resolveShareUid(uid, eventId);
   if (!bid || !shareUid) return NextResponse.json({ ok: false, reason: "bid and uid or event_id required", trace_id: trace }, { status: 400 });
@@ -62,14 +94,14 @@ async function forward(action: string, method: "GET" | "POST", bid: string, uid:
   };
   const response = await fetch(url.toString(), {
     method,
-    headers: { "Content-Type": "application/json", "x-nexid-trace-id": trace },
+    headers: buildForwardHeaders(req, trace),
     body: method === "POST" ? JSON.stringify(outboundPayload) : undefined,
     cache: "no-store",
   });
 
   const text = await response.text();
   const fallbackReason = "reason" in share ? share.reason : null;
-  return new NextResponse(text, {
+  const next = new NextResponse(text, {
     status: response.status,
     headers: {
       "Content-Type": response.headers.get("content-type") || "application/json",
@@ -77,12 +109,16 @@ async function forward(action: string, method: "GET" | "POST", bid: string, uid:
       ...(fallbackReason ? { "x-nexid-share-mode": "insecure-demo-fallback" } : {}),
     },
   });
+  for (const cookie of getSetCookies(response)) {
+    next.headers.append("set-cookie", rewriteApiCookie(cookie, req));
+  }
+  return next;
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  return forward(action, "POST", clean(body.bid), clean(body.uid || body.uid_hex).toUpperCase(), clean(body.event_id || body.eventId), traceId(), body);
+  return forward(req, action, "POST", clean(body.bid), clean(body.uid || body.uid_hex).toUpperCase(), clean(body.event_id || body.eventId), traceId(), body);
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ action: string }> }) {
@@ -91,5 +127,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ action: 
   const bid = clean(url.searchParams.get("bid"));
   const uid = clean(url.searchParams.get("uid")).toUpperCase();
   const eventId = clean(url.searchParams.get("event_id") || url.searchParams.get("eventId"));
-  return forward(action, "GET", bid, uid, eventId, traceId());
+  return forward(req, action, "GET", bid, uid, eventId, traceId());
 }

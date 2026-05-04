@@ -11,11 +11,24 @@ function clean(value: unknown) {
   return String(value || "").trim();
 }
 
+function isMissingRelation(error: unknown) {
+  const code = String((error as { code?: unknown })?.code || "");
+  const message = String((error as Error)?.message || "");
+  return code === "42P01" || message.includes("does not exist") || message.includes("relation ");
+}
+
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
   await ensureLeadsSchema();
-  const rows = await sql/*sql*/`SELECT * FROM leads ORDER BY created_at DESC LIMIT 500`;
+  let rows;
+  try {
+    rows = await sql/*sql*/`SELECT * FROM leads ORDER BY created_at DESC LIMIT 500`;
+  } catch (error) {
+    if (!isMissingRelation(error)) throw error;
+    await ensureLeadsSchema();
+    rows = await sql/*sql*/`SELECT * FROM leads ORDER BY created_at DESC LIMIT 500`;
+  }
   return json(rows);
 }
 
@@ -62,7 +75,8 @@ export async function POST(req: Request) {
     });
 
     return json({ ok: true, lead: rows[0], ...(rows[0] as Record<string, unknown>) }, 201);
-  } catch {
+  } catch (error) {
+    if (isMissingRelation(error)) await ensureLeadsSchema();
     const rows = await sql/*sql*/`
       INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
       VALUES (${locale}, ${contact}, ${company}, ${country}, ${vertical}, ${tagType}, ${volume}, ${source}, 'new', ${notes})

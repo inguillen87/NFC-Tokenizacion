@@ -5,8 +5,10 @@ import { getConsumerFromRequest } from "../../../../../../lib/consumer-auth";
 import { claimOwnershipForConsumer } from "../../../../../../lib/consumer-portal-service";
 import { getTapEvent } from "../../../../../../lib/loyalty-service";
 import { matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
+import { ensureConsumerPortalSchema } from "../../../../../../lib/commercial-runtime-schema";
 
 export async function POST(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
   const body = (await req.json().catch(() => ({}))) as { bid?: string; tenantId?: string; uidHex?: string; uid_hex?: string };

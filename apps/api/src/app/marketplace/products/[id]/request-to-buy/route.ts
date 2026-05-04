@@ -6,6 +6,35 @@ import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { sql } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema, ensureOrderRequestsSchema } from "../../../../../lib/commercial-runtime-schema";
 
+function demoConsumerEnabled(payload: Record<string, unknown>) {
+  const explicit = payload?.demoConsumer === true || payload?.consumerMode === "demo";
+  const envDemo = String(process.env.DEMO_MODE || "").toLowerCase() === "true"
+    || String(process.env.CONSUMER_AUTH_MODE || "").toLowerCase() === "demo";
+  return explicit && envDemo;
+}
+
+async function getOrCreateDemoConsumer(payload: Record<string, unknown>) {
+  if (!demoConsumerEnabled(payload)) return null;
+  const email = String(payload.demoConsumerEmail || "demo.consumer@nexid.local").trim().toLowerCase();
+  const rows = await sql/*sql*/`
+    INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
+    VALUES (${email}, ${null}, 'Demo Consumer', 'registered', 'es-AR', now())
+    ON CONFLICT (email)
+    DO UPDATE SET last_login_at = now(), status = 'registered', updated_at = now()
+    RETURNING *
+  `;
+  const consumer = rows[0] || null;
+  if (consumer?.id) {
+    await sql/*sql*/`
+      INSERT INTO consumer_identities (consumer_id, provider, provider_subject, verified_at)
+      VALUES (${consumer.id}, 'demo_consumer', ${email}, now())
+      ON CONFLICT (provider, provider_subject)
+      DO UPDATE SET verified_at = now(), updated_at = now()
+    `;
+  }
+  return consumer;
+}
+
 function parseRequestToBuyPayload(payload: Record<string, unknown> | null | undefined) {
   const quantity = Number.parseInt(String(payload?.quantity ?? 1), 10);
   if (!Number.isFinite(quantity) || quantity < 1 || quantity > 24) {
@@ -29,11 +58,11 @@ function parseRequestToBuyPayload(payload: Record<string, unknown> | null | unde
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await Promise.all([ensureConsumerPortalSchema(), ensureOrderRequestsSchema()]);
-  const consumer = await getConsumerFromRequest(req);
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const consumer = (await getConsumerFromRequest(req)) || (await getOrCreateDemoConsumer(body));
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
 
   const { id } = await params;
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const parsed = parseRequestToBuyPayload(body);
   if (!parsed.ok) return json({ ok: false, error: parsed.error }, 400);
 
