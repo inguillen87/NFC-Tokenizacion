@@ -9,6 +9,30 @@ import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 
 const LEDGER_NETWORK_ALLOWED = new Set(["polygon-amoy", "polygon", "ethereum-sepolia", "ethereum-mainnet", "base-sepolia", "base-mainnet"]);
 
+type AnchorResult = {
+  ok?: boolean;
+  status?: string | null;
+  tx_hash?: string | null;
+  token_id?: string | null;
+  reason?: string | null;
+  next_attempt_at?: string | null;
+};
+
+type TokenizationRequestRow = {
+  id?: string;
+  status?: string | null;
+  requested_at?: string | Date | null;
+  network?: string | null;
+  asset_ref?: string | null;
+  issuer_wallet?: string | null;
+  anchor_hash?: string | null;
+  tx_hash?: string | null;
+  token_id?: string | null;
+  last_error?: string | null;
+  next_attempt_at?: string | Date | null;
+  attempt_count?: number | string | null;
+};
+
 function sanitizeText(value: unknown, max = 120) {
   return String(value || "").trim().slice(0, max);
 }
@@ -26,6 +50,71 @@ async function maybeAnchorPublicRequest(requestId: string | undefined, network: 
     issuerWallet,
     processor: "public_cta_tokenize_request",
   });
+}
+
+async function loadTokenizationRequest(requestId: string | undefined) {
+  if (!requestId) return null;
+  const rows = await sql/*sql*/`
+    SELECT id, status, requested_at, network, asset_ref, issuer_wallet, anchor_hash, tx_hash, token_id, last_error, next_attempt_at, attempt_count
+    FROM tokenization_requests
+    WHERE id = ${requestId}
+    LIMIT 1
+  `;
+  return (rows[0] || null) as TokenizationRequestRow | null;
+}
+
+function normalizedStatus(request: TokenizationRequestRow | null, anchor: AnchorResult | null) {
+  const raw = String(anchor?.status || request?.status || "").toLowerCase();
+  if (anchor?.ok || raw === "anchored" || request?.tx_hash || request?.token_id || anchor?.tx_hash || anchor?.token_id) return "anchored";
+  if (raw === "failed") return "failed";
+  if (raw === "processing") return "processing";
+  return "pending";
+}
+
+function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: AnchorResult | null) {
+  const status = normalizedStatus(request, anchor);
+  const txHash = anchor?.tx_hash || request?.tx_hash || null;
+  const tokenId = anchor?.token_id || request?.token_id || null;
+  const error = anchor?.reason || request?.last_error || null;
+  const nextAttemptAt = anchor?.next_attempt_at || request?.next_attempt_at || null;
+  const mintOk = status === "anchored" && Boolean(txHash || tokenId || anchor?.ok);
+
+  if (status === "anchored") {
+    return {
+      ok: true,
+      mint_ok: mintOk,
+      tokenization_status: status,
+      tokenization_error: null,
+      tx_hash: txHash,
+      token_id: tokenId,
+      next_attempt_at: null,
+      explainer: "Producto anclado en Polygon Amoy con UID hasheado y salt privado.",
+    };
+  }
+
+  if (status === "failed") {
+    return {
+      ok: false,
+      mint_ok: false,
+      tokenization_status: status,
+      tokenization_error: error || "polygon_mint_failed",
+      tx_hash: txHash,
+      token_id: tokenId,
+      next_attempt_at: nextAttemptAt,
+      explainer: "La solicitud quedo guardada, pero el mint fallo. Requiere reintento operativo o revisar gas/RPC/minter.",
+    };
+  }
+
+  return {
+    ok: true,
+    mint_ok: false,
+    tokenization_status: status,
+    tokenization_error: error,
+    tx_hash: txHash,
+    token_id: tokenId,
+    next_attempt_at: nextAttemptAt,
+    explainer: "Solicitud guardada y en cola. El minter puede reintentar sin exponer el UID crudo.",
+  };
 }
 
 export async function POST(req: Request) {
@@ -92,18 +181,26 @@ export async function POST(req: Request) {
   const existingRequest = existingRows[0];
   if (existingRequest) {
     const alreadyAnchored = String(existingRequest.status || "") === "anchored";
-    const anchor = alreadyAnchored ? null : await maybeAnchorPublicRequest(String(existingRequest.id || ""), ledger.ledger_network, ledger.issuer_wallet);
-    const anchorStatus = anchor && typeof anchor === "object" && "status" in anchor ? String(anchor.status || "") : "";
+    const anchor = alreadyAnchored ? null : await maybeAnchorPublicRequest(String(existingRequest.id || ""), ledger.ledger_network, ledger.issuer_wallet) as AnchorResult | null;
+    const latestRequest = await loadTokenizationRequest(String(existingRequest.id || ""));
+    const outcome = tokenizationOutcome(latestRequest || existingRequest, anchor);
     return json({
-      ok: true,
+      ok: outcome.ok,
       action: "tokenize_request",
       deduplicated: true,
-      reason: alreadyAnchored ? "existing request already anchored" : anchor?.ok ? "existing request anchored" : anchorStatus === "pending" ? "existing request queued for retry" : "existing request reused",
-      tokenization_request: { ...existingRequest, status: anchor?.ok ? "anchored" : anchorStatus || existingRequest.status },
+      reason: alreadyAnchored
+        ? "existing request already anchored"
+        : outcome.tokenization_status === "anchored"
+          ? "existing request anchored"
+          : outcome.tokenization_status === "failed"
+            ? "existing request failed"
+            : "existing request queued for retry",
+      tokenization_request: latestRequest || existingRequest,
       anchor,
+      ...outcome,
       trace_id: traceId,
       share_token_status: auth.share_token_status,
-    });
+    }, outcome.ok ? 200 : 502);
   }
 
   const reqRows = await sql/*sql*/`
@@ -126,18 +223,21 @@ export async function POST(req: Request) {
     RETURNING id, status, requested_at
   `;
   const tokenizationRequest = reqRows[0];
-  const anchor = await maybeAnchorPublicRequest(String(tokenizationRequest?.id || ""), ledger.ledger_network, ledger.issuer_wallet);
+  const anchor = await maybeAnchorPublicRequest(String(tokenizationRequest?.id || ""), ledger.ledger_network, ledger.issuer_wallet) as AnchorResult | null;
+  const latestRequest = await loadTokenizationRequest(String(tokenizationRequest?.id || ""));
+  const outcome = tokenizationOutcome(latestRequest || tokenizationRequest, anchor);
   const saved = await recordDemoCta("tokenize_request", bid, uid, { ...body, ...ledger, ...policyMeta, fresh_handoff_exp: fresh.payload.exp, tokenization_requested_at: new Date().toISOString() });
   return json({
-    ok: true,
+    ok: outcome.ok,
     action: "tokenize_request",
     id: saved.id,
     created_at: saved.created_at,
     ledger,
-    tokenization_request: tokenizationRequest || null,
+    tokenization_request: latestRequest || tokenizationRequest || null,
     anchor,
+    ...outcome,
     trace_id: traceId,
     share_token_status: auth.share_token_status,
     fresh_token_status: "accepted",
-  });
+  }, outcome.ok ? 201 : 502);
 }

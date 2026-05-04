@@ -19,7 +19,14 @@ type CallResponse = {
   ok?: boolean;
   reason?: string;
   anchor?: { ok?: boolean; status?: string; tx_hash?: string | null; token_id?: string | null; reason?: string | null; next_attempt_at?: string | null } | null;
-  tokenization_request?: { status?: string | null; tx_hash?: string | null; token_id?: string | null; next_attempt_at?: string | null } | null;
+  tokenization_request?: { status?: string | null; tx_hash?: string | null; token_id?: string | null; next_attempt_at?: string | null; last_error?: string | null } | null;
+  mint_ok?: boolean;
+  tokenization_status?: string | null;
+  tokenization_error?: string | null;
+  tx_hash?: string | null;
+  token_id?: string | null;
+  next_attempt_at?: string | null;
+  explainer?: string | null;
   _httpStatus?: number;
   _httpOk?: boolean;
   _traceId?: string | null;
@@ -158,23 +165,70 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     report: "Ticket creado para revisar el tap.",
   };
 
+  function tokenizationStatus(data: CallResponse) {
+    return String(data.tokenization_status || data.anchor?.status || data.tokenization_request?.status || "").toLowerCase();
+  }
+
+  function tokenizationTx(data: CallResponse) {
+    return data.tx_hash || data.anchor?.tx_hash || data.tokenization_request?.tx_hash || null;
+  }
+
+  function tokenizationTokenId(data: CallResponse) {
+    return data.token_id || data.anchor?.token_id || data.tokenization_request?.token_id || null;
+  }
+
+  function tokenizationError(data: CallResponse) {
+    return data.tokenization_error || data.anchor?.reason || data.tokenization_request?.last_error || data.reason || null;
+  }
+
+  function tokenizationUiResult(data: CallResponse) {
+    const status = tokenizationStatus(data);
+    const txHash = tokenizationTx(data);
+    const tokenId = tokenizationTokenId(data);
+    const hasMint = Boolean(data.mint_ok || status === "anchored" || data.anchor?.ok || txHash || tokenId);
+
+    if (!data._httpOk) {
+      return {
+        ok: false,
+        message: status === "failed"
+          ? `Mint fallido: ${tokenizationError(data) || "revisar gas, RPC o minter"}`
+          : normalizeReason(data),
+      };
+    }
+
+    if (status === "failed" || data.ok === false) {
+      return {
+        ok: false,
+        message: `Solicitud guardada, pero el mint fallo: ${tokenizationError(data) || "reintento operativo requerido"}.`,
+      };
+    }
+
+    if (hasMint) {
+      return {
+        ok: true,
+        message: tokenId
+          ? `Token anclado en Polygon Amoy (#${tokenId}${txHash ? ", tx registrada" : ""}).`
+          : "Token anclado en Polygon Amoy con UID hasheado.",
+      };
+    }
+
+    if (status === "pending" || status === "processing") {
+      const nextAttempt = data.next_attempt_at || data.anchor?.next_attempt_at || data.tokenization_request?.next_attempt_at;
+      return {
+        ok: true,
+        message: `Solicitud en cola para Polygon Amoy${nextAttempt ? `; proximo intento ${nextAttempt}` : ""}.`,
+      };
+    }
+
+    return {
+      ok: Boolean(data.ok),
+      message: successCopy.tokenization,
+    };
+  }
+
   function successMessageFor(actionKey: ActionKey, data: CallResponse) {
     if (actionKey !== "tokenization") return successCopy[actionKey];
-    const anchorStatus = String(data.anchor?.status || data.tokenization_request?.status || "").toLowerCase();
-    const tokenId = data.anchor?.token_id || data.tokenization_request?.token_id;
-    const txHash = data.anchor?.tx_hash || data.tokenization_request?.tx_hash;
-    if (data.anchor?.ok || anchorStatus === "anchored") {
-      return tokenId
-        ? `Token anclado en Polygon Amoy (#${tokenId}${txHash ? ", tx lista" : ""}).`
-        : "Tokenizacion anclada en Polygon Amoy.";
-    }
-    if (anchorStatus === "pending" || anchorStatus === "processing" || anchorStatus.includes("retry")) {
-      return "Tokenizacion en cola: el minter va a reintentar en Polygon Amoy.";
-    }
-    if (anchorStatus === "failed") {
-      return "Solicitud guardada, pero el mint requiere revision operativa.";
-    }
-    return successCopy.tokenization;
+    return tokenizationUiResult(data).message;
   }
 
   function renderStateBadge(actionKey: ActionKey) {
@@ -291,12 +345,14 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       const data = await call(path, method, basePayload());
       setStatus(JSON.stringify(data));
       if (data._traceId) setLastTraceId(data._traceId);
-      const ok = Boolean(data.ok && data._httpOk);
-      setActionStates((current) => ({ ...current, [actionKey]: ok ? "success" : "error" }));
-      if (!ok) {
-        setActionError(normalizeReason(data));
+      const result = actionKey === "tokenization"
+        ? tokenizationUiResult(data)
+        : { ok: Boolean(data.ok && data._httpOk), message: data.ok && data._httpOk ? successMessageFor(actionKey, data) : normalizeReason(data) };
+      setActionStates((current) => ({ ...current, [actionKey]: result.ok ? "success" : "error" }));
+      if (!result.ok) {
+        setActionError(result.message);
       } else {
-        setLastActionMessage(successMessageFor(actionKey, data));
+        setLastActionMessage(result.message);
       }
       if (method === "GET" && path.includes("provenance")) setProvenance(data as ProvenanceResponse);
     } catch (error) {
@@ -342,14 +398,16 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       }));
       setStatus(JSON.stringify({ lead, tokenization }));
       if ((tokenization as CallResponse)._traceId) setLastTraceId(String((tokenization as CallResponse)._traceId));
-      const ok = Boolean((lead as CallResponse).ok && (lead as CallResponse)._httpOk && (tokenization as CallResponse).ok && (tokenization as CallResponse)._httpOk);
+      const leadOk = Boolean((lead as CallResponse)._httpOk && (lead as CallResponse).ok !== false);
+      const tokenizationResult = tokenizationUiResult(tokenization as CallResponse);
+      const ok = Boolean(leadOk && tokenizationResult.ok);
       setLeadSaved(ok);
       setActionStates((current) => ({ ...current, tokenization: ok ? "success" : "error" }));
       if (!ok) {
-        const reason = normalizeReason(tokenization as CallResponse) || normalizeReason(lead as CallResponse);
+        const reason = leadOk ? tokenizationResult.message : normalizeReason(lead as CallResponse);
         setActionError(reason);
       } else {
-        setLastActionMessage(successMessageFor("tokenization", tokenization as CallResponse));
+        setLastActionMessage(tokenizationResult.message);
       }
     } catch (error) {
       setActionStates((current) => ({ ...current, tokenization: "error" }));

@@ -1,5 +1,5 @@
 export const BLOCKED_OWNERSHIP_RESULTS = new Set(["REPLAY_SUSPECT", "DUPLICATE", "INVALID", "NOT_REGISTERED", "NOT_ACTIVE", "TAMPER", "TAMPERED", "REVOKED", "BROKEN"]);
-export const CLAIMABLE_OWNERSHIP_RESULTS = new Set(["VALID", "TAP_VALID", "VALID_CLOSED", "VALID_OPENED", "VALID_MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"]);
+export const CLAIMABLE_OWNERSHIP_RESULTS = new Set(["VALID", "TAP_VALID", "VALID_CLOSED", "OPENED", "VALID_OPENED", "VALID_MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"]);
 
 export function matchesOwnershipTenant(input: { eventTenantId?: string | null; requestedTenantId?: string | null }) {
   const eventTenantId = String(input.eventTenantId || "").trim();

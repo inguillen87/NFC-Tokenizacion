@@ -14,8 +14,10 @@ function buildProxyHeaders(req: Request, correlationId: string) {
 
   const userAgent = req.headers.get("user-agent");
   const forwardedFor = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
+  const authorization = req.headers.get("authorization");
   if (userAgent) headers["user-agent"] = userAgent;
   if (forwardedFor) headers["x-forwarded-for"] = forwardedFor;
+  if (authorization) headers.authorization = authorization;
   return headers;
 }
 

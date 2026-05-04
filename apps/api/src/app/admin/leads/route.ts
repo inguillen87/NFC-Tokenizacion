@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       created_at: String((rows[0] as Record<string, unknown>).created_at || new Date().toISOString()),
     });
 
-    return json(rows[0], 201);
+    return json({ ok: true, lead: rows[0], ...(rows[0] as Record<string, unknown>) }, 201);
   } catch {
     const rows = await sql/*sql*/`
       INSERT INTO leads (locale, contact, company, country, vertical, tag_type, volume, source, status, notes)
@@ -77,6 +77,6 @@ export async function POST(req: Request) {
       status: "new",
       created_at: String((rows[0] as Record<string, unknown>).created_at || new Date().toISOString()),
     });
-    return json(rows[0], 201);
+    return json({ ok: true, lead: rows[0], ...(rows[0] as Record<string, unknown>) }, 201);
   }
 }
