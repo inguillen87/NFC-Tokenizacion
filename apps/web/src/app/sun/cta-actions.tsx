@@ -161,7 +161,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     claimOwnership: "Ownership registrado en tu nexID Passport.",
     registerWarranty: "Garantia registrada para postventa y lifecycle.",
     provenance: "Provenance consultada correctamente.",
-    tokenization: "Tokenizacion enviada: el ledger va a anclar o mintear en Polygon Amoy.",
+    tokenization: "Tokenizacion registrada: si Polygon no confirma en el acto queda en reintento operativo.",
     report: "Ticket creado para revisar el tap.",
   };
 
@@ -186,13 +186,29 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     const txHash = tokenizationTx(data);
     const tokenId = tokenizationTokenId(data);
     const hasMint = Boolean(data.mint_ok || status === "anchored" || data.anchor?.ok || txHash || tokenId);
+    const hasSavedRequest = Boolean(data.tokenization_request || data.tokenization_status || data.anchor);
+    const nextAttempt = data.next_attempt_at || data.anchor?.next_attempt_at || data.tokenization_request?.next_attempt_at;
 
-    if (!data._httpOk) {
+    if (status === "pending_retry") {
+      return {
+        ok: true,
+        message: data.explainer || `Solicitud guardada; Polygon Amoy quedo en reintento operativo${nextAttempt ? ` para ${nextAttempt}` : ""}.`,
+      };
+    }
+
+    if (!data._httpOk && data.ok !== true) {
       return {
         ok: false,
         message: status === "failed"
           ? `Mint fallido: ${tokenizationError(data) || "revisar gas, RPC o minter"}`
           : normalizeReason(data),
+      };
+    }
+
+    if (status === "failed" && hasSavedRequest) {
+      return {
+        ok: true,
+        message: `Solicitud guardada; el mint quedo en reintento operativo${nextAttempt ? ` para ${nextAttempt}` : ""}.`,
       };
     }
 
@@ -213,7 +229,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     }
 
     if (status === "pending" || status === "processing") {
-      const nextAttempt = data.next_attempt_at || data.anchor?.next_attempt_at || data.tokenization_request?.next_attempt_at;
       return {
         ok: true,
         message: `Solicitud en cola para Polygon Amoy${nextAttempt ? `; proximo intento ${nextAttempt}` : ""}.`,

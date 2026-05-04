@@ -16,6 +16,14 @@ type ProductType = "wine" | "cosmetics" | "events" | "pharma";
 type SecurityLevel = "basic" | "secure" | "enterprise";
 type ChannelType = "direct" | "reseller";
 type Currency = (typeof currencies)[number];
+type CarrierProfile = {
+  name: string;
+  unit: string;
+  fit: string;
+  unlocks: string;
+  policy: string;
+  suggestedFor: SecurityLevel[];
+};
 
 const productMultiplier: Record<ProductType, number> = {
   wine: 1.2,
@@ -91,6 +99,13 @@ const investmentCopy: Record<AppLocale, {
   formulaTitle: string;
   directFormula: string;
   resellerFormula: string;
+  carrierTitle: string;
+  carrierBody: string;
+  carrierUnit: string;
+  carrierFit: string;
+  carrierUnlocks: string;
+  carrierPolicy: string;
+  carrierRecommended: string;
 }> = {
   "es-AR": {
     explain: "Elegis vertical, volumen, seguridad y canal. El modelo separa costo real del programa, valor protegido y margen posible para venderlo sin una planilla.",
@@ -133,6 +148,13 @@ const investmentCopy: Record<AppLocale, {
     formulaTitle: "Como leer el calculo",
     directFormula: "Inversion anual = tags + encoding + setup + SaaS. ROI se lee contra valor protegido, reduccion de fraude y ventas post-tap.",
     resellerFormula: "Venta reseller = hardware + setup + SaaS con margen. MRR bruto muestra la parte recurrente despues del costo SaaS base.",
+    carrierTitle: "Perfiles de etiqueta por presupuesto y riesgo",
+    carrierBody: "La tecnologia se elige por objetivo comercial: contenido, serializacion, SUN anti-replay, tamper fisico o tokenizacion. El plan puede combinar QR/GS1 visible con NFC para que el rollout sea economico y escalable.",
+    carrierUnit: "Costo etiqueta",
+    carrierFit: "Uso ideal",
+    carrierUnlocks: "Desbloquea",
+    carrierPolicy: "Politica segura",
+    carrierRecommended: "Recomendado para este calculo",
   },
   "pt-BR": {
     explain: "Escolha vertical, volume, seguranca e canal. O modelo separa custo do programa, valor protegido e margem possivel para vender sem planilha.",
@@ -175,6 +197,13 @@ const investmentCopy: Record<AppLocale, {
     formulaTitle: "Como ler o calculo",
     directFormula: "Investimento anual = tags + encoding + setup + SaaS. ROI e lido contra valor protegido, reducao de fraude e vendas pos-toque.",
     resellerFormula: "Venda reseller = hardware + setup + SaaS com margem. MRR bruto mostra a parte recorrente depois do custo SaaS base.",
+    carrierTitle: "Perfis de etiqueta por orcamento e risco",
+    carrierBody: "A tecnologia e escolhida pelo objetivo comercial: conteudo, serializacao, SUN anti-replay, tamper fisico ou tokenizacao. O plano pode combinar QR/GS1 visivel com NFC para escalar com custo controlado.",
+    carrierUnit: "Custo etiqueta",
+    carrierFit: "Uso ideal",
+    carrierUnlocks: "Desbloqueia",
+    carrierPolicy: "Politica segura",
+    carrierRecommended: "Recomendado neste calculo",
   },
   en: {
     explain: "Choose vertical, volume, security and channel. The model separates program cost, protected product value and possible margin without forcing a spreadsheet.",
@@ -217,7 +246,119 @@ const investmentCopy: Record<AppLocale, {
     formulaTitle: "How to read it",
     directFormula: "Annual investment = tags + encoding + setup + SaaS. ROI is read against protected value, fraud reduction and post-tap sales.",
     resellerFormula: "Reseller sale = hardware + setup + SaaS with margin. Gross MRR shows the recurring part after base SaaS cost.",
+    carrierTitle: "Tag profiles by budget and risk",
+    carrierBody: "Technology is selected by business goal: content, serialization, SUN anti-replay, physical tamper or tokenization. A rollout can combine visible QR/GS1 with NFC so it stays affordable and scalable.",
+    carrierUnit: "Tag cost",
+    carrierFit: "Best fit",
+    carrierUnlocks: "Unlocks",
+    carrierPolicy: "Secure policy",
+    carrierRecommended: "Recommended for this estimate",
   },
+};
+
+const carrierProfiles: Record<AppLocale, CarrierProfile[]> = {
+  "es-AR": [
+    {
+      name: "QR / GS1 Digital Link",
+      unit: "USD 0.01-0.04 aprox.",
+      fit: "Contenido, recall, lote, landing, manuales y trazabilidad inicial para volumen alto.",
+      unlocks: "Analytics, garantia simple, lead post-scan y marketplace visible con bajo costo.",
+      policy: "No habilita ownership ni token premium por si solo: se copia con screenshot o reenvio.",
+      suggestedFor: ["basic"],
+    },
+    {
+      name: "NTAG213 / NTAG215",
+      unit: "USD 0.08-0.22 aprox.",
+      fit: "Eventos, credenciales, pulseras, activaciones masivas y productos de ticket medio.",
+      unlocks: "UID fisico, reglas server-side, puntos, club y control de duplicados por lote.",
+      policy: "Permite fidelizacion y serializacion, pero sin SUN criptografico no es anti-clone premium.",
+      suggestedFor: ["basic", "secure"],
+    },
+    {
+      name: "NTAG 424 DNA",
+      unit: "USD 0.45-0.75 aprox.",
+      fit: "Productos premium, cosmetica, documentos, agro selecto y operaciones con riesgo real de copia.",
+      unlocks: "SUN dinamico, CMAC, replay detection, passport y evidencias tecnicas auditables.",
+      policy: "Claim y tokenizacion requieren tap fresco, sesion de consumidor y politica comercial del tenant.",
+      suggestedFor: ["secure"],
+    },
+    {
+      name: "NTAG 424 DNA TT",
+      unit: "USD 0.90-1.20 puesto AR",
+      fit: "Vino, lujo, pharma, sellos, tapas y packaging donde apertura o manipulacion importa.",
+      unlocks: "Tamper fisico, lifecycle, garantia, marketplace, ownership y token Polygon/Amoy.",
+      policy: "Ownership se habilita solo con tap fresco + prueba/politica de compra; replay o vista guardada bloquean acciones.",
+      suggestedFor: ["enterprise"],
+    },
+  ],
+  "pt-BR": [
+    {
+      name: "QR / GS1 Digital Link",
+      unit: "USD 0.01-0.04 aprox.",
+      fit: "Conteudo, recall, lote, landing pages, manuais e rastreabilidade inicial em alto volume.",
+      unlocks: "Analytics, garantia simples, lead pos-scan e marketplace visivel com baixo custo.",
+      policy: "Nao libera ownership nem token premium sozinho: pode ser copiado por screenshot ou link.",
+      suggestedFor: ["basic"],
+    },
+    {
+      name: "NTAG213 / NTAG215",
+      unit: "USD 0.08-0.22 aprox.",
+      fit: "Eventos, credenciais, pulseiras, ativacoes massivas e produtos de ticket medio.",
+      unlocks: "UID fisico, regras server-side, pontos, clube e controle de duplicados por lote.",
+      policy: "Boa fidelizacao e serializacao, mas sem SUN criptografico nao e anti-clone premium.",
+      suggestedFor: ["basic", "secure"],
+    },
+    {
+      name: "NTAG 424 DNA",
+      unit: "USD 0.45-0.75 aprox.",
+      fit: "Produtos premium, cosmeticos, documentos, agro seleto e operacoes com risco de copia.",
+      unlocks: "SUN dinamico, CMAC, replay detection, passport e evidencias tecnicas auditaveis.",
+      policy: "Claim e tokenizacao exigem toque fresco, sessao do consumidor e politica comercial do tenant.",
+      suggestedFor: ["secure"],
+    },
+    {
+      name: "NTAG 424 DNA TT",
+      unit: "USD 0.90-1.20 landed AR",
+      fit: "Vinho, luxo, pharma, lacres, tampas e packaging onde abertura ou violacao importa.",
+      unlocks: "Tamper fisico, lifecycle, garantia, marketplace, ownership e token Polygon/Amoy.",
+      policy: "Ownership so abre com toque fresco + prova/politica de compra; replay ou vista salva bloqueiam acoes.",
+      suggestedFor: ["enterprise"],
+    },
+  ],
+  en: [
+    {
+      name: "QR / GS1 Digital Link",
+      unit: "USD 0.01-0.04 approx.",
+      fit: "Content, recall, batch, landing pages, manuals and entry-level traceability at high volume.",
+      unlocks: "Analytics, simple warranty, post-scan lead capture and low-cost marketplace visibility.",
+      policy: "Does not unlock premium ownership or tokenization by itself: it can be copied or forwarded.",
+      suggestedFor: ["basic"],
+    },
+    {
+      name: "NTAG213 / NTAG215",
+      unit: "USD 0.08-0.22 approx.",
+      fit: "Events, credentials, wristbands, mass activations and mid-ticket products.",
+      unlocks: "Physical UID, server-side rules, points, clubs and duplicate control by batch.",
+      policy: "Good for loyalty and serialization, but without cryptographic SUN it is not premium anti-clone.",
+      suggestedFor: ["basic", "secure"],
+    },
+    {
+      name: "NTAG 424 DNA",
+      unit: "USD 0.45-0.75 approx.",
+      fit: "Premium products, cosmetics, documents, selected agro and operations with real copy risk.",
+      unlocks: "Dynamic SUN, CMAC, replay detection, passport and auditable technical evidence.",
+      policy: "Claim and tokenization require a fresh tap, consumer session and tenant commercial policy.",
+      suggestedFor: ["secure"],
+    },
+    {
+      name: "NTAG 424 DNA TT",
+      unit: "USD 0.90-1.20 landed AR",
+      fit: "Wine, luxury, pharma, seals, caps and packaging where opening or tamper state matters.",
+      unlocks: "Physical tamper, lifecycle, warranty, marketplace, ownership and Polygon/Amoy token.",
+      policy: "Ownership opens only with fresh tap + purchase proof/policy; replay or saved view blocks actions.",
+      suggestedFor: ["enterprise"],
+    },
+  ],
 };
 
 function volumeScale(volume: number) {
@@ -245,6 +386,7 @@ export function CalculatorSection({ calculator, locale }: { calculator: Calculat
   const [copied, setCopied] = useState(false);
   const txt = investmentCopy[locale] || investmentCopy["es-AR"];
   const numberLocale = localeName(locale);
+  const carrierCopy = carrierProfiles[locale] || carrierProfiles["es-AR"];
 
   useEffect(() => {
     const p = search.get("p") as ProductType | null;
@@ -426,6 +568,45 @@ export function CalculatorSection({ calculator, locale }: { calculator: Calculat
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-sm text-emerald-50">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">{txt.formulaTitle}</p>
             <p className="mt-2 leading-6">{channel === "reseller" ? txt.resellerFormula : txt.directFormula}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="max-w-3xl">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">{txt.carrierTitle}</p>
+              <p className="mt-2 text-sm leading-6 text-cyan-50">{txt.carrierBody}</p>
+            </div>
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-100">{estimate.plan}</span>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-4">
+            {carrierCopy.map((profile) => {
+              const active = profile.suggestedFor.includes(security);
+              return (
+                <article key={profile.name} className={`calculator-carrier-card rounded-2xl border p-4 ${active ? "calculator-carrier-card--active border-cyan-300/35 bg-cyan-300/10" : "border-white/10 bg-slate-950/45"}`}>
+                  {active ? <p className="mb-3 inline-flex rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100">{txt.carrierRecommended}</p> : null}
+                  <h3 className="text-sm font-black text-white">{profile.name}</h3>
+                  <dl className="mt-3 space-y-3 text-xs leading-5">
+                    <div>
+                      <dt className="font-black uppercase tracking-[0.12em] text-cyan-300">{txt.carrierUnit}</dt>
+                      <dd className="mt-1 font-bold text-slate-100">{profile.unit}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-black uppercase tracking-[0.12em] text-cyan-300">{txt.carrierFit}</dt>
+                      <dd className="mt-1 text-slate-300">{profile.fit}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-black uppercase tracking-[0.12em] text-cyan-300">{txt.carrierUnlocks}</dt>
+                      <dd className="mt-1 text-slate-300">{profile.unlocks}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-black uppercase tracking-[0.12em] text-amber-300">{txt.carrierPolicy}</dt>
+                      <dd className="mt-1 text-amber-100">{profile.policy}</dd>
+                    </div>
+                  </dl>
+                </article>
+              );
+            })}
           </div>
         </div>
 
