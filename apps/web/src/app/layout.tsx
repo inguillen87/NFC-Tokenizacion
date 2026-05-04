@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { resolveLocale, siteConfig } from "@product/config";
-import { HelpBot } from "@product/ui";
+import { ContextualHelpBot } from "../components/contextual-helpbot";
 import { PwaSetup } from "../components/pwa-setup";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { WalletExtensionGuard } from "../components/wallet-extension-guard";
@@ -131,7 +131,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <PwaSetup />
         <WalletExtensionGuard />
         {children}
-        <HelpBot locale={locale} mode="sales" />
+        <ContextualHelpBot locale={locale} />
       </body>
     </html>
   );

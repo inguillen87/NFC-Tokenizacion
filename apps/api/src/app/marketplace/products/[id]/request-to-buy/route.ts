@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../../../lib/http";
 import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { sql } from "../../../../../lib/db";
-import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtime-schema";
+import { ensureConsumerPortalSchema, ensureOrderRequestsSchema } from "../../../../../lib/commercial-runtime-schema";
 
 function parseRequestToBuyPayload(payload: Record<string, unknown> | null | undefined) {
   const quantity = Number.parseInt(String(payload?.quantity ?? 1), 10);
@@ -28,7 +28,7 @@ function parseRequestToBuyPayload(payload: Record<string, unknown> | null | unde
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await ensureConsumerPortalSchema();
+  await Promise.all([ensureConsumerPortalSchema(), ensureOrderRequestsSchema()]);
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
 
@@ -42,10 +42,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       p.id,
       p.tenant_id,
       p.status,
+      p.title,
       p.request_to_buy_enabled,
       p.age_gate_required,
       mb.status AS brand_status,
-      mb.visible_in_network
+      mb.visible_in_network,
+      mb.display_name AS brand_name
     FROM marketplace_products p
     JOIN marketplace_brand_profiles mb ON mb.tenant_id = p.tenant_id
     WHERE p.id = ${id}
@@ -67,6 +69,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     INSERT INTO marketplace_order_requests (consumer_id, tenant_id, marketplace_product_id, quantity, consumer_message, contact_json)
     VALUES (${consumer.id}, ${record.tenant_id}, ${record.id}, ${parsed.value.quantity}, ${parsed.value.message}, ${JSON.stringify({ email: consumer.email, phone: consumer.phone })}::jsonb)
     RETURNING *
+  `;
+
+  await sql/*sql*/`
+    INSERT INTO order_requests (locale, contact, company, tag_type, volume, notes, status, source)
+    VALUES (
+      ${consumer.preferred_locale || "es-AR"},
+      ${consumer.email || consumer.phone || `consumer:${consumer.id}`},
+      ${record.brand_name || "Marketplace"},
+      ${String(record.title || "Marketplace product")},
+      ${parsed.value.quantity},
+      ${`Marketplace request: ${String(record.title || record.id)}${parsed.value.message ? ` | ${parsed.value.message}` : ""}`},
+      'new',
+      'marketplace'
+    )
   `;
 
   return json({ ok: true, orderRequest: rows[0], checkout: "request_only" });

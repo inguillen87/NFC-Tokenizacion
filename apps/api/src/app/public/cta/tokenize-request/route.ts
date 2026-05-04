@@ -181,11 +181,12 @@ export async function POST(req: Request) {
   const existingRequest = existingRows[0];
   if (existingRequest) {
     const alreadyAnchored = String(existingRequest.status || "") === "anchored";
-    const anchor = alreadyAnchored ? null : await maybeAnchorPublicRequest(String(existingRequest.id || ""), ledger.ledger_network, ledger.issuer_wallet) as AnchorResult | null;
+    const anchor = alreadyAnchored
+      ? null
+      : ((await maybeAnchorPublicRequest(String(existingRequest.id || ""), ledger.ledger_network, ledger.issuer_wallet)) as AnchorResult | null);
     const latestRequest = await loadTokenizationRequest(String(existingRequest.id || ""));
     const outcome = tokenizationOutcome(latestRequest || existingRequest, anchor);
     return json({
-      ok: outcome.ok,
       action: "tokenize_request",
       deduplicated: true,
       reason: alreadyAnchored
@@ -223,13 +224,12 @@ export async function POST(req: Request) {
     RETURNING id, status, requested_at
   `;
   const tokenizationRequest = reqRows[0];
-  const anchor = await maybeAnchorPublicRequest(String(tokenizationRequest?.id || ""), ledger.ledger_network, ledger.issuer_wallet) as AnchorResult | null;
+  const anchor = (await maybeAnchorPublicRequest(String(tokenizationRequest?.id || ""), ledger.ledger_network, ledger.issuer_wallet)) as AnchorResult | null;
   const latestRequest = await loadTokenizationRequest(String(tokenizationRequest?.id || ""));
   const outcome = tokenizationOutcome(latestRequest || tokenizationRequest, anchor);
   const saved = await recordDemoCta("tokenize_request", bid, uid, { ...body, ...ledger, ...policyMeta, fresh_handoff_exp: fresh.payload.exp, tokenization_requested_at: new Date().toISOString() });
   return json({
-    ok: outcome.ok,
-    action: "tokenize_request",
+      action: "tokenize_request",
     id: saved.id,
     created_at: saved.created_at,
     ledger,

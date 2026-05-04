@@ -28,8 +28,12 @@ function getSetCookies(response: Response) {
   return one ? [one] : [];
 }
 
-function rewriteApiCookieDomain(cookie: string) {
-  return cookie.replace(/;\s*Domain=[^;]+/gi, "");
+function rewriteApiCookie(cookie: string, req: Request) {
+  const host = req.headers.get("host") || "";
+  const isLocalHttp = new URL(req.url).protocol === "http:" && /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
+  let nextCookie = cookie.replace(/;\s*Domain=[^;]+/gi, "");
+  if (isLocalHttp) nextCookie = nextCookie.replace(/;\s*Secure/gi, "");
+  return nextCookie;
 }
 
 export async function proxyToApi(req: Request, targetPath: string) {
@@ -54,7 +58,7 @@ export async function proxyToApi(req: Request, targetPath: string) {
     },
   });
   for (const cookie of getSetCookies(response)) {
-    next.headers.append("set-cookie", rewriteApiCookieDomain(cookie));
+    next.headers.append("set-cookie", rewriteApiCookie(cookie, req));
   }
   return next;
 }
