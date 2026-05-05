@@ -5860,3 +5860,238 @@ html.theme-light .demo-lab-action-tile {
     grid-template-columns: 1fr;
   }
 }
+
+/* Demo Lab product theater polish. Keep this at the end because the demo lab
+   has legacy responsive overrides above. This block owns the final stage scale. */
+.demo-lab-product-stage {
+  min-height: 0 !important;
+  height: clamp(23.5rem, 32vw, 29rem);
+  aspect-ratio: 4 / 3;
+  padding: clamp(0.85rem, 1.8vw, 1.35rem) !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: hidden;
+}
+
+.demo-lab-product-stage::before {
+  inset: clamp(0.7rem, 1.6vw, 1.2rem) !important;
+  border-radius: clamp(1.15rem, 2vw, 1.8rem) !important;
+  background:
+    linear-gradient(90deg, transparent 0 19%, rgba(125, 211, 252, 0.11) 19.2% 19.45%, transparent 19.7% 39%, rgba(125, 211, 252, 0.1) 39.2% 39.45%, transparent 39.7% 59%, rgba(125, 211, 252, 0.1) 59.2% 59.45%, transparent 59.7% 79%, rgba(125, 211, 252, 0.08) 79.2% 79.45%, transparent 79.7%),
+    linear-gradient(180deg, transparent 0 25%, rgba(125, 211, 252, 0.1) 25.2% 25.5%, transparent 25.7% 50%, rgba(125, 211, 252, 0.1) 50.2% 50.5%, transparent 50.7% 75%, rgba(125, 211, 252, 0.08) 75.2% 75.5%, transparent 75.7%),
+    radial-gradient(circle at 22% 26%, rgba(45, 212, 191, 0.24), transparent 20%),
+    radial-gradient(circle at 76% 61%, rgba(139, 92, 246, 0.2), transparent 24%),
+    linear-gradient(135deg, rgba(7, 29, 49, 0.98), rgba(12, 20, 45, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.12), inset 0 -4rem 5rem rgba(8, 13, 32, 0.28);
+}
+
+.theme-light .demo-lab-product-stage::before,
+html.theme-light .demo-lab-product-stage::before {
+  background:
+    linear-gradient(90deg, transparent 0 19%, rgba(14, 116, 144, 0.09) 19.2% 19.45%, transparent 19.7% 39%, rgba(14, 116, 144, 0.08) 39.2% 39.45%, transparent 39.7% 59%, rgba(14, 116, 144, 0.08) 59.2% 59.45%, transparent 59.7% 79%, rgba(14, 116, 144, 0.07) 79.2% 79.45%, transparent 79.7%),
+    linear-gradient(180deg, transparent 0 25%, rgba(14, 116, 144, 0.08) 25.2% 25.5%, transparent 25.7% 50%, rgba(14, 116, 144, 0.08) 50.2% 50.5%, transparent 50.7% 75%, rgba(14, 116, 144, 0.07) 75.2% 75.5%, transparent 75.7%),
+    radial-gradient(circle at 22% 26%, rgba(45, 212, 191, 0.2), transparent 20%),
+    radial-gradient(circle at 76% 61%, rgba(124, 58, 237, 0.16), transparent 24%),
+    linear-gradient(135deg, rgba(236, 253, 245, 0.98), rgba(239, 246, 255, 0.96));
+}
+
+.demo-lab-product-stage::after {
+  inset: clamp(1.15rem, 2.4vw, 1.85rem) !important;
+  border-radius: 999px !important;
+  opacity: 0.52 !important;
+}
+
+.demo-lab-product-stage .demo-lab-live-visual {
+  z-index: 5 !important;
+  max-width: 44%;
+  max-height: 74%;
+  transform: translateY(0.15rem) scale(1) !important;
+}
+
+.demo-lab-product-stage--wine .hero-bottle {
+  width: clamp(132px, 10.6vw, 172px) !important;
+  height: clamp(226px, 19vw, 288px) !important;
+  border-radius: 44% 44% 25% 25% / 16% 16% 11% 11% !important;
+  filter: drop-shadow(0 1.6rem 1.8rem rgba(0, 0, 0, 0.34));
+}
+
+.demo-lab-product-stage--wine .hero-bottle::before {
+  inset: 3.2rem 2.1rem 0.45rem !important;
+  border-radius: 48% 48% 30% 30% / 16% 16% 12% 12% !important;
+}
+
+.demo-lab-product-stage--wine .hero-bottle::after {
+  top: 0.38rem !important;
+  left: 50% !important;
+  width: clamp(1.55rem, 2vw, 2rem) !important;
+  height: clamp(3.15rem, 4.7vw, 4.15rem) !important;
+  transform: translateX(-50%) !important;
+}
+
+.demo-lab-product-stage .demo-lab-product-label {
+  top: calc(50% + clamp(3.4rem, 5.4vw, 4.4rem)) !important;
+  left: 50% !important;
+  width: clamp(5.7rem, 8.2vw, 7.1rem) !important;
+  min-height: clamp(1.55rem, 2.4vw, 1.95rem);
+  transform: translate(-50%, -50%) rotate(-5deg) !important;
+}
+
+.demo-lab-product-stage--wine .demo-lab-cork {
+  left: 50% !important;
+  top: calc(50% - clamp(7.1rem, 10.1vw, 8.8rem)) !important;
+  transform: translate(-50%, 0) rotate(12deg) !important;
+  z-index: 8 !important;
+}
+
+.demo-lab-product-stage--beat-3 .demo-lab-cork {
+  animation: demoLabCorkExitCompact 1.7s ease-in-out infinite !important;
+}
+
+@keyframes demoLabCorkExitCompact {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) rotate(12deg);
+  }
+  45% {
+    opacity: 1;
+    transform: translate(-50%, -1.7rem) rotate(20deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -3.2rem) rotate(30deg);
+  }
+}
+
+.demo-lab-product-stage .demo-lab-seal-split {
+  top: calc(50% + clamp(1.15rem, 2.4vw, 1.65rem)) !important;
+  left: 50% !important;
+  height: clamp(1.35rem, 2.1vw, 1.85rem);
+  transform: translate(-50%, -50%) rotate(-4deg) !important;
+  z-index: 9 !important;
+}
+
+.demo-lab-product-stage .demo-lab-tap-chip {
+  top: clamp(0.75rem, 1.6vw, 1rem) !important;
+  right: clamp(0.75rem, 1.6vw, 1rem) !important;
+  z-index: 11 !important;
+}
+
+.demo-lab-product-stage .demo-lab-tap-wave {
+  top: clamp(0.45rem, 1vw, 0.75rem) !important;
+  right: clamp(0.45rem, 1vw, 0.75rem) !important;
+  width: clamp(3rem, 5vw, 4.25rem) !important;
+  height: clamp(3rem, 5vw, 4.25rem) !important;
+}
+
+.demo-lab-stage-route-layer {
+  inset: clamp(1.5rem, 3vw, 2.4rem) !important;
+  z-index: 3 !important;
+}
+
+.demo-lab-route-chip,
+.demo-lab-route-distance,
+.demo-lab-route-state {
+  z-index: 12 !important;
+  max-width: min(42%, 10.5rem);
+  border-radius: 0.95rem !important;
+  background: rgba(3, 12, 30, 0.78) !important;
+  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(14px);
+}
+
+.theme-light .demo-lab-route-chip,
+.theme-light .demo-lab-route-distance,
+.theme-light .demo-lab-route-state,
+html.theme-light .demo-lab-route-chip,
+html.theme-light .demo-lab-route-distance,
+html.theme-light .demo-lab-route-state {
+  background: rgba(248, 250, 252, 0.86) !important;
+  box-shadow: 0 1rem 2rem rgba(15, 23, 42, 0.12);
+}
+
+.demo-lab-route-distance {
+  left: clamp(0.75rem, 1.6vw, 1rem) !important;
+  top: clamp(0.75rem, 1.6vw, 1rem) !important;
+}
+
+.demo-lab-route-chip--tap {
+  top: clamp(3.75rem, 6vw, 4.65rem) !important;
+  right: clamp(0.75rem, 1.6vw, 1rem) !important;
+}
+
+.demo-lab-route-chip--origin {
+  left: clamp(0.75rem, 1.6vw, 1rem) !important;
+  bottom: clamp(0.75rem, 1.6vw, 1rem) !important;
+}
+
+.demo-lab-route-state {
+  right: clamp(0.75rem, 1.6vw, 1rem) !important;
+  bottom: clamp(0.75rem, 1.6vw, 1rem) !important;
+}
+
+.demo-lab-product-stage--events .wristband-demo,
+.demo-lab-product-stage--cosmetics .cosmetic-demo,
+.demo-lab-product-stage--agro .agro-demo {
+  max-width: 54% !important;
+  max-height: 64% !important;
+  transform: translateY(0.2rem) scale(0.94) !important;
+}
+
+@media (min-width: 1180px) {
+  .demo-lab-product-stage {
+    height: clamp(24rem, 29vw, 28.5rem);
+  }
+}
+
+@media (max-width: 1024px) {
+  .demo-lab-product-stage {
+    height: clamp(23rem, 58vw, 29rem);
+    aspect-ratio: 1.12 / 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .demo-lab-product-stage {
+    height: clamp(21.5rem, 86vw, 27rem);
+    aspect-ratio: 1 / 1.12;
+    padding: 0.75rem !important;
+  }
+
+  .demo-lab-product-stage::before {
+    inset: 0.65rem !important;
+  }
+
+  .demo-lab-product-stage::after {
+    inset: 1.05rem !important;
+  }
+
+  .demo-lab-product-stage .demo-lab-live-visual {
+    max-width: 48%;
+    max-height: 70%;
+  }
+
+  .demo-lab-product-stage--wine .hero-bottle {
+    width: 124px !important;
+    height: 216px !important;
+  }
+
+  .demo-lab-product-stage .demo-lab-product-label {
+    top: calc(50% + 3.55rem) !important;
+    width: 5.65rem !important;
+  }
+
+  .demo-lab-product-stage--wine .demo-lab-cork {
+    top: calc(50% - 6.85rem) !important;
+  }
+
+  .demo-lab-route-chip,
+  .demo-lab-route-distance,
+  .demo-lab-route-state {
+    max-width: 8.2rem;
+    padding: 0.58rem 0.68rem !important;
+  }
+
+  .demo-lab-route-chip--tap {
+    top: 3.55rem !important;
+  }
+}
