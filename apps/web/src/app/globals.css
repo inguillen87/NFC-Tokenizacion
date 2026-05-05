@@ -5383,3 +5383,480 @@ html.theme-light .demo-lab-product-stage::before {
     max-width: calc(100% - 1.5rem);
   }
 }
+
+/* Demo Lab immersive scenario v2: map, product and action policy in one scene. */
+.demo-lab-beat-card {
+  min-height: 7rem;
+}
+
+.demo-lab-product-stage {
+  position: relative;
+  min-height: clamp(34rem, 45vw, 42rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 3vw, 2rem);
+  overflow: hidden;
+  border-radius: 1.35rem;
+}
+
+.demo-lab-stage-route-layer {
+  position: absolute !important;
+  inset: 0.75rem;
+  z-index: 1 !important;
+  border-radius: 1.15rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 22% 70%, rgba(45, 212, 191, 0.2), transparent 28%),
+    radial-gradient(circle at 80% 22%, rgba(167, 139, 250, 0.2), transparent 26%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.62), rgba(15, 23, 42, 0.92));
+  border: 1px solid rgba(125, 211, 252, 0.14);
+}
+
+.demo-lab-stage-route-layer svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.92;
+}
+
+.demo-lab-map-land {
+  fill: rgba(34, 211, 238, 0.08);
+  stroke: rgba(125, 211, 252, 0.22);
+  stroke-width: 1.4;
+}
+
+.demo-lab-map-land--tap {
+  fill: rgba(167, 139, 250, 0.08);
+  stroke: rgba(196, 181, 253, 0.2);
+}
+
+.demo-lab-map-grid {
+  fill: none;
+  stroke: rgba(125, 211, 252, 0.17);
+  stroke-width: 1;
+  opacity: 0.55;
+}
+
+.demo-lab-route-ghost {
+  fill: none;
+  stroke: rgba(226, 232, 240, 0.9);
+  stroke-width: 18;
+  stroke-linecap: round;
+  opacity: 0.11;
+}
+
+.demo-lab-route-line {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 14 14;
+  filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.55));
+  animation: demoLabRouteDash 1.35s linear infinite;
+}
+
+@keyframes demoLabRouteDash {
+  to {
+    stroke-dashoffset: -56;
+  }
+}
+
+.demo-lab-route-heat {
+  fill: rgba(45, 212, 191, 0.16);
+  stroke: rgba(45, 212, 191, 0.18);
+  stroke-width: 2;
+}
+
+.demo-lab-route-heat--tap {
+  fill: rgba(167, 139, 250, 0.16);
+  stroke: rgba(167, 139, 250, 0.2);
+}
+
+.demo-lab-route-dot {
+  fill: #22d3ee;
+  stroke: white;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.75));
+}
+
+.demo-lab-route-dot--origin {
+  fill: #34d399;
+  filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.75));
+}
+
+.demo-lab-route-ping {
+  fill: none;
+  stroke: #22d3ee;
+  stroke-width: 3;
+  opacity: 0.75;
+  animation: demoLabRoutePing 1.8s ease-out infinite;
+}
+
+.demo-lab-stage-route-layer--risk .demo-lab-route-ping {
+  stroke: #fb7185;
+}
+
+.demo-lab-stage-route-layer--open .demo-lab-route-ping {
+  stroke: #fbbf24;
+}
+
+@keyframes demoLabRoutePing {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.8);
+    transform-origin: center;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2.35);
+    transform-origin: center;
+  }
+}
+
+.demo-lab-route-chip,
+.demo-lab-route-distance,
+.demo-lab-route-state {
+  position: absolute !important;
+  z-index: 4 !important;
+  border-radius: 1rem;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  background: rgba(2, 6, 23, 0.72);
+  color: #f8fafc;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
+}
+
+.demo-lab-route-chip {
+  max-width: 10rem;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.demo-lab-route-chip small {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #67e8f9;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.demo-lab-route-chip--origin {
+  left: 1rem;
+  bottom: 1rem;
+}
+
+.demo-lab-route-chip--tap {
+  right: 1rem;
+  top: 1rem;
+}
+
+.demo-lab-route-distance {
+  left: 1rem;
+  top: 1rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.demo-lab-route-state {
+  right: 1rem;
+  bottom: 1rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.demo-lab-product-stage .demo-lab-live-visual {
+  position: relative;
+  z-index: 5;
+  transform: translateY(0.35rem) scale(1.08);
+  filter: drop-shadow(0 30px 55px rgba(0, 0, 0, 0.42));
+}
+
+.demo-lab-product-stage--wine .hero-bottle {
+  width: clamp(156px, 14vw, 220px);
+  height: clamp(255px, 25vw, 360px);
+}
+
+.demo-lab-product-stage--events .wristband-demo,
+.demo-lab-product-stage--cosmetics .cosmetic-demo,
+.demo-lab-product-stage--agro .agro-demo,
+.demo-lab-product-stage--pharma .pharma-demo {
+  transform: scale(1.15);
+}
+
+.demo-lab-product-stage .demo-lab-product-label {
+  z-index: 6;
+  top: 59%;
+}
+
+.demo-lab-product-stage .demo-lab-cork {
+  z-index: 7;
+}
+
+.demo-lab-product-stage--wine .demo-lab-cork {
+  top: calc(50% - 9.6rem);
+  left: calc(50% + 0.85rem);
+}
+
+.demo-lab-product-stage--beat-3 .demo-lab-cork {
+  animation: demoLabCorkExit 1.7s ease-in-out infinite;
+}
+
+@keyframes demoLabCorkExit {
+  0%,
+  100% {
+    transform: translate(-50%, 0) rotate(12deg);
+  }
+
+  45% {
+    transform: translate(2.5rem, -4.2rem) rotate(48deg);
+  }
+}
+
+.demo-lab-product-stage--beat-3 .demo-lab-seal-split {
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(-8deg) scaleX(1.12);
+}
+
+.demo-lab-product-stage--beat-2 .demo-lab-tap-wave {
+  border-color: rgba(251, 113, 133, 0.7);
+  box-shadow: 0 0 0 1px rgba(251, 113, 133, 0.3), 0 0 36px rgba(251, 113, 133, 0.32);
+}
+
+.demo-lab-sync-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.demo-lab-sync-step {
+  min-height: 4.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.95rem;
+  background: rgba(15, 23, 42, 0.55);
+  padding: 0.75rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.demo-lab-sync-step span {
+  width: 1.45rem;
+  height: 1.45rem;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.12);
+  color: #67e8f9;
+  font-weight: 950;
+}
+
+.demo-lab-sync-step--active {
+  border-color: rgba(34, 211, 238, 0.36);
+  color: #e0f2fe;
+  background: rgba(8, 47, 73, 0.46);
+}
+
+.demo-lab-mobile-card--risk {
+  border-color: rgba(251, 113, 133, 0.3) !important;
+  background: linear-gradient(145deg, rgba(76, 5, 25, 0.45), rgba(15, 23, 42, 0.72)) !important;
+}
+
+.demo-lab-mobile-card--open {
+  border-color: rgba(251, 191, 36, 0.3) !important;
+  background: linear-gradient(145deg, rgba(120, 53, 15, 0.36), rgba(30, 41, 59, 0.7)) !important;
+}
+
+.demo-lab-mobile-progress {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  overflow: hidden;
+}
+
+.demo-lab-mobile-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22d3ee, #34d399, #a78bfa);
+  transition: width 0.35s ease;
+}
+
+.demo-lab-action-message {
+  box-shadow: 0 0 28px rgba(16, 185, 129, 0.1);
+}
+
+.demo-lab-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.demo-lab-policy-card {
+  border: 1px solid rgba(52, 211, 153, 0.24);
+  border-radius: 1rem;
+  padding: 0.85rem;
+  background: rgba(6, 78, 59, 0.18);
+}
+
+.demo-lab-policy-card p {
+  color: #a7f3d0;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.demo-lab-policy-card span {
+  display: block;
+  margin-top: 0.55rem;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.demo-lab-policy-card--blocked {
+  border-color: rgba(251, 113, 133, 0.25);
+  background: rgba(76, 5, 25, 0.18);
+}
+
+.demo-lab-policy-card--blocked p {
+  color: #fecdd3;
+}
+
+.demo-lab-action-tile {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: 1rem;
+  padding: 0.85rem;
+  background: linear-gradient(135deg, rgba(8, 47, 73, 0.42), rgba(15, 23, 42, 0.72));
+  color: #e0f2fe;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.demo-lab-action-tile:hover {
+  transform: translateY(-1px);
+  border-color: rgba(34, 211, 238, 0.38);
+}
+
+.demo-lab-action-tile span {
+  display: block;
+  font-weight: 900;
+}
+
+.demo-lab-action-tile small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.demo-lab-action-tile strong {
+  display: inline-flex;
+  margin-top: 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  padding: 0.25rem 0.55rem;
+  color: #c4b5fd;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.demo-lab-action-tile--locked {
+  border-color: rgba(148, 163, 184, 0.15);
+  opacity: 0.78;
+}
+
+html.theme-light .demo-lab-stage-route-layer {
+  background:
+    radial-gradient(circle at 22% 70%, rgba(6, 182, 212, 0.18), transparent 28%),
+    radial-gradient(circle at 80% 22%, rgba(124, 58, 237, 0.14), transparent 26%),
+    linear-gradient(135deg, rgba(239, 246, 255, 0.94), rgba(224, 242, 254, 0.9));
+  border-color: rgba(14, 116, 144, 0.18);
+}
+
+html.theme-light .demo-lab-route-chip,
+html.theme-light .demo-lab-route-distance,
+html.theme-light .demo-lab-route-state {
+  background: rgba(255, 255, 255, 0.88);
+  color: #0f172a;
+  border-color: rgba(14, 116, 144, 0.22);
+}
+
+html.theme-light .demo-lab-sync-step {
+  background: rgba(255, 255, 255, 0.74);
+  color: #475569;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+html.theme-light .demo-lab-sync-step--active {
+  background: rgba(224, 242, 254, 0.86);
+  color: #0f172a;
+  border-color: rgba(14, 165, 233, 0.28);
+}
+
+html.theme-light .demo-lab-policy-card {
+  background: rgba(236, 253, 245, 0.8);
+}
+
+html.theme-light .demo-lab-policy-card span,
+html.theme-light .demo-lab-action-tile small {
+  color: #475569;
+}
+
+html.theme-light .demo-lab-action-tile {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(224, 242, 254, 0.78));
+  color: #0f172a;
+}
+
+@media (max-width: 1024px) {
+  .demo-lab-product-stage {
+    min-height: 36rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .demo-lab-product-stage {
+    min-height: 31rem;
+    padding: 0.75rem;
+  }
+
+  .demo-lab-product-stage--wine .hero-bottle {
+    width: 128px;
+    height: 230px;
+  }
+
+  .demo-lab-product-stage--wine .demo-lab-cork {
+    top: calc(50% - 7.35rem);
+  }
+
+  .demo-lab-route-chip {
+    max-width: 8rem;
+    font-size: 0.68rem;
+  }
+
+  .demo-lab-route-distance,
+  .demo-lab-route-state {
+    font-size: 0.72rem;
+  }
+
+  .demo-lab-sync-steps,
+  .demo-lab-policy-grid {
+    grid-template-columns: 1fr;
+  }
+}

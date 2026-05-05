@@ -9,6 +9,19 @@ type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
 type Vertical = "wine" | "events" | "cosmetics" | "agro" | "pharma";
 type SimulationMode = "valid" | "tamper" | "replay";
+type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
+type DemoScenarioTone = "origin" | "ok" | "risk" | "open";
+type DemoScenario = {
+  tone: DemoScenarioTone;
+  headline: string;
+  body: string;
+  stateLabel: string;
+  allowed: string[];
+  blocked: string[];
+  chain: string;
+  primaryAction: DemoAction;
+  primaryLabel: string;
+};
 
 type DemoEvent = {
   id?: string;
@@ -192,6 +205,60 @@ function mapsLink(location: { lat: number; lng: number }) {
   return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
 }
 
+function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: AppLocale): DemoScenario {
+  const distance = `${routeKm.toLocaleString(locale)} km`;
+  if (beat === 0) {
+    return {
+      tone: "origin",
+      headline: "Producto activado en origen",
+      body: "La marca programa lote, UID, origen y politica comercial antes de entregar el producto al canal.",
+      stateLabel: "ORIGEN ACTIVO",
+      allowed: ["Auditar lote", "Abrir ubicacion", "Preparar QR/NFC"],
+      blocked: ["Ownership", "Token premium", "Garantia postventa"],
+      chain: "Sin mint: producto todavia no fue comprado ni reclamado.",
+      primaryAction: "origin",
+      primaryLabel: txt.controls.openOrigin,
+    };
+  }
+  if (beat === 2) {
+    return {
+      tone: "risk",
+      headline: "Replay o duplicado bloqueado",
+      body: "El sistema conserva trazabilidad, pero bloquea club, puntos, marketplace y tokenizacion hasta un nuevo tap fisico valido.",
+      stateLabel: "RIESGO BLOQUEADO",
+      allowed: ["Ver provenance", "Reportar incidente"],
+      blocked: ["Ownership", "Garantia", "Tokenizacion", "Marketplace"],
+      chain: "No se firma en blockchain cuando hay replay o URL reutilizada.",
+      primaryAction: "report",
+      primaryLabel: "Reportar replay",
+    };
+  }
+  if (beat === 3) {
+    return {
+      tone: "open",
+      headline: "Sello abierto como lifecycle event",
+      body: "El producto sigue siendo autentico. Cambia su estado fisico y habilita postventa o token premium solo con compra/claim validado.",
+      stateLabel: "SELLO ABIERTO",
+      allowed: ["Garantia postventa", "Provenance", "Token premium con prueba de compra"],
+      blocked: ["Reventa como cerrado", "Claim anonimo sin prueba"],
+      chain: "Mint Polygon disponible cuando la politica de ownership confirma comprador.",
+      primaryAction: "tokenize",
+      primaryLabel: txt.controls.tokenize,
+    };
+  }
+  return {
+    tone: "ok",
+    headline: "Tap valido con ruta de confianza",
+    body: `Origen y tap quedan unidos en ${distance}. El consumidor ve autenticidad y el tenant recibe datos accionables.`,
+    stateLabel: "AUTH OK",
+    allowed: ["Unirse al club", "Guardar passport", "Voucher o recompra"],
+    blocked: ["Mint premium sin compra/claim"],
+    chain: "Blockchain queda preparado, pero el mint exige ownership o compra confirmada.",
+    primaryAction: "join",
+    primaryLabel: txt.controls.joinClub,
+  };
+}
+
 async function readDemoSummary(): Promise<DemoSummary> {
   const response = await fetch("/api/demo/summary", { cache: "no-store" });
   const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
@@ -209,6 +276,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
   const [status, setStatus] = useState(txt.controls.syncing);
   const [simulating, setSimulating] = useState(false);
   const [fallbackLastSeen, setFallbackLastSeen] = useState(STABLE_DEMO_TIME);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => setFallbackLastSeen(new Date().toISOString()), []);
 
@@ -239,11 +307,16 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
     return () => window.clearInterval(id);
   }, [running]);
 
+  useEffect(() => {
+    setActionMessage(null);
+  }, [beat, vertical]);
+
   const activeBeat = txt.beats[beat];
   const activeRole = txt.roles[role];
   const activeVertical = txt.verticals[vertical];
   const destination = LOCATIONS[activeBeat.location];
   const routeKm = haversineKm(LOCATIONS.origin, destination);
+  const scenario = getScenarioState(txt, beat, routeKm, locale);
   const liveEvents = Array.isArray(summary?.events) ? summary.events : [];
   const latestEvent = liveEvents[0];
   const livePoints = liveEvents.flatMap((event) => {
@@ -280,23 +353,54 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
   }
 
   async function simulate(mode: SimulationMode) {
+    const nextBeat: Beat = mode === "replay" ? 2 : mode === "tamper" ? 3 : 1;
+    const nextBeatCopy = txt.beats[nextBeat];
+    const nextDestination = LOCATIONS[nextBeatCopy.location];
     setSimulating(true);
-    setStatus(`${txt.controls.sendingScan} ${mode} - ${destination.city}...`);
+    setBeat(nextBeat);
+    setStatus(`${txt.controls.sendingScan} ${mode} - ${nextDestination.city}...`);
     try {
       const response = await fetch("/api/demo/simulate-tap", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode, city: destination.city, countryCode: destination.countryCode, lat: destination.lat, lng: destination.lng, deviceLabel: `Demo Lab - ${destination.label}` }),
+        body: JSON.stringify({ mode, city: nextDestination.city, countryCode: nextDestination.countryCode, lat: nextDestination.lat, lng: nextDestination.lng, deviceLabel: `Demo Lab - ${nextDestination.label}` }),
       });
       const payload = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
       if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "scan failed"));
       setStatus(`${mode.toUpperCase()}: ${txt.controls.registeredScan}`);
+      setActionMessage(mode === "replay" ? "Replay simulado: ownership, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra lifecycle event y queda listo para postventa controlada." : "Tap valido: club, marketplace y analytics quedan listos para activar.");
       await refreshSummary();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : txt.controls.failedScan);
     } finally {
       setSimulating(false);
     }
+  }
+
+  function handleDemoAction(action: DemoAction) {
+    if (action === "origin") {
+      window.open(mapsLink(LOCATIONS.origin), "_blank", "noopener,noreferrer");
+      setActionMessage("Origen abierto en Maps. Esta es la prueba de procedencia visible para el comprador.");
+      return;
+    }
+    if (action === "tap") {
+      window.open(mapsLink(destination), "_blank", "noopener,noreferrer");
+      setActionMessage(`Tap actual abierto en Maps: ${destination.city}.`);
+      return;
+    }
+    if (action === "report") {
+      setActionMessage("Incidente creado para CRM: replay, tamper o inconsistencia queda listo para revision operativa.");
+      return;
+    }
+    if (action === "warranty") {
+      setActionMessage(beat === 2 ? "Garantia bloqueada: se necesita un nuevo tap fisico valido." : "Garantia preparada: queda asociada al passport del consumidor y al tenant.");
+      return;
+    }
+    if (action === "tokenize") {
+      setActionMessage(beat === 3 ? "Tokenizacion premium preparada: requiere compra/claim validado antes de mintear en Polygon." : beat === 1 ? "Tap valido detectado: primero se confirma ownership o compra, despues se habilita el mint." : "Tokenizacion bloqueada por politica de seguridad para este estado.");
+      return;
+    }
+    setActionMessage(beat === 2 ? "Club bloqueado por replay. Repeti el tap fisico para continuar." : "Club/marketplace listo: el consumidor puede asociarse y recibir beneficios del tenant.");
   }
 
   return (
@@ -342,7 +446,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         </div>
       </section>
 
-      <section className="mt-5 grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+      <section className="mt-5 grid gap-5 xl:grid-cols-[1.16fr_0.84fr]">
         <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -361,14 +465,14 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
 
           <div className="mt-5 grid gap-3 md:grid-cols-4">
             {([0, 1, 2, 3] as Beat[]).map((item) => (
-              <button suppressHydrationWarning key={item} type="button" onClick={() => setBeat(item)} className={`rounded-2xl border p-3 text-left ${beat === item ? "border-emerald-300/45 bg-emerald-500/10" : "border-white/10 bg-slate-900/60"}`}>
+              <button suppressHydrationWarning key={item} type="button" onClick={() => setBeat(item)} className={`demo-lab-beat-card rounded-2xl border p-3 text-left ${beat === item ? "demo-lab-beat-card--active border-emerald-300/45 bg-emerald-500/10" : "border-white/10 bg-slate-900/60"}`}>
                 <p className="text-xs font-black text-white">{txt.beats[item].title}</p>
                 <p className="mt-2 text-[11px] leading-5 text-slate-400">{txt.beats[item].body}</p>
               </button>
             ))}
           </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[0.86fr_1.14fr]">
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
             <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -382,10 +486,8 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                   <button suppressHydrationWarning key={item} type="button" onClick={() => setVertical(item)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${vertical === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>{txt.verticals[item].label}</button>
                 ))}
               </div>
-              <div className={`demo-lab-product-stage demo-lab-product-stage--${vertical} demo-lab-product-stage--beat-${beat} mt-4`}>
-                <span className="demo-lab-stage-map-chip demo-lab-stage-map-chip--origin">{txt.controls.origin}: {LOCATIONS.origin.city}</span>
-                <span className="demo-lab-stage-map-chip demo-lab-stage-map-chip--tap">{txt.controls.currentTap}: {destination.city}</span>
-                <span className="demo-lab-stage-route-card">{routeKm.toLocaleString(locale)} km</span>
+              <div className={`demo-lab-product-stage demo-lab-product-stage--${vertical} demo-lab-product-stage--beat-${beat} demo-lab-product-stage--${scenario.tone} mt-4`}>
+                <StageRouteLayer txt={txt} routeKm={routeKm} destination={destination} scenario={scenario} locale={locale} />
                 <div className={`${activeVertical.visual} demo-lab-live-visual ${beat === 3 ? "tampered" : "scanning"}`} />
                 <span className="demo-lab-cork" />
                 <span className="demo-lab-product-label">nexID secure</span>
@@ -393,17 +495,17 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                 <span className="demo-lab-tap-chip">SUN</span>
                 <span className="demo-lab-tap-wave" />
               </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {activeVertical.proof.map((item) => <p key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">{item}</p>)}
+              <div className="demo-lab-sync-steps mt-4">
+                {activeVertical.proof.map((item, index) => <p key={item} className={`demo-lab-sync-step ${index <= beat ? "demo-lab-sync-step--active" : ""}`}><span>{index + 1}</span>{item}</p>)}
               </div>
             </div>
 
-            <MobileOutcome txt={txt} beat={beat} vertical={vertical} status={activeBeat.status} product={activeVertical.product} destination={destination} routeKm={routeKm} />
+            <MobileOutcome txt={txt} beat={beat} vertical={vertical} status={activeBeat.status} product={activeVertical.product} destination={destination} routeKm={routeKm} scenario={scenario} onAction={handleDemoAction} actionMessage={actionMessage} locale={locale} />
           </div>
         </article>
 
         <aside className="space-y-5">
-          <DemoJourneyMap txt={txt} routeKm={routeKm} status={activeBeat.status} destination={destination} />
+          <DemoActionMatrix txt={txt} beat={beat} routeKm={routeKm} status={activeBeat.status} destination={destination} scenario={scenario} onAction={handleDemoAction} actionMessage={actionMessage} locale={locale} />
 
           <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.feed}</p>
@@ -433,16 +535,22 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         </aside>
       </section>
 
-      <section className="mt-5 rounded-3xl border border-white/10 bg-slate-950/60 p-3 md:p-5">
-        <WorldMapRealtime
-          title={txt.controls.mapTitle}
-          subtitle={`${LOCATIONS.origin.city} -> ${destination.city}. ${txt.controls.distance}: ${routeKm.toLocaleString(locale)} km.`}
-          points={mapPoints}
-          routes={[{ fromLat: LOCATIONS.origin.lat, fromLng: LOCATIONS.origin.lng, toLat: destination.lat, toLng: destination.lng, tone: activeBeat.mode === "replay" ? "warn" : "info" }]}
-          metadataRows={(point) => [{ label: "Google Maps", value: `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` }, { label: "Abrir", value: mapsLink(point) }]}
-          initialExpanded
-        />
-      </section>
+      <details className="demo-lab-tech-map mt-5 rounded-3xl border border-white/10 bg-slate-950/60 p-3 md:p-5">
+        <summary className="cursor-pointer text-sm font-black text-cyan-100">
+          Mapa enterprise completo / heatmap operativo
+          <span className="ml-2 text-xs font-semibold text-slate-400">{LOCATIONS.origin.city} -&gt; {destination.city} · {routeKm.toLocaleString(locale)} km</span>
+        </summary>
+        <div className="mt-4">
+          <WorldMapRealtime
+            title={txt.controls.mapTitle}
+            subtitle={`${LOCATIONS.origin.city} -> ${destination.city}. ${txt.controls.distance}: ${routeKm.toLocaleString(locale)} km.`}
+            points={mapPoints}
+            routes={[{ fromLat: LOCATIONS.origin.lat, fromLng: LOCATIONS.origin.lng, toLat: destination.lat, toLng: destination.lng, tone: activeBeat.mode === "replay" ? "warn" : "info" }]}
+            metadataRows={(point) => [{ label: "Google Maps", value: `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` }, { label: "Abrir", value: mapsLink(point) }]}
+            initialExpanded
+          />
+        </div>
+      </details>
 
       <section className="mt-5 grid gap-4 lg:grid-cols-4">
         {txt.controls.configs.map((item) => (
@@ -456,38 +564,77 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
   );
 }
 
-function MobileOutcome({ txt, beat, vertical, status, product, destination, routeKm }: { txt: DemoCopy; beat: Beat; vertical: Vertical; status: string; product: string; destination: DemoLocation; routeKm: number }) {
-  const tone = beat === 2 ? "risk" : beat === 3 ? "open" : "ok";
+function MobileOutcome({
+  txt,
+  beat,
+  vertical,
+  status,
+  product,
+  destination,
+  routeKm,
+  scenario,
+  onAction,
+  actionMessage,
+  locale,
+}: {
+  txt: DemoCopy;
+  beat: Beat;
+  vertical: Vertical;
+  status: string;
+  product: string;
+  destination: DemoLocation;
+  routeKm: number;
+  scenario: DemoScenario;
+  onAction: (action: DemoAction) => void;
+  actionMessage: string | null;
+  locale: AppLocale;
+}) {
+  const passport = beat === 0 ? "pre-chain" : beat === 2 ? "blocked" : beat === 3 ? "opened" : "ready";
+  const marketplace = beat === 2 ? "bloqueado" : beat === 0 ? "pendiente" : "ready";
+
   return (
-    <article className={`demo-lab-mobile-card demo-lab-mobile-card--${tone} rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4`}>
+    <article
+      aria-label={`${txt.controls.mobile} ${status}`}
+      className={`demo-lab-mobile-card demo-lab-mobile-card--${scenario.tone} rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.mobile}</p>
-          <h3 className="mt-2 text-2xl font-black text-white">{status}</h3>
+          <h3 className="mt-2 text-2xl font-black text-white">{scenario.stateLabel}</h3>
           <p className="mt-1 text-sm text-slate-300">{product}</p>
         </div>
         <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-black text-emerald-100">{vertical.toUpperCase()}</span>
       </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+
+      <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+        <p className="text-sm font-black text-white">{scenario.headline}</p>
+        <p className="mt-2 text-xs leading-5 text-slate-300">{scenario.body}</p>
+        <p className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-[11px] font-bold text-cyan-100">{scenario.chain}</p>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <InfoCell label={txt.controls.origin} value={LOCATIONS.origin.city} />
         <InfoCell label={txt.controls.currentTap} value={destination.city} />
-        <InfoCell label={txt.controls.distance} value={`${routeKm.toLocaleString()} km`} />
+        <InfoCell label={txt.controls.distance} value={`${routeKm.toLocaleString(locale)} km`} />
       </div>
+
       <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
         <div className="demo-lab-mobile-progress">
-          <span />
+          <span style={{ width: `${Math.max(24, (beat + 1) * 25)}%` }} />
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          <a href={mapsLink(LOCATIONS.origin)} target="_blank" rel="noreferrer" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-3 text-center text-xs font-bold text-cyan-100">{txt.controls.openOrigin}</a>
-          <a href={mapsLink(destination)} target="_blank" rel="noreferrer" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-3 text-center text-xs font-bold text-violet-100">{txt.controls.openTap}</a>
-          <button suppressHydrationWarning type="button" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{beat === 3 ? txt.controls.tokenize : txt.controls.joinClub}</button>
+          <button suppressHydrationWarning type="button" onClick={() => onAction("origin")} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-3 text-center text-xs font-bold text-cyan-100">{txt.controls.openOrigin}</button>
+          <button suppressHydrationWarning type="button" onClick={() => onAction("tap")} className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-3 text-center text-xs font-bold text-violet-100">{txt.controls.openTap}</button>
+          <button suppressHydrationWarning type="button" onClick={() => onAction(scenario.primaryAction)} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{scenario.primaryLabel}</button>
         </div>
       </div>
+
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <InfoCell label="Passport" value={beat === 3 ? "OPENED" : "VALID"} />
-        <InfoCell label="Warranty" value={txt.controls.warranty} />
-        <InfoCell label="Marketplace" value={beat === 2 ? "Blocked" : "Ready"} />
+        <InfoCell label="Passport" value={passport} />
+        <InfoCell label="Warranty" value={beat === 2 ? "bloqueada" : txt.controls.warranty} />
+        <InfoCell label="Marketplace" value={marketplace} />
       </div>
+      {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
     </article>
   );
 }
@@ -501,53 +648,107 @@ function InfoCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DemoJourneyMap({ txt, routeKm, status, destination }: { txt: DemoCopy; routeKm: number; status: string; destination: DemoLocation }) {
+function StageRouteLayer({
+  txt,
+  routeKm,
+  destination,
+  scenario,
+  locale,
+}: {
+  txt: DemoCopy;
+  routeKm: number;
+  destination: DemoLocation;
+  scenario: DemoScenario;
+  locale: AppLocale;
+}) {
+  const routeStroke = scenario.tone === "risk" ? "#fb7185" : scenario.tone === "open" ? "#fbbf24" : "#22d3ee";
+
   return (
-    <article className="demo-lab-panel demo-lab-journey-card rounded-3xl border border-white/10 bg-slate-950/60 p-5">
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.mapTitle}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-300">{txt.controls.mapSubtitle}</p>
-      <div className="demo-lab-journey-map mt-4">
-        <svg viewBox="0 0 760 330" role="img" aria-label={txt.controls.mapTitle}>
-          <defs>
-            <linearGradient id="journeyRouteGradient" x1="0%" x2="100%" y1="0%" y2="0%">
-              <stop offset="0%" stopColor="#34d399" />
-              <stop offset="52%" stopColor="#22d3ee" />
-              <stop offset="100%" stopColor="#a78bfa" />
-            </linearGradient>
-            <filter id="journeyGlow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="6" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-          <path className="journey-map-coast" d="M68 262 C118 212 152 172 185 122 C221 68 283 54 331 72 C384 92 398 148 382 207 C362 282 284 318 210 306 C157 298 112 286 68 262Z" />
-          <path className="journey-map-border" d="M126 248 C178 238 215 220 245 182 C274 145 323 126 370 138" />
-          <path className="journey-map-coast journey-map-coast--right" d="M456 64 C543 36 663 73 704 154 C748 240 656 300 563 280 C470 260 404 190 416 126 C421 98 433 76 456 64Z" />
-          <path className="journey-map-road" d="M95 236 C148 224 189 204 235 166 C274 134 323 112 366 116" />
-          <path className="journey-map-road" d="M452 104 C506 122 548 159 579 207 C606 248 646 262 688 250" />
-          <path className="journey-map-road" d="M504 78 C542 132 550 185 532 252" />
-          <path className="journey-map-river" d="M156 78 C178 118 190 153 181 200 C176 226 184 252 204 282" />
-          <path className="journey-route-shadow" d="M218 218 C318 99 455 66 584 128" />
-          <path className="journey-route" d="M218 218 C318 99 455 66 584 128" />
-          <circle className="journey-heat journey-heat--origin" cx="218" cy="218" r="46" />
-          <circle className="journey-heat journey-heat--tap" cx="584" cy="128" r="52" />
-          <circle className="journey-dot origin" cx="218" cy="218" r="9" filter="url(#journeyGlow)" />
-          <circle className="journey-dot tap" cx="584" cy="128" r="9" filter="url(#journeyGlow)" />
-          <circle className="journey-pulse" cx="584" cy="128" r="16" />
-          <circle className="journey-plane" r="6">
-            <animateMotion dur="3.8s" repeatCount="indefinite" path="M218 218 C318 99 455 66 584 128" />
-          </circle>
-        </svg>
-        <div className="journey-map-label origin-label">{LOCATIONS.origin.city}</div>
-        <div className="journey-map-label tap-label">{destination.city}</div>
+    <div className={`demo-lab-stage-route-layer demo-lab-stage-route-layer--${scenario.tone}`} aria-hidden="true">
+      <svg viewBox="0 0 700 420" preserveAspectRatio="none">
+        <path className="demo-lab-map-land demo-lab-map-land--origin" d="M72 318 C145 250 170 160 248 120 C325 82 410 116 421 198 C435 300 320 358 224 348 C160 342 112 335 72 318Z" />
+        <path className="demo-lab-map-land demo-lab-map-land--tap" d="M444 84 C532 42 657 86 670 194 C682 292 580 352 498 312 C412 270 388 134 444 84Z" />
+        <path className="demo-lab-map-grid" d="M70 118 H630 M70 214 H630 M70 310 H630 M155 72 V358 M348 72 V358 M540 72 V358" />
+        <path className="demo-lab-route-ghost" d="M190 274 C280 138 425 96 566 132" />
+        <path className="demo-lab-route-line" d="M190 274 C280 138 425 96 566 132" style={{ stroke: routeStroke }} />
+        <circle className="demo-lab-route-heat demo-lab-route-heat--origin" cx="190" cy="274" r="54" />
+        <circle className="demo-lab-route-heat demo-lab-route-heat--tap" cx="566" cy="132" r="64" />
+        <circle className="demo-lab-route-dot demo-lab-route-dot--origin" cx="190" cy="274" r="10" />
+        <circle className="demo-lab-route-dot demo-lab-route-dot--tap" cx="566" cy="132" r="10" />
+        <circle className="demo-lab-route-ping" cx={scenario.tone === "risk" ? "356" : "566"} cy={scenario.tone === "risk" ? "150" : "132"} r="14" />
+      </svg>
+      <span className="demo-lab-route-chip demo-lab-route-chip--origin"><small>{txt.controls.origin}</small>{LOCATIONS.origin.city}</span>
+      <span className="demo-lab-route-chip demo-lab-route-chip--tap"><small>{txt.controls.currentTap}</small>{destination.city}</span>
+      <span className="demo-lab-route-distance">{routeKm.toLocaleString(locale)} km</span>
+      <span className="demo-lab-route-state">{scenario.stateLabel}</span>
+    </div>
+  );
+}
+
+function DemoActionMatrix({
+  txt,
+  beat,
+  routeKm,
+  status,
+  destination,
+  scenario,
+  onAction,
+  actionMessage,
+  locale,
+}: {
+  txt: DemoCopy;
+  beat: Beat;
+  routeKm: number;
+  status: string;
+  destination: DemoLocation;
+  scenario: DemoScenario;
+  onAction: (action: DemoAction) => void;
+  actionMessage: string | null;
+  locale: AppLocale;
+}) {
+  const actions: Array<{ id: DemoAction; label: string; body: string; locked: boolean }> = [
+    { id: "join", label: txt.controls.joinClub, body: "Asocia al consumidor con club, beneficios y marketplace del tenant.", locked: beat === 0 || beat === 2 },
+    { id: "warranty", label: txt.controls.warranty, body: "Registra garantia, postventa o fecha de apertura con politica del tenant.", locked: beat === 0 || beat === 2 },
+    { id: "tokenize", label: txt.controls.tokenize, body: "Prepara request Polygon con UID hasheado y prueba de ownership.", locked: beat === 0 || beat === 2 },
+    { id: "report", label: "Reportar riesgo", body: "Crea alerta operativa cuando aparece replay, duplicado o tamper sospechoso.", locked: beat !== 2 },
+  ];
+
+  return (
+    <article className={`demo-lab-panel demo-lab-action-matrix demo-lab-action-matrix--${scenario.tone} rounded-3xl border border-white/10 bg-slate-950/60 p-5`}>
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">Estado comercial</p>
+      <h2 className="mt-2 text-2xl font-black text-white">{scenario.headline}</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-300">{scenario.body}</p>
+
+      <div className="demo-lab-policy-grid mt-4">
+        <div className="demo-lab-policy-card">
+          <p>Permitido ahora</p>
+          {scenario.allowed.map((item) => <span key={item}>{item}</span>)}
+        </div>
+        <div className="demo-lab-policy-card demo-lab-policy-card--blocked">
+          <p>Protegido / bloqueado</p>
+          {scenario.blocked.map((item) => <span key={item}>{item}</span>)}
+        </div>
       </div>
+
+      <div className="mt-4 grid gap-2">
+        {actions.map((action) => (
+          <button suppressHydrationWarning key={action.id} type="button" onClick={() => onAction(action.id)} className={`demo-lab-action-tile ${action.locked ? "demo-lab-action-tile--locked" : ""}`}>
+            <span>{action.label}</span>
+            <small>{action.body}</small>
+            <strong>{action.locked ? "Explicar politica" : "Accionar demo"}</strong>
+          </button>
+        ))}
+      </div>
+
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <InfoCell label={txt.controls.distance} value={`${routeKm.toLocaleString()} km`} />
+        <InfoCell label={txt.controls.distance} value={`${routeKm.toLocaleString(locale)} km`} />
         <InfoCell label="Status" value={status} />
         <InfoCell label="Tenant" value={DEMO_TENANT_SLUG} />
       </div>
+      <p className="mt-3 text-xs text-slate-400">
+        Ruta activa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian de politica segun estado fisico, replay y compra/claim.
+      </p>
+      {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
     </article>
   );
 }
