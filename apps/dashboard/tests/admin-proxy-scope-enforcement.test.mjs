@@ -8,6 +8,12 @@ test('readonly_demo scope cannot mutate admin endpoints', async () => {
   assert.match(src, /status: 403/);
 });
 
+test('production admin proxy requires a dashboard session before forwarding server admin key', async () => {
+  const src = await readFile(new URL('../src/app/api/admin/[...path]/route.ts', import.meta.url), 'utf8');
+  assert.match(src, /isProduction && !scopedRole/);
+  assert.match(src, /Dashboard session required for admin proxy access/);
+});
+
 test('proxy forwards scoped role so super_admin path is available', async () => {
   const src = await readFile(new URL('../src/app/api/admin/[...path]/route.ts', import.meta.url), 'utf8');
   assert.match(src, /x-nexid-admin-scope/);

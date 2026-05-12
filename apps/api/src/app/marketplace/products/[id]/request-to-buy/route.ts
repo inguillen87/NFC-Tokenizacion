@@ -5,6 +5,7 @@ import { json } from "../../../../../lib/http";
 import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { sql } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema, ensureOrderRequestsSchema } from "../../../../../lib/commercial-runtime-schema";
+import { evaluateMarketplaceCheckoutAccess, parseRequestToBuyPayload } from "../../../../../lib/marketplace-policy";
 
 function demoConsumerEnabled(payload: Record<string, unknown>, productId: string) {
   const explicit = payload?.demoConsumer === true || payload?.consumerMode === "demo";
@@ -34,27 +35,6 @@ async function getOrCreateDemoConsumer(payload: Record<string, unknown>, product
     `;
   }
   return consumer;
-}
-
-function parseRequestToBuyPayload(payload: Record<string, unknown> | null | undefined) {
-  const quantity = Number.parseInt(String(payload?.quantity ?? 1), 10);
-  if (!Number.isFinite(quantity) || quantity < 1 || quantity > 24) {
-    return { ok: false as const, error: "invalid_quantity" };
-  }
-
-  const rawMessage = typeof payload?.message === "string" ? payload.message.trim() : "";
-  if (rawMessage.length > 500) {
-    return { ok: false as const, error: "message_too_long" };
-  }
-
-  return {
-    ok: true as const,
-    value: {
-      quantity,
-      message: rawMessage || null,
-      ageGateAccepted: payload?.ageGateAccepted === true,
-    },
-  };
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -95,9 +75,67 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return json({ ok: false, error: "age_gate_ack_required" }, 400);
   }
 
+  const accessRows = await sql/*sql*/`
+    SELECT
+      EXISTS (
+        SELECT 1
+        FROM tenant_consumer_memberships m
+        WHERE m.tenant_id = ${record.tenant_id}
+          AND m.consumer_id = ${consumer.id}
+          AND m.status = 'active'
+      ) AS active_membership,
+      EXISTS (
+        SELECT 1
+        FROM consumer_product_ownerships o
+        WHERE o.tenant_id = ${record.tenant_id}
+          AND o.consumer_id = ${consumer.id}
+          AND o.status = 'claimed'
+      ) AS claimed_ownership,
+      (
+        SELECT cth.tap_event_id
+        FROM consumer_tap_history cth
+        WHERE cth.tenant_id = ${record.tenant_id}
+          AND cth.consumer_id = ${consumer.id}
+          AND COALESCE(cth.risk_level, 'medium') IN ('low', 'medium')
+          AND UPPER(COALESCE(cth.verdict, '')) NOT IN ('REPLAY_SUSPECT', 'DUPLICATE', 'INVALID', 'NOT_REGISTERED', 'NOT_ACTIVE', 'TAMPER', 'TAMPERED', 'REVOKED', 'BROKEN')
+        ORDER BY cth.created_at DESC
+        LIMIT 1
+      ) AS latest_verified_tap_event_id
+  `;
+  const access = accessRows[0] || {};
+  const demoOverride = demoConsumerEnabled(body, id);
+  const publicNetworkCheckout = String(process.env.MARKETPLACE_PUBLIC_REQUEST_TO_BUY || "").toLowerCase() === "true";
+  const checkoutAccess = evaluateMarketplaceCheckoutAccess({
+    activeMembership: access.active_membership === true,
+    claimedOwnership: access.claimed_ownership === true,
+    verifiedTap: Boolean(access.latest_verified_tap_event_id),
+    demoOverride,
+    publicNetworkCheckout,
+  });
+  if (!checkoutAccess.ok) {
+    return json({
+      ok: false,
+      error: checkoutAccess.error,
+      requirement: checkoutAccess.requirement,
+      signals: {
+        activeMembership: access.active_membership === true,
+        claimedOwnership: access.claimed_ownership === true,
+        verifiedTap: Boolean(access.latest_verified_tap_event_id),
+      },
+    }, 403);
+  }
+
   const rows = await sql/*sql*/`
-    INSERT INTO marketplace_order_requests (consumer_id, tenant_id, marketplace_product_id, quantity, consumer_message, contact_json)
-    VALUES (${consumer.id}, ${record.tenant_id}, ${record.id}, ${parsed.value.quantity}, ${parsed.value.message}, ${JSON.stringify({ email: consumer.email, phone: consumer.phone })}::jsonb)
+    INSERT INTO marketplace_order_requests (consumer_id, tenant_id, marketplace_product_id, quantity, consumer_message, contact_json, source_tap_event_id)
+    VALUES (
+      ${consumer.id},
+      ${record.tenant_id},
+      ${record.id},
+      ${parsed.value.quantity},
+      ${parsed.value.message},
+      ${JSON.stringify({ email: consumer.email, phone: consumer.phone, access_mode: checkoutAccess.mode })}::jsonb,
+      ${access.latest_verified_tap_event_id || null}
+    )
     RETURNING *
   `;
 
@@ -109,11 +147,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ${record.brand_name || "Marketplace"},
       ${String(record.title || "Marketplace product")},
       ${parsed.value.quantity},
-      ${`Marketplace request: ${String(record.title || record.id)}${parsed.value.message ? ` | ${parsed.value.message}` : ""}`},
+      ${`Marketplace request: ${String(record.title || record.id)} | access=${checkoutAccess.mode}${parsed.value.message ? ` | ${parsed.value.message}` : ""}`},
       'new',
       'marketplace'
     )
   `;
 
-  return json({ ok: true, orderRequest: rows[0], checkout: "request_only" });
+  return json({ ok: true, orderRequest: rows[0], checkout: "request_only", access: checkoutAccess.mode });
 }

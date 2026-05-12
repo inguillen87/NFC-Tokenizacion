@@ -36,7 +36,19 @@ type TokenizationPayload = {
   rows?: Array<{ id: string; bid: string; uid_hex: string; status: string; network?: string; tx_hash?: string | null; token_id?: string | null }>;
 };
 
-type WalletPayload = { ok?: boolean; reason?: string; balancePol?: number; mode?: string; warning?: string };
+type WalletPayload = {
+  ok?: boolean;
+  reason?: string;
+  ready?: boolean;
+  balancePol?: number;
+  mode?: string;
+  warning?: string;
+  network?: string;
+  autoTokenize?: boolean;
+  minter?: { address?: string | null; configured?: boolean; balancePol?: number | null };
+  contract?: { address?: string | null; deployed?: boolean };
+  checks?: Array<{ key?: string; label?: string; status?: "pass" | "warn" | "fail"; detail?: string }>;
+};
 type DiagnosticsPayload = {
   ok?: boolean;
   scope?: { tenant?: string };
@@ -400,6 +412,10 @@ export function MultirubroOpsPanel() {
     () => (tokenization?.rows || []).find((row) => String(row.status || "").toLowerCase() === "pending"),
     [tokenization?.rows]
   );
+  const walletGasPol = Number(wallet?.balancePol ?? wallet?.minter?.balancePol ?? 0);
+  const walletModeLabel = wallet?.ready ? `${wallet.mode || "polygon"} ready` : wallet?.mode || "unknown";
+  const walletTone = wallet?.ready ? "good" : wallet?.mode === "simulated" ? "warn" : "risk";
+  const walletWarning = wallet?.warning || wallet?.reason || wallet?.checks?.find((item) => item.status === "fail")?.detail || "";
 
 
   async function runDemoAction(path: string, success: string) {
@@ -439,7 +455,7 @@ export function MultirubroOpsPanel() {
       ["Taps totales", String(tapsTotal)],
       ["Originales", String(originals)],
       ["Clones", String(clones)],
-      ["Gas wallet (POL)", Number(wallet?.balancePol || 0).toFixed(3)],
+      ["Gas wallet (POL)", walletGasPol.toFixed(3)],
       ["Security alerts", String(Number(security?.summary?.repeatedInvalidUid || 0) + Number(security?.summary?.geoVelocityAlerts || 0))],
       ["Reporte generado", new Date().toLocaleString("es-AR")],
     ];
@@ -502,7 +518,7 @@ export function MultirubroOpsPanel() {
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="grid gap-3 md:grid-cols-4">
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Taps totales<br /><b className="text-cyan-200">{tapsTotal}</b></div>
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Originales vs Clones<br /><b className="text-emerald-200">{originals}</b> / <b className="text-rose-200">{clones}</b></div>
-        <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Gas wallet Polygon<br /><b className="text-amber-200">{Number(wallet?.balancePol || 0).toFixed(3)} POL</b></div>
+        <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Gas wallet Polygon<br /><b className="text-amber-200">{walletGasPol.toFixed(3)} POL</b></div>
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Security alerts<br /><b className="text-rose-200">{Number(security?.summary?.repeatedInvalidUid || 0) + Number(security?.summary?.geoVelocityAlerts || 0)}</b></div>
       </motion.div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
@@ -698,10 +714,10 @@ export function MultirubroOpsPanel() {
               {busy ? "Ejecutando mint..." : "Mint Masivo (control calidad OK)"}
             </button>
             <button suppressHydrationWarning onClick={exportPdfReport} className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">Exportar reporte PDF</button>
-            <StatusChip label={wallet?.mode || "simulated"} tone={wallet?.mode === "live" ? "good" : "warn"} />
+            <StatusChip label={walletModeLabel} tone={walletTone} />
           </div>
           {mintStatus ? <p className="mt-2 text-xs text-slate-300">{mintStatus}</p> : null}
-          {wallet?.warning ? <p className="mt-1 text-[11px] text-amber-200">{wallet.warning}</p> : null}
+          {walletWarning ? <p className="mt-1 text-[11px] text-amber-200">{walletWarning}</p> : null}
         </div>
       </div>
     </OpsPanel>

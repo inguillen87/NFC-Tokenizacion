@@ -2,9 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
 test("auth presets no contienen passwords demo hardcodeados", () => {
-  const file = path.join(process.cwd(), "apps/api/src/lib/auth-presets.ts");
+  const file = path.join(repoRoot, "apps/api/src/lib/auth-presets.ts");
   const content = fs.readFileSync(file, "utf8");
 
   assert.ok(content.includes("password: read(process.env.SUPER_ADMIN_PASSWORD"));

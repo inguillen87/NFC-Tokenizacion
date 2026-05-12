@@ -322,10 +322,31 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   if (method === "GET" && normalized === "polygon/wallet") {
     return NextResponse.json({
       ok: true,
+      ready: true,
       network: "polygon-amoy",
-      wallet: "0xDemoWallet",
+      chainId: "80002",
+      wallet: "0x644c5D77a34182Db01257bC4C469B01850bc6B2d",
       balancePol: 4.321,
-      mode: "simulated",
+      mode: "polygon",
+      autoTokenize: true,
+      useLocalMinter: true,
+      rpc: { configured: true, url: "https://polygon-amoy.g.alchemy.com/v2/..." },
+      executor: { configured: false, url: null, secretConfigured: false },
+      contract: { address: "0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C", deployed: true },
+      minter: {
+        address: "0x644c5D77a34182Db01257bC4C469B01850bc6B2d",
+        configuredAddress: "0x644c5D77a34182Db01257bC4C469B01850bc6B2d",
+        configured: true,
+        balancePol: 4.321,
+      },
+      recipient: { address: "0x644c5D77a34182Db01257bC4C469B01850bc6B2d", balancePol: 4.321 },
+      metadataPrefix: "nexid-metadata",
+      checks: [
+        { key: "mode", label: "TOKENIZATION_MODE", status: "pass", detail: "polygon" },
+        { key: "auto_tokenize", label: "SUN auto tokenization", status: "pass", detail: "Valid taps can create tokenization requests." },
+        { key: "contract_code", label: "Contract bytecode", status: "pass", detail: "Contract exists on Amoy." },
+        { key: "minter_gas", label: "Minter gas", status: "pass", detail: "4.321000 POL" },
+      ],
     });
   }
   if (method === "GET" && normalized.startsWith("tags/") && normalized.endsWith("/passport")) {
@@ -473,7 +494,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
 
 async function forward(req: Request, path: string[]) {
   const normalizedPath = path.join("/");
-  const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "security-alerts" || normalizedPath === "alerts" || normalizedPath === "alert-rules" || normalizedPath === "tokenization/requests");
+  const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "security-alerts" || normalizedPath === "alerts" || normalizedPath === "alert-rules" || normalizedPath === "tokenization/requests" || normalizedPath === "polygon/wallet");
   const reqUrl = new URL(req.url);
   const forceSandbox = ["1", "true", "sandbox"].includes(String(reqUrl.searchParams.get("sandbox") || reqUrl.searchParams.get("demoFallback") || "").toLowerCase());
   reqUrl.searchParams.delete("sandbox");
@@ -495,6 +516,13 @@ async function forward(req: Request, path: string[]) {
   const dashboardSession = await getDashboardSession().catch(() => null);
   const scopedRole = dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
   const allowDemoFallbackForRequest = policy.allowDemoFallback || scopedRole === "readonly_demo" || (demoSession && !isProduction);
+
+  if (isProduction && !scopedRole) {
+    return NextResponse.json(
+      { ok: false, reason: "Dashboard session required for admin proxy access." },
+      { status: 401 },
+    );
+  }
 
   if (scopedRole === "readonly_demo" && !canReadonlyDemoAccess(req.method, normalizedPath)) {
     console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "readonly_demo_mutation_blocked", method: req.method, path: normalizedPath }));
@@ -540,6 +568,27 @@ async function forward(req: Request, path: string[]) {
     }
     if (req.method === "GET" && normalizedPath === "tokenization/requests") {
       return NextResponse.json(annotatePayload({ ok: false, reason, rows: [] }, "production"));
+    }
+    if (req.method === "GET" && normalizedPath === "polygon/wallet") {
+      return NextResponse.json(annotatePayload({
+        ok: false,
+        reason,
+        ready: false,
+        mode: "unknown",
+        network: "polygon-amoy",
+        chainId: null,
+        autoTokenize: false,
+        useLocalMinter: false,
+        balancePol: 0,
+        wallet: null,
+        rpc: { configured: false, url: null },
+        executor: { configured: false, url: null, secretConfigured: false },
+        contract: { address: null, deployed: false },
+        minter: { address: null, configuredAddress: null, configured: false, balancePol: null },
+        recipient: { address: null, balancePol: null },
+        metadataPrefix: null,
+        checks: [{ key: "admin_proxy", label: "Admin proxy", status: "fail", detail: reason }],
+      }, "production"));
     }
     return NextResponse.json(annotatePayload({ ok: false, reason }, "production"), { status: 502 });
   };

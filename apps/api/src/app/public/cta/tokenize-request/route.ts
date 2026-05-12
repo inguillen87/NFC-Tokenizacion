@@ -6,6 +6,7 @@ import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-s
 import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
+import { normalizeTokenizationStatus } from "../../../../lib/tokenization-status";
 
 const LEDGER_NETWORK_ALLOWED = new Set(["polygon-amoy", "polygon", "ethereum-sepolia", "ethereum-mainnet", "base-sepolia", "base-mainnet"]);
 
@@ -64,11 +65,9 @@ async function loadTokenizationRequest(requestId: string | undefined) {
 }
 
 function normalizedStatus(request: TokenizationRequestRow | null, anchor: AnchorResult | null) {
-  const raw = String(anchor?.status || request?.status || "").toLowerCase();
-  if (anchor?.ok || raw === "anchored" || request?.tx_hash || request?.token_id || anchor?.tx_hash || anchor?.token_id) return "anchored";
-  if (raw === "failed") return "failed";
-  if (raw === "processing") return "processing";
-  return "pending";
+  if (anchor?.ok || request?.tx_hash || request?.token_id || anchor?.tx_hash || anchor?.token_id) return "anchored";
+  const status = normalizeTokenizationStatus(anchor?.status || request?.status || "");
+  return status === "none" || status === "simulated" ? "pending" : status;
 }
 
 function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: AnchorResult | null) {

@@ -29,7 +29,9 @@
     "check:placeholders": "node scripts/check-no-placeholders.mjs",
     "demo:smoke": "npm run demo:smoke --workspace=api",
     "executor:check": "npm run check --workspace=executor",
-    "qa:static": "node scripts/qa-static.mjs"
+    "qa:static": "node scripts/qa-static.mjs",
+    "pilot:check": "node scripts/pilot-check.mjs",
+    "pilot:check:full": "node scripts/pilot-check.mjs --full"
   },
   "packageManager": "npm@10.9.0",
   "engines": {

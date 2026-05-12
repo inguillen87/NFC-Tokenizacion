@@ -11,6 +11,7 @@ test("readonly_demo sin scope permitido en write endpoint -> false", () => {
 test("readonly_demo con scope permitido en endpoints demo-safe GET -> true", () => {
   assert.equal(canReadonlyDemoAccess("GET", "analytics"), true);
   assert.equal(canReadonlyDemoAccess("GET", "events/stream"), true);
+  assert.equal(canReadonlyDemoAccess("GET", "polygon/wallet"), true);
   assert.equal(canReadonlyDemoAccess("GET", "tags/04A1"), true);
 });
 

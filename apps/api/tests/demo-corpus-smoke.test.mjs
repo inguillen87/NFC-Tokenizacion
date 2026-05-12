@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const repoRoot = path.resolve(process.cwd(), "../..");
+const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
 function read(file) {
   return fs.readFileSync(path.join(repoRoot, file), "utf8");

@@ -3,20 +3,17 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../lib/commercial-runtime-schema";
-
-function normalizeTenantSlug(input: string) {
-  return String(input || "").trim().toLowerCase();
-}
+import { normalizeMarketplaceTenantSlug } from "../../../lib/marketplace-policy";
 
 export async function GET(req: Request) {
   await ensureConsumerPortalSchema();
   const url = new URL(req.url);
   const vertical = url.searchParams.get("vertical");
-  const tenant = normalizeTenantSlug(url.searchParams.get("tenant") || "");
+  const tenant = normalizeMarketplaceTenantSlug(url.searchParams.get("tenant") || "");
 
   const rows = vertical
     ? await sql/*sql*/`
-      SELECT p.*, t.slug AS tenant_slug, mb.display_name AS brand_name, mb.slug AS brand_slug
+      SELECT p.*, true AS passport_required, t.slug AS tenant_slug, mb.display_name AS brand_name, mb.slug AS brand_slug
       FROM marketplace_products p
       JOIN tenants t ON t.id = p.tenant_id
       JOIN marketplace_brand_profiles mb ON mb.tenant_id = p.tenant_id
@@ -28,7 +25,7 @@ export async function GET(req: Request) {
       ORDER BY p.featured DESC, p.updated_at DESC
     `
     : await sql/*sql*/`
-      SELECT p.*, t.slug AS tenant_slug, mb.display_name AS brand_name, mb.slug AS brand_slug
+      SELECT p.*, true AS passport_required, t.slug AS tenant_slug, mb.display_name AS brand_name, mb.slug AS brand_slug
       FROM marketplace_products p
       JOIN tenants t ON t.id = p.tenant_id
       JOIN marketplace_brand_profiles mb ON mb.tenant_id = p.tenant_id

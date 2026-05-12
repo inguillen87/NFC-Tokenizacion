@@ -21,17 +21,31 @@ export async function POST(req: Request): Promise<Response> {
 
   await ensureTokenizationRequestsSchema();
   const rows = await sql/*sql*/`
-    SELECT id
-    FROM tokenization_requests
-    WHERE status IN ('pending', 'processing')
-      AND COALESCE(next_attempt_at, requested_at) <= now()
-    ORDER BY requested_at ASC
-    LIMIT ${limit}
+    WITH picked AS (
+      SELECT id
+      FROM tokenization_requests
+      WHERE (
+          status IN ('pending', 'failed')
+          AND COALESCE(next_attempt_at, requested_at) <= now()
+        )
+        OR (
+          status = 'processing'
+          AND COALESCE(NULLIF(meta->>'locked_at', '')::timestamptz, next_attempt_at, requested_at) <= now() - interval '10 minutes'
+        )
+      ORDER BY requested_at ASC
+      FOR UPDATE SKIP LOCKED
+      LIMIT ${limit}
+    )
+    UPDATE tokenization_requests tr
+    SET status = 'processing',
+        meta = COALESCE(tr.meta, '{}'::jsonb) || ${JSON.stringify({ locked_by: "internal_worker", locked_at: new Date().toISOString() })}::jsonb
+    FROM picked
+    WHERE tr.id = picked.id
+    RETURNING tr.id
   `;
 
   const results: Array<Record<string, unknown>> = [];
   for (const row of rows as Array<{ id: string }>) {
-    await sql/*sql*/`UPDATE tokenization_requests SET status = 'processing' WHERE id = ${row.id}::uuid`;
     const result = await anchorTokenizationRequest({
       requestId: row.id,
       processor: "internal_worker",

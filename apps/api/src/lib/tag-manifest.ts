@@ -1,6 +1,38 @@
 import crypto from "node:crypto";
 import { parse } from "csv-parse/sync";
-import { normalizeCarrierProfileCode, type CarrierProfileCode } from "./carrier-profiles";
+
+export type CarrierProfileCode =
+  | "qr_basic"
+  | "gs1_digital_link"
+  | "ntag213"
+  | "ntag215"
+  | "ntag216"
+  | "ntag424_dna"
+  | "ntag424_dna_tt";
+
+const CARRIER_PROFILE_CODES = new Set<CarrierProfileCode>([
+  "qr_basic",
+  "gs1_digital_link",
+  "ntag213",
+  "ntag215",
+  "ntag216",
+  "ntag424_dna",
+  "ntag424_dna_tt",
+]);
+
+function normalizeCarrierProfileCode(input: unknown): CarrierProfileCode | null {
+  const value = String(input || "").trim().toLowerCase().replace(/\s+/g, "_").replace(/-/g, "_");
+  if (!value) return null;
+  if (CARRIER_PROFILE_CODES.has(value as CarrierProfileCode)) return value as CarrierProfileCode;
+  if (value.includes("424") && value.includes("tt")) return "ntag424_dna_tt";
+  if (value.includes("424")) return "ntag424_dna";
+  if (value.includes("216")) return "ntag216";
+  if (value.includes("215")) return "ntag215";
+  if (value.includes("213")) return "ntag213";
+  if (value.includes("gs1")) return "gs1_digital_link";
+  if (value === "qr" || value.includes("qr_basic")) return "qr_basic";
+  return null;
+}
 
 export type ParsedManifestRow = {
   uidHex: string;

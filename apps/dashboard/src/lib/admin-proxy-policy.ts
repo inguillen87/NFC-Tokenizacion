@@ -33,6 +33,7 @@ const READONLY_DEMO_ALLOWED = [
   "consumer-network/",
   "security-alerts",
   "tokenization/requests",
+  "polygon/wallet",
   "tags",
   "tags/",
 ];

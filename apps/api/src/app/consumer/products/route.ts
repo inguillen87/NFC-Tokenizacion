@@ -5,6 +5,7 @@ import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../lib/commercial-runtime-schema";
 import { ensureTokenizationRequestsSchema } from "../../../lib/tokenization-schema";
+import { normalizeTokenizationStatus } from "../../../lib/tokenization-status";
 export async function GET(req: Request) {
   await ensureConsumerPortalSchema();
   await ensureTokenizationRequestsSchema();
@@ -70,5 +71,11 @@ export async function GET(req: Request) {
     WHERE cp.consumer_id = ${consumer.id}
     ORDER BY (cp.ownership_status = 'claimed') DESC, cp.updated_at DESC
   `;
-  return json({ ok: true, items: rows });
+  return json({
+    ok: true,
+    items: rows.map((row) => ({
+      ...row,
+      tokenization_status: normalizeTokenizationStatus(row.tokenization_status),
+    })),
+  });
 }
