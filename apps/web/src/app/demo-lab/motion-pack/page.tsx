@@ -70,9 +70,9 @@ const copyByLocale: Record<AppLocale, MotionCopy> = {
       formats: "Listo para exportar",
       formatsTitle: "Tres piezas madre para redes, publicaciones y reuniones.",
       products: "Sistema de productos",
-      productsTitle: "Los productos tienen que verse fisicos, premium y diferentes por vertical.",
+      productsTitle: "Los productos tienen que verse fisicos, de alto valor y diferentes por vertical.",
       storyboard: "Guion base",
-      storyboardTitle: "La historia que tiene que repetirse en cada video, demo y presentacion.",
+      storyboardTitle: "La historia que tiene que repetirse en cada video, prueba y presentacion.",
     },
     frame: {
       route: ["Origen", "Toque", "Duenio"],

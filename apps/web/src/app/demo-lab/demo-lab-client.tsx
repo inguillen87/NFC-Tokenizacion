@@ -51,7 +51,7 @@ type DemoSummary = {
 const LOCATIONS = {
   origin: { city: "Valle de Uco", country: "Argentina", countryCode: "AR", lat: -33.6131, lng: -69.2075, label: "Origen del producto" },
   mendoza: { city: "Mendoza", country: "Argentina", countryCode: "AR", lat: -32.8895, lng: -68.8458, label: "Bodega / QA" },
-  zurich: { city: "Zurich", country: "Switzerland", countryCode: "CH", lat: 47.3769, lng: 8.5417, label: "Tap del cliente" },
+  zurich: { city: "Zurich", country: "Switzerland", countryCode: "CH", lat: 47.3769, lng: 8.5417, label: "Toque del cliente" },
 };
 
 type DemoLocation = (typeof LOCATIONS)[keyof typeof LOCATIONS];
@@ -94,13 +94,13 @@ const copy: Record<AppLocale, {
       3: { title: "4. Apertura + venta", body: "El sello cambia estado y abre beneficios.", event: "Sello abierto + llamado a reclamar duenio/tokenizar.", mode: "tamper", location: "zurich", status: "ABIERTO", cta: "Reclamar duenio" },
     },
     verticals: {
-      wine: { label: "Botella", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti-replay", "Origen + tap global"] },
+      wine: { label: "Botella", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
       creamJar: { label: "Frasco crema", profile: "NTAG 424 DNA", product: "Frasco crema alta gama", visual: "cream-jar-demo", proof: ["Tapa verificada", "Lote y vencimiento", "Garantia", "Anti mercado gris"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicion limitada", visual: "perfume-demo", proof: ["Caja + frasco", "Lote y serie", "Garantia", "Anti falsificacion"] },
       creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Tubo sellado", "Lote visible", "Garantia", "Recompra"] },
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Ingreso rapido", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
-      ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Replay bloqueado"] },
+      ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
     },
     controls: {
       narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto fisico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Linea animada, distancia y enlaces de ubicacion para construir confianza.", realFeed: "Registro publico real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Crear NFT", syncing: "Conectando con DemoBodega...", synced: "DemoBodega sincronizado con servidor.", unavailable: "DemoBodega no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en DemoBodega.", failedScan: "No se pudo simular el toque.", configs: [
@@ -213,6 +213,20 @@ function mapsLink(location: { lat: number; lng: number }) {
   return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
 }
 
+function formatEventResult(value?: string | null) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (!normalized) return "SIN DATO";
+  if (normalized.includes("AUTH_OK") || normalized === "VALID") return "AUTENTICADO";
+  if (normalized.includes("NOT_REGISTERED")) return "NO REGISTRADO";
+  if (normalized.includes("REPLAY") || normalized.includes("DUPLICATE")) return "COPIA BLOQUEADA";
+  if (normalized.includes("TAMPER")) return "MANIPULADO";
+  if (normalized.includes("OPEN")) return "ABIERTO";
+  if (normalized.includes("ORIGIN") || normalized.includes("PRODUCT")) return "ORIGEN LISTO";
+  if (normalized.includes("REVOKED")) return "REVOCADO";
+  if (normalized.includes("INVALID")) return "INVALIDO";
+  return "EVENTO REGISTRADO";
+}
+
 function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: AppLocale): DemoScenario {
   const distance = `${routeKm.toLocaleString(locale)} km`;
   if (beat === 0) {
@@ -258,7 +272,7 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
     tone: "ok",
     headline: "Toque valido con ruta de confianza",
     body: `Origen y toque quedan unidos en ${distance}. El consumidor ve autenticidad y la marca recibe datos accionables.`,
-    stateLabel: "AUTH OK",
+    stateLabel: "AUTENTICADO",
     allowed: ["Unirse al club", "Guardar pasaporte", "Tokenizacion Amoy", "Voucher o recompra"],
     blocked: ["Transferir duenio sin ingreso/reclamo"],
     chain: "Auto-tokenizacion activa: el toque valido crea solicitud y puede cerrar con tx_hash/token_id en Polygon Amoy.",
@@ -348,14 +362,14 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
       lng,
       scans: 1,
       risk: /REPLAY|DUPLICATE|TAMPER|INVALID|REVOKED/i.test(event.result || "") ? 1 : 0,
-      status: event.result || "UNKNOWN",
+      status: formatEventResult(event.result),
       lastSeen: event.created_at || fallbackLastSeen,
       vertical,
     }];
   });
 
   const mapPoints = useMemo(() => {
-    const originPoint = { city: LOCATIONS.origin.city, country: LOCATIONS.origin.country, lat: LOCATIONS.origin.lat, lng: LOCATIONS.origin.lng, scans: 1, risk: 0, status: "PRODUCT_ORIGIN", lastSeen: fallbackLastSeen, vertical };
+    const originPoint = { city: LOCATIONS.origin.city, country: LOCATIONS.origin.country, lat: LOCATIONS.origin.lat, lng: LOCATIONS.origin.lng, scans: 1, risk: 0, status: "ORIGEN LISTO", lastSeen: fallbackLastSeen, vertical };
     if (livePoints.length) return [originPoint, ...livePoints.slice(0, 18)];
     return [originPoint, { city: destination.city, country: destination.country, lat: destination.lat, lng: destination.lng, scans: 1, risk: activeBeat.mode === "replay" ? 1 : 0, status: activeBeat.status, lastSeen: fallbackLastSeen, vertical }];
   }, [activeBeat.mode, activeBeat.status, destination, fallbackLastSeen, livePoints, vertical]);
@@ -374,23 +388,24 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
     const nextBeat: Beat = mode === "replay" ? 2 : mode === "tamper" ? 3 : 1;
     const nextBeatCopy = txt.beats[nextBeat];
     const nextDestination = LOCATIONS[nextBeatCopy.location];
+    const modeLabel = mode === "replay" ? "COPIA" : mode === "tamper" ? "APERTURA" : "TOQUE";
     setSimulating(true);
     setBeat(nextBeat);
-    setStatus(`${txt.controls.sendingScan} ${mode} - ${nextDestination.city}...`);
+    setStatus(`${txt.controls.sendingScan} ${modeLabel.toLowerCase()} - ${nextDestination.city}...`);
     try {
       const response = await fetch("/api/demo/simulate-tap", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode, city: nextDestination.city, countryCode: nextDestination.countryCode, lat: nextDestination.lat, lng: nextDestination.lng, deviceLabel: `Demo Lab - ${nextDestination.label}` }),
+        body: JSON.stringify({ mode, city: nextDestination.city, countryCode: nextDestination.countryCode, lat: nextDestination.lat, lng: nextDestination.lng, deviceLabel: `Laboratorio nexID - ${nextDestination.label}` }),
       });
       const payload = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
-      if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "scan failed"));
+      if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "lectura fallida"));
       if (payload?.degraded) {
-        setStatus(`${mode.toUpperCase()}: ${String(payload.reason || txt.controls.adminKey)}`);
+        setStatus(`${modeLabel}: ${String(payload.reason || txt.controls.adminKey)}`);
         setActionMessage(mode === "replay" ? "Copia simulada: reclamo de duenio, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque valido: club, tienda y analitica quedan listos para activar.");
         return;
       }
-      setStatus(`${mode.toUpperCase()}: ${txt.controls.registeredScan}`);
+      setStatus(`${modeLabel}: ${txt.controls.registeredScan}`);
       setActionMessage(mode === "replay" ? "Copia simulada: reclamo de duenio, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque valido: club, tienda y analitica quedan listos para activar.");
       await refreshSummary();
     } catch (error) {
@@ -408,7 +423,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
     }
     if (action === "tap") {
       window.open(mapsLink(destination), "_blank", "noopener,noreferrer");
-      setActionMessage(`Tap actual abierto en Maps: ${destination.city}.`);
+      setActionMessage(`Toque actual abierto en Maps: ${destination.city}.`);
       return;
     }
     if (action === "report") {
@@ -453,7 +468,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         <div className="mt-6 grid gap-3 md:grid-cols-4">
           {[
             { label: txt.kpis.tags, value: summary?.tagCount === undefined ? "--" : String(summary.tagCount), detail: "DemoBodega / proveedor" },
-            { label: txt.kpis.events, value: String(liveEvents.length), detail: latestEvent ? `${latestEvent.city || "Sin dato"} / ${latestEvent.result || "SIN_DATO"}` : txt.kpis.noFeed },
+            { label: txt.kpis.events, value: String(liveEvents.length), detail: latestEvent ? `${latestEvent.city || "Sin dato"} / ${formatEventResult(latestEvent.result)}` : txt.kpis.noFeed },
             { label: txt.kpis.portal, value: String(summary?.crm?.leads ?? 0), detail: txt.kpis.leads },
             { label: txt.kpis.route, value: `${routeKm.toLocaleString(locale)} km`, detail: `${LOCATIONS.origin.city} -> ${destination.city}` },
           ].map((kpi) => (
@@ -553,7 +568,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                   <ProductIllustration key={`${vertical}-${beat}`} vertical={vertical} product={activeVertical.product} label={activeVertical.label} beat={beat} />
                 </div>
                 <span className="demo-lab-cork" />
-                <span className="demo-lab-product-label">nexID secure</span>
+                <span className="demo-lab-product-label">nexID seguro</span>
                 <span className="demo-lab-seal-split" />
                 <span className="demo-lab-tap-chip">SUN</span>
                 <span className="demo-lab-tap-wave" />
@@ -588,7 +603,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
               <div className="mt-3 space-y-2">
                 {liveEvents.slice(0, 5).length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-3 text-xs text-slate-400">{txt.controls.noGeo}</p> : liveEvents.slice(0, 5).map((event) => (
                   <div key={event.id || `${event.created_at}-${event.uidMasked}`} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs">
-                    <p className="font-bold text-white">{event.city || "Sin dato"}, {event.country_code || "S/D"} / {event.result || "SIN_DATO"}</p>
+                    <p className="font-bold text-white">{event.city || "Sin dato"}, {event.country_code || "S/D"} / {formatEventResult(event.result)}</p>
                     <p className="mt-1 text-slate-400">{event.product_name || activeVertical.product} / {event.uidMasked || "UID-NA"}</p>
                     <p className="mt-1 text-slate-500">{event.created_at || "sin fecha"}</p>
                   </div>
@@ -684,7 +699,7 @@ function DemoFirstRunGuide({
         ))}
       </div>
       <div className="demo-lab-guide-actions">
-        <button suppressHydrationWarning type="button" onClick={onGuided}>Ver demo guiada</button>
+        <button suppressHydrationWarning type="button" onClick={onGuided}>Ver prueba guiada</button>
         <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque valido</button>
         <button suppressHydrationWarning type="button" disabled={simulating} onClick={onOpen}>Abrir sello</button>
         <button suppressHydrationWarning type="button" onClick={onMobile}>Ver celular</button>
@@ -710,7 +725,7 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
     },
     2: {
       title: "Copia bloqueada",
-      body: "La demo muestra por que copiar una URL no alcanza para reclamar beneficios.",
+      body: "La prueba muestra por que copiar una URL no alcanza para reclamar beneficios.",
       backend: "Servidor: riesgo registrado; reclamo, club, tienda sensible y token quedan bloqueados.",
       next: "Siguiente: repetir con un toque valido.",
     },
@@ -839,7 +854,7 @@ function DemoCinematicShowcase({
         body: "Este bloque funciona como presentacion visual dentro de la plataforma: cualquier marca entiende confianza, duenio, datos e ingresos en segundos.",
         openPack: "Abrir paquete visual",
         scenes: [
-          { beat: 0, tag: "Escena 01", title: "Producto nace", body: "Envase premium, UID y etiqueta NFC cerrada antes del primer toque.", stat: "UID + lote", tone: "origin" },
+          { beat: 0, tag: "Escena 01", title: "Producto nace", body: "Envase de alto valor, UID y etiqueta NFC cerrada antes del primer toque.", stat: "UID + lote", tone: "origin" },
           { beat: 1, tag: "Escena 02", title: "Toque vivo", body: "SUN dinamico, distancia, origen y datos accionables para consumidor y marca.", stat: "Verificado", tone: "ok" },
           { beat: 2, tag: "Escena 03", title: "Ataque bloqueado", body: "Una URL copiada no abre beneficios, reclamo, tokenizacion ni tienda.", stat: "Sin reclamo", tone: "risk" },
           { beat: 3, tag: "Escena 04", title: "Ciclo comercial", body: "Sello abierto, reclamo de duenio, certificado, comunidad y recompra.", stat: "Abierto", tone: "open" },
@@ -923,7 +938,7 @@ function DemoCinematicShowcase({
           <span>{localized.tokenBody}</span>
         </div>
 
-        <div className="demo-lab-cinematic-graph" aria-label="Grafico de negocio post tap">
+        <div className="demo-lab-cinematic-graph" aria-label="Grafico de negocio post toque">
           <div>
             {graphBars.map((height, index) => (
               <span key={index} className={index <= beat ? "active" : ""} style={{ "--bar-height": `${height}%` } as CSSProperties} />
@@ -1018,7 +1033,7 @@ function DemoProofCard({
       <h4>{product}</h4>
       <div className="demo-lab-proof-grid">
         <InfoCell label="Origen" value={LOCATIONS.origin.city} />
-        <InfoCell label="Tap" value={destination.city} />
+        <InfoCell label="Toque" value={destination.city} />
         <InfoCell label="Ruta" value={`${routeKm.toLocaleString(locale)} km`} />
         <InfoCell label="Token" value={txStatus} />
         <InfoCell label="Duenio" value={owner} />
@@ -1093,7 +1108,7 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
   const productLine = product.length > 24 ? `${product.slice(0, 22)}...` : product;
   const accent = beat === 2 ? "#fb7185" : beat === 3 ? "#a78bfa" : "#22d3ee";
   const sceneState = beat === 0 ? "origin" : beat === 1 ? "auth" : beat === 2 ? "blocked" : "open";
-  const sealTitle = beat === 2 ? "REPLAY" : beat === 3 ? "ABIERTO" : "CERRADO";
+  const sealTitle = beat === 2 ? "COPIA" : beat === 3 ? "ABIERTO" : "CERRADO";
   const sealBody = beat === 0 ? "UID SELLADO" : beat === 1 ? "SUN OK" : beat === 2 ? "SIN RECLAMO" : "RECLAMO LISTO";
   const stateTitle = beat === 2 ? "Riesgo bloqueado" : beat === 3 ? "Etiqueta NFC abierta" : "Etiqueta NFC cerrada";
   const stateBody = beat === 0 ? "lista para primer toque" : beat === 1 ? "toque validado" : beat === 2 ? "copia detenida" : "beneficios habilitados";
