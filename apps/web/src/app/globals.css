@@ -6095,3 +6095,172 @@ html.theme-light .demo-lab-route-state {
     top: 3.55rem !important;
   }
 }
+
+.demo-lab-final-dock {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(52, 211, 153, 0.24);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(34, 211, 238, 0.18), transparent 34%),
+    radial-gradient(circle at 90% 30%, rgba(52, 211, 153, 0.16), transparent 30%),
+    linear-gradient(135deg, rgba(2, 6, 23, 0.94), rgba(8, 47, 73, 0.86));
+  box-shadow: 0 1.5rem 4rem rgba(2, 6, 23, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.demo-lab-final-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  width: min(100%, 31rem);
+}
+
+.demo-lab-final-button {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  text-align: left;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.demo-lab-final-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(125, 211, 252, 0.42);
+}
+
+.demo-lab-final-button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.demo-lab-final-button--primary {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.32), rgba(34, 211, 238, 0.18));
+}
+
+.demo-lab-final-button--danger {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.28), rgba(127, 29, 29, 0.2));
+}
+
+.demo-lab-final-button--warn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(120, 53, 15, 0.22));
+}
+
+.demo-lab-final-button--ghost {
+  background: rgba(15, 23, 42, 0.66);
+}
+
+.demo-lab-final-step {
+  min-height: 8rem;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 1.15rem;
+  background: rgba(15, 23, 42, 0.56);
+  padding: 1rem;
+}
+
+.demo-lab-final-step span {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+  font-size: 0.7rem;
+  font-weight: 950;
+}
+
+.demo-lab-final-step strong {
+  display: block;
+  margin-top: 0.85rem;
+  color: #f8fafc;
+  font-size: 0.92rem;
+}
+
+.demo-lab-final-step p {
+  margin-top: 0.5rem;
+  color: #cbd5e1;
+  font-size: 0.77rem;
+  line-height: 1.6;
+}
+
+body:has(.demo-lab-shell) .helpbot-hint,
+body:has(.demo-lab-shell) .helpbot-trigger,
+body:has(.demo-lab-shell) .helpbot-panel {
+  display: none !important;
+}
+
+html.theme-light body:has(.demo-lab-shell) {
+  background: #020617;
+}
+
+html.theme-light .demo-lab-shell {
+  color: #e2e8f0;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.12), transparent 30%),
+    radial-gradient(circle at 92% 12%, rgba(52, 211, 153, 0.1), transparent 28%),
+    linear-gradient(180deg, #020617, #07111f 48%, #020617);
+}
+
+html.theme-light .demo-lab-hero,
+html.theme-light .demo-lab-panel,
+html.theme-light .demo-lab-final-dock {
+  border-color: rgba(125, 211, 252, 0.18) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.14), transparent 34%),
+    linear-gradient(150deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.96)) !important;
+  box-shadow: 0 1.5rem 4rem rgba(2, 6, 23, 0.32) !important;
+}
+
+html.theme-light .demo-lab-shell .text-white {
+  color: #f8fafc !important;
+}
+
+html.theme-light .demo-lab-shell .text-slate-100,
+html.theme-light .demo-lab-shell .text-slate-200,
+html.theme-light .demo-lab-shell .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+
+html.theme-light .demo-lab-shell .text-slate-400,
+html.theme-light .demo-lab-shell .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html.theme-light .demo-lab-shell .bg-slate-950\/70,
+html.theme-light .demo-lab-shell .bg-slate-950\/60,
+html.theme-light .demo-lab-shell .bg-slate-950\/55,
+html.theme-light .demo-lab-shell .bg-slate-950\/45,
+html.theme-light .demo-lab-shell .bg-slate-900\/60,
+html.theme-light .demo-lab-shell .bg-white\/5 {
+  background-color: rgba(15, 23, 42, 0.64) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+html.theme-light .demo-lab-action-tile {
+  color: #f8fafc !important;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.84), rgba(8, 47, 73, 0.56)) !important;
+}
+
+html.theme-light .demo-lab-action-tile small,
+html.theme-light .demo-lab-policy-card span,
+html.theme-light .demo-lab-final-step p {
+  color: #cbd5e1 !important;
+}
+
+html.theme-light .demo-lab-policy-card {
+  background: rgba(6, 78, 59, 0.28) !important;
+}
+
+html.theme-light .demo-lab-policy-card--blocked {
+  background: rgba(127, 29, 29, 0.22) !important;
+}
+
+@media (max-width: 760px) {
+  .demo-lab-final-actions {
+    grid-template-columns: 1fr;
+  }
+}

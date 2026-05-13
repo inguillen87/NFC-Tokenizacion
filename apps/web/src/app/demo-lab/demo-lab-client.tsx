@@ -40,6 +40,7 @@ type DemoEvent = {
 type DemoSummary = {
   ok?: boolean;
   exists?: boolean;
+  degraded?: boolean;
   source?: string;
   tagCount?: number;
   crm?: { leads?: number; tickets?: number; orders?: number };
@@ -99,7 +100,7 @@ const copy: Record<AppLocale, {
       pharma: { label: "Pharma", profile: "GS1 Digital Link + NTAG 424 DNA", product: "Estuche pharma serializado", visual: "pharma-demo", proof: ["GS1/QR fallback", "Serial y lote", "Cadena de custodia", "Farmacovigilancia"] },
     },
     controls: {
-      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Producto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar tap valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular replay duplicado", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origen del producto vs tap del cliente", mapSubtitle: "Linea animada, distancia y links de ubicacion para construir confianza.", realFeed: "Feed publico real conectado.", adminKey: "Para escribir scans del tenant falta ADMIN_API_KEY en web.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Tap actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir tap", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Tokenizar premium", syncing: "Conectando con DemoBodega...", synced: "DemoBodega sincronizado con backend.", unavailable: "DemoBodega no disponible.", sendingScan: "Enviando scan", registeredScan: "Scan registrado en DemoBodega.", failedScan: "No se pudo simular el tap.", configs: [
+      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Producto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar tap valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular replay duplicado", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origen del producto vs tap del cliente", mapSubtitle: "Linea animada, distancia y links de ubicacion para construir confianza.", realFeed: "Feed publico real conectado.", adminKey: "Modo lectura/demo: la escritura privada de scans corre en entorno seguro.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Tap actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir tap", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Tokenizar premium", syncing: "Conectando con DemoBodega...", synced: "DemoBodega sincronizado con backend.", unavailable: "DemoBodega no disponible.", sendingScan: "Enviando scan", registeredScan: "Scan registrado en DemoBodega.", failedScan: "No se pudo simular el tap.", configs: [
         { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, recall y trazabilidad GS1. Ideal como fallback visible; cualquiera puede copiarlo, por eso no habilita ownership premium por si solo." },
         { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseras, garantias simples y activaciones masivas. Sube la friccion contra screenshot y permite reglas server-side por lote." },
         { title: "NTAG 424 DNA", body: "Cada tap genera SUN dinamico con CMAC para detectar replay, links reutilizados y copias. Es la capa recomendada para productos de valor medio/alto." },
@@ -136,7 +137,7 @@ const copy: Record<AppLocale, {
       agro: { label: "Agro", profile: "QR + NFC UID", product: "Saco de semente", visual: "agro-demo", proof: ["Lote rastreavel", "Ficha tecnica", "Custodia logistica", "Uso rural"] },
       pharma: { label: "Pharma", profile: "GS1 Digital Link + NTAG 424 DNA", product: "Cartucho pharma serializado", visual: "pharma-demo", proof: ["GS1/QR fallback", "Serial e lote", "Cadeia de custodia", "Farmacovigilancia"] },
     },
-    controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Para gravar scans do tenant falta ADMIN_API_KEY no web.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao DemoBodega...", synced: "DemoBodega sincronizado com backend.", unavailable: "DemoBodega indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no DemoBodega.", failedScan: "Nao foi possivel simular o toque.", configs: [
+    controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/demo: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao DemoBodega...", synced: "DemoBodega sincronizado com backend.", unavailable: "DemoBodega indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no DemoBodega.", failedScan: "Nao foi possivel simular o toque.", configs: [
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera ownership premium sozinho." },
       { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
       { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
@@ -173,7 +174,7 @@ const copy: Record<AppLocale, {
       agro: { label: "Agro", profile: "QR + NFC UID", product: "Seed bag", visual: "agro-demo", proof: ["Traceable lot", "Technical sheet", "Logistics custody", "Rural use"] },
       pharma: { label: "Pharma", profile: "GS1 Digital Link + NTAG 424 DNA", product: "Serialized pharma carton", visual: "pharma-demo", proof: ["GS1/QR fallback", "Serial and lot", "Custody chain", "Pharmacovigilance"] },
     },
-    controls: { narrative: "Audience narrative", cinematicStart: "Start cinematic", cinematicStop: "Pause cinematic", product: "Physical product", mobile: "Mobile result", feed: "Command feed", valid: "Register valid Zurich tap", tamper: "Break seal / uncork", replay: "Simulate duplicate replay", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Live map: product origin vs customer tap", mapSubtitle: "Animated route, distance and location links to build trust.", realFeed: "Real public feed connected.", adminKey: "ADMIN_API_KEY is required in web to write tenant scans.", noGeo: "No geolocated API events yet.", origin: "Origin", currentTap: "Current tap", distance: "Distance", openOrigin: "Open origin", openTap: "Open tap", joinClub: "Join club", warranty: "Activate warranty", tokenize: "Tokenize premium", syncing: "Connecting to DemoBodega...", synced: "DemoBodega synced with backend.", unavailable: "DemoBodega unavailable.", sendingScan: "Sending scan", registeredScan: "Scan registered in DemoBodega.", failedScan: "Could not simulate the tap.", configs: [
+    controls: { narrative: "Audience narrative", cinematicStart: "Start cinematic", cinematicStop: "Pause cinematic", product: "Physical product", mobile: "Mobile result", feed: "Command feed", valid: "Register valid Zurich tap", tamper: "Break seal / uncork", replay: "Simulate duplicate replay", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Live map: product origin vs customer tap", mapSubtitle: "Animated route, distance and location links to build trust.", realFeed: "Real public feed connected.", adminKey: "Read-only demo mode: private scan writes run in the secured environment.", noGeo: "No geolocated API events yet.", origin: "Origin", currentTap: "Current tap", distance: "Distance", openOrigin: "Open origin", openTap: "Open tap", joinClub: "Join club", warranty: "Activate warranty", tokenize: "Tokenize premium", syncing: "Connecting to DemoBodega...", synced: "DemoBodega synced with backend.", unavailable: "DemoBodega unavailable.", sendingScan: "Sending scan", registeredScan: "Scan registered in DemoBodega.", failedScan: "Could not simulate the tap.", configs: [
       { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
       { title: "NTAG213 / NTAG215", body: "Serialized physical UID for tickets, wristbands, simple warranty and mass activations. Adds server-side rules by batch." },
       { title: "NTAG 424 DNA", body: "Every tap creates dynamic SUN + CMAC proof to detect replay, reused links and simple copies. Recommended for mid/high-value products." },
@@ -251,9 +252,9 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
     headline: "Tap valido con ruta de confianza",
     body: `Origen y tap quedan unidos en ${distance}. El consumidor ve autenticidad y el tenant recibe datos accionables.`,
     stateLabel: "AUTH OK",
-    allowed: ["Unirse al club", "Guardar passport", "Voucher o recompra"],
-    blocked: ["Mint premium sin compra/claim"],
-    chain: "Blockchain queda preparado, pero el mint exige ownership o compra confirmada.",
+    allowed: ["Unirse al club", "Guardar passport", "Tokenizacion Amoy", "Voucher o recompra"],
+    blocked: ["Transferir ownership sin login/claim"],
+    chain: "Auto-tokenizacion activa: el tap valido crea request y puede cerrar con tx_hash/token_id en Polygon Amoy.",
     primaryAction: "join",
     primaryLabel: txt.controls.joinClub,
   };
@@ -287,7 +288,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         const next = await readDemoSummary();
         if (!alive) return;
         setSummary(next);
-        setStatus(next.source === "public-proof" ? `${txt.controls.realFeed} ${txt.controls.adminKey}` : txt.controls.synced);
+        setStatus(next.degraded || next.source === "public-proof" ? `${txt.controls.realFeed} ${txt.controls.adminKey}` : txt.controls.synced);
       } catch (error) {
         if (!alive) return;
         setStatus(error instanceof Error ? error.message : txt.controls.unavailable);
@@ -346,7 +347,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
     try {
       const next = await readDemoSummary();
       setSummary(next);
-      setStatus(next.source === "public-proof" ? `${txt.controls.realFeed} ${txt.controls.adminKey}` : txt.controls.synced);
+      setStatus(next.degraded || next.source === "public-proof" ? `${txt.controls.realFeed} ${txt.controls.adminKey}` : txt.controls.synced);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : txt.controls.unavailable);
     }
@@ -367,6 +368,11 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
       });
       const payload = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
       if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "scan failed"));
+      if (payload?.degraded) {
+        setStatus(`${mode.toUpperCase()}: ${String(payload.reason || txt.controls.adminKey)}`);
+        setActionMessage(mode === "replay" ? "Replay simulado: ownership, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra lifecycle event y queda listo para postventa controlada." : "Tap valido: club, marketplace y analytics quedan listos para activar.");
+        return;
+      }
       setStatus(`${mode.toUpperCase()}: ${txt.controls.registeredScan}`);
       setActionMessage(mode === "replay" ? "Replay simulado: ownership, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra lifecycle event y queda listo para postventa controlada." : "Tap valido: club, marketplace y analytics quedan listos para activar.");
       await refreshSummary();
@@ -397,7 +403,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
       return;
     }
     if (action === "tokenize") {
-      setActionMessage(beat === 3 ? "Tokenizacion premium preparada: requiere compra/claim validado antes de mintear en Polygon." : beat === 1 ? "Tap valido detectado: primero se confirma ownership o compra, despues se habilita el mint." : "Tokenizacion bloqueada por politica de seguridad para este estado.");
+      setActionMessage(beat === 3 ? "Tokenizacion premium preparada: requiere compra/claim validado antes de transferir ownership." : beat === 1 ? "Tokenizacion automatica lista: un tap valido crea request y registra tx_hash/token_id en Polygon Amoy." : "Tokenizacion bloqueada por politica de seguridad para este estado.");
       return;
     }
     setActionMessage(beat === 2 ? "Club bloqueado por replay. Repeti el tap fisico para continuar." : "Club/marketplace listo: el consumidor puede asociarse y recibir beneficios del tenant.");
@@ -446,8 +452,17 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         </div>
       </section>
 
+      <DemoFinalTapDock
+        status={status}
+        simulating={simulating}
+        onValid={() => void simulate("valid")}
+        onTamper={() => void simulate("tamper")}
+        onReplay={() => void simulate("replay")}
+        onRefresh={() => void refreshSummary()}
+      />
+
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.16fr_0.84fr]">
-        <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
+        <article className="demo-lab-panel min-w-0 rounded-3xl border border-white/10 bg-slate-950/60 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.narrative}</p>
@@ -472,8 +487,8 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
             ))}
           </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
-            <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+          <div className="mt-5 grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.92fr)]">
+            <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.product}</p>
@@ -504,7 +519,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
           </div>
         </article>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <DemoActionMatrix txt={txt} beat={beat} routeKm={routeKm} status={activeBeat.status} destination={destination} scenario={scenario} onAction={handleDemoAction} actionMessage={actionMessage} locale={locale} />
 
           <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
@@ -595,7 +610,7 @@ function MobileOutcome({
   return (
     <article
       aria-label={`${txt.controls.mobile} ${status}`}
-      className={`demo-lab-mobile-card demo-lab-mobile-card--${scenario.tone} rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4`}
+      className={`demo-lab-mobile-card demo-lab-mobile-card--${scenario.tone} min-w-0 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -645,6 +660,64 @@ function InfoCell({ label, value }: { label: string; value: string }) {
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{label}</p>
       <p className="mt-1 text-sm font-black text-white">{value}</p>
     </div>
+  );
+}
+
+function DemoFinalTapDock({
+  status,
+  simulating,
+  onValid,
+  onTamper,
+  onReplay,
+  onRefresh,
+}: {
+  status: string;
+  simulating: boolean;
+  onValid: () => void;
+  onTamper: () => void;
+  onReplay: () => void;
+  onRefresh: () => void;
+}) {
+  const flow = [
+    { step: "01", title: "Tap fisico fresco", body: "El chip genera SUN dinamico. No sirve URL copiada." },
+    { step: "02", title: "Anti-replay + passport", body: "Si es valido, se habilitan CTAs y queda evento." },
+    { step: "03", title: "NFT / certificado", body: "Se crea request y Polygon devuelve tx_hash + token_id." },
+    { step: "04", title: "Reclamar duenio", body: "El usuario asocia producto con login, tenant y ownership." },
+  ];
+
+  return (
+    <section className="demo-lab-final-dock mt-5 rounded-3xl border p-4 md:p-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="max-w-2xl">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Checklist antes del tap final</p>
+          <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">Probar el camino real: tap valido - NFT - claim duenio.</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{status}</p>
+        </div>
+        <div className="demo-lab-final-actions">
+          <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid} className="demo-lab-final-button demo-lab-final-button--primary">
+            Simular tap valido
+          </button>
+          <button suppressHydrationWarning type="button" disabled={simulating} onClick={onReplay} className="demo-lab-final-button demo-lab-final-button--danger">
+            Probar replay bloqueado
+          </button>
+          <button suppressHydrationWarning type="button" disabled={simulating} onClick={onTamper} className="demo-lab-final-button demo-lab-final-button--warn">
+            Sello abierto
+          </button>
+          <button suppressHydrationWarning type="button" onClick={onRefresh} className="demo-lab-final-button demo-lab-final-button--ghost">
+            Refresh backend
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        {flow.map((item) => (
+          <div key={item.step} className="demo-lab-final-step">
+            <span>{item.step}</span>
+            <strong>{item.title}</strong>
+            <p>{item.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -735,7 +808,7 @@ function DemoActionMatrix({
           <button suppressHydrationWarning key={action.id} type="button" onClick={() => onAction(action.id)} className={`demo-lab-action-tile ${action.locked ? "demo-lab-action-tile--locked" : ""}`}>
             <span>{action.label}</span>
             <small>{action.body}</small>
-            <strong>{action.locked ? "Explicar politica" : "Accionar demo"}</strong>
+            <strong>{action.locked ? "Ver por que bloquea" : "Ejecutar accion"}</strong>
           </button>
         ))}
       </div>

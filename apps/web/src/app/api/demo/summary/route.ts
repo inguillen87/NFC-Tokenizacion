@@ -53,11 +53,30 @@ function safePublicEvent(row: unknown) {
   };
 }
 
+function emptyDemoSummary(reason: string) {
+  return NextResponse.json({
+    ok: true,
+    degraded: true,
+    exists: false,
+    source: "visual-demo",
+    tagCount: undefined,
+    crm: { leads: 0, tickets: 0, orders: 0 },
+    events: [],
+    reason,
+    generatedAt: new Date().toISOString(),
+  });
+}
+
 async function publicProofFallback() {
-  const response = await fetch(`${productUrls.api}/public/proof/summary`, { cache: "no-store" });
+  let response: Response;
+  try {
+    response = await fetch(`${productUrls.api}/public/proof/summary`, { cache: "no-store" });
+  } catch {
+    return emptyDemoSummary("Modo demo visual: feed publico no disponible en este runtime.");
+  }
   const data = await response.json().catch(() => ({ ok: false, reason: "invalid public proof json" }));
   if (!response.ok || data?.ok === false) {
-    return NextResponse.json({ ok: false, reason: clean(data?.reason) || "public proof unavailable", events: [] }, { status: 503 });
+    return emptyDemoSummary("Modo demo visual: feed publico no disponible en este runtime.");
   }
   const events = Array.isArray(data.latestPublicEvents) ? data.latestPublicEvents.map(safePublicEvent).filter(Boolean) : [];
   return NextResponse.json({
@@ -83,7 +102,7 @@ export async function GET() {
   });
   const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
   if (!response.ok || data?.ok === false) {
-    return NextResponse.json({ ok: false, reason: clean(data?.reason) || "demo summary unavailable", events: [] }, { status: response.status });
+    return publicProofFallback();
   }
 
   const events = Array.isArray(data.events) ? data.events.map(safeEvent).filter(Boolean) : [];

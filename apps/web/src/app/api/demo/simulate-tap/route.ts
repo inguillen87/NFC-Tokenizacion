@@ -11,7 +11,12 @@ function clean(value: unknown) {
 export async function POST(req: Request) {
   const adminKey = clean(process.env.ADMIN_API_KEY);
   if (!adminKey) {
-    return NextResponse.json({ ok: false, reason: "ADMIN_API_KEY missing in web runtime" }, { status: 503 });
+    return NextResponse.json({
+      ok: true,
+      degraded: true,
+      source: "visual-demo",
+      reason: "Demo visual activa: este runtime no tiene escritura privada de scans.",
+    });
   }
 
   const body = await req.text();
@@ -25,6 +30,14 @@ export async function POST(req: Request) {
     cache: "no-store",
   });
   const text = await response.text();
+  if (!response.ok) {
+    return NextResponse.json({
+      ok: true,
+      degraded: true,
+      source: "visual-demo",
+      reason: "Demo visual activa: la escritura privada de scans no esta disponible para este escenario.",
+    });
+  }
   return new NextResponse(text, {
     status: response.status,
     headers: { "content-type": response.headers.get("content-type") || "application/json" },
