@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { WorldMapRealtime } from "@product/ui";
@@ -485,6 +485,16 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         onRefresh={() => void refreshSummary()}
       />
 
+      <DemoDifferentiatorStrip beat={beat} onGuided={startGuidedDemo} />
+
+      <DemoCinematicShowcase
+        beat={beat}
+        vertical={vertical}
+        product={activeVertical.product}
+        label={activeVertical.label}
+        onGuided={startGuidedDemo}
+      />
+
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.16fr_0.84fr]">
         <article className="demo-lab-panel min-w-0 rounded-3xl border border-white/10 bg-slate-950/60 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -548,6 +558,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                 <span className="demo-lab-tap-wave" />
               </div>
               <DemoStageExplainer beat={beat} scenario={scenario} routeKm={routeKm} locale={locale} />
+              <DemoExperienceLayer beat={beat} product={activeVertical.product} scenario={scenario} destination={destination} routeKm={routeKm} locale={locale} onOpen={setModalView} />
               <div className="demo-lab-sync-steps mt-4">
                 {activeVertical.proof.map((item, index) => <p key={item} className={`demo-lab-sync-step ${index <= beat ? "demo-lab-sync-step--active" : ""}`}><span>{index + 1}</span>{item}</p>)}
               </div>
@@ -723,6 +734,189 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
         <small>{item.next}</small>
       </div>
     </aside>
+  );
+}
+
+function getTrustSignals(beat: Beat) {
+  return [
+    { label: "Tap fisico", value: beat === 0 ? "pendiente" : beat === 2 ? "sospechoso" : "fresco", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
+    { label: "SUN anti-replay", value: beat === 2 ? "bloqueado" : beat === 0 ? "standby" : "ok", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+    { label: "Tenant", value: "demobodega", tone: "ok" },
+    { label: "Ownership", value: beat === 3 ? "claim ready" : beat === 2 ? "bloqueado" : "gated", tone: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
+    { label: "Polygon", value: beat === 2 ? "no mint" : beat === 0 ? "pre-chain" : "request ready", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+    { label: "Marketplace", value: beat === 2 ? "cerrado" : beat === 0 ? "publico" : "unlock", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+  ] as const;
+}
+
+function DemoDifferentiatorStrip({ beat, onGuided }: { beat: Beat; onGuided: () => void }) {
+  const chain = ["Producto fisico", "Confianza", "Duenio", "Comunidad", "Recompra", "Marketplace", "Datos"];
+  const activeIndex = beat === 0 ? 0 : beat === 1 ? 2 : beat === 2 ? 1 : 6;
+
+  return (
+    <section className="demo-lab-differentiator-strip mt-5">
+      <div className="demo-lab-differentiator-copy">
+        <p>Diferencial nexID</p>
+        <h2>No vendemos solo anti-falsificacion. Convertimos cada producto en canal propio de revenue.</h2>
+        <span>El flujo que tiene que entender cualquier bodega, marca o evento: validar confianza, reclamar duenio, activar comunidad, recompra, marketplace y datos.</span>
+      </div>
+      <div className="demo-lab-differentiator-chain" aria-label="Cadena de valor nexID">
+        {chain.map((item, index) => (
+          <span key={item} className={index <= activeIndex ? "active" : ""}>{item}</span>
+        ))}
+      </div>
+      <button suppressHydrationWarning type="button" onClick={onGuided}>Pitch guiado 90s</button>
+    </section>
+  );
+}
+
+function DemoExperienceLayer({
+  beat,
+  product,
+  scenario,
+  destination,
+  routeKm,
+  locale,
+  onOpen,
+}: {
+  beat: Beat;
+  product: string;
+  scenario: DemoScenario;
+  destination: DemoLocation;
+  routeKm: number;
+  locale: AppLocale;
+  onOpen: (view: DemoModalView) => void;
+}) {
+  return (
+    <section className="demo-lab-experience-layer" aria-label="Capa de experiencia y negocio">
+      <DemoTrustScore beat={beat} />
+      <DemoProofCard beat={beat} product={product} scenario={scenario} destination={destination} routeKm={routeKm} locale={locale} />
+      <DemoPhoneMirror beat={beat} product={product} scenario={scenario} destination={destination} onOpen={onOpen} />
+      <DemoUnlockLadder beat={beat} />
+    </section>
+  );
+}
+
+function DemoTrustScore({ beat }: { beat: Beat }) {
+  const signals = getTrustSignals(beat);
+  const passed = signals.filter((item) => item.tone === "ok").length;
+  const score = Math.round((passed / signals.length) * 100);
+  const label = beat === 2 ? "Riesgo detectado" : beat === 0 ? "Listo para validar" : beat === 3 ? "Lifecycle abierto" : "Confianza alta";
+
+  return (
+    <article className={`demo-lab-trust-score demo-lab-trust-score--beat-${beat}`}>
+      <div className="demo-lab-trust-meter" style={{ "--trust-score": `${score}%` } as CSSProperties}>
+        <strong>{score}</strong>
+        <span>trust score</span>
+      </div>
+      <div>
+        <p>Motor de confianza</p>
+        <h4>{label}</h4>
+        <div className="demo-lab-trust-signals">
+          {signals.map((item) => (
+            <span key={item.label} className={`demo-lab-trust-signal demo-lab-trust-signal--${item.tone}`}>
+              <b>{item.label}</b>
+              <em>{item.value}</em>
+            </span>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function DemoProofCard({
+  beat,
+  product,
+  scenario,
+  destination,
+  routeKm,
+  locale,
+}: {
+  beat: Beat;
+  product: string;
+  scenario: DemoScenario;
+  destination: DemoLocation;
+  routeKm: number;
+  locale: AppLocale;
+}) {
+  const txStatus = beat === 2 ? "blocked" : beat === 0 ? "pre-chain" : "tx/request ready";
+  const owner = beat === 3 ? "claim owner ready" : beat === 2 ? "claim blocked" : "login required";
+
+  return (
+    <article className={`demo-lab-proof-card demo-lab-proof-card--${scenario.tone}`}>
+      <div className="demo-lab-proof-card-header">
+        <span>{scenario.stateLabel}</span>
+        <strong>Proof Card</strong>
+      </div>
+      <h4>{product}</h4>
+      <div className="demo-lab-proof-grid">
+        <InfoCell label="Origen" value={LOCATIONS.origin.city} />
+        <InfoCell label="Tap" value={destination.city} />
+        <InfoCell label="Ruta" value={`${routeKm.toLocaleString(locale)} km`} />
+        <InfoCell label="Token" value={txStatus} />
+        <InfoCell label="Owner" value={owner} />
+        <InfoCell label="UID" value="04B7****E2B5" />
+      </div>
+    </article>
+  );
+}
+
+function DemoPhoneMirror({
+  beat,
+  product,
+  scenario,
+  destination,
+  onOpen,
+}: {
+  beat: Beat;
+  product: string;
+  scenario: DemoScenario;
+  destination: DemoLocation;
+  onOpen: (view: DemoModalView) => void;
+}) {
+  const cta = beat === 2 ? "Repetir tap fisico" : beat === 3 ? "Claim duenio" : beat === 0 ? "Acercar telefono" : "Unirme al club";
+
+  return (
+    <article className={`demo-lab-phone-mirror demo-lab-phone-mirror--${scenario.tone}`}>
+      <div className="demo-lab-phone-shell">
+        <div className="demo-lab-phone-topbar"><span />nexID mobile</div>
+        <div className="demo-lab-phone-status">{scenario.stateLabel}</div>
+        <h4>{product}</h4>
+        <p>{scenario.headline}</p>
+        <div className="demo-lab-phone-route">
+          <span>{LOCATIONS.origin.city}</span>
+          <i />
+          <span>{destination.city}</span>
+        </div>
+        <button suppressHydrationWarning type="button" onClick={() => onOpen(beat === 3 ? "claim" : "mobile")}>{cta}</button>
+      </div>
+    </article>
+  );
+}
+
+function DemoUnlockLadder({ beat }: { beat: Beat }) {
+  const rows = [
+    { label: "Info publica", body: "Origen, lote, historia y contenido de marca.", unlocked: true },
+    { label: "Club + rewards", body: "Beneficios y recompra solo con tap valido.", unlocked: beat === 1 || beat === 3 },
+    { label: "Warranty / claim", body: "Duenio, garantia y postventa con login.", unlocked: beat === 3 },
+    { label: "NFT / certificado", body: "Request Polygon y token premium si la politica lo permite.", unlocked: beat === 1 || beat === 3 },
+    { label: "Marketplace", body: "Reventa, comunidad y ofertas contextuales.", unlocked: beat === 1 || beat === 3 },
+    { label: "Data feed", body: "Eventos, riesgo, zona, demanda y atribucion.", unlocked: beat !== 0 },
+  ];
+
+  return (
+    <article className="demo-lab-unlock-ladder">
+      <p>Unlock ladder comercial</p>
+      <h4>Que se habilita despues del tap</h4>
+      <div>
+        {rows.map((row) => (
+          <span key={row.label} className={row.unlocked && beat !== 2 ? "unlocked" : beat === 2 && row.label !== "Info publica" ? "blocked" : ""}>
+            <b>{row.label}</b>
+            <em>{beat === 2 && row.label !== "Info publica" ? "bloqueado por replay" : row.body}</em>
+          </span>
+        ))}
+      </div>
+    </article>
   );
 }
 

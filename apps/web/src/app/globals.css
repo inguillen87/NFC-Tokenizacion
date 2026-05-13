@@ -6480,6 +6480,396 @@ html.theme-light .demo-lab-policy-card--blocked {
     radial-gradient(circle at 0 0, rgba(167, 139, 250, 0.2), transparent 36%);
 }
 
+.demo-lab-differentiator-strip {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.78fr) minmax(0, 1.2fr) auto;
+  gap: 1rem;
+  align-items: center;
+  border: 1px solid rgba(45, 212, 191, 0.24);
+  border-radius: 1.45rem;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(45, 212, 191, 0.2), transparent 34%),
+    radial-gradient(circle at 92% 100%, rgba(167, 139, 250, 0.18), transparent 36%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.72), rgba(15, 23, 42, 0.86) 54%, rgba(49, 46, 129, 0.54));
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: clamp(1rem, 2vw, 1.35rem);
+}
+
+.demo-lab-differentiator-copy p,
+.demo-lab-unlock-ladder p {
+  color: #5eead4;
+  font-size: 0.66rem;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.demo-lab-differentiator-copy h2 {
+  margin-top: 0.4rem;
+  color: #f8fafc;
+  font-size: clamp(1.2rem, 2vw, 2rem);
+  font-weight: 950;
+  line-height: 1.04;
+}
+
+.demo-lab-differentiator-copy span {
+  display: block;
+  margin-top: 0.55rem;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.demo-lab-differentiator-chain {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.demo-lab-differentiator-chain span {
+  position: relative;
+  min-height: 4.2rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.95rem;
+  background: rgba(15, 23, 42, 0.62);
+  color: #94a3b8;
+  padding: 0.55rem;
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 950;
+  line-height: 1.18;
+}
+
+.demo-lab-differentiator-chain span.active {
+  border-color: rgba(94, 234, 212, 0.44);
+  background: linear-gradient(145deg, rgba(13, 148, 136, 0.32), rgba(15, 23, 42, 0.78));
+  color: #ecfeff;
+  box-shadow: 0 16px 34px rgba(20, 184, 166, 0.12);
+}
+
+.demo-lab-differentiator-strip > button {
+  min-width: 9rem;
+  border: 1px solid rgba(94, 234, 212, 0.38);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.3), rgba(34, 211, 238, 0.14));
+  color: #ecfeff;
+  padding: 0.85rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-lab-experience-layer {
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr);
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.demo-lab-trust-score,
+.demo-lab-proof-card,
+.demo-lab-phone-mirror,
+.demo-lab-unlock-ladder {
+  min-width: 0;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(8, 47, 73, 0.5)),
+    radial-gradient(circle at 10% 0%, rgba(34, 211, 238, 0.18), transparent 36%);
+  padding: 0.9rem;
+}
+
+.demo-lab-trust-score {
+  display: grid;
+  grid-template-columns: 6.2rem minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.demo-lab-trust-meter {
+  --trust-score: 0%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 5.7rem;
+  height: 5.7rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, #06121f 0 56%, transparent 57%),
+    conic-gradient(#22d3ee var(--trust-score), rgba(51, 65, 85, 0.66) 0);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 18px 30px rgba(2, 6, 23, 0.28);
+}
+
+.demo-lab-trust-meter strong {
+  color: #f8fafc;
+  font-size: 1.55rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.demo-lab-trust-meter span {
+  color: #67e8f9;
+  font-size: 0.48rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.demo-lab-trust-score p,
+.demo-lab-proof-card-header strong,
+.demo-lab-phone-topbar {
+  color: #67e8f9;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.demo-lab-trust-score h4,
+.demo-lab-proof-card h4,
+.demo-lab-unlock-ladder h4 {
+  margin-top: 0.35rem;
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.demo-lab-trust-signals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.demo-lab-trust-signal {
+  display: grid;
+  gap: 0.08rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.7rem;
+  background: rgba(15, 23, 42, 0.58);
+  padding: 0.45rem 0.55rem;
+}
+
+.demo-lab-trust-signal b {
+  color: #e2e8f0;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.demo-lab-trust-signal em {
+  color: #94a3b8;
+  font-size: 0.56rem;
+  font-style: normal;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.demo-lab-trust-signal--ok {
+  border-color: rgba(52, 211, 153, 0.32);
+  background: rgba(6, 78, 59, 0.32);
+}
+
+.demo-lab-trust-signal--ok em {
+  color: #a7f3d0;
+}
+
+.demo-lab-trust-signal--blocked {
+  border-color: rgba(251, 113, 133, 0.38);
+  background: rgba(76, 5, 25, 0.36);
+}
+
+.demo-lab-trust-signal--blocked em {
+  color: #fecdd3;
+}
+
+.demo-lab-proof-card--risk,
+.demo-lab-trust-score--beat-2 {
+  border-color: rgba(251, 113, 133, 0.28);
+  background:
+    linear-gradient(145deg, rgba(76, 5, 25, 0.58), rgba(15, 23, 42, 0.88)),
+    radial-gradient(circle at 10% 0%, rgba(251, 113, 133, 0.18), transparent 36%);
+}
+
+.demo-lab-proof-card--open,
+.demo-lab-phone-mirror--open {
+  border-color: rgba(167, 139, 250, 0.32);
+  background:
+    linear-gradient(145deg, rgba(49, 46, 129, 0.58), rgba(15, 23, 42, 0.86)),
+    radial-gradient(circle at 10% 0%, rgba(167, 139, 250, 0.2), transparent 36%);
+}
+
+.demo-lab-proof-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.demo-lab-proof-card-header span {
+  border: 1px solid rgba(94, 234, 212, 0.34);
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.16);
+  color: #ccfbf1;
+  padding: 0.32rem 0.58rem;
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.demo-lab-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.demo-lab-phone-mirror {
+  display: grid;
+  place-items: center;
+  padding: 0.8rem;
+}
+
+.demo-lab-phone-shell {
+  width: min(100%, 14.5rem);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 1.65rem;
+  background:
+    linear-gradient(180deg, rgba(8, 47, 73, 0.92), rgba(15, 23, 42, 0.98)),
+    radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.22), transparent 38%);
+  box-shadow: 0 24px 44px rgba(2, 6, 23, 0.34), inset 0 0 0 0.35rem rgba(255, 255, 255, 0.035);
+  padding: 0.85rem;
+}
+
+.demo-lab-phone-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  color: #a5f3fc;
+}
+
+.demo-lab-phone-topbar span {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  background: #34d399;
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.62);
+}
+
+.demo-lab-phone-status {
+  margin-top: 0.9rem;
+  border-radius: 1rem;
+  background: rgba(34, 211, 238, 0.14);
+  color: #ecfeff;
+  padding: 0.85rem;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 950;
+}
+
+.demo-lab-phone-shell h4 {
+  margin-top: 0.75rem;
+  color: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 950;
+}
+
+.demo-lab-phone-shell p {
+  margin-top: 0.45rem;
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.demo-lab-phone-route {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.45rem;
+  align-items: center;
+  margin-top: 0.85rem;
+}
+
+.demo-lab-phone-route span {
+  border-radius: 0.72rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  padding: 0.45rem;
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 900;
+}
+
+.demo-lab-phone-route i {
+  width: 1.2rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22d3ee, #fbbf24);
+}
+
+.demo-lab-phone-shell button {
+  width: 100%;
+  margin-top: 0.85rem;
+  border: 1px solid rgba(52, 211, 153, 0.36);
+  border-radius: 0.9rem;
+  background: rgba(6, 78, 59, 0.58);
+  color: #ecfeff;
+  padding: 0.7rem;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-lab-unlock-ladder > div {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.demo-lab-unlock-ladder span {
+  display: grid;
+  gap: 0.12rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.8rem;
+  background: rgba(15, 23, 42, 0.62);
+  padding: 0.55rem 0.65rem;
+}
+
+.demo-lab-unlock-ladder b {
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.demo-lab-unlock-ladder em {
+  color: #94a3b8;
+  font-size: 0.62rem;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.demo-lab-unlock-ladder span.unlocked {
+  border-color: rgba(52, 211, 153, 0.28);
+  background: rgba(6, 78, 59, 0.34);
+}
+
+.demo-lab-unlock-ladder span.unlocked em {
+  color: #bbf7d0;
+}
+
+.demo-lab-unlock-ladder span.blocked {
+  border-color: rgba(251, 113, 133, 0.28);
+  background: rgba(76, 5, 25, 0.32);
+}
+
+.demo-lab-unlock-ladder span.blocked em {
+  color: #fecdd3;
+}
+
 .demo-lab-flow-rail {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6718,10 +7108,36 @@ html.theme-light .demo-lab-policy-card--blocked {
 }
 
 @media (max-width: 760px) {
+  .demo-lab-differentiator-strip,
+  .demo-lab-experience-layer,
   .demo-lab-first-run-guide,
   .demo-lab-stage-explainer,
   .demo-lab-flow-rail,
   .demo-lab-modal-step-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-lab-differentiator-chain {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .demo-lab-differentiator-strip > button,
+  .demo-lab-trust-meter,
+  .demo-lab-phone-shell {
+    width: 100%;
+  }
+
+  .demo-lab-trust-score {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-lab-trust-meter {
+    max-width: 8.4rem;
+    justify-self: center;
+  }
+
+  .demo-lab-trust-signals,
+  .demo-lab-proof-grid {
     grid-template-columns: 1fr;
   }
 
