@@ -426,6 +426,13 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
     setActionMessage(beat === 2 ? "Club bloqueado por replay. Repeti el tap fisico para continuar." : "Club/marketplace listo: el consumidor puede asociarse y recibir beneficios del tenant.");
   }
 
+  function startGuidedDemo() {
+    setBeat(0);
+    setRunning(true);
+    setModalView(null);
+    setActionMessage("Modo guiado activo: primero mira la etiqueta cerrada, despues el tap valido, replay bloqueado y apertura con claim/tokenizacion.");
+  }
+
   return (
     <main className="demo-lab-shell container-shell py-8 text-slate-100">
       <section className="demo-lab-hero rounded-3xl border border-cyan-300/20 p-5 md:p-7">
@@ -505,6 +512,14 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
           </div>
 
           <div className="mt-5 grid min-w-0 gap-4">
+            <DemoFirstRunGuide
+              beat={beat}
+              simulating={simulating}
+              onGuided={startGuidedDemo}
+              onValid={() => void simulate("valid")}
+              onOpen={() => void simulate("tamper")}
+              onMobile={() => setModalView("mobile")}
+            />
             <div className="demo-lab-product-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -532,6 +547,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                 <span className="demo-lab-tap-chip">SUN</span>
                 <span className="demo-lab-tap-wave" />
               </div>
+              <DemoStageExplainer beat={beat} scenario={scenario} routeKm={routeKm} locale={locale} />
               <div className="demo-lab-sync-steps mt-4">
                 {activeVertical.proof.map((item, index) => <p key={item} className={`demo-lab-sync-step ${index <= beat ? "demo-lab-sync-step--active" : ""}`}><span>{index + 1}</span>{item}</p>)}
               </div>
@@ -614,6 +630,99 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         onOpen={setModalView}
       />
     </main>
+  );
+}
+
+function DemoFirstRunGuide({
+  beat,
+  simulating,
+  onGuided,
+  onValid,
+  onOpen,
+  onMobile,
+}: {
+  beat: Beat;
+  simulating: boolean;
+  onGuided: () => void;
+  onValid: () => void;
+  onOpen: () => void;
+  onMobile: () => void;
+}) {
+  const guideSteps = [
+    { beat: 0, kicker: "01", title: "Producto cerrado", body: "La etiqueta NFC esta intacta. Todavia no libera beneficios ni ownership." },
+    { beat: 1, kicker: "02", title: "Tap valido", body: "El SUN dinamico valida el producto y une origen, ubicacion y consumidor." },
+    { beat: 2, kicker: "03", title: "Replay bloqueado", body: "Una URL repetida o copiada no habilita club, marketplace ni NFT." },
+    { beat: 3, kicker: "04", title: "Apertura + claim", body: "El sello abierto dispara postventa, certificado y reclamo de duenio." },
+  ];
+
+  return (
+    <section className="demo-lab-first-run-guide" aria-label="Guia rapida para probar la demo">
+      <div className="demo-lab-guide-copy">
+        <p>Primera vez aca</p>
+        <h3>Proba el flujo como lo haria un cliente en 30 segundos.</h3>
+        <span>Arranca cerrado, hace un tap valido, mira como bloquea replay y termina con sello abierto, NFT y claim.</span>
+      </div>
+      <div className="demo-lab-guide-steps">
+        {guideSteps.map((step) => (
+          <div key={step.kicker} className={`demo-lab-guide-step ${beat === step.beat ? "demo-lab-guide-step--active" : ""}`}>
+            <strong>{step.kicker}</strong>
+            <span>{step.title}</span>
+            <small>{step.body}</small>
+          </div>
+        ))}
+      </div>
+      <div className="demo-lab-guide-actions">
+        <button suppressHydrationWarning type="button" onClick={onGuided}>Ver demo guiada</button>
+        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Tap valido</button>
+        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onOpen}>Abrir sello</button>
+        <button suppressHydrationWarning type="button" onClick={onMobile}>Ver mobile</button>
+      </div>
+    </section>
+  );
+}
+
+function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; scenario: DemoScenario; routeKm: number; locale: AppLocale }) {
+  const distance = `${routeKm.toLocaleString(locale)} km`;
+  const copyByBeat: Record<Beat, { title: string; body: string; backend: string; next: string }> = {
+    0: {
+      title: "Etiqueta NFC cerrada",
+      body: "El producto nacio con UID y origen, pero todavia no hay prueba fresca del consumidor.",
+      backend: "Backend: lote y UID listos, sin ownership ni token premium habilitado.",
+      next: "Siguiente: simular tap valido.",
+    },
+    1: {
+      title: "Tap fisico fresco",
+      body: `El cliente valida autenticidad y ve la ruta al origen en ${distance}.`,
+      backend: "Backend: evento valido, anti-replay OK, CTAs comerciales habilitados.",
+      next: "Siguiente: abrir mobile, tokenizar o simular apertura.",
+    },
+    2: {
+      title: "Replay bloqueado",
+      body: "La demo muestra por que copiar una URL no alcanza para reclamar beneficios.",
+      backend: "Backend: riesgo registrado, claim, club, marketplace sensible y token quedan bloqueados.",
+      next: "Siguiente: repetir con un tap valido.",
+    },
+    3: {
+      title: "Sello abierto",
+      body: "La etiqueta se parte visualmente y el producto cambia a lifecycle event.",
+      backend: "Backend: postventa, certificado, token request y claim requieren politica de compra/duenio.",
+      next: "Siguiente: abrir NFT/certificado o claim duenio.",
+    },
+  };
+  const item = copyByBeat[beat];
+
+  return (
+    <aside className={`demo-lab-stage-explainer demo-lab-stage-explainer--${scenario.tone}`} aria-live="polite">
+      <div>
+        <p>Que esta pasando</p>
+        <h4>{item.title}</h4>
+        <span>{item.body}</span>
+      </div>
+      <div>
+        <strong>{item.backend}</strong>
+        <small>{item.next}</small>
+      </div>
+    </aside>
   );
 }
 

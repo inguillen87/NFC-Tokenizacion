@@ -6286,6 +6286,200 @@ html.theme-light .demo-lab-policy-card--blocked {
   text-transform: uppercase;
 }
 
+.demo-lab-first-run-guide {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+  align-items: stretch;
+  border: 1px solid rgba(45, 212, 191, 0.24);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(45, 212, 191, 0.18), transparent 30%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.76), rgba(15, 23, 42, 0.9) 58%, rgba(49, 46, 129, 0.54));
+  box-shadow: 0 18px 46px rgba(2, 6, 23, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 0.9rem;
+}
+
+.demo-lab-guide-copy {
+  min-width: 0;
+  padding: 0.35rem;
+}
+
+.demo-lab-guide-copy p {
+  color: #67e8f9;
+  font-size: 0.66rem;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.demo-lab-guide-copy h3 {
+  margin-top: 0.45rem;
+  color: #f8fafc;
+  font-size: clamp(1rem, 1.35vw, 1.35rem);
+  font-weight: 950;
+  line-height: 1.08;
+}
+
+.demo-lab-guide-copy span {
+  display: block;
+  margin-top: 0.45rem;
+  max-width: 42rem;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.demo-lab-guide-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.demo-lab-guide-step {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.95rem;
+  background: rgba(15, 23, 42, 0.58);
+  padding: 0.7rem;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.demo-lab-guide-step strong {
+  display: inline-grid;
+  place-items: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+  font-size: 0.6rem;
+  font-weight: 950;
+}
+
+.demo-lab-guide-step span {
+  display: block;
+  margin-top: 0.55rem;
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.demo-lab-guide-step small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #94a3b8;
+  font-size: 0.66rem;
+  line-height: 1.45;
+}
+
+.demo-lab-guide-step--active {
+  transform: translateY(-1px);
+  border-color: rgba(103, 232, 249, 0.48);
+  background: linear-gradient(145deg, rgba(14, 116, 144, 0.34), rgba(15, 23, 42, 0.78));
+  box-shadow: 0 14px 30px rgba(8, 145, 178, 0.14);
+}
+
+.demo-lab-guide-step--active strong {
+  background: rgba(45, 212, 191, 0.24);
+  color: #ccfbf1;
+}
+
+.demo-lab-guide-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.demo-lab-guide-actions button {
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 0.85rem;
+  background: rgba(8, 47, 73, 0.58);
+  color: #ecfeff;
+  padding: 0.58rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.demo-lab-guide-actions button:first-child {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.28), rgba(16, 185, 129, 0.2));
+}
+
+.demo-lab-guide-actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(165, 243, 252, 0.58);
+  background: rgba(14, 116, 144, 0.68);
+}
+
+.demo-lab-guide-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.demo-lab-stage-explainer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.9fr);
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(135deg, rgba(8, 47, 73, 0.54), rgba(15, 23, 42, 0.74)),
+    radial-gradient(circle at 0 0, rgba(34, 211, 238, 0.18), transparent 36%);
+  padding: 0.85rem;
+}
+
+.demo-lab-stage-explainer p {
+  color: #67e8f9;
+  font-size: 0.63rem;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.demo-lab-stage-explainer h4 {
+  margin-top: 0.35rem;
+  color: #f8fafc;
+  font-size: 1.08rem;
+  font-weight: 950;
+}
+
+.demo-lab-stage-explainer span,
+.demo-lab-stage-explainer small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #cbd5e1;
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.demo-lab-stage-explainer strong {
+  display: block;
+  color: #ecfeff;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.55;
+}
+
+.demo-lab-stage-explainer--risk {
+  border-color: rgba(251, 113, 133, 0.28);
+  background:
+    linear-gradient(135deg, rgba(76, 5, 25, 0.48), rgba(15, 23, 42, 0.78)),
+    radial-gradient(circle at 0 0, rgba(251, 113, 133, 0.18), transparent 36%);
+}
+
+.demo-lab-stage-explainer--open {
+  border-color: rgba(167, 139, 250, 0.34);
+  background:
+    linear-gradient(135deg, rgba(49, 46, 129, 0.54), rgba(15, 23, 42, 0.78)),
+    radial-gradient(circle at 0 0, rgba(167, 139, 250, 0.2), transparent 36%);
+}
+
 .demo-lab-flow-rail {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6524,9 +6718,20 @@ html.theme-light .demo-lab-policy-card--blocked {
 }
 
 @media (max-width: 760px) {
+  .demo-lab-first-run-guide,
+  .demo-lab-stage-explainer,
   .demo-lab-flow-rail,
   .demo-lab-modal-step-grid {
     grid-template-columns: 1fr;
+  }
+
+  .demo-lab-guide-steps {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .demo-lab-guide-actions {
+    grid-template-columns: 1fr 1fr;
+    min-width: 0;
   }
 
   .demo-lab-modal-panel {
