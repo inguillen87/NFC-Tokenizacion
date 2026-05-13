@@ -6535,3 +6535,385 @@ html.theme-light .demo-lab-policy-card--blocked {
     border-radius: 1.25rem;
   }
 }
+
+/* Demo Lab product silhouettes. This final block makes each vertical read as a
+   distinct physical object instead of reusing the same abstract asset. */
+.demo-lab-product-stage:not(.demo-lab-product-stage--wine) .demo-lab-cork,
+.demo-lab-product-stage:not(.demo-lab-product-stage--wine) .demo-lab-product-label {
+  display: none !important;
+}
+
+.demo-lab-product-stage .seed-packet-demo,
+.demo-lab-product-stage .cream-jar-demo,
+.demo-lab-product-stage .perfume-demo,
+.demo-lab-product-stage .cream-tube-demo,
+.demo-lab-product-stage .event-bracelet-demo,
+.demo-lab-product-stage .party-ticket-demo {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  z-index: 7 !important;
+  display: block;
+  overflow: visible;
+  max-width: none !important;
+  max-height: none !important;
+  transform: translate(-50%, -50%) !important;
+  filter: drop-shadow(0 1.35rem 1.6rem rgba(0, 0, 0, 0.34));
+}
+
+.demo-lab-product-stage--wine .hero-bottle {
+  width: clamp(5.1rem, 7vw, 6.5rem) !important;
+  height: clamp(15rem, 19vw, 18rem) !important;
+  border: 1px solid rgba(251, 191, 36, 0.28) !important;
+  border-radius: 44% 44% 18% 18% / 14% 14% 8% 8% !important;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 18% 82%, rgba(255, 255, 255, 0.1)),
+    linear-gradient(180deg, #78350f 0 16%, #14532d 16% 38%, #7f1d1d 38% 100%) !important;
+  box-shadow: inset 0 0 0 0.35rem rgba(255, 255, 255, 0.04), inset 0 -5rem 2.5rem rgba(127, 29, 29, 0.45);
+}
+
+.demo-lab-product-stage--wine .hero-bottle::before {
+  content: "MALBEC" !important;
+  inset: auto 0.85rem 3.4rem !important;
+  height: 3.5rem !important;
+  display: grid !important;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 0.65rem !important;
+  background: linear-gradient(135deg, #f8fafc, #e0f2fe) !important;
+  color: #0f172a;
+  font-size: 0.65rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+}
+
+.demo-lab-product-stage--wine .hero-bottle::after {
+  content: "" !important;
+  top: -0.7rem !important;
+  left: 50% !important;
+  width: 2.15rem !important;
+  height: 4.7rem !important;
+  transform: translateX(-50%) !important;
+  border-radius: 0.55rem 0.55rem 0.25rem 0.25rem !important;
+  background: linear-gradient(180deg, #f59e0b, #78350f) !important;
+}
+
+.demo-lab-product-stage .seed-packet-demo {
+  width: clamp(10rem, 15vw, 13rem);
+  height: clamp(13.5rem, 20vw, 16rem);
+  border: 1px solid rgba(254, 240, 138, 0.42);
+  border-radius: 1.1rem 1.1rem 0.8rem 0.8rem;
+  background:
+    radial-gradient(circle at 20% 76%, rgba(250, 204, 21, 0.85) 0 0.28rem, transparent 0.31rem),
+    radial-gradient(circle at 34% 82%, rgba(250, 204, 21, 0.7) 0 0.22rem, transparent 0.25rem),
+    radial-gradient(circle at 54% 78%, rgba(250, 204, 21, 0.75) 0 0.24rem, transparent 0.27rem),
+    linear-gradient(160deg, rgba(21, 128, 61, 0.96), rgba(132, 204, 22, 0.92) 44%, rgba(250, 204, 21, 0.9));
+  box-shadow: inset 0 0 0 0.45rem rgba(255, 255, 255, 0.08);
+}
+
+.demo-lab-product-stage .seed-packet-demo::before {
+  content: "SEMILLAS";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: 1.25rem;
+  display: grid;
+  place-items: center;
+  height: 3.2rem;
+  border-radius: 0.7rem;
+  background: rgba(240, 253, 244, 0.88);
+  color: #14532d;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.demo-lab-product-stage .seed-packet-demo::after {
+  content: "LOTE A12";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  border-top: 1px dashed rgba(20, 83, 45, 0.42);
+  padding-top: 0.65rem;
+  color: rgba(20, 83, 45, 0.88);
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.demo-lab-product-stage .cream-jar-demo {
+  width: clamp(12rem, 18vw, 15rem);
+  height: clamp(8.5rem, 13vw, 10.5rem);
+  border: 1px solid rgba(244, 114, 182, 0.26);
+  border-radius: 1.6rem 1.6rem 2.7rem 2.7rem;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 24% 78%, rgba(244, 114, 182, 0.16)),
+    linear-gradient(180deg, #fff7ed 0 18%, #fce7f3 18% 100%);
+  box-shadow: inset 0 -1.6rem 2rem rgba(251, 207, 232, 0.78), inset 0 0 0 0.35rem rgba(255, 255, 255, 0.32);
+}
+
+.demo-lab-product-stage .cream-jar-demo::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -2.05rem;
+  width: 72%;
+  height: 2.8rem;
+  transform: translateX(-50%);
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 1.15rem 1.15rem 0.45rem 0.45rem;
+  background: linear-gradient(180deg, #e2e8f0, #94a3b8);
+}
+
+.demo-lab-product-stage .cream-jar-demo::after {
+  content: "CREMA";
+  position: absolute;
+  left: 1.35rem;
+  right: 1.35rem;
+  top: 2.4rem;
+  display: grid;
+  place-items: center;
+  height: 3.2rem;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.72);
+  color: #831843;
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.demo-lab-product-stage .perfume-demo {
+  width: clamp(8.5rem, 12vw, 10.5rem);
+  height: clamp(13.5rem, 18vw, 16rem);
+  border: 1px solid rgba(165, 180, 252, 0.4);
+  border-radius: 1.45rem 1.45rem 1rem 1rem;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 22% 76%, rgba(255, 255, 255, 0.12)),
+    linear-gradient(160deg, rgba(199, 210, 254, 0.78), rgba(91, 33, 182, 0.72));
+  box-shadow: inset 0 0 0 0.45rem rgba(255, 255, 255, 0.08), inset 0 -3rem 2rem rgba(76, 29, 149, 0.28);
+}
+
+.demo-lab-product-stage .perfume-demo::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3.2rem;
+  width: 3.6rem;
+  height: 3.5rem;
+  transform: translateX(-50%);
+  border-radius: 0.35rem 0.35rem 0.9rem 0.9rem;
+  background:
+    linear-gradient(90deg, transparent 0 36%, #cbd5e1 36% 64%, transparent 64%),
+    linear-gradient(180deg, #f8fafc 0 38%, #64748b 38% 100%);
+}
+
+.demo-lab-product-stage .perfume-demo::after {
+  content: "PARFUM";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: 5.1rem;
+  display: grid;
+  place-items: center;
+  height: 4rem;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 0.75rem;
+  color: #f8fafc;
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.demo-lab-product-stage .cream-tube-demo {
+  width: clamp(6.8rem, 10vw, 8.5rem);
+  height: clamp(15rem, 21vw, 18rem);
+  border: 1px solid rgba(125, 211, 252, 0.38);
+  border-radius: 3.5rem 3.5rem 1.1rem 1.1rem;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.3), transparent 22% 82%, rgba(255, 255, 255, 0.1)),
+    linear-gradient(180deg, #ecfeff, #67e8f9 46%, #0e7490);
+  box-shadow: inset 0 -2.2rem 1.7rem rgba(8, 47, 73, 0.28);
+}
+
+.demo-lab-product-stage .cream-tube-demo::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2rem;
+  width: 86%;
+  height: 2.55rem;
+  transform: translateX(-50%);
+  border-radius: 0.45rem 0.45rem 0.95rem 0.95rem;
+  background: linear-gradient(180deg, #334155, #0f172a);
+}
+
+.demo-lab-product-stage .cream-tube-demo::after {
+  content: "CREMA";
+  position: absolute;
+  left: 0.8rem;
+  right: 0.8rem;
+  top: 5.2rem;
+  display: grid;
+  place-items: center;
+  height: 4.8rem;
+  border-radius: 0.8rem;
+  background: rgba(240, 253, 250, 0.5);
+  color: #164e63;
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  writing-mode: vertical-rl;
+}
+
+.demo-lab-product-stage .event-bracelet-demo {
+  width: clamp(16rem, 25vw, 22rem);
+  height: clamp(4.1rem, 6vw, 5.1rem);
+  border: 1px solid rgba(45, 212, 191, 0.42);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 15% 50%, rgba(2, 6, 23, 0.76) 0 0.35rem, transparent 0.39rem),
+    radial-gradient(circle at 25% 50%, rgba(2, 6, 23, 0.6) 0 0.26rem, transparent 0.3rem),
+    radial-gradient(circle at 35% 50%, rgba(2, 6, 23, 0.5) 0 0.22rem, transparent 0.26rem),
+    linear-gradient(90deg, #06b6d4, #14b8a6 44%, #8b5cf6);
+  transform: translate(-50%, -50%) rotate(-8deg) !important;
+  box-shadow: inset 0 0 0 0.35rem rgba(255, 255, 255, 0.08);
+}
+
+.demo-lab-product-stage .event-bracelet-demo::before {
+  content: "VIP";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 5.8rem;
+  height: 2.65rem;
+  transform: translate(-50%, -50%);
+  border-radius: 0.55rem;
+  background: rgba(2, 6, 23, 0.68);
+  color: #ecfeff;
+  font-size: 1rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.demo-lab-product-stage .event-bracelet-demo::after {
+  content: "";
+  position: absolute;
+  right: 1.25rem;
+  top: 50%;
+  width: 2.65rem;
+  height: 2.65rem;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: rgba(236, 254, 255, 0.35);
+  box-shadow: inset 0 0 0 0.45rem rgba(2, 6, 23, 0.18);
+}
+
+.demo-lab-product-stage .party-ticket-demo {
+  width: clamp(15rem, 23vw, 20rem);
+  height: clamp(8.5rem, 13vw, 11rem);
+  border: 1px solid rgba(251, 113, 133, 0.38);
+  border-radius: 1.1rem;
+  background:
+    radial-gradient(circle at 0 50%, rgba(7, 10, 28, 1) 0 1.05rem, transparent 1.08rem),
+    radial-gradient(circle at 100% 50%, rgba(7, 10, 28, 1) 0 1.05rem, transparent 1.08rem),
+    linear-gradient(90deg, rgba(244, 63, 94, 0.95), rgba(124, 58, 237, 0.9));
+  transform: translate(-50%, -50%) rotate(-4deg) !important;
+}
+
+.demo-lab-product-stage .party-ticket-demo::before {
+  content: "FIESTA VIP";
+  position: absolute;
+  left: 1.25rem;
+  top: 1.3rem;
+  color: #fff7ed;
+  font-size: 1.1rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.demo-lab-product-stage .party-ticket-demo::after {
+  content: "QR";
+  position: absolute;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  display: grid;
+  place-items: center;
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 0.45rem;
+  background:
+    linear-gradient(90deg, #0f172a 0 18%, transparent 18% 35%, #0f172a 35% 52%, transparent 52% 70%, #0f172a 70%),
+    linear-gradient(180deg, transparent 0 18%, #0f172a 18% 35%, transparent 35% 52%, #0f172a 52% 70%, transparent 70%),
+    #f8fafc;
+  color: transparent;
+}
+
+@media (max-width: 640px) {
+  .demo-lab-product-stage .seed-packet-demo {
+    width: 9.2rem;
+    height: 12.4rem;
+  }
+
+  .demo-lab-product-stage .cream-jar-demo {
+    width: 10.5rem;
+    height: 7.8rem;
+  }
+
+  .demo-lab-product-stage .perfume-demo,
+  .demo-lab-product-stage .cream-tube-demo {
+    transform: translate(-50%, -50%) scale(0.86) !important;
+  }
+
+  .demo-lab-product-stage .event-bracelet-demo,
+  .demo-lab-product-stage .party-ticket-demo {
+    transform: translate(-50%, -50%) scale(0.82) rotate(-6deg) !important;
+  }
+}
+
+.demo-lab-product-stage .demo-lab-product-illustration-wrap {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  z-index: 8 !important;
+  width: clamp(16.5rem, 27vw, 23.5rem) !important;
+  height: clamp(19rem, 30vw, 27rem) !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.demo-lab-product-stage .demo-lab-product-illustration-wrap::before,
+.demo-lab-product-stage .demo-lab-product-illustration-wrap::after {
+  display: none !important;
+  content: none !important;
+}
+
+.demo-lab-product-illustration {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.demo-lab-product-stage .demo-lab-cork,
+.demo-lab-product-stage .demo-lab-product-label,
+.demo-lab-product-stage .demo-lab-seal-split {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .demo-lab-product-stage .demo-lab-product-illustration-wrap {
+    width: 18.5rem !important;
+    height: 21.5rem !important;
+  }
+}

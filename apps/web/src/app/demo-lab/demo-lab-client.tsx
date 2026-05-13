@@ -523,7 +523,9 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
               </div>
               <div className={`demo-lab-product-stage demo-lab-product-stage--${vertical} demo-lab-product-stage--beat-${beat} demo-lab-product-stage--${scenario.tone} mt-4`}>
                 <StageRouteLayer txt={txt} routeKm={routeKm} destination={destination} scenario={scenario} locale={locale} />
-                <div className={`${activeVertical.visual} demo-lab-live-visual ${beat === 3 ? "tampered" : "scanning"}`} />
+                <div className={`${activeVertical.visual} demo-lab-live-visual demo-lab-product-illustration-wrap ${beat === 3 ? "tampered" : "scanning"}`}>
+                  <ProductIllustration vertical={vertical} product={activeVertical.product} label={activeVertical.label} beat={beat} />
+                </div>
                 <span className="demo-lab-cork" />
                 <span className="demo-lab-product-label">nexID secure</span>
                 <span className="demo-lab-seal-split" />
@@ -615,10 +617,145 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
   );
 }
 
+function ProductIllustration({ vertical, product, label, beat }: { vertical: Vertical; product: string; label: string; beat: Beat }) {
+  const uid = `demo-product-${vertical}`;
+  const statusLabel = beat === 2 ? "BLOCK" : beat === 3 ? "OPEN" : "NFC";
+  const productLine = product.length > 24 ? `${product.slice(0, 22)}...` : product;
+  const accent = beat === 2 ? "#fb7185" : beat === 3 ? "#a78bfa" : "#22d3ee";
+
+  return (
+    <svg className="demo-lab-product-illustration" viewBox="0 0 360 420" role="img" aria-label={`${label}: ${product}`}>
+      <defs>
+        <filter id={`${uid}-shadow`} x="-35%" y="-35%" width="170%" height="170%">
+          <feDropShadow dx="0" dy="18" stdDeviation="16" floodColor="#020617" floodOpacity="0.42" />
+        </filter>
+        <linearGradient id={`${uid}-glass`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.86" />
+          <stop offset="42%" stopColor="#67e8f9" stopOpacity="0.32" />
+          <stop offset="100%" stopColor="#4c1d95" stopOpacity="0.78" />
+        </linearGradient>
+        <linearGradient id={`${uid}-metal`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f8fafc" />
+          <stop offset="44%" stopColor="#94a3b8" />
+          <stop offset="100%" stopColor="#334155" />
+        </linearGradient>
+        <linearGradient id={`${uid}-holo`} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.9" />
+          <stop offset="48%" stopColor="#a78bfa" stopOpacity="0.85" />
+          <stop offset="100%" stopColor="#34d399" stopOpacity="0.9" />
+        </linearGradient>
+        <radialGradient id={`${uid}-stage-glow`} cx="50%" cy="50%" r="65%">
+          <stop offset="0%" stopColor={accent} stopOpacity="0.18" />
+          <stop offset="100%" stopColor="#020617" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      <ellipse cx="180" cy="366" rx="118" ry="24" fill="#020617" opacity="0.42" />
+      <ellipse cx="180" cy="218" rx="156" ry="144" fill={`url(#${uid}-stage-glow)`} />
+
+      {vertical === "wine" ? (
+        <g filter={`url(#${uid}-shadow)`}>
+          <path d="M158 38h44l7 58c2 15 13 24 25 34 13 11 19 28 19 49v141c0 27-20 48-49 48h-48c-29 0-49-21-49-48V179c0-21 6-38 19-49 12-10 23-19 25-34l7-58Z" fill="#7f1d1d" />
+          <path d="M158 38h44l5 48h-54l5-48Z" fill="#f59e0b" />
+          <path d="M141 119c14-14 27-21 39-21s25 7 39 21c-10 12-68 12-78 0Z" fill="#14532d" opacity="0.86" />
+          <rect x="130" y="212" width="100" height="78" rx="10" fill="#f8fafc" />
+          <rect x="142" y="225" width="76" height="12" rx="6" fill={`url(#${uid}-holo)`} opacity="0.72" />
+          <text x="180" y="261" textAnchor="middle" fill="#0f172a" fontSize="15" fontWeight="900" letterSpacing="2">MALBEC</text>
+          <path d="M122 154c18-18 36-27 58-27 24 0 42 9 58 27v44H122v-44Z" fill="#450a0a" opacity="0.38" />
+          <path d="M134 60c11-9 29-11 38-2 10 10 2 25-12 22-14-3-21-9-26-20Z" fill="#fde68a" opacity="0.52" />
+        </g>
+      ) : null}
+
+      {vertical === "seeds" ? (
+        <g filter={`url(#${uid}-shadow)`}>
+          <path d="M105 76h150c13 0 24 11 24 24v230c0 13-11 24-24 24H105c-13 0-24-11-24-24V100c0-13 11-24 24-24Z" fill="#84cc16" />
+          <path d="M105 76h150c13 0 24 11 24 24v230c0 13-11 24-24 24H105c-13 0-24-11-24-24V100c0-13 11-24 24-24Z" fill="url(#demo-product-seeds-holo)" opacity="0.32" />
+          <rect x="101" y="105" width="158" height="52" rx="12" fill="#f0fdf4" />
+          <text x="180" y="138" textAnchor="middle" fill="#166534" fontSize="13" fontWeight="900" letterSpacing="2">SEMILLAS</text>
+          <path d="M109 289h142" stroke="#166534" strokeWidth="2" strokeDasharray="5 7" opacity="0.42" />
+          <text x="180" y="317" textAnchor="middle" fill="#14532d" fontSize="13" fontWeight="900" letterSpacing="1.5">LOTE A12</text>
+          {[132, 163, 197, 225].map((cx, index) => (
+            <path key={cx} d={`M${cx} ${235 + (index % 2) * 14}c18-18 35-8 30 11-20 7-32 1-30-11Z`} fill="#facc15" opacity="0.82" />
+          ))}
+          <path d="M99 91h162" stroke="#ecfccb" strokeWidth="7" strokeLinecap="round" opacity="0.5" />
+        </g>
+      ) : null}
+
+      {vertical === "creamJar" ? (
+        <g filter={`url(#${uid}-shadow)`}>
+          <rect x="107" y="115" width="146" height="48" rx="16" fill={`url(#${uid}-metal)`} />
+          <path d="M89 164h182v111c0 47-34 78-91 78s-91-31-91-78V164Z" fill="#fce7f3" />
+          <path d="M89 164h182v64H89v-64Z" fill="#fff7ed" opacity="0.86" />
+          <rect x="112" y="196" width="136" height="66" rx="14" fill="#fff1f2" />
+          <text x="180" y="235" textAnchor="middle" fill="#be185d" fontSize="14" fontWeight="900" letterSpacing="4">CREMA</text>
+          <path d="M91 275c27 25 62 38 89 38s62-13 89-38v16c0 38-36 62-89 62s-89-24-89-62v-16Z" fill="#fbcfe8" opacity="0.85" />
+          <circle cx="239" cy="204" r="14" fill={`url(#${uid}-holo)`} opacity="0.74" />
+        </g>
+      ) : null}
+
+      {vertical === "perfume" ? (
+        <g filter={`url(#${uid}-shadow)`}>
+          <rect x="153" y="49" width="54" height="45" rx="8" fill={`url(#${uid}-metal)`} />
+          <rect x="140" y="29" width="80" height="28" rx="8" fill="#f8fafc" />
+          <path d="M110 116c0-22 18-40 40-40h60c22 0 40 18 40 40v194c0 24-19 43-43 43h-54c-24 0-43-19-43-43V116Z" fill={`url(#${uid}-glass)`} />
+          <path d="M126 139c0-20 17-37 37-37h34c21 0 38 17 38 37v160c0 15-12 27-27 27h-56c-15 0-26-12-26-27V139Z" fill="#312e81" opacity="0.32" />
+          <rect x="131" y="193" width="98" height="76" rx="12" fill="transparent" stroke="#e0e7ff" strokeWidth="2" opacity="0.45" />
+          <text x="180" y="238" textAnchor="middle" fill="#f8fafc" fontSize="14" fontWeight="900" letterSpacing="2">PARFUM</text>
+          <path d="M122 126c20-22 80-26 110 4" stroke="#f8fafc" strokeWidth="8" strokeLinecap="round" opacity="0.16" />
+        </g>
+      ) : null}
+
+      {vertical === "creamTube" ? (
+        <g filter={`url(#${uid}-shadow)`}>
+          <path d="M127 79c0-26 21-47 53-47s53 21 53 47v230c0 27-18 46-53 46s-53-19-53-46V79Z" fill="#67e8f9" />
+          <path d="M127 79c0-26 21-47 53-47s53 21 53 47v230c0 27-18 46-53 46s-53-19-53-46V79Z" fill="url(#demo-product-creamTube-holo)" opacity="0.34" />
+          <rect x="143" y="176" width="74" height="94" rx="10" fill="#cffafe" opacity="0.82" />
+          <text x="183" y="229" textAnchor="middle" fill="#155e75" fontSize="13" fontWeight="900" letterSpacing="3" transform="rotate(90 183 229)">CREMA</text>
+          <rect x="130" y="333" width="100" height="45" rx="12" fill="#0f172a" />
+          <rect x="137" y="343" width="86" height="9" rx="5" fill="#475569" />
+          <path d="M144 66c20-17 52-17 72 0" stroke="#ecfeff" strokeWidth="8" strokeLinecap="round" opacity="0.34" />
+        </g>
+      ) : null}
+
+      {vertical === "bracelet" ? (
+        <g filter={`url(#${uid}-shadow)`} transform="rotate(-8 180 210)">
+          <path d="M51 198c46-40 212-60 258-10 20 22 4 58-28 62-66 9-151 26-220-4-27-12-31-30-10-48Z" fill="#14b8a6" />
+          <path d="M69 197c68 18 155 4 230 0 13 17 0 42-24 46-60 10-148 24-211-5-24-11-22-29 5-41Z" fill={`url(#${uid}-holo)`} opacity="0.62" />
+          <rect x="149" y="189" width="70" height="38" rx="9" fill="#0f172a" />
+          <text x="184" y="214" textAnchor="middle" fill="#ecfeff" fontSize="16" fontWeight="900" letterSpacing="2">VIP</text>
+          {[83, 111, 138].map((cx) => <circle key={cx} cx={cx} cy="218" r="6" fill="#0f172a" opacity="0.72" />)}
+          <circle cx="276" cy="205" r="20" fill="#c4b5fd" opacity="0.82" />
+          <circle cx="276" cy="205" r="11" fill="#f8fafc" opacity="0.4" />
+        </g>
+      ) : null}
+
+      {vertical === "ticket" ? (
+        <g filter={`url(#${uid}-shadow)`} transform="rotate(-4 180 210)">
+          <path d="M66 129h228c19 0 34 15 34 34v114c0 19-15 34-34 34H66c-19 0-34-15-34-34V163c0-19 15-34 34-34Z" fill="#e11d48" />
+          <path d="M66 129h228c19 0 34 15 34 34v114c0 19-15 34-34 34H66c-19 0-34-15-34-34V163c0-19 15-34 34-34Z" fill={`url(#${uid}-holo)`} opacity="0.56" />
+          <circle cx="35" cy="220" r="21" fill="#07111f" />
+          <circle cx="325" cy="220" r="21" fill="#07111f" />
+          <text x="82" y="183" fill="#fff7ed" fontSize="24" fontWeight="900" letterSpacing="3">FIESTA VIP</text>
+          <path d="M73 252h130" stroke="#fecdd3" strokeWidth="3" strokeDasharray="7 8" opacity="0.42" />
+          <rect x="240" y="222" width="58" height="58" rx="8" fill="#f8fafc" />
+          {[252, 276].map((x) => [234, 258].map((y) => <rect key={`${x}-${y}`} x={x} y={y} width="13" height="13" fill="#0f172a" />))}
+          <rect x="275" y="260" width="13" height="13" fill="#0f172a" />
+        </g>
+      ) : null}
+
+      <g transform="translate(272 61)">
+        <circle cx="0" cy="0" r="26" fill="#082f49" stroke={accent} strokeWidth="2" />
+        <text x="0" y="4" textAnchor="middle" fill="#ecfeff" fontSize="12" fontWeight="900">{statusLabel}</text>
+      </g>
+      <text x="180" y="398" textAnchor="middle" fill="#cbd5e1" fontSize="13" fontWeight="800">{productLine}</text>
+    </svg>
+  );
+}
+
 function MobileOutcome({
   txt,
   beat,
-  vertical,
+  verticalLabel,
   status,
   product,
   destination,
@@ -630,7 +767,7 @@ function MobileOutcome({
 }: {
   txt: DemoCopy;
   beat: Beat;
-  vertical: Vertical;
+  verticalLabel: string;
   status: string;
   product: string;
   destination: DemoLocation;
@@ -654,7 +791,7 @@ function MobileOutcome({
           <h3 className="mt-2 text-2xl font-black text-white">{scenario.stateLabel}</h3>
           <p className="mt-1 text-sm text-slate-300">{product}</p>
         </div>
-        <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-black text-emerald-100">{vertical.toUpperCase()}</span>
+        <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-black uppercase text-emerald-100">{verticalLabel}</span>
       </div>
 
       <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
@@ -769,7 +906,7 @@ function DemoFlowModal({
           <button suppressHydrationWarning type="button" onClick={() => onOpen("claim")} className={view === "claim" ? "active" : ""}>Claim</button>
         </div>
         {view === "mobile" ? (
-          <MobileOutcome txt={txt} beat={beat} vertical={vertical} status={status} product={product} destination={destination} routeKm={routeKm} scenario={scenario} onAction={onAction} actionMessage={actionMessage} locale={locale} />
+          <MobileOutcome txt={txt} beat={beat} verticalLabel={txt.verticals[vertical].label} status={status} product={product} destination={destination} routeKm={routeKm} scenario={scenario} onAction={onAction} actionMessage={actionMessage} locale={locale} />
         ) : view === "nft" ? (
           <DemoNftModalContent beat={beat} scenario={scenario} />
         ) : (
