@@ -10,6 +10,7 @@ type Beat = 0 | 1 | 2 | 3;
 type Vertical = "wine" | "events" | "cosmetics" | "agro" | "pharma";
 type SimulationMode = "valid" | "tamper" | "replay";
 type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
+type DemoModalView = "mobile" | "nft" | "claim" | null;
 type DemoScenarioTone = "origin" | "ok" | "risk" | "open";
 type DemoScenario = {
   tone: DemoScenarioTone;
@@ -278,6 +279,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
   const [simulating, setSimulating] = useState(false);
   const [fallbackLastSeen, setFallbackLastSeen] = useState(STABLE_DEMO_TIME);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [modalView, setModalView] = useState<DemoModalView>(null);
 
   useEffect(() => setFallbackLastSeen(new Date().toISOString()), []);
 
@@ -311,6 +313,15 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
   useEffect(() => {
     setActionMessage(null);
   }, [beat, vertical]);
+
+  useEffect(() => {
+    if (!modalView) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setModalView(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [modalView]);
 
   const activeBeat = txt.beats[beat];
   const activeRole = txt.roles[role];
@@ -487,14 +498,17 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
             ))}
           </div>
 
-          <div className="mt-5 grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.92fr)]">
-            <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+          <div className="mt-5 grid min-w-0 gap-4">
+            <div className="demo-lab-product-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.product}</p>
                   <h3 className="mt-1 text-xl font-black text-white">{activeVertical.product}</h3>
                 </div>
-                <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-[11px] font-bold text-violet-100">{activeVertical.profile}</span>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-[11px] font-bold text-violet-100">{activeVertical.profile}</span>
+                  <button suppressHydrationWarning type="button" onClick={() => setModalView("mobile")} className="demo-lab-modal-open-button">Ver resultado mobile</button>
+                </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {(Object.keys(txt.verticals) as Vertical[]).map((item) => (
@@ -513,9 +527,8 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
               <div className="demo-lab-sync-steps mt-4">
                 {activeVertical.proof.map((item, index) => <p key={item} className={`demo-lab-sync-step ${index <= beat ? "demo-lab-sync-step--active" : ""}`}><span>{index + 1}</span>{item}</p>)}
               </div>
+              <DemoFlowRail scenario={scenario} beat={beat} onOpen={setModalView} />
             </div>
-
-            <MobileOutcome txt={txt} beat={beat} vertical={vertical} status={activeBeat.status} product={activeVertical.product} destination={destination} routeKm={routeKm} scenario={scenario} onAction={handleDemoAction} actionMessage={actionMessage} locale={locale} />
           </div>
         </article>
 
@@ -575,6 +588,23 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
           </article>
         ))}
       </section>
+
+      <DemoFlowModal
+        view={modalView}
+        txt={txt}
+        beat={beat}
+        vertical={vertical}
+        status={activeBeat.status}
+        product={activeVertical.product}
+        destination={destination}
+        routeKm={routeKm}
+        scenario={scenario}
+        actionMessage={actionMessage}
+        locale={locale}
+        onAction={handleDemoAction}
+        onClose={() => setModalView(null)}
+        onOpen={setModalView}
+      />
     </main>
   );
 }
@@ -651,6 +681,152 @@ function MobileOutcome({
       </div>
       {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
     </article>
+  );
+}
+
+function DemoFlowRail({ scenario, beat, onOpen }: { scenario: DemoScenario; beat: Beat; onOpen: (view: DemoModalView) => void }) {
+  const riskCopy = beat === 2 ? "Bloqueado por replay" : "Listo para continuar";
+  const items: Array<{ view: Exclude<DemoModalView, null>; eyebrow: string; title: string; body: string; tone: string }> = [
+    { view: "mobile", eyebrow: scenario.stateLabel, title: "Resultado mobile", body: riskCopy, tone: scenario.tone },
+    { view: "nft", eyebrow: "Polygon Amoy", title: "NFT / certificado", body: beat === 2 ? "No mintea si hay replay" : "Request + tx_hash + token_id", tone: "nft" },
+    { view: "claim", eyebrow: "Portal usuario", title: "Claim duenio", body: "Login, tenant y ownership", tone: "claim" },
+  ];
+
+  return (
+    <div className="demo-lab-flow-rail mt-4">
+      {items.map((item) => (
+        <button suppressHydrationWarning key={item.view} type="button" onClick={() => onOpen(item.view)} className={`demo-lab-flow-rail-card demo-lab-flow-rail-card--${item.tone}`}>
+          <span>{item.eyebrow}</span>
+          <strong>{item.title}</strong>
+          <small>{item.body}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function DemoFlowModal({
+  view,
+  txt,
+  beat,
+  vertical,
+  status,
+  product,
+  destination,
+  routeKm,
+  scenario,
+  actionMessage,
+  locale,
+  onAction,
+  onClose,
+  onOpen,
+}: {
+  view: DemoModalView;
+  txt: DemoCopy;
+  beat: Beat;
+  vertical: Vertical;
+  status: string;
+  product: string;
+  destination: DemoLocation;
+  routeKm: number;
+  scenario: DemoScenario;
+  actionMessage: string | null;
+  locale: AppLocale;
+  onAction: (action: DemoAction) => void;
+  onClose: () => void;
+  onOpen: (view: DemoModalView) => void;
+}) {
+  if (!view) return null;
+
+  const title = view === "mobile" ? "Resultado mobile" : view === "nft" ? "NFT / certificado Polygon" : "Reclamar duenio";
+  const subtitle = view === "mobile"
+    ? "Lo que ve el consumidor despues del tap."
+    : view === "nft"
+      ? "Como se conecta el tap valido con tokenizacion y evidencia on-chain."
+      : "Como el consumidor pasa de autenticar a asociar ownership en el portal.";
+
+  return (
+    <div className="demo-lab-modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
+      <button suppressHydrationWarning type="button" className="demo-lab-modal-scrim" aria-label="Cerrar modal" onClick={onClose} />
+      <section className="demo-lab-modal-panel">
+        <div className="demo-lab-modal-header">
+          <div>
+            <p>Flujo integrado</p>
+            <h2>{title}</h2>
+            <span>{subtitle}</span>
+          </div>
+          <button suppressHydrationWarning type="button" onClick={onClose}>Cerrar</button>
+        </div>
+        <div className="demo-lab-modal-tabs">
+          <button suppressHydrationWarning type="button" onClick={() => onOpen("mobile")} className={view === "mobile" ? "active" : ""}>Mobile</button>
+          <button suppressHydrationWarning type="button" onClick={() => onOpen("nft")} className={view === "nft" ? "active" : ""}>NFT</button>
+          <button suppressHydrationWarning type="button" onClick={() => onOpen("claim")} className={view === "claim" ? "active" : ""}>Claim</button>
+        </div>
+        {view === "mobile" ? (
+          <MobileOutcome txt={txt} beat={beat} vertical={vertical} status={status} product={product} destination={destination} routeKm={routeKm} scenario={scenario} onAction={onAction} actionMessage={actionMessage} locale={locale} />
+        ) : view === "nft" ? (
+          <DemoNftModalContent beat={beat} scenario={scenario} />
+        ) : (
+          <DemoClaimModalContent beat={beat} scenario={scenario} />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoScenario }) {
+  const blocked = beat === 2;
+  const steps = [
+    { label: "01", title: "Tap valido", body: blocked ? "Replay detectado: no se firma en blockchain." : "SUN fresco confirma autenticidad y crea evento." },
+    { label: "02", title: "UID hasheado", body: "El UID no se expone crudo; se usa hash con salt para el certificado." },
+    { label: "03", title: "Request", body: blocked ? "La request queda bloqueada por politica." : "Se prepara request idempotente de tokenizacion." },
+    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo tap valido." : "El mint devuelve tx_hash y token_id para trazabilidad." },
+  ];
+  return (
+    <div className="demo-lab-modal-story">
+      <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
+        <span>{scenario.stateLabel}</span>
+        <strong>{blocked ? "Tokenizacion bloqueada por seguridad" : "Auto-tokenizacion lista para tap valido"}</strong>
+        <p>{scenario.chain}</p>
+      </div>
+      <div className="demo-lab-modal-step-grid">
+        {steps.map((step) => (
+          <article key={step.label}>
+            <span>{step.label}</span>
+            <strong>{step.title}</strong>
+            <p>{step.body}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DemoClaimModalContent({ beat, scenario }: { beat: Beat; scenario: DemoScenario }) {
+  const blocked = beat === 2;
+  const steps = [
+    { label: "Login", body: "El consumidor entra al portal con sesion propia." },
+    { label: "Tenant", body: "El claim valida que producto, tenant y evento coincidan." },
+    { label: "Ownership", body: blocked ? "Replay bloquea ownership hasta nuevo tap fisico." : "El producto queda asociado al usuario." },
+    { label: "Marketplace", body: blocked ? "Beneficios premium bloqueados." : "Se habilitan club, garantia, recompra y beneficios." },
+  ];
+  return (
+    <div className="demo-lab-modal-story">
+      <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
+        <span>{scenario.stateLabel}</span>
+        <strong>{blocked ? "Claim bloqueado correctamente" : "Claim listo con politica de ownership"}</strong>
+        <p>{scenario.body}</p>
+      </div>
+      <div className="demo-lab-modal-step-grid">
+        {steps.map((step) => (
+          <article key={step.label}>
+            <span>{step.label}</span>
+            <strong>{step.label}</strong>
+            <p>{step.body}</p>
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }
 
