@@ -7,7 +7,7 @@ import { WorldMapRealtime } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
-type Vertical = "wine" | "events" | "cosmetics" | "agro" | "pharma";
+type Vertical = "wine" | "seeds" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket";
 type SimulationMode = "valid" | "tamper" | "replay";
 type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
 type DemoModalView = "mobile" | "nft" | "claim" | null;
@@ -94,11 +94,13 @@ const copy: Record<AppLocale, {
       3: { title: "4. Apertura + venta", body: "El sello cambia estado y abre beneficios.", event: "Sello abierto + CTA de ownership/tokenizacion.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Activar ownership" },
     },
     verticals: {
-      wine: { label: "Vino", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti-replay", "Origen + tap global"] },
-      events: { label: "Eventos", profile: "NTAG215", product: "Pulsera VIP", visual: "wristband-demo", proof: ["Check-in rapido", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
-      cosmetics: { label: "Cosmetica", profile: "NTAG 424 DNA", product: "Serum premium", visual: "cosmetic-demo", proof: ["Tapa verificada", "Lote y vencimiento", "Garantia", "Anti grey-market"] },
-      agro: { label: "Agro", profile: "QR + NFC UID", product: "Bolsa semilla", visual: "agro-demo", proof: ["Lote trazable", "Ficha tecnica", "Custodia logistica", "Uso rural"] },
-      pharma: { label: "Pharma", profile: "GS1 Digital Link + NTAG 424 DNA", product: "Estuche pharma serializado", visual: "pharma-demo", proof: ["GS1/QR fallback", "Serial y lote", "Cadena de custodia", "Farmacovigilancia"] },
+      wine: { label: "Botella", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti-replay", "Origen + tap global"] },
+      seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
+      creamJar: { label: "Frasco crema", profile: "NTAG 424 DNA", product: "Frasco crema premium", visual: "cream-jar-demo", proof: ["Tapa verificada", "Lote y vencimiento", "Garantia", "Anti grey-market"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicion limitada", visual: "perfume-demo", proof: ["Caja + frasco", "Lote y serie", "Garantia", "Anti falsificacion"] },
+      creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Tubo sellado", "Lote visible", "Garantia", "Recompra"] },
+      bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Check-in rapido", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
+      ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Replay bloqueado"] },
     },
     controls: {
       narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Producto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar tap valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular replay duplicado", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origen del producto vs tap del cliente", mapSubtitle: "Linea animada, distancia y links de ubicacion para construir confianza.", realFeed: "Feed publico real conectado.", adminKey: "Modo lectura/demo: la escritura privada de scans corre en entorno seguro.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Tap actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir tap", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Tokenizar premium", syncing: "Conectando con DemoBodega...", synced: "DemoBodega sincronizado con backend.", unavailable: "DemoBodega no disponible.", sendingScan: "Enviando scan", registeredScan: "Scan registrado en DemoBodega.", failedScan: "No se pudo simular el tap.", configs: [
@@ -132,11 +134,13 @@ const copy: Record<AppLocale, {
       3: { title: "4. Abertura + venda", body: "O lacre muda estado e abre beneficios.", event: "Lacre aberto + ownership/tokenizacao.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Ativar ownership" },
     },
     verticals: {
-      wine: { label: "Vinho", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta na garrafa", "Rolha / lacre aberto", "SUN anti-replay", "Origem + toque global"] },
-      events: { label: "Eventos", profile: "NTAG215", product: "Pulseira VIP", visual: "wristband-demo", proof: ["Check-in rapido", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
-      cosmetics: { label: "Cosmeticos", profile: "NTAG 424 DNA", product: "Serum premium", visual: "cosmetic-demo", proof: ["Tampa verificada", "Lote e validade", "Garantia", "Anti grey-market"] },
-      agro: { label: "Agro", profile: "QR + NFC UID", product: "Saco de semente", visual: "agro-demo", proof: ["Lote rastreavel", "Ficha tecnica", "Custodia logistica", "Uso rural"] },
-      pharma: { label: "Pharma", profile: "GS1 Digital Link + NTAG 424 DNA", product: "Cartucho pharma serializado", visual: "pharma-demo", proof: ["GS1/QR fallback", "Serial e lote", "Cadeia de custodia", "Farmacovigilancia"] },
+      wine: { label: "Garrafa", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta na garrafa", "Rolha / lacre aberto", "SUN anti-replay", "Origem + toque global"] },
+      seeds: { label: "Sementes", profile: "QR + NFC UID", product: "Envelope de semente certificada", visual: "seed-packet-demo", proof: ["Envelope antifraude", "Lote e variedade", "Custodia agro", "Uso rural"] },
+      creamJar: { label: "Pote creme", profile: "NTAG 424 DNA", product: "Pote de creme premium", visual: "cream-jar-demo", proof: ["Tampa verificada", "Lote e validade", "Garantia", "Anti grey-market"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicao limitada", visual: "perfume-demo", proof: ["Caixa + frasco", "Lote e serie", "Garantia", "Antifalsificacao"] },
+      creamTube: { label: "Creme", profile: "NTAG213 + lote", product: "Creme dermocosmetico", visual: "cream-tube-demo", proof: ["Tubo lacrado", "Lote visivel", "Garantia", "Recompra"] },
+      bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Check-in rapido", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
+      ticket: { label: "Ingresso", profile: "QR + NFC UID", product: "Ingresso festa VIP", visual: "party-ticket-demo", proof: ["QR visivel", "UID respaldo", "Acesso por zona", "Replay bloqueado"] },
     },
     controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/demo: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao DemoBodega...", synced: "DemoBodega sincronizado com backend.", unavailable: "DemoBodega indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no DemoBodega.", failedScan: "Nao foi possivel simular o toque.", configs: [
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera ownership premium sozinho." },
@@ -169,11 +173,13 @@ const copy: Record<AppLocale, {
       3: { title: "4. Open + monetize", body: "Seal state changes and benefits open.", event: "Opened seal + ownership/tokenization CTA.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Activate ownership" },
     },
     verticals: {
-      wine: { label: "Wine", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Label on bottle", "Uncork / broken seal", "SUN anti-replay", "Origin + global tap"] },
-      events: { label: "Events", profile: "NTAG215", product: "VIP wristband", visual: "wristband-demo", proof: ["Fast check-in", "Serialized UID", "VIP zones", "Duplicate block"] },
-      cosmetics: { label: "Cosmetics", profile: "NTAG 424 DNA", product: "Premium serum", visual: "cosmetic-demo", proof: ["Verified cap", "Batch and expiry", "Warranty", "Anti grey-market"] },
-      agro: { label: "Agro", profile: "QR + NFC UID", product: "Seed bag", visual: "agro-demo", proof: ["Traceable lot", "Technical sheet", "Logistics custody", "Rural use"] },
-      pharma: { label: "Pharma", profile: "GS1 Digital Link + NTAG 424 DNA", product: "Serialized pharma carton", visual: "pharma-demo", proof: ["GS1/QR fallback", "Serial and lot", "Custody chain", "Pharmacovigilance"] },
+      wine: { label: "Bottle", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Label on bottle", "Uncork / broken seal", "SUN anti-replay", "Origin + global tap"] },
+      seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Certified seed packet", visual: "seed-packet-demo", proof: ["Anti-counterfeit packet", "Lot and variety", "Agro custody", "Rural use"] },
+      creamJar: { label: "Cream jar", profile: "NTAG 424 DNA", product: "Premium cream jar", visual: "cream-jar-demo", proof: ["Verified lid", "Batch and expiry", "Warranty", "Anti grey-market"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Limited edition perfume", visual: "perfume-demo", proof: ["Box + bottle", "Lot and serial", "Warranty", "Anti-counterfeit"] },
+      creamTube: { label: "Cream", profile: "NTAG213 + batch", product: "Dermocosmetic cream", visual: "cream-tube-demo", proof: ["Sealed tube", "Visible batch", "Warranty", "Repurchase"] },
+      bracelet: { label: "Wristband", profile: "NTAG215", product: "VIP event wristband", visual: "event-bracelet-demo", proof: ["Fast check-in", "Serialized UID", "VIP zones", "Duplicate block"] },
+      ticket: { label: "Ticket", profile: "QR + NFC UID", product: "VIP party ticket", visual: "party-ticket-demo", proof: ["Visible QR", "UID fallback", "Zone access", "Replay blocked"] },
     },
     controls: { narrative: "Audience narrative", cinematicStart: "Start cinematic", cinematicStop: "Pause cinematic", product: "Physical product", mobile: "Mobile result", feed: "Command feed", valid: "Register valid Zurich tap", tamper: "Break seal / uncork", replay: "Simulate duplicate replay", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Live map: product origin vs customer tap", mapSubtitle: "Animated route, distance and location links to build trust.", realFeed: "Real public feed connected.", adminKey: "Read-only demo mode: private scan writes run in the secured environment.", noGeo: "No geolocated API events yet.", origin: "Origin", currentTap: "Current tap", distance: "Distance", openOrigin: "Open origin", openTap: "Open tap", joinClub: "Join club", warranty: "Activate warranty", tokenize: "Tokenize premium", syncing: "Connecting to DemoBodega...", synced: "DemoBodega synced with backend.", unavailable: "DemoBodega unavailable.", sendingScan: "Sending scan", registeredScan: "Scan registered in DemoBodega.", failedScan: "Could not simulate the tap.", configs: [
       { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
