@@ -71,43 +71,43 @@ const copy: Record<AppLocale, {
   controls: { narrative: string; cinematicStart: string; cinematicStop: string; product: string; mobile: string; feed: string; valid: string; tamper: string; replay: string; refresh: string; marketplace: string; mapTitle: string; mapSubtitle: string; realFeed: string; adminKey: string; noGeo: string; origin: string; currentTap: string; distance: string; openOrigin: string; openTap: string; joinClub: string; warranty: string; tokenize: string; syncing: string; synced: string; unavailable: string; sendingScan: string; registeredScan: string; failedScan: string; configs: Array<{ title: string; body: string }> };
 }> = {
   "es-AR": {
-    heroEyebrow: "Demo Lab enterprise",
+    heroEyebrow: "Laboratorio comercial nexID",
     heroTitle: "Mira como un producto fisico se vuelve verificable, vendible y medible.",
-    heroBody: "Una demo para vender la historia completa: origen, tap del cliente, seguridad, portal, marketplace y datos de negocio.",
-    nav: { landing: "Landing", login: "Ingresar", sun: "SUN mobile", portal: "Portal usuario" },
-    kpis: { tags: "Tags fisicos", events: "Eventos", portal: "Portal", route: "Ruta origen-tap", noFeed: "Sin feed reciente", leads: "Leads / asociaciones" },
+    heroBody: "Una prueba para vender la historia completa: origen, toque del cliente, seguridad, portal, tienda y datos de negocio.",
+    nav: { landing: "Inicio", login: "Ingresar", sun: "SUN celular", portal: "Portal usuario" },
+    kpis: { tags: "Etiquetas fisicas", events: "Eventos", portal: "Portal", route: "Ruta origen-toque", noFeed: "Sin eventos recientes", leads: "Contactos / asociaciones" },
     valueCards: [
-      { metric: "CRM + club", title: "Fidelizacion post-tap", body: "Puntos, garantias, recompra y promos del tenant quedan conectados al passport del consumidor." },
-      { metric: "Marketplace", title: "Red luxury por marca y zona", body: "Cada marca conserva su tienda, pero convive en una red nexID para descubrir productos premium cercanos." },
-      { metric: "Reseller ready", title: "White-label operable", body: "Imprentas, integradores y agencias pueden cargar lotes, operar tenants y ver leads sin tocar criptografia." },
-      { metric: "Datos vivos", title: "Ventas con analitica", body: "Scans, rutas, riesgo, clicks y solicitudes llegan al CRM y al dashboard en tiempo real." },
+      { metric: "CRM + club", title: "Fidelizacion despues del toque", body: "Puntos, garantias, recompra y promociones de la marca quedan conectados al pasaporte del consumidor." },
+      { metric: "Tienda", title: "Red de alta gama por marca y zona", body: "Cada marca conserva su tienda, pero convive en una red nexID para descubrir productos de valor cercanos." },
+      { metric: "Canal listo", title: "Operable para terceros", body: "Imprentas, integradores y agencias pueden cargar lotes, operar cuentas de marca y ver contactos sin tocar criptografia." },
+      { metric: "Datos vivos", title: "Ventas con analitica", body: "Lecturas, rutas, riesgo, clics y solicitudes llegan al CRM y al panel en tiempo real." },
     ],
     roles: {
-      ceo: { label: "CEO / inversor", headline: "Del tap al revenue: proteccion de marca, datos y fidelizacion.", focus: "Usalo para mostrar margen, canal reseller y valor recurrente sin entrar en jerga tecnica." },
+      ceo: { label: "CEO / inversor", headline: "Del toque al ingreso: proteccion de marca, datos y fidelizacion.", focus: "Usalo para mostrar margen, canal de revendedores y valor recurrente sin entrar en jerga tecnica." },
       operator: { label: "Operaciones", headline: "Control real de lotes, UIDs, mapas y alertas.", focus: "Aterriza importacion, activacion, lecturas reales y excepciones de riesgo." },
       buyer: { label: "Comprador", headline: "Confianza instantanea antes de comprar o consumir.", focus: "La persona entiende origen, estado del sello, beneficios y proximo paso." },
     },
     beats: {
-      0: { title: "1. Nace el producto", body: "La marca activa lote, UID y origen.", event: "Lote real conectado a DemoBodega.", mode: "valid", location: "mendoza", status: "ORIGIN_READY", cta: "Ver origen" },
-      1: { title: "2. Tap del cliente", body: "El consumidor verifica y ve distancia.", event: "Tap valido en Zurich con ruta al origen.", mode: "valid", location: "zurich", status: "AUTH_OK", cta: "Unirme al club" },
-      2: { title: "3. Riesgo bloqueado", body: "Replay o duplicado entra al feed.", event: "Replay signal para antifraude.", mode: "replay", location: "zurich", status: "REPLAY_BLOCKED", cta: "Ver alerta" },
-      3: { title: "4. Apertura + venta", body: "El sello cambia estado y abre beneficios.", event: "Sello abierto + CTA de ownership/tokenizacion.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Activar ownership" },
+      0: { title: "1. Nace el producto", body: "La marca activa lote, UID y origen.", event: "Lote real conectado a DemoBodega.", mode: "valid", location: "mendoza", status: "ORIGEN_LISTO", cta: "Ver origen" },
+      1: { title: "2. Toque del cliente", body: "El consumidor verifica y ve distancia.", event: "Toque valido en Zurich con ruta al origen.", mode: "valid", location: "zurich", status: "AUTENTICADO", cta: "Unirme al club" },
+      2: { title: "3. Riesgo bloqueado", body: "Copia o lectura duplicada entra al registro.", event: "Senial de copia para antifraude.", mode: "replay", location: "zurich", status: "COPIA_BLOQUEADA", cta: "Ver alerta" },
+      3: { title: "4. Apertura + venta", body: "El sello cambia estado y abre beneficios.", event: "Sello abierto + llamado a reclamar duenio/tokenizar.", mode: "tamper", location: "zurich", status: "ABIERTO", cta: "Reclamar duenio" },
     },
     verticals: {
       wine: { label: "Botella", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti-replay", "Origen + tap global"] },
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
-      creamJar: { label: "Frasco crema", profile: "NTAG 424 DNA", product: "Frasco crema premium", visual: "cream-jar-demo", proof: ["Tapa verificada", "Lote y vencimiento", "Garantia", "Anti grey-market"] },
+      creamJar: { label: "Frasco crema", profile: "NTAG 424 DNA", product: "Frasco crema alta gama", visual: "cream-jar-demo", proof: ["Tapa verificada", "Lote y vencimiento", "Garantia", "Anti mercado gris"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicion limitada", visual: "perfume-demo", proof: ["Caja + frasco", "Lote y serie", "Garantia", "Anti falsificacion"] },
       creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Tubo sellado", "Lote visible", "Garantia", "Recompra"] },
-      bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Check-in rapido", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
+      bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Ingreso rapido", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Replay bloqueado"] },
     },
     controls: {
-      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Producto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar tap valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular replay duplicado", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origen del producto vs tap del cliente", mapSubtitle: "Linea animada, distancia y links de ubicacion para construir confianza.", realFeed: "Feed publico real conectado.", adminKey: "Modo lectura/demo: la escritura privada de scans corre en entorno seguro.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Tap actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir tap", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Tokenizar premium", syncing: "Conectando con DemoBodega...", synced: "DemoBodega sincronizado con backend.", unavailable: "DemoBodega no disponible.", sendingScan: "Enviando scan", registeredScan: "Scan registrado en DemoBodega.", failedScan: "No se pudo simular el tap.", configs: [
-        { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, recall y trazabilidad GS1. Ideal como fallback visible; cualquiera puede copiarlo, por eso no habilita ownership premium por si solo." },
-        { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseras, garantias simples y activaciones masivas. Sube la friccion contra screenshot y permite reglas server-side por lote." },
-        { title: "NTAG 424 DNA", body: "Cada tap genera SUN dinamico con CMAC para detectar replay, links reutilizados y copias. Es la capa recomendada para productos de valor medio/alto." },
-        { title: "NTAG 424 DNA TT + tokenizacion", body: "Suma estado fisico del sello: cerrado, abierto o manipulado. Permite passport, garantia, marketplace y token Polygon solo cuando la politica de compra/claim lo habilita." },
+      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto fisico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Linea animada, distancia y enlaces de ubicacion para construir confianza.", realFeed: "Registro publico real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Crear NFT", syncing: "Conectando con DemoBodega...", synced: "DemoBodega sincronizado con servidor.", unavailable: "DemoBodega no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en DemoBodega.", failedScan: "No se pudo simular el toque.", configs: [
+        { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de duenio por si solo." },
+        { title: "NTAG213 / NTAG215", body: "UID fisico serializado para entradas, pulseras, garantias simples y activaciones masivas. Sube la friccion contra capturas de pantalla y permite reglas por lote desde el servidor." },
+        { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
+        { title: "NTAG 424 DNA TT + tokenizacion", body: "Suma estado fisico del sello: cerrado, abierto o manipulado. Permite pasaporte, garantia, tienda y token Polygon solo cuando la politica de compra/reclamo lo habilita." },
       ] },
   },
   "pt-BR": {
@@ -222,8 +222,8 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
       body: "La marca programa lote, UID, origen y politica comercial antes de entregar el producto al canal.",
       stateLabel: "ORIGEN ACTIVO",
       allowed: ["Auditar lote", "Abrir ubicacion", "Preparar QR/NFC"],
-      blocked: ["Ownership", "Token premium", "Garantia postventa"],
-      chain: "Sin mint: producto todavia no fue comprado ni reclamado.",
+      blocked: ["Reclamo de duenio", "Token de valor", "Garantia postventa"],
+      chain: "Sin NFT: producto todavia no fue comprado ni reclamado.",
       primaryAction: "origin",
       primaryLabel: txt.controls.openOrigin,
     };
@@ -231,37 +231,37 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
   if (beat === 2) {
     return {
       tone: "risk",
-      headline: "Replay o duplicado bloqueado",
-      body: "El sistema conserva trazabilidad, pero bloquea club, puntos, marketplace y tokenizacion hasta un nuevo tap fisico valido.",
+      headline: "Copia o duplicado bloqueado",
+      body: "El sistema conserva trazabilidad, pero bloquea club, puntos, tienda y tokenizacion hasta un nuevo toque fisico valido.",
       stateLabel: "RIESGO BLOQUEADO",
-      allowed: ["Ver provenance", "Reportar incidente"],
-      blocked: ["Ownership", "Garantia", "Tokenizacion", "Marketplace"],
-      chain: "No se firma en blockchain cuando hay replay o URL reutilizada.",
+      allowed: ["Ver procedencia", "Reportar incidente"],
+      blocked: ["Reclamo de duenio", "Garantia", "Tokenizacion", "Tienda"],
+      chain: "No se firma en cadena cuando hay copia o URL reutilizada.",
       primaryAction: "report",
-      primaryLabel: "Reportar replay",
+      primaryLabel: "Reportar copia",
     };
   }
   if (beat === 3) {
     return {
       tone: "open",
-      headline: "Sello abierto como lifecycle event",
-      body: "El producto sigue siendo autentico. Cambia su estado fisico y habilita postventa o token premium solo con compra/claim validado.",
+      headline: "Sello abierto como evento del producto",
+      body: "El producto sigue siendo autentico. Cambia su estado fisico y habilita postventa o token de valor solo con compra/reclamo validado.",
       stateLabel: "SELLO ABIERTO",
-      allowed: ["Garantia postventa", "Provenance", "Token premium con prueba de compra"],
-      blocked: ["Reventa como cerrado", "Claim anonimo sin prueba"],
-      chain: "Mint Polygon disponible cuando la politica de ownership confirma comprador.",
+      allowed: ["Garantia postventa", "Procedencia", "Token de valor con prueba de compra"],
+      blocked: ["Reventa como cerrado", "Reclamo anonimo sin prueba"],
+      chain: "NFT Polygon disponible cuando la politica de duenio confirma comprador.",
       primaryAction: "tokenize",
       primaryLabel: txt.controls.tokenize,
     };
   }
   return {
     tone: "ok",
-    headline: "Tap valido con ruta de confianza",
-    body: `Origen y tap quedan unidos en ${distance}. El consumidor ve autenticidad y el tenant recibe datos accionables.`,
+    headline: "Toque valido con ruta de confianza",
+    body: `Origen y toque quedan unidos en ${distance}. El consumidor ve autenticidad y la marca recibe datos accionables.`,
     stateLabel: "AUTH OK",
-    allowed: ["Unirse al club", "Guardar passport", "Tokenizacion Amoy", "Voucher o recompra"],
-    blocked: ["Transferir ownership sin login/claim"],
-    chain: "Auto-tokenizacion activa: el tap valido crea request y puede cerrar con tx_hash/token_id en Polygon Amoy.",
+    allowed: ["Unirse al club", "Guardar pasaporte", "Tokenizacion Amoy", "Voucher o recompra"],
+    blocked: ["Transferir duenio sin ingreso/reclamo"],
+    chain: "Auto-tokenizacion activa: el toque valido crea solicitud y puede cerrar con tx_hash/token_id en Polygon Amoy.",
     primaryAction: "join",
     primaryLabel: txt.controls.joinClub,
   };
@@ -342,7 +342,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
     const lng = toFiniteNumber(event.lng);
     if (lat === null || lng === null) return [];
     return [{
-      city: event.city || "Unknown",
+      city: event.city || "Sin dato",
       country: event.country_code || "UNK",
       lat,
       lng,
@@ -387,11 +387,11 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
       if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "scan failed"));
       if (payload?.degraded) {
         setStatus(`${mode.toUpperCase()}: ${String(payload.reason || txt.controls.adminKey)}`);
-        setActionMessage(mode === "replay" ? "Replay simulado: ownership, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra lifecycle event y queda listo para postventa controlada." : "Tap valido: club, marketplace y analytics quedan listos para activar.");
+        setActionMessage(mode === "replay" ? "Copia simulada: reclamo de duenio, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque valido: club, tienda y analitica quedan listos para activar.");
         return;
       }
       setStatus(`${mode.toUpperCase()}: ${txt.controls.registeredScan}`);
-      setActionMessage(mode === "replay" ? "Replay simulado: ownership, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra lifecycle event y queda listo para postventa controlada." : "Tap valido: club, marketplace y analytics quedan listos para activar.");
+      setActionMessage(mode === "replay" ? "Copia simulada: reclamo de duenio, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque valido: club, tienda y analitica quedan listos para activar.");
       await refreshSummary();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : txt.controls.failedScan);
@@ -412,25 +412,25 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
       return;
     }
     if (action === "report") {
-      setActionMessage("Incidente creado para CRM: replay, tamper o inconsistencia queda listo para revision operativa.");
+      setActionMessage("Incidente creado para CRM: copia, manipulacion o inconsistencia queda listo para revision operativa.");
       return;
     }
     if (action === "warranty") {
-      setActionMessage(beat === 2 ? "Garantia bloqueada: se necesita un nuevo tap fisico valido." : "Garantia preparada: queda asociada al passport del consumidor y al tenant.");
+      setActionMessage(beat === 2 ? "Garantia bloqueada: se necesita un nuevo toque fisico valido." : "Garantia preparada: queda asociada al pasaporte del consumidor y a la marca.");
       return;
     }
     if (action === "tokenize") {
-      setActionMessage(beat === 3 ? "Tokenizacion premium preparada: requiere compra/claim validado antes de transferir ownership." : beat === 1 ? "Tokenizacion automatica lista: un tap valido crea request y registra tx_hash/token_id en Polygon Amoy." : "Tokenizacion bloqueada por politica de seguridad para este estado.");
+      setActionMessage(beat === 3 ? "Tokenizacion de valor preparada: requiere compra/reclamo validado antes de transferir duenio." : beat === 1 ? "Tokenizacion automatica lista: un toque valido crea solicitud y registra tx_hash/token_id en Polygon Amoy." : "Tokenizacion bloqueada por politica de seguridad para este estado.");
       return;
     }
-    setActionMessage(beat === 2 ? "Club bloqueado por replay. Repeti el tap fisico para continuar." : "Club/marketplace listo: el consumidor puede asociarse y recibir beneficios del tenant.");
+    setActionMessage(beat === 2 ? "Club bloqueado por copia. Repeti el toque fisico para continuar." : "Club/tienda listo: el consumidor puede asociarse y recibir beneficios de la marca.");
   }
 
   function startGuidedDemo() {
     setBeat(0);
     setRunning(true);
     setModalView(null);
-    setActionMessage("Modo guiado activo: primero mira la etiqueta cerrada, despues el tap valido, replay bloqueado y apertura con claim/tokenizacion.");
+    setActionMessage("Modo guiado activo: primero mira la etiqueta cerrada, despues el toque valido, copia bloqueada y apertura con reclamo/tokenizacion.");
   }
 
   return (
@@ -452,8 +452,8 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
 
         <div className="mt-6 grid gap-3 md:grid-cols-4">
           {[
-            { label: txt.kpis.tags, value: summary?.tagCount === undefined ? "--" : String(summary.tagCount), detail: "DemoBodega / supplier" },
-            { label: txt.kpis.events, value: String(liveEvents.length), detail: latestEvent ? `${latestEvent.city || "Unknown"} / ${latestEvent.result || "UNKNOWN"}` : txt.kpis.noFeed },
+            { label: txt.kpis.tags, value: summary?.tagCount === undefined ? "--" : String(summary.tagCount), detail: "DemoBodega / proveedor" },
+            { label: txt.kpis.events, value: String(liveEvents.length), detail: latestEvent ? `${latestEvent.city || "Sin dato"} / ${latestEvent.result || "SIN_DATO"}` : txt.kpis.noFeed },
             { label: txt.kpis.portal, value: String(summary?.crm?.leads ?? 0), detail: txt.kpis.leads },
             { label: txt.kpis.route, value: `${routeKm.toLocaleString(locale)} km`, detail: `${LOCATIONS.origin.city} -> ${destination.city}` },
           ].map((kpi) => (
@@ -489,6 +489,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
 
       <DemoCinematicShowcase
         beat={beat}
+        locale={locale}
         vertical={vertical}
         product={activeVertical.product}
         label={activeVertical.label}
@@ -538,7 +539,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-[11px] font-bold text-violet-100">{activeVertical.profile}</span>
-                  <button suppressHydrationWarning type="button" onClick={() => setModalView("mobile")} className="demo-lab-modal-open-button">Ver resultado mobile</button>
+                  <button suppressHydrationWarning type="button" onClick={() => setModalView("mobile")} className="demo-lab-modal-open-button">Ver resultado en celular</button>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -587,9 +588,9 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
               <div className="mt-3 space-y-2">
                 {liveEvents.slice(0, 5).length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-3 text-xs text-slate-400">{txt.controls.noGeo}</p> : liveEvents.slice(0, 5).map((event) => (
                   <div key={event.id || `${event.created_at}-${event.uidMasked}`} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs">
-                    <p className="font-bold text-white">{event.city || "Unknown"}, {event.country_code || "UNK"} / {event.result || "UNKNOWN"}</p>
+                    <p className="font-bold text-white">{event.city || "Sin dato"}, {event.country_code || "S/D"} / {event.result || "SIN_DATO"}</p>
                     <p className="mt-1 text-slate-400">{event.product_name || activeVertical.product} / {event.uidMasked || "UID-NA"}</p>
-                    <p className="mt-1 text-slate-500">{event.created_at || "sin timestamp"}</p>
+                    <p className="mt-1 text-slate-500">{event.created_at || "sin fecha"}</p>
                   </div>
                 ))}
               </div>
@@ -600,8 +601,8 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
 
       <details className="demo-lab-tech-map mt-5 rounded-3xl border border-white/10 bg-slate-950/60 p-3 md:p-5">
         <summary className="cursor-pointer text-sm font-black text-cyan-100">
-          Mapa enterprise completo / heatmap operativo
-          <span className="ml-2 text-xs font-semibold text-slate-400">{LOCATIONS.origin.city} -&gt; {destination.city} · {routeKm.toLocaleString(locale)} km</span>
+          Mapa operativo completo / calor de actividad
+          <span className="ml-2 text-xs font-semibold text-slate-400">{LOCATIONS.origin.city} -&gt; {destination.city} - {routeKm.toLocaleString(locale)} km</span>
         </summary>
         <div className="mt-4">
           <WorldMapRealtime
@@ -660,10 +661,10 @@ function DemoFirstRunGuide({
   onMobile: () => void;
 }) {
   const guideSteps = [
-    { beat: 0, kicker: "01", title: "Producto cerrado", body: "La etiqueta NFC esta intacta. Todavia no libera beneficios ni ownership." },
-    { beat: 1, kicker: "02", title: "Tap valido", body: "El SUN dinamico valida el producto y une origen, ubicacion y consumidor." },
-    { beat: 2, kicker: "03", title: "Replay bloqueado", body: "Una URL repetida o copiada no habilita club, marketplace ni NFT." },
-    { beat: 3, kicker: "04", title: "Apertura + claim", body: "El sello abierto dispara postventa, certificado y reclamo de duenio." },
+    { beat: 0, kicker: "01", title: "Producto cerrado", body: "La etiqueta NFC esta intacta. Todavia no libera beneficios ni reclamo de duenio." },
+    { beat: 1, kicker: "02", title: "Toque valido", body: "El SUN dinamico valida el producto y une origen, ubicacion y consumidor." },
+    { beat: 2, kicker: "03", title: "Copia bloqueada", body: "Una URL repetida o copiada no habilita club, tienda ni NFT." },
+    { beat: 3, kicker: "04", title: "Apertura + reclamo", body: "El sello abierto dispara postventa, certificado y reclamo de duenio." },
   ];
 
   return (
@@ -671,7 +672,7 @@ function DemoFirstRunGuide({
       <div className="demo-lab-guide-copy">
         <p>Primera vez aca</p>
         <h3>Proba el flujo como lo haria un cliente en 30 segundos.</h3>
-        <span>Arranca cerrado, hace un tap valido, mira como bloquea replay y termina con sello abierto, NFT y claim.</span>
+        <span>Arranca cerrado, hace un toque valido, mira como bloquea la copia y termina con sello abierto, NFT y reclamo.</span>
       </div>
       <div className="demo-lab-guide-steps">
         {guideSteps.map((step) => (
@@ -684,9 +685,9 @@ function DemoFirstRunGuide({
       </div>
       <div className="demo-lab-guide-actions">
         <button suppressHydrationWarning type="button" onClick={onGuided}>Ver demo guiada</button>
-        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Tap valido</button>
+        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque valido</button>
         <button suppressHydrationWarning type="button" disabled={simulating} onClick={onOpen}>Abrir sello</button>
-        <button suppressHydrationWarning type="button" onClick={onMobile}>Ver mobile</button>
+        <button suppressHydrationWarning type="button" onClick={onMobile}>Ver celular</button>
       </div>
     </section>
   );
@@ -698,26 +699,26 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
     0: {
       title: "Etiqueta NFC cerrada",
       body: "El producto nacio con UID y origen, pero todavia no hay prueba fresca del consumidor.",
-      backend: "Backend: lote y UID listos, sin ownership ni token premium habilitado.",
-      next: "Siguiente: simular tap valido.",
+      backend: "Servidor: lote y UID listos, sin reclamo de duenio ni token de valor habilitado.",
+      next: "Siguiente: simular toque valido.",
     },
     1: {
-      title: "Tap fisico fresco",
+      title: "Toque fisico fresco",
       body: `El cliente valida autenticidad y ve la ruta al origen en ${distance}.`,
-      backend: "Backend: evento valido, anti-replay OK, CTAs comerciales habilitados.",
-      next: "Siguiente: abrir mobile, tokenizar o simular apertura.",
+      backend: "Servidor: evento valido, anti copia OK, acciones comerciales habilitadas.",
+      next: "Siguiente: abrir celular, tokenizar o simular apertura.",
     },
     2: {
-      title: "Replay bloqueado",
+      title: "Copia bloqueada",
       body: "La demo muestra por que copiar una URL no alcanza para reclamar beneficios.",
-      backend: "Backend: riesgo registrado, claim, club, marketplace sensible y token quedan bloqueados.",
-      next: "Siguiente: repetir con un tap valido.",
+      backend: "Servidor: riesgo registrado; reclamo, club, tienda sensible y token quedan bloqueados.",
+      next: "Siguiente: repetir con un toque valido.",
     },
     3: {
       title: "Sello abierto",
-      body: "La etiqueta se parte visualmente y el producto cambia a lifecycle event.",
-      backend: "Backend: postventa, certificado, token request y claim requieren politica de compra/duenio.",
-      next: "Siguiente: abrir NFT/certificado o claim duenio.",
+      body: "La etiqueta se parte visualmente y el producto cambia de estado.",
+      backend: "Servidor: postventa, certificado, solicitud de token y reclamo requieren politica de compra/duenio.",
+      next: "Siguiente: abrir NFT/certificado o reclamar duenio.",
     },
   };
   const item = copyByBeat[beat];
@@ -739,72 +740,148 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
 
 function getTrustSignals(beat: Beat) {
   return [
-    { label: "Tap fisico", value: beat === 0 ? "pendiente" : beat === 2 ? "sospechoso" : "fresco", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
-    { label: "SUN anti-replay", value: beat === 2 ? "bloqueado" : beat === 0 ? "standby" : "ok", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
-    { label: "Tenant", value: "demobodega", tone: "ok" },
-    { label: "Ownership", value: beat === 3 ? "claim ready" : beat === 2 ? "bloqueado" : "gated", tone: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
-    { label: "Polygon", value: beat === 2 ? "no mint" : beat === 0 ? "pre-chain" : "request ready", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
-    { label: "Marketplace", value: beat === 2 ? "cerrado" : beat === 0 ? "publico" : "unlock", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+    { label: "Toque fisico", value: beat === 0 ? "pendiente" : beat === 2 ? "sospechoso" : "fresco", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
+    { label: "SUN anti copia", value: beat === 2 ? "bloqueado" : beat === 0 ? "en espera" : "ok", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+    { label: "Marca", value: "demobodega", tone: "ok" },
+    { label: "Duenio", value: beat === 3 ? "reclamo listo" : beat === 2 ? "bloqueado" : "con regla", tone: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
+    { label: "Polygon", value: beat === 2 ? "sin NFT" : beat === 0 ? "antes de cadena" : "solicitud lista", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+    { label: "Tienda", value: beat === 2 ? "cerrada" : beat === 0 ? "publica" : "abierta", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
   ] as const;
 }
 
 function DemoDifferentiatorStrip({ beat, onGuided }: { beat: Beat; onGuided: () => void }) {
-  const chain = ["Producto fisico", "Confianza", "Duenio", "Comunidad", "Recompra", "Marketplace", "Datos"];
+  const chain = ["Producto fisico", "Confianza", "Duenio", "Comunidad", "Recompra", "Tienda", "Datos"];
   const activeIndex = beat === 0 ? 0 : beat === 1 ? 2 : beat === 2 ? 1 : 6;
 
   return (
     <section className="demo-lab-differentiator-strip mt-5">
       <div className="demo-lab-differentiator-copy">
         <p>Diferencial nexID</p>
-        <h2>No vendemos solo anti-falsificacion. Convertimos cada producto en canal propio de revenue.</h2>
-        <span>El flujo que tiene que entender cualquier bodega, marca o evento: validar confianza, reclamar duenio, activar comunidad, recompra, marketplace y datos.</span>
+        <h2>No vendemos solo anti-falsificacion. Convertimos cada producto en canal propio de ingresos.</h2>
+        <span>El flujo que tiene que entender cualquier bodega, marca o evento: validar confianza, reclamar duenio, activar comunidad, recompra, tienda y datos.</span>
       </div>
       <div className="demo-lab-differentiator-chain" aria-label="Cadena de valor nexID">
         {chain.map((item, index) => (
           <span key={item} className={index <= activeIndex ? "active" : ""}>{item}</span>
         ))}
       </div>
-      <button suppressHydrationWarning type="button" onClick={onGuided}>Pitch guiado 90s</button>
+      <button suppressHydrationWarning type="button" onClick={onGuided}>Presentacion guiada 90s</button>
     </section>
   );
 }
 
 function DemoCinematicShowcase({
   beat,
+  locale,
   vertical,
   product,
   label,
   onGuided,
 }: {
   beat: Beat;
+  locale: AppLocale;
   vertical: Vertical;
   product: string;
   label: string;
   onGuided: () => void;
 }) {
+  const localized = locale === "en"
+    ? {
+      label: "nexID visual studio",
+      title: "A demo that feels like a video: real product, physical proof, risk and business.",
+      body: "This block works as a visual pitch inside the platform: any brand can understand trust, ownership, data and revenue in seconds.",
+      openPack: "Open visual pack",
+      scenes: [
+        { beat: 0, tag: "Scene 01", title: "Product is born", body: "Premium package, UID and closed NFC label before the first tap.", stat: "UID + lot", tone: "origin" },
+        { beat: 1, tag: "Scene 02", title: "Live tap", body: "Dynamic SUN, distance, origin and actionable data for consumer and brand.", stat: "Verified", tone: "ok" },
+        { beat: 2, tag: "Scene 03", title: "Attack blocked", body: "A copied URL does not open benefits, claim, tokenization or store actions.", stat: "No claim", tone: "risk" },
+        { beat: 3, tag: "Scene 04", title: "Business loop", body: "Open seal, owner claim, certificate, community and repurchase.", stat: "Open", tone: "open" },
+      ],
+      proof: {
+        sun: beat === 0 ? "waiting" : beat === 2 ? "blocked" : "valid",
+        claim: beat === 3 ? "owner ready" : beat === 2 ? "denied" : "gated",
+        nft: beat === 2 ? "no mint" : beat === 0 ? "pre-chain" : "request",
+        market: beat === 2 ? "closed" : beat === 0 ? "public" : "open",
+      },
+      proofLabels: { claim: "Claim", market: "Store" },
+      passport: "Digital passport",
+      tokenTitle: beat === 2 ? "Risk blocked" : beat === 0 ? "Waiting tap" : beat === 3 ? "Owner + NFT" : "NFT ready",
+      tokenBody: beat === 2 ? "Replay does not unlock benefits." : "Hashed UID, access rules and on-chain evidence.",
+      graph: "demand / risk / claim / repurchase",
+    }
+    : locale === "pt-BR"
+      ? {
+        label: "Estudio visual nexID",
+        title: "Uma demo que parece video: produto real, prova fisica, risco e negocio.",
+        body: "Este bloco funciona como apresentacao visual dentro da plataforma: qualquer marca entende confianca, dono, dados e receita em segundos.",
+        openPack: "Abrir pacote visual",
+        scenes: [
+          { beat: 0, tag: "Cena 01", title: "Produto nasce", body: "Embalagem premium, UID e etiqueta NFC fechada antes do primeiro toque.", stat: "UID + lote", tone: "origin" },
+          { beat: 1, tag: "Cena 02", title: "Toque vivo", body: "SUN dinamico, distancia, origem e dados acionaveis para consumidor e marca.", stat: "Verificado", tone: "ok" },
+          { beat: 2, tag: "Cena 03", title: "Ataque bloqueado", body: "Uma URL copiada nao abre beneficios, dono, tokenizacao nem loja.", stat: "Sem dono", tone: "risk" },
+          { beat: 3, tag: "Cena 04", title: "Ciclo comercial", body: "Lacre aberto, dono, certificado, comunidade e recompra.", stat: "Aberto", tone: "open" },
+        ],
+        proof: {
+          sun: beat === 0 ? "em espera" : beat === 2 ? "bloqueado" : "valido",
+          claim: beat === 3 ? "dono pronto" : beat === 2 ? "negado" : "com regra",
+          nft: beat === 2 ? "sem mint" : beat === 0 ? "pre-cadeia" : "pedido",
+          market: beat === 2 ? "fechada" : beat === 0 ? "publica" : "aberta",
+        },
+        proofLabels: { claim: "Dono", market: "Loja" },
+        passport: "Passaporte digital",
+        tokenTitle: beat === 2 ? "Risco bloqueado" : beat === 0 ? "Esperando toque" : beat === 3 ? "Dono + NFT" : "NFT pronto",
+        tokenBody: beat === 2 ? "Replay nao libera beneficios." : "UID com hash, regras de acesso e evidencia em cadeia.",
+        graph: "demanda / risco / dono / recompra",
+      }
+      : {
+        label: "Estudio visual nexID",
+        title: "Una prueba que se entiende como video: producto real, prueba fisica, riesgo y negocio.",
+        body: "Este bloque funciona como presentacion visual dentro de la plataforma: cualquier marca entiende confianza, duenio, datos e ingresos en segundos.",
+        openPack: "Abrir paquete visual",
+        scenes: [
+          { beat: 0, tag: "Escena 01", title: "Producto nace", body: "Envase premium, UID y etiqueta NFC cerrada antes del primer toque.", stat: "UID + lote", tone: "origin" },
+          { beat: 1, tag: "Escena 02", title: "Toque vivo", body: "SUN dinamico, distancia, origen y datos accionables para consumidor y marca.", stat: "Verificado", tone: "ok" },
+          { beat: 2, tag: "Escena 03", title: "Ataque bloqueado", body: "Una URL copiada no abre beneficios, reclamo, tokenizacion ni tienda.", stat: "Sin reclamo", tone: "risk" },
+          { beat: 3, tag: "Escena 04", title: "Ciclo comercial", body: "Sello abierto, reclamo de duenio, certificado, comunidad y recompra.", stat: "Abierto", tone: "open" },
+        ],
+        proof: {
+          sun: beat === 0 ? "en espera" : beat === 2 ? "bloqueado" : "valido",
+          claim: beat === 3 ? "duenio listo" : beat === 2 ? "denegado" : "con regla",
+          nft: beat === 2 ? "sin NFT" : beat === 0 ? "antes de cadena" : "pedido listo",
+          market: beat === 2 ? "cerrada" : beat === 0 ? "publica" : "abierta",
+        },
+        proofLabels: { claim: "Reclamo", market: "Tienda" },
+        passport: "Pasaporte digital",
+        tokenTitle: beat === 2 ? "Riesgo bloqueado" : beat === 0 ? "Esperando toque" : beat === 3 ? "Duenio + NFT" : "NFT listo",
+        tokenBody: beat === 2 ? "La copia no libera beneficios." : "UID con hash, reglas de acceso y evidencia en cadena.",
+        graph: "demanda / riesgo / reclamo / recompra",
+      };
   const scenes: Array<{ beat: Beat; tag: string; title: string; body: string; stat: string; tone: "origin" | "ok" | "risk" | "open" }> = [
-    { beat: 0, tag: "Scene 01", title: "Producto nace", body: "Packaging premium, UID y etiqueta NFC cerrada antes del primer tap.", stat: "UID + lote", tone: "origin" },
-    { beat: 1, tag: "Scene 02", title: "Tap vivo", body: "SUN dinamico, distancia, origen y datos accionables para consumidor y marca.", stat: "AUTH OK", tone: "ok" },
-    { beat: 2, tag: "Scene 03", title: "Ataque bloqueado", body: "Una URL copiada no abre rewards, claim, tokenizacion ni marketplace sensible.", stat: "NO CLAIM", tone: "risk" },
-    { beat: 3, tag: "Scene 04", title: "Revenue loop", body: "Sello abierto, claim de duenio, certificado, comunidad y recompra.", stat: "UNLOCK", tone: "open" },
-  ];
+    localized.scenes[0],
+    localized.scenes[1],
+    localized.scenes[2],
+    localized.scenes[3],
+  ] as Array<{ beat: Beat; tag: string; title: string; body: string; stat: string; tone: "origin" | "ok" | "risk" | "open" }>;
   const active = scenes.find((scene) => scene.beat === beat) ?? scenes[1];
   const progress = `${(beat + 1) * 25}%`;
   const proofItems = [
-    { label: "SUN", value: beat === 0 ? "standby" : beat === 2 ? "blocked" : "valid", state: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
-    { label: "Claim", value: beat === 3 ? "owner ready" : beat === 2 ? "denied" : "gated", state: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
-    { label: "NFT", value: beat === 2 ? "no mint" : beat === 0 ? "pre-chain" : "request", state: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
-    { label: "Market", value: beat === 2 ? "closed" : beat === 0 ? "public" : "unlock", state: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+    { label: "SUN", value: localized.proof.sun, state: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
+    { label: localized.proofLabels.claim, value: localized.proof.claim, state: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
+    { label: "NFT", value: localized.proof.nft, state: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+    { label: localized.proofLabels.market, value: localized.proof.market, state: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
   ] as const;
   const graphBars = [56, beat === 0 ? 32 : 78, beat === 2 ? 26 : 88, beat === 3 ? 96 : 58];
 
   return (
-    <section className={`demo-lab-cinematic-showcase demo-lab-cinematic-showcase--${active.tone} mt-5`} aria-label="Motion studio nexID">
+    <section className={`demo-lab-cinematic-showcase demo-lab-cinematic-showcase--${active.tone} mt-5`} aria-label={localized.label}>
       <div className="demo-lab-cinematic-copy">
-        <p>Motion Studio nexID</p>
-        <h2>Una demo que se entiende como video: producto real, prueba fisica, riesgo y negocio.</h2>
-        <span>Este bloque funciona como pitch visual dentro de la plataforma: lo puede mirar una bodega, un laboratorio, agro, moda o eventos y entender en segundos que vendemos confianza + ownership + datos + revenue.</span>
-        <button suppressHydrationWarning type="button" onClick={onGuided}>Reproducir recorrido</button>
+        <p>{localized.label}</p>
+        <h2>{localized.title}</h2>
+        <span>{localized.body}</span>
+        <div className="demo-lab-cinematic-actions">
+          <button suppressHydrationWarning type="button" onClick={onGuided}>Reproducir recorrido</button>
+          <a href="/demo-lab/motion-pack">{localized.openPack}</a>
+        </div>
         <div className="demo-lab-cinematic-scenes" aria-label="Escenas de la experiencia">
           {scenes.map((scene) => (
             <article key={scene.tag} className={scene.beat === beat ? "active" : ""}>
@@ -841,9 +918,9 @@ function DemoCinematicShowcase({
         </div>
 
         <div className="demo-lab-cinematic-token-card">
-          <p>Digital passport</p>
-          <strong>{beat === 2 ? "Risk blocked" : beat === 0 ? "Waiting tap" : beat === 3 ? "Owner + NFT" : "Mint ready"}</strong>
-          <span>{beat === 2 ? "Replay no habilita beneficios." : "UID hasheado, policy gate y evidencia on-chain."}</span>
+          <p>{localized.passport}</p>
+          <strong>{localized.tokenTitle}</strong>
+          <span>{localized.tokenBody}</span>
         </div>
 
         <div className="demo-lab-cinematic-graph" aria-label="Grafico de negocio post tap">
@@ -852,7 +929,7 @@ function DemoCinematicShowcase({
               <span key={index} className={index <= beat ? "active" : ""} style={{ "--bar-height": `${height}%` } as CSSProperties} />
             ))}
           </div>
-          <p>demanda / riesgo / claim / recompra</p>
+          <p>{localized.graph}</p>
         </div>
       </div>
     </section>
@@ -929,14 +1006,14 @@ function DemoProofCard({
   routeKm: number;
   locale: AppLocale;
 }) {
-  const txStatus = beat === 2 ? "blocked" : beat === 0 ? "pre-chain" : "tx/request ready";
-  const owner = beat === 3 ? "claim owner ready" : beat === 2 ? "claim blocked" : "login required";
+  const txStatus = beat === 2 ? "bloqueado" : beat === 0 ? "antes de cadena" : "tx/solicitud lista";
+  const owner = beat === 3 ? "duenio listo" : beat === 2 ? "reclamo bloqueado" : "ingreso requerido";
 
   return (
     <article className={`demo-lab-proof-card demo-lab-proof-card--${scenario.tone}`}>
       <div className="demo-lab-proof-card-header">
         <span>{scenario.stateLabel}</span>
-        <strong>Proof Card</strong>
+        <strong>Tarjeta de prueba</strong>
       </div>
       <h4>{product}</h4>
       <div className="demo-lab-proof-grid">
@@ -944,7 +1021,7 @@ function DemoProofCard({
         <InfoCell label="Tap" value={destination.city} />
         <InfoCell label="Ruta" value={`${routeKm.toLocaleString(locale)} km`} />
         <InfoCell label="Token" value={txStatus} />
-        <InfoCell label="Owner" value={owner} />
+        <InfoCell label="Duenio" value={owner} />
         <InfoCell label="UID" value="04B7****E2B5" />
       </div>
     </article>
@@ -964,12 +1041,12 @@ function DemoPhoneMirror({
   destination: DemoLocation;
   onOpen: (view: DemoModalView) => void;
 }) {
-  const cta = beat === 2 ? "Repetir tap fisico" : beat === 3 ? "Claim duenio" : beat === 0 ? "Acercar telefono" : "Unirme al club";
+  const cta = beat === 2 ? "Repetir toque fisico" : beat === 3 ? "Reclamar duenio" : beat === 0 ? "Acercar telefono" : "Unirme al club";
 
   return (
     <article className={`demo-lab-phone-mirror demo-lab-phone-mirror--${scenario.tone}`}>
       <div className="demo-lab-phone-shell">
-        <div className="demo-lab-phone-topbar"><span />nexID mobile</div>
+        <div className="demo-lab-phone-topbar"><span />nexID celular</div>
         <div className="demo-lab-phone-status">{scenario.stateLabel}</div>
         <h4>{product}</h4>
         <p>{scenario.headline}</p>
@@ -987,22 +1064,22 @@ function DemoPhoneMirror({
 function DemoUnlockLadder({ beat }: { beat: Beat }) {
   const rows = [
     { label: "Info publica", body: "Origen, lote, historia y contenido de marca.", unlocked: true },
-    { label: "Club + rewards", body: "Beneficios y recompra solo con tap valido.", unlocked: beat === 1 || beat === 3 },
-    { label: "Warranty / claim", body: "Duenio, garantia y postventa con login.", unlocked: beat === 3 },
-    { label: "NFT / certificado", body: "Request Polygon y token premium si la politica lo permite.", unlocked: beat === 1 || beat === 3 },
-    { label: "Marketplace", body: "Reventa, comunidad y ofertas contextuales.", unlocked: beat === 1 || beat === 3 },
-    { label: "Data feed", body: "Eventos, riesgo, zona, demanda y atribucion.", unlocked: beat !== 0 },
+    { label: "Club + beneficios", body: "Beneficios y recompra solo con toque valido.", unlocked: beat === 1 || beat === 3 },
+    { label: "Garantia + reclamo", body: "Duenio, garantia y postventa con ingreso.", unlocked: beat === 3 },
+    { label: "NFT / certificado", body: "Solicitud Polygon y token de valor si la politica lo permite.", unlocked: beat === 1 || beat === 3 },
+    { label: "Tienda", body: "Reventa, comunidad y ofertas contextuales.", unlocked: beat === 1 || beat === 3 },
+    { label: "Registro de datos", body: "Eventos, riesgo, zona, demanda y atribucion.", unlocked: beat !== 0 },
   ];
 
   return (
     <article className="demo-lab-unlock-ladder">
-      <p>Unlock ladder comercial</p>
-      <h4>Que se habilita despues del tap</h4>
+      <p>Escalera comercial</p>
+      <h4>Que se habilita despues del toque</h4>
       <div>
         {rows.map((row) => (
           <span key={row.label} className={row.unlocked && beat !== 2 ? "unlocked" : beat === 2 && row.label !== "Info publica" ? "blocked" : ""}>
             <b>{row.label}</b>
-            <em>{beat === 2 && row.label !== "Info publica" ? "bloqueado por replay" : row.body}</em>
+            <em>{beat === 2 && row.label !== "Info publica" ? "bloqueado por copia" : row.body}</em>
           </span>
         ))}
       </div>
@@ -1012,14 +1089,14 @@ function DemoUnlockLadder({ beat }: { beat: Beat }) {
 
 function ProductIllustration({ vertical, product, label, beat }: { vertical: Vertical; product: string; label: string; beat: Beat }) {
   const uid = `demo-product-${vertical}`;
-  const statusLabel = beat === 2 ? "BLOCK" : beat === 3 ? "OPEN" : "NFC";
+  const statusLabel = beat === 2 ? "BLOQ" : beat === 3 ? "ABIERTO" : "NFC";
   const productLine = product.length > 24 ? `${product.slice(0, 22)}...` : product;
   const accent = beat === 2 ? "#fb7185" : beat === 3 ? "#a78bfa" : "#22d3ee";
   const sceneState = beat === 0 ? "origin" : beat === 1 ? "auth" : beat === 2 ? "blocked" : "open";
   const sealTitle = beat === 2 ? "REPLAY" : beat === 3 ? "ABIERTO" : "CERRADO";
-  const sealBody = beat === 0 ? "UID SELLADO" : beat === 1 ? "SUN OK" : beat === 2 ? "NO CLAIM" : "CLAIM LISTO";
+  const sealBody = beat === 0 ? "UID SELLADO" : beat === 1 ? "SUN OK" : beat === 2 ? "SIN RECLAMO" : "RECLAMO LISTO";
   const stateTitle = beat === 2 ? "Riesgo bloqueado" : beat === 3 ? "Etiqueta NFC abierta" : "Etiqueta NFC cerrada";
-  const stateBody = beat === 0 ? "lista para primer tap" : beat === 1 ? "tap validado" : beat === 2 ? "replay detenido" : "beneficios habilitados";
+  const stateBody = beat === 0 ? "lista para primer toque" : beat === 1 ? "toque validado" : beat === 2 ? "copia detenida" : "beneficios habilitados";
 
   return (
     <div className={`demo-lab-product-scene demo-lab-product-scene--${sceneState}`} role="img" aria-label={`${label}: ${product}. ${stateTitle}.`}>
@@ -1202,8 +1279,8 @@ function MobileOutcome({
   actionMessage: string | null;
   locale: AppLocale;
 }) {
-  const passport = beat === 0 ? "pre-chain" : beat === 2 ? "blocked" : beat === 3 ? "opened" : "ready";
-  const marketplace = beat === 2 ? "bloqueado" : beat === 0 ? "pendiente" : "ready";
+  const passport = beat === 0 ? "antes de cadena" : beat === 2 ? "bloqueado" : beat === 3 ? "abierto" : "listo";
+  const marketplace = beat === 2 ? "bloqueada" : beat === 0 ? "pendiente" : "lista";
 
   return (
     <article
@@ -1243,9 +1320,9 @@ function MobileOutcome({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <InfoCell label="Passport" value={passport} />
-        <InfoCell label="Warranty" value={beat === 2 ? "bloqueada" : txt.controls.warranty} />
-        <InfoCell label="Marketplace" value={marketplace} />
+        <InfoCell label="Pasaporte" value={passport} />
+        <InfoCell label="Garantia" value={beat === 2 ? "bloqueada" : txt.controls.warranty} />
+        <InfoCell label="Tienda" value={marketplace} />
       </div>
       {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
     </article>
@@ -1253,11 +1330,11 @@ function MobileOutcome({
 }
 
 function DemoFlowRail({ scenario, beat, onOpen }: { scenario: DemoScenario; beat: Beat; onOpen: (view: DemoModalView) => void }) {
-  const riskCopy = beat === 2 ? "Bloqueado por replay" : "Listo para continuar";
+  const riskCopy = beat === 2 ? "Bloqueado por copia" : "Listo para continuar";
   const items: Array<{ view: Exclude<DemoModalView, null>; eyebrow: string; title: string; body: string; tone: string }> = [
-    { view: "mobile", eyebrow: scenario.stateLabel, title: "Resultado mobile", body: riskCopy, tone: scenario.tone },
-    { view: "nft", eyebrow: "Polygon Amoy", title: "NFT / certificado", body: beat === 2 ? "No mintea si hay replay" : "Request + tx_hash + token_id", tone: "nft" },
-    { view: "claim", eyebrow: "Portal usuario", title: "Claim duenio", body: "Login, tenant y ownership", tone: "claim" },
+    { view: "mobile", eyebrow: scenario.stateLabel, title: "Resultado en celular", body: riskCopy, tone: scenario.tone },
+    { view: "nft", eyebrow: "Polygon Amoy", title: "NFT / certificado", body: beat === 2 ? "No crea NFT si hay copia" : "Solicitud + tx_hash + token_id", tone: "nft" },
+    { view: "claim", eyebrow: "Portal usuario", title: "Reclamar duenio", body: "Ingreso, marca y duenio", tone: "claim" },
   ];
 
   return (
@@ -1306,12 +1383,12 @@ function DemoFlowModal({
 }) {
   if (!view) return null;
 
-  const title = view === "mobile" ? "Resultado mobile" : view === "nft" ? "NFT / certificado Polygon" : "Reclamar duenio";
+  const title = view === "mobile" ? "Resultado en celular" : view === "nft" ? "NFT / certificado Polygon" : "Reclamar duenio";
   const subtitle = view === "mobile"
-    ? "Lo que ve el consumidor despues del tap."
+    ? "Lo que ve el consumidor despues del toque."
     : view === "nft"
-      ? "Como se conecta el tap valido con tokenizacion y evidencia on-chain."
-      : "Como el consumidor pasa de autenticar a asociar ownership en el portal.";
+      ? "Como se conecta el toque valido con tokenizacion y evidencia en cadena."
+      : "Como el consumidor pasa de autenticar a asociar el producto en el portal.";
 
   return (
     <div className="demo-lab-modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
@@ -1326,9 +1403,9 @@ function DemoFlowModal({
           <button suppressHydrationWarning type="button" onClick={onClose}>Cerrar</button>
         </div>
         <div className="demo-lab-modal-tabs">
-          <button suppressHydrationWarning type="button" onClick={() => onOpen("mobile")} className={view === "mobile" ? "active" : ""}>Mobile</button>
+          <button suppressHydrationWarning type="button" onClick={() => onOpen("mobile")} className={view === "mobile" ? "active" : ""}>Celular</button>
           <button suppressHydrationWarning type="button" onClick={() => onOpen("nft")} className={view === "nft" ? "active" : ""}>NFT</button>
-          <button suppressHydrationWarning type="button" onClick={() => onOpen("claim")} className={view === "claim" ? "active" : ""}>Claim</button>
+          <button suppressHydrationWarning type="button" onClick={() => onOpen("claim")} className={view === "claim" ? "active" : ""}>Reclamo</button>
         </div>
         {view === "mobile" ? (
           <MobileOutcome txt={txt} beat={beat} verticalLabel={txt.verticals[vertical].label} status={status} product={product} destination={destination} routeKm={routeKm} scenario={scenario} onAction={onAction} actionMessage={actionMessage} locale={locale} />
@@ -1345,16 +1422,16 @@ function DemoFlowModal({
 function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoScenario }) {
   const blocked = beat === 2;
   const steps = [
-    { label: "01", title: "Tap valido", body: blocked ? "Replay detectado: no se firma en blockchain." : "SUN fresco confirma autenticidad y crea evento." },
+    { label: "01", title: "Toque valido", body: blocked ? "Copia detectada: no se firma en cadena." : "SUN fresco confirma autenticidad y crea evento." },
     { label: "02", title: "UID hasheado", body: "El UID no se expone crudo; se usa hash con salt para el certificado." },
-    { label: "03", title: "Request", body: blocked ? "La request queda bloqueada por politica." : "Se prepara request idempotente de tokenizacion." },
-    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo tap valido." : "El mint devuelve tx_hash y token_id para trazabilidad." },
+    { label: "03", title: "Solicitud", body: blocked ? "La solicitud queda bloqueada por politica." : "Se prepara solicitud idempotente de tokenizacion." },
+    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo toque valido." : "La creacion del NFT devuelve tx_hash y token_id para trazabilidad." },
   ];
   return (
     <div className="demo-lab-modal-story">
       <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
         <span>{scenario.stateLabel}</span>
-        <strong>{blocked ? "Tokenizacion bloqueada por seguridad" : "Auto-tokenizacion lista para tap valido"}</strong>
+        <strong>{blocked ? "Tokenizacion bloqueada por seguridad" : "Auto-tokenizacion lista para toque valido"}</strong>
         <p>{scenario.chain}</p>
       </div>
       <div className="demo-lab-modal-step-grid">
@@ -1373,16 +1450,16 @@ function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoSce
 function DemoClaimModalContent({ beat, scenario }: { beat: Beat; scenario: DemoScenario }) {
   const blocked = beat === 2;
   const steps = [
-    { label: "Login", body: "El consumidor entra al portal con sesion propia." },
-    { label: "Tenant", body: "El claim valida que producto, tenant y evento coincidan." },
-    { label: "Ownership", body: blocked ? "Replay bloquea ownership hasta nuevo tap fisico." : "El producto queda asociado al usuario." },
-    { label: "Marketplace", body: blocked ? "Beneficios premium bloqueados." : "Se habilitan club, garantia, recompra y beneficios." },
+    { label: "Ingreso", body: "El consumidor entra al portal con sesion propia." },
+    { label: "Marca", body: "El reclamo valida que producto, marca y evento coincidan." },
+    { label: "Duenio", body: blocked ? "La copia bloquea el reclamo hasta nuevo toque fisico." : "El producto queda asociado al usuario." },
+    { label: "Tienda", body: blocked ? "Beneficios de valor bloqueados." : "Se habilitan club, garantia, recompra y beneficios." },
   ];
   return (
     <div className="demo-lab-modal-story">
       <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
         <span>{scenario.stateLabel}</span>
-        <strong>{blocked ? "Claim bloqueado correctamente" : "Claim listo con politica de ownership"}</strong>
+        <strong>{blocked ? "Reclamo bloqueado correctamente" : "Reclamo listo con politica de duenio"}</strong>
         <p>{scenario.body}</p>
       </div>
       <div className="demo-lab-modal-step-grid">
@@ -1423,32 +1500,32 @@ function DemoFinalTapDock({
   onRefresh: () => void;
 }) {
   const flow = [
-    { step: "01", title: "Tap fisico fresco", body: "El chip genera SUN dinamico. No sirve URL copiada." },
-    { step: "02", title: "Anti-replay + passport", body: "Si es valido, se habilitan CTAs y queda evento." },
-    { step: "03", title: "NFT / certificado", body: "Se crea request y Polygon devuelve tx_hash + token_id." },
-    { step: "04", title: "Reclamar duenio", body: "El usuario asocia producto con login, tenant y ownership." },
+    { step: "01", title: "Toque fisico fresco", body: "El chip genera SUN dinamico. No sirve URL copiada." },
+    { step: "02", title: "Anti copia + pasaporte", body: "Si es valido, se habilitan acciones y queda evento." },
+    { step: "03", title: "NFT / certificado", body: "Se crea solicitud y Polygon devuelve tx_hash + token_id." },
+    { step: "04", title: "Reclamar duenio", body: "El usuario asocia producto con ingreso, marca y politica de duenio." },
   ];
 
   return (
     <section className="demo-lab-final-dock mt-5 rounded-3xl border p-4 md:p-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="max-w-2xl">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Checklist antes del tap final</p>
-          <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">Probar el camino real: tap valido - NFT - claim duenio.</h2>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Lista antes del toque final</p>
+          <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">Probar el camino real: toque valido - NFT - reclamar duenio.</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">{status}</p>
         </div>
         <div className="demo-lab-final-actions">
           <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid} className="demo-lab-final-button demo-lab-final-button--primary">
-            Simular tap valido
+            Simular toque valido
           </button>
           <button suppressHydrationWarning type="button" disabled={simulating} onClick={onReplay} className="demo-lab-final-button demo-lab-final-button--danger">
-            Probar replay bloqueado
+            Probar copia bloqueada
           </button>
           <button suppressHydrationWarning type="button" disabled={simulating} onClick={onTamper} className="demo-lab-final-button demo-lab-final-button--warn">
             Sello abierto
           </button>
           <button suppressHydrationWarning type="button" onClick={onRefresh} className="demo-lab-final-button demo-lab-final-button--ghost">
-            Refresh backend
+            Actualizar servidor
           </button>
         </div>
       </div>
@@ -1524,10 +1601,10 @@ function DemoActionMatrix({
   locale: AppLocale;
 }) {
   const actions: Array<{ id: DemoAction; label: string; body: string; locked: boolean }> = [
-    { id: "join", label: txt.controls.joinClub, body: "Asocia al consumidor con club, beneficios y marketplace del tenant.", locked: beat === 0 || beat === 2 },
-    { id: "warranty", label: txt.controls.warranty, body: "Registra garantia, postventa o fecha de apertura con politica del tenant.", locked: beat === 0 || beat === 2 },
-    { id: "tokenize", label: txt.controls.tokenize, body: "Prepara request Polygon con UID hasheado y prueba de ownership.", locked: beat === 0 || beat === 2 },
-    { id: "report", label: "Reportar riesgo", body: "Crea alerta operativa cuando aparece replay, duplicado o tamper sospechoso.", locked: beat !== 2 },
+    { id: "join", label: txt.controls.joinClub, body: "Asocia al consumidor con club, beneficios y tienda de la marca.", locked: beat === 0 || beat === 2 },
+    { id: "warranty", label: txt.controls.warranty, body: "Registra garantia, postventa o fecha de apertura con politica de la marca.", locked: beat === 0 || beat === 2 },
+    { id: "tokenize", label: txt.controls.tokenize, body: "Prepara solicitud Polygon con UID hasheado y prueba de duenio.", locked: beat === 0 || beat === 2 },
+    { id: "report", label: "Reportar riesgo", body: "Crea alerta operativa cuando aparece copia, duplicado o manipulacion sospechosa.", locked: beat !== 2 },
   ];
 
   return (
@@ -1559,11 +1636,11 @@ function DemoActionMatrix({
 
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <InfoCell label={txt.controls.distance} value={`${routeKm.toLocaleString(locale)} km`} />
-        <InfoCell label="Status" value={status} />
-        <InfoCell label="Tenant" value={DEMO_TENANT_SLUG} />
+        <InfoCell label="Estado" value={status} />
+        <InfoCell label="Marca" value={DEMO_TENANT_SLUG} />
       </div>
       <p className="mt-3 text-xs text-slate-400">
-        Ruta activa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian de politica segun estado fisico, replay y compra/claim.
+        Ruta activa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian de politica segun estado fisico, copia y compra/reclamo.
       </p>
       {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
     </article>

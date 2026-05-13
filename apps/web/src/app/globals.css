@@ -6625,7 +6625,14 @@ html.theme-light .demo-lab-policy-card--blocked {
   line-height: 1.62;
 }
 
-.demo-lab-cinematic-copy > button {
+.demo-lab-cinematic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.demo-lab-cinematic-actions button,
+.demo-lab-cinematic-actions a {
   width: fit-content;
   border: 1px solid rgba(94, 234, 212, 0.42);
   border-radius: 1rem;
@@ -6636,6 +6643,12 @@ html.theme-light .demo-lab-policy-card--blocked {
   font-weight: 950;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.demo-lab-cinematic-actions a {
+  border-color: rgba(167, 139, 250, 0.34);
+  background: rgba(88, 28, 135, 0.18);
+  text-decoration: none;
 }
 
 .demo-lab-cinematic-scenes {
@@ -7565,7 +7578,8 @@ html.theme-light .demo-lab-policy-card--blocked {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .demo-lab-cinematic-copy > button,
+  .demo-lab-cinematic-actions button,
+  .demo-lab-cinematic-actions a,
   .demo-lab-differentiator-strip > button,
   .demo-lab-trust-meter,
   .demo-lab-phone-shell {
@@ -8508,6 +8522,1000 @@ html.theme-light .demo-lab-policy-card--blocked {
   .demo-lab-open-burst circle,
   .demo-lab-open-burst path,
   .demo-lab-nfc-state-pill {
+    animation: none !important;
+  }
+}
+
+/* nexID Motion Pack: export-oriented animated source frames for social,
+   feed and enterprise pitch assets. */
+.nexid-motion-pack {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(34, 211, 238, 0.18), transparent 30rem),
+    radial-gradient(circle at 92% 12%, rgba(167, 139, 250, 0.18), transparent 34rem),
+    radial-gradient(circle at 58% 100%, rgba(20, 184, 166, 0.12), transparent 35rem),
+    linear-gradient(135deg, #020617 0%, #071827 54%, #020617 100%);
+  color: #f8fafc;
+  padding: clamp(1rem, 2vw, 2rem);
+}
+
+.nexid-motion-pack a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.nexid-motion-hero,
+.nexid-motion-benchmark,
+.nexid-motion-formats,
+.nexid-motion-products,
+.nexid-motion-storyboard {
+  width: min(100%, 82rem);
+  margin-inline: auto;
+}
+
+.nexid-motion-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.5fr);
+  gap: clamp(1rem, 2vw, 1.35rem);
+  align-items: stretch;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(45, 212, 191, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.72), rgba(8, 47, 73, 0.64));
+  box-shadow: 0 40px 90px rgba(2, 6, 23, 0.44), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.nexid-motion-hero p,
+.nexid-motion-section-heading p,
+.nexid-motion-format-copy small,
+.nexid-motion-benchmark-card small,
+.nexid-motion-storyboard-rail small {
+  color: #5eead4;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.nexid-motion-hero h1 {
+  max-width: 62rem;
+  margin-top: 0.75rem;
+  color: #fff7ed;
+  font-size: clamp(2.6rem, 7vw, 6.8rem);
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  line-height: 0.87;
+  text-wrap: balance;
+}
+
+.nexid-motion-hero span {
+  display: block;
+  max-width: 48rem;
+  margin-top: 1.2rem;
+  color: #cbd5e1;
+  font-size: clamp(0.98rem, 1.4vw, 1.16rem);
+  line-height: 1.72;
+}
+
+.nexid-motion-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.nexid-motion-hero-actions a {
+  border: 1px solid rgba(94, 234, 212, 0.34);
+  border-radius: 1rem;
+  background: rgba(20, 184, 166, 0.15);
+  color: #ecfeff;
+  padding: 0.85rem 1rem;
+  font-size: 0.74rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nexid-motion-hero-actions a:nth-child(2) {
+  border-color: rgba(167, 139, 250, 0.34);
+  background: rgba(88, 28, 135, 0.18);
+}
+
+.nexid-motion-hero-card {
+  position: relative;
+  display: flex;
+  min-height: 22rem;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at 50% 24%, rgba(34, 211, 238, 0.24), transparent 28%),
+    linear-gradient(145deg, rgba(2, 6, 23, 0.9), rgba(15, 23, 42, 0.72));
+  background-size: 4.5rem 4.5rem, 4.5rem 4.5rem, auto, auto;
+  padding: 1.2rem;
+}
+
+.nexid-motion-hero-card::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  z-index: 0;
+  width: 13rem;
+  height: 13rem;
+  transform: translateX(-50%) rotate(-18deg);
+  border: 1px solid rgba(94, 234, 212, 0.22);
+  border-radius: 999px;
+  box-shadow: 0 0 0 3rem rgba(34, 211, 238, 0.035), 0 0 0 6rem rgba(167, 139, 250, 0.03);
+  animation: nexid-motion-orbit 18s linear infinite;
+}
+
+.nexid-motion-logo-mark {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 5.4rem;
+  height: 5.4rem;
+  margin-bottom: auto;
+  border: 1px solid rgba(94, 234, 212, 0.34);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(135deg, rgba(20, 184, 166, 0.42), rgba(34, 211, 238, 0.12)),
+    rgba(2, 6, 23, 0.54);
+  color: #ecfeff;
+  font-size: 2.5rem;
+  font-weight: 950;
+  box-shadow: 0 26px 50px rgba(20, 184, 166, 0.18);
+}
+
+.nexid-motion-hero-product {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 2;
+  width: 12.5rem;
+  transform: translate(-50%, -50%);
+  animation: nexid-motion-product-float 5.8s ease-in-out infinite;
+}
+
+.nexid-motion-hero-product .nexid-motion-glyph {
+  width: 100%;
+}
+
+.nexid-motion-hero-product .nexid-motion-glyph-body {
+  inset: 4% 25% 0;
+  border-color: rgba(251, 191, 36, 0.36);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 18% 82%, rgba(255, 255, 255, 0.12)),
+    linear-gradient(180deg, #f59e0b 0 18%, #14532d 18% 34%, #7f1d1d 34% 100%);
+}
+
+.nexid-motion-hero-product .nexid-motion-glyph-label {
+  left: 35%;
+  right: 35%;
+  top: 63%;
+  height: 16%;
+}
+
+.nexid-motion-hero-product .nexid-motion-glyph-seal {
+  left: 50%;
+  top: 51%;
+  width: 46%;
+  height: 9%;
+}
+
+.nexid-motion-hero-status {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  display: block;
+  width: fit-content;
+  transform: translate(-50%, -50%) rotate(-7deg);
+  border: 1px solid rgba(94, 234, 212, 0.5);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.78);
+  color: #ccfbf1;
+  padding: 0.42rem 0.68rem;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.24);
+}
+
+.nexid-motion-hero-card strong {
+  position: relative;
+  z-index: 3;
+  color: #f8fafc;
+  font-size: 1.4rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.nexid-motion-hero-card > span {
+  position: relative;
+  z-index: 3;
+  color: #cbd5e1;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.nexid-motion-hero-card > div:last-child {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.nexid-motion-hero-card em,
+.nexid-motion-format-copy div span {
+  border: 1px solid rgba(94, 234, 212, 0.25);
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.12);
+  color: #ccfbf1;
+  padding: 0.36rem 0.56rem;
+  font-size: 0.58rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nexid-motion-section-heading {
+  display: grid;
+  gap: 0.45rem;
+  margin: clamp(2rem, 4vw, 3.4rem) 0 1rem;
+}
+
+.nexid-motion-section-heading h2 {
+  max-width: 54rem;
+  color: #f8fafc;
+  font-size: clamp(1.8rem, 3.2vw, 3.35rem);
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  line-height: 0.98;
+}
+
+.nexid-motion-benchmark-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.nexid-motion-benchmark-card {
+  display: grid;
+  gap: 0.55rem;
+  min-height: 10.5rem;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 1.2rem;
+  background:
+    radial-gradient(circle at 16% 0, rgba(34, 211, 238, 0.14), transparent 42%),
+    rgba(15, 23, 42, 0.62);
+  padding: 1rem;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.nexid-motion-benchmark-card:hover {
+  border-color: rgba(94, 234, 212, 0.38);
+  background:
+    radial-gradient(circle at 16% 0, rgba(34, 211, 238, 0.22), transparent 42%),
+    rgba(15, 23, 42, 0.76);
+  transform: translateY(-0.18rem);
+}
+
+.nexid-motion-benchmark-card strong {
+  color: #f8fafc;
+  font-size: 1.04rem;
+  font-weight: 950;
+}
+
+.nexid-motion-benchmark-card span {
+  color: #cbd5e1;
+  font-size: 0.84rem;
+  line-height: 1.58;
+}
+
+.nexid-motion-format-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.nexid-motion-format-card {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.42fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 0 0, rgba(45, 212, 191, 0.1), transparent 28%),
+    rgba(15, 23, 42, 0.58);
+  padding: clamp(0.8rem, 1.6vw, 1rem);
+}
+
+.nexid-motion-format-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 1.15rem;
+  background: rgba(2, 6, 23, 0.38);
+  padding: 1rem;
+}
+
+.nexid-motion-format-copy h3 {
+  color: #fff7ed;
+  font-size: clamp(1.4rem, 2.6vw, 2.55rem);
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  line-height: 0.96;
+}
+
+.nexid-motion-format-copy p {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  line-height: 1.62;
+}
+
+.nexid-motion-format-copy div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.nexid-motion-frame {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(94, 234, 212, 0.2);
+  border-radius: 1.2rem;
+  background:
+    radial-gradient(circle at 52% 46%, rgba(34, 211, 238, 0.2), transparent 28%),
+    radial-gradient(circle at 78% 18%, rgba(167, 139, 250, 0.22), transparent 30%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.92), rgba(2, 6, 23, 0.95));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 30px 70px rgba(2, 6, 23, 0.28);
+  isolation: isolate;
+}
+
+.nexid-motion-frame--story {
+  aspect-ratio: 9 / 16;
+  max-height: 42rem;
+  justify-self: center;
+  width: min(100%, 26rem);
+}
+
+.nexid-motion-frame--square {
+  aspect-ratio: 1 / 1;
+}
+
+.nexid-motion-frame--wide {
+  aspect-ratio: 16 / 9;
+}
+
+.nexid-motion-frame-grid,
+.nexid-motion-frame-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.nexid-motion-frame-grid {
+  z-index: 0;
+  background:
+    linear-gradient(rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.08) 1px, transparent 1px);
+  background-size: 12% 12%;
+}
+
+.nexid-motion-frame-scan {
+  z-index: 3;
+  background: linear-gradient(110deg, transparent 0 42%, rgba(255, 255, 255, 0.12) 50%, transparent 58% 100%);
+  transform: translateX(-80%);
+  animation: nexid-motion-scan 4.5s ease-in-out infinite;
+}
+
+.nexid-motion-route-path {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 48%;
+  z-index: 1;
+  height: 26%;
+  transform: rotate(-8deg);
+  border-top: 2px dashed rgba(94, 234, 212, 0.34);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.nexid-motion-route-path span {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  min-width: 4.4rem;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.72);
+  color: #a5f3fc;
+  padding: 0.34rem 0.5rem;
+  font-size: 0.52rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nexid-motion-route-path span:nth-child(1) {
+  left: 0;
+  top: 24%;
+}
+
+.nexid-motion-route-path span:nth-child(2) {
+  left: 48%;
+  top: -18%;
+  transform: translateX(-50%);
+}
+
+.nexid-motion-route-path span:nth-child(3) {
+  right: 0;
+  top: 42%;
+}
+
+.nexid-motion-frame-topline {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 4%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.nexid-motion-frame-topline span,
+.nexid-motion-frame-topline strong,
+.nexid-motion-token-chip small {
+  color: #67e8f9;
+  font-size: clamp(0.56rem, 1.1vw, 0.72rem);
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.nexid-motion-frame-topline strong {
+  border: 1px solid rgba(94, 234, 212, 0.3);
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.14);
+  color: #ccfbf1;
+  padding: 0.32rem 0.6rem;
+}
+
+.nexid-motion-frame-product {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  z-index: 2;
+  width: min(48%, 18rem);
+  transform: translate(-50%, -50%);
+  animation: nexid-motion-product-float 5.8s ease-in-out infinite;
+}
+
+.nexid-motion-frame--story .nexid-motion-frame-product {
+  top: 42%;
+  width: min(70%, 18rem);
+}
+
+.nexid-motion-frame--wide .nexid-motion-frame-product {
+  left: 42%;
+  width: min(34%, 16.5rem);
+}
+
+.nexid-motion-frame .nexid-motion-glyph-body {
+  inset: 5% 24% 0;
+}
+
+.nexid-motion-frame .nexid-motion-glyph--perfume .nexid-motion-glyph-body {
+  inset: 4% 22% 0;
+}
+
+.nexid-motion-frame .nexid-motion-glyph--bracelet .nexid-motion-glyph-body {
+  inset: 42% 4% 42%;
+}
+
+.nexid-motion-nfc-band {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 10.5rem;
+  transform: translate(-50%, -50%) rotate(-7deg);
+  border: 2px solid rgba(34, 211, 238, 0.82);
+  border-radius: 0.95rem;
+  background: rgba(2, 6, 23, 0.78);
+  box-shadow: 0 18px 30px rgba(2, 6, 23, 0.4), 0 0 34px rgba(34, 211, 238, 0.18);
+  padding: 0.55rem 0.75rem;
+}
+
+.nexid-motion-nfc-band b {
+  color: #ecfeff;
+  font-size: 1.05rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.nexid-motion-nfc-band em {
+  color: #a5f3fc;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+}
+
+.nexid-motion-proof-cluster {
+  position: absolute;
+  right: 4%;
+  top: 16%;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(5rem, 1fr));
+  gap: 0.55rem;
+  width: min(42%, 21rem);
+}
+
+.nexid-motion-frame--story .nexid-motion-proof-cluster {
+  left: 6%;
+  right: 6%;
+  top: auto;
+  bottom: 20%;
+  width: auto;
+}
+
+.nexid-motion-proof-cluster span {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.85rem;
+  background: rgba(15, 23, 42, 0.62);
+  color: #cbd5e1;
+  padding: 0.62rem;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+}
+
+.nexid-motion-proof-cluster span.active {
+  border-color: rgba(94, 234, 212, 0.42);
+  background: rgba(20, 184, 166, 0.18);
+  color: #ccfbf1;
+}
+
+.nexid-motion-token-chip {
+  position: absolute;
+  left: 4%;
+  bottom: 5%;
+  z-index: 4;
+  display: grid;
+  gap: 0.25rem;
+  width: min(38%, 18rem);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 1rem;
+  background:
+    linear-gradient(135deg, rgba(49, 46, 129, 0.6), rgba(15, 23, 42, 0.76)),
+    radial-gradient(circle at 0 0, rgba(167, 139, 250, 0.2), transparent 40%);
+  padding: 0.8rem;
+  backdrop-filter: blur(14px);
+}
+
+.nexid-motion-frame--story .nexid-motion-token-chip {
+  left: 6%;
+  right: 6%;
+  width: auto;
+}
+
+.nexid-motion-token-chip strong {
+  color: #f8fafc;
+  font-size: clamp(1rem, 2vw, 1.65rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.nexid-motion-phone-proof {
+  position: absolute;
+  right: 4%;
+  bottom: 5%;
+  z-index: 4;
+  display: grid;
+  gap: 0.22rem;
+  width: min(27%, 13rem);
+  border: 1px solid rgba(94, 234, 212, 0.22);
+  border-radius: 1rem;
+  background:
+    linear-gradient(145deg, rgba(8, 47, 73, 0.72), rgba(15, 23, 42, 0.78)),
+    radial-gradient(circle at 50% 0, rgba(34, 211, 238, 0.18), transparent 44%);
+  padding: 0.78rem;
+  backdrop-filter: blur(14px);
+}
+
+.nexid-motion-frame--story .nexid-motion-phone-proof {
+  display: none;
+}
+
+.nexid-motion-phone-proof small {
+  color: #67e8f9;
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.nexid-motion-phone-proof strong {
+  color: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 950;
+}
+
+.nexid-motion-phone-proof span {
+  color: #cbd5e1;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.nexid-motion-chart {
+  position: absolute;
+  left: 4%;
+  top: 18%;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.4rem;
+  width: min(26%, 13rem);
+  height: 7rem;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 0.9rem;
+  background: rgba(2, 6, 23, 0.42);
+  padding: 0.7rem;
+  backdrop-filter: blur(12px);
+}
+
+.nexid-motion-frame--story .nexid-motion-chart {
+  display: none;
+}
+
+.nexid-motion-chart span {
+  --motion-bar: 50%;
+  height: var(--motion-bar);
+  min-height: 0.7rem;
+  border-radius: 0.5rem 0.5rem 0.16rem 0.16rem;
+  background: linear-gradient(180deg, #67e8f9, #14b8a6);
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.2);
+  animation: nexid-motion-bar 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.nexid-motion-glyph {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1.28;
+  filter: drop-shadow(0 1.4rem 1.6rem rgba(2, 6, 23, 0.42));
+}
+
+.nexid-motion-glyph-body,
+.nexid-motion-glyph-label,
+.nexid-motion-glyph-seal {
+  position: absolute;
+  display: block;
+}
+
+.nexid-motion-glyph-body {
+  inset: 12% 31% 7%;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 45% 45% 18% 18% / 16% 16% 8% 8%;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 18% 82%, rgba(255, 255, 255, 0.12)),
+    linear-gradient(180deg, #f59e0b 0 18%, #14532d 18% 33%, #7f1d1d 33% 100%);
+}
+
+.nexid-motion-glyph-label {
+  left: 38%;
+  right: 38%;
+  top: 58%;
+  height: 16%;
+  border-radius: 0.45rem;
+  background: #f8fafc;
+}
+
+.nexid-motion-glyph-seal {
+  left: 50%;
+  top: 46%;
+  width: 34%;
+  height: 9%;
+  transform: translateX(-50%) rotate(-6deg);
+  border: 1px solid rgba(34, 211, 238, 0.72);
+  border-radius: 0.45rem;
+  background: rgba(2, 6, 23, 0.82);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.22);
+}
+
+.nexid-motion-glyph--seeds .nexid-motion-glyph-body {
+  inset: 16% 22% 8%;
+  border-color: rgba(254, 240, 138, 0.34);
+  border-radius: 1rem 1rem 0.65rem 0.65rem;
+  background:
+    radial-gradient(circle at 34% 70%, #facc15 0 0.3rem, transparent 0.32rem),
+    radial-gradient(circle at 52% 76%, #facc15 0 0.24rem, transparent 0.26rem),
+    linear-gradient(145deg, #15803d, #84cc16 54%, #facc15);
+}
+
+.nexid-motion-glyph--cream .nexid-motion-glyph-body {
+  inset: 36% 18% 20%;
+  border-radius: 1.2rem 1.2rem 2.4rem 2.4rem;
+  background: linear-gradient(180deg, #e2e8f0 0 22%, #fff7ed 22% 40%, #fce7f3 40% 100%);
+}
+
+.nexid-motion-glyph--perfume .nexid-motion-glyph-body {
+  inset: 16% 28% 9%;
+  border-color: rgba(165, 180, 252, 0.36);
+  border-radius: 1.2rem 1.2rem 0.85rem 0.85rem;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.3), transparent 22% 76%, rgba(255, 255, 255, 0.12)),
+    linear-gradient(145deg, rgba(199, 210, 254, 0.86), rgba(91, 33, 182, 0.82));
+}
+
+.nexid-motion-glyph--bracelet .nexid-motion-glyph-body {
+  inset: 42% 10% 42%;
+  border-color: rgba(45, 212, 191, 0.42);
+  border-radius: 999px;
+  background: linear-gradient(90deg, #06b6d4, #14b8a6 48%, #8b5cf6);
+  transform: rotate(-8deg);
+}
+
+.nexid-motion-glyph--ticket .nexid-motion-glyph-body {
+  inset: 32% 9% 30%;
+  border-color: rgba(251, 113, 133, 0.38);
+  border-radius: 0.8rem;
+  background:
+    radial-gradient(circle at 0 50%, #071827 0 0.75rem, transparent 0.78rem),
+    radial-gradient(circle at 100% 50%, #071827 0 0.75rem, transparent 0.78rem),
+    linear-gradient(90deg, #e11d48, #7c3aed);
+  transform: rotate(-5deg);
+}
+
+.nexid-motion-products {
+  padding-bottom: 0.5rem;
+}
+
+.nexid-motion-product-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.nexid-motion-product-card {
+  min-width: 0;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 1.1rem;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(34, 211, 238, 0.14), transparent 38%),
+    rgba(15, 23, 42, 0.58);
+  padding: 0.85rem;
+}
+
+.nexid-motion-product-card .nexid-motion-glyph {
+  width: min(100%, 9rem);
+  margin-inline: auto;
+}
+
+.nexid-motion-product-card strong {
+  display: block;
+  margin-top: 0.6rem;
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.nexid-motion-product-card span {
+  display: block;
+  margin-top: 0.32rem;
+  color: #94a3b8;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.nexid-motion-storyboard {
+  padding-bottom: clamp(2rem, 4vw, 4rem);
+}
+
+.nexid-motion-storyboard-rail {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.nexid-motion-storyboard-rail article {
+  position: relative;
+  min-height: 12rem;
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 1.1rem;
+  background:
+    radial-gradient(circle at 20% 0, rgba(45, 212, 191, 0.16), transparent 40%),
+    rgba(15, 23, 42, 0.58);
+  padding: 0.85rem;
+}
+
+.nexid-motion-storyboard-rail article::after {
+  content: "";
+  position: absolute;
+  inset: auto 0.85rem 0.85rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22d3ee, #5eead4, #a78bfa);
+  opacity: 0.54;
+}
+
+.nexid-motion-storyboard-rail strong {
+  display: block;
+  margin-top: 1.4rem;
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.nexid-motion-storyboard-rail span {
+  display: block;
+  margin-top: 0.65rem;
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  line-height: 1.52;
+}
+
+@keyframes nexid-motion-scan {
+  0%,
+  26% {
+    opacity: 0;
+    transform: translateX(-80%);
+  }
+
+  44% {
+    opacity: 1;
+  }
+
+  74%,
+  100% {
+    opacity: 0;
+    transform: translateX(78%);
+  }
+}
+
+@keyframes nexid-motion-product-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0) rotate(-0.4deg);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) translateY(-0.7rem) rotate(0.5deg);
+  }
+}
+
+@keyframes nexid-motion-bar {
+  from {
+    opacity: 0.55;
+    transform: scaleY(0.28);
+    transform-origin: bottom;
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+}
+
+@keyframes nexid-motion-orbit {
+  to {
+    transform: translateX(-50%) rotate(342deg);
+  }
+}
+
+@media (max-width: 1040px) {
+  .nexid-motion-hero,
+  .nexid-motion-format-card {
+    grid-template-columns: 1fr;
+  }
+
+  .nexid-motion-benchmark-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nexid-motion-product-grid,
+  .nexid-motion-storyboard-rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .nexid-motion-frame--wide {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+@media (max-width: 660px) {
+  .nexid-motion-pack {
+    padding: 0.75rem;
+  }
+
+  .nexid-motion-hero,
+  .nexid-motion-format-card {
+    border-radius: 1.35rem;
+  }
+
+  .nexid-motion-hero h1 {
+    font-size: clamp(2.6rem, 14vw, 4.2rem);
+    line-height: 0.92;
+  }
+
+  .nexid-motion-section-heading h2 {
+    font-size: clamp(1.7rem, 10vw, 2.55rem);
+    line-height: 1.04;
+  }
+
+  .nexid-motion-benchmark-grid,
+  .nexid-motion-product-grid,
+  .nexid-motion-storyboard-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .nexid-motion-frame--square,
+  .nexid-motion-frame--wide {
+    aspect-ratio: 9 / 12;
+  }
+
+  .nexid-motion-frame-product,
+  .nexid-motion-frame--wide .nexid-motion-frame-product {
+    left: 50%;
+    top: 42%;
+    width: min(66%, 17rem);
+  }
+
+  .nexid-motion-proof-cluster {
+    left: 6%;
+    right: 6%;
+    top: auto;
+    bottom: 20%;
+    width: auto;
+  }
+
+  .nexid-motion-token-chip {
+    left: 6%;
+    right: 6%;
+    width: auto;
+  }
+
+  .nexid-motion-phone-proof,
+  .nexid-motion-chart {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nexid-motion-hero-card::before,
+  .nexid-motion-hero-product,
+  .nexid-motion-frame-scan,
+  .nexid-motion-frame-product,
+  .nexid-motion-chart span {
     animation: none !important;
   }
 }
