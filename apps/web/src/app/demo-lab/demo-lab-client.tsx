@@ -769,6 +769,96 @@ function DemoDifferentiatorStrip({ beat, onGuided }: { beat: Beat; onGuided: () 
   );
 }
 
+function DemoCinematicShowcase({
+  beat,
+  vertical,
+  product,
+  label,
+  onGuided,
+}: {
+  beat: Beat;
+  vertical: Vertical;
+  product: string;
+  label: string;
+  onGuided: () => void;
+}) {
+  const scenes: Array<{ beat: Beat; tag: string; title: string; body: string; stat: string; tone: "origin" | "ok" | "risk" | "open" }> = [
+    { beat: 0, tag: "Scene 01", title: "Producto nace", body: "Packaging premium, UID y etiqueta NFC cerrada antes del primer tap.", stat: "UID + lote", tone: "origin" },
+    { beat: 1, tag: "Scene 02", title: "Tap vivo", body: "SUN dinamico, distancia, origen y datos accionables para consumidor y marca.", stat: "AUTH OK", tone: "ok" },
+    { beat: 2, tag: "Scene 03", title: "Ataque bloqueado", body: "Una URL copiada no abre rewards, claim, tokenizacion ni marketplace sensible.", stat: "NO CLAIM", tone: "risk" },
+    { beat: 3, tag: "Scene 04", title: "Revenue loop", body: "Sello abierto, claim de duenio, certificado, comunidad y recompra.", stat: "UNLOCK", tone: "open" },
+  ];
+  const active = scenes.find((scene) => scene.beat === beat) ?? scenes[1];
+  const progress = `${(beat + 1) * 25}%`;
+  const proofItems = [
+    { label: "SUN", value: beat === 0 ? "standby" : beat === 2 ? "blocked" : "valid", state: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
+    { label: "Claim", value: beat === 3 ? "owner ready" : beat === 2 ? "denied" : "gated", state: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
+    { label: "NFT", value: beat === 2 ? "no mint" : beat === 0 ? "pre-chain" : "request", state: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+    { label: "Market", value: beat === 2 ? "closed" : beat === 0 ? "public" : "unlock", state: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+  ] as const;
+  const graphBars = [56, beat === 0 ? 32 : 78, beat === 2 ? 26 : 88, beat === 3 ? 96 : 58];
+
+  return (
+    <section className={`demo-lab-cinematic-showcase demo-lab-cinematic-showcase--${active.tone} mt-5`} aria-label="Motion studio nexID">
+      <div className="demo-lab-cinematic-copy">
+        <p>Motion Studio nexID</p>
+        <h2>Una demo que se entiende como video: producto real, prueba fisica, riesgo y negocio.</h2>
+        <span>Este bloque funciona como pitch visual dentro de la plataforma: lo puede mirar una bodega, un laboratorio, agro, moda o eventos y entender en segundos que vendemos confianza + ownership + datos + revenue.</span>
+        <button suppressHydrationWarning type="button" onClick={onGuided}>Reproducir recorrido</button>
+        <div className="demo-lab-cinematic-scenes" aria-label="Escenas de la experiencia">
+          {scenes.map((scene) => (
+            <article key={scene.tag} className={scene.beat === beat ? "active" : ""}>
+              <small>{scene.tag}</small>
+              <strong>{scene.title}</strong>
+              <em>{scene.stat}</em>
+              <span>{scene.body}</span>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="demo-lab-cinematic-canvas" style={{ "--cinematic-progress": progress } as CSSProperties}>
+        <span className="demo-lab-cinematic-scanline" aria-hidden="true" />
+        <span className="demo-lab-cinematic-orbit demo-lab-cinematic-orbit--one" aria-hidden="true" />
+        <span className="demo-lab-cinematic-orbit demo-lab-cinematic-orbit--two" aria-hidden="true" />
+        <div className="demo-lab-cinematic-product-shell">
+          <ProductIllustration key={`cinematic-${vertical}-${beat}`} vertical={vertical} product={product} label={label} beat={beat} />
+        </div>
+
+        <div className="demo-lab-cinematic-headline">
+          <small>{active.tag}</small>
+          <strong>{active.title}</strong>
+          <span>{active.stat}</span>
+        </div>
+
+        <div className="demo-lab-cinematic-proof-stack">
+          {proofItems.map((item) => (
+            <span key={item.label} className={`demo-lab-cinematic-proof demo-lab-cinematic-proof--${item.state}`}>
+              <b>{item.label}</b>
+              <em>{item.value}</em>
+            </span>
+          ))}
+        </div>
+
+        <div className="demo-lab-cinematic-token-card">
+          <p>Digital passport</p>
+          <strong>{beat === 2 ? "Risk blocked" : beat === 0 ? "Waiting tap" : beat === 3 ? "Owner + NFT" : "Mint ready"}</strong>
+          <span>{beat === 2 ? "Replay no habilita beneficios." : "UID hasheado, policy gate y evidencia on-chain."}</span>
+        </div>
+
+        <div className="demo-lab-cinematic-graph" aria-label="Grafico de negocio post tap">
+          <div>
+            {graphBars.map((height, index) => (
+              <span key={index} className={index <= beat ? "active" : ""} style={{ "--bar-height": `${height}%` } as CSSProperties} />
+            ))}
+          </div>
+          <p>demanda / riesgo / claim / recompra</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function DemoExperienceLayer({
   beat,
   product,
