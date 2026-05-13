@@ -6905,15 +6905,443 @@ html.theme-light .demo-lab-policy-card--blocked {
   overflow: visible;
 }
 
+.demo-lab-product-scene {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 74%;
+  animation: demo-product-scene-in 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  isolation: isolate;
+}
+
+.demo-lab-product-scene::before {
+  content: "";
+  position: absolute;
+  inset: 18% 16% 14%;
+  z-index: -1;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.2), transparent 58%),
+    conic-gradient(from 130deg, transparent 0 20%, rgba(34, 211, 238, 0.24), transparent 42% 100%);
+  filter: blur(0.1px);
+  opacity: 0.42;
+  transform: rotate(-9deg);
+  pointer-events: none;
+}
+
+.demo-lab-product-scene--auth::before {
+  animation: demo-nfc-read-halo 2.25s ease-in-out infinite;
+}
+
+.demo-lab-product-scene--blocked::before {
+  border-color: rgba(251, 113, 133, 0.46);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(251, 113, 133, 0.22), transparent 58%),
+    conic-gradient(from 130deg, transparent 0 18%, rgba(251, 113, 133, 0.34), transparent 44% 100%);
+}
+
+.demo-lab-product-scene--open {
+  animation: demo-product-open-settle 980ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.demo-lab-product-scene--open::before {
+  border-color: rgba(167, 139, 250, 0.48);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(167, 139, 250, 0.28), transparent 58%),
+    conic-gradient(from 130deg, transparent 0 14%, rgba(45, 212, 191, 0.32), rgba(167, 139, 250, 0.34), transparent 50% 100%);
+  animation: demo-open-halo 1.1s ease-out both;
+}
+
+.demo-lab-nfc-seal {
+  filter: drop-shadow(0 16px 18px rgba(2, 6, 23, 0.44));
+}
+
+.demo-lab-product-scene--origin .demo-lab-nfc-seal {
+  animation: demo-nfc-closed-pulse 3.6s ease-in-out infinite;
+}
+
+.demo-lab-product-scene--auth .demo-lab-nfc-seal {
+  animation: demo-nfc-read-pulse 2.2s ease-in-out infinite;
+}
+
+.demo-lab-product-scene--blocked .demo-lab-nfc-seal {
+  animation: demo-nfc-blocked-jolt 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.demo-lab-nfc-seal-half {
+  transform-box: fill-box;
+  will-change: transform, opacity;
+}
+
+.demo-lab-nfc-seal-half--left {
+  transform-origin: right center;
+}
+
+.demo-lab-nfc-seal-half--right {
+  transform-origin: left center;
+}
+
+.demo-lab-product-scene--blocked .demo-lab-nfc-seal-half > path:first-child {
+  fill: #3a0f1c;
+}
+
+.demo-lab-product-scene--open .demo-lab-nfc-seal-half--left {
+  animation: demo-nfc-seal-open-left 1.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.demo-lab-product-scene--open .demo-lab-nfc-seal-half--right {
+  animation: demo-nfc-seal-open-right 1.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.demo-lab-nfc-seal-sweep {
+  opacity: 0;
+  transform-box: fill-box;
+  will-change: transform, opacity;
+}
+
+.demo-lab-product-scene--auth .demo-lab-nfc-seal-sweep {
+  animation: demo-nfc-sweep 1.65s ease-in-out infinite;
+}
+
+.demo-lab-nfc-seal-tear {
+  transform-box: fill-box;
+}
+
+.demo-lab-product-scene--open .demo-lab-nfc-seal-tear {
+  animation: demo-nfc-tear-glow 1.1s ease-out both;
+}
+
+.demo-lab-open-burst {
+  opacity: 0;
+  transform-box: fill-box;
+  pointer-events: none;
+}
+
+.demo-lab-product-scene--open .demo-lab-open-burst {
+  animation: demo-open-burst-fade 1.15s ease-out 80ms both;
+}
+
+.demo-lab-product-scene--open .demo-lab-open-burst circle {
+  stroke-dasharray: 280;
+  stroke-dashoffset: 280;
+  animation: demo-open-ring-draw 1.05s ease-out 80ms both;
+}
+
+.demo-lab-product-scene--open .demo-lab-open-burst path {
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  animation: demo-open-ring-draw 950ms ease-out 160ms both;
+}
+
+.demo-lab-nfc-state-pill {
+  position: absolute;
+  left: 6%;
+  top: 12%;
+  z-index: 4;
+  display: grid;
+  gap: 0.12rem;
+  min-width: 9.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(34, 211, 238, 0.38);
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(135deg, rgba(8, 47, 73, 0.9), rgba(15, 23, 42, 0.72)),
+    radial-gradient(circle at 12% 18%, rgba(34, 211, 238, 0.34), transparent 34%);
+  box-shadow: 0 18px 28px rgba(2, 6, 23, 0.34), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  color: #ecfeff;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+  pointer-events: none;
+}
+
+.demo-lab-nfc-state-pill strong {
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.demo-lab-nfc-state-pill em {
+  color: #a5f3fc;
+  font-size: 0.54rem;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.demo-lab-product-scene--blocked .demo-lab-nfc-state-pill {
+  border-color: rgba(251, 113, 133, 0.48);
+  background:
+    linear-gradient(135deg, rgba(76, 5, 25, 0.92), rgba(15, 23, 42, 0.74)),
+    radial-gradient(circle at 12% 18%, rgba(251, 113, 133, 0.38), transparent 34%);
+}
+
+.demo-lab-product-scene--blocked .demo-lab-nfc-state-pill em {
+  color: #fecdd3;
+}
+
+.demo-lab-product-scene--open .demo-lab-nfc-state-pill {
+  border-color: rgba(167, 139, 250, 0.5);
+  background:
+    linear-gradient(135deg, rgba(49, 46, 129, 0.92), rgba(15, 23, 42, 0.74)),
+    radial-gradient(circle at 12% 18%, rgba(167, 139, 250, 0.4), transparent 34%);
+  animation: demo-state-pill-reveal 760ms cubic-bezier(0.16, 1, 0.3, 1) 150ms both;
+}
+
 .demo-lab-product-stage .demo-lab-cork,
 .demo-lab-product-stage .demo-lab-product-label,
 .demo-lab-product-stage .demo-lab-seal-split {
   display: none !important;
 }
 
+@keyframes demo-product-scene-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demo-product-open-settle {
+  0% {
+    opacity: 0.96;
+    transform: translateY(0.35rem) scale(0.985) rotate(-0.5deg);
+  }
+
+  58% {
+    opacity: 1;
+    transform: translateY(-0.35rem) scale(1.035) rotate(0.7deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
+  }
+}
+
+@keyframes demo-nfc-read-halo {
+  0%,
+  100% {
+    opacity: 0.34;
+    transform: rotate(-9deg) scale(0.96);
+  }
+
+  50% {
+    opacity: 0.68;
+    transform: rotate(-9deg) scale(1.05);
+  }
+}
+
+@keyframes demo-open-halo {
+  0% {
+    opacity: 0.24;
+    transform: rotate(-9deg) scale(0.85);
+  }
+
+  72% {
+    opacity: 0.78;
+    transform: rotate(-9deg) scale(1.08);
+  }
+
+  100% {
+    opacity: 0.48;
+    transform: rotate(-9deg) scale(1);
+  }
+}
+
+@keyframes demo-nfc-closed-pulse {
+  0%,
+  100% {
+    opacity: 0.94;
+    filter: drop-shadow(0 16px 18px rgba(2, 6, 23, 0.44));
+  }
+
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 18px 22px rgba(34, 211, 238, 0.24));
+  }
+}
+
+@keyframes demo-nfc-read-pulse {
+  0%,
+  100% {
+    opacity: 0.96;
+    filter: drop-shadow(0 16px 18px rgba(2, 6, 23, 0.44));
+  }
+
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 18px 24px rgba(45, 212, 191, 0.34));
+  }
+}
+
+@keyframes demo-nfc-blocked-jolt {
+  0%,
+  100% {
+    filter: drop-shadow(0 16px 18px rgba(2, 6, 23, 0.44));
+  }
+
+  32% {
+    filter: drop-shadow(-8px 14px 18px rgba(251, 113, 133, 0.34));
+  }
+
+  66% {
+    filter: drop-shadow(8px 14px 18px rgba(251, 113, 133, 0.24));
+  }
+}
+
+@keyframes demo-nfc-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+
+  18% {
+    opacity: 0.2;
+  }
+
+  62% {
+    opacity: 0.18;
+    transform: translateX(205px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(230px);
+  }
+}
+
+@keyframes demo-nfc-seal-open-left {
+  0% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) rotate(0deg);
+  }
+
+  44% {
+    opacity: 1;
+    transform: translateX(-0.55rem) translateY(-0.25rem) rotate(-8deg);
+  }
+
+  100% {
+    opacity: 0.84;
+    transform: translateX(-1.7rem) translateY(-0.95rem) rotate(-20deg);
+  }
+}
+
+@keyframes demo-nfc-seal-open-right {
+  0% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) rotate(0deg);
+  }
+
+  44% {
+    opacity: 1;
+    transform: translateX(0.55rem) translateY(0.2rem) rotate(8deg);
+  }
+
+  100% {
+    opacity: 0.84;
+    transform: translateX(1.7rem) translateY(0.85rem) rotate(19deg);
+  }
+}
+
+@keyframes demo-nfc-tear-glow {
+  0% {
+    opacity: 0.62;
+    stroke-dashoffset: 0;
+  }
+
+  55% {
+    opacity: 1;
+    stroke-dashoffset: 18;
+  }
+
+  100% {
+    opacity: 0.2;
+    stroke-dashoffset: 34;
+  }
+}
+
+@keyframes demo-open-burst-fade {
+  0% {
+    opacity: 0;
+  }
+
+  32% {
+    opacity: 0.82;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes demo-open-ring-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes demo-state-pill-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.55rem) rotate(-3deg) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(-3deg) scale(1);
+  }
+}
+
+@keyframes demo-state-pill-reveal-mobile {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0.45rem) rotate(-2deg) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) rotate(-2deg) scale(1);
+  }
+}
+
 @media (max-width: 640px) {
   .demo-lab-product-stage .demo-lab-product-illustration-wrap {
     width: 18.5rem !important;
     height: 21.5rem !important;
+  }
+
+  .demo-lab-nfc-state-pill {
+    left: 50%;
+    top: 3%;
+    min-width: 10.8rem;
+    padding: 0.48rem 0.58rem;
+    text-align: center;
+    transform: translateX(-50%) rotate(-2deg);
+  }
+
+  .demo-lab-product-scene--open .demo-lab-nfc-state-pill {
+    animation-name: demo-state-pill-reveal-mobile;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-lab-product-scene,
+  .demo-lab-product-scene::before,
+  .demo-lab-nfc-seal,
+  .demo-lab-nfc-seal-half,
+  .demo-lab-nfc-seal-sweep,
+  .demo-lab-nfc-seal-tear,
+  .demo-lab-open-burst,
+  .demo-lab-open-burst circle,
+  .demo-lab-open-burst path,
+  .demo-lab-nfc-state-pill {
+    animation: none !important;
   }
 }

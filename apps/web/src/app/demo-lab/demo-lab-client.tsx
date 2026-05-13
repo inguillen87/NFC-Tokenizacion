@@ -524,7 +524,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
               <div className={`demo-lab-product-stage demo-lab-product-stage--${vertical} demo-lab-product-stage--beat-${beat} demo-lab-product-stage--${scenario.tone} mt-4`}>
                 <StageRouteLayer txt={txt} routeKm={routeKm} destination={destination} scenario={scenario} locale={locale} />
                 <div className={`${activeVertical.visual} demo-lab-live-visual demo-lab-product-illustration-wrap ${beat === 3 ? "tampered" : "scanning"}`}>
-                  <ProductIllustration vertical={vertical} product={activeVertical.product} label={activeVertical.label} beat={beat} />
+                  <ProductIllustration key={`${vertical}-${beat}`} vertical={vertical} product={activeVertical.product} label={activeVertical.label} beat={beat} />
                 </div>
                 <span className="demo-lab-cork" />
                 <span className="demo-lab-product-label">nexID secure</span>
@@ -622,9 +622,15 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
   const statusLabel = beat === 2 ? "BLOCK" : beat === 3 ? "OPEN" : "NFC";
   const productLine = product.length > 24 ? `${product.slice(0, 22)}...` : product;
   const accent = beat === 2 ? "#fb7185" : beat === 3 ? "#a78bfa" : "#22d3ee";
+  const sceneState = beat === 0 ? "origin" : beat === 1 ? "auth" : beat === 2 ? "blocked" : "open";
+  const sealTitle = beat === 2 ? "REPLAY" : beat === 3 ? "ABIERTO" : "CERRADO";
+  const sealBody = beat === 0 ? "UID SELLADO" : beat === 1 ? "SUN OK" : beat === 2 ? "NO CLAIM" : "CLAIM LISTO";
+  const stateTitle = beat === 2 ? "Riesgo bloqueado" : beat === 3 ? "Etiqueta NFC abierta" : "Etiqueta NFC cerrada";
+  const stateBody = beat === 0 ? "lista para primer tap" : beat === 1 ? "tap validado" : beat === 2 ? "replay detenido" : "beneficios habilitados";
 
   return (
-    <svg className="demo-lab-product-illustration" viewBox="0 0 360 420" role="img" aria-label={`${label}: ${product}`}>
+    <div className={`demo-lab-product-scene demo-lab-product-scene--${sceneState}`} role="img" aria-label={`${label}: ${product}. ${stateTitle}.`}>
+      <svg className="demo-lab-product-illustration" viewBox="0 0 360 420" aria-hidden="true" focusable="false">
       <defs>
         <filter id={`${uid}-shadow`} x="-35%" y="-35%" width="170%" height="170%">
           <feDropShadow dx="0" dy="18" stdDeviation="16" floodColor="#020617" floodOpacity="0.42" />
@@ -743,12 +749,38 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
         </g>
       ) : null}
 
+      <g className="demo-lab-open-burst" transform="translate(180 196)">
+        <circle cx="0" cy="0" r="44" fill="none" stroke={accent} strokeWidth="3" />
+        <path d="M0-72v-28M51-51l20-20M72 0h30M51 51l20 20M0 72v28M-51 51l-20 20M-72 0h-30M-51-51l-20-20" stroke={accent} strokeWidth="5" strokeLinecap="round" />
+      </g>
+
+      <g className="demo-lab-nfc-seal" transform="translate(180 188) rotate(-7)">
+        <g className="demo-lab-nfc-seal-half demo-lab-nfc-seal-half--left">
+          <path d="M-104-32H0v64h-104c-12 0-22-10-22-22v-20c0-12 10-22 22-22Z" fill="#071827" stroke={accent} strokeWidth="2" />
+          <path d="M-92-4c12-15 30-15 42 0M-84 8c8-9 18-9 26 0M-74 20c4-4 8-4 12 0" fill="none" stroke="#ecfeff" strokeWidth="4" strokeLinecap="round" opacity="0.82" />
+          <text x="-38" y="-6" textAnchor="middle" fill="#ecfeff" fontSize="17" fontWeight="900" letterSpacing="2">NFC</text>
+          <text x="-38" y="15" textAnchor="middle" fill="#a5f3fc" fontSize="8" fontWeight="900" letterSpacing="1.6">FISICO</text>
+        </g>
+        <g className="demo-lab-nfc-seal-half demo-lab-nfc-seal-half--right">
+          <path d="M0-32h104c12 0 22 10 22 22v20c0 12-10 22-22 22H0v-64Z" fill="#071827" stroke={accent} strokeWidth="2" />
+          <text x="58" y="-5" textAnchor="middle" fill="#ecfeff" fontSize="14" fontWeight="900" letterSpacing="1.8">{sealTitle}</text>
+          <text x="58" y="15" textAnchor="middle" fill="#a5f3fc" fontSize="8" fontWeight="900" letterSpacing="1.4">{sealBody}</text>
+        </g>
+        <rect className="demo-lab-nfc-seal-sweep" x="-125" y="-34" width="44" height="68" rx="12" fill="#ffffff" opacity="0.16" />
+        <path className="demo-lab-nfc-seal-tear" d="M0-29v58" stroke="#ecfeff" strokeWidth="2" strokeDasharray="4 5" opacity="0.62" />
+      </g>
+
       <g transform="translate(272 61)">
         <circle cx="0" cy="0" r="26" fill="#082f49" stroke={accent} strokeWidth="2" />
         <text x="0" y="4" textAnchor="middle" fill="#ecfeff" fontSize="12" fontWeight="900">{statusLabel}</text>
       </g>
       <text x="180" y="398" textAnchor="middle" fill="#cbd5e1" fontSize="13" fontWeight="800">{productLine}</text>
     </svg>
+      <span className="demo-lab-nfc-state-pill" aria-hidden="true">
+        <strong>{stateTitle}</strong>
+        <em>{stateBody}</em>
+      </span>
+    </div>
   );
 }
 
