@@ -628,7 +628,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
     setTapIndex(Math.floor(Math.random() * tapLocations.length));
   }, []);
 
-  const outputRows = [
+  const proofRows = [
     { label: txt.labels.product, value: data.product },
     { label: txt.labels.origin, value: `${data.origin.city}, ${data.origin.country}` },
     { label: txt.labels.tap, value: `${tap.city}, ${tap.country} - ${tap.label}` },
@@ -636,6 +636,8 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
     { label: txt.labels.uid, value: data.uid },
     { label: txt.labels.batch, value: data.batch },
     { label: txt.labels.security, value: data.security },
+  ];
+  const commerceRows = [
     { label: txt.labels.nextAction, value: data.nextAction },
     { label: txt.labels.marketplace, value: data.marketplace },
     { label: txt.labels.loyalty, value: data.loyalty },
@@ -706,12 +708,25 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
           <div className="hero-scene-result-card rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
             <p className="hero-scene-result-label text-[11px] uppercase tracking-[0.14em] text-cyan-200">{txt.phoneLabel}</p>
             <p className="hero-scene-result-state mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-300">{data.result}</p>
-            <div className="hero-output-grid mt-3">
-              {outputRows.map((item) => (
+            <div className="hero-passport-summary mt-3">
+              <span>{data.profile}</span>
+              <strong>{data.product}</strong>
+              <em>{tap.city} - {distance.toLocaleString(numberLocale)} km</em>
+            </div>
+            <div className="hero-output-grid hero-output-grid--proof mt-3">
+              {proofRows.map((item) => (
                 <div key={item.label} className="hero-output-row">
                   <span>{item.label}</span>
                   <strong>{item.value}</strong>
                 </div>
+              ))}
+            </div>
+            <div className="hero-commerce-stack mt-3">
+              {commerceRows.map((item) => (
+                <article key={item.label} className="hero-commerce-card">
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
               ))}
             </div>
             <div className="hero-result-explain mt-3 rounded-xl border border-white/10 bg-slate-950/50 p-3">

@@ -41,7 +41,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
             {heroSubtitle}
           </p>
 
-          <div className="hero-demo-shell mx-auto mt-10 max-w-5xl text-left">
+          <div className="hero-demo-shell mx-auto mt-10 max-w-7xl text-left">
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>
