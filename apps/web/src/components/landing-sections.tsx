@@ -13,14 +13,14 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
   const primaryCta = hero?.cta?.primary || hero?.primary || "Empezar";
   const secondaryCta = hero?.cta?.secondary || hero?.secondary || "Contacto";
 
-  const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza Enterprise";
-  const demoEyebrow = isEn ? "Interactive product experience" : isBr ? "Experiencia interativa do produto" : "Experiencia interactiva de producto";
+  const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza para empresas";
+  const demoEyebrow = isEn ? "Interactive product experience" : isBr ? "Experiencia interativa do produto" : "Experiencia guiada de producto";
   const demoBody = isEn
     ? "Bottle, wristband, seal and package: real tap, origin map, authenticity, club, points and marketplace in one guided scene."
     : isBr
     ? "Garrafa, pulseira, lacre e embalagem: toque real, mapa de origem, autenticidade, clube, pontos e marketplace em uma cena guiada."
-    : "Botella, pulsera, sello y packaging: tap real, autenticidad, mapa de origen, club, puntos y marketplace en una escena guiada.";
-  const demoCta = isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir Demo Lab";
+    : "Botella, pulsera, sello y envase: toque real, autenticidad, mapa de origen, club, puntos y tienda en una escena guiada.";
+  const demoCta = isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir laboratorio";
   const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reuniao" : "Agendar reunion";
 
   return (
@@ -97,6 +97,10 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
 }
 
 export function RadarSection({ radar, locale }: { radar: any; locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const liveLabel = isEn ? "Live Network" : isBr ? "Rede ao vivo" : "Red en vivo";
+  const liveBody = isEn ? "Global node visualization." : isBr ? "Visualizacao de nodos globais." : "Visualizacion de nodos globales.";
   return (
     <section className="container-shell py-16">
       <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -122,9 +126,9 @@ export function RadarSection({ radar, locale }: { radar: any; locale: string }) 
             <div className="absolute bottom-4 right-4 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-lg p-3 text-xs text-slate-300 shadow-xl">
                <div className="flex items-center gap-2 mb-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-bold text-white">Live Network</span>
+                  <span className="font-bold text-white">{liveLabel}</span>
                </div>
-               Global node visualization.
+               {liveBody}
             </div>
          </div>
       </div>
@@ -138,9 +142,9 @@ export function InteractiveDemoSection({ locale }: { locale: string }) {
       title: "Experience the Consumer Journey",
       desc: "Scan a product and instantly access provenance, loyalty, and secondary market tools without app downloads."
    } : {
-      eyebrow: "Preview Interactivo",
-      title: "Viví la Experiencia del Consumidor",
-      desc: "Escaneá un producto y accedé a su historia, programa de lealtad y herramientas de reventa sin descargar apps."
+      eyebrow: "Vista interactiva",
+      title: "Vivi la experiencia del consumidor",
+      desc: "Escanea un producto y accede a su historia, beneficios y herramientas de reventa sin descargar apps."
    };
 
    return (
@@ -153,7 +157,7 @@ export function InteractiveDemoSection({ locale }: { locale: string }) {
                   <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.desc}  />
                   <div className="mt-8 flex flex-wrap gap-4">
                      <Link href="/sun" className="inline-flex items-center justify-center rounded-xl bg-white text-slate-950 px-6 py-3 font-bold transition hover:bg-slate-200 shadow-lg shadow-white/10">
-                        Probar Passport Móvil
+                        Probar pasaporte celular
                      </Link>
                      <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white transition hover:bg-white/10 backdrop-blur-sm">
                         Abrir Demo Lab
@@ -225,21 +229,21 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
     }
     : {
       eyebrow: "Posicionamiento Eventos / NTAG215",
-      title: "Por qué NTAG215 supera al QR en muchos flujos de eventos",
-      intro: "NTAG215 está pensado para UX por tap, serialización y control operativo en pulseras, tickets y credenciales. No es anti-fraude premium.",
-      basicTitle: "NTAG215 Basic (eventos y activaciones)",
+      title: "Por que NTAG215 supera al QR en muchos flujos de eventos",
+      intro: "NTAG215 esta pensado para experiencia por toque, serializacion y control operativo en pulseras, entradas y credenciales. No es antifraude premium.",
+      basicTitle: "NTAG215 Basico (eventos y activaciones)",
       basicBullets: [
-        "Check-in más rápido que QR/email/foto en accesos con filas.",
-        "Cada pieza física puede serializarse con UID y reglas server-side.",
-        "Más difícil de compartir casualmente que un QR por screenshot.",
+        "Ingreso mas rapido que QR, email o foto en accesos con filas.",
+        "Cada pieza fisica puede serializarse con UID y reglas del servidor.",
+        "Mas dificil de compartir casualmente que un QR por captura.",
         "Ideal para pulseras, credenciales, tickets y activaciones de marca.",
       ],
       secureTitle: "NTAG 424 DNA TagTamper (anti-fraude premium)",
       secureBullets: [
-        "Usá este perfil cuando anti-clonación y tamper sean críticos.",
-        "Recomendado para vino, cosmética, docs/presence y cadenas de alto riesgo.",
+        "Usa este perfil cuando anti-clonacion y sello fisico sean criticos.",
+        "Recomendado para vino, cosmetica, documentos, presencia y cadenas de alto riesgo.",
       ],
-      footer: "Mensaje comercial: NTAG215 = UX + control + serialización. NTAG 424 DNA TT = anti-fraude fuerte.",
+      footer: "Mensaje comercial: NTAG215 = experiencia + control + serializacion. NTAG 424 DNA TT = antifraude fuerte.",
     };
 
   return (
@@ -278,15 +282,15 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
               <h3 className="mt-2 text-lg font-semibold text-white">De QR comun a NTAG 424 DNA TagTamper</h3>
             </div>
             <Link href="/stack" className="risk-stack-link rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10">
-              Ver stack tecnico
+              Ver capa tecnica
             </Link>
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-4">
             {[
-              { name: "QR / GS1 Digital Link", tag: "Contenido", body: "La entrada mas barata: URL verificable, packaging masivo, campanas, manuales y analitica basica. Ideal cuando no se necesita anti-clon fuerte." },
-              { name: "NTAG213 / NTAG215", tag: "Tap UX", body: "Bajo costo NFC para tickets, credenciales, loyalty y productos de rotacion: UID serializado, reglas server-side y experiencia sin camara." },
-              { name: "NTAG 424 DNA", tag: "SUN/SDM", body: "Cada tap genera datos dinamicos verificables contra replay, clones y URLs reutilizadas. Recomendado para autenticidad fuerte sin tamper fisico." },
-              { name: "424 DNA TT + token", tag: "Tamper + chain", body: "Para vino, lujo, pharma y activos premium: detecta apertura fisica, cambia el passport y habilita ownership/tokenizacion segun politica de compra." },
+              { name: "QR / GS1 Digital Link", tag: "Contenido", body: "La entrada mas economica: URL verificable, envase masivo, campanas, manuales y analitica basica. Ideal cuando no se necesita anti-clon fuerte." },
+              { name: "NTAG213 / NTAG215", tag: "Toque simple", body: "Bajo costo NFC para entradas, credenciales, beneficios y productos de rotacion: UID serializado, reglas del servidor y experiencia sin camara." },
+              { name: "NTAG 424 DNA", tag: "SUN/SDM", body: "Cada toque genera datos dinamicos verificables contra copias, clones y URLs reutilizadas. Recomendado para autenticidad fuerte sin sello fisico." },
+              { name: "424 DNA TT + token", tag: "Sello + cadena", body: "Para vino, lujo, salud y activos premium: detecta apertura fisica, cambia el pasaporte y habilita duenio/tokenizacion segun politica de compra." },
             ].map((item, index) => (
               <article key={item.name} className="risk-stack-card relative rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -311,21 +315,21 @@ export function PlansSection({ content, locale }: { content: Content; locale: st
   const planEducation = [
     {
       visual: "qr",
-      title: "Basic real",
-      example: "QR comun o NFC UID para contenido, campañas, manuales, registro de garantia y primeras metricas.",
+      title: "Basico real",
+      example: "QR comun o NFC UID para contenido, campanas, manuales, registro de garantia y primeras metricas.",
       fit: "Cuando el riesgo de copia no es critico y lo importante es lanzar rapido.",
     },
     {
       visual: "ntag",
-      title: "Secure tap",
-      example: "NTAG215 o NTAG 424 DNA con UID/SUN dinamico para serializacion, anti-replay y control server-side.",
+      title: "Toque seguro",
+      example: "NTAG215 o NTAG 424 DNA con UID/SUN dinamico para serializacion, anti copia y control del servidor.",
       fit: "Para eventos, credenciales, productos de valor medio y operaciones con validacion frecuente.",
     },
     {
       visual: "tt",
       title: "Premium tokenizado",
-      example: "NTAG 424 DNA TT + passport + token sandbox/Polygon para propiedad, historial y marketplace.",
-      fit: "Para vino, lujo, cosmetica, pharma y activos donde apertura, origen y postventa importan.",
+      example: "NTAG 424 DNA TT + pasaporte + token sandbox/Polygon para propiedad, historial y tienda.",
+      fit: "Para vino, lujo, cosmetica, salud y activos donde apertura, origen y postventa importan.",
     },
   ];
   const enrichedPlanEducation = isEn
@@ -341,9 +345,9 @@ export function PlansSection({ content, locale }: { content: Content; locale: st
       { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + passport + token sandbox/Polygon para ownership, lifecycle e marketplace.", fit: "Para vinho, luxo, cosmeticos, pharma e ativos onde abertura, origem e revenda importam.", flow: ["Lacre rompe", "Passport muda estado", "Ownership ou voucher abre"] },
     ]
     : [
-      { visual: "qr", title: "Basic real", example: "QR comun o NFC UID para manuales, landing pages, registro de garantia y primeras metricas de escaneo.", fit: "Usalo cuando importa lanzar rapido y el riesgo de copia todavia no es critico.", flow: ["Cliente escanea", "Abre contenido", "Se guarda lead o garantia"] },
-      { visual: "ntag", title: "Secure tap", example: "NTAG215 para eventos o NTAG 424 DNA con SUN dinamico, UID serializado y reglas server-side.", fit: "Para tickets, credenciales, productos de valor medio y operaciones con validacion frecuente.", flow: ["El telefono tapea", "Backend valida UID/SUN", "Dashboard registra ubicacion"] },
-      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + passport + token sandbox/Polygon para ownership, historial y marketplace.", fit: "Para vino, lujo, cosmetica, pharma y activos donde apertura, origen y reventa importan.", flow: ["Se rompe el sello", "El passport cambia estado", "Se abre ownership o voucher"] },
+      { visual: "qr", title: "Basico real", example: "QR comun o NFC UID para manuales, paginas, registro de garantia y primeras metricas de escaneo.", fit: "Usalo cuando importa lanzar rapido y el riesgo de copia todavia no es critico.", flow: ["Cliente escanea", "Abre contenido", "Se guarda contacto o garantia"] },
+      { visual: "ntag", title: "Toque seguro", example: "NTAG215 para eventos o NTAG 424 DNA con SUN dinamico, UID serializado y reglas del servidor.", fit: "Para entradas, credenciales, productos de valor medio y operaciones con validacion frecuente.", flow: ["El telefono toca", "Servidor valida UID/SUN", "Panel registra ubicacion"] },
+      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + pasaporte + token sandbox/Polygon para duenio, historial y tienda.", fit: "Para vino, lujo, cosmetica, salud y activos donde apertura, origen y reventa importan.", flow: ["Se rompe el sello", "El pasaporte cambia estado", "Se abre duenio o voucher"] },
     ];
 
   return (
@@ -485,26 +489,26 @@ export function PremiumIdentitySection({ content, locale }: { content: Content; 
     }
     : {
       eyebrow: "Capa premium",
-      title: "Ownership digital para productos que siguen generando valor",
-      body: "La capa premium convierte cada unidad verificada en un passport vivo: procedencia, garantia, ownership token-ready y acciones de marketplace quedan asociadas al objeto fisico.",
+      title: "Duenio digital para productos que siguen generando valor",
+      body: "La capa premium convierte cada unidad verificada en un pasaporte vivo: procedencia, garantia, duenio listo para token y acciones de tienda quedan asociadas al objeto fisico.",
       demo: "Abrir demo premium",
       docs: "Ver arquitectura",
-      wallet: "Wallet sandbox",
-      proofTitle: "Ejemplo de passport premium",
-      proofStatus: "AUTH_OK / OPENED",
+      wallet: "Billetera sandbox",
+      proofTitle: "Ejemplo de pasaporte premium",
+      proofStatus: "AUTENTICO / ABIERTO",
       proofRows: [
         ["Origen", "Valle de Uco, Mendoza"],
         ["Sello", "NTAG 424 DNA TT abierto"],
         ["Token", "Polygon sandbox listo"],
-        ["Owner", "Wallet anonima"],
+        ["Duenio", "Billetera anonima"],
       ],
       cards: [
-        { title: "Ownership passport", body: "Despues de autenticar, el comprador puede reclamar un registro digital vinculado a UID, lote y estado." },
-        { title: "Warranty lifecycle", body: "Garantia, soporte, devolucion y service se vuelven eventos auditables, no formularios sueltos." },
-        { title: "Registros de procedencia", body: "Origen, lote, canal reseller y tap del cliente se muestran como una ruta de confianza." },
-        { title: "Marketplace unlocks", body: "Vouchers, club, reglas de reventa y tokenizacion premium se activan post-tap." },
+        { title: "Pasaporte de duenio", body: "Despues de autenticar, el comprador puede reclamar un registro digital vinculado a UID, lote y estado." },
+        { title: "Ciclo de garantia", body: "Garantia, soporte, devolucion y servicio se vuelven eventos auditables, no formularios sueltos." },
+        { title: "Registros de procedencia", body: "Origen, lote, canal distribuidor y toque del cliente se muestran como una ruta de confianza." },
+        { title: "Tienda habilitada", body: "Vouchers, club, reglas de reventa y tokenizacion premium se activan despues del toque." },
       ],
-      steps: ["Verificar producto", "Reclamar passport", "Adjuntar garantia", "Abrir marketplace"],
+      steps: ["Verificar producto", "Reclamar pasaporte", "Adjuntar garantia", "Abrir tienda"],
     };
 
   return (
@@ -648,11 +652,11 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
       action: "Ver docs tecnicos",
     }
     : {
-      eyebrow: "Perfiles de carrier",
-      title: "Una sola plataforma para QR, GS1, NFC, tamper y productos blockchain-ready",
-      body: "nexID permite arrancar con un QR passport de bajo costo y subir a NFC criptografico, TagTamper y tokenizacion sin rehacer la operacion.",
-      note: "Rangos de planificacion para pilotos. La cotizacion final depende de volumen, impresion, encoding, importacion, soporte y SLA.",
-      action: "Ver docs tecnicos",
+      eyebrow: "Perfiles de soporte fisico",
+      title: "Una sola plataforma para QR, GS1, NFC, sello y productos listos para blockchain",
+      body: "nexID permite arrancar con un QR de bajo costo y subir a NFC criptografico, TagTamper y tokenizacion sin rehacer la operacion.",
+      note: "Rangos de planificacion para pilotos. La cotizacion final depende de volumen, impresion, codificacion, importacion, soporte y SLA.",
+      action: "Ver documentacion tecnica",
     };
 
   const profiles = [
@@ -675,7 +679,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
     {
       name: "NTAG213",
       range: "0.08 - 0.20",
-      level: "Tap-to-web",
+      level: "Toque web",
       promise: isEn ? "Low-cost NFC for campaigns and basic warranty." : isBr ? "NFC economico para campanhas e garantia basica." : "NFC economico para campanas y garantia basica.",
       best: isEn ? "Tourism, local brands, simple activation." : isBr ? "Turismo, marcas locais, ativacao simples." : "Turismo, marcas locales, activacion simple.",
       risk: isEn ? "Not cryptographic anti-fraud." : isBr ? "Nao e antifraude criptografico." : "No es antifraude criptografico.",
@@ -683,10 +687,10 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
     {
       name: "NTAG215 / 216",
       range: "0.12 - 0.45",
-      level: "Operations",
+      level: "Operacion",
       promise: isEn ? "Serialized UID, events, credentials and high-frequency validation." : isBr ? "UID serializado, eventos, credenciais e validacao frequente." : "UID serializado, eventos, credenciales y validacion frecuente.",
       best: isEn ? "Wristbands, tickets, access and mid-value products." : isBr ? "Pulseiras, tickets, acesso e produtos medios." : "Pulseras, tickets, accesos y productos medios.",
-      risk: isEn ? "Server-side control, not premium clone proof." : isBr ? "Controle server-side, nao premium anti-clone." : "Control server-side, no anti-clon premium.",
+      risk: isEn ? "Server-side control, not premium clone proof." : isBr ? "Controle server-side, nao premium anti-clone." : "Control del servidor, no prueba anti-clon premium.",
     },
     {
       name: "NTAG424 DNA",
@@ -700,9 +704,9 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
       name: "NTAG424 DNA TT",
       range: "0.85 - 1.25",
       level: "Luxury",
-      promise: isEn ? "Cryptographic tap plus physical opened/closed seal." : isBr ? "Toque criptografico mais selo fisico aberto/fechado." : "Tap criptografico mas sello fisico abierto/cerrado.",
+      promise: isEn ? "Cryptographic tap plus physical opened/closed seal." : isBr ? "Toque criptografico mais selo fisico aberto/fechado." : "Toque criptografico mas sello fisico abierto/cerrado.",
       best: isEn ? "Wine, luxury, pharma, collectibles." : isBr ? "Vinho, luxo, pharma, colecionaveis." : "Vino, lujo, pharma, coleccionables.",
-      risk: isEn ? "Best fit for ownership and token gates." : isBr ? "Ideal para ownership e token gates." : "Ideal para ownership y token gates.",
+      risk: isEn ? "Best fit for ownership and token gates." : isBr ? "Ideal para ownership e token gates." : "Ideal para duenio y accesos por token.",
     },
   ];
 
@@ -732,8 +736,8 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
               </div>
               <p className="mt-4 text-sm font-semibold leading-6 text-cyan-100">{item.promise}</p>
               <div className="mt-4 grid gap-2 text-xs leading-5 text-slate-300">
-                <span><strong className="text-slate-100">Best for:</strong> {item.best}</span>
-                <span><strong className="text-slate-100">Policy:</strong> {item.risk}</span>
+                <span><strong className="text-slate-100">{isEn ? "Best for:" : isBr ? "Melhor para:" : "Ideal para:"}</strong> {item.best}</span>
+                <span><strong className="text-slate-100">{isEn ? "Policy:" : isBr ? "Politica:" : "Politica:"}</strong> {item.risk}</span>
               </div>
             </article>
           ))}
@@ -757,24 +761,24 @@ export function MarketplaceNetworkSection({ locale }: { locale: string }) {
     ? "Security is only the first tap. The real value is the premium network after it."
     : isBr
     ? "A seguranca e apenas o primeiro toque. O valor real e a rede premium depois dele."
-    : "La seguridad es solo el primer tap. El valor real es la red premium despues.";
+    : "La seguridad es solo el primer toque. El valor real es la red premium despues.";
   const body = isEn
     ? "Every verified product can open a consumer passport, tenant club, marketplace offers, CRM tickets and cross-brand loyalty. That turns anti-fraud into retention and sales."
     : isBr
     ? "Cada produto verificado abre passport do consumidor, clube do tenant, ofertas de marketplace, tickets CRM e loyalty entre marcas."
-    : "Cada producto verificado abre passport del usuario, club del tenant, ofertas de marketplace, tickets CRM y loyalty entre marcas.";
+    : "Cada producto verificado abre pasaporte del usuario, club de la marca, ofertas de tienda, casos CRM y beneficios entre marcas.";
   const nodes = [
-    { k: "01", title: isEn ? "Trust tap" : isBr ? "Toque confiavel" : "Tap confiable", body: isEn ? "Authenticity, seal state, origin and risk." : isBr ? "Autenticidade, lacre, origem e risco." : "Autenticidad, sello, origen y riesgo." },
-    { k: "02", title: "Passport", body: isEn ? "Product history, warranty and owner context." : isBr ? "Historico, garantia e contexto do dono." : "Historial, garantia y contexto del dueno." },
-    { k: "03", title: isEn ? "Club & points" : isBr ? "Clube e pontos" : "Club y puntos", body: isEn ? "Rewards, vouchers and private drops by tenant." : isBr ? "Rewards, vouchers e drops privados por tenant." : "Rewards, vouchers y drops privados por tenant." },
-    { k: "04", title: "Marketplace", body: isEn ? "Premium products, reorder, resale and partner offers." : isBr ? "Produtos premium, recompra, revenda e ofertas." : "Productos premium, recompra, reventa y ofertas." },
-    { k: "05", title: "CRM", body: isEn ? "Leads, tickets, buyer intent and live notifications." : isBr ? "Leads, tickets, intencao e notificacoes." : "Leads, tickets, intencion y notificaciones." },
+    { k: "01", title: isEn ? "Trust tap" : isBr ? "Toque confiavel" : "Toque confiable", body: isEn ? "Authenticity, seal state, origin and risk." : isBr ? "Autenticidade, lacre, origem e risco." : "Autenticidad, sello, origen y riesgo." },
+    { k: "02", title: isEn ? "Passport" : isBr ? "Passport" : "Pasaporte", body: isEn ? "Product history, warranty and owner context." : isBr ? "Historico, garantia e contexto do dono." : "Historial, garantia y contexto del dueno." },
+    { k: "03", title: isEn ? "Club & points" : isBr ? "Clube e pontos" : "Club y puntos", body: isEn ? "Rewards, vouchers and private drops by tenant." : isBr ? "Rewards, vouchers e drops privados por tenant." : "Puntos, vouchers y beneficios privados por marca." },
+    { k: "04", title: isEn ? "Marketplace" : isBr ? "Marketplace" : "Tienda", body: isEn ? "Premium products, reorder, resale and partner offers." : isBr ? "Produtos premium, recompra, revenda e ofertas." : "Productos premium, recompra, reventa y ofertas." },
+    { k: "05", title: "CRM", body: isEn ? "Leads, tickets, buyer intent and live notifications." : isBr ? "Leads, tickets, intencao e notificacoes." : "Contactos, casos, intencion de compra y avisos." },
   ];
 
   return (
     <section className="container-shell py-16">
       <div className="market-network-shell rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 md:p-8">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">{isEn ? "Loyalty network" : isBr ? "Rede loyalty" : "Red loyalty"}</p>
+        <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">{isEn ? "Loyalty network" : isBr ? "Rede loyalty" : "Red de beneficios"}</p>
         <div className="mt-3 grid gap-5 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
           <div>
             <h2 className="text-3xl font-black tracking-tight text-white md:text-5xl">{title}</h2>
@@ -782,8 +786,8 @@ export function MarketplaceNetworkSection({ locale }: { locale: string }) {
             <div className="mt-6 grid grid-cols-3 gap-3">
               {[
                 ["320", isEn ? "avg points" : isBr ? "pontos medios" : "pts promedio"],
-                ["5", isEn ? "live actions" : isBr ? "acoes live" : "acciones live"],
-                ["1", isEn ? "network login" : isBr ? "login de rede" : "login de red"],
+                ["5", isEn ? "live actions" : isBr ? "acoes live" : "acciones activas"],
+                ["1", isEn ? "network login" : isBr ? "login de rede" : "ingreso de red"],
               ].map(([value, label]) => (
                 <div key={label} className="rounded-2xl border border-cyan-300/15 bg-cyan-500/10 p-4">
                   <p className="text-2xl font-black text-white">{value}</p>
@@ -813,28 +817,28 @@ export function WhiteLabelOperatingSystemSection({ locale }: { locale: string })
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const steps = [
-    isEn ? "Create tenant and brand rules" : isBr ? "Criar tenant e regras de marca" : "Crear tenant y reglas de marca",
-    isEn ? "Choose carrier profile by risk" : isBr ? "Escolher carrier por risco" : "Elegir carrier por riesgo",
-    isEn ? "Import manifest CSV/TXT" : isBr ? "Importar manifest CSV/TXT" : "Importar manifest CSV/TXT",
-    isEn ? "Activate audited batch" : isBr ? "Ativar lote auditado" : "Activar batch auditado",
-    isEn ? "Operate leads, tickets and analytics" : isBr ? "Operar leads, tickets e analytics" : "Operar leads, tickets y analytics",
-    isEn ? "Export reports and reseller revenue" : isBr ? "Exportar relatorios e receita reseller" : "Exportar reportes y revenue reseller",
+    isEn ? "Create tenant and brand rules" : isBr ? "Criar tenant e regras de marca" : "Crear cuenta de marca y reglas",
+    isEn ? "Choose carrier profile by risk" : isBr ? "Escolher carrier por risco" : "Elegir soporte fisico por riesgo",
+    isEn ? "Import manifest CSV/TXT" : isBr ? "Importar manifest CSV/TXT" : "Importar manifiesto CSV/TXT",
+    isEn ? "Activate audited batch" : isBr ? "Ativar lote auditado" : "Activar lote auditado",
+    isEn ? "Operate leads, tickets and analytics" : isBr ? "Operar leads, tickets e analytics" : "Operar contactos, casos y analitica",
+    isEn ? "Export reports and reseller revenue" : isBr ? "Exportar relatorios e receita reseller" : "Exportar reportes e ingresos de distribuidor",
   ];
 
   return (
     <section className="container-shell py-16">
       <div className="landing-value-panel rounded-[2rem] border border-violet-300/15 bg-gradient-to-br from-slate-900/80 via-slate-950/80 to-cyan-950/50 p-6 md:p-8">
         <div className="max-w-4xl">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-200">White-label OS</p>
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-200">{isEn ? "White-label OS" : isBr ? "Sistema white-label" : "Sistema para distribuidores"}</p>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">
-            {isEn ? "A reseller can sell nexID without becoming a cryptography engineer." : isBr ? "Um reseller pode vender nexID sem virar engenheiro de criptografia." : "Un reseller puede vender nexID sin volverse ingeniero de criptografia."}
+            {isEn ? "A reseller can sell nexID without becoming a cryptography engineer." : isBr ? "Um reseller pode vender nexID sem virar engenheiro de criptografia." : "Un distribuidor puede vender nexID sin volverse ingeniero de criptografia."}
           </h2>
           <p className="mt-4 text-sm leading-7 text-slate-300 md:text-base">
             {isEn
               ? "The platform should guide printers, agencies, distributors and field teams with simple buttons, batch manifests, approval states, alerts and dashboards."
               : isBr
               ? "A plataforma guia graficas, agencias, distribuidores e times de campo com botoes simples, manifests, aprovacoes, alertas e dashboards."
-              : "La plataforma guia imprentas, agencias, distribuidores y equipos de campo con botones simples, manifests, aprobaciones, alertas y dashboards."}
+              : "La plataforma guia imprentas, agencias, distribuidores y equipos de campo con botones simples, manifiestos, aprobaciones, alertas y paneles."}
           </p>
         </div>
         <div className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -847,10 +851,10 @@ export function WhiteLabelOperatingSystemSection({ locale }: { locale: string })
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/resellers" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-100">
-            {isEn ? "Open reseller model" : isBr ? "Abrir modelo reseller" : "Abrir modelo reseller"}
+            {isEn ? "Open reseller model" : isBr ? "Abrir modelo reseller" : "Abrir modelo de distribuidores"}
           </Link>
           <Link href="/?contact=sales&intent=white_label#contact-modal" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-100">
-            {isEn ? "Prepare white-label demo" : isBr ? "Preparar demo white-label" : "Preparar demo white-label"}
+            {isEn ? "Prepare white-label demo" : isBr ? "Preparar demo white-label" : "Preparar demo para distribuidor"}
           </Link>
         </div>
       </div>
@@ -862,28 +866,28 @@ export function UnitEconomicsSection({ locale }: { locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const cards = [
-    { title: "Starter QR / GS1", hardware: "USD 0.01 - 0.05", saas: "SaaS + landing + analytics", margin: "Baja barrera, alto volumen" },
-    { title: "NFC Basic", hardware: "USD 0.08 - 0.45", saas: "Tap-to-web + garantia + leads", margin: "Eventos, turismo, retail local" },
-    { title: "Secure 424 DNA", hardware: "USD 0.55 - 0.90", saas: "SUN + anti-replay + dashboard", margin: "Antifraude real y auditoria" },
-    { title: "DNA TT Premium", hardware: "USD 0.85 - 1.25", saas: "Tamper + ownership + token", margin: "Luxury, pharma, vino, coleccionables" },
+    { title: "Inicio QR / GS1", hardware: "USD 0.01 - 0.05", saas: "SaaS + pagina + analitica", margin: "Baja barrera, alto volumen" },
+    { title: "NFC Basico", hardware: "USD 0.08 - 0.45", saas: "Toque web + garantia + contactos", margin: "Eventos, turismo, comercio local" },
+    { title: "424 DNA Seguro", hardware: "USD 0.55 - 0.90", saas: "SUN + anti copia + panel", margin: "Antifraude real y auditoria" },
+    { title: "DNA TT Premium", hardware: "USD 0.85 - 1.25", saas: "Sello + duenio + token", margin: "Lujo, salud, vino, coleccionables" },
   ];
-  const title = isEn ? "A pricing story that works for small brands and enterprise rollouts" : isBr ? "Uma historia comercial para marcas pequenas e rollouts enterprise" : "Una historia comercial para marcas chicas y rollouts enterprise";
+  const title = isEn ? "A pricing story that works for small brands and enterprise rollouts" : isBr ? "Uma historia comercial para marcas pequenas e rollouts enterprise" : "Una historia comercial para marcas chicas y despliegues grandes";
   const body = isEn
     ? "The expensive chip is not the only product. The ladder starts with low-cost QR/GS1 and grows into NFC, tamper, dashboards, marketplace, loyalty and optional Polygon tokenization."
     : isBr
     ? "O chip caro nao e o unico produto. A escada comeca em QR/GS1 e evolui para NFC, tamper, dashboards, marketplace, loyalty e tokenizacao Polygon opcional."
-    : "El chip caro no es el unico producto. La escalera arranca con QR/GS1 y sube a NFC, tamper, dashboards, marketplace, loyalty y tokenizacion Polygon opcional.";
+    : "El chip caro no es el unico producto. La escalera arranca con QR/GS1 y sube a NFC, sello, paneles, tienda, beneficios y tokenizacion Polygon opcional.";
 
   return (
     <section className="container-shell py-16">
       <div className="rounded-[2rem] border border-emerald-300/15 bg-slate-900/55 p-6 md:p-8">
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">{isEn ? "Unit economics" : isBr ? "Unit economics" : "Unit economics"}</p>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">{isEn ? "Unit economics" : isBr ? "Unit economics" : "Economia por unidad"}</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">{title}</h2>
             <p className="mt-4 text-sm leading-7 text-slate-300 md:text-base">{body}</p>
             <p className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-sm leading-6 text-cyan-100">
-              {isEn ? "Argentina planning assumption: premium TT landed around USD 1 per encoded unit, then add SaaS, setup, support and reseller margin." : isBr ? "Premissa Argentina: TT premium desembarcado perto de USD 1 por unidade codificada, somando SaaS, setup, suporte e margem reseller." : "Supuesto Argentina: TT premium puesto alrededor de USD 1 por unidad codificada, sumando SaaS, setup, soporte y margen reseller."}
+              {isEn ? "Argentina planning assumption: premium TT landed around USD 1 per encoded unit, then add SaaS, setup, support and reseller margin." : isBr ? "Premissa Argentina: TT premium desembarcado perto de USD 1 por unidade codificada, somando SaaS, setup, suporte e margem reseller." : "Supuesto Argentina: TT premium puesto alrededor de USD 1 por unidad codificada, sumando SaaS, configuracion, soporte y margen de distribuidor."}
             </p>
           </div>
           <div className="grid gap-3">
@@ -926,11 +930,11 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
       { href: "/docs", label: "Ler docs", body: "API, SUN, NTAG, dashboard e arquitetura de integracao." },
     ]
     : [
-      { href: "/demo-lab", label: "Ver demo en vivo", body: "Botella, sello, ruta del tap, portal y marketplace en una escena guiada." },
-      { href: schedulingUrls.meeting, label: "Agendar reunion", body: "Abre el calendario y reserva una reunion con empresarios, resellers o clientes.", external: true },
-      { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Crea el lead y guarda el caso en el flujo admin." },
-      { href: "/?contact=sales#contact-modal", label: "Hablar con ventas", body: "Tags, volumen, tenant y rollout comercial." },
-      { href: "/docs", label: "Ver docs", body: "API, SUN, NTAG, dashboard y arquitectura de integracion." },
+      { href: "/demo-lab", label: "Ver demo en vivo", body: "Botella, sello, ruta del toque, portal y tienda en una escena guiada." },
+      { href: schedulingUrls.meeting, label: "Agendar reunion", body: "Abre el calendario y reserva una reunion con empresarios, distribuidores o clientes.", external: true },
+      { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Crea el contacto y guarda el caso en el flujo del panel." },
+      { href: "/?contact=sales#contact-modal", label: "Hablar con ventas", body: "Etiquetas, volumen, cuenta de marca y despliegue comercial." },
+      { href: "/docs", label: "Ver documentacion", body: "API, SUN, NTAG, panel y arquitectura de integracion." },
     ];
 
   return (

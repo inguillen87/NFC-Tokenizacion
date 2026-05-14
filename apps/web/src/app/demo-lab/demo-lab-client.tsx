@@ -51,7 +51,7 @@ type DemoSummary = {
 const LOCATIONS = {
   origin: { city: "Valle de Uco", country: "Argentina", countryCode: "AR", lat: -33.6131, lng: -69.2075, label: "Origen del producto" },
   mendoza: { city: "Mendoza", country: "Argentina", countryCode: "AR", lat: -32.8895, lng: -68.8458, label: "Bodega / QA" },
-  zurich: { city: "Zurich", country: "Switzerland", countryCode: "CH", lat: 47.3769, lng: 8.5417, label: "Toque del cliente" },
+  zurich: { city: "Zurich", country: "Suiza", countryCode: "CH", lat: 47.3769, lng: 8.5417, label: "Toque del cliente" },
 };
 
 type DemoLocation = (typeof LOCATIONS)[keyof typeof LOCATIONS];
@@ -1139,9 +1139,31 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
           <stop offset="0%" stopColor={accent} stopOpacity="0.18" />
           <stop offset="100%" stopColor="#020617" stopOpacity="0" />
         </radialGradient>
+        <radialGradient id={`${uid}-floor`} cx="50%" cy="50%" r="58%">
+          <stop offset="0%" stopColor={accent} stopOpacity="0.34" />
+          <stop offset="62%" stopColor="#0f172a" stopOpacity="0.36" />
+          <stop offset="100%" stopColor="#020617" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={`${uid}-rim`} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.42" />
+          <stop offset="26%" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="72%" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.22" />
+        </linearGradient>
+        <linearGradient id={`${uid}-label-paper`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="54%" stopColor="#e0f2fe" />
+          <stop offset="100%" stopColor="#c7d2fe" />
+        </linearGradient>
+        <filter id={`${uid}-glow`} x="-35%" y="-35%" width="170%" height="170%">
+          <feDropShadow dx="0" dy="0" stdDeviation="7" floodColor={accent} floodOpacity="0.28" />
+        </filter>
       </defs>
 
-      <ellipse cx="180" cy="366" rx="118" ry="24" fill="#020617" opacity="0.42" />
+      <ellipse cx="180" cy="368" rx="132" ry="30" fill={`url(#${uid}-floor)`} />
+      <ellipse cx="180" cy="368" rx="82" ry="13" fill="#e0f2fe" opacity="0.07" />
+      <path d="M58 342 C110 320 249 320 303 344 L266 373 C219 388 134 388 93 373 Z" fill="#0f172a" opacity="0.32" />
+      <path d="M78 348 C128 333 229 332 282 348" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" opacity="0.16" />
       <ellipse cx="180" cy="218" rx="156" ry="144" fill={`url(#${uid}-stage-glow)`} />
 
       {vertical === "wine" ? (
@@ -1149,11 +1171,18 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
           <path d="M158 38h44l7 58c2 15 13 24 25 34 13 11 19 28 19 49v141c0 27-20 48-49 48h-48c-29 0-49-21-49-48V179c0-21 6-38 19-49 12-10 23-19 25-34l7-58Z" fill="#7f1d1d" />
           <path d="M158 38h44l5 48h-54l5-48Z" fill="#f59e0b" />
           <path d="M141 119c14-14 27-21 39-21s25 7 39 21c-10 12-68 12-78 0Z" fill="#14532d" opacity="0.86" />
-          <rect x="130" y="212" width="100" height="78" rx="10" fill="#f8fafc" />
+          <path d="M210 113c22 16 34 36 34 68v132c0 24-16 42-40 42h-16c18-21 22-66 22-133V113Z" fill="#020617" opacity="0.26" />
+          <path d="M132 139c11-17 26-24 48-24 22 0 38 8 51 25" fill="none" stroke="#fef3c7" strokeWidth="5" strokeLinecap="round" opacity="0.16" />
+          <path d="M124 157c16-19 33-29 56-29 25 0 44 10 60 29v43H124v-43Z" fill={`url(#${uid}-rim)`} opacity="0.35" />
+          <rect x="127" y="210" width="106" height="82" rx="12" fill="#0f172a" opacity="0.2" />
+          <rect x="130" y="212" width="100" height="78" rx="10" fill={`url(#${uid}-label-paper)`} />
           <rect x="142" y="225" width="76" height="12" rx="6" fill={`url(#${uid}-holo)`} opacity="0.72" />
-          <text x="180" y="261" textAnchor="middle" fill="#0f172a" fontSize="15" fontWeight="900" letterSpacing="2">MALBEC</text>
+          <text x="180" y="252" textAnchor="middle" fill="#0f172a" fontSize="9" fontWeight="900" letterSpacing="2">GRAN RESERVA</text>
+          <text x="180" y="270" textAnchor="middle" fill="#0f172a" fontSize="15" fontWeight="900" letterSpacing="2">MALBEC</text>
+          <path d="M147 278h66" stroke="#0f172a" strokeWidth="1.5" strokeLinecap="round" opacity="0.28" />
           <path d="M122 154c18-18 36-27 58-27 24 0 42 9 58 27v44H122v-44Z" fill="#450a0a" opacity="0.38" />
           <path d="M134 60c11-9 29-11 38-2 10 10 2 25-12 22-14-3-21-9-26-20Z" fill="#fde68a" opacity="0.52" />
+          <path d="M149 54c-12 46-18 111-16 203" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" opacity="0.08" />
         </g>
       ) : null}
 
@@ -1161,12 +1190,20 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
         <g filter={`url(#${uid}-shadow)`}>
           <path d="M105 76h150c13 0 24 11 24 24v230c0 13-11 24-24 24H105c-13 0-24-11-24-24V100c0-13 11-24 24-24Z" fill="#84cc16" />
           <path d="M105 76h150c13 0 24 11 24 24v230c0 13-11 24-24 24H105c-13 0-24-11-24-24V100c0-13 11-24 24-24Z" fill="url(#demo-product-seeds-holo)" opacity="0.32" />
+          <path d="M247 82c18 4 32 16 32 34v214c0 13-11 24-24 24h-26c14-26 18-79 18-161V82Z" fill="#14532d" opacity="0.2" />
+          <path d="M101 88h158" stroke="#ecfccb" strokeWidth="10" strokeLinecap="round" opacity="0.42" />
+          <path d="M96 177c46-18 115-18 168 2" fill="none" stroke="#fef08a" strokeWidth="4" strokeLinecap="round" opacity="0.16" />
           <rect x="101" y="105" width="158" height="52" rx="12" fill="#f0fdf4" />
           <text x="180" y="138" textAnchor="middle" fill="#166534" fontSize="13" fontWeight="900" letterSpacing="2">SEMILLAS</text>
+          <rect x="119" y="169" width="122" height="34" rx="10" fill="#14532d" opacity="0.2" />
+          <text x="180" y="191" textAnchor="middle" fill="#f0fdf4" fontSize="10" fontWeight="900" letterSpacing="1.6">TRAZA + ORIGEN</text>
           <path d="M109 289h142" stroke="#166534" strokeWidth="2" strokeDasharray="5 7" opacity="0.42" />
           <text x="180" y="317" textAnchor="middle" fill="#14532d" fontSize="13" fontWeight="900" letterSpacing="1.5">LOTE A12</text>
           {[132, 163, 197, 225].map((cx, index) => (
             <path key={cx} d={`M${cx} ${235 + (index % 2) * 14}c18-18 35-8 30 11-20 7-32 1-30-11Z`} fill="#facc15" opacity="0.82" />
+          ))}
+          {[126, 154, 188, 217].map((cx, index) => (
+            <path key={`leaf-${cx}`} d={`M${cx} ${250 + (index % 2) * 9}c14-18 33-14 37 6-15 11-32 9-37-6Z`} fill="#fef3c7" opacity="0.34" />
           ))}
           <path d="M99 91h162" stroke="#ecfccb" strokeWidth="7" strokeLinecap="round" opacity="0.5" />
         </g>
@@ -1174,13 +1211,19 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
 
       {vertical === "creamJar" ? (
         <g filter={`url(#${uid}-shadow)`}>
+          <ellipse cx="180" cy="116" rx="73" ry="18" fill="#f8fafc" opacity="0.18" />
           <rect x="107" y="115" width="146" height="48" rx="16" fill={`url(#${uid}-metal)`} />
+          <rect x="117" y="124" width="126" height="11" rx="6" fill="#f8fafc" opacity="0.38" />
           <path d="M89 164h182v111c0 47-34 78-91 78s-91-31-91-78V164Z" fill="#fce7f3" />
+          <path d="M225 164h46v111c0 40-25 68-70 76 23-26 24-70 24-187Z" fill="#831843" opacity="0.12" />
           <path d="M89 164h182v64H89v-64Z" fill="#fff7ed" opacity="0.86" />
           <rect x="112" y="196" width="136" height="66" rx="14" fill="#fff1f2" />
-          <text x="180" y="235" textAnchor="middle" fill="#be185d" fontSize="14" fontWeight="900" letterSpacing="4">CREMA</text>
+          <rect x="125" y="207" width="110" height="10" rx="5" fill={`url(#${uid}-holo)`} opacity="0.48" />
+          <text x="180" y="237" textAnchor="middle" fill="#be185d" fontSize="14" fontWeight="900" letterSpacing="4">CREMA</text>
+          <text x="180" y="254" textAnchor="middle" fill="#9d174d" fontSize="8" fontWeight="900" letterSpacing="1.4">GARANTIA NFC</text>
           <path d="M91 275c27 25 62 38 89 38s62-13 89-38v16c0 38-36 62-89 62s-89-24-89-62v-16Z" fill="#fbcfe8" opacity="0.85" />
           <circle cx="239" cy="204" r="14" fill={`url(#${uid}-holo)`} opacity="0.74" />
+          <path d="M116 178c9 45 8 104-5 138" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" opacity="0.22" />
         </g>
       ) : null}
 
@@ -1188,11 +1231,17 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
         <g filter={`url(#${uid}-shadow)`}>
           <rect x="153" y="49" width="54" height="45" rx="8" fill={`url(#${uid}-metal)`} />
           <rect x="140" y="29" width="80" height="28" rx="8" fill="#f8fafc" />
+          <rect x="151" y="34" width="58" height="7" rx="4" fill="#cbd5e1" opacity="0.7" />
           <path d="M110 116c0-22 18-40 40-40h60c22 0 40 18 40 40v194c0 24-19 43-43 43h-54c-24 0-43-19-43-43V116Z" fill={`url(#${uid}-glass)`} />
+          <path d="M211 82c24 8 39 26 39 53v174c0 24-19 44-43 44h-18c19-26 24-77 22-271Z" fill="#020617" opacity="0.16" />
           <path d="M126 139c0-20 17-37 37-37h34c21 0 38 17 38 37v160c0 15-12 27-27 27h-56c-15 0-26-12-26-27V139Z" fill="#312e81" opacity="0.32" />
           <rect x="131" y="193" width="98" height="76" rx="12" fill="transparent" stroke="#e0e7ff" strokeWidth="2" opacity="0.45" />
-          <text x="180" y="238" textAnchor="middle" fill="#f8fafc" fontSize="14" fontWeight="900" letterSpacing="2">PARFUM</text>
+          <rect x="144" y="206" width="72" height="9" rx="5" fill={`url(#${uid}-holo)`} opacity="0.56" />
+          <text x="180" y="238" textAnchor="middle" fill="#f8fafc" fontSize="14" fontWeight="900" letterSpacing="2">PERFUME</text>
+          <text x="180" y="255" textAnchor="middle" fill="#e0e7ff" fontSize="8" fontWeight="900" letterSpacing="1.2">ORIGEN VALIDADO</text>
           <path d="M122 126c20-22 80-26 110 4" stroke="#f8fafc" strokeWidth="8" strokeLinecap="round" opacity="0.16" />
+          <path d="M136 126c-12 61-9 135 8 194" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" opacity="0.18" />
+          <path d="M231 138c-8 58-7 109 5 153" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" opacity="0.08" />
         </g>
       ) : null}
 
@@ -1200,11 +1249,16 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
         <g filter={`url(#${uid}-shadow)`}>
           <path d="M127 79c0-26 21-47 53-47s53 21 53 47v230c0 27-18 46-53 46s-53-19-53-46V79Z" fill="#67e8f9" />
           <path d="M127 79c0-26 21-47 53-47s53 21 53 47v230c0 27-18 46-53 46s-53-19-53-46V79Z" fill="url(#demo-product-creamTube-holo)" opacity="0.34" />
+          <path d="M203 39c20 8 30 23 30 40v230c0 27-18 46-53 46h-8c20-28 31-98 31-316Z" fill="#0e7490" opacity="0.22" />
+          <path d="M140 90h80M139 106h82" stroke="#ecfeff" strokeWidth="3" strokeLinecap="round" opacity="0.28" />
           <rect x="143" y="176" width="74" height="94" rx="10" fill="#cffafe" opacity="0.82" />
           <text x="183" y="229" textAnchor="middle" fill="#155e75" fontSize="13" fontWeight="900" letterSpacing="3" transform="rotate(90 183 229)">CREMA</text>
+          <path d="M154 188h52" stroke="#155e75" strokeWidth="2" strokeLinecap="round" opacity="0.25" />
+          <path d="M154 260h52" stroke="#155e75" strokeWidth="2" strokeLinecap="round" opacity="0.25" />
           <rect x="130" y="333" width="100" height="45" rx="12" fill="#0f172a" />
           <rect x="137" y="343" width="86" height="9" rx="5" fill="#475569" />
           <path d="M144 66c20-17 52-17 72 0" stroke="#ecfeff" strokeWidth="8" strokeLinecap="round" opacity="0.34" />
+          <path d="M145 78c-8 72-8 154 0 234" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" opacity="0.2" />
         </g>
       ) : null}
 
@@ -1212,11 +1266,16 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
         <g filter={`url(#${uid}-shadow)`} transform="rotate(-8 180 210)">
           <path d="M51 198c46-40 212-60 258-10 20 22 4 58-28 62-66 9-151 26-220-4-27-12-31-30-10-48Z" fill="#14b8a6" />
           <path d="M69 197c68 18 155 4 230 0 13 17 0 42-24 46-60 10-148 24-211-5-24-11-22-29 5-41Z" fill={`url(#${uid}-holo)`} opacity="0.62" />
+          <path d="M62 216c70 22 155 11 229 4" fill="none" stroke="#ecfeff" strokeWidth="6" strokeLinecap="round" opacity="0.18" />
+          <path d="M66 198c34-26 108-42 168-34" fill="none" stroke="#ccfbf1" strokeWidth="5" strokeLinecap="round" opacity="0.2" />
           <rect x="149" y="189" width="70" height="38" rx="9" fill="#0f172a" />
           <text x="184" y="214" textAnchor="middle" fill="#ecfeff" fontSize="16" fontWeight="900" letterSpacing="2">VIP</text>
+          <rect x="155" y="222" width="58" height="7" rx="4" fill="#22d3ee" opacity="0.42" />
           {[83, 111, 138].map((cx) => <circle key={cx} cx={cx} cy="218" r="6" fill="#0f172a" opacity="0.72" />)}
+          {[84, 111, 138].map((cx) => <circle key={`rim-${cx}`} cx={cx} cy="218" r="9" fill="none" stroke="#ccfbf1" strokeWidth="2" opacity="0.18" />)}
           <circle cx="276" cy="205" r="20" fill="#c4b5fd" opacity="0.82" />
           <circle cx="276" cy="205" r="11" fill="#f8fafc" opacity="0.4" />
+          <rect x="262" y="225" width="38" height="13" rx="6" fill="#071827" opacity="0.32" />
         </g>
       ) : null}
 
@@ -1224,13 +1283,18 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
         <g filter={`url(#${uid}-shadow)`} transform="rotate(-4 180 210)">
           <path d="M66 129h228c19 0 34 15 34 34v114c0 19-15 34-34 34H66c-19 0-34-15-34-34V163c0-19 15-34 34-34Z" fill="#e11d48" />
           <path d="M66 129h228c19 0 34 15 34 34v114c0 19-15 34-34 34H66c-19 0-34-15-34-34V163c0-19 15-34 34-34Z" fill={`url(#${uid}-holo)`} opacity="0.56" />
+          <path d="M294 129c19 0 34 15 34 34v114c0 19-15 34-34 34h-48c17-30 20-91 18-182h30Z" fill="#020617" opacity="0.15" />
           <circle cx="35" cy="220" r="21" fill="#07111f" />
           <circle cx="325" cy="220" r="21" fill="#07111f" />
+          <path d="M222 145v150" stroke="#fff7ed" strokeWidth="3" strokeDasharray="7 9" opacity="0.38" />
           <text x="82" y="183" fill="#fff7ed" fontSize="24" fontWeight="900" letterSpacing="3">FIESTA VIP</text>
+          <text x="82" y="209" fill="#ffedd5" fontSize="10" fontWeight="900" letterSpacing="1.6">ACCESO CON NFC</text>
           <path d="M73 252h130" stroke="#fecdd3" strokeWidth="3" strokeDasharray="7 8" opacity="0.42" />
           <rect x="240" y="222" width="58" height="58" rx="8" fill="#f8fafc" />
           {[252, 276].map((x) => [234, 258].map((y) => <rect key={`${x}-${y}`} x={x} y={y} width="13" height="13" fill="#0f172a" />))}
           <rect x="275" y="260" width="13" height="13" fill="#0f172a" />
+          <circle cx="258" cy="169" r="16" fill="#fff7ed" opacity="0.18" />
+          <text x="258" y="173" textAnchor="middle" fill="#fff7ed" fontSize="9" fontWeight="900">VIP</text>
         </g>
       ) : null}
 
@@ -1240,6 +1304,7 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
       </g>
 
       <g className="demo-lab-nfc-seal" transform="translate(180 188) rotate(-7)">
+        <rect x="-136" y="-42" width="272" height="84" rx="25" fill="#020617" opacity="0.34" filter={`url(#${uid}-glow)`} />
         <g className="demo-lab-nfc-seal-half demo-lab-nfc-seal-half--left">
           <path d="M-104-32H0v64h-104c-12 0-22-10-22-22v-20c0-12 10-22 22-22Z" fill="#071827" stroke={accent} strokeWidth="2" />
           <path d="M-92-4c12-15 30-15 42 0M-84 8c8-9 18-9 26 0M-74 20c4-4 8-4 12 0" fill="none" stroke="#ecfeff" strokeWidth="4" strokeLinecap="round" opacity="0.82" />

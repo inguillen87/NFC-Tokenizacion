@@ -52,7 +52,7 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     hero: {
       badge: "Plataforma de identidad física verificable",
       title: "Convertí cada producto físico en un pasaporte digital verificable.",
-      body: "Con NFC, QR y SUN, nexID valida autenticidad, muestra origen y activa club, garantía, marketplace y analytics desde un solo tap.",
+      body: "Con NFC, QR y SUN, nexID valida autenticidad, muestra origen y activa club, garantia, tienda y datos desde un solo toque.",
       primary: "Pedir muestras",
       secondary: "Ver demo",
       tertiary: "Quiero ser reseller",
