@@ -34,14 +34,14 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
              <span className="text-xs font-medium text-slate-300 uppercase tracking-widest">{trustBadge}</span>
           </div>
 
-          <h1 className="mt-8 pb-2 text-4xl font-extrabold leading-[1.14] tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 sm:text-5xl sm:leading-[1.12] lg:text-[3.45rem] lg:leading-[1.1]">
+          <h1 className="mx-auto mt-8 max-w-[22rem] pb-2 text-[2rem] font-extrabold leading-[1.13] tracking-normal text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 sm:max-w-5xl sm:text-5xl sm:leading-[1.12] lg:text-[3.45rem] lg:leading-[1.1]">
             {hero.title}
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-slate-400">
+          <p className="hero-subtitle mx-auto mt-5 max-w-xl text-sm leading-7 text-slate-400">
             {heroSubtitle}
           </p>
 
-          <div className="mx-auto mt-10 max-w-5xl text-left">
+          <div className="hero-demo-shell mx-auto mt-10 max-w-5xl text-left">
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>

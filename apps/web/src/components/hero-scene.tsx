@@ -474,6 +474,147 @@ function HeroTraceMap({
   );
 }
 
+const heroPrimeProducts: Record<Vertical, {
+  kind: "wine" | "bracelet" | "perfume" | "seeds";
+  seal: string;
+  detail: string;
+  accent: string;
+}> = {
+  wine: { kind: "wine", seal: "NFC TT", detail: "SUN OK", accent: "#22d3ee" },
+  events: { kind: "bracelet", seal: "VIP", detail: "UID OK", accent: "#2dd4bf" },
+  cosmetics: { kind: "perfume", seal: "AUTH", detail: "LOTE OK", accent: "#a78bfa" },
+  agro: { kind: "seeds", seal: "LOTE", detail: "ORIGEN", accent: "#84cc16" },
+};
+
+function HeroPrimeProduct({ active, product }: { active: Vertical; product: string }) {
+  const spec = heroPrimeProducts[active];
+  const uid = `hero-prime-${active}`;
+  const productLine = product.length > 22 ? `${product.slice(0, 20)}...` : product;
+
+  return (
+    <svg className={`hero-prime-product hero-prime-product--${spec.kind}`} viewBox="0 0 360 420" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id={`${uid}-shadow`} x="-35%" y="-35%" width="170%" height="170%">
+          <feDropShadow dx="0" dy="20" stdDeviation="18" floodColor="#020617" floodOpacity="0.5" />
+        </filter>
+        <filter id={`${uid}-glow`} x="-35%" y="-35%" width="170%" height="170%">
+          <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor={spec.accent} floodOpacity="0.38" />
+        </filter>
+        <linearGradient id={`${uid}-holo`} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.95" />
+          <stop offset="48%" stopColor="#a78bfa" stopOpacity="0.86" />
+          <stop offset="100%" stopColor="#34d399" stopOpacity="0.92" />
+        </linearGradient>
+        <linearGradient id={`${uid}-glass`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.9" />
+          <stop offset="48%" stopColor="#67e8f9" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#4c1d95" stopOpacity="0.82" />
+        </linearGradient>
+        <linearGradient id={`${uid}-metal`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f8fafc" />
+          <stop offset="46%" stopColor="#94a3b8" />
+          <stop offset="100%" stopColor="#334155" />
+        </linearGradient>
+        <linearGradient id={`${uid}-paper`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="58%" stopColor="#e0f2fe" />
+          <stop offset="100%" stopColor="#c7d2fe" />
+        </linearGradient>
+        <radialGradient id={`${uid}-floor`} cx="50%" cy="50%" r="62%">
+          <stop offset="0%" stopColor={spec.accent} stopOpacity="0.36" />
+          <stop offset="64%" stopColor="#0f172a" stopOpacity="0.32" />
+          <stop offset="100%" stopColor="#020617" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      <ellipse cx="180" cy="366" rx="142" ry="32" fill={`url(#${uid}-floor)`} />
+      <path d="M48 338 C110 312 248 314 312 340 L270 375 C218 392 134 392 90 374 Z" fill="#020617" opacity="0.34" />
+      <path d="M76 348 C126 329 234 329 284 348" fill="none" stroke={spec.accent} strokeWidth="2" strokeLinecap="round" opacity="0.24" />
+      <ellipse cx="180" cy="214" rx="156" ry="148" fill={spec.accent} opacity="0.06" />
+
+      {spec.kind === "wine" ? (
+        <g filter={`url(#${uid}-shadow)`}>
+          <path d="M158 35h44l7 60c2 15 13 25 25 35 13 12 20 29 20 51v139c0 30-20 50-50 50h-48c-30 0-50-20-50-50V181c0-22 7-39 20-51 12-10 23-20 25-35l7-60Z" fill="#7f1d1d" />
+          <path d="M158 35h44l5 50h-54l5-50Z" fill="#f59e0b" />
+          <path d="M140 119c15-15 28-22 40-22s25 7 40 22c-11 13-69 13-80 0Z" fill="#14532d" opacity="0.9" />
+          <path d="M211 112c22 17 35 38 35 69v132c0 25-16 43-41 43h-16c19-23 22-68 22-135V112Z" fill="#020617" opacity="0.26" />
+          <path d="M123 156c17-20 35-30 57-30 25 0 45 10 61 30v45H123v-45Z" fill="#450a0a" opacity="0.36" />
+          <rect x="129" y="211" width="102" height="82" rx="11" fill={`url(#${uid}-paper)`} />
+          <rect x="141" y="224" width="78" height="12" rx="6" fill={`url(#${uid}-holo)`} opacity="0.72" />
+          <text x="180" y="252" textAnchor="middle" fill="#0f172a" fontSize="9" fontWeight="900" letterSpacing="2">GRAN RESERVA</text>
+          <text x="180" y="271" textAnchor="middle" fill="#0f172a" fontSize="15" fontWeight="900" letterSpacing="2">MALBEC</text>
+          <path d="M149 53c-13 48-17 116-14 205" fill="none" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" opacity="0.1" />
+          <path d="M134 60c11-9 29-11 38-2 10 10 2 25-12 22-14-3-21-9-26-20Z" fill="#fde68a" opacity="0.54" />
+        </g>
+      ) : null}
+
+      {spec.kind === "bracelet" ? (
+        <g filter={`url(#${uid}-shadow)`} transform="rotate(-8 180 214)">
+          <path d="M48 198c48-42 216-62 262-11 21 23 4 60-29 64-67 10-152 28-223-4-28-13-32-31-10-49Z" fill="#14b8a6" />
+          <path d="M68 197c70 19 157 4 232 0 14 18 0 44-24 48-61 10-149 25-214-5-25-11-22-30 6-43Z" fill={`url(#${uid}-holo)`} opacity="0.66" />
+          <path d="M63 217c72 23 156 12 230 4" fill="none" stroke="#ecfeff" strokeWidth="7" strokeLinecap="round" opacity="0.2" />
+          <rect x="144" y="187" width="78" height="42" rx="10" fill="#0f172a" />
+          <text x="183" y="215" textAnchor="middle" fill="#ecfeff" fontSize="17" fontWeight="900" letterSpacing="2">VIP</text>
+          {[83, 112, 141].map((cx) => <circle key={cx} cx={cx} cy="218" r="7" fill="#0f172a" opacity="0.74" />)}
+          <circle cx="278" cy="205" r="21" fill="#c4b5fd" opacity="0.84" />
+          <circle cx="278" cy="205" r="11" fill="#f8fafc" opacity="0.42" />
+        </g>
+      ) : null}
+
+      {spec.kind === "perfume" ? (
+        <g filter={`url(#${uid}-shadow)`}>
+          <rect x="153" y="48" width="54" height="46" rx="8" fill={`url(#${uid}-metal)`} />
+          <rect x="140" y="28" width="80" height="29" rx="8" fill="#f8fafc" />
+          <path d="M110 116c0-22 18-40 40-40h60c22 0 40 18 40 40v194c0 25-19 44-44 44h-52c-25 0-44-19-44-44V116Z" fill={`url(#${uid}-glass)`} />
+          <path d="M211 82c24 8 39 26 39 53v174c0 25-19 45-44 45h-17c19-26 24-78 22-272Z" fill="#020617" opacity="0.16" />
+          <path d="M126 139c0-20 17-37 37-37h34c21 0 38 17 38 37v160c0 15-12 28-28 28h-54c-16 0-27-13-27-28V139Z" fill="#312e81" opacity="0.32" />
+          <rect x="131" y="193" width="98" height="76" rx="12" fill="transparent" stroke="#e0e7ff" strokeWidth="2" opacity="0.46" />
+          <rect x="144" y="206" width="72" height="9" rx="5" fill={`url(#${uid}-holo)`} opacity="0.6" />
+          <text x="180" y="238" textAnchor="middle" fill="#f8fafc" fontSize="14" fontWeight="900" letterSpacing="2">PERFUME</text>
+          <text x="180" y="255" textAnchor="middle" fill="#e0e7ff" fontSize="8" fontWeight="900" letterSpacing="1.2">ORIGEN VALIDADO</text>
+          <path d="M136 126c-12 61-9 135 8 194" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" opacity="0.18" />
+        </g>
+      ) : null}
+
+      {spec.kind === "seeds" ? (
+        <g filter={`url(#${uid}-shadow)`}>
+          <path d="M105 75h150c14 0 25 11 25 25v229c0 14-11 25-25 25H105c-14 0-25-11-25-25V100c0-14 11-25 25-25Z" fill="#84cc16" />
+          <path d="M105 75h150c14 0 25 11 25 25v229c0 14-11 25-25 25H105c-14 0-25-11-25-25V100c0-14 11-25 25-25Z" fill={`url(#${uid}-holo)`} opacity="0.34" />
+          <path d="M248 82c18 4 32 16 32 34v213c0 14-11 25-25 25h-25c14-27 18-80 18-162V82Z" fill="#14532d" opacity="0.2" />
+          <rect x="100" y="105" width="160" height="52" rx="12" fill="#f0fdf4" />
+          <text x="180" y="138" textAnchor="middle" fill="#166534" fontSize="13" fontWeight="900" letterSpacing="2">SEMILLAS</text>
+          <rect x="119" y="170" width="122" height="34" rx="10" fill="#14532d" opacity="0.22" />
+          <text x="180" y="192" textAnchor="middle" fill="#f0fdf4" fontSize="10" fontWeight="900" letterSpacing="1.6">TRAZA + ORIGEN</text>
+          <path d="M109 289h142" stroke="#166534" strokeWidth="2" strokeDasharray="5 7" opacity="0.44" />
+          <text x="180" y="317" textAnchor="middle" fill="#14532d" fontSize="13" fontWeight="900" letterSpacing="1.5">LOTE A12</text>
+          {[132, 163, 197, 225].map((cx, index) => (
+            <path key={cx} d={`M${cx} ${235 + (index % 2) * 14}c18-18 35-8 30 11-20 7-32 1-30-11Z`} fill="#facc15" opacity="0.84" />
+          ))}
+          <path d="M99 91h162" stroke="#ecfccb" strokeWidth="8" strokeLinecap="round" opacity="0.5" />
+        </g>
+      ) : null}
+
+      <g className="hero-prime-product-seal" transform="translate(180 190) rotate(-7)">
+        <rect x="-136" y="-42" width="272" height="84" rx="25" fill="#020617" opacity="0.38" filter={`url(#${uid}-glow)`} />
+        <path d="M-104-32H0v64h-104c-12 0-22-10-22-22v-20c0-12 10-22 22-22Z" fill="#071827" stroke={spec.accent} strokeWidth="2" />
+        <path d="M0-32h104c12 0 22 10 22 22v20c0 12-10 22-22 22H0v-64Z" fill="#071827" stroke={spec.accent} strokeWidth="2" />
+        <path d="M-92-4c12-15 30-15 42 0M-84 8c8-9 18-9 26 0M-74 20c4-4 8-4 12 0" fill="none" stroke="#ecfeff" strokeWidth="4" strokeLinecap="round" opacity="0.84" />
+        <text x="-38" y="-6" textAnchor="middle" fill="#ecfeff" fontSize="17" fontWeight="900" letterSpacing="2">NFC</text>
+        <text x="-38" y="15" textAnchor="middle" fill="#a5f3fc" fontSize="8" fontWeight="900" letterSpacing="1.6">FISICO</text>
+        <text x="58" y="-5" textAnchor="middle" fill="#ecfeff" fontSize="14" fontWeight="900" letterSpacing="1.8">{spec.seal}</text>
+        <text x="58" y="15" textAnchor="middle" fill="#a5f3fc" fontSize="8" fontWeight="900" letterSpacing="1.4">{spec.detail}</text>
+        <path d="M0-29v58" stroke="#ecfeff" strokeWidth="2" strokeDasharray="4 5" opacity="0.62" />
+      </g>
+
+      <g transform="translate(274 62)">
+        <circle cx="0" cy="0" r="27" fill="#082f49" stroke={spec.accent} strokeWidth="2" />
+        <text x="0" y="4" textAnchor="middle" fill="#ecfeff" fontSize="12" fontWeight="900">NFC</text>
+      </g>
+      <text x="180" y="399" textAnchor="middle" fill="#cbd5e1" fontSize="13" fontWeight="800">{productLine}</text>
+    </svg>
+  );
+}
+
 export function HeroScene({ locale }: { locale: AppLocale }) {
   const [active, setActive] = useState<Vertical>("wine");
   const [tapIndex, setTapIndex] = useState(0);
@@ -530,13 +671,11 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
             <div className={`hero-product-stage hero-product-stage--${active} mt-3`}>
               <div className="hero-object-frame">
                 <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
-                <div className={`hero-product-render hero-product-render--${active}`} aria-hidden="true">
+                <div className={`hero-product-render hero-product-render--prime hero-product-render--${active}`} aria-hidden="true">
                   <span className="hero-product-render-floor" />
-                  <div className={data.objectClass} />
+                  <HeroPrimeProduct active={active} product={data.product} />
                   <span className="hero-product-render-reflection" />
                 </div>
-                <div className="hero-cork-pop" />
-                <div className="hero-tamper-strip" />
                 <div className="hero-nfc-beam" />
               </div>
               <div className="hero-scene-phone">

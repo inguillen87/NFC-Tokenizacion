@@ -2642,18 +2642,23 @@ html.theme-light .sun-priority-panel a {
 
 .hero-object-frame {
   position: relative;
-  min-height: clamp(19.5rem, 24vw, 24rem);
+  min-height: clamp(25rem, 32vw, 31rem);
   display: grid;
   place-items: center;
-  border-radius: 1rem;
+  border-radius: 1.2rem;
   background:
-    radial-gradient(circle at 25% 30%, rgba(34, 211, 238, 0.18), transparent 18%),
-    radial-gradient(circle at 74% 58%, rgba(16, 185, 129, 0.14), transparent 20%),
-    linear-gradient(135deg, rgba(8, 47, 73, 0.92), rgba(15, 23, 42, 0.92) 54%, rgba(30, 27, 75, 0.78)),
+    radial-gradient(circle at 24% 48%, rgba(20, 184, 166, 0.24), transparent 24%),
+    radial-gradient(circle at 72% 42%, rgba(59, 130, 246, 0.22), transparent 25%),
+    radial-gradient(circle at 50% 58%, rgba(34, 211, 238, 0.2), transparent 28%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.94), rgba(15, 23, 42, 0.9) 50%, rgba(30, 27, 75, 0.82)),
     repeating-linear-gradient(0deg, rgba(125, 211, 252, 0.1) 0 1px, transparent 1px 18%),
     repeating-linear-gradient(90deg, rgba(125, 211, 252, 0.08) 0 1px, transparent 1px 16%);
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -5rem 7rem rgba(2, 6, 23, 0.42),
+    0 2rem 4.5rem rgba(2, 6, 23, 0.36);
 }
 
 .hero-object-frame::before {
@@ -2680,9 +2685,9 @@ html.theme-light .sun-priority-panel a {
 
 .hero-trace-map {
   position: absolute;
-  inset: 0.5rem;
+  inset: 0.6rem;
   z-index: 1;
-  border-radius: 0.85rem;
+  border-radius: 1rem;
   overflow: hidden;
   pointer-events: none;
 }
@@ -10100,6 +10105,121 @@ html.theme-light .demo-lab-policy-card--blocked {
     0 1.45rem 2.35rem rgba(2, 6, 23, 0.34);
 }
 
+.hero-product-render--prime {
+  z-index: 4;
+  transform: none;
+  animation: hero-prime-product-float 4.8s ease-in-out infinite;
+}
+
+.hero-product-render--prime::before {
+  left: 12%;
+  right: 12%;
+  bottom: 7%;
+  height: 1.7rem;
+  filter: blur(9px);
+  opacity: 0.98;
+}
+
+.hero-product-render--prime::after {
+  inset: 8% 11% 8%;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  opacity: 0.92;
+}
+
+.hero-product-render--prime .hero-product-render-floor {
+  left: 12%;
+  right: 12%;
+  bottom: 8%;
+  height: 22%;
+  opacity: 0.92;
+}
+
+.hero-product-render--prime .hero-product-render-reflection {
+  left: 17%;
+  right: 17%;
+  bottom: 6%;
+  height: 3rem;
+  opacity: 0.8;
+}
+
+.hero-prime-product {
+  position: relative;
+  z-index: 3;
+  width: min(94%, 29rem);
+  height: auto;
+  max-height: calc(100% - 1rem);
+  overflow: visible;
+  transform-origin: 50% 74%;
+  filter:
+    drop-shadow(0 2.3rem 2.5rem rgba(0, 0, 0, 0.42))
+    saturate(1.12)
+    contrast(1.05);
+}
+
+.hero-prime-product--wine {
+  transform: translateY(-0.25rem) rotateX(1deg) rotateY(-5deg) scale(1.04);
+}
+
+.hero-prime-product--bracelet {
+  transform: translateY(-0.05rem) rotateX(7deg) rotateY(-4deg) scale(1.06);
+}
+
+.hero-prime-product--perfume {
+  transform: translateY(-0.2rem) rotateX(1deg) rotateY(5deg) scale(1.05);
+}
+
+.hero-prime-product--seeds {
+  transform: translateY(-0.18rem) rotateX(3deg) rotateY(-5deg) scale(1.04);
+}
+
+.hero-prime-product-seal {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hero-prime-seal-pulse 2.6s ease-in-out infinite;
+}
+
+.hero-product-render--prime + .hero-nfc-beam {
+  right: 1.25rem;
+  top: 1.25rem;
+  z-index: 5;
+}
+
+.demo-lab-product-stage {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -4rem 7rem rgba(2, 6, 23, 0.34),
+    0 2rem 4.8rem rgba(2, 6, 23, 0.34);
+}
+
+.demo-lab-product-stage .demo-lab-product-illustration-wrap {
+  filter:
+    drop-shadow(0 2.1rem 2.35rem rgba(0, 0, 0, 0.38))
+    saturate(1.14)
+    contrast(1.05) !important;
+}
+
+@keyframes hero-prime-product-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 -0.45rem;
+  }
+}
+
+@keyframes hero-prime-seal-pulse {
+  0%,
+  100% {
+    opacity: 0.94;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 .demo-lab-product-depth-floor,
 .demo-lab-product-depth-rim {
   position: absolute;
@@ -10214,12 +10334,54 @@ html.theme-light .demo-lab-policy-card--blocked {
 }
 
 @media (max-width: 640px) {
+  .landing-hero-section {
+    overflow-x: clip;
+  }
+
+  .landing-hero-section .container-shell,
+  .landing-hero-section .hero-demo-shell,
+  .landing-hero-section .hero-scene {
+    max-width: calc(100vw - 2rem);
+    min-width: 0;
+  }
+
+  .landing-hero-section h1 {
+    max-width: min(19rem, calc(100vw - 2rem)) !important;
+    font-size: 1.78rem !important;
+    line-height: 1.16 !important;
+    overflow-wrap: normal;
+  }
+
+  .landing-hero-section p {
+    max-width: min(21rem, calc(100vw - 2rem));
+    overflow-wrap: break-word;
+  }
+
+  .landing-hero-section .hero-subtitle {
+    max-width: min(18.75rem, calc(100vw - 2rem));
+  }
+
+  .landing-hero-section .hero-scene-topline {
+    display: grid;
+    justify-items: start;
+  }
+
+  .landing-hero-section .hero-scene-swap {
+    max-width: 8.4rem;
+    padding-inline: 0.65rem;
+    font-size: 0.65rem;
+  }
+
   .demo-lab-product-scene--origin .demo-lab-nfc-state-pill::after,
   .demo-lab-product-scene--open .demo-lab-nfc-state-pill::after {
     display: none;
   }
 
   .hero-object-frame {
-    min-height: 22rem;
+    min-height: 25rem;
+  }
+
+  .hero-prime-product {
+    width: min(106%, 25rem);
   }
 }
