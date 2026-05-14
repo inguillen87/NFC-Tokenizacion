@@ -131,7 +131,7 @@ const copy: Record<AppLocale, {
       0: { title: "1. Produto nasce", body: "A marca ativa lote, UID e origem.", event: "Lote real conectado ao DemoBodega.", mode: "valid", location: "mendoza", status: "ORIGIN_READY", cta: "Ver origem" },
       1: { title: "2. Toque do cliente", body: "O consumidor verifica e ve distancia.", event: "Toque valido em Zurique com rota de origem.", mode: "valid", location: "zurich", status: "AUTH_OK", cta: "Entrar no clube" },
       2: { title: "3. Risco bloqueado", body: "Replay ou duplicata entra no feed.", event: "Replay signal para antifraude.", mode: "replay", location: "zurich", status: "REPLAY_BLOCKED", cta: "Ver alerta" },
-      3: { title: "4. Abertura + venda", body: "O lacre muda estado e abre beneficios.", event: "Lacre aberto + ownership/tokenizacao.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Ativar ownership" },
+      3: { title: "4. Abertura + venda", body: "O lacre muda estado e abre beneficios.", event: "Lacre aberto + dono/tokenizacao.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Reivindicar dono" },
     },
     verticals: {
       wine: { label: "Garrafa", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta na garrafa", "Rolha / lacre aberto", "SUN anti-replay", "Origem + toque global"] },
@@ -143,7 +143,7 @@ const copy: Record<AppLocale, {
       ticket: { label: "Ingresso", profile: "QR + NFC UID", product: "Ingresso festa VIP", visual: "party-ticket-demo", proof: ["QR visivel", "UID respaldo", "Acesso por zona", "Replay bloqueado"] },
     },
     controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/demo: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao DemoBodega...", synced: "DemoBodega sincronizado com backend.", unavailable: "DemoBodega indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no DemoBodega.", failedScan: "Nao foi possivel simular o toque.", configs: [
-      { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera ownership premium sozinho." },
+      { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
       { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
       { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
       { title: "NTAG 424 DNA TT + tokenizacao", body: "Soma estado fisico do lacre: fechado, aberto ou manipulado. Habilita passport, garantia, marketplace e token Polygon conforme politica comercial." },
@@ -564,6 +564,8 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
               </div>
               <div className={`demo-lab-product-stage demo-lab-product-stage--${vertical} demo-lab-product-stage--beat-${beat} demo-lab-product-stage--${scenario.tone} mt-4`}>
                 <StageRouteLayer txt={txt} routeKm={routeKm} destination={destination} scenario={scenario} locale={locale} />
+                <span className="demo-lab-product-depth-floor" aria-hidden="true" />
+                <span className="demo-lab-product-depth-rim" aria-hidden="true" />
                 <div className={`${activeVertical.visual} demo-lab-live-visual demo-lab-product-illustration-wrap ${beat === 3 ? "tampered" : "scanning"}`}>
                   <ProductIllustration key={`${vertical}-${beat}`} vertical={vertical} product={activeVertical.product} label={activeVertical.label} beat={beat} />
                 </div>
@@ -1189,7 +1191,7 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
       {vertical === "seeds" ? (
         <g filter={`url(#${uid}-shadow)`}>
           <path d="M105 76h150c13 0 24 11 24 24v230c0 13-11 24-24 24H105c-13 0-24-11-24-24V100c0-13 11-24 24-24Z" fill="#84cc16" />
-          <path d="M105 76h150c13 0 24 11 24 24v230c0 13-11 24-24 24H105c-13 0-24-11-24-24V100c0-13 11-24 24-24Z" fill="url(#demo-product-seeds-holo)" opacity="0.32" />
+          <path d="M105 76h150c13 0 24 11 24 24v230c0 13-11 24-24 24H105c-13 0-24-11-24-24V100c0-13 11-24 24-24Z" fill={`url(#${uid}-holo)`} opacity="0.32" />
           <path d="M247 82c18 4 32 16 32 34v214c0 13-11 24-24 24h-26c14-26 18-79 18-161V82Z" fill="#14532d" opacity="0.2" />
           <path d="M101 88h158" stroke="#ecfccb" strokeWidth="10" strokeLinecap="round" opacity="0.42" />
           <path d="M96 177c46-18 115-18 168 2" fill="none" stroke="#fef08a" strokeWidth="4" strokeLinecap="round" opacity="0.16" />
@@ -1248,7 +1250,7 @@ function ProductIllustration({ vertical, product, label, beat }: { vertical: Ver
       {vertical === "creamTube" ? (
         <g filter={`url(#${uid}-shadow)`}>
           <path d="M127 79c0-26 21-47 53-47s53 21 53 47v230c0 27-18 46-53 46s-53-19-53-46V79Z" fill="#67e8f9" />
-          <path d="M127 79c0-26 21-47 53-47s53 21 53 47v230c0 27-18 46-53 46s-53-19-53-46V79Z" fill="url(#demo-product-creamTube-holo)" opacity="0.34" />
+          <path d="M127 79c0-26 21-47 53-47s53 21 53 47v230c0 27-18 46-53 46s-53-19-53-46V79Z" fill={`url(#${uid}-holo)`} opacity="0.34" />
           <path d="M203 39c20 8 30 23 30 40v230c0 27-18 46-53 46h-8c20-28 31-98 31-316Z" fill="#0e7490" opacity="0.22" />
           <path d="M140 90h80M139 106h82" stroke="#ecfeff" strokeWidth="3" strokeLinecap="round" opacity="0.28" />
           <rect x="143" y="176" width="74" height="94" rx="10" fill="#cffafe" opacity="0.82" />

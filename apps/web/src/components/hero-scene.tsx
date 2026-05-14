@@ -213,7 +213,7 @@ const labels: Record<AppLocale, {
         uid: "04A7****1090",
         origin: { city: "Valle de Uco", country: "Argentina", label: "vinicola", lat: -33.6131, lng: -69.2075 },
         security: "SUN dinamico + tamper fisico + anti-replay",
-        nextAction: "Clube, garantia, ownership ou token premium",
+        nextAction: "Clube, garantia, dono ou token premium",
         marketplace: "Voucher pos-compra + rastreabilidade de colecao",
         loyalty: "320 pts, clube de safra, voucher e recompra premium",
         businessValue: "CRM pos-toque + marketplace + tokenizacao opcional",
@@ -530,7 +530,11 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
             <div className={`hero-product-stage hero-product-stage--${active} mt-3`}>
               <div className="hero-object-frame">
                 <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
-                <div className={data.objectClass} />
+                <div className={`hero-product-render hero-product-render--${active}`} aria-hidden="true">
+                  <span className="hero-product-render-floor" />
+                  <div className={data.objectClass} />
+                  <span className="hero-product-render-reflection" />
+                </div>
                 <div className="hero-cork-pop" />
                 <div className="hero-tamper-strip" />
                 <div className="hero-nfc-beam" />

@@ -342,7 +342,7 @@ export function PlansSection({ content, locale }: { content: Content; locale: st
     ? [
       { visual: "qr", title: "Basic real", example: "QR comum ou NFC UID para manuais, landing pages, garantia e primeiras metricas de scan.", fit: "Use quando velocidade importa mais que protecao anti-clone.", flow: ["Cliente escaneia", "Conteudo abre", "Lead ou garantia salva"] },
       { visual: "ntag", title: "Secure tap", example: "NTAG215 para eventos ou NTAG 424 DNA com SUN dinamico, UID serializado e regras server-side.", fit: "Para ingressos, credenciais, produtos de valor medio e validacao frequente.", flow: ["Celular toca", "Backend valida UID/SUN", "Dashboard registra local"] },
-      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + passport + token sandbox/Polygon para ownership, lifecycle e marketplace.", fit: "Para vinho, luxo, cosmeticos, pharma e ativos onde abertura, origem e revenda importam.", flow: ["Lacre rompe", "Passport muda estado", "Ownership ou voucher abre"] },
+      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + passaporte + token sandbox/Polygon para dono, ciclo de vida e marketplace.", fit: "Para vinho, luxo, cosmeticos, pharma e ativos onde abertura, origem e revenda importam.", flow: ["Lacre rompe", "Passaporte muda estado", "Dono ou voucher abre"] },
     ]
     : [
       { visual: "qr", title: "Basico real", example: "QR comun o NFC UID para manuales, paginas, registro de garantia y primeras metricas de escaneo.", fit: "Usalo cuando importa lanzar rapido y el riesgo de copia todavia no es critico.", flow: ["Cliente escanea", "Abre contenido", "Se guarda contacto o garantia"] },
@@ -466,8 +466,8 @@ export function PremiumIdentitySection({ content, locale }: { content: Content; 
     : isBr
     ? {
       eyebrow: "Camada premium",
-      title: "Ownership digital para produtos que seguem gerando valor",
-      body: "A camada premium transforma cada unidade verificada em um passport vivo: proveniencia, garantia, ownership token-ready e acoes de marketplace ficam ligadas ao item fisico.",
+      title: "Dono digital para produtos que seguem gerando valor",
+      body: "A camada premium transforma cada unidade verificada em um passaporte vivo: proveniencia, garantia, dono pronto para token e acoes de marketplace ficam ligadas ao item fisico.",
       demo: "Abrir demo premium",
       docs: "Ler arquitetura",
       wallet: "Wallet sandbox",
@@ -477,15 +477,15 @@ export function PremiumIdentitySection({ content, locale }: { content: Content; 
         ["Origem", "Valle de Uco, Mendoza"],
         ["Lacre", "NTAG 424 DNA TT aberto"],
         ["Token", "Polygon sandbox pronto"],
-        ["Owner", "Wallet anonima"],
+        ["Dono", "Carteira anonima"],
       ],
       cards: [
-        { title: "Ownership passport", body: "Depois da autenticacao, o comprador pode reclamar um registro digital ligado a UID, lote e estado." },
-        { title: "Warranty lifecycle", body: "Garantia, suporte, devolucao e servico viram eventos auditaveis, nao formularios soltos." },
+        { title: "Passaporte de dono", body: "Depois da autenticacao, o comprador pode reclamar um registro digital ligado a UID, lote e estado." },
+        { title: "Ciclo de garantia", body: "Garantia, suporte, devolucao e servico viram eventos auditaveis, nao formularios soltos." },
         { title: "Registros de proveniencia", body: "Origem, lote, canal revendedor e toque do cliente aparecem como trilha de confianca." },
-        { title: "Marketplace unlocks", body: "Vouchers, clube, regras de revenda e tokenizacao premium viram acoes pos-toque." },
+        { title: "Aberturas de marketplace", body: "Vouchers, clube, regras de revenda e tokenizacao premium viram acoes pos-toque." },
       ],
-      steps: ["Verificar produto", "Reclamar passport", "Anexar garantia", "Abrir marketplace"],
+      steps: ["Verificar produto", "Reclamar passaporte", "Anexar garantia", "Abrir marketplace"],
     }
     : {
       eyebrow: "Capa premium",
@@ -769,7 +769,7 @@ export function MarketplaceNetworkSection({ locale }: { locale: string }) {
     : "Cada producto verificado abre pasaporte del usuario, club de la marca, ofertas de tienda, casos CRM y beneficios entre marcas.";
   const nodes = [
     { k: "01", title: isEn ? "Trust tap" : isBr ? "Toque confiavel" : "Toque confiable", body: isEn ? "Authenticity, seal state, origin and risk." : isBr ? "Autenticidade, lacre, origem e risco." : "Autenticidad, sello, origen y riesgo." },
-    { k: "02", title: isEn ? "Passport" : isBr ? "Passport" : "Pasaporte", body: isEn ? "Product history, warranty and owner context." : isBr ? "Historico, garantia e contexto do dono." : "Historial, garantia y contexto del dueño." },
+    { k: "02", title: isEn ? "Passport" : isBr ? "Passaporte" : "Pasaporte", body: isEn ? "Product history, warranty and owner context." : isBr ? "Historico, garantia e contexto do dono." : "Historial, garantia y contexto del dueño." },
     { k: "03", title: isEn ? "Club & points" : isBr ? "Clube e pontos" : "Club y puntos", body: isEn ? "Rewards, vouchers and private drops by tenant." : isBr ? "Rewards, vouchers e drops privados por tenant." : "Puntos, vouchers y beneficios privados por marca." },
     { k: "04", title: isEn ? "Marketplace" : isBr ? "Marketplace" : "Tienda", body: isEn ? "Premium products, reorder, resale and partner offers." : isBr ? "Produtos premium, recompra, revenda e ofertas." : "Productos premium, recompra, reventa y ofertas." },
     { k: "05", title: "CRM", body: isEn ? "Leads, tickets, buyer intent and live notifications." : isBr ? "Leads, tickets, intencao e notificacoes." : "Contactos, casos, intencion de compra y avisos." },
