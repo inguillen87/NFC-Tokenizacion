@@ -161,6 +161,14 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
       return;
     }
     if (!res.ok || !payload?.ok) {
+      if (res.status === 403 && payload?.error === "passport_context_required") {
+        setFeedbackById((prev) => ({
+          ...prev,
+          [item.id]: "Falta contexto de Passport: asociá un tap verificado o reclamá ownership antes de solicitar este beneficio.",
+        }));
+        setBusyById((prev) => ({ ...prev, [item.id]: false }));
+        return;
+      }
       const errorLabel = payload?.error ? `Error: ${payload.error}` : "No fue posible registrar la solicitud.";
       setFeedbackById((prev) => ({ ...prev, [item.id]: errorLabel }));
       setBusyById((prev) => ({ ...prev, [item.id]: false }));

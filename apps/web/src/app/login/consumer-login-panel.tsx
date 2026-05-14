@@ -25,6 +25,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const [status, setStatus] = useState("");
   const [pending, setPending] = useState(false);
   const demoConsumerEmail = "demo.consumer@nexid.local";
+  const isTapReturn = nextPath.includes("fromTap=1") || nextPath.includes("eventId=");
+  const isDemoTap = nextPath.toLowerCase().includes("tenant=demo") || nextPath.toUpperCase().includes("DEMO-");
 
   async function confirmSession() {
     const session = await fetch("/api/consumer/session", {
@@ -39,11 +41,11 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   async function start() {
     const parsed = parseContact(contact);
     if (!parsed.valid) {
-      setStatus("Ingresá un email o teléfono válido.");
+      setStatus("Ingresa un email o telefono valido.");
       return;
     }
     setPending(true);
-    setStatus("Enviando código...");
+    setStatus("Enviando codigo...");
     const payload = await fetch("/api/consumer/auth/start", {
       method: "POST",
       credentials: "include",
@@ -54,18 +56,18 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       .catch(() => null);
     setPending(false);
     if (!payload?.ok) {
-      setStatus("No se pudo iniciar sesión de consumidor.");
+      setStatus("No se pudo iniciar sesion de consumidor.");
       return;
     }
     setCode(String(payload.code || ""));
     setStep("verify");
-    setStatus("Código enviado. Verificalo para entrar al portal.");
+    setStatus(isTapReturn ? "Codigo enviado. Al validar volvemos al tap para asociar el Passport." : "Codigo enviado. Verificalo para entrar al portal.");
   }
 
   async function verify() {
     const parsed = parseContact(contact);
     if (!parsed.valid || !code.trim()) {
-      setStatus("Revisá el contacto y el código.");
+      setStatus("Revisa el contacto y el codigo.");
       return;
     }
     setPending(true);
@@ -78,13 +80,13 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     }).catch(() => null);
     if (!response || !response.ok) {
       setPending(false);
-      setStatus("Código inválido o expirado.");
+      setStatus("Codigo invalido o expirado.");
       return;
     }
     const ready = await confirmSession();
     setPending(false);
     if (!ready) {
-      setStatus("La identidad fue validada, pero el navegador no guardó la sesión. Probá de nuevo o revisá cookies.");
+      setStatus("La identidad fue validada, pero el navegador no guardo la sesion. Proba de nuevo o revisa cookies.");
       return;
     }
     window.location.href = nextPath || "/me";
@@ -104,7 +106,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     const demoCode = String(startPayload?.code || "000000").trim();
     if (!startPayload?.ok || !demoCode) {
       setPending(false);
-      setStatus("No se pudo iniciar demo consumer. Verificá DEMO_MODE o CONSUMER_AUTH_MODE en API.");
+      setStatus("No se pudo iniciar demo consumer. Verifica DEMO_MODE o CONSUMER_AUTH_MODE en API.");
       return;
     }
     const verifyResponse = await fetch("/api/consumer/auth/verify", {
@@ -115,13 +117,13 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     }).catch(() => null);
     if (!verifyResponse || !verifyResponse.ok) {
       setPending(false);
-      setStatus("No se pudo validar sesión demo consumer.");
+      setStatus("No se pudo validar sesion demo consumer.");
       return;
     }
     const ready = await confirmSession();
     setPending(false);
     if (!ready) {
-      setStatus("Demo validada, pero la sesión no quedó activa en el navegador. Probá recargar e ingresar otra vez.");
+      setStatus("Demo validada, pero la sesion no quedo activa en el navegador. Proba recargar e ingresar otra vez.");
       return;
     }
     window.location.href = nextPath || "/me";
@@ -130,21 +132,17 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   return (
     <div className="mt-5 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
       <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Portal consumidor</p>
-      <p className="mt-1 text-sm text-cyan-50/90">Ingresá con email o teléfono para asociar tu tap y abrir tu marketplace contextual.</p>
+      <p className="mt-1 text-sm text-cyan-50/90">
+        {isTapReturn
+          ? "Valida email o telefono y volvemos al tap para asociar este producto al tenant, activar ownership, wallet/NFT y marketplace."
+          : "Ingresa con email o telefono para abrir tu Passport, wallet/NFT y marketplace contextual."}
+      </p>
       <div className="mt-3 grid gap-2">
-        <button
-          suppressHydrationWarning
-          disabled={pending}
-          onClick={() => void quickDemoPortal()}
-          className="rounded-xl border border-violet-300/30 bg-violet-500/15 px-3 py-2.5 text-sm font-semibold text-violet-100 disabled:opacity-60"
-        >
-          Entrar 1-click al portal demo (sin tap NFC)
-        </button>
         <input
           suppressHydrationWarning
           value={contact}
           onChange={(e) => setContact(e.target.value)}
-          placeholder="Email o teléfono"
+          placeholder="Email o telefono"
           className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500"
         />
         {step === "verify" ? (
@@ -152,19 +150,29 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
             suppressHydrationWarning
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="Código"
+            placeholder="Codigo"
             className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500"
           />
         ) : null}
         {step === "start" ? (
           <button suppressHydrationWarning disabled={pending || !parseContact(contact).valid} onClick={() => void start()} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60">
-            Recibir código
+            Recibir codigo rapido
           </button>
         ) : (
           <button suppressHydrationWarning disabled={pending || !code.trim()} onClick={() => void verify()} className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60">
-            Entrar al portal
+            {isTapReturn ? "Validar y asociar tap" : "Entrar al portal"}
           </button>
         )}
+        {isDemoTap ? (
+          <button
+            suppressHydrationWarning
+            disabled={pending}
+            onClick={() => void quickDemoPortal()}
+            className="rounded-xl border border-violet-300/30 bg-violet-500/15 px-3 py-2.5 text-sm font-semibold text-violet-100 disabled:opacity-60"
+          >
+            Usar consumidor sandbox demo
+          </button>
+        ) : null}
       </div>
       {status ? <p className="mt-2 text-xs text-slate-200">{status}</p> : null}
     </div>

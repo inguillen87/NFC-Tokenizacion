@@ -1,15 +1,15 @@
+import Link from "next/link";
 import { BackLink } from "../../components/back-link";
 import { BrandMark, Button, Card } from "@product/ui";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
-import Link from "next/link";
 import { ConsumerLoginPanel } from "./consumer-login-panel";
 
 export default async function WebLoginPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { locale, t } = await getWebI18n();
   const params = (await searchParams) || {};
-  const consumerMode = String(params.consumer || "") === "1";
   const nextPath = typeof params.next === "string" ? params.next : "/me";
+  const isTapReturn = nextPath.includes("fromTap=1") || nextPath.includes("eventId=");
   const content = landingContent[locale];
 
   return (
@@ -36,7 +36,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
               <a href="https://app.nexid.lat/login"><Button className="w-full">{content.nav.cta}</Button></a>
             </div>
 
-            {consumerMode ? <ConsumerLoginPanel nextPath={nextPath} /> : <ConsumerLoginPanel nextPath={nextPath} />}
+            <ConsumerLoginPanel nextPath={nextPath} />
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               <Link href="/register" className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-slate-200">Crear cuenta</Link>
               <Link href="/docs" className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-slate-200">Ver docs</Link>
@@ -46,12 +46,14 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
         </section>
 
         <section className="auth-info-panel order-1 rounded-3xl border border-white/10 bg-slate-900/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,.45)] lg:order-2 lg:p-7">
-          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">Portal premium + marketplace</p>
-          <h2 className="mt-2 text-2xl font-semibold text-white">Una sola plataforma para autenticación, trazabilidad y fidelización.</h2>
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{isTapReturn ? "Continuar desde el tap" : "Portal premium + marketplace"}</p>
+          <h2 className="mt-2 text-2xl font-semibold text-white">
+            {isTapReturn ? "Valida tu contacto y el producto queda asociado a tu Passport." : "Una sola plataforma para autenticacion, trazabilidad y fidelizacion."}
+          </h2>
           <div className="mt-5 grid gap-3 text-sm text-slate-200">
-            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Tap de producto premium → pasaporte del consumidor + estado de autenticidad + ownership.</div>
-            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Marketplace por tenant con catálogo editable para publicar nuevas experiencias y productos.</div>
-            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Panel enterprise para eventos, pharma, agro y cosmética con monitoreo geográfico y anti-fraude.</div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Tap valido - Passport del consumidor + ownership + wallet/NFT.</div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Marketplace por tenant con catalogo editable para beneficios, experiencias y productos.</div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Panel enterprise para eventos, pharma, agro y cosmetica con monitoreo geografico y anti-fraude.</div>
           </div>
           <div className="mt-5 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4 text-xs text-cyan-100">
             Security stack: QR + NTAG215 + NTAG424 DNA TT, con modo blockchain-ready cuando hay ROI de negocio.

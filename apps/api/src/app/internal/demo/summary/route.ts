@@ -28,8 +28,8 @@ export async function GET(req: Request) {
       e.created_at,
       COALESCE(e.city, e.geo_city) AS city,
       COALESCE(e.country_code, e.geo_country) AS country_code,
-      COALESCE(e.lat, e.geo_lat) AS lat,
-      COALESCE(e.lng, e.geo_lng) AS lng,
+      e.lat AS lat,
+      e.lng AS lng,
       tp.product_name,
       tp.sku,
       COALESCE(tp.locale_data->>'vertical', 'wine') AS vertical

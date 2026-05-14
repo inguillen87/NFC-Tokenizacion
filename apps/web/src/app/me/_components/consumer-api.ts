@@ -54,3 +54,18 @@ export function asArray<T = JsonMap>(value: unknown): T[] {
   }
   return [];
 }
+
+export function buildConsumerNextPath(path: string, params?: Record<string, string | string[] | undefined>) {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item) query.append(key, item);
+      });
+      return;
+    }
+    if (value) query.set(key, value);
+  });
+  const search = query.toString();
+  return search ? `${path}?${search}` : path;
+}

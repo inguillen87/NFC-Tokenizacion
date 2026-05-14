@@ -1,53 +1,52 @@
+import Link from "next/link";
+import { CalendarDays, Store, TicketCheck, WalletCards } from "lucide-react";
+import { buildConsumerNextPath, requireConsumerSession } from "../_components/consumer-api";
 import { PortalShell } from "../_components/portal-shell";
 
-export default function ConsumerExperiencesPage() {
+export default async function ConsumerExperiencesPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = (await searchParams) || {};
+  await requireConsumerSession(buildConsumerNextPath("/me/experiences", params));
+  const tenant = typeof params.tenant === "string" ? params.tenant : "";
+
   return (
     <PortalShell
-      title="Mis Experiencias"
-      subtitle="Tus reservas, visitas a bodegas y accesos VIP obtenidos a través de la red."
+      title="Mis experiencias"
+      subtitle="Reservas, accesos VIP y beneficios que se desbloquean desde productos verificados y ownership activo."
     >
       <div className="space-y-8">
+        <section className="grid gap-3 md:grid-cols-3">
+          {[
+            { title: "Marketplace", detail: "Explora drops y experiencias del tenant asociado al tap.", href: tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace", Icon: Store },
+            { title: "Wallet/NFT", detail: "Confirma ownership antes de pedir un acceso especial.", href: tenant ? `/me/wallet?tenant=${encodeURIComponent(tenant)}` : "/me/wallet", Icon: WalletCards },
+            { title: "Beneficios", detail: "Promos y eventos quedan ligados a tu Passport.", href: tenant ? `/me/rewards?tenant=${encodeURIComponent(tenant)}` : "/me/rewards", Icon: TicketCheck },
+          ].map(({ title, detail, href, Icon }) => (
+            <Link key={title} href={href} className="rounded-2xl border border-white/10 bg-slate-950/65 p-4 transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-black text-white">{title}</p>
+                <Icon className="h-5 w-5 text-cyan-200" aria-hidden="true" />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p>
+            </Link>
+          ))}
+        </section>
 
-         <section>
-            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Próximos Eventos</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section>
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-slate-400">Proximas experiencias</h2>
+          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-6">
+            <CalendarDays className="h-6 w-6 text-cyan-100" aria-hidden="true" />
+            <p className="mt-3 text-sm font-semibold text-white">Sin reservas activas todavia.</p>
+            <p className="mt-1 text-xs leading-5 text-cyan-50/78">
+              Cuando una marca apruebe una solicitud, canje o invitacion, aparece aca con fecha, codigo y estado operativo.
+            </p>
+          </div>
+        </section>
 
-               {/* Active Booking Card */}
-               <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-5 relative overflow-hidden group backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.1)]">
-                  <div className="flex justify-between items-start mb-4">
-                     <span className="inline-block px-2 py-1 rounded bg-cyan-500/20 text-[10px] font-bold text-cyan-300 uppercase tracking-widest">RESERVADO</span>
-                     <span className="text-2xl opacity-50">🍷</span>
-                  </div>
-                  <h3 className="text-lg font-bold text-white leading-tight">Degustación Premium 2x1</h3>
-                  <p className="text-xs text-slate-300 mt-1">Demo Bodega · Mendoza, AR</p>
-
-                  <div className="mt-4 pt-4 border-t border-cyan-500/20 space-y-2">
-                     <div className="flex justify-between">
-                        <span className="text-xs text-slate-400">Fecha</span>
-                        <span className="text-xs font-bold text-white">15 Marzo, 2026</span>
-                     </div>
-                     <div className="flex justify-between">
-                        <span className="text-xs text-slate-400">Hora</span>
-                        <span className="text-xs font-bold text-white">11:00 AM</span>
-                     </div>
-                     <div className="flex justify-between">
-                        <span className="text-xs text-slate-400">Código</span>
-                        <span className="text-xs font-mono font-bold text-cyan-400">NXB-8492</span>
-                     </div>
-                  </div>
-               </div>
-
-            </div>
-         </section>
-
-         <section>
-            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Historial de Asistencias</h2>
-            <div className="rounded-xl border border-white/5 bg-slate-900/40 p-8 text-center text-slate-500">
-               <p className="text-sm">Todavía no tenés asistencias registradas.</p>
-               <p className="text-xs mt-1">Hacé check-in en tus experiencias para sumar puntos y desbloquear insignias especiales.</p>
-            </div>
-         </section>
-
+        <section>
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-slate-400">Historial</h2>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/65 p-6 text-sm leading-6 text-slate-300">
+            Todavia no hay asistencias registradas. Hace check-in desde una experiencia aprobada para sumar puntos, demostrar presencia y mejorar tu trust score.
+          </div>
+        </section>
       </div>
     </PortalShell>
   );

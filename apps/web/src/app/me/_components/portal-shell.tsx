@@ -60,6 +60,7 @@ export function PortalShell({
             <Link href="/me/brands" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Brands</Link>
             <Link href="/me/taps" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">History</Link>
             <Link href="/me/rewards" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Rewards</Link>
+            <Link href="/me/wallet" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Wallet</Link>
             <Link href="/me/marketplace" className="rounded-lg px-3 py-1.5 text-sm font-medium text-cyan-400 transition-colors hover:bg-cyan-950/30 hover:text-cyan-300">Marketplace</Link>
           </div>
 

@@ -1778,8 +1778,53 @@ html.theme-light .animate-card-shift:hover {
 .sun-panel-journey,
 .sun-panel-priority,
 .sun-panel-actions,
+.sun-certificate-panel,
 .sun-panel-map {
   scroll-margin-top: 7rem;
+}
+
+.sun-certificate-panel {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(52, 211, 153, 0.18), transparent 18rem),
+    radial-gradient(circle at 88% 18%, rgba(34, 211, 238, 0.12), transparent 18rem),
+    linear-gradient(145deg, rgba(6, 78, 59, 0.32), rgba(15, 23, 42, 0.72));
+  box-shadow: 0 22px 64px rgba(2, 6, 23, 0.26);
+}
+
+.sun-certificate-action {
+  display: flex;
+  min-height: 4.25rem;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  background: rgba(2, 6, 23, 0.42);
+  padding: 0.8rem;
+  color: #d1fae5;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.sun-certificate-action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(52, 211, 153, 0.44);
+  background: rgba(6, 78, 59, 0.42);
+}
+
+.sun-certificate-action b,
+.sun-certificate-action em {
+  display: block;
+  font-style: normal;
+}
+
+.sun-certificate-action b {
+  font-size: 0.78rem;
+  color: #f8fafc;
+}
+
+.sun-certificate-action em {
+  margin-top: 0.12rem;
+  font-size: 0.68rem;
+  color: rgba(209, 250, 229, 0.72);
 }
 
 @media (max-width: 430px) {
@@ -1860,6 +1905,7 @@ html.theme-light .animate-card-shift:hover {
   .sun-journey-panel,
   .sun-priority-panel,
   .sun-actions-panel,
+  .sun-certificate-panel,
   .sun-map-section,
   .sun-loyalty-panel,
   .sun-passport-banner,
@@ -2003,6 +2049,7 @@ html.theme-light .sun-config-panel,
 html.theme-light .sun-journey-panel,
 html.theme-light .sun-priority-panel,
 html.theme-light .sun-actions-panel,
+html.theme-light .sun-certificate-panel,
 html.theme-light .sun-map-section,
 html.theme-light .sun-loyalty-panel,
 html.theme-light .sun-passport-banner,
@@ -2011,6 +2058,20 @@ html.theme-light .sun-tech-panel {
   border-color: rgba(14, 116, 144, 0.2) !important;
   background: rgba(255, 255, 255, 0.82) !important;
   box-shadow: 0 18px 50px rgba(14, 116, 144, 0.1);
+}
+
+html.theme-light .sun-certificate-action {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(14, 116, 144, 0.22);
+  color: #065f46;
+}
+
+html.theme-light .sun-certificate-action b {
+  color: #0f172a;
+}
+
+html.theme-light .sun-certificate-action em {
+  color: #0f766e;
 }
 
 html.theme-light .sun-map-section--enterprise {
@@ -2150,10 +2211,17 @@ html.theme-light .sun-bottom-nav a:nth-child(1) {
 }
 
 html.theme-light .sun-quick-nav a:nth-child(3),
-html.theme-light .sun-bottom-nav a:nth-child(3) {
+html.theme-light .sun-bottom-nav a:nth-child(4) {
   color: #6d28d9 !important;
   border-color: rgba(124, 58, 237, 0.22) !important;
   background: rgba(245, 243, 255, 0.82) !important;
+}
+
+html.theme-light .sun-quick-nav a:nth-child(4),
+html.theme-light .sun-bottom-nav a:nth-child(3) {
+  color: #92400e !important;
+  border-color: rgba(245, 158, 11, 0.28) !important;
+  background: rgba(255, 251, 235, 0.84) !important;
 }
 
 html.theme-light .sun-config-panel .rounded-xl,
@@ -2268,6 +2336,7 @@ html.theme-light .sun-priority-panel a {
   }
 
   .sun-config-panel,
+  .sun-certificate-panel,
   .sun-journey-panel,
   .sun-priority-panel,
   .sun-actions-panel,
@@ -8546,6 +8615,7 @@ html.theme-light .demo-lab-policy-card--blocked {
 }
 
 .nexid-motion-hero,
+.nexid-motion-purpose,
 .nexid-motion-benchmark,
 .nexid-motion-formats,
 .nexid-motion-products,
@@ -8569,6 +8639,7 @@ html.theme-light .demo-lab-policy-card--blocked {
 }
 
 .nexid-motion-hero p,
+.nexid-motion-purpose-copy p,
 .nexid-motion-section-heading p,
 .nexid-motion-format-copy small,
 .nexid-motion-benchmark-card small,
@@ -8576,18 +8647,18 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #5eead4;
   font-size: 0.68rem;
   font-weight: 950;
-  letter-spacing: 0.18em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .nexid-motion-hero h1 {
-  max-width: 62rem;
+  max-width: 56rem;
   margin-top: 0.75rem;
   color: #fff7ed;
-  font-size: clamp(2.6rem, 7vw, 6.8rem);
+  font-size: 5.1rem;
   font-weight: 950;
-  letter-spacing: -0.08em;
-  line-height: 0.87;
+  letter-spacing: 0;
+  line-height: 0.96;
   text-wrap: balance;
 }
 
@@ -8596,7 +8667,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   max-width: 48rem;
   margin-top: 1.2rem;
   color: #cbd5e1;
-  font-size: clamp(0.98rem, 1.4vw, 1.16rem);
+  font-size: 1.06rem;
   line-height: 1.72;
 }
 
@@ -8615,7 +8686,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   padding: 0.85rem 1rem;
   font-size: 0.74rem;
   font-weight: 950;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -8726,7 +8797,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   padding: 0.42rem 0.68rem;
   font-size: 0.62rem;
   font-weight: 950;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   text-transform: uppercase;
   box-shadow: 0 0 24px rgba(34, 211, 238, 0.24);
 }
@@ -8767,8 +8838,74 @@ html.theme-light .demo-lab-policy-card--blocked {
   font-size: 0.58rem;
   font-style: normal;
   font-weight: 950;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.nexid-motion-purpose {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(1rem, 2vw, 1.35rem);
+  align-items: stretch;
+  margin-top: 1rem;
+  border: 1px solid rgba(94, 234, 212, 0.18);
+  border-radius: 1.35rem;
+  background:
+    linear-gradient(135deg, rgba(20, 184, 166, 0.1), transparent 46%),
+    rgba(2, 6, 23, 0.34);
+  padding: clamp(1rem, 2vw, 1.3rem);
+}
+
+.nexid-motion-purpose-copy {
+  display: grid;
+  align-content: center;
+  gap: 0.85rem;
+}
+
+.nexid-motion-purpose-copy h2 {
+  max-width: 36rem;
+  color: #fff7ed;
+  font-size: 2.85rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.02;
+}
+
+.nexid-motion-purpose-copy span {
+  color: #cbd5e1;
+  font-size: 0.98rem;
+  line-height: 1.68;
+}
+
+.nexid-motion-purpose-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.nexid-motion-purpose-card {
+  display: grid;
+  gap: 0.55rem;
+  min-height: 9.5rem;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 0.85rem;
+  background:
+    radial-gradient(circle at 0 0, rgba(34, 211, 238, 0.13), transparent 44%),
+    rgba(15, 23, 42, 0.54);
+  padding: 0.95rem;
+}
+
+.nexid-motion-purpose-card strong {
+  color: #f8fafc;
+  font-size: 1.02rem;
+  font-weight: 950;
+  line-height: 1.08;
+}
+
+.nexid-motion-purpose-card span {
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  line-height: 1.55;
 }
 
 .nexid-motion-section-heading {
@@ -8780,10 +8917,10 @@ html.theme-light .demo-lab-policy-card--blocked {
 .nexid-motion-section-heading h2 {
   max-width: 54rem;
   color: #f8fafc;
-  font-size: clamp(1.8rem, 3.2vw, 3.35rem);
+  font-size: 3rem;
   font-weight: 950;
-  letter-spacing: -0.06em;
-  line-height: 0.98;
+  letter-spacing: 0;
+  line-height: 1.04;
 }
 
 .nexid-motion-benchmark-grid {
@@ -8847,7 +8984,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 1.15rem;
@@ -8857,10 +8994,10 @@ html.theme-light .demo-lab-policy-card--blocked {
 
 .nexid-motion-format-copy h3 {
   color: #fff7ed;
-  font-size: clamp(1.4rem, 2.6vw, 2.55rem);
+  font-size: 2.25rem;
   font-weight: 950;
-  letter-spacing: -0.06em;
-  line-height: 0.96;
+  letter-spacing: 0;
+  line-height: 1.05;
 }
 
 .nexid-motion-format-copy p {
@@ -8951,7 +9088,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   padding: 0.34rem 0.5rem;
   font-size: 0.52rem;
   font-weight: 950;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -8987,9 +9124,9 @@ html.theme-light .demo-lab-policy-card--blocked {
 .nexid-motion-frame-topline strong,
 .nexid-motion-token-chip small {
   color: #67e8f9;
-  font-size: clamp(0.56rem, 1.1vw, 0.72rem);
+  font-size: 0.68rem;
   font-weight: 950;
-  letter-spacing: 0.14em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -9053,7 +9190,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #ecfeff;
   font-size: 1.05rem;
   font-weight: 950;
-  letter-spacing: 0.14em;
+  letter-spacing: 0;
 }
 
 .nexid-motion-nfc-band em {
@@ -9061,7 +9198,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   font-size: 0.62rem;
   font-style: normal;
   font-weight: 950;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
 }
 
 .nexid-motion-proof-cluster {
@@ -9091,7 +9228,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   padding: 0.62rem;
   font-size: 0.62rem;
   font-weight: 950;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   text-transform: uppercase;
   backdrop-filter: blur(12px);
 }
@@ -9127,7 +9264,7 @@ html.theme-light .demo-lab-policy-card--blocked {
 
 .nexid-motion-token-chip strong {
   color: #f8fafc;
-  font-size: clamp(1rem, 2vw, 1.65rem);
+  font-size: 1.4rem;
   font-weight: 950;
   line-height: 1;
 }
@@ -9157,7 +9294,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #67e8f9;
   font-size: 0.58rem;
   font-weight: 950;
-  letter-spacing: 0.14em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -9434,8 +9571,13 @@ html.theme-light .demo-lab-policy-card--blocked {
 
 @media (max-width: 1040px) {
   .nexid-motion-hero,
+  .nexid-motion-purpose,
   .nexid-motion-format-card {
     grid-template-columns: 1fr;
+  }
+
+  .nexid-motion-hero h1 {
+    font-size: 4rem;
   }
 
   .nexid-motion-benchmark-grid {
@@ -9462,14 +9604,43 @@ html.theme-light .demo-lab-policy-card--blocked {
     border-radius: 1.35rem;
   }
 
+  .nexid-motion-hero-card {
+    min-height: 29rem;
+  }
+
+  .nexid-motion-hero-product {
+    top: 32%;
+    width: 9.8rem;
+  }
+
+  .nexid-motion-hero-card strong,
+  .nexid-motion-hero-card > span,
+  .nexid-motion-hero-card > div:last-child {
+    max-width: 100%;
+  }
+
   .nexid-motion-hero h1 {
-    font-size: clamp(2.6rem, 14vw, 4.2rem);
-    line-height: 0.92;
+    font-size: 2.85rem;
+    line-height: 1;
+  }
+
+  .nexid-motion-purpose-copy h2 {
+    font-size: 2rem;
+    line-height: 1.08;
   }
 
   .nexid-motion-section-heading h2 {
-    font-size: clamp(1.7rem, 10vw, 2.55rem);
-    line-height: 1.04;
+    font-size: 2.1rem;
+    line-height: 1.08;
+  }
+
+  .nexid-motion-format-copy h3 {
+    font-size: 1.85rem;
+    line-height: 1.08;
+  }
+
+  .nexid-motion-purpose-grid {
+    grid-template-columns: 1fr;
   }
 
   .nexid-motion-benchmark-grid,
@@ -9585,7 +9756,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #ecfeff;
   font-size: 0.54rem;
   font-weight: 950;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
 }
 
 .hero-flow-step,
@@ -9651,16 +9822,16 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: rgba(207, 250, 254, 0.72);
   font-size: 0.5rem;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .demo-lab-product-scene--open .demo-lab-nfc-state-pill::after {
-  content: "duenio y beneficios";
+  content: "dueño y beneficios";
   color: rgba(221, 214, 254, 0.78);
   font-size: 0.5rem;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -9758,7 +9929,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #0f172a;
   font-size: 0.38rem;
   font-weight: 950;
-  letter-spacing: 0.14em;
+  letter-spacing: 0;
   text-transform: uppercase;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
@@ -9782,7 +9953,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #ecfeff;
   font-size: 0.34rem;
   font-weight: 950;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 

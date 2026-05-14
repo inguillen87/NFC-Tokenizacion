@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Gift, PackageCheck, ShieldCheck, WalletCards } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { asArray, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
+import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import { formatPortalDate, ownershipTone, type ConsumerPortalProduct, type ConsumerTap } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
 
@@ -20,8 +20,9 @@ function statusClasses(status: string) {
   return "border-cyan-300/30 bg-cyan-500/10 text-cyan-100";
 }
 
-export default async function ProductsPage() {
-  await requireConsumerSession("/me/products");
+export default async function ProductsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = (await searchParams) || {};
+  await requireConsumerSession(buildConsumerNextPath("/me/products", params));
   const [productsPayload, tapsPayload] = await Promise.all([
     fetchConsumerPath("products"),
     fetchConsumerPath("taps"),

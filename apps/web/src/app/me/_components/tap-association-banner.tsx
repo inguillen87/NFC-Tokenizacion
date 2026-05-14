@@ -29,7 +29,7 @@ function summarizeAssociation(results: AssociationResult[]) {
   const success = results.filter((item) => item.ok).map((item) => item.action);
   const blocked = results.filter((item) => !item.ok && ["tap_not_claimable", "blocked_replay", "revoked", "snapshot_blocked"].includes(String(item.error || "")));
   const unauthorized = results.some((item) => item.status === 401);
-  if (unauthorized) return "La sesion no quedo activa. Activamos el portal demo y reintentamos.";
+  if (unauthorized) return "La sesion no quedo activa. Verifica tu email o celular para terminar la asociacion.";
   if (success.includes("claim")) return "Producto asociado, titularidad registrada y marketplace habilitado.";
   if (success.includes("save") || success.includes("join")) return "Producto guardado y club habilitado. Titularidad/token pueden requerir compra o validacion del tenant.";
   if (blocked.length) return "El tap fue verificado, pero las acciones comerciales quedaron protegidas por politica de seguridad.";
@@ -87,6 +87,11 @@ export function TapAssociationBanner() {
   const autoStarted = useRef(false);
 
   const visible = useMemo(() => Boolean(fromTap && eventId), [fromTap, eventId]);
+  const sandboxAllowed = useMemo(() => {
+    const tenantValue = String(tenant || "").toLowerCase();
+    const bidValue = String(bid || "").toUpperCase();
+    return tenantValue.startsWith("demo") || bidValue.startsWith("DEMO-");
+  }, [bid, tenant]);
 
   async function postAssociationAction(action: AssociationResult["action"], path: string, body?: Record<string, unknown>) {
     const response = await fetch(path, {
@@ -104,14 +109,18 @@ export function TapAssociationBanner() {
     } satisfies AssociationResult;
   }
 
-  async function associate(action: string, contactValue?: string) {
+  async function associate(action: string, contactValue?: string, sandbox = false) {
     if (!eventId) return { ok: false, results: [] as AssociationResult[] };
     const payload = {
       ...(tenant ? { tenantId: tenant } : {}),
       ...(bid ? { bid } : {}),
-      demoConsumer: true,
-      consumerMode: "demo",
-      demoConsumerEmail: DEMO_CONSUMER_EMAIL,
+      ...(sandbox
+        ? {
+            demoConsumer: true,
+            consumerMode: "demo",
+            demoConsumerEmail: DEMO_CONSUMER_EMAIL,
+          }
+        : {}),
     };
     const encodedEventId = encodeURIComponent(eventId);
     const results: AssociationResult[] = [];
@@ -124,12 +133,12 @@ export function TapAssociationBanner() {
     return { ok: results.some((item) => item.ok), results };
   }
 
-  async function associateWithRecovery(action: string, contactValue?: string) {
-    let association = await associate(action, contactValue);
-    if (needsConsumerSession(association.results)) {
-      setStatus("Activando portal demo seguro y reintentando...");
+  async function associateWithRecovery(action: string, contactValue?: string, sandbox = false) {
+    let association = await associate(action, contactValue, sandbox);
+    if (needsConsumerSession(association.results) && sandbox) {
+      setStatus("Activando portal sandbox y reintentando...");
       const ready = await ensureDemoConsumerSession();
-      if (ready) association = await associate(action, contactValue);
+      if (ready) association = await associate(action, contactValue, true);
     }
     return association;
   }
@@ -141,12 +150,7 @@ export function TapAssociationBanner() {
     try {
       let me = await loadConsumerMe();
       if (!me?.ok) {
-        setStatus("Activando portal demo seguro para completar la experiencia...");
-        const ready = await ensureDemoConsumerSession();
-        if (ready) me = await loadConsumerMe();
-      }
-      if (!me?.ok) {
-        setStatus("Necesitamos que ingreses o te registres para asociar este producto.");
+        setStatus("Necesitamos validar tu email o celular para crear tu Passport y asociar este producto al tenant.");
         return;
       }
       const association = await associateWithRecovery(preferredAction);
@@ -211,6 +215,24 @@ export function TapAssociationBanner() {
     }
   }
 
+  async function useSandboxDemo() {
+    if (!sandboxAllowed) return;
+    setPending(true);
+    setStatus("Activando consumidor sandbox para demo y asociando el tap...");
+    try {
+      const ready = await ensureDemoConsumerSession();
+      if (!ready) {
+        setStatus("No se pudo activar el sandbox consumer. Usa email o telefono real.");
+        return;
+      }
+      const association = await associateWithRecovery(preferredAction, DEMO_CONSUMER_EMAIL, true);
+      setStatus(summarizeAssociation(association.results));
+      if (association.ok) setStep("done");
+    } finally {
+      setPending(false);
+    }
+  }
+
   if (!visible) return null;
 
   return (
@@ -225,7 +247,7 @@ export function TapAssociationBanner() {
       {step !== "done" ? (
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           <button suppressHydrationWarning disabled={pending} onClick={() => void continueWithSession()} className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60">
-            Asociar ahora
+            Asociar con mi sesion
           </button>
           <input
             suppressHydrationWarning
@@ -236,7 +258,7 @@ export function TapAssociationBanner() {
           />
           {step === "idle" ? (
             <button suppressHydrationWarning disabled={pending || !contact.trim()} onClick={() => void sendCode()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60">
-              Registrarme y asociar
+              Enviar codigo rapido
             </button>
           ) : (
             <>
@@ -252,11 +274,17 @@ export function TapAssociationBanner() {
               </button>
             </>
           )}
+          {sandboxAllowed ? (
+            <button suppressHydrationWarning disabled={pending} onClick={() => void useSandboxDemo()} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 disabled:opacity-60 md:col-span-2">
+              Usar sandbox demo
+            </button>
+          ) : null}
         </div>
       ) : (
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <div className="mt-3 grid gap-2 sm:grid-cols-4">
           <Link href={`/me?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-sm text-slate-100">Mi portal</Link>
           <Link href={`/me/marketplace?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-center text-sm text-cyan-100">Marketplace</Link>
+          <Link href={`/me/wallet?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-100">Wallet/NFT</Link>
           <Link href={`/me/rewards?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-sm text-violet-100">Promos</Link>
         </div>
       )}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asArray, fetchConsumerMe, fetchConsumerPath, requireConsumerSession } from "./_components/consumer-api";
+import { asArray, buildConsumerNextPath, fetchConsumerMe, fetchConsumerPath, requireConsumerSession } from "./_components/consumer-api";
 import { PortalShell } from "./_components/portal-shell";
 
 type MePayload = {
@@ -11,8 +11,9 @@ type Product = { product_name?: string; tenant_slug?: string; ownership_record_s
 type Tap = { created_at?: string; verdict?: string; tenant_slug?: string; city?: string; country?: string };
 type Brand = { slug?: string; name?: string; status?: string };
 
-export default async function MePage() {
-  await requireConsumerSession("/me");
+export default async function MePage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = (await searchParams) || {};
+  await requireConsumerSession(buildConsumerNextPath("/me", params));
   const me = (await fetchConsumerMe()) as MePayload | null;
   const products = asArray<Product>(await fetchConsumerPath("products"));
   const taps = asArray<Tap>(await fetchConsumerPath("taps"));

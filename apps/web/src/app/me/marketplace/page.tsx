@@ -1,4 +1,4 @@
-import { asArray, fetchConsumerPath, fetchMarketplacePath, requireConsumerSession } from "../_components/consumer-api";
+import { asArray, buildConsumerNextPath, fetchConsumerPath, fetchMarketplacePath, requireConsumerSession } from "../_components/consumer-api";
 import { resolveMarketplaceTenant } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
 import { MarketplaceGridClient } from "./marketplace-grid-client";
@@ -18,8 +18,8 @@ type Listing = {
 type ConsumerProduct = { tenant_slug?: string | null; ownership_status?: string | null; ownership_record_status?: string | null };
 
 export default async function MarketplacePage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
-  await requireConsumerSession("/me/marketplace");
   const params = (await searchParams) || {};
+  await requireConsumerSession(buildConsumerNextPath("/me/marketplace", params));
   const tenantFromQuery = typeof params.tenant === "string" ? params.tenant : "";
   const consumerProductsPayload = await fetchConsumerPath("products");
   const consumerProducts = asArray<ConsumerProduct>(consumerProductsPayload);

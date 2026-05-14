@@ -290,7 +290,7 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
               { name: "QR / GS1 Digital Link", tag: "Contenido", body: "La entrada mas economica: URL verificable, envase masivo, campanas, manuales y analitica basica. Ideal cuando no se necesita anti-clon fuerte." },
               { name: "NTAG213 / NTAG215", tag: "Toque simple", body: "Bajo costo NFC para entradas, credenciales, beneficios y productos de rotacion: UID serializado, reglas del servidor y experiencia sin camara." },
               { name: "NTAG 424 DNA", tag: "SUN/SDM", body: "Cada toque genera datos dinamicos verificables contra copias, clones y URLs reutilizadas. Recomendado para autenticidad fuerte sin sello fisico." },
-              { name: "424 DNA TT + token", tag: "Sello + cadena", body: "Para vino, lujo, salud y activos premium: detecta apertura fisica, cambia el pasaporte y habilita duenio/tokenizacion segun politica de compra." },
+              { name: "424 DNA TT + token", tag: "Sello + cadena", body: "Para vino, lujo, salud y activos premium: detecta apertura fisica, cambia el pasaporte y habilita dueño/tokenizacion segun politica de compra." },
             ].map((item, index) => (
               <article key={item.name} className="risk-stack-card relative rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -347,7 +347,7 @@ export function PlansSection({ content, locale }: { content: Content; locale: st
     : [
       { visual: "qr", title: "Basico real", example: "QR comun o NFC UID para manuales, paginas, registro de garantia y primeras metricas de escaneo.", fit: "Usalo cuando importa lanzar rapido y el riesgo de copia todavia no es critico.", flow: ["Cliente escanea", "Abre contenido", "Se guarda contacto o garantia"] },
       { visual: "ntag", title: "Toque seguro", example: "NTAG215 para eventos o NTAG 424 DNA con SUN dinamico, UID serializado y reglas del servidor.", fit: "Para entradas, credenciales, productos de valor medio y operaciones con validacion frecuente.", flow: ["El telefono toca", "Servidor valida UID/SUN", "Panel registra ubicacion"] },
-      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + pasaporte + token sandbox/Polygon para duenio, historial y tienda.", fit: "Para vino, lujo, cosmetica, salud y activos donde apertura, origen y reventa importan.", flow: ["Se rompe el sello", "El pasaporte cambia estado", "Se abre duenio o voucher"] },
+      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + pasaporte + token sandbox/Polygon para dueño, historial y tienda.", fit: "Para vino, lujo, cosmetica, salud y activos donde apertura, origen y reventa importan.", flow: ["Se rompe el sello", "El pasaporte cambia estado", "Se abre dueño o voucher"] },
     ];
 
   return (
@@ -489,8 +489,8 @@ export function PremiumIdentitySection({ content, locale }: { content: Content; 
     }
     : {
       eyebrow: "Capa premium",
-      title: "Duenio digital para productos que siguen generando valor",
-      body: "La capa premium convierte cada unidad verificada en un pasaporte vivo: procedencia, garantia, duenio listo para token y acciones de tienda quedan asociadas al objeto fisico.",
+      title: "Dueño digital para productos que siguen generando valor",
+      body: "La capa premium convierte cada unidad verificada en un pasaporte vivo: procedencia, garantia, dueño listo para token y acciones de tienda quedan asociadas al objeto fisico.",
       demo: "Abrir demo premium",
       docs: "Ver arquitectura",
       wallet: "Billetera sandbox",
@@ -500,10 +500,10 @@ export function PremiumIdentitySection({ content, locale }: { content: Content; 
         ["Origen", "Valle de Uco, Mendoza"],
         ["Sello", "NTAG 424 DNA TT abierto"],
         ["Token", "Polygon sandbox listo"],
-        ["Duenio", "Billetera anonima"],
+        ["Dueño", "Billetera anonima"],
       ],
       cards: [
-        { title: "Pasaporte de duenio", body: "Despues de autenticar, el comprador puede reclamar un registro digital vinculado a UID, lote y estado." },
+        { title: "Pasaporte de dueño", body: "Despues de autenticar, el comprador puede reclamar un registro digital vinculado a UID, lote y estado." },
         { title: "Ciclo de garantia", body: "Garantia, soporte, devolucion y servicio se vuelven eventos auditables, no formularios sueltos." },
         { title: "Registros de procedencia", body: "Origen, lote, canal distribuidor y toque del cliente se muestran como una ruta de confianza." },
         { title: "Tienda habilitada", body: "Vouchers, club, reglas de reventa y tokenizacion premium se activan despues del toque." },
@@ -706,7 +706,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
       level: "Luxury",
       promise: isEn ? "Cryptographic tap plus physical opened/closed seal." : isBr ? "Toque criptografico mais selo fisico aberto/fechado." : "Toque criptografico mas sello fisico abierto/cerrado.",
       best: isEn ? "Wine, luxury, pharma, collectibles." : isBr ? "Vinho, luxo, pharma, colecionaveis." : "Vino, lujo, pharma, coleccionables.",
-      risk: isEn ? "Best fit for ownership and token gates." : isBr ? "Ideal para ownership e token gates." : "Ideal para duenio y accesos por token.",
+      risk: isEn ? "Best fit for ownership and token gates." : isBr ? "Ideal para dono e acessos por token." : "Ideal para dueño y accesos por token.",
     },
   ];
 
@@ -769,7 +769,7 @@ export function MarketplaceNetworkSection({ locale }: { locale: string }) {
     : "Cada producto verificado abre pasaporte del usuario, club de la marca, ofertas de tienda, casos CRM y beneficios entre marcas.";
   const nodes = [
     { k: "01", title: isEn ? "Trust tap" : isBr ? "Toque confiavel" : "Toque confiable", body: isEn ? "Authenticity, seal state, origin and risk." : isBr ? "Autenticidade, lacre, origem e risco." : "Autenticidad, sello, origen y riesgo." },
-    { k: "02", title: isEn ? "Passport" : isBr ? "Passport" : "Pasaporte", body: isEn ? "Product history, warranty and owner context." : isBr ? "Historico, garantia e contexto do dono." : "Historial, garantia y contexto del dueno." },
+    { k: "02", title: isEn ? "Passport" : isBr ? "Passport" : "Pasaporte", body: isEn ? "Product history, warranty and owner context." : isBr ? "Historico, garantia e contexto do dono." : "Historial, garantia y contexto del dueño." },
     { k: "03", title: isEn ? "Club & points" : isBr ? "Clube e pontos" : "Club y puntos", body: isEn ? "Rewards, vouchers and private drops by tenant." : isBr ? "Rewards, vouchers e drops privados por tenant." : "Puntos, vouchers y beneficios privados por marca." },
     { k: "04", title: isEn ? "Marketplace" : isBr ? "Marketplace" : "Tienda", body: isEn ? "Premium products, reorder, resale and partner offers." : isBr ? "Produtos premium, recompra, revenda e ofertas." : "Productos premium, recompra, reventa y ofertas." },
     { k: "05", title: "CRM", body: isEn ? "Leads, tickets, buyer intent and live notifications." : isBr ? "Leads, tickets, intencao e notificacoes." : "Contactos, casos, intencion de compra y avisos." },
@@ -869,7 +869,7 @@ export function UnitEconomicsSection({ locale }: { locale: string }) {
     { title: "Inicio QR / GS1", hardware: "USD 0.01 - 0.05", saas: "SaaS + pagina + analitica", margin: "Baja barrera, alto volumen" },
     { title: "NFC Basico", hardware: "USD 0.08 - 0.45", saas: "Toque web + garantia + contactos", margin: "Eventos, turismo, comercio local" },
     { title: "424 DNA Seguro", hardware: "USD 0.55 - 0.90", saas: "SUN + anti copia + panel", margin: "Antifraude real y auditoria" },
-    { title: "DNA TT Premium", hardware: "USD 0.85 - 1.25", saas: "Sello + duenio + token", margin: "Lujo, salud, vino, coleccionables" },
+    { title: "DNA TT Premium", hardware: "USD 0.85 - 1.25", saas: "Sello + dueño + token", margin: "Lujo, salud, vino, coleccionables" },
   ];
   const title = isEn ? "A pricing story that works for small brands and enterprise rollouts" : isBr ? "Uma historia comercial para marcas pequenas e rollouts enterprise" : "Una historia comercial para marcas chicas y despliegues grandes";
   const body = isEn

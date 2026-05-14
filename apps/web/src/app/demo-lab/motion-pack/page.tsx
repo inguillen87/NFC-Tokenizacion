@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import type { AppLocale } from "@product/config";
 import { getWebI18n } from "../../../lib/locale";
@@ -25,6 +25,7 @@ type MotionCopy = {
   productCardBody: string;
   hero: { kicker: string; title: string; body: string; back: string; formats: string; cardTitle: string; cardBody: string; chips: string[]; status: string };
   sections: { benchmark: string; benchmarkTitle: string; formats: string; formatsTitle: string; products: string; productsTitle: string; storyboard: string; storyboardTitle: string };
+  purpose: { label: string; title: string; body: string; cards: Array<{ title: string; body: string }> };
   frame: { route: string[]; nfcOk: string; chainOk: string; passport: string; tokenTitles: string[]; proofTypes: string[]; proofTitles: string[]; proofBodies: string[] };
   story: Array<{ title: string; body: string }>;
 };
@@ -35,51 +36,62 @@ const copyByLocale: Record<AppLocale, MotionCopy> = {
   "es-AR": {
     metadata: {
       title: "Paquete visual | Laboratorio nexID",
-      description: "Piezas visuales animadas para identidad de producto, autenticacion NFC, duenio, tokenizacion y tienda.",
-      ogDescription: "Piezas visuales para producto conectado, pasaporte digital y duenio tokenizado.",
+      description: "Piezas visuales animadas para identidad de producto, autenticacion NFC, dueño, tokenizacion y tienda.",
+      ogDescription: "Piezas visuales para producto conectado, pasaporte digital y dueño tokenizado.",
     },
     benchmark: [
-      { source: "Qliktag", move: "NFC + tokenizacion", upgrade: "SUN anti copia, UID hasheado, reclamo de duenio y tienda en el mismo relato.", href: "https://qliktag.com/" },
-      { source: "Arianee", move: "Pasaporte digital + duenio", upgrade: "Pasaporte, duenio, postventa, recompra y acceso por token sin friccion para LatAm.", href: "https://www.arianee.com/digital-product-passport" },
+      { source: "Qliktag", move: "NFC + tokenizacion", upgrade: "SUN anti copia, UID hasheado, reclamo de dueño y tienda en el mismo relato.", href: "https://qliktag.com/" },
+      { source: "Arianee", move: "Pasaporte digital + dueño", upgrade: "Pasaporte, dueño, postventa, recompra y acceso por token sin friccion para LatAm.", href: "https://www.arianee.com/digital-product-passport" },
       { source: "Authentic Vision", move: "Seguridad fisica visible", upgrade: "Etiqueta NFC cerrada, apertura, sello roto y copia bloqueada como escena entendible.", href: "https://www.authenticvision.com/authentic-visions-unique-patented-holographic-fingerprint/" },
       { source: "Certilogo", move: "Recorrido de autenticacion", upgrade: "El consumidor no solo verifica: reclama, guarda, recibe beneficios y compra.", href: "https://discover.certilogo.com/pages/secure-by-design-product-authentication" },
       { source: "atma.io / Digimarc", move: "Escala + pasaporte + trazabilidad", upgrade: "Vista para empresas con lote, cadena, riesgo, datos, demanda y cumplimiento operativo.", href: "https://www.atma.io/" },
       { source: "collectID", move: "Producto fisico + NFT + comunidad", upgrade: "NFT utilitario conectado a producto real, evento, club, billetera y tienda.", href: "https://www.sportsbusinessjournal.com/Daily/Issues/2022/11/09/Technology/collectid-physical-merchandise-products-authentication-nfc-tags-web3-metaverse-fans" },
     ],
     formats: [
-      { id: "story", format: "9:16 Historia / video corto", spec: "1080 x 1920", title: "Del toque al NFT en 12 segundos", body: "Para Instagram, ventas por WhatsApp y prueba rapida: producto real, NFC cerrado, toque vivo, riesgo bloqueado y beneficio abierto.", label: "Venta en redes", stat: "12 s", frameClass: "nexid-motion-frame--story", beats: ["Producto real", "NFC cerrado", "Toque valido", "NFT + reclamo"] },
-      { id: "square", format: "1:1 Publicacion / anuncio", spec: "1080 x 1080", title: "Un producto, cuatro ingresos", body: "Para publicaciones y anuncios: autenticidad, duenio, recompra y datos accionables en una pieza facil de leer.", label: "Prueba comercial", stat: "4 caminos", frameClass: "nexid-motion-frame--square", beats: ["Confianza", "Duenio", "Comunidad", "Tienda"] },
-      { id: "wide", format: "16:9 Presentacion / reunion", spec: "1920 x 1080", title: "Infraestructura para marcas grandes", body: "Para reuniones y presentaciones: ID por pieza, cadena de custodia, SUN, billetera, datos y capa comercial.", label: "Presentacion empresas", stat: "1 plataforma", frameClass: "nexid-motion-frame--wide", beats: ["ID de pieza", "Cadena", "Riesgo", "Ingresos"] },
+      { id: "story", format: "9:16 Historia / video corto", spec: "1080 x 1920", title: "Story: del toque al dueño en 12 segundos", body: "Para Instagram, ventas por WhatsApp y prueba rapida: producto real, NFC cerrado, toque vivo, copia bloqueada y beneficio abierto.", label: "Venta en redes", stat: "12 s", frameClass: "nexid-motion-frame--story", beats: ["Producto real", "NFC cerrado", "Toque valido", "NFT + reclamo"] },
+      { id: "square", format: "1:1 Publicacion / anuncio", spec: "1080 x 1080", title: "Post: por que un producto genera ingresos", body: "Para publicaciones y anuncios: autenticidad, dueño, recompra y datos accionables en una pieza facil de leer.", label: "Prueba comercial", stat: "4 caminos", frameClass: "nexid-motion-frame--square", beats: ["Confianza", "Dueño", "Comunidad", "Tienda"] },
+      { id: "wide", format: "16:9 Presentacion / reunion", spec: "1920 x 1080", title: "Deck: infraestructura que escala por marca", body: "Para reuniones y presentaciones: ID por pieza, cadena de custodia, SUN, billetera, datos y capa comercial.", label: "Presentacion empresas", stat: "1 plataforma", frameClass: "nexid-motion-frame--wide", beats: ["ID de pieza", "Cadena", "Riesgo", "Ingresos"] },
     ],
     productLabels: { wine: "Vino", seeds: "Semillas", cream: "Crema", perfume: "Perfume", bracelet: "Pulsera", ticket: "Entrada" },
     productCardBody: "Sello NFC + pasaporte digital + capa comercial",
     hero: {
-      kicker: "Paquete visual nexID",
-      title: "Versiones visuales listas para competir contra las mejores plataformas de producto conectado.",
-      body: "La direccion es clara: no copiamos pantallas, buscamos el mismo nivel de claridad. Producto fisico, prueba criptografica, antifraude, duenio, NFT, tienda y datos tienen que sentirse como una sola historia simple.",
+      kicker: "Motion con sentido comercial",
+      title: "Que una marca entienda nexID en un toque: prueba, dueño, NFT y venta.",
+      body: "Lo hicimos para transformar una tecnologia dificil en una historia vendible. En vez de mostrar pantallas sueltas, cada pieza muestra producto fisico, SUN fresco, copia bloqueada, reclamo de dueño, token/NFT y proxima compra.",
       back: "Volver al laboratorio",
       formats: "Ver formatos",
-      cardTitle: "Toque - SUN - Reclamo - NFT - Tienda",
-      cardBody: "Una prueba vendible para bodegas, salud, agro, belleza, eventos, lujo y deporte.",
-      chips: ["Anti copia", "Mapa de duenios", "Acceso por token"],
-      status: "Verificado",
+      cardTitle: "Producto real / prueba viva / ingreso",
+      cardBody: "La pieza tiene que contestar en segundos: que se toca, que se valida, quien queda como dueño y que se puede vender despues.",
+      chips: ["No jerga", "Sin app obligatoria", "Ingreso post tap"],
+      status: "Tap valido",
     },
     sections: {
-      benchmark: "Referencias analizadas",
-      benchmarkTitle: "Lo mejor de cada jugador, convertido en una narrativa propia.",
+      benchmark: "Contra quien competimos",
+      benchmarkTitle: "La vara es alta: identidad, autenticacion y trazabilidad. Nuestro diferencial es unir todo en una accion comercial.",
       formats: "Listo para exportar",
-      formatsTitle: "Tres piezas madre para redes, publicaciones y reuniones.",
+      formatsTitle: "Cada formato cuenta el mismo guion, adaptado al canal.",
       products: "Sistema de productos",
       productsTitle: "Los productos tienen que verse fisicos, de alto valor y diferentes por vertical.",
       storyboard: "Guion base",
-      storyboardTitle: "La historia que tiene que repetirse en cada video, prueba y presentacion.",
+      storyboardTitle: "El guion unico: tocar, validar, reclamar y vender.",
+    },
+    purpose: {
+      label: "Para que existe",
+      title: "No es motion por motion. Es una prueba corta para vender sin confundir.",
+      body: "Si una bodega, laboratorio, ticketera o marca premium no entiende el valor en pocos segundos, perdimos. El pack fuerza la explicacion a ir al hueso: producto real, prueba viva, dueño y canal de venta.",
+      cards: [
+        { title: "Vender sin explicar blockchain", body: "Primero se ve el producto y la prueba. Blockchain aparece solo cuando suma dueño, historial, reventa o acceso." },
+        { title: "Superar la autenticacion comun", body: "No termina en \"es original\". Despues del toque abre reclamo, beneficios, tienda, datos y relacion directa con la marca." },
+        { title: "Unificar todas las superficies", body: "La misma historia debe vivir en landing, demo, dashboard, app, pitch, redes y reuniones comerciales." },
+        { title: "Crear material exportable", body: "Story, post y deck salen del mismo sistema visual para probar, vender, iterar y comparar contra referencias reales." },
+      ],
     },
     frame: {
-      route: ["Origen", "Toque", "Duenio"],
+      route: ["Origen", "Toque", "Dueño"],
       nfcOk: "SUN OK",
       chainOk: "Cadena OK",
       passport: "Pasaporte digital",
-      tokenTitles: ["NFT listo", "Mapa de duenios", "Panel de empresas"],
+      tokenTitles: ["NFT listo", "Mapa de dueños", "Panel de empresas"],
       proofTypes: ["Celular", "Celular", "Panel"],
       proofTitles: ["Reclamar ahora", "Beneficios abiertos", "Riesgo limpio"],
       proofBodies: ["billetera + tienda", "club + recompra", "tx_hash + demanda"],
@@ -89,7 +101,7 @@ const copyByLocale: Record<AppLocale, MotionCopy> = {
       { title: "Toque fisico", body: "El consumidor verifica desde el celular, sin app obligatoria y con distancia/origen claro." },
       { title: "SUN valida", body: "El sistema une toque fresco, cuenta de marca, producto, ubicacion y reglas comerciales." },
       { title: "Copia bloqueada", body: "Copiar una URL no abre beneficios, reclamo, tokenizacion ni tienda sensible." },
-      { title: "Duenio reclama", body: "El usuario guarda producto, garantia, beneficios y relacion directa con la marca." },
+      { title: "Dueño reclama", body: "El usuario guarda producto, garantia, beneficios y relacion directa con la marca." },
       { title: "NFT + tienda", body: "El pasaporte se vuelve activo: NFT, historial, recompra, eventos y datos accionables." },
     ],
   },
@@ -108,32 +120,43 @@ const copyByLocale: Record<AppLocale, MotionCopy> = {
       { source: "collectID", move: "Produto fisico + NFT + comunidade", upgrade: "NFT utilitario conectado a produto real, evento, clube, carteira e loja.", href: "https://www.sportsbusinessjournal.com/Daily/Issues/2022/11/09/Technology/collectid-physical-merchandise-products-authentication-nfc-tags-web3-metaverse-fans" },
     ],
     formats: [
-      { id: "story", format: "9:16 Historia / video curto", spec: "1080 x 1920", title: "Do toque ao NFT em 12 segundos", body: "Para Instagram, vendas por WhatsApp e demo rapida: produto real, NFC fechado, toque vivo, risco bloqueado e beneficio aberto.", label: "Venda em redes", stat: "12 s", frameClass: "nexid-motion-frame--story", beats: ["Produto real", "NFC fechado", "Toque valido", "NFT + dono"] },
-      { id: "square", format: "1:1 Publicacao / anuncio", spec: "1080 x 1080", title: "Um produto, quatro receitas", body: "Para publicacoes e anuncios: autenticidade, dono, recompra e dados acionaveis em uma peca facil de ler.", label: "Prova comercial", stat: "4 caminhos", frameClass: "nexid-motion-frame--square", beats: ["Confianca", "Dono", "Comunidade", "Loja"] },
-      { id: "wide", format: "16:9 Apresentacao / reuniao", spec: "1920 x 1080", title: "Infraestrutura para grandes marcas", body: "Para reunioes e apresentacoes: ID por item, cadeia de custodia, SUN, carteira, dados e camada comercial.", label: "Apresentacao empresas", stat: "1 plataforma", frameClass: "nexid-motion-frame--wide", beats: ["ID do item", "Cadeia", "Risco", "Receita"] },
+      { id: "story", format: "9:16 Historia / video curto", spec: "1080 x 1920", title: "Story: do toque ao dono em 12 segundos", body: "Para Instagram, vendas por WhatsApp e demo rapida: produto real, NFC fechado, toque vivo, copia bloqueada e beneficio aberto.", label: "Venda em redes", stat: "12 s", frameClass: "nexid-motion-frame--story", beats: ["Produto real", "NFC fechado", "Toque valido", "NFT + dono"] },
+      { id: "square", format: "1:1 Publicacao / anuncio", spec: "1080 x 1080", title: "Post: por que um produto gera receita", body: "Para publicacoes e anuncios: autenticidade, dono, recompra e dados acionaveis em uma peca facil de ler.", label: "Prova comercial", stat: "4 caminhos", frameClass: "nexid-motion-frame--square", beats: ["Confianca", "Dono", "Comunidade", "Loja"] },
+      { id: "wide", format: "16:9 Apresentacao / reuniao", spec: "1920 x 1080", title: "Deck: infraestrutura que escala por marca", body: "Para reunioes e apresentacoes: ID por item, cadeia de custodia, SUN, carteira, dados e camada comercial.", label: "Apresentacao empresas", stat: "1 plataforma", frameClass: "nexid-motion-frame--wide", beats: ["ID do item", "Cadeia", "Risco", "Receita"] },
     ],
     productLabels: { wine: "Vinho", seeds: "Sementes", cream: "Creme", perfume: "Perfume", bracelet: "Pulseira", ticket: "Ingresso" },
     productCardBody: "Selo NFC + passaporte digital + camada comercial",
     hero: {
-      kicker: "Pacote visual nexID",
-      title: "Versoes visuais prontas para competir com as melhores plataformas de produto conectado.",
-      body: "A direcao e clara: nao copiamos telas, buscamos o mesmo nivel de clareza. Produto fisico, prova criptografica, antifraude, dono, NFT, loja e dados precisam parecer uma unica historia simples.",
+      kicker: "Motion com sentido comercial",
+      title: "Que uma marca entenda nexID em um toque: prova, dono, NFT e venda.",
+      body: "Fizemos isto para transformar uma tecnologia dificil em uma historia vendavel. Em vez de mostrar telas soltas, cada peca mostra produto fisico, SUN fresco, copia bloqueada, reivindicacao de dono, token/NFT e proxima compra.",
       back: "Voltar ao laboratorio",
       formats: "Ver formatos",
-      cardTitle: "Toque - SUN - Dono - NFT - Loja",
-      cardBody: "Uma demo vendavel para vinhos, pharma, agro, beleza, eventos, luxo e esporte.",
-      chips: ["Anti copia", "Mapa de donos", "Acesso por token"],
-      status: "Verificado",
+      cardTitle: "Produto real / prova viva / receita",
+      cardBody: "A peca precisa responder em segundos: o que se toca, o que se valida, quem vira dono e o que pode ser vendido depois.",
+      chips: ["Sem jargao", "Sem app obrigatorio", "Receita pos toque"],
+      status: "Toque valido",
     },
     sections: {
-      benchmark: "Referencias analisadas",
-      benchmarkTitle: "O melhor de cada jogador, convertido em uma narrativa propria.",
+      benchmark: "Contra quem competimos",
+      benchmarkTitle: "A barra e alta: identidade, autenticacao e rastreio. Nosso diferencial e unir tudo em uma acao comercial.",
       formats: "Pronto para exportar",
-      formatsTitle: "Tres pecas base para redes, publicacoes e reunioes.",
+      formatsTitle: "Cada formato conta o mesmo roteiro, adaptado ao canal.",
       products: "Sistema de produtos",
       productsTitle: "Os produtos precisam parecer fisicos, premium e diferentes por vertical.",
       storyboard: "Roteiro base",
-      storyboardTitle: "A historia que deve se repetir em cada video, demo e apresentacao.",
+      storyboardTitle: "O roteiro unico: tocar, validar, reivindicar e vender.",
+    },
+    purpose: {
+      label: "Para que existe",
+      title: "Nao e motion por motion. E uma prova curta para vender sem confundir.",
+      body: "Se uma vinicola, laboratorio, bilheteria ou marca premium nao entende o valor em poucos segundos, perdemos. O pack forca a explicacao a ir direto ao ponto: produto real, prova viva, dono e canal de venda.",
+      cards: [
+        { title: "Vender sem explicar blockchain", body: "Primeiro aparece o produto e a prova. Blockchain entra so quando soma dono, historico, revenda ou acesso." },
+        { title: "Superar autenticacao comum", body: "Nao termina em \"e original\". Depois do toque abre dono, beneficios, loja, dados e relacao direta com a marca." },
+        { title: "Unificar todas as superficies", body: "A mesma historia deve viver em landing, demo, dashboard, app, pitch, redes e reunioes comerciais." },
+        { title: "Criar material exportavel", body: "Story, post e deck saem do mesmo sistema visual para provar, vender, iterar e comparar com referencias reais." },
+      ],
     },
     frame: {
       route: ["Origem", "Toque", "Dono"],
@@ -169,32 +192,43 @@ const copyByLocale: Record<AppLocale, MotionCopy> = {
       { source: "collectID", move: "Physical product + NFT + community", upgrade: "Useful NFT connected to a real product, event, club, wallet and store.", href: "https://www.sportsbusinessjournal.com/Daily/Issues/2022/11/09/Technology/collectid-physical-merchandise-products-authentication-nfc-tags-web3-metaverse-fans" },
     ],
     formats: [
-      { id: "story", format: "9:16 Story / short video", spec: "1080 x 1920", title: "From tap to NFT in 12 seconds", body: "For Instagram, WhatsApp sales and quick demos: real product, closed NFC, live tap, blocked risk and open benefit.", label: "Social sales", stat: "12 s", frameClass: "nexid-motion-frame--story", beats: ["Real product", "Closed NFC", "Valid tap", "NFT + claim"] },
-      { id: "square", format: "1:1 Post / ad", spec: "1080 x 1080", title: "One product, four revenue paths", body: "For posts and ads: authenticity, owner, repurchase and actionable data in one readable piece.", label: "Commercial proof", stat: "4 paths", frameClass: "nexid-motion-frame--square", beats: ["Trust", "Owner", "Community", "Store"] },
-      { id: "wide", format: "16:9 Presentation / meeting", spec: "1920 x 1080", title: "Infrastructure for large brands", body: "For meetings and presentations: item ID, chain of custody, SUN, wallet, data and commerce layer.", label: "Enterprise presentation", stat: "1 platform", frameClass: "nexid-motion-frame--wide", beats: ["Item ID", "Chain", "Risk", "Revenue"] },
+      { id: "story", format: "9:16 Story / short video", spec: "1080 x 1920", title: "Story: tap to owner in 12 seconds", body: "For Instagram, WhatsApp sales and quick demos: real product, closed NFC, live tap, blocked copy and open benefit.", label: "Social sales", stat: "12 s", frameClass: "nexid-motion-frame--story", beats: ["Real product", "Closed NFC", "Valid tap", "NFT + claim"] },
+      { id: "square", format: "1:1 Post / ad", spec: "1080 x 1080", title: "Post: why one product creates revenue", body: "For posts and ads: authenticity, owner, repurchase and actionable data in one readable piece.", label: "Commercial proof", stat: "4 paths", frameClass: "nexid-motion-frame--square", beats: ["Trust", "Owner", "Community", "Store"] },
+      { id: "wide", format: "16:9 Presentation / meeting", spec: "1920 x 1080", title: "Deck: infrastructure that scales by brand", body: "For meetings and presentations: item ID, chain of custody, SUN, wallet, data and commerce layer.", label: "Enterprise presentation", stat: "1 platform", frameClass: "nexid-motion-frame--wide", beats: ["Item ID", "Chain", "Risk", "Revenue"] },
     ],
     productLabels: { wine: "Wine", seeds: "Seeds", cream: "Cream", perfume: "Perfume", bracelet: "Bracelet", ticket: "Ticket" },
     productCardBody: "NFC seal + digital passport + commerce layer",
     hero: {
-      kicker: "nexID visual pack",
-      title: "Visual versions ready to compete with the best connected product platforms.",
-      body: "The direction is clear: we do not copy screens, we match the level of clarity. Physical product, cryptographic proof, anti-fraud, owner, NFT, store and data must feel like one simple story.",
+      kicker: "Motion with commercial purpose",
+      title: "Make a brand understand nexID in one tap: proof, owner, NFT and sale.",
+      body: "We built this to turn a difficult technology into a sellable story. Instead of showing loose screens, every piece shows the physical product, fresh SUN, blocked copy, owner claim, token/NFT and next purchase.",
       back: "Back to lab",
       formats: "See formats",
-      cardTitle: "Tap - SUN - Claim - NFT - Store",
-      cardBody: "A sellable demo for wine, pharma, agro, beauty, events, luxury and sports.",
-      chips: ["Anti-copy", "Owner map", "Token access"],
-      status: "Verified",
+      cardTitle: "Real product / live proof / revenue",
+      cardBody: "The piece must answer in seconds: what gets tapped, what gets validated, who becomes the owner and what can be sold next.",
+      chips: ["No jargon", "No mandatory app", "Post-tap revenue"],
+      status: "Valid tap",
     },
     sections: {
-      benchmark: "References reviewed",
-      benchmarkTitle: "The best of each player, turned into our own narrative.",
+      benchmark: "Who we compete against",
+      benchmarkTitle: "The bar is high: identity, authentication and traceability. Our edge is joining it all into a commercial action.",
       formats: "Ready to export",
-      formatsTitle: "Three base pieces for social, posts and meetings.",
+      formatsTitle: "Each format tells the same script, adapted to its channel.",
       products: "Product system",
       productsTitle: "Products must look physical, premium and different by vertical.",
       storyboard: "Base script",
-      storyboardTitle: "The story that must repeat in every video, demo and presentation.",
+      storyboardTitle: "The one script: tap, validate, claim and sell.",
+    },
+    purpose: {
+      label: "Why it exists",
+      title: "This is not motion for motion. It is a short proof to sell without confusion.",
+      body: "If a winery, lab, ticketing company or premium brand cannot understand the value in a few seconds, we lose. The pack forces the explanation to go straight to the point: real product, live proof, owner and sales channel.",
+      cards: [
+        { title: "Sell without explaining blockchain", body: "The product and proof come first. Blockchain only appears when it adds ownership, history, resale or access." },
+        { title: "Beat common authentication", body: "It does not end at \"it is original\". After the tap it opens claim, benefits, store, data and a direct brand relationship." },
+        { title: "Unify every surface", body: "The same story must work across landing, demo, dashboard, app, pitch, social and sales meetings." },
+        { title: "Create exportable material", body: "Story, post and deck come from the same visual system to prove, sell, iterate and compare against real references." },
+      ],
     },
     frame: {
       route: ["Origin", "Tap", "Owner"],
@@ -265,6 +299,22 @@ export default async function MotionPackPage() {
             {copy.hero.chips.map((chip) => <em key={chip}>{chip}</em>)}
           </div>
         </aside>
+      </section>
+
+      <section className="nexid-motion-purpose" aria-label={copy.purpose.label}>
+        <div className="nexid-motion-purpose-copy">
+          <p>{copy.purpose.label}</p>
+          <h2>{copy.purpose.title}</h2>
+          <span>{copy.purpose.body}</span>
+        </div>
+        <div className="nexid-motion-purpose-grid">
+          {copy.purpose.cards.map((item) => (
+            <article key={item.title} className="nexid-motion-purpose-card">
+              <strong>{item.title}</strong>
+              <span>{item.body}</span>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="nexid-motion-benchmark" aria-label={copy.sections.benchmark}>

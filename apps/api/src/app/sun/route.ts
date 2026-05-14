@@ -16,6 +16,7 @@ import { ensureCarrierProfileSchema } from '../../lib/commercial-runtime-schema'
 import { getRequestMeta } from '../../lib/request-meta';
 import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
 import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
+import { eventShareUid } from '../../lib/public-cta-target';
 import crypto from "node:crypto";
 
 const RATE_LIMIT_MAX_IP = Number(process.env.SUN_RATE_LIMIT_IP_PER_MIN || 120);
@@ -1643,7 +1644,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   ctaButtons.forEach((button) => {
     button.addEventListener('click', async () => {
       const action = button.getAttribute('data-cta');
-      if (!action || !uid || button.disabled) return;
+      if (!action || (!uid && !eventId) || button.disabled) return;
       const statusNode = document.getElementById('cta-status');
       const originalLabel = button.textContent || action;
       button.disabled = true;
@@ -2021,11 +2022,11 @@ export async function GET(req: Request): Promise<Response> {
     if (webTarget) {
       return Response.redirect(webTarget, 303);
     }
-    const shareToken = uid
+    const shareToken = uid || eventId
       ? (() => {
           try {
             const now = Math.floor(Date.now() / 1000);
-            return createDemoShareToken({ bid, uid, exp: now + 60 * 30 });
+            return createDemoShareToken({ bid, uid: uid || (eventId ? eventShareUid(eventId) : ""), exp: now + 60 * 30 });
           } catch {
             return null;
           }

@@ -110,7 +110,7 @@ const labels: Record<AppLocale, {
         uid: "04A7****1090",
         origin: { city: "Valle de Uco", country: "Argentina", label: "bodega", lat: -33.6131, lng: -69.2075 },
         security: "SUN dinamico + sello fisico + anti copia",
-        nextAction: "Club, garantia, reclamo de duenio o token premium",
+        nextAction: "Club, garantia, reclamo de dueño o token premium",
         marketplace: "Voucher post-compra + trazabilidad de coleccion",
         loyalty: "320 pts, club de cosecha, voucher y recompra premium",
         businessValue: "CRM post-toque + tienda + tokenizacion opcional",
