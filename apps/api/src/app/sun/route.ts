@@ -1253,6 +1253,15 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       journey1Desc: "Use seu e-mail/celular para criar sessão segura.",
       journey2Desc: "Conectamos este toque ao produto no seu portal.",
       journey3Desc: "Marketplace, garantia e recompensas ficam ativas.",
+      mapStoryTitle: "Prova viva do percurso",
+      mapStorySubtitle: "Do lote ao toque: cada ponto conta uma evidencia comercial.",
+      mapOriginStep: "Origem certificada",
+      mapTapStep: "Toque verificado",
+      mapTokenStep: "Token / NFT",
+      mapOwnerStep: "Conta e beneficios",
+      mapLedgerTitle: "Ledger visual",
+      mapInvestorSignal: "Sinal para marca",
+      mapConsumerSignal: "Sinal para consumidor",
     }
     : locale === "en"
       ? {
@@ -1328,6 +1337,15 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         journey1Desc: "Use email/phone to create a secure session.",
         journey2Desc: "We connect this tap to your product portal.",
         journey3Desc: "Marketplace, warranty and rewards become active.",
+        mapStoryTitle: "Live proof journey",
+        mapStorySubtitle: "From lot to tap: each point tells commercial evidence.",
+        mapOriginStep: "Certified origin",
+        mapTapStep: "Verified tap",
+        mapTokenStep: "Token / NFT",
+        mapOwnerStep: "Account and benefits",
+        mapLedgerTitle: "Visual ledger",
+        mapInvestorSignal: "Brand signal",
+        mapConsumerSignal: "Consumer signal",
       }
       : {
         manualOpened: "Producto auténtico. Sello marcado como abierto por operador.",
@@ -1402,6 +1420,15 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         journey1Desc: "Usá email/celular para crear una sesión segura.",
         journey2Desc: "Conectamos este tap a tu producto en el portal.",
         journey3Desc: "Se activan marketplace, garantía y recompensas.",
+        mapStoryTitle: "Prueba viva del recorrido",
+        mapStorySubtitle: "Del lote al tap: cada punto cuenta una evidencia comercial.",
+        mapOriginStep: "Origen certificado",
+        mapTapStep: "Tap verificado",
+        mapTokenStep: "Token / NFT",
+        mapOwnerStep: "Cuenta y beneficios",
+        mapLedgerTitle: "Ledger visual",
+        mapInvestorSignal: "Señal para marca",
+        mapConsumerSignal: "Señal para consumidor",
       };
   const tone = contract.status.tone === 'good' ? '#22c55e' : contract.status.tone === 'risk' ? '#ef4444' : '#f59e0b';
   const isRiskBlocked = contract.blockedActions.includes("claim");
@@ -1472,6 +1499,13 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const timelineHtml = timeline.length
     ? timeline.map((item) => `<li>${item.at || 'N/A'} · <b>${item.result || '-'}</b> · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
     : `<li>${copy.timelineEmpty}</li>`;
+  const htmlText = (value: unknown) => String(value ?? "-").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[char] || char));
   const tapLat = contract.tapContext.lat;
   const tapLng = contract.tapContext.lng;
   const wineryLat = contract.iot.wineryCoordinates?.lat ?? tapLat ?? -33.0086;
@@ -1490,6 +1524,51 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const dLng = toRad(destinationLng - wineryLng);
   const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(wineryLat)) * Math.cos(toRad(destinationLat)) * Math.sin(dLng / 2) ** 2;
   const routeDistanceKm = Math.round(earthKm * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa)));
+  const oldestTraceEvent = timeline[timeline.length - 1] || null;
+  const newestTraceEvent = timeline[0] || null;
+  const tokenProof = contract.tokenization.tokenId
+    ? `Token #${contract.tokenization.tokenId}`
+    : contract.tokenization.txHash
+      ? maskIdentityValue(contract.tokenization.txHash)
+      : tokenizationStatusLabel;
+  const storyStyle = (kind: string) => {
+    if (kind === "origin") return "border-color:rgba(52,211,153,.28);background:rgba(6,78,59,.22)";
+    if (kind === "tap") return "border-color:rgba(249,115,22,.3);background:rgba(124,45,18,.22)";
+    if (kind === "token") return "border-color:rgba(167,139,250,.32);background:rgba(76,29,149,.2)";
+    return "border-color:rgba(45,212,191,.3);background:rgba(19,78,74,.22)";
+  };
+  const traceStoryHtml = [
+    {
+      cls: "origin",
+      label: labels.mapOriginStep,
+      value: contract.provenance.origin || contract.iot.wineryLocation || labels.origin,
+      detail: `${contract.product.name || "Producto"} · ${oldestTraceEvent?.at || contract.product.region || contract.product.winery || labels.winery}`,
+    },
+    {
+      cls: "tap",
+      label: labels.mapTapStep,
+      value: `${contract.tapContext.city || newestTraceEvent?.city || "-"}, ${contract.tapContext.country || newestTraceEvent?.country || "-"}`,
+      detail: `${contract.status.label} · ${newestTraceEvent?.at || contract.identity.eventId || "tap actual"}`,
+    },
+    {
+      cls: "token",
+      label: labels.mapTokenStep,
+      value: tokenProof,
+      detail: `${labels.networkLabel}: ${contract.tokenization.network || "sandbox"} · UID ${contract.uidMasked}`,
+    },
+    {
+      cls: "owner",
+      label: labels.mapOwnerStep,
+      value: contract.cta.clubName || "nexID Club",
+      detail: `${labels.linkPortal} · ${labels.linkMarketplace} · ${labels.linkRewards}`,
+    },
+  ].map((item) => `<div class="story-step story-${item.cls}" style="border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:9px;${storyStyle(item.cls)}"><span style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#93c5fd">${htmlText(item.label)}</span><b style="display:block;margin-top:3px;font-size:13px;color:#f8fafc">${htmlText(item.value)}</b><small style="display:block;margin-top:4px;color:#9fb5d9;font-size:10px;line-height:1.35">${htmlText(item.detail)}</small></div>`).join("");
+  const traceLedgerHtml = [
+    [labels.routeDistance, `${routeDistanceKm} km`],
+    [labels.events, String(contract.provenance.timelineSummary.length)],
+    [labels.statusLabel, contract.status.label],
+    [labels.tokenIdLabel, contract.tokenization.tokenId || tokenizationStatusLabel],
+  ].map(([label, value]) => `<div class="ledger-item" style="border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px;background:rgba(15,23,42,.36)"><span style="display:block;color:#9fb5d9;font-size:10px;text-transform:uppercase;letter-spacing:.08em">${htmlText(label)}</span><b style="display:block;margin-top:3px;font-size:12px;color:#f8fafc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${htmlText(value)}</b></div>`).join("");
   const routeControlX = (wineryPoint.x + tapPoint.x) / 2;
   const routeControlY = Math.max(52, Math.min(wineryPoint.y, tapPoint.y) - Math.min(118, Math.max(58, routeDistanceKm / 62)));
   const atlasRoutePath = `M ${wineryPoint.x.toFixed(2)} ${wineryPoint.y.toFixed(2)} Q ${routeControlX.toFixed(2)} ${routeControlY.toFixed(2)} ${tapPoint.x.toFixed(2)} ${tapPoint.y.toFixed(2)}`;
@@ -1525,6 +1604,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <section class="card"><div class="section-head"><h3>${copy.iotPanel}</h3><span class="section-tag">${labels.sensorIntelligence}</span></div><p>${labels.winery}: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>${labels.altitude}: <b>${contract.iot.altitude || '-'}</b> · ${labels.oak}: <b>${contract.iot.oakType || '-'}</b></p><p>${labels.cellarTemp}: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · ${labels.humidity}: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>${labels.light}: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · ${labels.transit}: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceKm} km</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
   <div class="world-map-wrap"><div class="world-map-canvas">${atlasSvg}</div><div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div></div>
+  <div class="trace-story" style="margin-top:10px;border:1px solid rgba(34,211,238,.22);border-radius:14px;padding:10px;background:linear-gradient(180deg,rgba(8,47,73,.44),rgba(15,23,42,.28))"><div class="trace-story-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><h4 style="margin:0;font-size:14px">${labels.mapStoryTitle}</h4><p style="margin:2px 0 0;color:#9fb5d9;font-size:11px">${labels.mapStorySubtitle}</p></div><span class="section-tag">${labels.mapLedgerTitle}</span></div><div class="story-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px">${traceStoryHtml}</div><div class="ledger-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:8px">${traceLedgerHtml}</div><p style="margin:9px 0 0;font-size:11px;color:#a7f3d0">${labels.mapInvestorSignal}: ${contract.provenance.timelineSummary.length} ${labels.events}, ${routeDistanceKm} km, ${htmlText(tokenProof)}. ${labels.mapConsumerSignal}: ${labels.linkPortal} + ${labels.linkRewards}.</p></div>
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${labels.routeSummary}: ${contract.iot.wineryLocation || labels.origin} → ${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'} · ${labels.mapLegend}.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>${labels.statusLabel}: <b>${contract.tokenization.status}</b> · ${labels.networkLabel}: <b>${contract.tokenization.network || '-'}</b></p><p>${labels.tokenIdLabel}: ${contract.tokenization.tokenId || '-'} · ${labels.txLabel}: ${contract.tokenization.txHash || '-'}</p></section>

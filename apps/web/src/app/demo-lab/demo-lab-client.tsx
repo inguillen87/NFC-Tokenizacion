@@ -555,6 +555,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                 <DemoLabProductThreeStage
                   vertical={vertical}
                   product={activeVertical.product}
+                  beat={beat}
                   fallbackClassName={`${activeVertical.visual} demo-lab-live-visual demo-lab-product-illustration-wrap ${beat === 3 ? "tampered" : "scanning"}`}
                 >
                   <ProductIllustration key={`${vertical}-${beat}`} vertical={vertical} product={activeVertical.product} label={activeVertical.label} beat={beat} />
@@ -763,7 +764,7 @@ function DemoLabStudioHero({
         <div className="demo-lab-studio-stage">
           <div className="demo-lab-studio-stage-head">
             <p>Vista 3D</p>
-            <span>Arrastra para rotar. Scroll para acercar.</span>
+            <span>Arrastra para rotar. Scroll para acercar. Click/tap para abrir sello.</span>
           </div>
           <div className="demo-lab-studio-callout demo-lab-studio-callout--nfc">
             <strong>NFC</strong>
@@ -777,6 +778,8 @@ function DemoLabStudioHero({
               active={mapDemoVerticalToThree(vertical)}
               product={activeVertical.product}
               className="demo-lab-studio-three"
+              state={beat === 3 ? "opened" : beat === 2 ? "blocked" : "idle"}
+              onAction={(nextState) => onBeat(nextState === "opened" ? 3 : 1)}
             />
           </div>
           <div className="demo-lab-studio-statusbar">
@@ -1132,6 +1135,7 @@ function DemoCinematicShowcase({
             active={mapDemoVerticalToThree(vertical)}
             product={product}
             className="demo-lab-cinematic-three-stage"
+            state={beat === 3 ? "opened" : beat === 2 ? "blocked" : "idle"}
           />
         </div>
 
@@ -1323,11 +1327,13 @@ function DemoUnlockLadder({ beat }: { beat: Beat }) {
 function DemoLabProductThreeStage({
   vertical,
   product,
+  beat,
   fallbackClassName,
   children,
 }: {
   vertical: Vertical;
   product: string;
+  beat: Beat;
   fallbackClassName: string;
   children: ReactNode;
 }) {
@@ -1347,6 +1353,7 @@ function DemoLabProductThreeStage({
         active={threeVertical}
         product={product}
         className="demo-lab-three-stage"
+        state={beat === 3 ? "opened" : beat === 2 ? "blocked" : "idle"}
         onReady={() => setReady(true)}
       />
     </div>

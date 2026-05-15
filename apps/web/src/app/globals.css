@@ -11342,6 +11342,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   .demo-lab-studio-stage {
     min-height: 35rem;
     padding-top: 5.25rem;
+    align-content: start;
   }
 
   .demo-lab-studio-product {
@@ -11357,9 +11358,13 @@ html.theme-light .demo-lab-policy-card--blocked {
   }
 
   .demo-lab-studio-statusbar {
-    bottom: 1.1rem;
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
     grid-template-columns: 1fr;
     width: calc(100% - 1.4rem);
+    margin: 0.65rem auto 0;
   }
 
   .demo-lab-studio-statusbar span + span {
@@ -11382,6 +11387,7 @@ html.theme-light .demo-lab-policy-card--blocked {
     display: grid;
     grid-template-columns: 1fr;
     margin: 0 1rem 1rem;
+    opacity: 1;
   }
 
   .demo-lab-studio-beats {

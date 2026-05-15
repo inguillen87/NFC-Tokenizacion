@@ -3,6 +3,7 @@
 import { useId, useMemo, type KeyboardEvent } from "react";
 
 export type VectorMapTone = "origin" | "tap" | "hub" | "risk" | "token";
+export type VectorMapEvidenceTone = "origin" | "tap" | "token" | "risk" | "loyalty" | "marketplace";
 
 export type VectorMapPoint = {
   id: string;
@@ -13,6 +14,9 @@ export type VectorMapPoint = {
   scans?: number;
   risk?: number;
   tone?: VectorMapTone;
+  stageLabel?: string;
+  evidence?: string;
+  lastSeen?: string;
 };
 
 export type VectorMapRoute = {
@@ -23,6 +27,24 @@ export type VectorMapRoute = {
   toLng: number;
   label?: string;
   tone?: "info" | "warn" | "success";
+  distanceLabel?: string;
+  evidence?: string;
+};
+
+export type VectorMapEvidenceStep = {
+  id: string;
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: VectorMapEvidenceTone;
+};
+
+export type VectorMapLedgerItem = {
+  id: string;
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: VectorMapEvidenceTone;
 };
 
 type MapDensity = "balanced" | "heat" | "route";
@@ -105,6 +127,16 @@ function routeColor(tone?: VectorMapRoute["tone"]) {
   return "#67e8f9";
 }
 
+function evidenceStyle(tone?: VectorMapEvidenceTone) {
+  if (tone === "origin") return { borderColor: "rgba(52,211,153,.28)", background: "rgba(6,78,59,.34)", color: "#bbf7d0" };
+  if (tone === "tap") return { borderColor: "rgba(34,211,238,.3)", background: "rgba(8,47,73,.38)", color: "#cffafe" };
+  if (tone === "token") return { borderColor: "rgba(167,139,250,.34)", background: "rgba(76,29,149,.32)", color: "#ddd6fe" };
+  if (tone === "risk") return { borderColor: "rgba(251,113,133,.34)", background: "rgba(127,29,29,.3)", color: "#ffe4e6" };
+  if (tone === "loyalty") return { borderColor: "rgba(45,212,191,.3)", background: "rgba(19,78,74,.3)", color: "#ccfbf1" };
+  if (tone === "marketplace") return { borderColor: "rgba(251,191,36,.32)", background: "rgba(113,63,18,.26)", color: "#fef3c7" };
+  return { borderColor: "rgba(148,163,184,.22)", background: "rgba(15,23,42,.62)", color: "#e2e8f0" };
+}
+
 function formatMetric(value: number) {
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(value);
 }
@@ -123,6 +155,8 @@ export function PremiumVectorMap({
   chrome = "full",
   maxPoints = 48,
   maxRoutes = 24,
+  evidenceSteps = [],
+  ledgerItems = [],
 }: {
   points: VectorMapPoint[];
   routes?: VectorMapRoute[];
@@ -137,6 +171,8 @@ export function PremiumVectorMap({
   chrome?: MapChrome;
   maxPoints?: number;
   maxRoutes?: number;
+  evidenceSteps?: VectorMapEvidenceStep[];
+  ledgerItems?: VectorMapLedgerItem[];
 }) {
   const rawId = useId();
   const idPrefix = useMemo(() => rawId.replace(/[^a-zA-Z0-9_-]/g, ""), [rawId]);
@@ -146,6 +182,45 @@ export function PremiumVectorMap({
   const selectedPoint = visiblePoints.find((point) => point.id === selectedPointId) || visiblePoints[0] || null;
   const riskCount = visiblePoints.filter((point) => (point.risk || 0) > 0 || toneFor(point) === "risk").length;
   const routeCount = visibleRoutes.length;
+  const tokenCount = visiblePoints.filter((point) => toneFor(point) === "token").length;
+  const totalEvents = visiblePoints.reduce((sum, point) => sum + (point.scans || 0), 0);
+  const focusedRoute = selectedPoint
+    ? visibleRoutes.find((route) => {
+        const close = (a: number, b: number) => Math.abs(a - b) < 0.01;
+        return (close(route.fromLat, selectedPoint.lat) && close(route.fromLng, selectedPoint.lng))
+          || (close(route.toLat, selectedPoint.lat) && close(route.toLng, selectedPoint.lng));
+      })
+    : null;
+  const selectedTone = selectedPoint ? toneFor(selectedPoint) : "hub";
+  const mapStorySteps: VectorMapEvidenceStep[] = evidenceSteps.length
+    ? evidenceSteps.slice(0, 4)
+    : selectedPoint
+      ? [
+          {
+            id: "selected",
+            label: selectedPoint.stageLabel || (selectedTone === "origin" ? "Origen" : selectedTone === "tap" ? "Tap" : selectedTone === "token" ? "Token/NFT" : "Evento"),
+            value: selectedPoint.label,
+            detail: selectedPoint.evidence || selectedPoint.sublabel || selectedPoint.lastSeen || "Evidencia seleccionada",
+            tone: selectedTone === "hub" ? "tap" : selectedTone,
+          },
+          focusedRoute
+            ? {
+                id: "route",
+                label: "Ruta de confianza",
+                value: focusedRoute.distanceLabel || focusedRoute.label || "Origen a tap",
+                detail: focusedRoute.evidence || "Movimiento trazado sobre motor vectorial propio",
+                tone: focusedRoute.tone === "warn" ? "risk" : "origin",
+              }
+            : {
+                id: "coverage",
+                label: "Cobertura",
+                value: `${routeCount} rutas activas`,
+                detail: "Heatmap y puntos de lectura listos para auditoria",
+                tone: "loyalty",
+              },
+        ]
+      : [];
+  const mapLedgerItems = ledgerItems.slice(0, 4);
 
   function handlePointKey(event: KeyboardEvent<SVGGElement>, point: VectorMapPoint) {
     if (!onPointSelect) return;
@@ -328,22 +403,44 @@ export function PremiumVectorMap({
             <span className="rounded-full border border-cyan-300/25 bg-cyan-500/12 px-2 py-1 text-cyan-100">{visiblePoints.length} puntos</span>
             <span className="rounded-full border border-emerald-300/25 bg-emerald-500/12 px-2 py-1 text-emerald-100">{routeCount} rutas</span>
             <span className="rounded-full border border-rose-300/25 bg-rose-500/12 px-2 py-1 text-rose-100">{riskCount} riesgo</span>
+            {tokenCount ? <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">{tokenCount} NFT</span> : null}
             <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">sin API paga</span>
           </div>
         </div>
       ) : null}
 
-      {chrome === "full" ? (
-        <div className="absolute bottom-3 left-3 right-3 z-10 grid gap-2 md:grid-cols-[1fr_auto] md:items-end">
+      {chrome === "full" || (chrome === "compact" && mapStorySteps.length) ? (
+        <div className={[
+          "absolute bottom-3 left-3 right-3 z-10 grid gap-2 md:items-end",
+          chrome === "full" ? "md:grid-cols-[minmax(0,1fr)_minmax(16rem,.9fr)_auto]" : "hidden lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(16rem,.9fr)]",
+        ].join(" ")}>
           <div className="rounded-xl border border-white/10 bg-slate-950/78 px-3 py-2 text-xs text-slate-200 shadow-xl backdrop-blur-md">
             <p className="font-semibold text-white">{selectedPoint ? `${selectedPoint.label}${selectedPoint.sublabel ? `, ${selectedPoint.sublabel}` : ""}` : "Sin punto seleccionado"}</p>
             <p className="mt-0.5 text-[11px] text-slate-300">
               {caption || "Mapa vectorial propio para trazabilidad, calor de actividad y rutas de confianza."}
             </p>
           </div>
-          <div className="rounded-xl border border-cyan-300/18 bg-cyan-500/10 px-3 py-2 text-[11px] font-bold text-cyan-100 shadow-xl backdrop-blur-md">
-            {formatMetric(visiblePoints.reduce((sum, point) => sum + (point.scans || 0), 0))} eventos
-          </div>
+          {mapStorySteps.length ? (
+            <div className="grid gap-1.5 rounded-xl border border-white/10 bg-slate-950/72 p-2 shadow-xl backdrop-blur-md sm:grid-cols-2">
+              {mapStorySteps.map((step) => (
+                <div key={step.id} className="min-w-0 rounded-lg border px-2 py-1.5 text-[10px]" style={evidenceStyle(step.tone)}>
+                  <p className="truncate font-black uppercase tracking-[0.12em] opacity-75">{step.label}</p>
+                  <p className="truncate text-[12px] font-semibold text-white">{step.value}</p>
+                  {step.detail ? <p className="line-clamp-2 text-[10px] opacity-80">{step.detail}</p> : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {chrome === "full" ? (
+            <div className="rounded-xl border border-cyan-300/18 bg-cyan-500/10 px-3 py-2 text-[11px] font-bold text-cyan-100 shadow-xl backdrop-blur-md">
+              <p>{formatMetric(totalEvents)} eventos</p>
+              {mapLedgerItems.map((item) => (
+                <p key={item.id} className="mt-1 max-w-[10rem] truncate text-[10px] font-semibold opacity-85" style={{ color: evidenceStyle(item.tone).color }}>
+                  {item.label}: {item.value}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

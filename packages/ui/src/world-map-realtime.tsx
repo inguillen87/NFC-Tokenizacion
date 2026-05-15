@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "./card";
-import { PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "./premium-vector-map";
+import { PremiumVectorMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "./premium-vector-map";
 
 type GeoPoint = {
   city: string;
@@ -25,6 +25,13 @@ function parseEventTime(value?: string) {
   if (!value) return Date.now();
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? Date.now() : parsed;
+}
+
+function compactDateTime(value?: string) {
+  if (!value) return "sin fecha";
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value;
+  return new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(parsed);
 }
 
 export function WorldMapRealtime({
@@ -121,6 +128,45 @@ export function WorldMapRealtime({
     label: route.label,
     tone: route.tone === "warn" ? "warn" : "info",
   })), [visibleRoutes]);
+  const tokenizedSignals = rankedPoints.filter((point) => /TOKEN|MINT|NFT|CLAIM/i.test(`${point.status || ""} ${point.source || ""}`)).length;
+  const mapEvidenceSteps = useMemo<VectorMapEvidenceStep[]>(() => {
+    const firstPoint = rankedPoints[rankedPoints.length - 1] || activePoint;
+    return [
+      {
+        id: "origin",
+        label: "Origen / lote",
+        value: firstPoint ? `${firstPoint.city}, ${firstPoint.country || "--"}` : "sin origen",
+        detail: firstPoint?.vertical || "Primer nodo de trazabilidad disponible",
+        tone: "origin",
+      },
+      {
+        id: "tap",
+        label: "Ultimo tap",
+        value: activePoint ? `${activePoint.city}, ${activePoint.country || "--"}` : "sin tap",
+        detail: activePoint ? `${activePoint.scans || 0} lecturas · ${compactDateTime(activePoint.lastSeen)}` : "Esperando actividad",
+        tone: activePoint && (activePoint.risk || 0) > 0 ? "risk" : "tap",
+      },
+      {
+        id: "token",
+        label: "Token / NFT",
+        value: tokenizedSignals ? `${tokenizedSignals} evidencias` : "listo para emitir",
+        detail: "Vincula UID fisico, ownership y prueba on-chain",
+        tone: "token",
+      },
+      {
+        id: "loyalty",
+        label: "Valor comercial",
+        value: `${totalScans.toLocaleString("es-AR")} eventos`,
+        detail: "Garantia, marketplace, recompra y CRM post-tap",
+        tone: riskSignals > 0 ? "risk" : "loyalty",
+      },
+    ];
+  }, [activePoint, rankedPoints, riskSignals, tokenizedSignals, totalScans]);
+  const mapLedgerItems = useMemo<VectorMapLedgerItem[]>(() => [
+    { id: "routes", label: "Rutas", value: String(visibleRoutes.length), detail: "trazadas en vivo", tone: "origin" },
+    { id: "risk", label: "Riesgo", value: String(riskSignals), detail: "tamper/replay", tone: riskSignals > 0 ? "risk" : "loyalty" },
+    { id: "nft", label: "NFT", value: tokenizedSignals ? "detectado" : "sandbox ready", detail: "ownership", tone: "token" },
+  ], [riskSignals, tokenizedSignals, visibleRoutes.length]);
   const selectedVectorPointId = vectorPoints[activeIndex]?.id || vectorPoints[0]?.id;
   const emptyStateText = riskOnly
     ? "No hay hubs con señales de riesgo para la ventana seleccionada. Desactivá Risk-only o ampliá la ventana temporal."
@@ -169,6 +215,8 @@ export function WorldMapRealtime({
             selectedPointId={selectedVectorPointId}
             density={mapMode === "classic" ? "heat" : "route"}
             heightClassName={expanded ? "h-[34rem]" : "h-[24rem]"}
+            evidenceSteps={mapEvidenceSteps}
+            ledgerItems={mapLedgerItems}
             onPointSelect={(point) => {
               const nextIndex = vectorPoints.findIndex((item) => item.id === point.id);
               if (nextIndex >= 0) {
@@ -178,6 +226,13 @@ export function WorldMapRealtime({
             }}
           />
           <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} space-y-2 overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-2`}>
+            <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-slate-200">
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-cyan-200">Historia del mapa</p>
+              <p className="mt-1 font-semibold text-white">{activePoint.city}, {activePoint.country || "--"}</p>
+              <p className="mt-1 text-[11px] text-slate-300">
+                {activePoint.scans || 0} lecturas, {riskSignals} senales de riesgo y {visibleRoutes.length} rutas listas para explicar origen, token, ownership y acciones comerciales.
+              </p>
+            </div>
             {rankedPoints.slice(0, 30).map((point, index) => (
               <button suppressHydrationWarning
                 key={`${point.city}-${point.country || "--"}-${point.lat}-${point.lng}-${index}`}

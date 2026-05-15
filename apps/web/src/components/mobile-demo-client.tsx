@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Card, PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { Badge, Card, PremiumVectorMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 
 type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consumer_duplicate";
 type ConsumerState = "AUTH_PENDING" | "VALID" | "OPENED" | "TAMPER_RISK" | "CLAIMED" | "REPLAY_SUSPECT";
@@ -239,8 +239,45 @@ export function MobileDemoClient({
     fromLng: WINERY_HQ.lng,
     toLat: geoState.lat,
     toLng: geoState.lng,
+    distanceLabel: distanceFromWinery ? `${distanceFromWinery.toFixed(1)} km` : undefined,
+    evidence: "Origen, punto de lectura y CTA comercial quedan conectados.",
     tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "warn" : "info",
-  }] : [], [consumerState, geoState]);
+  }] : [], [consumerState, distanceFromWinery, geoState]);
+  const mobileMapEvidenceSteps = useMemo<VectorMapEvidenceStep[]>(() => [
+    {
+      id: "origin",
+      label: "Origen",
+      value: WINERY_HQ.name,
+      detail: "Lote, producto y tenant inicial.",
+      tone: "origin",
+    },
+    {
+      id: "tap",
+      label: "Tap actual",
+      value: geoState ? `${geoState.lat.toFixed(3)}, ${geoState.lng.toFixed(3)}` : "Ubicacion pendiente",
+      detail: consumerState === "REPLAY_SUSPECT" ? "Replay bloqueado." : "Lectura verificada para asociar ownership.",
+      tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "tap",
+    },
+    {
+      id: "token",
+      label: "Token / NFT",
+      value: leadIntent === "tokenization_optional" || events.some((item) => item.type.includes("TOKENIZATION")) ? "solicitado" : "listo",
+      detail: "UID fisico + usuario + prueba on-chain.",
+      tone: "token",
+    },
+    {
+      id: "loyalty",
+      label: "Beneficios",
+      value: warrantySaved || leadSaved ? "activados" : "disponibles",
+      detail: "Garantia, recompra, club y marketplace.",
+      tone: "marketplace",
+    },
+  ], [consumerState, events, geoState, leadIntent, leadSaved, warrantySaved]);
+  const mobileMapLedgerItems = useMemo<VectorMapLedgerItem[]>(() => [
+    { id: "distance", label: "Distancia", value: distanceFromWinery ? `${distanceFromWinery.toFixed(1)} km` : "N/A", tone: "origin" },
+    { id: "events", label: "Eventos", value: String(events.length), tone: "tap" },
+    { id: "risk", label: "Riesgo", value: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "bloqueado" : "controlado", tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "loyalty" },
+  ], [consumerState, distanceFromWinery, events.length]);
 
   useEffect(() => {
     const mapped = MODE_STATE[mode] || "VALID";
@@ -522,6 +559,8 @@ export function MobileDemoClient({
                   density="route"
                   heightClassName="h-28"
                   className="rounded-none border-0 shadow-none"
+                  evidenceSteps={mobileMapEvidenceSteps}
+                  ledgerItems={mobileMapLedgerItems}
                 />
               </div>
               <p className="mt-1 text-[10px] text-slate-400">Vista rápida del punto de tap sobre mapa para demo comercial.</p>
@@ -587,24 +626,34 @@ export function MobileDemoClient({
                   selectedPointId={geoState ? "tap" : "origin"}
                   chrome="minimal"
                   density="route"
-                  heightClassName="h-36"
+                  heightClassName="h-44"
                   className="rounded-none border-0 shadow-none"
+                  evidenceSteps={mobileMapEvidenceSteps}
+                  ledgerItems={mobileMapLedgerItems}
                 />
               </div>
-              <div className="mt-2 rounded-lg border border-white/10 bg-slate-950/70 p-2">
-                <div className="h-16 rounded bg-[linear-gradient(130deg,rgba(16,185,129,.20),rgba(14,165,233,.18),rgba(99,102,241,.12))] p-2">
-                  <div className="flex h-full items-center justify-between">
-                    <div className="rounded-full border border-emerald-300/40 bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-100">🏭 Origen</div>
-                    <div className="h-[2px] flex-1 bg-gradient-to-r from-emerald-300/50 to-cyan-300/50" />
-                    <div className={`rounded-full border px-2 py-0.5 text-[10px] ${consumerState === "REPLAY_SUSPECT" ? "border-amber-300/40 bg-amber-500/20 text-amber-100" : "border-cyan-300/40 bg-cyan-500/20 text-cyan-100"}`}>
-                      {consumerState === "REPLAY_SUSPECT" ? "⚠️ Copia detectada" : "📱 Lectura"}
+              <div className="mt-2 rounded-lg border border-cyan-300/15 bg-slate-950/75 p-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {mobileMapEvidenceSteps.map((step) => (
+                    <div key={step.id} className={`rounded-lg border p-2 ${step.tone === "risk" ? "border-rose-300/25 bg-rose-500/10" : step.tone === "token" ? "border-violet-300/25 bg-violet-500/10" : step.tone === "origin" ? "border-emerald-300/25 bg-emerald-500/10" : "border-cyan-300/25 bg-cyan-500/10"}`}>
+                      <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">{step.label}</p>
+                      <p className="mt-0.5 truncate text-[11px] font-semibold text-white">{step.value}</p>
+                      <p className="mt-0.5 line-clamp-2 text-[10px] text-slate-300">{step.detail}</p>
                     </div>
-                  </div>
+                  ))}
                 </div>
-                <p className="mt-1 text-[10px] text-slate-300">
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {mobileMapLedgerItems.map((item) => (
+                    <div key={item.id} className="rounded-lg border border-white/10 bg-slate-900/80 p-2">
+                      <p className="text-[9px] uppercase tracking-[0.12em] text-slate-500">{item.label}</p>
+                      <p className="truncate text-[11px] font-semibold text-cyan-100">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-[10px] text-slate-300">
                   {consumerState === "REPLAY_SUSPECT"
-                    ? "Este payload fue reutilizado fuera del flujo NFC original."
-                    : "Ruta comercial trazada para storytelling de distribución y anti-fraude."}
+                    ? "Payload reutilizado: se bloquean token, ownership y acciones comerciales."
+                    : "Mapa preparado para contar distribucion, token/NFT, ownership y beneficios post-tap."}
                 </p>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./card";
-import { PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "./premium-vector-map";
+import { PremiumVectorMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "./premium-vector-map";
 
 export type GlobalOpsPoint = {
   id: string;
@@ -689,7 +689,46 @@ export function GlobalOpsMap({
     toLng: route.toLng,
     label: route.productName || route.uid,
     tone: route.risk > 0 ? "warn" : "info",
+    distanceLabel: formatDistance(haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng)),
+    evidence: `${route.fromLabel || "Origen"} -> ${route.toLabel || "tap"} · ${route.taps} taps`,
   })), [visibleRoutes]);
+  const tokenizedPointCount = visiblePoints.filter((point) => /TOKEN|MINT|CLAIM|NFT/i.test(`${point.verdict} ${point.productName || ""}`)).length;
+  const mapEvidenceSteps = useMemo<VectorMapEvidenceStep[]>(() => [
+    {
+      id: "origin",
+      label: "Origen",
+      value: selectedJourney?.fromLabel || selectedJourney?.fromPoint?.city || selectedPoint?.city || "Sin origen",
+      detail: selectedJourney?.productName || selectedPoint?.productName || "Lote y producto seleccionados",
+      tone: "origin",
+    },
+    {
+      id: "tap",
+      label: "Tap cliente",
+      value: selectedJourney?.toLabel || (selectedPoint ? `${selectedPoint.city || "Tap"}, ${selectedPoint.country || "--"}` : "Sin tap"),
+      detail: selectedPoint ? `${selectedPoint.scans} lecturas · ${selectedPoint.verdict}` : "Seleccione un punto",
+      tone: selectedPoint && selectedPoint.risk > 0 ? "risk" : "tap",
+    },
+    {
+      id: "token",
+      label: "NFT / ownership",
+      value: tokenizedPointCount ? `${tokenizedPointCount} senales` : "ready",
+      detail: selectedPoint?.uid ? `UID ${selectedPoint.uid}` : "UID fisico vinculado a token",
+      tone: "token",
+    },
+    {
+      id: "commercial",
+      label: "Capa comercial",
+      value: "portal + marketplace",
+      detail: "Garantia, fidelizacion, recompra y CRM post-tap",
+      tone: "marketplace",
+    },
+  ], [selectedJourney, selectedPoint, tokenizedPointCount]);
+  const mapLedgerItems = useMemo<VectorMapLedgerItem[]>(() => [
+    { id: "distance", label: "Dist", value: selectedJourney ? formatDistance(selectedJourney.distanceKm) : "n/a", tone: "origin" },
+    { id: "taps", label: "Taps", value: selectedJourney ? String(selectedJourney.taps) : String(visiblePoints.reduce((sum, point) => sum + point.scans, 0)), tone: "tap" },
+    { id: "risk", label: "Risk", value: String(visiblePoints.filter((point) => point.risk > 0).length), tone: visiblePoints.some((point) => point.risk > 0) ? "risk" : "loyalty" },
+    { id: "nft", label: "NFT", value: tokenizedPointCount ? "activo" : "sandbox", tone: "token" },
+  ], [selectedJourney, tokenizedPointCount, visiblePoints]);
   const kpiCountries = new Set(visiblePoints.map((point) => point.country)).size;
   const replayTamper = visiblePoints.filter((point) => ["REPLAY_SUSPECT", "DUPLICATE", "TAMPER", "TAMPERED"].includes(point.verdict)).length;
 
@@ -914,6 +953,8 @@ export function GlobalOpsMap({
               heightClassName="h-full"
               maxPoints={mode === "global" ? 120 : 64}
               maxRoutes={mode === "global" ? 120 : 72}
+              evidenceSteps={mapEvidenceSteps}
+              ledgerItems={mapLedgerItems}
               onPointSelect={(point) => {
                 const selected = visiblePoints.find((item) => item.id === point.id);
                 if (!selected) return;
