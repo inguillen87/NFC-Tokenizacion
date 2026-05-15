@@ -53,14 +53,108 @@ type MapChrome = "full" | "compact" | "minimal";
 const WIDTH = 1200;
 const HEIGHT = 620;
 
-const LAND_PATHS = [
-  "M155 205 C130 158 165 112 235 94 C312 75 390 91 438 138 C483 181 469 240 418 259 C376 274 367 321 323 334 C275 349 241 315 202 326 C164 337 138 285 155 205 Z",
-  "M322 348 C363 368 390 418 386 466 C382 512 346 552 310 566 C292 520 276 488 280 444 C284 399 292 370 322 348 Z",
-  "M565 132 C612 96 696 103 733 148 C771 194 735 235 674 230 C617 225 552 202 565 132 Z",
-  "M600 253 C666 220 735 250 759 317 C777 368 748 436 699 470 C650 446 621 389 595 338 C578 303 569 270 600 253 Z",
-  "M741 166 C824 111 979 121 1056 196 C1117 256 1071 339 965 335 C899 333 868 371 805 351 C734 329 683 238 741 166 Z",
-  "M905 405 C952 384 1014 401 1044 446 C1011 488 947 501 904 472 C883 458 880 424 905 405 Z",
-  "M103 548 C244 532 373 536 520 548 C660 560 834 552 1092 538 L1115 592 L80 592 Z",
+type AtlasRegionTone = "americas" | "europe" | "africa" | "asia" | "oceania" | "south";
+
+type AtlasRegion = {
+  id: string;
+  name: string;
+  d: string;
+  tone: AtlasRegionTone;
+  opacity: number;
+};
+
+const ATLAS_REGIONS: AtlasRegion[] = [
+  {
+    id: "north-america",
+    name: "North America",
+    tone: "americas",
+    opacity: 0.7,
+    d: "M136 202 C124 163 151 126 202 111 C247 98 296 76 349 101 C401 126 448 151 460 196 C470 233 431 255 384 259 C339 263 330 293 287 309 C237 328 201 310 180 275 C162 247 147 232 136 202 Z",
+  },
+  {
+    id: "central-america",
+    name: "Central America",
+    tone: "americas",
+    opacity: 0.58,
+    d: "M288 296 C327 285 366 295 403 318 C386 340 350 347 313 337 C287 331 266 316 288 296 Z",
+  },
+  {
+    id: "south-america",
+    name: "South America",
+    tone: "americas",
+    opacity: 0.64,
+    d: "M362 340 C414 364 452 416 451 470 C450 522 411 572 365 589 C341 537 312 496 318 445 C323 397 332 365 362 340 Z",
+  },
+  {
+    id: "europe",
+    name: "Europe",
+    tone: "europe",
+    opacity: 0.64,
+    d: "M560 154 C594 119 657 112 704 137 C746 160 745 207 711 230 C678 252 625 240 587 220 C551 201 538 177 560 154 Z",
+  },
+  {
+    id: "africa",
+    name: "Africa",
+    tone: "africa",
+    opacity: 0.62,
+    d: "M601 254 C653 224 718 243 749 300 C778 353 754 427 702 478 C647 456 613 397 590 337 C576 302 572 269 601 254 Z",
+  },
+  {
+    id: "asia",
+    name: "Asia",
+    tone: "asia",
+    opacity: 0.66,
+    d: "M707 162 C783 105 929 112 1034 174 C1117 223 1111 311 1020 337 C959 354 910 330 863 361 C814 394 748 354 718 303 C690 254 665 194 707 162 Z",
+  },
+  {
+    id: "oceania",
+    name: "Oceania",
+    tone: "oceania",
+    opacity: 0.6,
+    d: "M905 423 C950 395 1015 410 1050 451 C1017 499 942 512 899 477 C879 459 878 438 905 423 Z",
+  },
+  {
+    id: "antarctica-shelf",
+    name: "South shelf",
+    tone: "south",
+    opacity: 0.28,
+    d: "M94 552 C232 531 398 538 526 551 C660 564 825 555 1104 538 L1130 600 L76 600 Z",
+  },
+];
+
+const REGION_FILL: Record<AtlasRegionTone, string> = {
+  americas: "#0f766e",
+  europe: "#2563eb",
+  africa: "#059669",
+  asia: "#334155",
+  oceania: "#0e7490",
+  south: "#64748b",
+};
+
+const TERRAIN_LINES = [
+  "M162 195 C221 176 300 165 425 190",
+  "M206 257 C267 246 331 247 399 267",
+  "M332 393 C370 420 392 466 386 522",
+  "M586 190 C626 178 666 180 707 201",
+  "M618 294 C663 309 701 342 729 393",
+  "M734 221 C820 197 925 204 1018 247",
+  "M786 301 C866 292 942 300 1009 327",
+  "M915 453 C952 439 994 443 1030 464",
+];
+
+const OCEAN_LANES = [
+  "M214 378 C342 318 494 305 640 340 C792 376 925 365 1050 304",
+  "M154 256 C318 250 432 282 557 306 C726 338 885 321 1045 245",
+  "M284 530 C425 478 560 456 707 473 C853 489 972 488 1102 455",
+  "M456 174 C536 213 591 248 652 316 C713 384 782 416 880 434",
+];
+
+const ATLAS_LABELS = [
+  { label: "AMERICAS", x: 240, y: 166 },
+  { label: "EUROPE", x: 612, y: 158 },
+  { label: "AFRICA", x: 632, y: 340 },
+  { label: "ASIA", x: 850, y: 190 },
+  { label: "EXPORT LANES", x: 760, y: 516 },
 ];
 
 const CITY_LIGHTS: Array<{ lat: number; lng: number; opacity: number }> = [
@@ -241,17 +335,22 @@ export function PremiumVectorMap({
       <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full" aria-hidden={chrome === "minimal"}>
         <defs>
           <linearGradient id={`${idPrefix}-ocean`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#06243c" />
-            <stop offset="48%" stopColor="#071827" />
-            <stop offset="100%" stopColor="#111136" />
+            <stop offset="0%" stopColor="#061d32" />
+            <stop offset="46%" stopColor="#071523" />
+            <stop offset="100%" stopColor="#0b1026" />
           </linearGradient>
           <linearGradient id={`${idPrefix}-land`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#0f766e" stopOpacity="0.44" />
-            <stop offset="46%" stopColor="#0e7490" stopOpacity="0.34" />
-            <stop offset="100%" stopColor="#312e81" stopOpacity="0.34" />
+            <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.42" />
+            <stop offset="48%" stopColor="#0284c7" stopOpacity="0.24" />
+            <stop offset="100%" stopColor="#1e1b4b" stopOpacity="0.32" />
+          </linearGradient>
+          <linearGradient id={`${idPrefix}-route-band`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#22d3ee" stopOpacity="0" />
+            <stop offset="48%" stopColor="#67e8f9" stopOpacity="0.52" />
+            <stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
           </linearGradient>
           <radialGradient id={`${idPrefix}-vignette`} cx="50%" cy="48%" r="66%">
-            <stop offset="0%" stopColor="rgba(34,211,238,0.16)" />
+            <stop offset="0%" stopColor="rgba(34,211,238,0.2)" />
             <stop offset="58%" stopColor="rgba(15,23,42,0.16)" />
             <stop offset="100%" stopColor="rgba(2,6,23,0.76)" />
           </radialGradient>
@@ -267,15 +366,19 @@ export function PremiumVectorMap({
             <feDropShadow dx="0" dy="10" stdDeviation="13" floodColor="#020617" floodOpacity="0.24" />
           </filter>
           <pattern id={`${idPrefix}-micro-grid`} width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M 60 0 H 0 V 60" fill="none" stroke="rgba(125,211,252,0.09)" strokeWidth="1" />
+            <path d="M 60 0 H 0 V 60" fill="none" stroke="rgba(125,211,252,0.075)" strokeWidth="1" />
+          </pattern>
+          <pattern id={`${idPrefix}-scan-grid`} width="18" height="18" patternUnits="userSpaceOnUse">
+            <path d="M 18 0 H 0 V 18" fill="none" stroke="rgba(148,163,184,0.08)" strokeWidth="0.6" />
           </pattern>
         </defs>
 
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-ocean)`} />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-micro-grid)`} opacity="0.8" />
+        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-scan-grid)`} opacity={density === "route" ? "0.34" : "0.24"} />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-vignette)`} />
 
-        <g opacity="0.72">
+        <g opacity="0.64">
           {PARALLELS.map((lat) => {
             const y = project(lat, 0).y;
             return <line key={`lat-${lat}`} x1="58" x2={WIDTH - 58} y1={y} y2={y} stroke="rgba(125,211,252,0.12)" strokeWidth="1.1" strokeDasharray="8 14" />;
@@ -286,12 +389,66 @@ export function PremiumVectorMap({
           })}
         </g>
 
-        <g filter={`url(#${idPrefix}-land-shadow)`}>
-          {LAND_PATHS.map((path, index) => (
-            <path key={`land-${index}`} d={path} fill={`url(#${idPrefix}-land)`} stroke="rgba(186,230,253,0.18)" strokeWidth="1.6" />
+        <g opacity={density === "route" ? "0.54" : "0.72"}>
+          {OCEAN_LANES.map((path, index) => (
+            <path
+              key={`ocean-lane-${index}`}
+              d={path}
+              fill="none"
+              stroke={`url(#${idPrefix}-route-band)`}
+              strokeWidth={index === 0 ? "9" : "6"}
+              strokeLinecap="round"
+              opacity={index === 0 ? "0.58" : "0.34"}
+            />
           ))}
-          {LAND_PATHS.slice(0, 6).map((path, index) => (
-            <path key={`coast-${index}`} d={path} fill="none" stroke="rgba(226,232,240,0.12)" strokeWidth="4" opacity="0.36" />
+        </g>
+
+        <g filter={`url(#${idPrefix}-land-shadow)`}>
+          {ATLAS_REGIONS.map((region) => (
+            <g key={region.id}>
+              <path
+                d={region.d}
+                fill={REGION_FILL[region.tone]}
+                opacity={region.opacity}
+                stroke="rgba(186,230,253,0.28)"
+                strokeWidth="1.2"
+              />
+              <path d={region.d} fill={`url(#${idPrefix}-land)`} opacity="0.64" />
+              <path d={region.d} fill="none" stroke="rgba(226,232,240,0.22)" strokeWidth="3.2" opacity="0.28" />
+            </g>
+          ))}
+          <g opacity="0.38">
+            {TERRAIN_LINES.map((path, index) => (
+              <path
+                key={`terrain-${index}`}
+                d={path}
+                fill="none"
+                stroke={index % 2 === 0 ? "rgba(103,232,249,0.38)" : "rgba(45,212,191,0.3)"}
+                strokeWidth="1.1"
+                strokeLinecap="round"
+                strokeDasharray={index % 2 === 0 ? "5 8" : "2 7"}
+              />
+            ))}
+          </g>
+        </g>
+
+        <g opacity={chrome === "minimal" ? "0.28" : "0.42"}>
+          {ATLAS_LABELS.map((item) => (
+            <text
+              key={item.label}
+              x={item.x}
+              y={item.y}
+              fill="#bae6fd"
+              fontSize="15"
+              fontWeight="900"
+              letterSpacing="4"
+              opacity="0.58"
+              paintOrder="stroke"
+              stroke="rgba(2,6,23,0.7)"
+              strokeWidth="5"
+            >
+              {item.label}
+            </text>
           ))}
         </g>
 
@@ -336,15 +493,29 @@ export function PremiumVectorMap({
             const d = routePath(route);
             const color = routeColor(route.tone);
             const speed = route.tone === "warn" ? "2.1s" : "3.2s";
+            const from = project(route.fromLat, route.fromLng);
+            const to = project(route.toLat, route.toLng);
+            const labelX = (from.x + to.x) / 2;
+            const labelY = Math.min(from.y, to.y) - 28;
+            const label = route.distanceLabel || route.label;
             return (
               <g key={route.id}>
-                <path d={d} fill="none" stroke="#020617" strokeWidth={route.tone === "warn" ? "12" : "10"} strokeLinecap="round" opacity="0.5" />
-                <path d={d} fill="none" stroke={color} strokeWidth={route.tone === "warn" ? "4.4" : "3.6"} strokeLinecap="round" strokeDasharray="11 13" opacity="0.92" filter={`url(#${idPrefix}-soft-glow)`}>
+                <path d={d} fill="none" stroke="#020617" strokeWidth={route.tone === "warn" ? "15" : "13"} strokeLinecap="round" opacity="0.48" />
+                <path d={d} fill="none" stroke={color} strokeWidth={route.tone === "warn" ? "6" : "5"} strokeLinecap="round" opacity="0.2" filter={`url(#${idPrefix}-soft-glow)`} />
+                <path d={d} fill="none" stroke={color} strokeWidth={route.tone === "warn" ? "3.4" : "2.8"} strokeLinecap="round" strokeDasharray="11 13" opacity="0.96" filter={`url(#${idPrefix}-soft-glow)`}>
                   <animate attributeName="stroke-dashoffset" values="0;-72" dur={speed} repeatCount="indefinite" />
                 </path>
                 <circle r={route.tone === "warn" ? "5" : "4"} fill={color} opacity={index > 9 ? "0.45" : "0.9"}>
                   <animateMotion dur={route.tone === "warn" ? "4.2s" : "5.5s"} repeatCount="indefinite" path={d} />
                 </circle>
+                {label && chrome !== "minimal" ? (
+                  <g transform={`translate(${labelX.toFixed(1)} ${labelY.toFixed(1)})`} opacity={index > 6 ? "0.68" : "0.92"}>
+                    <rect x="-58" y="-14" width="116" height="27" rx="13.5" fill="rgba(2,6,23,0.74)" stroke={color} strokeOpacity="0.32" />
+                    <text x="0" y="4" textAnchor="middle" fill="#e0f2fe" fontSize="12" fontWeight="850" letterSpacing="1.4">
+                      {label}
+                    </text>
+                  </g>
+                ) : null}
               </g>
             );
           })}
@@ -356,7 +527,7 @@ export function PremiumVectorMap({
             const tone = toneFor(point);
             const color = pointColor(tone);
             const selected = selectedPoint?.id === point.id;
-            const radius = selected ? 11 : tone === "origin" || tone === "tap" ? 8.5 : 6.5;
+            const radius = selected ? 10 : tone === "origin" || tone === "tap" ? 8 : 6.2;
             const shouldLabel = selected || tone === "origin" || tone === "tap" || tone === "risk";
             return (
               <g
@@ -372,20 +543,15 @@ export function PremiumVectorMap({
                   <animate attributeName="r" values={`${radius + 5};${radius + 18};${radius + 5}`} dur={selected ? "2.1s" : "3.4s"} repeatCount="indefinite" />
                   <animate attributeName="opacity" values="0.75;0.12;0.75" dur={selected ? "2.1s" : "3.4s"} repeatCount="indefinite" />
                 </circle>
+                <circle cx={dot.x} cy={dot.y} r={radius + 3} fill="rgba(2,6,23,0.7)" stroke={color} strokeWidth="1.2" />
                 <circle cx={dot.x} cy={dot.y} r={radius} fill={color} stroke="#f8fafc" strokeWidth={selected ? "3" : "2"} filter={`url(#${idPrefix}-soft-glow)`} />
                 {shouldLabel ? (
-                  <text
-                    x={dot.x + 15}
-                    y={dot.y - 12}
-                    fill="#e0f2fe"
-                    fontSize={selected ? "20" : "16"}
-                    fontWeight="850"
-                    paintOrder="stroke"
-                    stroke="rgba(2,6,23,0.86)"
-                    strokeWidth="5"
-                  >
-                    {point.label}
-                  </text>
+                  <g transform={`translate(${dot.x + 16} ${dot.y - 18})`}>
+                    <rect x="0" y="-18" width={Math.max(70, Math.min(155, point.label.length * 8 + 24))} height="28" rx="14" fill="rgba(2,6,23,0.7)" stroke={color} strokeOpacity="0.28" />
+                    <text x="12" y="1" fill="#e0f2fe" fontSize={selected ? "13" : "12"} fontWeight="850" paintOrder="stroke" stroke="rgba(2,6,23,0.42)" strokeWidth="2">
+                      {point.label}
+                    </text>
+                  </g>
                 ) : null}
               </g>
             );

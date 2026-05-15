@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
-import { WorldMapRealtime } from "@product/ui";
+import { PremiumVectorMap, WorldMapRealtime } from "@product/ui";
 import { BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
 
 type Role = "ceo" | "operator" | "buyer";
@@ -1901,54 +1901,50 @@ function StageRouteLayer({
   scenario: DemoScenario;
   locale: AppLocale;
 }) {
-  const routeStroke = scenario.tone === "risk" ? "#fb7185" : scenario.tone === "open" ? "#fbbf24" : "#22d3ee";
-  const routeD = "M190 274 C280 138 425 96 566 132";
+  const routeTone = scenario.tone === "risk" ? "warn" : scenario.tone === "open" ? "success" : "info";
 
   return (
     <div className={`demo-lab-stage-route-layer demo-lab-stage-route-layer--${scenario.tone}`} aria-hidden="true">
-      <svg viewBox="0 0 700 420" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <linearGradient id="demo-lab-atlas-ocean" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#06243c" />
-            <stop offset="55%" stopColor="#071827" />
-            <stop offset="100%" stopColor="#111136" />
-          </linearGradient>
-          <linearGradient id="demo-lab-atlas-land" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#0f766e" stopOpacity="0.42" />
-            <stop offset="50%" stopColor="#0e7490" stopOpacity="0.34" />
-            <stop offset="100%" stopColor="#312e81" stopOpacity="0.35" />
-          </linearGradient>
-          <filter id="demo-lab-atlas-glow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <rect x="0" y="0" width="700" height="420" fill="url(#demo-lab-atlas-ocean)" opacity="0.82" />
-        <path className="demo-lab-map-grid" d="M52 74 H648 M52 142 H648 M52 210 H648 M52 278 H648 M52 346 H648 M104 44 V376 M206 44 V376 M350 44 V376 M494 44 V376 M596 44 V376" />
-        <path className="demo-lab-map-ridge" d="M55 340 C120 306 186 327 249 290 S376 204 456 218 S573 270 664 236" />
-        <path className="demo-lab-map-ridge demo-lab-map-ridge--secondary" d="M44 120 C116 94 187 122 260 106 S398 56 488 88 S593 132 666 112" />
-        <path className="demo-lab-map-land demo-lab-map-land--origin" d="M68 316 C129 265 150 192 218 145 C286 99 378 101 417 163 C461 234 397 310 303 335 C216 358 134 346 68 316Z" />
-        <path className="demo-lab-map-land demo-lab-map-land--tap" d="M438 74 C533 34 653 83 675 179 C699 281 587 356 496 314 C405 272 373 133 438 74Z" />
-        <path className="demo-lab-map-land" d="M312 356 C382 338 452 354 523 386 L496 417 H265 C274 391 288 367 312 356Z" />
-        <path className="demo-lab-map-coastline" d="M73 309 C144 250 166 170 235 130 C310 88 390 113 419 178 M440 82 C532 42 648 88 672 180 M316 357 C390 340 458 358 524 388" />
-        <circle className="demo-lab-route-heat demo-lab-route-heat--origin" cx="190" cy="274" r="64" />
-        <circle className="demo-lab-route-heat demo-lab-route-heat--tap" cx="566" cy="132" r="76" />
-        <circle className="demo-lab-map-city" cx="190" cy="274" r="3" />
-        <circle className="demo-lab-map-city" cx="279" cy="206" r="2.6" />
-        <circle className="demo-lab-map-city" cx="442" cy="154" r="2.8" />
-        <circle className="demo-lab-map-city" cx="566" cy="132" r="3.2" />
-        <path className="demo-lab-route-ghost" d={routeD} />
-        <path className="demo-lab-route-line" d={routeD} style={{ stroke: routeStroke }} />
-        <circle className="demo-lab-route-particle" r="5" fill={routeStroke}>
-          <animateMotion dur="4.4s" repeatCount="indefinite" path={routeD} />
-        </circle>
-        <circle className="demo-lab-route-dot demo-lab-route-dot--origin" cx="190" cy="274" r="10" />
-        <circle className="demo-lab-route-dot demo-lab-route-dot--tap" cx="566" cy="132" r="10" />
-        <circle className="demo-lab-route-ping" cx={scenario.tone === "risk" ? "356" : "566"} cy={scenario.tone === "risk" ? "150" : "132"} r="14" />
-      </svg>
+      <PremiumVectorMap
+        points={[
+          {
+            id: "origin",
+            label: LOCATIONS.origin.city,
+            sublabel: LOCATIONS.origin.country,
+            lat: LOCATIONS.origin.lat,
+            lng: LOCATIONS.origin.lng,
+            scans: 1,
+            tone: "origin",
+            stageLabel: txt.controls.origin,
+          },
+          {
+            id: "tap",
+            label: destination.city,
+            sublabel: destination.country,
+            lat: destination.lat,
+            lng: destination.lng,
+            scans: scenario.tone === "risk" ? 4 : 2,
+            tone: scenario.tone === "risk" ? "risk" : "tap",
+            stageLabel: txt.controls.currentTap,
+            evidence: scenario.stateLabel,
+          },
+        ]}
+        routes={[{
+          id: "stage-route",
+          fromLat: LOCATIONS.origin.lat,
+          fromLng: LOCATIONS.origin.lng,
+          toLat: destination.lat,
+          toLng: destination.lng,
+          tone: routeTone,
+          distanceLabel: `${routeKm.toLocaleString(locale)} km`,
+          evidence: scenario.stateLabel,
+        }]}
+        selectedPointId="tap"
+        chrome="minimal"
+        density="route"
+        heightClassName="h-full"
+        className="demo-lab-stage-vector-map h-full rounded-none border-0 shadow-none"
+      />
       <span className="demo-lab-route-chip demo-lab-route-chip--origin"><small>{txt.controls.origin}</small>{LOCATIONS.origin.city}</span>
       <span className="demo-lab-route-chip demo-lab-route-chip--tap"><small>{txt.controls.currentTap}</small>{destination.city}</span>
       <span className="demo-lab-route-distance">{routeKm.toLocaleString(locale)} km</span>

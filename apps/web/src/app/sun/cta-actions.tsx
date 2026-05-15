@@ -21,6 +21,7 @@ type CallResponse = {
   error?: string;
   code?: string;
   mode?: string;
+  deliveryChannel?: string;
   ttlMinutes?: number;
   next_step?: string;
   consumer?: Record<string, unknown>;
@@ -51,6 +52,18 @@ const SECURITY_GATED_ACTIONS = new Set<ActionKey>(["claimOwnership", "registerWa
 function normalizeUnknownError(error: unknown) {
   if (error instanceof Error && error.message.trim()) return error.message;
   return "No se pudo completar la acción por un problema de conexión. Reintentá en unos segundos.";
+}
+
+function normalizeClaimAuthError(error: unknown) {
+  const message = normalizeUnknownError(error);
+  if (message.includes("email_contact_required")) return "Este modo envia codigos por email. Usa un email valido o activa SMS/WhatsApp para telefonos.";
+  if (message.includes("phone_contact_required")) return "Este modo envia codigos a celular. Usa un telefono con codigo de pais o cambia a email OTP.";
+  if (message.includes("resend_api_key_missing") || message.includes("consumer_auth_from_email_missing")) return "Falta configurar el envio de emails OTP. Carga RESEND_API_KEY y CONSUMER_AUTH_FROM_EMAIL en el API.";
+  if (message.includes("twilio_credentials_missing") || message.includes("twilio_sender_missing")) return "Falta configurar Twilio SMS/WhatsApp. Carga TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y un sender.";
+  if (message.includes("twilio_delivery_failed")) return "Twilio no pudo entregar el codigo. Revisa que el numero este en formato internacional y habilitado para pruebas.";
+  if (message.includes("resend_delivery_failed")) return "No se pudo enviar el email OTP. Revisa dominio/from verificado en Resend.";
+  if (message.includes("rate_limited")) return "Demasiados intentos. Espera unos minutos y volve a probar.";
+  return message;
 }
 
 function labelPolicy(value?: string | null) {
@@ -491,11 +504,16 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       setClaimAuthStarted(true);
       setClaimAuthMode(String(data.mode || "otp"));
       setClaimDemoCode(String(data.code || ""));
+      const channel = String(data.deliveryChannel || (claimContactLooksEmail ? "email" : "sms"));
       setClaimAuthMessage(data.code
         ? `Codigo demo enviado: ${String(data.code)}`
-        : "Codigo enviado. Ingresalo para asociar este producto a tu Passport.");
+        : channel === "email"
+          ? "Codigo enviado por email. Ingresalo para asociar este producto a tu Passport."
+          : channel === "whatsapp"
+            ? "Codigo enviado por WhatsApp. Ingresalo para asociar este producto a tu Passport."
+            : "Codigo enviado por SMS. Ingresalo para asociar este producto a tu Passport.");
     } catch (error) {
-      setClaimAuthError(normalizeUnknownError(error));
+      setClaimAuthError(normalizeClaimAuthError(error));
     } finally {
       setClaimAuthLoading(false);
     }
@@ -523,7 +541,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         : "Identidad verificada. Reintentando claim de ownership con este tap fresco.");
       void trigger("/api/public-cta/claim-ownership", "POST", "claimOwnership");
     } catch (error) {
-      setClaimAuthError(normalizeUnknownError(error));
+      setClaimAuthError(normalizeClaimAuthError(error));
     } finally {
       setClaimAuthLoading(false);
     }

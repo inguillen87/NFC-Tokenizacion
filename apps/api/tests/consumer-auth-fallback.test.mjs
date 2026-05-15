@@ -22,3 +22,13 @@ test('auth hotfix migration provides minimum users + consumer_auth_challenges ta
   assert.match(migration, /CREATE TABLE IF NOT EXISTS users/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS consumer_auth_challenges/);
 });
+
+test('consumer auth provider supports email, sms and whatsapp delivery modes', () => {
+  const content = fs.readFileSync(path.join(repoRoot, 'apps/api/src/lib/consumer-auth-provider.ts'), 'utf8');
+  assert.match(content, /class ResendEmailOtpProvider/);
+  assert.match(content, /class TwilioOtpProvider/);
+  assert.match(content, /CONSUMER_AUTH_MODE/);
+  assert.match(content, /CONSUMER_PHONE_OTP_CHANNEL/);
+  assert.match(content, /TWILIO_ACCOUNT_SID/);
+  assert.match(content, /RESEND_API_KEY/);
+});

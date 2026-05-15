@@ -2655,12 +2655,10 @@ html.theme-light .sun-priority-panel a {
   place-items: center;
   border-radius: 1.2rem;
   background:
-    radial-gradient(circle at 24% 48%, rgba(20, 184, 166, 0.24), transparent 24%),
-    radial-gradient(circle at 72% 42%, rgba(59, 130, 246, 0.22), transparent 25%),
-    radial-gradient(circle at 50% 58%, rgba(34, 211, 238, 0.2), transparent 28%),
-    linear-gradient(135deg, rgba(8, 47, 73, 0.94), rgba(15, 23, 42, 0.9) 50%, rgba(30, 27, 75, 0.82)),
-    repeating-linear-gradient(0deg, rgba(125, 211, 252, 0.1) 0 1px, transparent 1px 18%),
-    repeating-linear-gradient(90deg, rgba(125, 211, 252, 0.08) 0 1px, transparent 1px 16%);
+    radial-gradient(circle at 50% 48%, rgba(34, 211, 238, 0.16), transparent 32%),
+    radial-gradient(circle at 18% 26%, rgba(20, 184, 166, 0.13), transparent 24%),
+    radial-gradient(circle at 80% 66%, rgba(99, 102, 241, 0.13), transparent 27%),
+    linear-gradient(135deg, rgba(3, 17, 31, 0.98), rgba(7, 24, 39, 0.96) 48%, rgba(12, 14, 36, 0.92));
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
   box-shadow:
@@ -2672,22 +2670,27 @@ html.theme-light .sun-priority-panel a {
 .hero-object-frame::before {
   content: "";
   position: absolute;
-  z-index: 1;
-  inset: 1.1rem;
-  border-radius: 999px;
-  border: 1px dashed rgba(125, 211, 252, 0.22);
+  z-index: 2;
+  inset: 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(125, 211, 252, 0.1);
+  background:
+    linear-gradient(90deg, transparent 0 49.9%, rgba(125, 211, 252, 0.09) 50%, transparent 50.1% 100%),
+    linear-gradient(180deg, transparent 0 49.9%, rgba(125, 211, 252, 0.08) 50%, transparent 50.1% 100%);
+  opacity: 0.65;
+  pointer-events: none;
 }
 
 .hero-object-frame::after {
   content: "";
   position: absolute;
   inset: 1.8rem;
-  z-index: 1;
+  z-index: 2;
   border-radius: 1.4rem;
   background:
-    linear-gradient(90deg, transparent 0 22%, rgba(125, 211, 252, 0.12) 22.2% 22.6%, transparent 22.8% 100%),
-    linear-gradient(180deg, transparent 0 42%, rgba(125, 211, 252, 0.1) 42.2% 42.6%, transparent 42.8% 100%);
-  opacity: 0.55;
+    radial-gradient(ellipse at center, transparent 0 48%, rgba(125, 211, 252, 0.12) 48.4% 48.8%, transparent 49.2% 100%),
+    radial-gradient(ellipse at center, transparent 0 67%, rgba(45, 212, 191, 0.09) 67.2% 67.6%, transparent 68% 100%);
+  opacity: 0.5;
   pointer-events: none;
 }
 
@@ -2705,9 +2708,9 @@ html.theme-light .sun-priority-panel a {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 22% 28%, rgba(34, 211, 238, 0.22), transparent 18%),
-    radial-gradient(circle at 76% 58%, rgba(16, 185, 129, 0.16), transparent 20%),
-    linear-gradient(135deg, rgba(14, 116, 144, 0.12), rgba(15, 23, 42, 0.04));
+    radial-gradient(circle at 23% 29%, rgba(34, 211, 238, 0.16), transparent 20%),
+    radial-gradient(circle at 78% 58%, rgba(16, 185, 129, 0.11), transparent 23%),
+    linear-gradient(135deg, rgba(14, 116, 144, 0.08), rgba(15, 23, 42, 0.02));
 }
 
 .hero-trace-map svg {
@@ -2813,11 +2816,12 @@ html.theme-light .sun-priority-panel a {
   z-index: 3;
   max-width: 8rem;
   transform: translate(-50%, -100%);
-  border-radius: 0.72rem;
-  border: 1px solid rgba(125, 211, 252, 0.18);
-  background: rgba(2, 6, 23, 0.62);
-  padding: 0.34rem 0.45rem;
-  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.22);
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  background: rgba(2, 6, 23, 0.74);
+  padding: 0.3rem 0.56rem 0.34rem;
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.3), 0 0 22px rgba(34, 211, 238, 0.16);
+  backdrop-filter: blur(10px);
 }
 
 .hero-map-pin span,
@@ -2839,7 +2843,7 @@ html.theme-light .sun-priority-panel a {
 .hero-map-pin strong {
   margin-top: 0.08rem;
   color: #f8fafc;
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   line-height: 1.15;
 }
 
@@ -2849,6 +2853,107 @@ html.theme-light .sun-priority-panel a {
 
 .hero-map-pin--tap span {
   color: #86efac;
+}
+
+.hero-map-intel {
+  position: absolute;
+  z-index: 3;
+  left: 0.75rem;
+  top: 0.75rem;
+  width: min(13.5rem, calc(100% - 1.5rem));
+  border-radius: 0.95rem;
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  background: rgba(2, 6, 23, 0.68);
+  padding: 0.66rem 0.72rem;
+  box-shadow: 0 16px 36px rgba(2, 6, 23, 0.28);
+  backdrop-filter: blur(12px);
+}
+
+.hero-map-intel p,
+.hero-map-intel strong,
+.hero-map-intel span {
+  display: block;
+}
+
+.hero-map-intel p {
+  color: #67e8f9;
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero-map-intel strong {
+  margin-top: 0.16rem;
+  color: #f8fafc;
+  font-size: 0.82rem;
+  line-height: 1.08;
+}
+
+.hero-map-intel span {
+  margin-top: 0.16rem;
+  color: #cbd5e1;
+  font-size: 0.6rem;
+  line-height: 1.25;
+}
+
+.hero-map-event-stack {
+  position: absolute;
+  z-index: 3;
+  right: 0.75rem;
+  top: 0.75rem;
+  display: grid;
+  width: min(13.8rem, 38%);
+  gap: 0.38rem;
+}
+
+.hero-map-event {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.48rem;
+  align-items: center;
+  border-radius: 0.78rem;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  background: rgba(2, 6, 23, 0.6);
+  padding: 0.46rem 0.54rem;
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.22);
+  backdrop-filter: blur(10px);
+}
+
+.hero-map-event i {
+  grid-row: span 2;
+  display: grid;
+  width: 1.38rem;
+  height: 1.38rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+  font-size: 0.55rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.hero-map-event span,
+.hero-map-event strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-map-event span {
+  color: #67e8f9;
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.hero-map-event strong {
+  color: #f8fafc;
+  font-size: 0.6rem;
+  line-height: 1.1;
 }
 
 .hero-trace-caption {
@@ -2862,6 +2967,39 @@ html.theme-light .sun-priority-panel a {
   background: rgba(2, 6, 23, 0.64);
   padding: 0.62rem 0.7rem;
   backdrop-filter: blur(10px);
+}
+
+.hero-map-data-strip {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 3.05rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: min(20rem, 54%);
+  transform: translateX(-50%);
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  background: rgba(2, 6, 23, 0.62);
+  box-shadow: 0 16px 36px rgba(2, 6, 23, 0.26);
+  backdrop-filter: blur(12px);
+}
+
+.hero-map-data-strip span {
+  min-width: 0;
+  padding: 0.38rem 0.42rem;
+  color: #cbd5e1;
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hero-map-data-strip span + span {
+  border-left: 1px solid rgba(125, 211, 252, 0.12);
 }
 
 .hero-trace-caption p,
@@ -3379,6 +3517,9 @@ html.theme-light .hero-trace-map__route {
 }
 
 html.theme-light .hero-map-pin,
+html.theme-light .hero-map-intel,
+html.theme-light .hero-map-event,
+html.theme-light .hero-map-data-strip,
 html.theme-light .hero-trace-caption {
   background: rgba(255, 255, 255, 0.78);
   border-color: rgba(14, 165, 233, 0.24);
@@ -3386,12 +3527,21 @@ html.theme-light .hero-trace-caption {
 }
 
 html.theme-light .hero-map-pin strong,
+html.theme-light .hero-map-intel strong,
+html.theme-light .hero-map-event strong,
 html.theme-light .hero-trace-caption strong {
   color: #0f172a;
 }
 
+html.theme-light .hero-map-intel span,
+html.theme-light .hero-map-data-strip span,
 html.theme-light .hero-trace-caption span {
   color: #475569;
+}
+
+html.theme-light .hero-map-event i {
+  background: rgba(14, 165, 233, 0.12);
+  color: #075985;
 }
 
 html.theme-light .hero-origin-link {
@@ -4716,6 +4866,22 @@ html.theme-light .risk-stack-link {
 
   .hero-map-pin {
     max-width: 6.6rem;
+  }
+
+  .hero-map-intel {
+    left: 0.55rem;
+    top: 0.55rem;
+    width: min(12.6rem, calc(100% - 1.1rem));
+    padding: 0.52rem 0.58rem;
+  }
+
+  .hero-map-intel strong {
+    font-size: 0.72rem;
+  }
+
+  .hero-map-event-stack,
+  .hero-map-data-strip {
+    display: none;
   }
 
   .hero-trace-caption {

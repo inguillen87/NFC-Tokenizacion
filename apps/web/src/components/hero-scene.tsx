@@ -434,9 +434,16 @@ function HeroTraceMap({
 }) {
   const originPoint = projectMapPoint(origin);
   const tapPoint = projectMapPoint(tap);
-  const midX = (originPoint.x + tapPoint.x) / 2;
-  const controlY = Math.min(originPoint.y, tapPoint.y) - 18;
-  const routePath = `M ${originPoint.x} ${originPoint.y} Q ${midX} ${controlY} ${tapPoint.x} ${tapPoint.y}`;
+  const formattedDistance = distance.toLocaleString(numberLocale);
+  const routeHeadline = txt.routeTitle === "Trust route" ? "Live route" : txt.routeTitle.startsWith("Rota") ? "Rota viva" : "Ruta viva";
+  const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque fisico" : "Tap fisico";
+  const ownerCopy = txt.routeTitle === "Trust route" ? "Owner claim" : txt.routeTitle.startsWith("Rota") ? "Claim de dono" : "Claim de dueno";
+  const dataRows = [
+    { label: txt.originMap, value: `${origin.city}, ${origin.country}` },
+    { label: tapCopy, value: `${tap.city}, ${tap.country}` },
+    { label: "CRM", value: "pais / ciudad / canal" },
+    { label: "NFT", value: ownerCopy },
+  ];
 
   return (
     <div className="hero-trace-map" aria-label={txt.routeTitle}>
@@ -445,13 +452,27 @@ function HeroTraceMap({
           { id: "origin", label: origin.city, sublabel: origin.country, lat: origin.lat, lng: origin.lng, scans: 1, tone: "origin" },
           { id: "tap", label: tap.city, sublabel: tap.country, lat: tap.lat, lng: tap.lng, scans: 1, tone: "tap" },
         ]}
-        routes={[{ id: "hero-route", fromLat: origin.lat, fromLng: origin.lng, toLat: tap.lat, toLng: tap.lng, tone: "info" }]}
+        routes={[{
+          id: "hero-route",
+          fromLat: origin.lat,
+          fromLng: origin.lng,
+          toLat: tap.lat,
+          toLng: tap.lng,
+          tone: "info",
+          distanceLabel: `${formattedDistance} km`,
+          evidence: txt.custody,
+        }]}
         selectedPointId="tap"
         chrome="minimal"
         density="route"
         heightClassName="h-full"
         className="h-full rounded-none border-0 shadow-none"
       />
+      <div className="hero-map-intel">
+        <p>{routeHeadline}</p>
+        <strong>{origin.city} / {tap.city}</strong>
+        <span>{formattedDistance} km con evidencia de tap y canal.</span>
+      </div>
       <div className="hero-map-pin hero-map-pin--origin" style={{ left: `${originPoint.x}%`, top: `${originPoint.y}%` }}>
         <span>{txt.originMap}</span>
         <strong>{origin.city}</strong>
@@ -460,10 +481,25 @@ function HeroTraceMap({
         <span>{txt.tapMap}</span>
         <strong>{tap.city}</strong>
       </div>
+      <div className="hero-map-event-stack" aria-hidden="true">
+        {dataRows.map((row, index) => (
+          <div className="hero-map-event" key={`${row.label}-${index}`}>
+            <i>{String(index + 1).padStart(2, "0")}</i>
+            <span>{row.label}</span>
+            <strong>{row.value}</strong>
+          </div>
+        ))}
+      </div>
       <div className="hero-trace-caption">
         <p>{txt.routeTitle}</p>
-        <strong>{distance.toLocaleString(numberLocale)} km</strong>
+        <strong>{formattedDistance} km</strong>
         <span>{txt.custody}</span>
+      </div>
+      <div className="hero-map-data-strip" aria-hidden="true">
+        <span>UID hash</span>
+        <span>lote</span>
+        <span>SUN</span>
+        <span>owner data</span>
       </div>
       <a className="hero-origin-link" href={mapsHref(origin)} target="_blank" rel="noreferrer">
         {txt.openOriginMap}

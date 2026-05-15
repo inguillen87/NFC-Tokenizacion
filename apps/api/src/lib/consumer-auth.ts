@@ -38,6 +38,20 @@ function audit(event: string, payload: Record<string, unknown>) {
   console.log("[consumer_auth_audit]", JSON.stringify({ event, ...payload, at: new Date().toISOString() }));
 }
 
+function normalizeOtpDeliveryError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  if (message.includes("email_contact_required")) return "email_contact_required";
+  if (message.includes("resend_api_key_missing")) return "resend_api_key_missing";
+  if (message.includes("consumer_auth_from_email_missing")) return "consumer_auth_from_email_missing";
+  if (message.includes("twilio_credentials_missing")) return "twilio_credentials_missing";
+  if (message.includes("twilio_sender_missing")) return "twilio_sender_missing";
+  if (message.includes("phone_contact_required")) return "phone_contact_required";
+  if (message.includes("twilio_delivery_failed")) return "twilio_delivery_failed";
+  if (message.includes("resend_delivery_failed")) return "resend_delivery_failed";
+  if (message.includes("otp_provider_api_key_missing")) return "otp_provider_api_key_missing";
+  return "otp_delivery_failed";
+}
+
 export type ConsumerAuthDemoPayload = {
   demoConsumer?: unknown;
   consumerMode?: unknown;
@@ -105,7 +119,13 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
     VALUES (${contact}, ${sha(code)}, now() + (${expiresMinutes} || ' minutes')::interval, 0, ${OTP_MAX_ATTEMPTS}, null, ${sha(ip)})
   `;
 
-  await resolveConsumerOtpProvider().sendOtp({ contact, code, ttlMinutes: expiresMinutes });
+  try {
+    await resolveConsumerOtpProvider().sendOtp({ contact, code, ttlMinutes: expiresMinutes });
+  } catch (error) {
+    const reason = normalizeOtpDeliveryError(error);
+    audit("consumer_auth_delivery_fail", { contact, ip, mode: process.env.CONSUMER_AUTH_MODE || "demo", reason });
+    return { ok: false as const, error: reason };
+  }
   audit("consumer_auth_start", { contact, ip, mode: process.env.CONSUMER_AUTH_MODE || "demo" });
   return { ok: true as const, code, challengeTtlMinutes: expiresMinutes };
 }
