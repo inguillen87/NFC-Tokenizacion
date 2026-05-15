@@ -17,13 +17,28 @@ type MotionFormat = {
   beats: string[];
 };
 
+type MotionLens = {
+  label: string;
+  title: string;
+  body: string;
+  signal: string;
+};
+
+type ProductStory = {
+  title: string;
+  body: string;
+  seal: string;
+};
+
 type MotionCopy = {
   metadata: { title: string; description: string; ogDescription: string };
   benchmark: Array<{ source: string; move: string; upgrade: string; href: string }>;
   formats: MotionFormat[];
   productLabels: Record<ProductKey, string>;
-  productCardBody: string;
+  productCards: Record<ProductKey, ProductStory>;
   hero: { kicker: string; title: string; body: string; back: string; formats: string; cardTitle: string; cardBody: string; chips: string[]; status: string };
+  director: { label: string; title: string; body: string; lensTitle: string; verdict: string };
+  lenses: MotionLens[];
   sections: { benchmark: string; benchmarkTitle: string; formats: string; formatsTitle: string; products: string; productsTitle: string; storyboard: string; storyboardTitle: string };
   purpose: { label: string; title: string; body: string; cards: Array<{ title: string; body: string }> };
   frame: { route: string[]; nfcOk: string; chainOk: string; passport: string; tokenTitles: string[]; proofTypes: string[]; proofTitles: string[]; proofBodies: string[] };

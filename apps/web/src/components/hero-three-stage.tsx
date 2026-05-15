@@ -180,8 +180,9 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
     let downY = 0;
     let targetRotationX = -0.04;
     let targetRotationY = 0;
-    let targetZoom = 1;
-    let zoom = 1;
+    const defaultZoom = productDefaultZoom(active);
+    let targetZoom = defaultZoom;
+    let zoom = defaultZoom;
     let openProgress = stateRef.current === "opened" ? 1 : 0;
     let blockedProgress = stateRef.current === "blocked" ? 1 : 0;
     let localState: ProductInteractionState = stateRef.current;
@@ -238,7 +239,7 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
 
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
-      targetZoom = clamp(targetZoom + (event.deltaY > 0 ? -0.08 : 0.08), 0.82, 1.28);
+      targetZoom = clamp(targetZoom + (event.deltaY > 0 ? -0.08 : 0.08), 0.62, 1.2);
       manualHoldUntil = performance.now() + 2200;
     };
 
@@ -341,6 +342,16 @@ function createProduct(active: ProductKind) {
   if (active === "cosmetics") return createCosmeticBottle();
   if (active === "seeds") return createSeedPacket();
   return createAgroPacket();
+}
+
+function productDefaultZoom(active: ProductKind) {
+  if (active === "wine") return 0.7;
+  if (active === "perfume") return 0.74;
+  if (active === "creamTube") return 0.7;
+  if (active === "bracelet" || active === "events") return 0.66;
+  if (active === "ticket") return 0.78;
+  if (active === "creamJar" || active === "cosmetics") return 0.8;
+  return 0.78;
 }
 
 function createWineBottle() {
@@ -459,9 +470,10 @@ function createEventBracelet() {
     [0.02, 0.02, -0.09],
   ));
   group.add(createFlatCanvasPanel("VIP ACCESS", "NFC UID", tone.accent, [0.08, 0.02, 0.405], [0.74, 0.24, 1], [0.02, 0.02, -0.09]));
-  group.add(createSmallNfcDisc(tone.accent, [0.74, 0.12, 0.42], 0.16));
+  group.add(createSmallNfcDisc(tone.accent, [0.7, 0.12, 0.42], 0.16));
   group.add(mesh(new THREE.BoxGeometry(0.12, 0.56, 0.12), new THREE.MeshStandardMaterial({ color: "#cbd5e1", metalness: 0.42, roughness: 0.18 }), [-0.72, 0, 0.28], [0.02, 0.02, -0.09]));
-  group.add(createTapPhone(tone, [1.25, 0.34, 0.72], [-0.12, -0.35, -0.34]));
+  group.add(createTapPhone(tone, [0.98, 0.34, 0.84], [-0.08, -0.52, -0.2]));
+  group.add(createTapWaveStack(tone.accent, [0.66, 0.18, 0.54], [-0.06, -0.14, -0.1]));
 
   [-0.9, -0.55, 0.62, 0.94].forEach((x) => {
     group.add(mesh(new THREE.SphereGeometry(0.065, 24, 16), new THREE.MeshStandardMaterial({ color: "#021a1a", roughness: 0.22 }), [x, -0.16, 0.34]));
@@ -509,12 +521,32 @@ function createTapPhone(tone: Tone, position: Vec3, rotation: Vec3) {
   ));
   group.add(mesh(
     createRoundedBoxGeometry(0.7, 1.18, 0.022, 0.08),
-    new THREE.MeshBasicMaterial({ color: tone.accent, opacity: 0.2, transparent: true }),
+    new THREE.MeshBasicMaterial({ map: phoneScreenTexture(tone.accent), transparent: true }),
     [0, 0, 0.065],
     [0, 0, 0],
     false,
   ));
-  group.add(mesh(new THREE.CircleGeometry(0.12, 36), basic(tone.accent, 0.82), [0, 0.24, 0.08], [0, 0, 0], false));
+  group.add(mesh(new THREE.RingGeometry(0.16, 0.21, 42), basic(tone.accent, 0.9), [0, 0.25, 0.081], [0, 0, 0], false));
+  group.add(mesh(new THREE.CircleGeometry(0.08, 36), basic("#ecfeff", 0.34), [0, 0.25, 0.082], [0, 0, 0], false));
+  return group;
+}
+
+function createTapWaveStack(accent: string, position: Vec3, rotation: Vec3) {
+  const group = new THREE.Group();
+  group.name = "tapWaves";
+  group.position.set(...position);
+  group.rotation.set(...rotation);
+  [0.18, 0.3, 0.42].forEach((radius, index) => {
+    const ring = mesh(
+      new THREE.RingGeometry(radius, radius + 0.012, 56),
+      basic(accent, 0.58 - index * 0.12),
+      [0, 0, index * 0.012],
+      [0, 0, 0],
+      false,
+    );
+    group.add(ring);
+  });
+  group.add(mesh(new THREE.CircleGeometry(0.055, 32), basic("#ecfeff", 0.5), [0, 0, 0.045], [0, 0, 0], false));
   return group;
 }
 
@@ -585,8 +617,7 @@ function createCosmeticBottle() {
   group.add(mesh(new THREE.BoxGeometry(0.6, 0.15, 0.32), new THREE.MeshStandardMaterial({ color: "#f8fafc", metalness: 0.24, roughness: 0.14 }), [0.12, 1.49, 0], [0, 0, -0.02]));
   group.add(mesh(new THREE.BoxGeometry(0.28, 0.07, 0.11), new THREE.MeshStandardMaterial({ color: "#cbd5e1", metalness: 0.48, roughness: 0.16 }), [0.48, 1.55, 0]));
   group.add(createFlatCanvasPanel("SERUM", "AUTHENTIC", tone.accent, [0, -0.36, 0.322], [0.8, 0.6, 1]));
-  group.add(createFlatCanvasPanel("NFC", "SEAL", tone.accent, [0.02, 0.62, 0.342], [0.52, 0.22, 1]));
-  group.add(createSmallNfcDisc(tone.accent, [0.44, 0.76, 0.35], 0.12));
+  group.add(createBridgeTamperSeal(tone, [0.02, 0.84, 0.342], [0, 0, 0.02], 0.24, 0.68, "NFC TT", "CLOSED"));
   group.add(createGlassHighlight([-0.36, -0.12, 0.33], 1.58));
 
   return group;
@@ -622,7 +653,7 @@ function createCreamJar() {
   group.add(mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.78, 80), basic("#fdf4ff", 0.46), [0, -0.42, 0], undefined, false));
   group.add(mesh(new THREE.TorusGeometry(0.61, 0.018, 10, 96), basic("#f0abfc", 0.54), [0, 0.34, 0], [Math.PI / 2, 0, 0], false));
   group.add(createFlatCanvasPanel("CREMA", "GARANTIA", tone.accent, [0, -0.25, 0.61], [0.78, 0.38, 1]));
-  group.add(createSmallNfcDisc(tone.accent, [0.42, 0.7, 0.46], 0.12));
+  group.add(createBridgeTamperSeal(tone, [0.18, 0.36, 0.69], [0, 0, -0.05], 0.28, 0.86, "NFC TT", "SEAL"));
   group.add(createGlassHighlight([-0.33, -0.25, 0.56], 0.9));
 
   return group;
@@ -660,7 +691,7 @@ function createPerfumeBottle() {
   group.add(perfumeCap);
   group.add(mesh(new THREE.BoxGeometry(0.46, 0.08, 0.14), new THREE.MeshStandardMaterial({ color: "#cbd5e1", metalness: 0.58, roughness: 0.12 }), [0.38, 1.18, 0]));
   group.add(createFlatCanvasPanel("PARFUM", "LIMITED", tone.accent, [0, -0.35, 0.295], [0.72, 0.44, 1]));
-  group.add(createSmallNfcDisc(tone.accent, [0.38, 0.38, 0.31], 0.12));
+  group.add(createBridgeTamperSeal(tone, [0.18, 0.76, 0.312], [0, 0, -0.06], 0.24, 0.72, "NFC TT", "CAP"));
   group.add(createGlassHighlight([-0.33, -0.34, 0.31], 1.35));
 
   return group;
@@ -689,7 +720,7 @@ function createCreamTube() {
   group.add(tubeCap);
   group.add(mesh(new THREE.TorusGeometry(0.45, 0.018, 10, 88), basic("#ecfeff", 0.42), [0, -1.34, 0], [Math.PI / 2, 0, 0], false));
   group.add(createBottleLabel("DERMO", "CREMA", tone.accent, -0.12, 0.512, 0.72, 0.54));
-  group.add(createFlatCanvasPanel("NFC", "LOTE", tone.accent, [0.02, 0.64, 0.51], [0.48, 0.2, 1]));
+  group.add(createBridgeTamperSeal(tone, [0.02, -1.34, 0.51], [0, 0, 0.03], 0.5, 0.34, "NFC", "CAP"));
   group.add(createGlassHighlightCurved(-0.42, -0.12, 0.49, 1.72, 0.06, 0.14));
 
   return group;
@@ -1033,6 +1064,56 @@ function createFlatCanvasPanel(title: string, subtitle: string, accent: string, 
   return group;
 }
 
+function createBridgeTamperSeal(tone: Tone, position: Vec3, rotation: Vec3, width: number, height: number, title: string, subtitle: string) {
+  const group = new THREE.Group();
+  group.name = "tamperSeal";
+  group.position.set(...position);
+  group.rotation.set(...rotation);
+
+  group.add(mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshStandardMaterial({ map: labelTexture(title, subtitle, tone.accent, "#f8fafc", "#071827"), roughness: 0.36, side: THREE.DoubleSide }),
+    [0, 0, 0.012],
+    [0, 0, 0],
+    false,
+  ));
+
+  const cutLine = mesh(
+    new THREE.BoxGeometry(width * 1.12, 0.018, 0.018),
+    basic(tone.accent, 0.92),
+    [0, 0, 0.034],
+    [0, 0, 0],
+    false,
+  );
+  cutLine.name = "cutLine";
+  group.add(cutLine);
+
+  const splitLeft = mesh(
+    new THREE.BoxGeometry(width * 0.72, height * 0.17, 0.02),
+    basic("#ffffff", 0.78),
+    [-width * 0.08, height * 0.26, 0.04],
+    [0, 0, -0.05],
+    false,
+  );
+  splitLeft.name = "splitLeft";
+  group.add(splitLeft);
+
+  const splitRight = mesh(
+    new THREE.BoxGeometry(width * 0.72, height * 0.17, 0.02),
+    basic(tone.accent, 0.68),
+    [width * 0.08, -height * 0.26, 0.04],
+    [0, 0, 0.05],
+    false,
+  );
+  splitRight.name = "splitRight";
+  group.add(splitRight);
+
+  group.add(mesh(new THREE.BoxGeometry(width * 1.06, 0.012, 0.016), basic("#020617", 0.34), [0, 0.05, 0.032], [0, 0, 0], false));
+  group.add(mesh(new THREE.BoxGeometry(width * 0.18, height * 1.08, 0.014), basic(tone.accent, 0.36), [0, 0, 0.035], [0, 0, 0], false));
+
+  return group;
+}
+
 function createSmallNfcDisc(accent: string, position: Vec3, radius = 0.18) {
   const group = new THREE.Group();
   group.position.set(...position);
@@ -1150,7 +1231,53 @@ function labelTexture(title: string, subtitle: string, accent: string, paper = "
   return texture;
 }
 
-function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number, fill: string) {
+function phoneScreenTexture(accent: string) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 900;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  bg.addColorStop(0, "#032f33");
+  bg.addColorStop(0.48, "#06212c");
+  bg.addColorStop(1, "#020617");
+  roundedRect(ctx, 20, 20, 472, 860, 54, bg);
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 7;
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  ctx.arc(256, 292, 72, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#ecfeff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "900 92px Arial, sans-serif";
+  ctx.fillText("TAP", 256, 454, 360);
+  ctx.font = "900 54px Arial, sans-serif";
+  ctx.fillStyle = accent;
+  ctx.fillText("NFC", 256, 528, 280);
+  ctx.strokeStyle = "rgba(236, 254, 255, 0.42)";
+  ctx.lineWidth = 12;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(256, 644, 84, -0.78, 0.78);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(256, 644, 132, -0.78, 0.78);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(236, 254, 255, 0.2)";
+  roundedRect(ctx, 146, 770, 220, 20, 10, "rgba(236, 254, 255, 0.2)");
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number, fill: string | CanvasGradient | CanvasPattern) {
   const r = Math.min(radius, width / 2, height / 2);
   ctx.beginPath();
   ctx.moveTo(x + r, y);

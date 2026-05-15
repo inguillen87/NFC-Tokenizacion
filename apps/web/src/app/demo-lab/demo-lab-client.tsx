@@ -102,10 +102,10 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Botella", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
-      creamJar: { label: "Frasco crema", profile: "NTAG 424 DNA", product: "Frasco crema alta gama", visual: "cream-jar-demo", proof: ["Tapa verificada", "Lote y vencimiento", "Garantia", "Anti mercado gris"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicion limitada", visual: "perfume-demo", proof: ["Caja + frasco", "Lote y serie", "Garantia", "Anti falsificacion"] },
-      creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Tubo sellado", "Lote visible", "Garantia", "Recompra"] },
-      bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Ingreso rapido", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
+      creamJar: { label: "Frasco crema", profile: "NTAG 424 DNA", product: "Frasco crema alta gama", visual: "cream-jar-demo", proof: ["Sello puente tapa-envase", "Apertura cambia estado", "Garantia", "Anti mercado gris"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicion limitada", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "Garantia", "Anti falsificacion"] },
+      creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "Garantia", "Recompra"] },
+      bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
     },
     controls: {
@@ -142,10 +142,10 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Garrafa", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta na garrafa", "Rolha / lacre aberto", "SUN anti-replay", "Origem + toque global"] },
       seeds: { label: "Sementes", profile: "QR + NFC UID", product: "Envelope de semente certificada", visual: "seed-packet-demo", proof: ["Envelope antifraude", "Lote e variedade", "Custodia agro", "Uso rural"] },
-      creamJar: { label: "Pote creme", profile: "NTAG 424 DNA", product: "Pote de creme premium", visual: "cream-jar-demo", proof: ["Tampa verificada", "Lote e validade", "Garantia", "Anti grey-market"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicao limitada", visual: "perfume-demo", proof: ["Caixa + frasco", "Lote e serie", "Garantia", "Antifalsificacao"] },
-      creamTube: { label: "Creme", profile: "NTAG213 + lote", product: "Creme dermocosmetico", visual: "cream-tube-demo", proof: ["Tubo lacrado", "Lote visivel", "Garantia", "Recompra"] },
-      bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Check-in rapido", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
+      creamJar: { label: "Pote creme", profile: "NTAG 424 DNA", product: "Pote de creme premium", visual: "cream-jar-demo", proof: ["Lacre entre tampa e pote", "Abertura muda estado", "Garantia", "Anti grey-market"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicao limitada", visual: "perfume-demo", proof: ["Lacre entre tampa e gargalo", "Lote e serie", "Garantia", "Antifalsificacao"] },
+      creamTube: { label: "Creme", profile: "NTAG213 + lote", product: "Creme dermocosmetico", visual: "cream-tube-demo", proof: ["Lacre sobre tampa flip", "Lote visivel", "Garantia", "Recompra"] },
+      bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulseira", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
       ticket: { label: "Ingresso", profile: "QR + NFC UID", product: "Ingresso festa VIP", visual: "party-ticket-demo", proof: ["QR visivel", "UID respaldo", "Acesso por zona", "Replay bloqueado"] },
     },
     controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/demo: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao DemoBodega...", synced: "DemoBodega sincronizado com backend.", unavailable: "DemoBodega indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no DemoBodega.", failedScan: "Nao foi possivel simular o toque.", configs: [
@@ -181,10 +181,10 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Bottle", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Label on bottle", "Uncork / broken seal", "SUN anti-replay", "Origin + global tap"] },
       seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Certified seed packet", visual: "seed-packet-demo", proof: ["Anti-counterfeit packet", "Lot and variety", "Agro custody", "Rural use"] },
-      creamJar: { label: "Cream jar", profile: "NTAG 424 DNA", product: "Premium cream jar", visual: "cream-jar-demo", proof: ["Verified lid", "Batch and expiry", "Warranty", "Anti grey-market"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Limited edition perfume", visual: "perfume-demo", proof: ["Box + bottle", "Lot and serial", "Warranty", "Anti-counterfeit"] },
-      creamTube: { label: "Cream", profile: "NTAG213 + batch", product: "Dermocosmetic cream", visual: "cream-tube-demo", proof: ["Sealed tube", "Visible batch", "Warranty", "Repurchase"] },
-      bracelet: { label: "Wristband", profile: "NTAG215", product: "VIP event wristband", visual: "event-bracelet-demo", proof: ["Fast check-in", "Serialized UID", "VIP zones", "Duplicate block"] },
+      creamJar: { label: "Cream jar", profile: "NTAG 424 DNA", product: "Premium cream jar", visual: "cream-jar-demo", proof: ["Seal bridges lid and jar", "Opening changes state", "Warranty", "Anti grey-market"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Limited edition perfume", visual: "perfume-demo", proof: ["Seal bridges cap and neck", "Lot and serial", "Warranty", "Anti-counterfeit"] },
+      creamTube: { label: "Cream", profile: "NTAG213 + batch", product: "Dermocosmetic cream", visual: "cream-tube-demo", proof: ["Seal over flip cap", "Visible batch", "Warranty", "Repurchase"] },
+      bracelet: { label: "Wristband", profile: "NTAG215", product: "VIP event wristband", visual: "event-bracelet-demo", proof: ["Phone taps wristband", "Serialized UID", "VIP zones", "Duplicate block"] },
       ticket: { label: "Ticket", profile: "QR + NFC UID", product: "VIP party ticket", visual: "party-ticket-demo", proof: ["Visible QR", "UID fallback", "Zone access", "Replay blocked"] },
     },
     controls: { narrative: "Audience narrative", cinematicStart: "Start cinematic", cinematicStop: "Pause cinematic", product: "Physical product", mobile: "Mobile result", feed: "Command feed", valid: "Register valid Zurich tap", tamper: "Break seal / uncork", replay: "Simulate duplicate replay", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Live map: product origin vs customer tap", mapSubtitle: "Animated route, distance and location links to build trust.", realFeed: "Real public feed connected.", adminKey: "Read-only demo mode: private scan writes run in the secured environment.", noGeo: "No geolocated API events yet.", origin: "Origin", currentTap: "Current tap", distance: "Distance", openOrigin: "Open origin", openTap: "Open tap", joinClub: "Join club", warranty: "Activate warranty", tokenize: "Tokenize premium", syncing: "Connecting to DemoBodega...", synced: "DemoBodega synced with backend.", unavailable: "DemoBodega unavailable.", sendingScan: "Sending scan", registeredScan: "Scan registered in DemoBodega.", failedScan: "Could not simulate the tap.", configs: [
@@ -1112,7 +1112,6 @@ function DemoCinematicShowcase({
         <span>{localized.body}</span>
         <div className="demo-lab-cinematic-actions">
           <button suppressHydrationWarning type="button" onClick={onGuided}>Reproducir recorrido</button>
-          <a href="/demo-lab/motion-pack">{localized.openPack}</a>
         </div>
         <div className="demo-lab-cinematic-scenes" aria-label="Escenas de la experiencia">
           {scenes.map((scene) => (
