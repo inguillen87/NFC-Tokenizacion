@@ -4,6 +4,7 @@ import { ExternalLink, ShieldCheck, Store, WalletCards } from "lucide-react";
 import { CtaActions } from "./cta-actions";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { OnboardDemoButton } from "./onboard-demo-button";
+import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
 import { productUrls } from "@product/config";
 import { BrandLockup, DeviceSignatureBadge, EmptyState, GlobalOpsMap, KeyValueSpec, ThemeToggle, TimelineRail } from "@product/ui";
 import type { GlobalOpsPoint, GlobalOpsRoute } from "@product/ui";
@@ -91,7 +92,7 @@ type SunContract = {
   tenant?: { id?: string | null; slug?: string | null; name?: string | null; vertical?: string | null; productLabel?: string | null; clubName?: string | null; tokenizationMode?: string | null };
   condition?: SunCarrierFields & { state?: string | null; label?: string | null; summary?: string | null; claimMode?: string | null; tokenizationPolicy?: string | null; marketplaceMode?: string | null; recommendedNextStep?: string | null; requirements?: string[] };
   rightsPolicy?: SunRightsPolicy;
-  product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null; category?: string | null; vertical?: string | null };
+  product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null; category?: string | null; vertical?: string | null; imageUrl?: string | null; image_url?: string | null; photoUrl?: string | null; photo_url?: string | null };
   provenance?: {
     origin?: string | null;
     firstVerified?: { at?: string | null; city?: string | null; country?: string | null };
@@ -162,6 +163,26 @@ function policyLabel(value?: string | null) {
 function mapHref(lat?: number | null, lng?: number | null) {
   if (lat == null || lng == null) return "";
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
+function resolveSunVisualKind(result: SunContract): SunVisualKind {
+  const text = [
+    result.product?.name,
+    result.product?.category,
+    result.product?.vertical,
+    result.tenant?.vertical,
+    result.tenant?.productLabel,
+    result.rightsPolicy?.vertical,
+    result.rightsPolicy?.verticalLabel,
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  if (/(ticket|entrada|pass|qr)/i.test(text)) return "ticket";
+  if (/(bracelet|brazalete|pulsera|evento|event|vip access)/i.test(text)) return "bracelet";
+  if (/(seed|semilla|agro|bolsa|saco|packet)/i.test(text)) return "seeds";
+  if (/(perfume|fragancia|fragrance|parfum)/i.test(text)) return "perfume";
+  if (/(tubo|tube|dermo|serum)/i.test(text)) return "creamTube";
+  if (/(crema|cream|cosmetic|cosmetica|cosmetico|jar|frasco)/i.test(text)) return "creamJar";
+  return "wine";
 }
 
 function sunFallbackResult(params: Record<string, string | string[] | undefined>, isDemoPreview: boolean): SunContract {
@@ -783,11 +804,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : "Sin anclaje on-chain";
   const sealLabel = sealClosed ? "Sello intacto" : sealOpened ? "Sello abierto" : "Sello no informado";
   const chainLabel = tokenEvidenceLabel;
-  const productVisualClass = [
-    "sun-product-visual",
-    isReplay ? "sun-product-visual--replay" : isRiskBlocked ? "sun-product-visual--risk" : isVerifiedOpenedState ? "sun-product-visual--warn" : "sun-product-visual--valid",
-    sealOpened ? "sun-product-visual--opened" : "",
-  ].filter(Boolean).join(" ");
+  const productName = result.product?.name || "Producto Verificado";
+  const productVisualKind = resolveSunVisualKind(result);
+  const productImageUrl = result.product?.imageUrl || result.product?.image_url || result.product?.photoUrl || result.product?.photo_url || null;
+  const productVisualState = (isReplay || isRiskBlocked)
+    ? "blocked"
+    : (sealOpened || isVerifiedOpenedState)
+      ? "opened"
+      : "idle";
   const trustCopy = isReplay
     ? "Anti-replay activo: el tap queda como evidencia, no como permiso comercial."
     : isSnapshotView
@@ -887,45 +911,18 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          {/* Hero Product Card */}
          <div className="sun-passport-card sun-passport-hero rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
             <div className="rounded-[1.75rem] border border-white/5 bg-slate-950 p-5 relative z-10 text-center">
-               <div className="sun-product-stage mx-auto mb-4">
-                  <div className="sun-stage-map" aria-hidden="true">
-                    <span className="sun-stage-map__land sun-stage-map__land--origin" />
-                    <span className="sun-stage-map__land sun-stage-map__land--tap" />
-                    <span className="sun-stage-map__route" />
-                    <span className="sun-stage-map__route sun-stage-map__route--glow" />
-                    <span className="sun-stage-map__point sun-stage-map__point--origin" />
-                    <span className="sun-stage-map__point sun-stage-map__point--tap" />
-                  </div>
-                  <span className="sun-stage-pin sun-stage-pin--origin">
-                    <b>Origen</b>
-                    <em>{originDisplay.split(",")[0]}</em>
-                  </span>
-                  <span className="sun-stage-pin sun-stage-pin--tap">
-                    <b>Tap</b>
-                    <em>{tapDisplay.split(",")[0]}</em>
-                  </span>
-                  <span className="sun-stage-route-label">{distanceDisplay}</span>
-                  <div className={productVisualClass}>
-                     <span className="sun-product-visual__liquid" aria-hidden="true" />
-                     <span className="sun-product-visual__neck" aria-hidden="true" />
-                     <span className="sun-product-visual__capsule" aria-hidden="true" />
-                     <span className="sun-product-visual__seal">
-                       <span className="sun-product-visual__seal-half sun-product-visual__seal-half--left">NFC</span>
-                       <span className="sun-product-visual__seal-half sun-product-visual__seal-half--right">TT</span>
-                     </span>
-                     <span className="sun-product-visual__tag">SUN</span>
-                     <span className="sun-product-visual__label">
-                       <small>Gran Reserva</small>
-                       <strong>Malbec</strong>
-                       <em>Valle de Uco</em>
-                       <i aria-hidden="true" />
-                     </span>
-                  </div>
-                  <div className="sun-tap-wave" />
-               </div>
+               <SunProductHeroStage
+                 kind={productVisualKind}
+                 productName={productName}
+                 imageUrl={productImageUrl}
+                 originDisplay={originDisplay}
+                 tapDisplay={tapDisplay}
+                 distanceDisplay={distanceDisplay}
+                 state={productVisualState}
+               />
 
                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-1">{result.product?.winery || "Bodega Premium"}</p>
-               <h1 className="text-xl font-bold text-white leading-tight mb-2">{result.product?.name || "Producto Verificado"}</h1>
+               <h1 className="text-xl font-bold text-white leading-tight mb-2">{productName}</h1>
                <p className="text-xs text-slate-500">{result.product?.region || "Mendoza, Argentina"} · {result.product?.varietal || "Blend"}</p>
                <div className="sun-route-card mt-5">
                  <div>

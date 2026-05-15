@@ -1326,7 +1326,7 @@ html.theme-light .animate-card-shift:hover {
 }
 
 .sun-passport-brand .brand-wordmark-svg {
-  width: 7rem !important;
+  width: 6.25rem !important;
   height: auto !important;
   filter: drop-shadow(0 0 18px rgba(45, 212, 191, 0.15));
 }
@@ -2971,10 +2971,178 @@ html.theme-light .sun-priority-panel a {
   box-shadow: 0 0.9rem 2.2rem rgba(2, 6, 23, 0.24);
 }
 
+.sun-product-stage--realtime {
+  width: min(100%, 26.5rem);
+  height: clamp(23rem, 78vw, 31rem);
+  margin: 0 auto 1rem;
+  border-radius: 1.7rem;
+  background:
+    radial-gradient(circle at 52% 45%, rgba(34, 211, 238, 0.2), transparent 28%),
+    radial-gradient(circle at 25% 68%, rgba(52, 211, 153, 0.17), transparent 22%),
+    radial-gradient(circle at 78% 26%, rgba(129, 140, 248, 0.16), transparent 24%),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.075) 1px, transparent 1px),
+    linear-gradient(rgba(125, 211, 252, 0.075) 1px, transparent 1px),
+    linear-gradient(150deg, rgba(8, 47, 73, 0.82), rgba(2, 6, 23, 0.95) 64%, rgba(15, 23, 42, 0.9));
+  background-size: auto, auto, auto, 3.1rem 3.1rem, 3.1rem 3.1rem, auto;
+}
+
+.sun-product-stage--realtime::before {
+  inset: auto 8% -10%;
+  width: 84%;
+  height: 32%;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  background:
+    repeating-radial-gradient(ellipse at center, rgba(125, 211, 252, 0.2) 0 1px, transparent 1px 18px);
+  opacity: 0.74;
+  transform: rotateX(66deg);
+}
+
+.sun-product-stage--realtime::after {
+  left: 14%;
+  right: 13%;
+  top: 31%;
+  height: 38%;
+  border-top-color: rgba(103, 232, 249, 0.48);
+  opacity: 0.72;
+}
+
+.sun-three-product-shell {
+  position: absolute;
+  inset: 0.55rem 0.1rem 0.25rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  transform-style: preserve-3d;
+}
+
+.sun-three-stage.hero-three-stage {
+  inset: -7% -10% -5%;
+  z-index: 4;
+}
+
+.sun-three-stage .hero-three-stage-canvas {
+  filter:
+    drop-shadow(0 2.2rem 2.2rem rgba(0, 0, 0, 0.4))
+    saturate(1.12)
+    contrast(1.06);
+}
+
+.sun-three-stage .hero-three-stage-label {
+  bottom: 0.55rem;
+  max-width: min(76%, 16rem);
+  border-color: rgba(125, 211, 252, 0.32);
+  background: rgba(2, 6, 23, 0.82);
+}
+
+.sun-product-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 2rem 2.35rem rgba(0, 0, 0, 0.44))
+    saturate(1.08)
+    contrast(1.04);
+  transition: opacity 220ms ease, transform 220ms ease, filter 220ms ease;
+}
+
+.sun-three-product-shell--ready .sun-product-fallback {
+  opacity: 0;
+  transform: scale(0.96);
+  filter: blur(5px) saturate(0.9);
+}
+
+.sun-product-photo-shell {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: min(76%, 18rem);
+  height: min(92%, 27rem);
+  transform-style: preserve-3d;
+  animation: sunBottleFloat 5.2s ease-in-out infinite;
+}
+
+.sun-product-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 2rem 2.3rem rgba(0, 0, 0, 0.5))
+    saturate(1.06)
+    contrast(1.04);
+}
+
+.sun-product-photo-seal {
+  position: absolute;
+  left: 50%;
+  top: 7%;
+  display: grid;
+  grid-template-columns: 1fr;
+  min-width: 2.2rem;
+  transform: translateX(-50%) rotate(-5deg);
+  border: 1px solid rgba(34, 211, 238, 0.44);
+  border-radius: 0.52rem;
+  background: rgba(248, 250, 252, 0.9);
+  box-shadow: 0 0.9rem 1.4rem rgba(2, 6, 23, 0.28);
+  color: #0f172a;
+  overflow: hidden;
+}
+
+.sun-product-photo-seal b,
+.sun-product-photo-seal em {
+  display: block;
+  padding: 0.12rem 0.28rem;
+  font-size: 0.48rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sun-product-photo-seal em {
+  background: #06111f;
+  color: #67e8f9;
+  font-size: 0.38rem;
+}
+
+.sun-product-photo-shell--opened .sun-product-photo-seal {
+  transform: translateX(-50%) rotate(-18deg);
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.sun-product-photo-shell--blocked .sun-product-photo-seal {
+  border-color: rgba(251, 113, 133, 0.56);
+  box-shadow: 0 0 1.4rem rgba(251, 113, 133, 0.2);
+}
+
+.sun-product-stage--wine .sun-three-stage.hero-three-stage {
+  inset: -8% -12% -6%;
+}
+
+.sun-product-stage--bracelet .sun-three-stage.hero-three-stage,
+.sun-product-stage--ticket .sun-three-stage.hero-three-stage {
+  inset: -4% -13% -2%;
+}
+
+.sun-product-stage--creamJar .sun-three-stage.hero-three-stage,
+.sun-product-stage--perfume .sun-three-stage.hero-three-stage,
+.sun-product-stage--creamTube .sun-three-stage.hero-three-stage {
+  inset: -6% -11% -4%;
+}
+
 @media (min-width: 1024px) {
   .sun-product-stage {
     width: 100%;
     height: clamp(25rem, 35vw, 34rem);
+  }
+
+  .sun-product-stage--realtime {
+    height: clamp(27rem, 36vw, 35rem);
   }
 
   .sun-product-visual {
@@ -2984,14 +3152,47 @@ html.theme-light .sun-priority-panel a {
 }
 
 @media (max-width: 640px) {
+  .sun-passport-brand .brand-lockup {
+    gap: 0.38rem;
+  }
+
+  .sun-passport-brand .brand-mark {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 0.9rem;
+  }
+
+  .sun-passport-brand .brand-wordmark-svg {
+    width: 4.85rem !important;
+  }
+
+  .sun-passport-brand__caption {
+    font-size: 0.48rem;
+    letter-spacing: 0.1em;
+  }
+
   .sun-product-stage {
     height: clamp(22rem, 92vw, 27rem);
     min-height: 22rem;
   }
 
+  .sun-product-stage--realtime {
+    height: clamp(23.5rem, 104vw, 28.5rem);
+    border-radius: 1.45rem;
+  }
+
   .sun-product-visual {
     width: clamp(6.85rem, 32vw, 8.5rem);
     height: clamp(11.5rem, 54vw, 14.6rem);
+  }
+
+  .sun-three-stage.hero-three-stage {
+    inset: -6% -12% -4%;
+  }
+
+  .sun-three-stage .hero-three-stage-label {
+    bottom: 0.42rem;
+    max-width: min(72%, 13rem);
   }
 
   .sun-stage-pin {

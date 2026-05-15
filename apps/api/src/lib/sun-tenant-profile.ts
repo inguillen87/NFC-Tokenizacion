@@ -38,6 +38,7 @@ export type SunTenantProfilePassport = {
   harvest_year?: number | null;
   barrel_months?: number | null;
   temperature_storage?: string | null;
+  image_url?: string | null;
 };
 
 export type SunTenantProfile = {
@@ -70,6 +71,7 @@ export type SunTenantProfile = {
     bottle: string | null;
     serving: string | null;
     oakType: string | null;
+    imageUrl: string | null;
   };
 };
 
@@ -257,6 +259,7 @@ export function resolveSunTenantProfile(input: {
         bottle: firstString(readPath(config, ["sun", "product", "bottle"])),
         serving: firstString(readPath(config, ["sun", "product", "serving"])),
         oakType: firstString(readPath(config, ["sun", "product", "oakType"])),
+        imageUrl: firstString(passport?.image_url, readPath(config, ["sun", "product", "imageUrl"]), readPath(config, ["sun", "product", "image_url"])),
       },
     },
   };

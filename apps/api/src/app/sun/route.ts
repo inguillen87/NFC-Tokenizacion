@@ -98,6 +98,7 @@ type PassportSnapshot = {
   harvest_year: number | null;
   barrel_months: number | null;
   temperature_storage: string | null;
+  image_url: string | null;
   tag_status: string | null;
   scan_count: number | null;
   first_verified_at: string | null;
@@ -529,6 +530,7 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       tp.harvest_year,
       tp.barrel_months,
       tp.temperature_storage,
+      tp.image_url,
       t.status AS tag_status,
       t.scan_count,
       first_evt.created_at::text AS first_verified_at,
@@ -900,6 +902,7 @@ function buildPublicContract(params: {
   const fallbackAlcohol = tenantProfile.product.alcohol || null;
   const fallbackBottle = tenantProfile.product.bottle || null;
   const fallbackServing = tenantProfile.product.serving || null;
+  const fallbackImageUrl = tenantProfile.product.imageUrl || null;
   const tenantSlug = tenantProfile.tenantSlug;
   const tenantId = tenantProfile.tenantId;
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
@@ -1066,6 +1069,8 @@ function buildPublicContract(params: {
       alcohol: fallbackAlcohol,
       bottle: fallbackBottle,
       serving: fallbackServing,
+      imageUrl: params.passport?.image_url || fallbackImageUrl,
+      image_url: params.passport?.image_url || fallbackImageUrl,
       category: tenantProfile.productLabel,
       vertical: tenantProfile.vertical,
     },
