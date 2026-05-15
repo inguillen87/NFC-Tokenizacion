@@ -17,30 +17,36 @@ export function BrandWordmark({ size = 120, variant = "static", theme = "dark", 
       style={{ width: size, height, maxWidth: "100%", overflow: "visible" }}
       className={cx("inline-block object-left brand-wordmark-svg", className)}
     >
-      <text
-        x="0"
-        y="78"
-        fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial"
-        fontSize="72"
-        fontWeight="700"
-        letterSpacing="0"
-        fill={wordColor}
-      >
+      <defs>
+        <linearGradient id="brand-word-main" x1="0" y1="20" x2="170" y2="95" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="var(--brand-wordmark-main-hi, #ffffff)" />
+          <stop offset="0.42" stopColor={wordColor} />
+          <stop offset="1" stopColor="var(--brand-wordmark-main-lo, #94a3b8)" />
+        </linearGradient>
+        <linearGradient id="brand-word-accent" x1="174" y1="24" x2="278" y2="95" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="var(--brand-wordmark-accent-hi, #67e8f9)" />
+          <stop offset="0.56" stopColor={accent} />
+          <stop offset="1" stopColor="var(--brand-wordmark-accent-lo, #0891b2)" />
+        </linearGradient>
+        <filter id="brand-word-bevel" x="-10%" y="-25%" width="120%" height="150%">
+          <feDropShadow dx="0" dy="7" stdDeviation="7" floodColor="#020617" floodOpacity="0.26" />
+        </filter>
+      </defs>
+      <path className="brand-wordmark-scanline" d="M4 94 H270" stroke={accent} strokeWidth="2" strokeLinecap="round" opacity="0.28" />
+      <text className="brand-wordmark-shadow" x="2" y="80" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" fontSize="72" fontWeight="780" letterSpacing="0" fill="rgba(2,6,23,0.28)">
         nex
       </text>
-      <text
-        x="182"
-        y="78"
-        fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial"
-        fontSize="72"
-        fontWeight="700"
-        letterSpacing="0"
-        fill={accent}
-      >
+      <text className="brand-wordmark-text brand-wordmark-text--main" x="0" y="78" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" fontSize="72" fontWeight="780" letterSpacing="0" fill="url(#brand-word-main)" filter="url(#brand-word-bevel)">
+        nex
+      </text>
+      <text className="brand-wordmark-shadow" x="184" y="80" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" fontSize="72" fontWeight="820" letterSpacing="0" fill="rgba(2,6,23,0.3)">
         ID
       </text>
-      <ellipse cx="248" cy="41" rx="17" ry="11" fill="none" stroke={orbitColor} strokeWidth="1.5" strokeDasharray="3 3" />
-      <g>
+      <text className="brand-wordmark-text brand-wordmark-text--accent" x="182" y="78" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" fontSize="72" fontWeight="820" letterSpacing="0" fill="url(#brand-word-accent)" filter="url(#brand-word-bevel)">
+        ID
+      </text>
+      <ellipse className="brand-wordmark-orbit" cx="248" cy="41" rx="17" ry="11" fill="none" stroke={orbitColor} strokeWidth="1.5" strokeDasharray="3 3" />
+      <g className="brand-wordmark-satellite">
         <circle cx="248" cy="30" r="4.4" fill={accent}>
           {motionEnabled ? (
             <animateTransform
