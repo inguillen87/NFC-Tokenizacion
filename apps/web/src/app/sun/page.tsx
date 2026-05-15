@@ -888,6 +888,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          <div className="sun-passport-card sun-passport-hero rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
             <div className="rounded-[1.75rem] border border-white/5 bg-slate-950 p-5 relative z-10 text-center">
                <div className="sun-product-stage mx-auto mb-4">
+                  <div className="sun-stage-map" aria-hidden="true">
+                    <span className="sun-stage-map__land sun-stage-map__land--origin" />
+                    <span className="sun-stage-map__land sun-stage-map__land--tap" />
+                    <span className="sun-stage-map__route" />
+                    <span className="sun-stage-map__route sun-stage-map__route--glow" />
+                    <span className="sun-stage-map__point sun-stage-map__point--origin" />
+                    <span className="sun-stage-map__point sun-stage-map__point--tap" />
+                  </div>
                   <span className="sun-stage-pin sun-stage-pin--origin">
                     <b>Origen</b>
                     <em>{originDisplay.split(",")[0]}</em>
@@ -898,7 +906,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   </span>
                   <span className="sun-stage-route-label">{distanceDisplay}</span>
                   <div className={productVisualClass}>
-                     <span className="sun-product-visual__tag">NFC</span>
+                     <span className="sun-product-visual__liquid" aria-hidden="true" />
+                     <span className="sun-product-visual__neck" aria-hidden="true" />
+                     <span className="sun-product-visual__capsule" aria-hidden="true" />
+                     <span className="sun-product-visual__seal">
+                       <span className="sun-product-visual__seal-half sun-product-visual__seal-half--left">NFC</span>
+                       <span className="sun-product-visual__seal-half sun-product-visual__seal-half--right">TT</span>
+                     </span>
+                     <span className="sun-product-visual__tag">SUN</span>
+                     <span className="sun-product-visual__label">
+                       <small>Gran Reserva</small>
+                       <strong>Malbec</strong>
+                       <em>Valle de Uco</em>
+                       <i aria-hidden="true" />
+                     </span>
                   </div>
                   <div className="sun-tap-wave" />
                </div>
