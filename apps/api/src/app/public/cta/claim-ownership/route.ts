@@ -1,5 +1,4 @@
 import { json } from "../../../../lib/http";
-import { recordDemoCta } from "../../../../lib/demo-cta";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { claimOwnershipForConsumer } from "../../../../lib/consumer-portal-service";
@@ -57,15 +56,18 @@ export async function POST(req: Request) {
     });
   }
 
-  const ownership = {
-    ownership_status: "claimed",
-    claim_source: String(body.claim_source || body.source || "public_cta"),
-    issuer: String(body.issuer || "nexID"),
-    owner_reference: String(body.owner_reference || body.email || body.phone || "consumer"),
-    claim_evidence: String(body.claim_evidence || body.scan_context || "sun_validation"),
-    transfer_capability: "state-only",
-    revocation_capability: "issuer-review",
-  };
-  const saved = await recordDemoCta("claim_ownership", bid, uid, { ...body, ...ownership, claimed_at: new Date().toISOString() });
-  return json({ ok: true, action: "claim_ownership", id: saved.id, created_at: saved.created_at, ownership, ownership_mode: "demo", trace_id: traceId, share_token_status: auth.share_token_status, fresh_token_status: "accepted" });
+  return json({
+    ok: false,
+    reason: "consumer_auth_required",
+    action: "claim_ownership",
+    trace_id: traceId,
+    share_token_status: auth.share_token_status,
+    fresh_token_status: "accepted",
+    next_step: "verify_email_or_phone",
+    claim_protocol: {
+      required: ["fresh_physical_tap", "verified_email_or_phone"],
+      optional: ["purchase_receipt", "retailer_pos_token", "wallet_address"],
+      unlocks: ["durable_passport_ownership", "wallet_connection", "nft_tokenization_request", "marketplace_listing"],
+    },
+  }, 401);
 }

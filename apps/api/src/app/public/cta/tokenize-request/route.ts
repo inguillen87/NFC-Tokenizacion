@@ -7,6 +7,8 @@ import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 import { normalizeTokenizationStatus } from "../../../../lib/tokenization-status";
+import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
+import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
 
 const LEDGER_NETWORK_ALLOWED = new Set(["polygon-amoy", "polygon", "ethereum-sepolia", "ethereum-mainnet", "base-sepolia", "base-mainnet"]);
 
@@ -116,6 +118,27 @@ function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: Anc
   };
 }
 
+function tokenizationCanRunWithoutOwner(policy: string) {
+  return policy === "lot_anchor" || policy === "issuer_batch_anchor";
+}
+
+async function hasClaimedOwnership(input: { consumerId: string; uid: string; eventId?: string | null }) {
+  await ensureConsumerPortalSchema();
+  const rows = await sql/*sql*/`
+    SELECT o.id
+    FROM consumer_product_ownerships o
+    WHERE o.consumer_id = ${input.consumerId}
+      AND o.status = 'claimed'
+      AND (
+        o.uid_hex = ${input.uid}
+        OR o.event_id::text = ${input.eventId || ""}
+      )
+    ORDER BY o.claimed_at DESC
+    LIMIT 1
+  `;
+  return Boolean(rows[0]?.id);
+}
+
 export async function POST(req: Request) {
   const traceId = req.headers.get("x-nexid-trace-id") || `api_cta_${Date.now().toString(36)}`;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -159,6 +182,33 @@ export async function POST(req: Request) {
       ? body.requirements.map((item) => sanitizeText(item, 120)).filter(Boolean).slice(0, 8)
       : [],
   };
+
+  if (!tokenizationCanRunWithoutOwner(String(policyMeta.tokenization_policy || "").toLowerCase())) {
+    const consumer = await getConsumerFromRequest(req);
+    if (!consumer) {
+      return json({
+        ok: false,
+        reason: "consumer_auth_required_for_tokenization",
+        action: "tokenize_request",
+        trace_id: traceId,
+        share_token_status: auth.share_token_status,
+        fresh_token_status: "accepted",
+        next_step: "claim_ownership_first",
+      }, 401);
+    }
+    const ownerOk = await hasClaimedOwnership({ consumerId: consumer.id, uid, eventId });
+    if (!ownerOk) {
+      return json({
+        ok: false,
+        reason: "ownership_claim_required_for_tokenization",
+        action: "tokenize_request",
+        trace_id: traceId,
+        share_token_status: auth.share_token_status,
+        fresh_token_status: "accepted",
+        next_step: "claim_ownership_first",
+      }, 409);
+    }
+  }
 
   const batchRows = await sql/*sql*/`
     SELECT b.id, b.tenant_id

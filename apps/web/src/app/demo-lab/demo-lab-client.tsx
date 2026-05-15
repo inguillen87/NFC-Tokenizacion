@@ -560,9 +560,6 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                 >
                   <ProductIllustration key={`${vertical}-${beat}`} vertical={vertical} product={activeVertical.product} label={activeVertical.label} beat={beat} />
                 </DemoLabProductThreeStage>
-                <span className="demo-lab-cork" />
-                <span className="demo-lab-product-label">nexID seguro</span>
-                <span className="demo-lab-seal-split" />
                 <span className="demo-lab-tap-chip">SUN</span>
                 <span className="demo-lab-tap-wave" />
               </div>
@@ -1345,9 +1342,11 @@ function DemoLabProductThreeStage({
 
   return (
     <div className="demo-lab-three-product">
-      <div className={`${fallbackClassName}${ready ? " demo-lab-three-product-fallback--hidden" : ""}`}>
-        {children}
-      </div>
+      {!ready ? (
+        <div className={fallbackClassName}>
+          {children}
+        </div>
+      ) : null}
       <HeroThreeStage
         active={threeVertical}
         product={product}

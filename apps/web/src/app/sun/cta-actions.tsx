@@ -18,6 +18,12 @@ type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokeniz
 type CallResponse = {
   ok?: boolean;
   reason?: string;
+  error?: string;
+  code?: string;
+  mode?: string;
+  ttlMinutes?: number;
+  next_step?: string;
+  consumer?: Record<string, unknown>;
   anchor?: { ok?: boolean; status?: string; tx_hash?: string | null; token_id?: string | null; reason?: string | null; next_attempt_at?: string | null } | null;
   tokenization_request?: { status?: string | null; tx_hash?: string | null; token_id?: string | null; next_attempt_at?: string | null; last_error?: string | null } | null;
   mint_ok?: boolean;
@@ -94,21 +100,44 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [lastActionMessage, setLastActionMessage] = useState("");
   const [lastTraceId, setLastTraceId] = useState<string>("");
   const [lastRequest, setLastRequest] = useState<LastRequest | null>(null);
+  const [claimAuthOpen, setClaimAuthOpen] = useState(false);
+  const [claimContact, setClaimContact] = useState("");
+  const [claimCode, setClaimCode] = useState("");
+  const [claimAuthStarted, setClaimAuthStarted] = useState(false);
+  const [claimAuthMode, setClaimAuthMode] = useState("");
+  const [claimDemoCode, setClaimDemoCode] = useState("");
+  const [claimAuthMessage, setClaimAuthMessage] = useState("");
+  const [claimAuthError, setClaimAuthError] = useState("");
+  const [claimAuthLoading, setClaimAuthLoading] = useState(false);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const tokenModalRef = useRef<HTMLDivElement | null>(null);
   const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail.trim());
+  const normalizedClaimContact = claimContact.trim();
+  const claimContactLooksEmail = normalizedClaimContact.includes("@");
+  const isClaimContactValid = claimContactLooksEmail
+    ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedClaimContact)
+    : normalizedClaimContact.replace(/[^\d+]/g, "").length >= 8;
+  const isClaimCodeValid = claimCode.trim().length >= 4;
   const tokenPolicy = String(rightsPolicy?.tokenizationPolicy || "").toLowerCase();
   const claimMode = String(rightsPolicy?.claimMode || "").toLowerCase();
   const policySummary = rightsPolicy?.consumerCopy || "";
+  const ownerClaimScore = canExecute ? (claimAuthStarted ? 82 : tapState === "opened" ? 74 : 68) : 28;
+  const ownerClaimTone = canExecute ? "text-emerald-100 border-emerald-300/30 bg-emerald-500/10" : "text-amber-100 border-amber-300/30 bg-amber-500/10";
+  const ownerClaimSteps = [
+    { label: "Tap fisico fresco", state: canExecute ? "OK" : "Requerido" },
+    { label: "Email o celular", state: claimAuthStarted ? "Codigo enviado" : "Pendiente" },
+    { label: "Ticket / POS", state: claimMode.includes("purchase") || claimMode.includes("review") ? "Revisable" : "Opcional" },
+    { label: "NFT / wallet", state: "Despues del claim" },
+  ];
   const tokenSubtitle = tokenPolicy === "issuer_transfer"
     ? "Tokenizacion por transferencia del issuer: requiere prueba documental antes del mint."
     : tokenPolicy === "lot_anchor"
       ? "Ancla de lote: tokeniza trazabilidad y lifecycle sin prometer ownership individual."
       : tokenPolicy === "manual_review"
         ? "Solicitud a revision: el tenant aprueba antes de mintear en Polygon."
-        : "Request de tokenizacion con UID hasheado, salt privado y proof Polygon.";
+        : "Disponible despues de reclamar dueño: UID hasheado, salt privado y proof Polygon.";
   const gatedCopy = tapState === "blocked"
     ? "Ownership, garantia y tokenizacion quedan protegidos hasta tener un tap fisico valido y fresco."
     : policySummary || (tapState === "opened"
@@ -125,8 +154,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     : "El token ancla ownership, provenance y garantia sin exponer el UID crudo.";
   const actionMeta: Record<string, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
     claimOwnership: {
-      title: "Apropiar ownership",
-      subtitle: "Vincula este producto a tu Passport y deja registro de titularidad.",
+      title: "Reclamar dueño",
+      subtitle: "Valida identidad, vincula tenant y deja ownership durable en Passport.",
       icon: "OWN",
       path: "/api/public-cta/claim-ownership",
       method: "POST",
@@ -236,6 +265,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     };
   }
 
+  function requiresConsumerAuth(data: CallResponse) {
+    const reason = String(data.reason || data.error || "").toLowerCase();
+    return reason.includes("consumer_auth_required") || (data._httpStatus === 401 && reason.includes("unauthorized"));
+  }
+
   function successMessageFor(actionKey: ActionKey, data: CallResponse) {
     if (actionKey !== "tokenization") return successCopy[actionKey];
     return tokenizationUiResult(data).message;
@@ -326,6 +360,12 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
 
   function normalizeReason(data: { reason?: string; _httpStatus?: number }) {
     const reason = String(data.reason || "").toLowerCase();
+    if (reason.includes("consumer_auth_required")) {
+      return "Para reclamar dueño o crear NFT necesitamos validar email o celular. El producto queda listo, pero no se asocia a nadie sin identidad verificada.";
+    }
+    if (reason.includes("ownership_claim_required")) {
+      return "Primero reclama el producto como dueño verificado. Despues se habilita la solicitud NFT y la conexion de wallet.";
+    }
     if (reason.includes("fresh") || reason.includes("physical") || reason.includes("expired")) {
       return "Para ownership, garantia o tokenizacion necesitamos un tap fisico nuevo. Volve a tocar la etiqueta NFC.";
     }
@@ -355,6 +395,12 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       const data = await call(path, method, basePayload());
       setStatus(JSON.stringify(data));
       if (data._traceId) setLastTraceId(data._traceId);
+      if ((actionKey === "claimOwnership" || actionKey === "tokenization") && requiresConsumerAuth(data)) {
+        setClaimAuthOpen(true);
+        setActionStates((current) => ({ ...current, [actionKey]: "error" }));
+        setActionError(normalizeReason(data));
+        return;
+      }
       const result = actionKey === "tokenization"
         ? tokenizationUiResult(data)
         : { ok: Boolean(data.ok && data._httpOk), message: data.ok && data._httpOk ? successMessageFor(actionKey, data) : normalizeReason(data) };
@@ -428,6 +474,61 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     }
   }
 
+  async function startClaimAuth() {
+    if (!isClaimContactValid || claimAuthLoading) return;
+    setClaimAuthLoading(true);
+    setClaimAuthError("");
+    setClaimAuthMessage("");
+    setClaimDemoCode("");
+    try {
+      const payload = claimContactLooksEmail
+        ? { email: normalizedClaimContact }
+        : { phone: normalizedClaimContact };
+      const data = await call("/api/consumer/auth/start", "POST", payload);
+      if (!data._httpOk || data.ok === false) {
+        throw new Error(String(data.error || data.reason || "auth_start_failed"));
+      }
+      setClaimAuthStarted(true);
+      setClaimAuthMode(String(data.mode || "otp"));
+      setClaimDemoCode(String(data.code || ""));
+      setClaimAuthMessage(data.code
+        ? `Codigo demo enviado: ${String(data.code)}`
+        : "Codigo enviado. Ingresalo para asociar este producto a tu Passport.");
+    } catch (error) {
+      setClaimAuthError(normalizeUnknownError(error));
+    } finally {
+      setClaimAuthLoading(false);
+    }
+  }
+
+  async function verifyClaimAuthAndRetry() {
+    if (!isClaimContactValid || !isClaimCodeValid || claimAuthLoading) return;
+    setClaimAuthLoading(true);
+    setClaimAuthError("");
+    setClaimAuthMessage("");
+    try {
+      const payload = claimContactLooksEmail
+        ? { email: normalizedClaimContact, code: claimCode.trim() }
+        : { phone: normalizedClaimContact, code: claimCode.trim() };
+      const data = await call("/api/consumer/auth/verify", "POST", payload);
+      if (!data._httpOk || data.ok === false) {
+        throw new Error(String(data.error || data.reason || "auth_verify_failed"));
+      }
+      setClaimAuthOpen(false);
+      setClaimAuthStarted(false);
+      setClaimCode("");
+      setClaimAuthMessage("");
+      setLastActionMessage(lastRequest?.actionKey === "tokenization"
+        ? "Identidad verificada. Primero reclamamos ownership; despues queda habilitada la solicitud NFT."
+        : "Identidad verificada. Reintentando claim de ownership con este tap fresco.");
+      void trigger("/api/public-cta/claim-ownership", "POST", "claimOwnership");
+    } catch (error) {
+      setClaimAuthError(normalizeUnknownError(error));
+    } finally {
+      setClaimAuthLoading(false);
+    }
+  }
+
   function retryLastAction() {
     if (!lastRequest || pending) return;
     void trigger(lastRequest.path, lastRequest.method, lastRequest.actionKey);
@@ -440,6 +541,29 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           Politica: ownership {labelPolicy(rightsPolicy.claimMode)} · token {labelPolicy(rightsPolicy.tokenizationPolicy)} · marketplace {labelPolicy(rightsPolicy.marketplaceMode)}
         </div>
       ) : null}
+      <div className={`rounded-2xl border p-3 ${ownerClaimTone}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-80">Protocolo dueño / NFT</p>
+            <h3 className="mt-1 text-sm font-black text-white">Reclamo con identidad, no con link copiable</h3>
+            <p className="mt-1 text-[11px] leading-5 opacity-85">
+              El tap prueba que el producto existe. El email/celular probado define quien puede guardar Passport, wallet, marketplace y NFT.
+            </p>
+          </div>
+          <div className="shrink-0 rounded-xl border border-white/15 bg-slate-950/50 px-3 py-2 text-right">
+            <span className="block text-[10px] uppercase tracking-[0.12em] opacity-70">score</span>
+            <strong className="text-lg text-white">{ownerClaimScore}</strong>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-4">
+          {ownerClaimSteps.map((step) => (
+            <div key={step.label} className="rounded-xl border border-white/10 bg-slate-950/35 p-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-300">{step.label}</p>
+              <span className="mt-1 block text-[11px] font-bold text-white">{step.state}</span>
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="grid gap-2 text-xs md:grid-cols-2">
         {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).map((key) => {
           const item = actionMeta[key];
@@ -465,7 +589,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           className={`sun-public-cta-card rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-3 text-left text-emerald-100 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${cardStateClass("tokenization")}`}
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold"><span className="sun-public-cta-code">TOK</span> Tokenizar en Polygon{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
+            <p className="text-sm font-semibold"><span className="sun-public-cta-code">NFT</span> Crear NFT / token{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
             {renderStateBadge("tokenization")}
           </div>
           <p className="mt-1 text-[11px] text-emerald-50/80">{tokenSubtitle}</p>
@@ -475,6 +599,52 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       {pending ? <p className="text-xs text-cyan-200" aria-live="polite">Ejecutando acción...</p> : null}
       {lastActionMessage ? <p className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">{lastActionMessage}</p> : null}
       {actionError ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-xs text-rose-100" aria-live="assertive">{actionError}</p> : null}
+      {claimAuthOpen ? (
+        <div className="rounded-2xl border border-cyan-300/25 bg-slate-950/80 p-3 text-xs text-slate-200">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Alta rapida de dueño</p>
+              <h3 className="mt-1 text-sm font-black text-white">Valida email o celular para asociar este producto</h3>
+              <p className="mt-1 text-[11px] leading-5 text-slate-300">
+                Esto crea tu cuenta consumer, une el producto al tenant y deja listo Passport, wallet, token y marketplace.
+              </p>
+            </div>
+            <button suppressHydrationWarning type="button" onClick={() => setClaimAuthOpen(false)} className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-slate-200">
+              Cerrar
+            </button>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-[1.1fr_0.9fr_auto]">
+            <input
+              suppressHydrationWarning
+              value={claimContact}
+              onChange={(event) => setClaimContact(event.target.value)}
+              placeholder="email@dominio.com o +54..."
+              className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white outline-none focus:border-cyan-300/50"
+            />
+            <input
+              suppressHydrationWarning
+              value={claimCode}
+              onChange={(event) => setClaimCode(event.target.value)}
+              placeholder={claimAuthStarted ? "Codigo recibido" : "Codigo"}
+              className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white outline-none focus:border-cyan-300/50"
+            />
+            <button
+              suppressHydrationWarning
+              type="button"
+              disabled={claimAuthLoading || !isClaimContactValid}
+              onClick={() => claimAuthStarted ? void verifyClaimAuthAndRetry() : void startClaimAuth()}
+              className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 font-bold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {claimAuthLoading ? "Validando..." : claimAuthStarted ? "Confirmar" : "Enviar codigo"}
+            </button>
+          </div>
+          {!isClaimContactValid && normalizedClaimContact ? <p className="mt-2 text-[11px] text-amber-200">Usa un email valido o un celular con codigo de pais.</p> : null}
+          {claimDemoCode ? <p className="mt-2 rounded-lg border border-emerald-300/25 bg-emerald-500/10 p-2 text-[11px] text-emerald-100">Codigo demo: <span className="font-mono">{claimDemoCode}</span></p> : null}
+          {claimAuthMode ? <p className="mt-2 text-[11px] text-slate-400">Modo de verificacion: {claimAuthMode}</p> : null}
+          {claimAuthMessage ? <p className="mt-2 text-[11px] text-cyan-100">{claimAuthMessage}</p> : null}
+          {claimAuthError ? <p className="mt-2 rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-[11px] text-rose-100">{claimAuthError}</p> : null}
+        </div>
+      ) : null}
       {lastTraceId ? <p className="text-[11px] text-slate-400">trace_id: <span className="font-mono">{lastTraceId}</span></p> : null}
       {actionError && lastRequest ? (
         <button suppressHydrationWarning onClick={retryLastAction} disabled={pending} className="rounded border border-white/20 px-2 py-1 text-[11px] text-white disabled:cursor-not-allowed disabled:opacity-60">
