@@ -327,7 +327,7 @@ html.theme-light .worldmap-canvas div[class*="bg-slate-900"] {
     rgba(2, 6, 23, 0.72);
 }
 
-.global-ops-map-card .maplibregl-canvas {
+.global-ops-map-card canvas {
   outline: none;
 }
 

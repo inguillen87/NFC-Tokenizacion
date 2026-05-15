@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
+import { PremiumVectorMap } from "@product/ui";
 
 type Vertical = "wine" | "events" | "cosmetics" | "agro";
 
@@ -439,26 +440,18 @@ function HeroTraceMap({
 
   return (
     <div className="hero-trace-map" aria-label={txt.routeTitle}>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
-        <rect className="hero-trace-map__water" x="0" y="0" width="100" height="100" rx="6" />
-        <path className="hero-trace-map__land hero-trace-map__land--americas" d="M 16 16 C 25 8 39 11 43 21 C 47 31 40 39 44 48 C 49 60 38 69 35 82 C 27 84 20 78 21 67 C 22 58 15 51 18 41 C 20 33 10 25 16 16 Z" />
-        <path className="hero-trace-map__land hero-trace-map__land--europe" d="M 63 22 C 72 13 87 18 90 29 C 83 34 79 40 80 49 C 73 48 66 44 62 37 C 59 31 57 27 63 22 Z" />
-        <path className="hero-trace-map__land hero-trace-map__land--africa" d="M 64 46 C 73 42 84 48 87 60 C 82 72 75 82 66 81 C 60 73 59 62 62 53 C 63 50 63 48 64 46 Z" />
-        <path className="hero-trace-map__coast" d="M 14 18 C 25 8 39 12 43 22 M 63 22 C 72 13 88 18 91 29 M 64 46 C 74 42 85 49 88 61" />
-        <path className="hero-trace-map__grid" d="M 8 24 H 92 M 8 50 H 92 M 8 76 H 92 M 20 10 V 88 M 48 10 V 88 M 76 10 V 88" />
-        <path className="hero-trace-map__road" d="M 8 70 C 25 61 34 66 47 58 S 75 49 94 55" />
-        <path className="hero-trace-map__road" d="M 14 36 C 29 34 45 42 58 37 S 78 25 92 31" />
-        <path className="hero-trace-map__road hero-trace-map__road--secondary" d="M 30 12 C 35 29 34 47 41 65 S 55 80 58 90" />
-        <circle className="hero-trace-map__city" cx="30" cy="64" r="1.2" />
-        <circle className="hero-trace-map__city" cx="66" cy="37" r="1" />
-        <circle className="hero-trace-map__city" cx="78" cy="58" r="1.1" />
-        <text className="hero-trace-map__label" x="10" y="89">LATAM</text>
-        <text className="hero-trace-map__label" x="62" y="17">GLOBAL</text>
-        <path className="hero-trace-map__route-shadow" d={routePath} />
-        <path className="hero-trace-map__route" d={routePath} />
-        <circle className="hero-trace-map__origin" cx={originPoint.x} cy={originPoint.y} r="2.4" />
-        <circle className="hero-trace-map__tap" cx={tapPoint.x} cy={tapPoint.y} r="3" />
-      </svg>
+      <PremiumVectorMap
+        points={[
+          { id: "origin", label: origin.city, sublabel: origin.country, lat: origin.lat, lng: origin.lng, scans: 1, tone: "origin" },
+          { id: "tap", label: tap.city, sublabel: tap.country, lat: tap.lat, lng: tap.lng, scans: 1, tone: "tap" },
+        ]}
+        routes={[{ id: "hero-route", fromLat: origin.lat, fromLng: origin.lng, toLat: tap.lat, toLng: tap.lng, tone: "info" }]}
+        selectedPointId="tap"
+        chrome="minimal"
+        density="route"
+        heightClassName="h-full"
+        className="h-full rounded-none border-0 shadow-none"
+      />
       <div className="hero-map-pin hero-map-pin--origin" style={{ left: `${originPoint.x}%`, top: `${originPoint.y}%` }}>
         <span>{txt.originMap}</span>
         <strong>{origin.city}</strong>

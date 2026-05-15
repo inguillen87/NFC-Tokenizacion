@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./card";
+import { PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "./premium-vector-map";
 
 export type GlobalOpsPoint = {
   id: string;
@@ -39,15 +40,16 @@ export type GlobalOpsRoute = {
 type Mode = "tenant" | "global" | "demo";
 type TimeWindow = "1h" | "24h" | "7d" | "all";
 
-type MapLibreRuntime = {
+type OptionalMapRuntime = {
   Map: new (...args: any[]) => any;
 };
 
-const MAPLIBRE_JS = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
-const MAPLIBRE_CSS = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+const OPTIONAL_MAP_JS = "";
+const OPTIONAL_MAP_CSS = "";
+const NATIVE_VECTOR_ENGINE = true;
 const MAP_STYLES = {
-  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  dark: "",
+  light: "",
 } as const;
 
 type MapTheme = keyof typeof MAP_STYLES;
@@ -264,7 +266,7 @@ function setPaint(map: any, layerId: string, property: string, value: unknown) {
   try {
     map.setPaintProperty?.(layerId, property, value);
   } catch {
-    // MapLibre can throw while a style is still loading; the next hydrate pass reapplies it.
+    // The optional map runtime can throw while a style is still loading; the next hydrate pass reapplies it.
   }
 }
 
@@ -669,6 +671,25 @@ export function GlobalOpsMap({
       distanceKm: haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng),
     };
   }, [selectedPoint, visiblePoints, visibleRoutes]);
+  const vectorPoints = useMemo<VectorMapPoint[]>(() => visiblePoints.map((point) => ({
+    id: point.id,
+    label: point.city,
+    sublabel: `${point.country}${point.productName ? ` / ${point.productName}` : ""}`,
+    lat: point.lat,
+    lng: point.lng,
+    scans: point.scans,
+    risk: point.risk,
+    tone: point.role === "origin" ? "origin" : point.role === "tap" ? "tap" : point.risk > 0 ? "risk" : /TOKEN|MINT|CLAIM/i.test(point.verdict) ? "token" : "hub",
+  })), [visiblePoints]);
+  const vectorRoutes = useMemo<VectorMapRoute[]>(() => visibleRoutes.map((route) => ({
+    id: route.id,
+    fromLat: route.fromLat,
+    fromLng: route.fromLng,
+    toLat: route.toLat,
+    toLng: route.toLng,
+    label: route.productName || route.uid,
+    tone: route.risk > 0 ? "warn" : "info",
+  })), [visibleRoutes]);
   const kpiCountries = new Set(visiblePoints.map((point) => point.country)).size;
   const replayTamper = visiblePoints.filter((point) => ["REPLAY_SUSPECT", "DUPLICATE", "TAMPER", "TAMPERED"].includes(point.verdict)).length;
 
@@ -678,19 +699,23 @@ export function GlobalOpsMap({
     let cancelled = false;
 
     async function mountMap() {
+      if (NATIVE_VECTOR_ENGINE) {
+        setMapRuntimeReady(false);
+        return;
+      }
       if (!webglReady || !mapContainerRef.current || mapRef.current) return;
       try {
-        await ensureCss(MAPLIBRE_CSS);
-        await ensureScript(MAPLIBRE_JS);
-        const maplibregl = (window as any).maplibregl as MapLibreRuntime | undefined;
-        if (!maplibregl?.Map || cancelled) {
+        await ensureCss(OPTIONAL_MAP_CSS);
+        await ensureScript(OPTIONAL_MAP_JS);
+        const runtime = (window as any).nexidOptionalMapRuntime as OptionalMapRuntime | undefined;
+        if (!runtime?.Map || cancelled) {
           setMapRuntimeReady(false);
           return;
         }
 
         const initialTheme = readDocumentMapTheme();
         activeStyleRef.current = initialTheme;
-        const map = new maplibregl.Map({
+        const map = new runtime.Map({
           container: mapContainerRef.current,
           style: MAP_STYLES[initialTheme],
           center: [-8, 18],
@@ -835,13 +860,13 @@ export function GlobalOpsMap({
     if (map) scheduleMapFit(map, visiblePoints, filteredRoutes, true);
   };
 
-  const canRenderMap = webglReady && mapRuntimeReady;
+  const canRenderMap = true;
 
   return (
     <Card className="worldmap-card global-ops-map-card overflow-hidden p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">{title} {canRenderMap ? "MapLibre GL" : "Fallback"}</p>
+          <p className="text-sm font-semibold text-white">{title} Atlas vectorial nexID</p>
           <p className="text-xs text-slate-400">{subtitle} ({mode}) · {mapTheme === "light" ? "mapa claro" : "mapa oscuro"}.</p>
         </div>
         <div className="global-ops-map-stats grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
@@ -876,7 +901,27 @@ export function GlobalOpsMap({
       <div className="global-ops-map-layout mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">
         <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.25),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(167,139,250,.2),transparent_40%),linear-gradient(160deg,#020617,#0f172a,#111827)]">
           <div className="global-ops-map-canvas relative h-[29rem]">
-            <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+            <PremiumVectorMap
+              title="Mapa operativo premium"
+              subtitle="Heatmap, rutas y clusters renderizados como SVG interactivo propio."
+              caption="Rutas origen-tap, calor de actividad y puntos seleccionables sin servicios cartograficos pagos."
+              points={vectorPoints}
+              routes={vectorRoutes}
+              selectedPointId={selectedPoint?.id}
+              density={mode === "global" ? "heat" : "route"}
+              chrome="compact"
+              className="h-full rounded-none border-0 shadow-none"
+              heightClassName="h-full"
+              maxPoints={mode === "global" ? 120 : 64}
+              maxRoutes={mode === "global" ? 120 : 72}
+              onPointSelect={(point) => {
+                const selected = visiblePoints.find((item) => item.id === point.id);
+                if (!selected) return;
+                setInternalSelectedId(selected.id);
+                onPointSelect?.(selected);
+              }}
+            />
+            <div ref={mapContainerRef} className="hidden" />
             {!canRenderMap ? (
               <svg viewBox="0 0 1200 620" className="absolute inset-0 h-full w-full">
                 <defs>
@@ -926,7 +971,7 @@ export function GlobalOpsMap({
             ) : null}
             {!canRenderMap ? (
               <div className="absolute left-3 top-3 rounded-lg border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100">
-                WebGL/MapLibre no disponible. Mostrando vista operativa fallback.
+                Motor vectorial nativo activo. Mostrando vista operativa propia.
               </div>
             ) : null}
             <div className="global-ops-map-legend absolute right-3 top-3 grid gap-1 rounded-xl border border-white/10 bg-slate-950/80 p-2 text-[10px] text-slate-200 shadow-xl backdrop-blur-md">

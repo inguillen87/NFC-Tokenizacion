@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { WorldMapRealtime } from "@product/ui";
+import { BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -25,7 +26,7 @@ type DemoScenario = {
   primaryLabel: string;
 };
 
-type ThreeProductVertical = "wine" | "events" | "cosmetics" | "agro";
+type ThreeProductVertical = "wine" | "seeds" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket";
 
 const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), { ssr: false });
 
@@ -455,46 +456,26 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
 
   return (
     <main className="demo-lab-shell container-shell py-8 text-slate-100">
-      <section className="demo-lab-hero rounded-3xl border border-cyan-300/20 p-5 md:p-7">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-4xl">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">{txt.heroEyebrow}</p>
-            <h1 className="mt-3 max-w-4xl text-3xl font-black tracking-tight text-white md:text-5xl">{txt.heroTitle}</h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">{txt.heroBody}</p>
-          </div>
-          <div className="grid min-w-[18rem] gap-2 text-xs sm:grid-cols-2">
-            <a href="/" className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-center font-semibold text-slate-100">{txt.nav.landing}</a>
-            <a href="/login" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-center font-semibold text-emerald-100">{txt.nav.login}</a>
-            <a href="/sun" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-center font-semibold text-cyan-100">{txt.nav.sun}</a>
-            <a href="/me" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center font-semibold text-violet-100">{txt.nav.portal}</a>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-3 md:grid-cols-4">
-          {[
-            { label: txt.kpis.tags, value: summary?.tagCount === undefined ? "--" : String(summary.tagCount), detail: "DemoBodega / proveedor" },
-            { label: txt.kpis.events, value: String(liveEvents.length), detail: latestEvent ? `${latestEvent.city || "Sin dato"} / ${formatEventResult(latestEvent.result)}` : txt.kpis.noFeed },
-            { label: txt.kpis.portal, value: String(summary?.crm?.leads ?? 0), detail: txt.kpis.leads },
-            { label: txt.kpis.route, value: `${routeKm.toLocaleString(locale)} km`, detail: `${LOCATIONS.origin.city} -> ${destination.city}` },
-          ].map((kpi) => (
-            <div key={kpi.label} className="demo-lab-panel rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">{kpi.label}</p>
-              <p className="mt-2 text-2xl font-black text-white">{kpi.value}</p>
-              <p className="mt-1 text-xs text-slate-400">{kpi.detail}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="demo-lab-value-grid mt-4 grid gap-3 md:grid-cols-4">
-          {txt.valueCards.map((item) => (
-            <article key={item.title} className="demo-lab-value-card rounded-2xl border border-cyan-300/15 bg-slate-950/45 p-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-300">{item.metric}</p>
-              <h3 className="mt-2 text-sm font-black text-white">{item.title}</h3>
-              <p className="mt-2 text-xs leading-5 text-slate-300">{item.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <DemoLabStudioHero
+        txt={txt}
+        beat={beat}
+        vertical={vertical}
+        activeVertical={activeVertical}
+        scenario={scenario}
+        destination={destination}
+        routeKm={routeKm}
+        locale={locale}
+        summary={summary}
+        liveEvents={liveEvents}
+        latestEvent={latestEvent}
+        simulating={simulating}
+        onVertical={setVertical}
+        onBeat={setBeat}
+        onPassport={() => setModalView("mobile")}
+        onValid={() => void simulate("valid")}
+        onOpen={() => void simulate("tamper")}
+        onReplay={() => void simulate("replay")}
+      />
 
       <DemoFinalTapDock
         status={status}
@@ -636,7 +617,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
             subtitle={`${LOCATIONS.origin.city} -> ${destination.city}. ${txt.controls.distance}: ${routeKm.toLocaleString(locale)} km.`}
             points={mapPoints}
             routes={[{ fromLat: LOCATIONS.origin.lat, fromLng: LOCATIONS.origin.lng, toLat: destination.lat, toLng: destination.lng, tone: activeBeat.mode === "replay" ? "warn" : "info" }]}
-            metadataRows={(point) => [{ label: "Google Maps", value: `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` }, { label: "Abrir", value: mapsLink(point) }]}
+            metadataRows={(point) => [{ label: "Coordenadas", value: `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` }, { label: "Abrir", value: mapsLink(point) }]}
             initialExpanded
           />
         </div>
@@ -668,6 +649,228 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         onOpen={setModalView}
       />
     </main>
+  );
+}
+
+function DemoLabStudioHero({
+  txt,
+  beat,
+  vertical,
+  activeVertical,
+  scenario,
+  destination,
+  routeKm,
+  locale,
+  summary,
+  liveEvents,
+  latestEvent,
+  simulating,
+  onVertical,
+  onBeat,
+  onPassport,
+  onValid,
+  onOpen,
+  onReplay,
+}: {
+  txt: DemoCopy;
+  beat: Beat;
+  vertical: Vertical;
+  activeVertical: DemoCopy["verticals"][Vertical];
+  scenario: DemoScenario;
+  destination: DemoLocation;
+  routeKm: number;
+  locale: AppLocale;
+  summary: DemoSummary | null;
+  liveEvents: DemoEvent[];
+  latestEvent?: DemoEvent;
+  simulating: boolean;
+  onVertical: (vertical: Vertical) => void;
+  onBeat: (beat: Beat) => void;
+  onPassport: () => void;
+  onValid: () => void;
+  onOpen: () => void;
+  onReplay: () => void;
+}) {
+  const verticalList = (Object.keys(txt.verticals) as Vertical[]);
+  const productFacts = [
+    { icon: PackageCheck, label: "Producto", value: activeVertical.product },
+    { icon: MapPin, label: "Origen", value: "Valle de Uco, Argentina" },
+    { icon: UserRound, label: "Productor", value: "Bodega Demo" },
+    { icon: CalendarDays, label: "Cosecha", value: vertical === "wine" ? "2022" : "Lote vigente" },
+    { icon: Fingerprint, label: "Perfil", value: activeVertical.profile },
+    { icon: ShieldCheck, label: "Estado", value: scenario.stateLabel },
+  ];
+  const provenance = [
+    { label: "Origen", value: "Valle de Uco, Mendoza, Argentina" },
+    { label: "Elaboracion", value: "Bodega Demo - lote MZA-2026-0424" },
+    { label: "Embotellado", value: vertical === "wine" ? "750 ml - 100% Malbec" : activeVertical.product },
+    { label: "Distribucion", value: "Canal autorizado" },
+    { label: "Punto de venta", value: `${destination.city}, ${destination.country}` },
+    { label: "Ultima lectura", value: latestEvent ? `${latestEvent.city || destination.city} - ${formatEventResult(latestEvent.result)}` : "Hace segundos" },
+  ];
+  const trustItems = [
+    { icon: ShieldCheck, title: "Infraestructura segura", body: "Datos inmutables en blockchain" },
+    { icon: BadgeCheck, title: "Privacidad por diseno", body: "Solo compartis lo que necesitas" },
+    { icon: CheckCircle2, title: "Verifica siempre", body: "Un toque. Cero dudas." },
+  ];
+
+  return (
+    <section className={`demo-lab-studio demo-lab-studio--${vertical} demo-lab-studio--${scenario.tone}`}>
+      <div className="demo-lab-studio-grid">
+        <aside className="demo-lab-studio-left">
+          <div className="demo-lab-studio-copy">
+            <p>{txt.heroEyebrow}</p>
+            <h1>Descubrir. Verificar. Confiar.</h1>
+            <span>{txt.heroBody}</span>
+          </div>
+
+          <div className="demo-lab-studio-passport">
+            <p>Estado del pasaporte digital</p>
+            <div className="demo-lab-studio-passport-row">
+              <span className="demo-lab-studio-shield"><ShieldCheck size={32} strokeWidth={2.4} /></span>
+              <div>
+                <strong>{beat === 2 ? "COPIA BLOQUEADA" : beat === 0 ? "LISTO PARA TOQUE" : "NFT VERIFICADO"}</strong>
+                <small>{scenario.chain}</small>
+              </div>
+            </div>
+            <button suppressHydrationWarning type="button" onClick={onPassport}>Ver pasaporte</button>
+          </div>
+
+          <div className="demo-lab-studio-verticals">
+            <p>Otras verticales</p>
+            <span>Explora como nexID se adapta a tu industria.</span>
+            <div className="demo-lab-studio-vertical-list">
+              {verticalList.map((item) => (
+                <button
+                  suppressHydrationWarning
+                  key={item}
+                  type="button"
+                  onClick={() => onVertical(item)}
+                  className={vertical === item ? "is-active" : ""}
+                >
+                  <DemoStudioMiniProduct vertical={item} />
+                  <span>
+                    <strong>{txt.verticals[item].label}</strong>
+                    <small>{txt.verticals[item].profile}</small>
+                  </span>
+                  <ChevronRight size={16} />
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <div className="demo-lab-studio-stage">
+          <div className="demo-lab-studio-stage-head">
+            <p>Vista 3D</p>
+            <span>Arrastra para rotar. Scroll para acercar.</span>
+          </div>
+          <div className="demo-lab-studio-callout demo-lab-studio-callout--nfc">
+            <strong>NFC</strong>
+            <span>Zona de toque</span>
+            <small>Acerca tu dispositivo a la etiqueta</small>
+          </div>
+          <div className="demo-lab-studio-product">
+            <span className="demo-lab-studio-pedestal" />
+            <span className="demo-lab-studio-reflection" />
+            <HeroThreeStage
+              active={mapDemoVerticalToThree(vertical)}
+              product={activeVertical.product}
+              className="demo-lab-studio-three"
+            />
+          </div>
+          <div className="demo-lab-studio-statusbar">
+            <span><i /> {beat === 2 ? "Replay bloqueado" : beat === 3 ? "Sello abierto" : "Toque simulado"}</span>
+            <span>{activeVertical.profile}</span>
+            <span>Ultima lectura</span>
+            <strong>{latestEvent?.created_at ? "feed real" : "hace segundos"}</strong>
+          </div>
+          <div className="demo-lab-studio-actions">
+            <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque valido</button>
+            <button suppressHydrationWarning type="button" disabled={simulating} onClick={onReplay}>Copia bloqueada</button>
+            <button suppressHydrationWarning type="button" disabled={simulating} onClick={onOpen}>Abrir sello</button>
+          </div>
+        </div>
+
+        <aside className="demo-lab-studio-right">
+          <div className="demo-lab-studio-info">
+            <div className="demo-lab-studio-panel-head">
+              <p>Informacion del producto</p>
+              <span><i /> Autentico</span>
+            </div>
+            <div className="demo-lab-studio-facts">
+              {productFacts.map((fact) => {
+                const Icon = fact.icon;
+                return (
+                  <div key={fact.label}>
+                    <Icon size={16} />
+                    <span>{fact.label}</span>
+                    <strong>{fact.value}</strong>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="demo-lab-studio-info demo-lab-studio-info--provenance">
+            <div className="demo-lab-studio-panel-head">
+              <p>Procedencia verificada</p>
+              <span>{routeKm.toLocaleString(locale)} km</span>
+            </div>
+            <ol>
+              {provenance.map((item, index) => (
+                <li key={`${item.label}-${index}`}>
+                  <span />
+                  <div>
+                    <strong>{item.label}</strong>
+                    <small>{item.value}</small>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </aside>
+      </div>
+
+      <div className="demo-lab-studio-bottom">
+        {trustItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.title}>
+              <Icon size={22} />
+              <span>
+                <strong>{item.title}</strong>
+                <small>{item.body}</small>
+              </span>
+            </div>
+          );
+        })}
+        <div>
+          <Fingerprint size={22} />
+          <span>
+            <strong>{summary?.tagCount ?? "--"} tags / {liveEvents.length} eventos</strong>
+            <small>{LOCATIONS.origin.city} {"->"} {destination.city}</small>
+          </span>
+        </div>
+      </div>
+
+      <div className="demo-lab-studio-beats" aria-label="Estados de la experiencia">
+        {([0, 1, 2, 3] as Beat[]).map((item) => (
+          <button suppressHydrationWarning key={item} type="button" onClick={() => onBeat(item)} className={beat === item ? "is-active" : ""}>
+            <span>{String(item + 1).padStart(2, "0")}</span>
+            <strong>{txt.beats[item].title.replace(/^\d+\.\s*/, "")}</strong>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DemoStudioMiniProduct({ vertical }: { vertical: Vertical }) {
+  return (
+    <span className={`demo-lab-studio-mini demo-lab-studio-mini--${vertical}`} aria-hidden="true">
+      <i />
+    </span>
   );
 }
 
@@ -1151,9 +1354,12 @@ function DemoLabProductThreeStage({
 }
 
 function mapDemoVerticalToThree(vertical: Vertical): ThreeProductVertical {
-  if (vertical === "bracelet" || vertical === "ticket") return "events";
-  if (vertical === "seeds") return "agro";
-  if (vertical === "creamJar" || vertical === "perfume" || vertical === "creamTube") return "cosmetics";
+  if (vertical === "bracelet") return "bracelet";
+  if (vertical === "ticket") return "ticket";
+  if (vertical === "seeds") return "seeds";
+  if (vertical === "creamJar") return "creamJar";
+  if (vertical === "perfume") return "perfume";
+  if (vertical === "creamTube") return "creamTube";
   return "wine";
 }
 
@@ -1691,17 +1897,49 @@ function StageRouteLayer({
   locale: AppLocale;
 }) {
   const routeStroke = scenario.tone === "risk" ? "#fb7185" : scenario.tone === "open" ? "#fbbf24" : "#22d3ee";
+  const routeD = "M190 274 C280 138 425 96 566 132";
 
   return (
     <div className={`demo-lab-stage-route-layer demo-lab-stage-route-layer--${scenario.tone}`} aria-hidden="true">
-      <svg viewBox="0 0 700 420" preserveAspectRatio="none">
-        <path className="demo-lab-map-land demo-lab-map-land--origin" d="M72 318 C145 250 170 160 248 120 C325 82 410 116 421 198 C435 300 320 358 224 348 C160 342 112 335 72 318Z" />
-        <path className="demo-lab-map-land demo-lab-map-land--tap" d="M444 84 C532 42 657 86 670 194 C682 292 580 352 498 312 C412 270 388 134 444 84Z" />
-        <path className="demo-lab-map-grid" d="M70 118 H630 M70 214 H630 M70 310 H630 M155 72 V358 M348 72 V358 M540 72 V358" />
-        <path className="demo-lab-route-ghost" d="M190 274 C280 138 425 96 566 132" />
-        <path className="demo-lab-route-line" d="M190 274 C280 138 425 96 566 132" style={{ stroke: routeStroke }} />
-        <circle className="demo-lab-route-heat demo-lab-route-heat--origin" cx="190" cy="274" r="54" />
-        <circle className="demo-lab-route-heat demo-lab-route-heat--tap" cx="566" cy="132" r="64" />
+      <svg viewBox="0 0 700 420" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="demo-lab-atlas-ocean" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#06243c" />
+            <stop offset="55%" stopColor="#071827" />
+            <stop offset="100%" stopColor="#111136" />
+          </linearGradient>
+          <linearGradient id="demo-lab-atlas-land" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#0f766e" stopOpacity="0.42" />
+            <stop offset="50%" stopColor="#0e7490" stopOpacity="0.34" />
+            <stop offset="100%" stopColor="#312e81" stopOpacity="0.35" />
+          </linearGradient>
+          <filter id="demo-lab-atlas-glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <rect x="0" y="0" width="700" height="420" fill="url(#demo-lab-atlas-ocean)" opacity="0.82" />
+        <path className="demo-lab-map-grid" d="M52 74 H648 M52 142 H648 M52 210 H648 M52 278 H648 M52 346 H648 M104 44 V376 M206 44 V376 M350 44 V376 M494 44 V376 M596 44 V376" />
+        <path className="demo-lab-map-ridge" d="M55 340 C120 306 186 327 249 290 S376 204 456 218 S573 270 664 236" />
+        <path className="demo-lab-map-ridge demo-lab-map-ridge--secondary" d="M44 120 C116 94 187 122 260 106 S398 56 488 88 S593 132 666 112" />
+        <path className="demo-lab-map-land demo-lab-map-land--origin" d="M68 316 C129 265 150 192 218 145 C286 99 378 101 417 163 C461 234 397 310 303 335 C216 358 134 346 68 316Z" />
+        <path className="demo-lab-map-land demo-lab-map-land--tap" d="M438 74 C533 34 653 83 675 179 C699 281 587 356 496 314 C405 272 373 133 438 74Z" />
+        <path className="demo-lab-map-land" d="M312 356 C382 338 452 354 523 386 L496 417 H265 C274 391 288 367 312 356Z" />
+        <path className="demo-lab-map-coastline" d="M73 309 C144 250 166 170 235 130 C310 88 390 113 419 178 M440 82 C532 42 648 88 672 180 M316 357 C390 340 458 358 524 388" />
+        <circle className="demo-lab-route-heat demo-lab-route-heat--origin" cx="190" cy="274" r="64" />
+        <circle className="demo-lab-route-heat demo-lab-route-heat--tap" cx="566" cy="132" r="76" />
+        <circle className="demo-lab-map-city" cx="190" cy="274" r="3" />
+        <circle className="demo-lab-map-city" cx="279" cy="206" r="2.6" />
+        <circle className="demo-lab-map-city" cx="442" cy="154" r="2.8" />
+        <circle className="demo-lab-map-city" cx="566" cy="132" r="3.2" />
+        <path className="demo-lab-route-ghost" d={routeD} />
+        <path className="demo-lab-route-line" d={routeD} style={{ stroke: routeStroke }} />
+        <circle className="demo-lab-route-particle" r="5" fill={routeStroke}>
+          <animateMotion dur="4.4s" repeatCount="indefinite" path={routeD} />
+        </circle>
         <circle className="demo-lab-route-dot demo-lab-route-dot--origin" cx="190" cy="274" r="10" />
         <circle className="demo-lab-route-dot demo-lab-route-dot--tap" cx="566" cy="132" r="10" />
         <circle className="demo-lab-route-ping" cx={scenario.tone === "risk" ? "356" : "566"} cy={scenario.tone === "risk" ? "150" : "132"} r="14" />

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "./card";
+import { PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "./premium-vector-map";
 
 type GeoPoint = {
   city: string;
@@ -18,51 +19,12 @@ type GeoPoint = {
 
 type TimeWindowMode = "5m" | "1h" | "24h" | "all";
 type MapMode = "classic" | "network";
-type SpinSpeed = "slow" | "normal" | "fast";
 type MapRoute = { fromLat: number; fromLng: number; toLat: number; toLng: number; label?: string; tone?: "info" | "warn" };
-
-const GLOBAL_BACKBONE_POINTS: Array<{ lat: number; lng: number }> = [
-  { lat: 37.7749, lng: -122.4194 }, // SF
-  { lat: 40.7128, lng: -74.006 }, // NY
-  { lat: -23.5505, lng: -46.6333 }, // Sao Paulo
-  { lat: 51.5072, lng: -0.1276 }, // London
-  { lat: 48.8566, lng: 2.3522 }, // Paris
-  { lat: 25.2048, lng: 55.2708 }, // Dubai
-  { lat: 1.3521, lng: 103.8198 }, // Singapore
-  { lat: 35.6762, lng: 139.6503 }, // Tokyo
-];
 
 function parseEventTime(value?: string) {
   if (!value) return Date.now();
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? Date.now() : parsed;
-}
-
-function buildMapUrl(points: GeoPoint[], active: GeoPoint | null) {
-  if (!active) return "";
-  const lats = points.map((point) => point.lat);
-  const lngs = points.map((point) => point.lng);
-  const minLat = Math.min(...lats) - 0.25;
-  const maxLat = Math.max(...lats) + 0.25;
-  const minLng = Math.min(...lngs) - 0.35;
-  const maxLng = Math.max(...lngs) + 0.35;
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${active.lat}%2C${active.lng}`;
-}
-
-function buildGlobalMapUrl() {
-  return "https://www.openstreetmap.org/export/embed.html?bbox=-180%2C-70%2C180%2C85&layer=mapnik";
-}
-
-function projectToCanvas(lat: number, lng: number, width: number, height: number) {
-  const x = ((lng + 180) / 360) * width;
-  const y = ((90 - lat) / 180) * height;
-  return { x, y };
-}
-
-function curvedRoutePath(a: { x: number; y: number }, b: { x: number; y: number }, lift = 38) {
-  const cx = (a.x + b.x) / 2;
-  const cy = Math.min(a.y, b.y) - lift;
-  return `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
 }
 
 export function WorldMapRealtime({
@@ -85,7 +47,6 @@ export function WorldMapRealtime({
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
   const [expanded, setExpanded] = useState(initialExpanded);
   const [mapMode, setMapMode] = useState<MapMode>("network");
-  const [spinSpeed, setSpinSpeed] = useState<SpinSpeed>("normal");
   const [riskOnly, setRiskOnly] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -125,8 +86,6 @@ export function WorldMapRealtime({
   }, [rankedPoints, activeIndex]);
 
   const activePoint = rankedPoints[activeIndex] || null;
-  const mapUrl = useMemo(() => buildMapUrl(rankedPoints, activePoint), [rankedPoints, activePoint]);
-  const globalMapUrl = useMemo(() => buildGlobalMapUrl(), []);
   const totalScans = rankedPoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const riskSignals = rankedPoints.reduce((acc, point) => acc + (point.risk || 0), 0);
   const visibleRoutes = useMemo<MapRoute[]>(() => {
@@ -143,6 +102,26 @@ export function WorldMapRealtime({
     });
     return fromRanking;
   }, [rankedPoints, routes]);
+  const vectorPoints = useMemo<VectorMapPoint[]>(() => rankedPoints.slice(0, 30).map((point, index) => ({
+    id: `${point.city}-${point.country || "xx"}-${point.lat.toFixed(4)}-${point.lng.toFixed(4)}-${index}`,
+    label: point.city,
+    sublabel: point.country,
+    lat: point.lat,
+    lng: point.lng,
+    scans: point.scans || 1,
+    risk: point.risk || 0,
+    tone: (point.risk || 0) > 0 ? "risk" : point.status === "opened" ? "token" : index === activeIndex ? "tap" : "hub",
+  })), [activeIndex, rankedPoints]);
+  const vectorRoutes = useMemo<VectorMapRoute[]>(() => visibleRoutes.map((route, index) => ({
+    id: `world-route-${index}-${route.fromLat}-${route.toLng}`,
+    fromLat: route.fromLat,
+    fromLng: route.fromLng,
+    toLat: route.toLat,
+    toLng: route.toLng,
+    label: route.label,
+    tone: route.tone === "warn" ? "warn" : "info",
+  })), [visibleRoutes]);
+  const selectedVectorPointId = vectorPoints[activeIndex]?.id || vectorPoints[0]?.id;
   const emptyStateText = riskOnly
     ? "No hay hubs con señales de riesgo para la ventana seleccionada. Desactivá Risk-only o ampliá la ventana temporal."
     : "No hay hubs geolocalizados para la ventana seleccionada. Generá taps reales o ampliá la ventana temporal.";
@@ -172,80 +151,32 @@ export function WorldMapRealtime({
           {expanded ? "Compact view" : "Expand map"}
         </button>
         <button suppressHydrationWarning type="button" onClick={() => setMapMode((prev) => (prev === "classic" ? "network" : "classic"))} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
-          {mapMode === "classic" ? "Mode: classic" : "Mode: network"}
+          {mapMode === "classic" ? "Vista: calor" : "Vista: rutas"}
         </button>
         <button suppressHydrationWarning type="button" onClick={() => setRiskOnly((prev) => !prev)} className={`rounded-lg border px-3 py-1 ${riskOnly ? "border-rose-300/35 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
           {riskOnly ? "Risk-only: on" : "Risk-only: off"}
         </button>
-        {mapMode === "network" ? (
-          <button suppressHydrationWarning type="button" onClick={() => setSpinSpeed((prev) => (prev === "slow" ? "normal" : prev === "normal" ? "fast" : "slow"))} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-violet-100">
-            Spin: {spinSpeed}
-          </button>
-        ) : null}
       </div>
 
       {activePoint ? (
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem]">
-          <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950/80">
-            {mapMode === "classic" ? (
-              <iframe title="world-map-realtime" src={mapUrl} className={`${expanded ? "h-[34rem]" : "h-[24rem]"} w-full`} loading="lazy" />
-            ) : (
-              <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} relative overflow-hidden bg-[radial-gradient(circle_at_20%_25%,rgba(34,211,238,.22),transparent_40%),radial-gradient(circle_at_75%_78%,rgba(167,139,250,.2),transparent_42%),linear-gradient(165deg,#020617,#0b1734_55%,#111827)]`}>
-                <iframe title="world-map-network-base" src={globalMapUrl} className="pointer-events-none absolute inset-0 h-full w-full opacity-30 mix-blend-screen" loading="lazy" />
-                <svg viewBox="0 0 1000 520" className="absolute inset-0 h-full w-full">
-                  <defs>
-                    <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="rgba(34,211,238,0.25)" />
-                      <stop offset="50%" stopColor="rgba(167,139,250,0.9)" />
-                      <stop offset="100%" stopColor="rgba(34,211,238,0.25)" />
-                    </linearGradient>
-                  </defs>
-                  <rect x="0" y="0" width="1000" height="520" fill="rgba(8,13,33,0.3)" />
-                  <ellipse cx="500" cy="260" rx="320" ry="190" fill="none" stroke="rgba(148,163,184,0.16)" strokeWidth="1.2" />
-                  <ellipse cx="500" cy="260" rx="270" ry="160" fill="none" stroke="rgba(125,211,252,0.12)" strokeWidth="1.2" />
-                  {GLOBAL_BACKBONE_POINTS.map((backbone, index) => {
-                    const coord = projectToCanvas(backbone.lat, backbone.lng, 1000, 520);
-                    return <circle key={`backbone-${index}`} cx={coord.x} cy={coord.y} r="3" fill="rgba(148,163,184,0.28)" />;
-                  })}
-                  <g>
-                    {visibleRoutes.map((route, index) => {
-                      const a = projectToCanvas(route.fromLat, route.fromLng, 1000, 520);
-                      const b = projectToCanvas(route.toLat, route.toLng, 1000, 520);
-                      return (
-                        <path
-                          key={`route-${index}-${route.fromLat}-${route.toLng}`}
-                          d={curvedRoutePath(a, b, route.tone === "warn" ? 52 : 38)}
-                          stroke={route.tone === "warn" ? "rgba(251,113,133,0.8)" : "url(#routeGradient)"}
-                          strokeWidth={route.tone === "warn" ? "2.4" : "2"}
-                          fill="none"
-                          strokeDasharray="5 6"
-                          opacity="0.9"
-                        >
-                          <animate attributeName="stroke-dashoffset" values={spinSpeed === "slow" ? "0;-18" : spinSpeed === "fast" ? "0;-56" : "0;-32"} dur={spinSpeed === "slow" ? "4.2s" : spinSpeed === "fast" ? "1.6s" : "2.4s"} repeatCount="indefinite" />
-                        </path>
-                      );
-                    })}
-                    {rankedPoints.slice(0, 24).map((point, index) => {
-                      const coord = projectToCanvas(point.lat, point.lng, 1000, 520);
-                      const isActive = index === activeIndex;
-                      return (
-                        <g key={`${point.city}-${index}`}>
-                          <circle cx={coord.x} cy={coord.y} r={isActive ? 10 : 6} fill={isActive ? "rgba(34,211,238,0.95)" : "rgba(129,140,248,0.75)"} />
-                          <circle cx={coord.x} cy={coord.y} r={isActive ? 22 : 14} fill="none" stroke="rgba(125,211,252,0.3)" strokeWidth="1.6">
-                            <animate attributeName="r" values={`${isActive ? "12;24;12" : "8;16;8"}`} dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
-                            <animate attributeName="opacity" values="0.9;0.2;0.9" dur={isActive ? "2.3s" : "3.6s"} repeatCount="indefinite" />
-                          </circle>
-                        </g>
-                      );
-                    })}
-                  </g>
-                </svg>
-                <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
-                  Network mode: visual arcs for global scans, opened/tamper/duplicate signals and active hubs.
-                </div>
-              </div>
-            )}
-          </div>
+          <PremiumVectorMap
+            title={mapMode === "classic" ? "Heatmap operativo" : "Atlas de trazabilidad"}
+            subtitle="Motor vectorial propio: rutas, riesgo y hubs sin iframe ni API paga."
+            caption="Capa visual para autenticaciones, tamper, duplicados y hubs comerciales en vivo."
+            points={vectorPoints}
+            routes={vectorRoutes}
+            selectedPointId={selectedVectorPointId}
+            density={mapMode === "classic" ? "heat" : "route"}
+            heightClassName={expanded ? "h-[34rem]" : "h-[24rem]"}
+            onPointSelect={(point) => {
+              const nextIndex = vectorPoints.findIndex((item) => item.id === point.id);
+              if (nextIndex >= 0) {
+                setActiveIndex(nextIndex);
+                onPointSelect?.(rankedPoints[nextIndex]);
+              }
+            }}
+          />
           <div className={`${expanded ? "h-[34rem]" : "h-[24rem]"} space-y-2 overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-2`}>
             {rankedPoints.slice(0, 30).map((point, index) => (
               <button suppressHydrationWarning

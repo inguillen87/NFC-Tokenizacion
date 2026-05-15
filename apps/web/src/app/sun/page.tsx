@@ -1159,7 +1159,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
                 <h2 className="px-1 text-lg font-black text-white">Mapa de confianza origen - tap</h2>
               </div>
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">MapLibre + heatmap</span>
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">Atlas vectorial + heatmap</span>
             </div>
             <div className="mt-2">
                {opsMapPoints.length ? (

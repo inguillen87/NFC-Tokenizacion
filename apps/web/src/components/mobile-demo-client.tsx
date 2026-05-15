@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Card } from "@product/ui";
+import { Badge, Card, PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 
 type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consumer_duplicate";
 type ConsumerState = "AUTH_PENDING" | "VALID" | "OPENED" | "TAMPER_RISK" | "CLAIMED" | "REPLAY_SUSPECT";
@@ -200,13 +200,47 @@ export function MobileDemoClient({
     if (!geoState) return null;
     return haversineKm(WINERY_HQ.lat, WINERY_HQ.lng, geoState.lat, geoState.lng);
   }, [geoState]);
-  const mapWidgetUrl = useMemo(() => {
-    const originLat = WINERY_HQ.lat;
-    const originLng = WINERY_HQ.lng;
-    const destinationLat = geoState?.lat ?? WINERY_HQ.lat;
-    const destinationLng = geoState?.lng ?? WINERY_HQ.lng;
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${Math.min(originLng, destinationLng) - 0.08}%2C${Math.min(originLat, destinationLat) - 0.05}%2C${Math.max(originLng, destinationLng) + 0.08}%2C${Math.max(originLat, destinationLat) + 0.05}&layer=mapnik&marker=${destinationLat}%2C${destinationLng}`;
-  }, [geoState]);
+  const mobileMapPoints = useMemo<VectorMapPoint[]>(() => [
+    {
+      id: "origin",
+      label: "Origen",
+      sublabel: WINERY_HQ.name,
+      lat: WINERY_HQ.lat,
+      lng: WINERY_HQ.lng,
+      scans: 1,
+      risk: 0,
+      tone: "origin",
+    },
+    geoState
+      ? {
+          id: "tap",
+          label: "Lectura",
+          sublabel: `${geoState.lat.toFixed(3)}, ${geoState.lng.toFixed(3)}`,
+          lat: geoState.lat,
+          lng: geoState.lng,
+          scans: 1,
+          risk: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? 1 : 0,
+          tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "tap",
+        }
+      : {
+          id: "pending",
+          label: "Tap pendiente",
+          sublabel: "Permiso de ubicacion",
+          lat: WINERY_HQ.lat + 7,
+          lng: WINERY_HQ.lng + 16,
+          scans: 0,
+          risk: 0,
+          tone: "hub",
+        },
+  ], [consumerState, geoState]);
+  const mobileMapRoutes = useMemo<VectorMapRoute[]>(() => geoState ? [{
+    id: "origin-to-tap",
+    fromLat: WINERY_HQ.lat,
+    fromLng: WINERY_HQ.lng,
+    toLat: geoState.lat,
+    toLng: geoState.lng,
+    tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "warn" : "info",
+  }] : [], [consumerState, geoState]);
 
   useEffect(() => {
     const mapped = MODE_STATE[mode] || "VALID";
@@ -480,12 +514,14 @@ export function MobileDemoClient({
                 <p className="mt-1 text-[11px] text-slate-300">{geoError || "Esperando permiso de ubicación del dispositivo..."}</p>
               )}
               <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
-                <iframe
-                  title="geo-trace-mini-map"
-                  src={mapWidgetUrl}
-                  className="h-28 w-full bg-slate-950"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
+                <PremiumVectorMap
+                  points={mobileMapPoints}
+                  routes={mobileMapRoutes}
+                  selectedPointId={geoState ? "tap" : "origin"}
+                  chrome="minimal"
+                  density="route"
+                  heightClassName="h-28"
+                  className="rounded-none border-0 shadow-none"
                 />
               </div>
               <p className="mt-1 text-[10px] text-slate-400">Vista rápida del punto de tap sobre mapa para demo comercial.</p>
@@ -545,12 +581,14 @@ export function MobileDemoClient({
               </div>
               <p className="mt-1 text-[11px] text-slate-200">{WINERY_HQ.name} → {geoState ? "Punto de lectura" : "Ubicación pendiente"}</p>
               <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
-                <iframe
-                  title="origin-destination-map"
-                  src={mapWidgetUrl}
-                  className="h-36 w-full bg-slate-950"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
+                <PremiumVectorMap
+                  points={mobileMapPoints}
+                  routes={mobileMapRoutes}
+                  selectedPointId={geoState ? "tap" : "origin"}
+                  chrome="minimal"
+                  density="route"
+                  heightClassName="h-36"
+                  className="rounded-none border-0 shadow-none"
                 />
               </div>
               <div className="mt-2 rounded-lg border border-white/10 bg-slate-950/70 p-2">
