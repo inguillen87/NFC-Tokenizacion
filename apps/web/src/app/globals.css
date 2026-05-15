@@ -8765,6 +8765,8 @@ html.theme-light .demo-lab-policy-card--blocked {
    feed and enterprise pitch assets. */
 .nexid-motion-pack {
   min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
   overflow-x: hidden;
   background:
     radial-gradient(circle at 8% 0%, rgba(34, 211, 238, 0.18), transparent 30rem),
@@ -8775,19 +8777,35 @@ html.theme-light .demo-lab-policy-card--blocked {
   padding: clamp(1rem, 2vw, 2rem);
 }
 
+.nexid-motion-pack *,
+.nexid-motion-pack *::before,
+.nexid-motion-pack *::after {
+  box-sizing: border-box;
+}
+
 .nexid-motion-pack a {
   color: inherit;
   text-decoration: none;
 }
 
 .nexid-motion-hero,
+.nexid-motion-director,
 .nexid-motion-purpose,
 .nexid-motion-benchmark,
 .nexid-motion-formats,
 .nexid-motion-products,
 .nexid-motion-storyboard {
   width: min(100%, 82rem);
+  max-width: 100%;
   margin-inline: auto;
+}
+
+.nexid-motion-hero > *,
+.nexid-motion-director > *,
+.nexid-motion-purpose > *,
+.nexid-motion-format-card > *,
+.nexid-motion-frame > * {
+  min-width: 0;
 }
 
 .nexid-motion-hero {
@@ -8805,6 +8823,8 @@ html.theme-light .demo-lab-policy-card--blocked {
 }
 
 .nexid-motion-hero p,
+.nexid-motion-director-copy p,
+.nexid-motion-lens-stack > p,
 .nexid-motion-purpose-copy p,
 .nexid-motion-section-heading p,
 .nexid-motion-format-copy small,
@@ -8826,6 +8846,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   letter-spacing: 0;
   line-height: 0.96;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .nexid-motion-hero span {
@@ -8835,6 +8856,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #cbd5e1;
   font-size: 1.06rem;
   line-height: 1.72;
+  overflow-wrap: anywhere;
 }
 
 .nexid-motion-hero-actions {
@@ -8975,6 +8997,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   font-size: 1.4rem;
   font-weight: 950;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .nexid-motion-hero-card > span {
@@ -8983,6 +9006,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #cbd5e1;
   font-size: 0.86rem;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .nexid-motion-hero-card > div:last-child {
@@ -8995,7 +9019,8 @@ html.theme-light .demo-lab-policy-card--blocked {
 }
 
 .nexid-motion-hero-card em,
-.nexid-motion-format-copy div span {
+.nexid-motion-format-copy div span,
+.nexid-motion-product-card em {
   border: 1px solid rgba(94, 234, 212, 0.25);
   border-radius: 999px;
   background: rgba(20, 184, 166, 0.12);
@@ -9005,6 +9030,138 @@ html.theme-light .demo-lab-policy-card--blocked {
   font-style: normal;
   font-weight: 950;
   letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.nexid-motion-director {
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  gap: clamp(0.9rem, 2vw, 1.25rem);
+  align-items: stretch;
+  margin-top: 1rem;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(90deg, rgba(15, 23, 42, 0.88), rgba(8, 47, 73, 0.62)),
+    radial-gradient(circle at 72% 18%, rgba(94, 234, 212, 0.16), transparent 32%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 30px 80px rgba(2, 6, 23, 0.22);
+  padding: clamp(1rem, 2vw, 1.25rem);
+}
+
+.nexid-motion-director-copy,
+.nexid-motion-lens-stack {
+  min-width: 0;
+}
+
+.nexid-motion-director-copy {
+  display: grid;
+  align-content: center;
+  gap: 0.8rem;
+  border-right: 1px solid rgba(125, 211, 252, 0.14);
+  padding-right: clamp(0.9rem, 2vw, 1.2rem);
+}
+
+.nexid-motion-director-copy h2 {
+  max-width: 34rem;
+  color: #fff7ed;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.02;
+  overflow-wrap: anywhere;
+}
+
+.nexid-motion-director-copy span {
+  color: #cbd5e1;
+  font-size: 0.98rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.nexid-motion-director-copy strong {
+  display: block;
+  width: fit-content;
+  border: 1px solid rgba(94, 234, 212, 0.26);
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.12);
+  color: #ccfbf1;
+  padding: 0.68rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.nexid-motion-lens-stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.nexid-motion-lens-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.nexid-motion-lens-card {
+  position: relative;
+  display: grid;
+  min-height: 11.4rem;
+  align-content: start;
+  gap: 0.55rem;
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.15);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 0 0, rgba(34, 211, 238, 0.14), transparent 45%),
+    rgba(2, 6, 23, 0.44);
+  padding: 0.9rem;
+}
+
+.nexid-motion-lens-card::after {
+  content: "";
+  position: absolute;
+  left: 0.9rem;
+  right: 0.9rem;
+  bottom: 0.85rem;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22d3ee, #5eead4, #a78bfa);
+  opacity: 0.7;
+}
+
+.nexid-motion-lens-card small {
+  color: #67e8f9;
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.nexid-motion-lens-card strong {
+  color: #f8fafc;
+  font-size: 1.05rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.nexid-motion-lens-card span {
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.nexid-motion-lens-card em {
+  align-self: end;
+  justify-self: start;
+  margin-top: 0.35rem;
+  border: 1px solid rgba(167, 139, 250, 0.34);
+  border-radius: 999px;
+  background: rgba(88, 28, 135, 0.18);
+  color: #ddd6fe;
+  padding: 0.34rem 0.55rem;
+  font-size: 0.58rem;
+  font-style: normal;
+  font-weight: 950;
   text-transform: uppercase;
 }
 
@@ -9274,6 +9431,46 @@ html.theme-light .demo-lab-policy-card--blocked {
   top: 42%;
 }
 
+.nexid-motion-map-pulse {
+  position: absolute;
+  inset: 18% 10% 18%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.nexid-motion-map-pulse span {
+  position: absolute;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #22d3ee;
+  box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.34), 0 0 24px rgba(34, 211, 238, 0.46);
+  animation: nexid-motion-pulse 2.8s ease-out infinite;
+}
+
+.nexid-motion-map-pulse span:nth-child(1) {
+  left: 8%;
+  top: 66%;
+}
+
+.nexid-motion-map-pulse span:nth-child(2) {
+  left: 32%;
+  top: 28%;
+  animation-delay: 0.35s;
+}
+
+.nexid-motion-map-pulse span:nth-child(3) {
+  right: 24%;
+  top: 58%;
+  animation-delay: 0.7s;
+}
+
+.nexid-motion-map-pulse span:nth-child(4) {
+  right: 4%;
+  top: 20%;
+  animation-delay: 1.05s;
+}
+
 .nexid-motion-frame-topline {
   position: absolute;
   left: 4%;
@@ -9382,7 +9579,7 @@ html.theme-light .demo-lab-policy-card--blocked {
   left: 6%;
   right: 6%;
   top: auto;
-  bottom: 20%;
+  bottom: 28%;
   width: auto;
 }
 
@@ -9405,10 +9602,49 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #ccfbf1;
 }
 
+.nexid-motion-script-rail {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 3.8%;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.nexid-motion-script-rail span {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 0.75rem;
+  background: rgba(2, 6, 23, 0.66);
+  padding: 0.45rem;
+  backdrop-filter: blur(12px);
+}
+
+.nexid-motion-script-rail small {
+  color: #67e8f9;
+  font-size: 0.54rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.nexid-motion-script-rail b {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 0.58rem;
+  font-weight: 950;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
 .nexid-motion-token-chip {
   position: absolute;
   left: 4%;
-  bottom: 5%;
+  bottom: 18%;
   z-index: 4;
   display: grid;
   gap: 0.25rem;
@@ -9425,6 +9661,7 @@ html.theme-light .demo-lab-policy-card--blocked {
 .nexid-motion-frame--story .nexid-motion-token-chip {
   left: 6%;
   right: 6%;
+  bottom: 13.5%;
   width: auto;
 }
 
@@ -9438,7 +9675,7 @@ html.theme-light .demo-lab-policy-card--blocked {
 .nexid-motion-phone-proof {
   position: absolute;
   right: 4%;
-  bottom: 5%;
+  bottom: 18%;
   z-index: 4;
   display: grid;
   gap: 0.22rem;
@@ -9621,9 +9858,19 @@ html.theme-light .demo-lab-policy-card--blocked {
   margin-inline: auto;
 }
 
+.nexid-motion-product-card small {
+  display: block;
+  margin-top: 0.7rem;
+  color: #67e8f9;
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .nexid-motion-product-card strong {
   display: block;
-  margin-top: 0.6rem;
+  margin-top: 0.25rem;
   color: #f8fafc;
   font-size: 0.9rem;
   font-weight: 950;
@@ -9635,6 +9882,12 @@ html.theme-light .demo-lab-policy-card--blocked {
   color: #94a3b8;
   font-size: 0.68rem;
   line-height: 1.45;
+}
+
+.nexid-motion-product-card em {
+  display: inline-flex;
+  margin-top: 0.6rem;
+  font-size: 0.54rem;
 }
 
 .nexid-motion-storyboard {
@@ -9729,6 +9982,23 @@ html.theme-light .demo-lab-policy-card--blocked {
   }
 }
 
+@keyframes nexid-motion-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.34), 0 0 24px rgba(34, 211, 238, 0.46);
+    transform: scale(0.82);
+  }
+
+  70% {
+    box-shadow: 0 0 0 1.4rem rgba(34, 211, 238, 0), 0 0 28px rgba(34, 211, 238, 0.38);
+    transform: scale(1);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0), 0 0 18px rgba(34, 211, 238, 0.28);
+    transform: scale(0.82);
+  }
+}
+
 @keyframes nexid-motion-orbit {
   to {
     transform: translateX(-50%) rotate(342deg);
@@ -9737,9 +10007,17 @@ html.theme-light .demo-lab-policy-card--blocked {
 
 @media (max-width: 1040px) {
   .nexid-motion-hero,
+  .nexid-motion-director,
   .nexid-motion-purpose,
   .nexid-motion-format-card {
     grid-template-columns: 1fr;
+  }
+
+  .nexid-motion-director-copy {
+    border-right: 0;
+    border-bottom: 1px solid rgba(125, 211, 252, 0.14);
+    padding-right: 0;
+    padding-bottom: 1rem;
   }
 
   .nexid-motion-hero h1 {
@@ -9771,12 +10049,18 @@ html.theme-light .demo-lab-policy-card--blocked {
   }
 
   .nexid-motion-hero-card {
-    min-height: 29rem;
+    min-height: 30rem;
+    padding: 1rem;
   }
 
   .nexid-motion-hero-product {
-    top: 32%;
-    width: 9.8rem;
+    top: 31%;
+    width: 8.6rem;
+  }
+
+  .nexid-motion-hero-status {
+    font-size: 0.5rem;
+    padding: 0.34rem 0.5rem;
   }
 
   .nexid-motion-hero-card strong,
@@ -9785,14 +10069,27 @@ html.theme-light .demo-lab-policy-card--blocked {
     max-width: 100%;
   }
 
+  .nexid-motion-hero-card strong {
+    font-size: 1.35rem;
+    line-height: 1.08;
+  }
+
   .nexid-motion-hero h1 {
-    font-size: 2.85rem;
+    font-size: 2.58rem;
     line-height: 1;
   }
 
   .nexid-motion-purpose-copy h2 {
     font-size: 2rem;
     line-height: 1.08;
+  }
+
+  .nexid-motion-lens-grid,
+  .nexid-motion-purpose-grid,
+  .nexid-motion-benchmark-grid,
+  .nexid-motion-product-grid,
+  .nexid-motion-storyboard-rail {
+    grid-template-columns: 1fr;
   }
 
   .nexid-motion-section-heading h2 {
@@ -9803,6 +10100,33 @@ html.theme-light .demo-lab-policy-card--blocked {
   .nexid-motion-format-copy h3 {
     font-size: 1.85rem;
     line-height: 1.08;
+  }
+
+  .nexid-motion-proof-cluster,
+  .nexid-motion-chart,
+  .nexid-motion-phone-proof {
+    display: none;
+  }
+
+  .nexid-motion-frame-product {
+    top: 43%;
+    width: min(70%, 16rem);
+  }
+
+  .nexid-motion-frame--wide .nexid-motion-frame-product {
+    left: 50%;
+    width: min(58%, 15rem);
+  }
+
+  .nexid-motion-token-chip {
+    left: 6%;
+    right: 6%;
+    bottom: 18%;
+    width: auto;
+  }
+
+  .nexid-motion-script-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .nexid-motion-purpose-grid {
@@ -10128,6 +10452,100 @@ html.theme-light .demo-lab-policy-card--blocked {
   inset: 0;
   display: grid;
   place-items: center;
+}
+
+.nexid-motion-glyph--wine .nexid-motion-glyph-body {
+  inset: 4% 30% 2%;
+  border-color: rgba(252, 211, 77, 0.24);
+  border-radius: 46% 46% 16% 16% / 14% 14% 5% 5%;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 14% 80%, rgba(255, 255, 255, 0.16)),
+    radial-gradient(ellipse at 50% 36%, rgba(255, 255, 255, 0.14), transparent 34%),
+    linear-gradient(180deg, #7f1d1d 0 17%, #0b0506 17% 100%);
+}
+
+.nexid-motion-glyph--wine .nexid-motion-glyph-label {
+  left: 36%;
+  right: 36%;
+  top: 57%;
+  height: 18%;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 0.24rem;
+  background:
+    linear-gradient(180deg, #f8fafc, #e7e5e4),
+    radial-gradient(ellipse at 50% 74%, rgba(15, 23, 42, 0.16), transparent 38%);
+}
+
+.nexid-motion-glyph--wine .nexid-motion-glyph-seal {
+  left: 50%;
+  top: 9%;
+  width: 13%;
+  height: 37%;
+  transform: translateX(-50%) rotate(-4deg);
+  border-color: rgba(34, 211, 238, 0.7);
+  border-radius: 0.2rem;
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.86) 0 0.28rem, rgba(226, 232, 240, 0.84) 0.28rem 0.52rem),
+    linear-gradient(180deg, rgba(34, 211, 238, 0.16), rgba(2, 6, 23, 0.1));
+  color: #0f172a;
+}
+
+.nexid-motion-glyph--wine .nexid-motion-glyph-seal::before {
+  content: "NFC TT";
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: #0f172a;
+  font-size: 0.32rem;
+}
+
+.nexid-motion-glyph--cream .nexid-motion-glyph-body {
+  inset: 30% 20% 18%;
+  border-radius: 0.9rem 0.9rem 2rem 2rem;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.34), transparent 26% 78%, rgba(255, 255, 255, 0.12)),
+    linear-gradient(180deg, #e5e7eb 0 26%, #c084fc 26% 38%, #f0abfc 38% 100%);
+}
+
+.nexid-motion-glyph--cream .nexid-motion-glyph-seal {
+  left: 50%;
+  top: 31%;
+  width: 62%;
+  height: 6.5%;
+  transform: translateX(-50%) rotate(0deg);
+  border-color: rgba(216, 180, 254, 0.76);
+  background: rgba(2, 6, 23, 0.78);
+}
+
+.nexid-motion-glyph--perfume .nexid-motion-glyph-seal {
+  left: 50%;
+  top: 27%;
+  width: 42%;
+  height: 7.5%;
+  transform: translateX(-50%) rotate(-3deg);
+  border-color: rgba(34, 211, 238, 0.78);
+}
+
+.nexid-motion-glyph--bracelet .nexid-motion-glyph-label {
+  left: 52%;
+  right: 12%;
+  top: 30%;
+  height: 34%;
+  border-radius: 0.65rem;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(34, 211, 238, 0.9) 0 0.75rem, transparent 0.78rem),
+    linear-gradient(145deg, #020617, #111827);
+  transform: rotate(13deg);
+}
+
+.nexid-motion-glyph--bracelet .nexid-motion-glyph-seal {
+  left: 43%;
+  top: 44%;
+  width: 18%;
+  height: 22%;
+  transform: translateX(-50%) rotate(-6deg);
+  border-radius: 0.3rem;
+  background: rgba(226, 232, 240, 0.86);
+  color: #0f172a;
 }
 
 .nexid-motion-product-card {

@@ -68,27 +68,47 @@ const copyByLocale: Record<AppLocale, MotionCopy> = {
       { id: "wide", format: "16:9 Presentacion / reunion", spec: "1920 x 1080", title: "Deck: infraestructura que escala por marca", body: "Para reuniones y presentaciones: ID por pieza, cadena de custodia, SUN, billetera, datos y capa comercial.", label: "Presentacion empresas", stat: "1 plataforma", frameClass: "nexid-motion-frame--wide", beats: ["ID de pieza", "Cadena", "Riesgo", "Ingresos"] },
     ],
     productLabels: { wine: "Vino", seeds: "Semillas", cream: "Crema", perfume: "Perfume", bracelet: "Pulsera", ticket: "Entrada" },
-    productCardBody: "Sello NFC + pasaporte digital + capa comercial",
+    productCards: {
+      wine: { title: "Botella premium", body: "Capsula y corcho muestran el sello tamper: si se abre, cambia el estado y se corta la promesa visual.", seal: "Sello TT en capsula" },
+      seeds: { title: "Bolsa agricola", body: "UID por lote, origen y lectura de campo para trazabilidad sin que parezca solo un QR.", seal: "QR + NFC UID" },
+      cream: { title: "Frasco cosmetico", body: "Etiqueta puente entre tapa y cuerpo para que la apertura sea evidente y entendible.", seal: "Puente tapa-cuerpo" },
+      perfume: { title: "Perfume edicion limitada", body: "Sello en cuello y tapa: el punto de apertura se vuelve la prueba anti falsificacion.", seal: "Sello cuello-tapa" },
+      bracelet: { title: "Pulsera de evento", body: "Una mano, un celular y una validacion de ingreso: acceso, club y recompra quedan en una misma escena.", seal: "Tap real de ingreso" },
+      ticket: { title: "Entrada tokenizada", body: "El pase deja de ser un PDF: se transforma en acceso, identidad y post evento.", seal: "Ticket + wallet" },
+    },
     hero: {
-      kicker: "Motion con sentido comercial",
-      title: "Que una marca entienda nexID en un toque: prueba, dueño, NFT y venta.",
-      body: "Lo hicimos para transformar una tecnologia dificil en una historia vendible. En vez de mostrar pantallas sueltas, cada pieza muestra producto fisico, SUN fresco, copia bloqueada, reclamo de dueño, token/NFT y proxima compra.",
+      kicker: "Motion como sales studio",
+      title: "Una pelicula corta de producto: tocar, confiar, reclamar y vender.",
+      body: "El motion pack no debe competir con Demo Lab: debe convertir esa demo en material de venta. Cada pieza arranca con un producto real, muestra el punto fisico donde se rompe o valida el sello, lleva al consumidor al claim/NFT y cierra con datos, tienda y relacion directa.",
       back: "Volver al laboratorio",
       formats: "Ver formatos",
-      cardTitle: "Producto real / prueba viva / ingreso",
-      cardBody: "La pieza tiene que contestar en segundos: que se toca, que se valida, quien queda como dueño y que se puede vender despues.",
-      chips: ["No jerga", "Sin app obligatoria", "Ingreso post tap"],
+      cardTitle: "Producto real / toque vivo / negocio",
+      cardBody: "La pieza tiene que contestar en segundos: donde esta el sello, que cambia al abrir, quien queda como dueño y que se activa despues.",
+      chips: ["Producto primero", "Cero jerga", "Claim + NFT + tienda"],
       status: "Tap valido",
     },
+    director: {
+      label: "Punto de vista",
+      title: "Mantenerlo, pero con una razon: que sea el estudio narrativo de nexID.",
+      body: "Si solo muestra formatos, sobra. Si cuenta la historia como una mini pelicula premium, sirve para vender a bodegas, laboratorios, eventos, gobiernos e inversores sin abrir veinte pantallas. La perspectiva correcta no es tecnica: es valor percibido, confianza fisica y post venta activable.",
+      lensTitle: "Cuatro lecturas en la misma escena",
+      verdict: "Decision: el motion pack queda, pero deja de ser maqueta y pasa a ser biblioteca comercial exportable.",
+    },
+    lenses: [
+      { label: "Consumidor", title: "Toco y entiendo que ahora es mio", body: "El celular valida, explica el sello y ofrece claim, garantia, wallet y beneficios sin pedirle que entienda blockchain.", signal: "Claim + wallet" },
+      { label: "Marca", title: "Convierto packaging en canal propio", body: "Cada producto abre datos de demanda, recompra, comunidad y marketplace con una experiencia que parece premium.", signal: "CRM + venta" },
+      { label: "Operaciones", title: "Veo trazabilidad y riesgo real", body: "La pieza muestra ruta, lote, apertura, copia bloqueada y puntos de lectura como evidencia para equipos internos.", signal: "Mapa + riesgo" },
+      { label: "Inversor", title: "El activo fisico produce datos e ingresos", body: "La historia cierra en token/NFT, owner graph, tienda y analitica: no es autenticacion aislada, es plataforma.", signal: "NFT + revenue" },
+    ],
     sections: {
-      benchmark: "Contra quien competimos",
-      benchmarkTitle: "La vara es alta: identidad, autenticacion y trazabilidad. Nuestro diferencial es unir todo en una accion comercial.",
+      benchmark: "Aprendizajes de mercado",
+      benchmarkTitle: "La competencia gana cuando simplifica confianza. nexID tiene que sumar algo mas: producto fisico, mapa, dueño, NFT y comercio en una sola historia.",
       formats: "Listo para exportar",
-      formatsTitle: "Cada formato cuenta el mismo guion, adaptado al canal.",
+      formatsTitle: "Cada formato cuenta el mismo guion, pero con distinto ritmo: red social, anuncio y reunion ejecutiva.",
       products: "Sistema de productos",
-      productsTitle: "Los productos tienen que verse fisicos, de alto valor y diferentes por vertical.",
+      productsTitle: "Cada vertical debe mostrar donde vive el sello y por que el toque tiene valor real.",
       storyboard: "Guion base",
-      storyboardTitle: "El guion unico: tocar, validar, reclamar y vender.",
+      storyboardTitle: "El guion unico que se repite en landing, Demo Lab, portal, dashboard y mobile tap.",
     },
     purpose: {
       label: "Para que existe",
@@ -140,27 +160,47 @@ const copyByLocale: Record<AppLocale, MotionCopy> = {
       { id: "wide", format: "16:9 Apresentacao / reuniao", spec: "1920 x 1080", title: "Deck: infraestrutura que escala por marca", body: "Para reunioes e apresentacoes: ID por item, cadeia de custodia, SUN, carteira, dados e camada comercial.", label: "Apresentacao empresas", stat: "1 plataforma", frameClass: "nexid-motion-frame--wide", beats: ["ID do item", "Cadeia", "Risco", "Receita"] },
     ],
     productLabels: { wine: "Vinho", seeds: "Sementes", cream: "Creme", perfume: "Perfume", bracelet: "Pulseira", ticket: "Ingresso" },
-    productCardBody: "Selo NFC + passaporte digital + camada comercial",
+    productCards: {
+      wine: { title: "Garrafa premium", body: "Capsula e rolha mostram o lacre tamper: se abre, o estado muda e a promessa visual se rompe.", seal: "Selo TT na capsula" },
+      seeds: { title: "Saco agricola", body: "UID por lote, origem e leitura de campo para rastreio sem parecer apenas um QR.", seal: "QR + NFC UID" },
+      cream: { title: "Frasco cosmetico", body: "Etiqueta ponte entre tampa e corpo para que a abertura fique evidente.", seal: "Ponte tampa-corpo" },
+      perfume: { title: "Perfume edicao limitada", body: "Selo no pescoco e tampa: o ponto de abertura vira prova antifalsificacao.", seal: "Selo pescoco-tampa" },
+      bracelet: { title: "Pulseira de evento", body: "Uma mao, um celular e uma validacao de entrada: acesso, clube e recompra na mesma cena.", seal: "Tap real de entrada" },
+      ticket: { title: "Ingresso tokenizado", body: "O passe deixa de ser um PDF: vira acesso, identidade e pos-evento.", seal: "Ticket + wallet" },
+    },
     hero: {
-      kicker: "Motion com sentido comercial",
-      title: "Que uma marca entenda nexID em um toque: prova, dono, NFT e venda.",
-      body: "Fizemos isto para transformar uma tecnologia dificil em uma historia vendavel. Em vez de mostrar telas soltas, cada peca mostra produto fisico, SUN fresco, copia bloqueada, reivindicacao de dono, token/NFT e proxima compra.",
+      kicker: "Motion como sales studio",
+      title: "Um filme curto de produto: tocar, confiar, reivindicar e vender.",
+      body: "O motion pack nao deve competir com o Demo Lab: deve transformar a demo em material de venda. Cada peca comeca com produto real, mostra o ponto fisico onde o selo rompe ou valida, leva o consumidor ao claim/NFT e fecha com dados, loja e relacao direta.",
       back: "Voltar ao laboratorio",
       formats: "Ver formatos",
-      cardTitle: "Produto real / prova viva / receita",
-      cardBody: "A peca precisa responder em segundos: o que se toca, o que se valida, quem vira dono e o que pode ser vendido depois.",
-      chips: ["Sem jargao", "Sem app obrigatorio", "Receita pos toque"],
+      cardTitle: "Produto real / toque vivo / negocio",
+      cardBody: "A peca precisa responder em segundos: onde esta o selo, o que muda ao abrir, quem vira dono e o que ativa depois.",
+      chips: ["Produto primeiro", "Sem jargao", "Claim + NFT + loja"],
       status: "Toque valido",
     },
+    director: {
+      label: "Ponto de vista",
+      title: "Manter, mas com uma razao: ser o estudio narrativo da nexID.",
+      body: "Se so mostra formatos, sobra. Se conta a historia como um mini filme premium, vende para vinicolas, laboratorios, eventos, governos e investidores sem abrir vinte telas. A perspectiva certa nao e tecnica: e valor percebido, confianca fisica e pos-venda ativavel.",
+      lensTitle: "Quatro leituras na mesma cena",
+      verdict: "Decisao: o motion pack fica, mas deixa de ser maquete e vira biblioteca comercial exportavel.",
+    },
+    lenses: [
+      { label: "Consumidor", title: "Toco e entendo que agora e meu", body: "O celular valida, explica o selo e oferece claim, garantia, wallet e beneficios sem explicar blockchain.", signal: "Claim + wallet" },
+      { label: "Marca", title: "Transformo embalagem em canal proprio", body: "Cada produto abre demanda, recompra, comunidade e marketplace com experiencia premium.", signal: "CRM + venda" },
+      { label: "Operacao", title: "Vejo rastreio e risco real", body: "A peca mostra rota, lote, abertura, copia bloqueada e pontos de leitura como evidencia interna.", signal: "Mapa + risco" },
+      { label: "Investidor", title: "O ativo fisico produz dados e receita", body: "A historia fecha em token/NFT, owner graph, loja e analitica: nao e autenticacao isolada, e plataforma.", signal: "NFT + receita" },
+    ],
     sections: {
-      benchmark: "Contra quem competimos",
-      benchmarkTitle: "A barra e alta: identidade, autenticacao e rastreio. Nosso diferencial e unir tudo em uma acao comercial.",
+      benchmark: "Aprendizados de mercado",
+      benchmarkTitle: "A concorrencia ganha quando simplifica confianca. nexID precisa somar algo mais: produto fisico, mapa, dono, NFT e comercio em uma so historia.",
       formats: "Pronto para exportar",
-      formatsTitle: "Cada formato conta o mesmo roteiro, adaptado ao canal.",
+      formatsTitle: "Cada formato conta o mesmo roteiro, mas com ritmo diferente: rede social, anuncio e reuniao executiva.",
       products: "Sistema de produtos",
-      productsTitle: "Os produtos precisam parecer fisicos, premium e diferentes por vertical.",
+      productsTitle: "Cada vertical deve mostrar onde vive o selo e por que o toque tem valor real.",
       storyboard: "Roteiro base",
-      storyboardTitle: "O roteiro unico: tocar, validar, reivindicar e vender.",
+      storyboardTitle: "O roteiro unico que se repete em landing, Demo Lab, portal, dashboard e mobile tap.",
     },
     purpose: {
       label: "Para que existe",
@@ -212,27 +252,47 @@ const copyByLocale: Record<AppLocale, MotionCopy> = {
       { id: "wide", format: "16:9 Presentation / meeting", spec: "1920 x 1080", title: "Deck: infrastructure that scales by brand", body: "For meetings and presentations: item ID, chain of custody, SUN, wallet, data and commerce layer.", label: "Enterprise presentation", stat: "1 platform", frameClass: "nexid-motion-frame--wide", beats: ["Item ID", "Chain", "Risk", "Revenue"] },
     ],
     productLabels: { wine: "Wine", seeds: "Seeds", cream: "Cream", perfume: "Perfume", bracelet: "Bracelet", ticket: "Ticket" },
-    productCardBody: "NFC seal + digital passport + commerce layer",
+    productCards: {
+      wine: { title: "Premium bottle", body: "Capsule and cork show the tamper seal: if it opens, status changes and the visual promise breaks.", seal: "TT seal on capsule" },
+      seeds: { title: "Agriculture bag", body: "UID by lot, origin and field read for traceability that feels stronger than a plain QR.", seal: "QR + NFC UID" },
+      cream: { title: "Cosmetic jar", body: "Bridge label between lid and body so opening becomes visible and easy to understand.", seal: "Lid-body bridge" },
+      perfume: { title: "Limited perfume", body: "Seal on neck and cap: the opening point becomes the anti-counterfeit proof.", seal: "Neck-cap seal" },
+      bracelet: { title: "Event wristband", body: "A hand, a phone and a real entry validation: access, club and repurchase in one scene.", seal: "Real entry tap" },
+      ticket: { title: "Tokenized ticket", body: "The pass stops being a PDF: it becomes access, identity and post-event relationship.", seal: "Ticket + wallet" },
+    },
     hero: {
-      kicker: "Motion with commercial purpose",
-      title: "Make a brand understand nexID in one tap: proof, owner, NFT and sale.",
-      body: "We built this to turn a difficult technology into a sellable story. Instead of showing loose screens, every piece shows the physical product, fresh SUN, blocked copy, owner claim, token/NFT and next purchase.",
+      kicker: "Motion as sales studio",
+      title: "A short product film: tap, trust, claim and sell.",
+      body: "The motion pack should not compete with Demo Lab: it should turn that demo into sales material. Every piece starts with a real product, shows the physical point where the seal breaks or validates, takes the consumer to claim/NFT and closes with data, commerce and direct relationship.",
       back: "Back to lab",
       formats: "See formats",
-      cardTitle: "Real product / live proof / revenue",
-      cardBody: "The piece must answer in seconds: what gets tapped, what gets validated, who becomes the owner and what can be sold next.",
-      chips: ["No jargon", "No mandatory app", "Post-tap revenue"],
+      cardTitle: "Real product / live tap / business",
+      cardBody: "The piece must answer in seconds: where the seal lives, what changes when opened, who becomes owner and what activates next.",
+      chips: ["Product first", "No jargon", "Claim + NFT + store"],
       status: "Valid tap",
     },
+    director: {
+      label: "Point of view",
+      title: "Keep it, but with a reason: make it nexID's narrative studio.",
+      body: "If it only shows formats, it is redundant. If it tells the story as a premium short product film, it sells to wineries, labs, events, governments and investors without opening twenty screens. The right perspective is not technical: perceived value, physical trust and activated post-sale.",
+      lensTitle: "Four readings in the same scene",
+      verdict: "Decision: the motion pack stays, but becomes an exportable commercial library instead of a mockup.",
+    },
+    lenses: [
+      { label: "Consumer", title: "I tap and understand it is mine", body: "The phone validates, explains the seal and offers claim, warranty, wallet and benefits without teaching blockchain.", signal: "Claim + wallet" },
+      { label: "Brand", title: "I turn packaging into a direct channel", body: "Each product opens demand data, repurchase, community and marketplace with a premium experience.", signal: "CRM + sale" },
+      { label: "Operations", title: "I see traceability and real risk", body: "The piece shows route, lot, opening, blocked copy and read points as internal evidence.", signal: "Map + risk" },
+      { label: "Investor", title: "The physical asset creates data and revenue", body: "The story closes with token/NFT, owner graph, store and analytics: not isolated auth, a platform.", signal: "NFT + revenue" },
+    ],
     sections: {
-      benchmark: "Who we compete against",
-      benchmarkTitle: "The bar is high: identity, authentication and traceability. Our edge is joining it all into a commercial action.",
+      benchmark: "Market learnings",
+      benchmarkTitle: "Competitors win when they simplify trust. nexID has to add more: physical product, map, owner, NFT and commerce in one story.",
       formats: "Ready to export",
-      formatsTitle: "Each format tells the same script, adapted to its channel.",
+      formatsTitle: "Each format tells the same script with a different rhythm: social, ad and executive meeting.",
       products: "Product system",
-      productsTitle: "Products must look physical, premium and different by vertical.",
+      productsTitle: "Each vertical must show where the seal lives and why the tap has real value.",
       storyboard: "Base script",
-      storyboardTitle: "The one script: tap, validate, claim and sell.",
+      storyboardTitle: "The one script repeated across landing, Demo Lab, portal, dashboard and mobile tap.",
     },
     purpose: {
       label: "Why it exists",
@@ -316,6 +376,28 @@ export default async function MotionPackPage() {
         </aside>
       </section>
 
+      <section className="nexid-motion-director" aria-label={copy.director.label}>
+        <div className="nexid-motion-director-copy">
+          <p>{copy.director.label}</p>
+          <h2>{copy.director.title}</h2>
+          <span>{copy.director.body}</span>
+          <strong>{copy.director.verdict}</strong>
+        </div>
+        <div className="nexid-motion-lens-stack">
+          <p>{copy.director.lensTitle}</p>
+          <div className="nexid-motion-lens-grid">
+            {copy.lenses.map((lens) => (
+              <article key={lens.label} className="nexid-motion-lens-card">
+                <small>{lens.label}</small>
+                <strong>{lens.title}</strong>
+                <span>{lens.body}</span>
+                <em>{lens.signal}</em>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="nexid-motion-purpose" aria-label={copy.purpose.label}>
         <div className="nexid-motion-purpose-copy">
           <p>{copy.purpose.label}</p>
@@ -378,13 +460,19 @@ export default async function MotionPackPage() {
           <h2>{copy.sections.productsTitle}</h2>
         </div>
         <div className="nexid-motion-product-grid">
-          {productKeys.map((product) => (
-            <article key={product} className={`nexid-motion-product-card nexid-motion-product-card--${product}`}>
-              <ProductGlyph product={product} />
-              <strong>{copy.productLabels[product]}</strong>
-              <span>{copy.productCardBody}</span>
-            </article>
-          ))}
+          {productKeys.map((product) => {
+            const card = copy.productCards[product];
+
+            return (
+              <article key={product} className={`nexid-motion-product-card nexid-motion-product-card--${product}`}>
+                <ProductGlyph product={product} />
+                <small>{copy.productLabels[product]}</small>
+                <strong>{card.title}</strong>
+                <span>{card.body}</span>
+                <em>{card.seal}</em>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -415,6 +503,12 @@ function MotionFrame({ format, index, copy }: { format: MotionFormat; index: num
       <div className="nexid-motion-route-path" aria-hidden="true">
         {copy.frame.route.map((item) => <span key={item}>{item}</span>)}
       </div>
+      <div className="nexid-motion-map-pulse" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
       <div className="nexid-motion-frame-topline">
         <span>{format.label}</span>
         <strong>{format.stat}</strong>
@@ -429,6 +523,14 @@ function MotionFrame({ format, index, copy }: { format: MotionFormat; index: num
       <div className="nexid-motion-proof-cluster">
         {format.beats.map((beat, beatIndex) => (
           <span key={beat} className={beatIndex === 2 ? "active" : ""}>{beat}</span>
+        ))}
+      </div>
+      <div className="nexid-motion-script-rail" aria-hidden="true">
+        {format.beats.map((beat, beatIndex) => (
+          <span key={`${beat}-script`}>
+            <small>{String(beatIndex + 1).padStart(2, "0")}</small>
+            <b>{beat}</b>
+          </span>
         ))}
       </div>
       <div className="nexid-motion-token-chip">
