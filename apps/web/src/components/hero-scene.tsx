@@ -1,9 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
 
 type Vertical = "wine" | "events" | "cosmetics" | "agro";
+
+const HeroThreeStage = dynamic(() => import("./hero-three-stage").then((mod) => mod.HeroThreeStage), {
+  ssr: false,
+});
 
 type LocationPoint = {
   city: string;
@@ -615,6 +620,17 @@ function HeroPrimeProduct({ active, product }: { active: Vertical; product: stri
   );
 }
 
+function HeroProductVisual({ active, product }: { active: Vertical; product: string }) {
+  const [threeReady, setThreeReady] = useState(false);
+
+  return (
+    <div className="hero-product-visual-shell">
+      {!threeReady ? <HeroPrimeProduct active={active} product={product} /> : null}
+      <HeroThreeStage key={active} active={active} product={product} onReady={() => setThreeReady(true)} />
+    </div>
+  );
+}
+
 export function HeroScene({ locale }: { locale: AppLocale }) {
   const [active, setActive] = useState<Vertical>("wine");
   const [tapIndex, setTapIndex] = useState(0);
@@ -675,7 +691,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
                 <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
                 <div className={`hero-product-render hero-product-render--prime hero-product-render--${active}`} aria-hidden="true">
                   <span className="hero-product-render-floor" />
-                  <HeroPrimeProduct active={active} product={data.product} />
+                  <HeroProductVisual active={active} product={data.product} />
                   <span className="hero-product-render-reflection" />
                 </div>
                 <div className="hero-nfc-beam" />

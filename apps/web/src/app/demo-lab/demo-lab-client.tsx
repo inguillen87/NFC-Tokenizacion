@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { WorldMapRealtime } from "@product/ui";
@@ -23,6 +24,10 @@ type DemoScenario = {
   primaryAction: DemoAction;
   primaryLabel: string;
 };
+
+type ThreeProductVertical = "wine" | "events" | "cosmetics" | "agro";
+
+const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), { ssr: false });
 
 type DemoEvent = {
   id?: string;
@@ -566,9 +571,13 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                 <StageRouteLayer txt={txt} routeKm={routeKm} destination={destination} scenario={scenario} locale={locale} />
                 <span className="demo-lab-product-depth-floor" aria-hidden="true" />
                 <span className="demo-lab-product-depth-rim" aria-hidden="true" />
-                <div className={`${activeVertical.visual} demo-lab-live-visual demo-lab-product-illustration-wrap ${beat === 3 ? "tampered" : "scanning"}`}>
+                <DemoLabProductThreeStage
+                  vertical={vertical}
+                  product={activeVertical.product}
+                  fallbackClassName={`${activeVertical.visual} demo-lab-live-visual demo-lab-product-illustration-wrap ${beat === 3 ? "tampered" : "scanning"}`}
+                >
                   <ProductIllustration key={`${vertical}-${beat}`} vertical={vertical} product={activeVertical.product} label={activeVertical.label} beat={beat} />
-                </div>
+                </DemoLabProductThreeStage>
                 <span className="demo-lab-cork" />
                 <span className="demo-lab-product-label">nexID seguro</span>
                 <span className="demo-lab-seal-split" />
@@ -916,7 +925,11 @@ function DemoCinematicShowcase({
         <span className="demo-lab-cinematic-orbit demo-lab-cinematic-orbit--one" aria-hidden="true" />
         <span className="demo-lab-cinematic-orbit demo-lab-cinematic-orbit--two" aria-hidden="true" />
         <div className="demo-lab-cinematic-product-shell">
-          <ProductIllustration key={`cinematic-${vertical}-${beat}`} vertical={vertical} product={product} label={label} beat={beat} />
+          <HeroThreeStage
+            active={mapDemoVerticalToThree(vertical)}
+            product={product}
+            className="demo-lab-cinematic-three-stage"
+          />
         </div>
 
         <div className="demo-lab-cinematic-headline">
@@ -1102,6 +1115,46 @@ function DemoUnlockLadder({ beat }: { beat: Beat }) {
       </div>
     </article>
   );
+}
+
+function DemoLabProductThreeStage({
+  vertical,
+  product,
+  fallbackClassName,
+  children,
+}: {
+  vertical: Vertical;
+  product: string;
+  fallbackClassName: string;
+  children: ReactNode;
+}) {
+  const [ready, setReady] = useState(false);
+  const threeVertical = mapDemoVerticalToThree(vertical);
+
+  useEffect(() => {
+    setReady(false);
+  }, [threeVertical]);
+
+  return (
+    <div className="demo-lab-three-product">
+      <div className={`${fallbackClassName}${ready ? " demo-lab-three-product-fallback--hidden" : ""}`}>
+        {children}
+      </div>
+      <HeroThreeStage
+        active={threeVertical}
+        product={product}
+        className="demo-lab-three-stage"
+        onReady={() => setReady(true)}
+      />
+    </div>
+  );
+}
+
+function mapDemoVerticalToThree(vertical: Vertical): ThreeProductVertical {
+  if (vertical === "bracelet" || vertical === "ticket") return "events";
+  if (vertical === "seeds") return "agro";
+  if (vertical === "creamJar" || vertical === "perfume" || vertical === "creamTube") return "cosmetics";
+  return "wine";
 }
 
 function ProductIllustration({ vertical, product, label, beat }: { vertical: Vertical; product: string; label: string; beat: Beat }) {

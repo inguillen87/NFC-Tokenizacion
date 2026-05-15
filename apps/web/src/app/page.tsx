@@ -331,7 +331,7 @@ export default async function HomePage() {
         </div>
       </footer>
 
-      <div className="fixed inset-x-0 bottom-3 z-40 px-3 pb-[max(env(safe-area-inset-bottom),0px)] md:hidden">
+      <div className="px-3 py-4 pb-[calc(max(env(safe-area-inset-bottom),0px)+1rem)] md:hidden">
         <div className="mx-auto grid max-w-md grid-cols-4 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
           <Link href="/docs" className="flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center text-xs font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
           <Link href="/?contact=demo#contact-modal" className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-xs font-medium text-cyan-100">{labels.mobileCtaDemo}<ArrowRight className="h-4 w-4" /></Link>

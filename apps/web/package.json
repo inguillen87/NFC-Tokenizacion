@@ -10,24 +10,26 @@
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
+    "@product/api-client": "file:../../packages/api-client",
+    "@product/config": "file:../../packages/config",
+    "@product/ui": "file:../../packages/ui",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.11.17",
+    "lucide-react": "^0.468.0",
     "next": "^15.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "framer-motion": "^11.11.17",
-    "lucide-react": "^0.468.0",
-    "clsx": "^2.1.1",
-    "@product/ui": "file:../../packages/ui",
-    "@product/config": "file:../../packages/config",
-    "@product/api-client": "file:../../packages/api-client"
+    "three": "^0.171.0"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
-    "tailwindcss": "^3.4.14",
-    "postcss": "^8.4.49",
-    "autoprefixer": "^10.4.20",
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1"
+    "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.184.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.3"
   },
   "engines": {
     "node": ">=20.11.1"
