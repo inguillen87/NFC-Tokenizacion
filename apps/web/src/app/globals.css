@@ -12079,6 +12079,52 @@ html.theme-light .demo-lab-policy-card--blocked {
   pointer-events: none;
 }
 
+.demo-lab-product-stage .demo-lab-three-product > :not(.hero-three-stage):not(.demo-lab-three-product-loader) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.demo-lab-three-product > .demo-lab-product-illustration-wrap,
+.demo-lab-three-product .demo-lab-product-scene,
+.demo-lab-three-product .hero-bottle,
+.demo-lab-three-product .uncork-demo,
+.demo-lab-three-product .wristband-demo,
+.demo-lab-three-product .cosmetic-demo,
+.demo-lab-three-product .agro-demo,
+.demo-lab-three-product .pharma-demo,
+.demo-lab-three-product .seed-packet-demo,
+.demo-lab-three-product .cream-jar-demo,
+.demo-lab-three-product .perfume-demo,
+.demo-lab-three-product .cream-tube-demo,
+.demo-lab-three-product .event-bracelet-demo,
+.demo-lab-three-product .party-ticket-demo,
+.demo-lab-product-card .demo-lab-product-stage > .demo-lab-product-illustration-wrap,
+.demo-lab-product-card .demo-lab-product-stage > .hero-bottle,
+.demo-lab-product-card .demo-lab-product-stage > .uncork-demo,
+.demo-lab-product-card .demo-lab-product-stage > .wristband-demo,
+.demo-lab-product-card .demo-lab-product-stage > .cosmetic-demo,
+.demo-lab-product-card .demo-lab-product-stage > .agro-demo,
+.demo-lab-product-card .demo-lab-product-stage > .pharma-demo,
+.demo-lab-product-card .demo-lab-product-stage > .seed-packet-demo,
+.demo-lab-product-card .demo-lab-product-stage > .cream-jar-demo,
+.demo-lab-product-card .demo-lab-product-stage > .perfume-demo,
+.demo-lab-product-card .demo-lab-product-stage > .cream-tube-demo,
+.demo-lab-product-card .demo-lab-product-stage > .event-bracelet-demo,
+.demo-lab-product-card .demo-lab-product-stage > .party-ticket-demo {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.hero-product-visual-shell:has(.hero-three-stage canvas) > .hero-prime-product {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
 .demo-lab-three-product-loader {
   position: absolute;
   left: 50%;
