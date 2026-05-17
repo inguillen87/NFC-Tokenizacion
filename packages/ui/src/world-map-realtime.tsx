@@ -207,9 +207,9 @@ export function WorldMapRealtime({
       {activePoint ? (
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem]">
           <PremiumVectorMap
-            title={mapMode === "classic" ? "Heatmap operativo" : "Atlas de trazabilidad"}
-            subtitle="Motor vectorial propio: rutas, riesgo y hubs sin iframe ni API paga."
-            caption="Capa visual para autenticaciones, tamper, duplicados y hubs comerciales en vivo."
+            title={mapMode === "classic" ? "Mapa vivo operativo" : "Ruta de trazabilidad"}
+            subtitle="Motor propio: rutas, riesgo y hubs sin iframe ni API paga."
+            caption="Autenticaciones, tamper, duplicados y hubs comerciales en vivo."
             points={vectorPoints}
             routes={vectorRoutes}
             selectedPointId={selectedVectorPointId}

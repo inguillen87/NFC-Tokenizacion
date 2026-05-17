@@ -905,7 +905,7 @@ export function GlobalOpsMap({
     <Card className="worldmap-card global-ops-map-card overflow-hidden p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">{title} Atlas vectorial nexID</p>
+          <p className="text-sm font-semibold text-white">{title} · mapa vivo nexID</p>
           <p className="text-xs text-slate-400">{subtitle} ({mode}) · {mapTheme === "light" ? "mapa claro" : "mapa oscuro"}.</p>
         </div>
         <div className="global-ops-map-stats grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
@@ -942,8 +942,8 @@ export function GlobalOpsMap({
           <div className="global-ops-map-canvas relative h-[29rem]">
             <PremiumVectorMap
               title="Mapa operativo premium"
-              subtitle="Heatmap, rutas y clusters renderizados como SVG interactivo propio."
-              caption="Rutas origen-tap, calor de actividad y puntos seleccionables sin servicios cartograficos pagos."
+              subtitle="Rutas de confianza, taps y clusters renderizados con motor propio."
+              caption="Origen, tap, riesgo y evidencia comercial en una vista limpia de trazabilidad."
               points={vectorPoints}
               routes={vectorRoutes}
               selectedPointId={selectedPoint?.id}
@@ -1022,7 +1022,7 @@ export function GlobalOpsMap({
               <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-violet-300" /> TOKENIZED</span>
             </div>
             <div className="global-ops-map-caption absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
-              Rutas punteadas origen-tap, calor de actividad y clusters optimizados ({visibleRoutes.length} rutas renderizadas).
+              Rutas origen-tap, senales de riesgo y clusters optimizados ({visibleRoutes.length} rutas renderizadas).
             </div>
           </div>
         </div>

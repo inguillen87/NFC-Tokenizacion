@@ -1177,13 +1177,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
                 <h2 className="px-1 text-lg font-black text-white">Mapa de confianza origen - tap</h2>
               </div>
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">Atlas vectorial + heatmap</span>
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">Mapa vivo + ruta</span>
             </div>
             <div className="mt-2">
                {opsMapPoints.length ? (
                   <GlobalOpsMap
                     title="Trazabilidad geografica SUN"
-                    subtitle="Vista tipo network: origen, hops de verificación y tap actual en trazado global."
+                    subtitle="Vista limpia: origen, verificaciones y tap actual en una ruta entendible."
                     points={opsMapPoints}
                     routes={opsMapRoutes}
                     mode="demo"

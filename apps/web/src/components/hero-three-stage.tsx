@@ -156,6 +156,8 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.14;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.dataset.qa = "hero-three-canvas";
@@ -170,6 +172,8 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
     const baseProductScale = productGroup.scale.x || 1;
     scene.add(productGroup);
     scene.add(createFloorGlow(toneForScene));
+    const cinematicRig = createCinematicRig(toneForScene, active);
+    scene.add(cinematicRig);
 
     let frameId = 0;
     let readySent = false;
@@ -272,6 +276,9 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
       productGroup.position.y = Math.sin(elapsed * 0.82) * 0.045;
       productGroup.scale.setScalar(baseProductScale * zoom);
       applyProductInteraction(productGroup, active, openProgress, blockedProgress, elapsed);
+      animateCinematicRig(cinematicRig, elapsed, openProgress, blockedProgress);
+      camera.position.z = 6.1 - openProgress * 0.18 + blockedProgress * 0.12;
+      camera.lookAt(0, 0.02 + openProgress * 0.06, 0);
 
       renderer.render(scene, camera);
       if (!readySent) {
@@ -394,6 +401,31 @@ function createWineBottle() {
   );
   group.add(bottle);
 
+  const wineCore = mesh(
+    new THREE.CylinderGeometry(0.31, 0.36, 1.62, 96),
+    new THREE.MeshPhysicalMaterial({
+      color: "#2b0305",
+      clearcoat: 0.42,
+      opacity: 0.58,
+      roughness: 0.2,
+      transparent: true,
+      transmission: 0.04,
+    }),
+    [0, -0.82, -0.006],
+  );
+  wineCore.name = "wineLiquidCore";
+  group.add(wineCore);
+
+  const wineMeniscus = mesh(
+    new THREE.TorusGeometry(0.32, 0.012, 12, 128),
+    basic("#7f1d1d", 0.48),
+    [0, 0.03, 0],
+    [Math.PI / 2, 0, 0],
+    false,
+  );
+  wineMeniscus.name = "wineMeniscus";
+  group.add(wineMeniscus);
+
   const bottleBase = mesh(new THREE.CylinderGeometry(0.31, 0.39, 0.08, 96), new THREE.MeshPhysicalMaterial({ color: "#020202", clearcoat: 0.75, roughness: 0.18 }), [0, -1.76, 0]);
   bottleBase.name = "basePart";
   group.add(bottleBase);
@@ -437,6 +469,7 @@ function createWineBottle() {
 
   group.add(createPremiumWineLabel(tone));
   group.add(createPremiumNeckTamperSeal(tone));
+  group.add(createLuxuryProductCrest(tone, [0, 0.2, 0.447], 0.11));
   group.add(createGlassHighlightCurved(-0.43, -0.08, 0.438, 2.68, 0.07, 0.18));
   group.add(createGlassHighlightCurved(0.32, -0.18, 0.435, 2.1, 0.04, 0.12));
   group.add(createGlassHighlightCurved(0.08, -0.22, 0.438, 1.9, 0.024, 0.09));
@@ -804,6 +837,12 @@ function createPremiumNeckTamperSeal(tone: Tone) {
   splitRight.name = "splitRight";
   group.add(splitLeft);
   group.add(splitRight);
+  const shardA = mesh(new THREE.BoxGeometry(0.045, 0.34, 0.018), basic("#ffffff", 0.001), [-0.11, 1.63, 0.212], [0.04, 0.02, -0.42], false);
+  shardA.name = "tearShardA";
+  const shardB = mesh(new THREE.BoxGeometry(0.05, 0.3, 0.018), basic(tone.accent, 0.001), [0.12, 1.21, 0.212], [-0.04, -0.02, 0.48], false);
+  shardB.name = "tearShardB";
+  group.add(shardA);
+  group.add(shardB);
   return group;
 }
 
@@ -1122,6 +1161,41 @@ function createSmallNfcDisc(accent: string, position: Vec3, radius = 0.18) {
   return group;
 }
 
+function createLuxuryProductCrest(tone: Tone, position: Vec3, radius = 0.1) {
+  const group = new THREE.Group();
+  group.name = "luxuryCrest";
+  group.position.set(...position);
+  group.add(mesh(
+    new THREE.CircleGeometry(radius, 52),
+    new THREE.MeshStandardMaterial({ color: "#f8fafc", metalness: 0.2, roughness: 0.32, side: THREE.DoubleSide }),
+    [0, 0, 0],
+    [0, 0, 0],
+    false,
+  ));
+  group.add(mesh(
+    new THREE.RingGeometry(radius * 0.72, radius * 0.94, 52),
+    basic(tone.accent, 0.74),
+    [0, 0, 0.008],
+    [0, 0, 0],
+    false,
+  ));
+  group.add(mesh(
+    new THREE.BoxGeometry(radius * 1.06, radius * 0.13, 0.012),
+    basic("#111827", 0.7),
+    [0, radius * 0.08, 0.014],
+    [0, 0, 0],
+    false,
+  ));
+  group.add(mesh(
+    new THREE.BoxGeometry(radius * 0.62, radius * 0.13, 0.012),
+    basic("#111827", 0.55),
+    [0, -radius * 0.22, 0.014],
+    [0, 0, 0],
+    false,
+  ));
+  return group;
+}
+
 function createGlassHighlight(position: Vec3, height: number) {
   return mesh(new THREE.BoxGeometry(0.06, height, 0.025), basic("#ffffff", 0.18), position, [0, 0, 0.08]);
 }
@@ -1340,6 +1414,106 @@ function createFloorGlow(tone: Tone) {
   );
 }
 
+function createCinematicRig(tone: Tone, active: ProductKind) {
+  const group = new THREE.Group();
+  group.name = "cinematicRig";
+
+  [1.08, 1.5, 1.96].forEach((radius, index) => {
+    const halo = mesh(
+      new THREE.TorusGeometry(radius, 0.008, 8, 160),
+      basic(index === 1 ? tone.accent : "#e0f2fe", 0.2 - index * 0.035),
+      [0, -1.5 + index * 0.012, 0],
+      [Math.PI / 2, 0, 0],
+      false,
+    );
+    halo.name = `cinemaHalo${index}`;
+    group.add(halo);
+  });
+
+  [-1.38, 1.34].forEach((x, index) => {
+    const beam = mesh(
+      new THREE.PlaneGeometry(0.18, active === "bracelet" || active === "events" ? 1.8 : 3.1),
+      basic(index === 0 ? "#ffffff" : tone.accent, index === 0 ? 0.08 : 0.06),
+      [x, -0.05, -0.7],
+      [0, 0, index === 0 ? -0.16 : 0.14],
+      false,
+    );
+    beam.name = `cinemaBeam${index}`;
+    group.add(beam);
+  });
+
+  for (let index = 0; index < 9; index += 1) {
+    const angle = (index / 9) * Math.PI * 2;
+    const radius = 1.1 + (index % 3) * 0.34;
+    const spark = mesh(
+      new THREE.SphereGeometry(index % 4 === 0 ? 0.025 : 0.017, 18, 12),
+      basic(index % 2 === 0 ? tone.accent : "#e0f2fe", 0.38),
+      [Math.cos(angle) * radius, -0.4 + (index % 5) * 0.33, Math.sin(angle) * 0.16],
+      undefined,
+      false,
+    );
+    spark.name = `cinemaSpark${index}`;
+    group.add(spark);
+  }
+
+  const tapHalo = mesh(
+    new THREE.RingGeometry(0.34, 0.36, 72),
+    basic(tone.accent, 0.4),
+    [0.74, 0.75, 0.36],
+    [0, -0.28, 0.02],
+    false,
+  );
+  tapHalo.name = "cinemaTapHalo";
+  group.add(tapHalo);
+
+  return group;
+}
+
+function animateCinematicRig(root: THREE.Group, elapsed: number, opened: number, blocked: number) {
+  root.rotation.y = Math.sin(elapsed * 0.18) * 0.03;
+  root.traverse((item) => {
+    if (!item.name) return;
+    const base = getTransformBase(item);
+    const numeric = Number(item.name.replace(/\D/g, "")) || 0;
+
+    if (item.name.startsWith("cinemaHalo")) {
+      const pulse = 0.5 + Math.sin(elapsed * (0.9 + numeric * 0.14) + numeric) * 0.5;
+      const scale = 1 + pulse * 0.055 + opened * 0.035;
+      item.scale.set(base.scale.x * scale, base.scale.y * scale, base.scale.z * scale);
+      setOpacity(item, 0.1 + pulse * 0.1 + opened * 0.08 + blocked * 0.12);
+    }
+
+    if (item.name.startsWith("cinemaBeam")) {
+      item.position.set(
+        base.position.x + Math.sin(elapsed * 0.45 + numeric) * 0.04,
+        base.position.y,
+        base.position.z,
+      );
+      setOpacity(item, 0.05 + Math.max(opened, blocked) * 0.08);
+    }
+
+    if (item.name.startsWith("cinemaSpark")) {
+      const speed = 0.42 + numeric * 0.018;
+      const orbit = elapsed * speed + numeric * 0.74;
+      const radius = Math.hypot(base.position.x, Math.max(0.45, base.position.z + 0.2));
+      item.position.set(
+        Math.cos(orbit) * radius,
+        base.position.y + Math.sin(elapsed * 1.2 + numeric) * 0.035 + opened * 0.1,
+        base.position.z + Math.sin(orbit) * 0.1,
+      );
+      setOpacity(item, 0.18 + Math.sin(elapsed * 1.5 + numeric) * 0.08 + opened * 0.16);
+    }
+
+    if (item.name === "cinemaTapHalo") {
+      const pulse = 0.5 + Math.sin(elapsed * 2.5) * 0.5;
+      const scale = 0.78 + pulse * 0.2 + opened * 0.42 + blocked * 0.2;
+      item.scale.set(base.scale.x * scale, base.scale.y * scale, base.scale.z * scale);
+      item.rotation.set(base.rotation.x, base.rotation.y + elapsed * 0.18, base.rotation.z);
+      setOpacity(item, 0.1 + pulse * 0.22 + opened * 0.18 + blocked * 0.16);
+    }
+  });
+}
+
 function applyProductInteraction(root: THREE.Group, active: ProductKind, opened: number, blocked: number, elapsed: number) {
   const cutPulse = opened > 0.04 ? 1 : 0;
   const phonePulse = active === "bracelet" || active === "events" || active === "ticket"
@@ -1394,6 +1568,30 @@ function applyProductInteraction(root: THREE.Group, active: ProductKind, opened:
     item.scale.set(base.scale.x * (1 + opened * 0.55), base.scale.y, base.scale.z);
     item.rotation.set(base.rotation.x, base.rotation.y, base.rotation.z + opened * 0.28);
     setOpacity(item, blocked > 0.02 ? 0.95 : 0.7 + opened * 0.25);
+  });
+
+  animateNamed(root, "tearShardA", (item, base) => {
+    item.position.set(base.position.x - opened * 0.18, base.position.y + opened * 0.22, base.position.z + opened * 0.07);
+    item.rotation.set(base.rotation.x + opened * 0.26, base.rotation.y + opened * 0.2, base.rotation.z - opened * 1.05);
+    setOpacity(item, Math.max(0.001, opened * 0.72));
+  });
+
+  animateNamed(root, "tearShardB", (item, base) => {
+    item.position.set(base.position.x + opened * 0.18, base.position.y - opened * 0.18, base.position.z + opened * 0.08);
+    item.rotation.set(base.rotation.x - opened * 0.28, base.rotation.y - opened * 0.18, base.rotation.z + opened * 1.12);
+    setOpacity(item, Math.max(0.001, opened * 0.68));
+  });
+
+  animateNamed(root, "wineLiquidCore", (item, base) => {
+    item.position.set(base.position.x, base.position.y + Math.sin(elapsed * 1.5) * 0.008 + opened * 0.018, base.position.z);
+    item.rotation.set(base.rotation.x, base.rotation.y + Math.sin(elapsed * 0.8) * 0.02, base.rotation.z);
+    setOpacity(item, 0.42 + Math.sin(elapsed * 0.7) * 0.04);
+  });
+
+  animateNamed(root, "wineMeniscus", (item, base) => {
+    item.position.set(base.position.x, base.position.y + Math.sin(elapsed * 1.2) * 0.006 + opened * 0.018, base.position.z);
+    item.scale.set(base.scale.x * (1 + opened * 0.025), base.scale.y * (1 + opened * 0.025), base.scale.z);
+    setOpacity(item, 0.36 + opened * 0.08);
   });
 
   animateNamed(root, "tapDevice", (item, base) => {

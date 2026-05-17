@@ -122,15 +122,6 @@ const ATLAS_REGIONS: AtlasRegion[] = [
   },
 ];
 
-const REGION_FILL: Record<AtlasRegionTone, string> = {
-  americas: "#0f766e",
-  europe: "#2563eb",
-  africa: "#059669",
-  asia: "#334155",
-  oceania: "#0e7490",
-  south: "#64748b",
-};
-
 const TERRAIN_LINES = [
   "M162 195 C221 176 300 165 425 190",
   "M206 257 C267 246 331 247 399 267",
@@ -147,6 +138,21 @@ const OCEAN_LANES = [
   "M154 256 C318 250 432 282 557 306 C726 338 885 321 1045 245",
   "M284 530 C425 478 560 456 707 473 C853 489 972 488 1102 455",
   "M456 174 C536 213 591 248 652 316 C713 384 782 416 880 434",
+];
+
+const TRACE_WINDOWS = [
+  { x: 92, y: 94, width: 246, height: 108, opacity: 0.18 },
+  { x: 418, y: 72, width: 318, height: 130, opacity: 0.14 },
+  { x: 754, y: 116, width: 338, height: 154, opacity: 0.16 },
+  { x: 250, y: 392, width: 284, height: 112, opacity: 0.15 },
+  { x: 688, y: 374, width: 356, height: 124, opacity: 0.13 },
+];
+
+const ROUTE_CORRIDORS = [
+  "M118 425 C254 338 421 322 594 352 C756 380 905 356 1088 248",
+  "M160 305 C330 276 482 303 628 331 C774 360 910 338 1052 286",
+  "M314 534 C456 462 610 447 782 474 C900 492 1002 487 1118 452",
+  "M464 154 C538 214 587 280 640 360 C696 442 766 478 876 494",
 ];
 
 const ATLAS_LABELS = [
@@ -240,8 +246,8 @@ export function PremiumVectorMap({
   routes = [],
   selectedPointId,
   onPointSelect,
-  title = "Atlas vectorial",
-  subtitle = "Heatmap, rutas y puntos sin API externa.",
+  title = "Mapa vivo",
+  subtitle = "Rutas, taps y evidencia sin ruido cartografico.",
   caption,
   className = "",
   heightClassName = "h-[24rem]",
@@ -309,7 +315,7 @@ export function PremiumVectorMap({
                 id: "coverage",
                 label: "Cobertura",
                 value: `${routeCount} rutas activas`,
-                detail: "Heatmap y puntos de lectura listos para auditoria",
+                detail: "Lecturas y puntos de custodia listos para auditoria",
                 tone: "loyalty",
               },
         ]
@@ -339,19 +345,19 @@ export function PremiumVectorMap({
             <stop offset="46%" stopColor="#071523" />
             <stop offset="100%" stopColor="#0b1026" />
           </linearGradient>
-          <linearGradient id={`${idPrefix}-land`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.42" />
-            <stop offset="48%" stopColor="#0284c7" stopOpacity="0.24" />
-            <stop offset="100%" stopColor="#1e1b4b" stopOpacity="0.32" />
-          </linearGradient>
           <linearGradient id={`${idPrefix}-route-band`} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#22d3ee" stopOpacity="0" />
-            <stop offset="48%" stopColor="#67e8f9" stopOpacity="0.52" />
+            <stop offset="48%" stopColor="#67e8f9" stopOpacity="0.34" />
             <stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
           </linearGradient>
+          <radialGradient id={`${idPrefix}-trace-wash`} cx="52%" cy="46%" r="72%">
+            <stop offset="0%" stopColor="rgba(20,184,166,0.16)" />
+            <stop offset="46%" stopColor="rgba(8,47,73,0.10)" />
+            <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+          </radialGradient>
           <radialGradient id={`${idPrefix}-vignette`} cx="50%" cy="48%" r="66%">
-            <stop offset="0%" stopColor="rgba(34,211,238,0.2)" />
-            <stop offset="58%" stopColor="rgba(15,23,42,0.16)" />
+            <stop offset="0%" stopColor="rgba(34,211,238,0.12)" />
+            <stop offset="58%" stopColor="rgba(15,23,42,0.12)" />
             <stop offset="100%" stopColor="rgba(2,6,23,0.76)" />
           </radialGradient>
           <filter id={`${idPrefix}-soft-glow`} x="-40%" y="-40%" width="180%" height="180%">
@@ -362,8 +368,9 @@ export function PremiumVectorMap({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          <filter id={`${idPrefix}-land-shadow`} x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="10" stdDeviation="13" floodColor="#020617" floodOpacity="0.24" />
+          <filter id={`${idPrefix}-basemap-noise`} x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.018 0.022" numOctaves="2" seed="8" result="noise" />
+            <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0.10 0 0 0 0 0.55 0 0 0 0 0.65 0 0 0 .18 0" />
           </filter>
           <pattern id={`${idPrefix}-micro-grid`} width="60" height="60" patternUnits="userSpaceOnUse">
             <path d="M 60 0 H 0 V 60" fill="none" stroke="rgba(125,211,252,0.075)" strokeWidth="1" />
@@ -374,9 +381,29 @@ export function PremiumVectorMap({
         </defs>
 
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-ocean)`} />
+        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-trace-wash)`} />
+        <rect width={WIDTH} height={HEIGHT} filter={`url(#${idPrefix}-basemap-noise)`} opacity={density === "route" ? "0.22" : "0.28"} />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-micro-grid)`} opacity="0.8" />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-scan-grid)`} opacity={density === "route" ? "0.34" : "0.24"} />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-vignette)`} />
+
+        <g opacity={density === "route" ? "0.5" : "0.62"}>
+          {TRACE_WINDOWS.map((window) => (
+            <rect
+              key={`trace-window-${window.x}-${window.y}`}
+              x={window.x}
+              y={window.y}
+              width={window.width}
+              height={window.height}
+              rx="22"
+              fill="none"
+              stroke="rgba(125,211,252,0.28)"
+              strokeWidth="1.2"
+              strokeDasharray="2 9"
+              opacity={window.opacity}
+            />
+          ))}
+        </g>
 
         <g opacity="0.64">
           {PARALLELS.map((lat) => {
@@ -389,44 +416,49 @@ export function PremiumVectorMap({
           })}
         </g>
 
-        <g opacity={density === "route" ? "0.54" : "0.72"}>
-          {OCEAN_LANES.map((path, index) => (
+        <g opacity={density === "route" ? "0.38" : "0.5"}>
+          {ROUTE_CORRIDORS.map((path, index) => (
             <path
-              key={`ocean-lane-${index}`}
+              key={`route-corridor-${index}`}
               d={path}
               fill="none"
               stroke={`url(#${idPrefix}-route-band)`}
-              strokeWidth={index === 0 ? "9" : "6"}
+              strokeWidth={index === 0 ? "5" : "3.5"}
               strokeLinecap="round"
-              opacity={index === 0 ? "0.58" : "0.34"}
+              opacity={index === 0 ? "0.62" : "0.38"}
+            />
+          ))}
+          {OCEAN_LANES.map((path, index) => (
+            <path
+              key={`data-lane-${index}`}
+              d={path}
+              fill="none"
+              stroke="rgba(186,230,253,0.16)"
+              strokeWidth="1.1"
+              strokeDasharray={index % 2 === 0 ? "2 13" : "7 18"}
+              strokeLinecap="round"
+              opacity="0.7"
             />
           ))}
         </g>
 
-        <g filter={`url(#${idPrefix}-land-shadow)`}>
+        <g opacity={chrome === "minimal" ? "0.14" : "0.18"}>
           {ATLAS_REGIONS.map((region) => (
             <g key={region.id}>
-              <path
-                d={region.d}
-                fill={REGION_FILL[region.tone]}
-                opacity={region.opacity}
-                stroke="rgba(186,230,253,0.28)"
-                strokeWidth="1.2"
-              />
-              <path d={region.d} fill={`url(#${idPrefix}-land)`} opacity="0.64" />
-              <path d={region.d} fill="none" stroke="rgba(226,232,240,0.22)" strokeWidth="3.2" opacity="0.28" />
+              <path d={region.d} fill="none" stroke="rgba(226,232,240,0.34)" strokeWidth="1" strokeDasharray="6 12" />
+              <path d={region.d} fill="none" stroke="rgba(45,212,191,0.22)" strokeWidth="3" opacity="0.28" />
             </g>
           ))}
-          <g opacity="0.38">
+          <g opacity={density === "route" ? "0.58" : "0.42"}>
             {TERRAIN_LINES.map((path, index) => (
               <path
                 key={`terrain-${index}`}
                 d={path}
                 fill="none"
-                stroke={index % 2 === 0 ? "rgba(103,232,249,0.38)" : "rgba(45,212,191,0.3)"}
-                strokeWidth="1.1"
+                stroke={index % 2 === 0 ? "rgba(103,232,249,0.3)" : "rgba(45,212,191,0.24)"}
+                strokeWidth="0.9"
                 strokeLinecap="round"
-                strokeDasharray={index % 2 === 0 ? "5 8" : "2 7"}
+                strokeDasharray={index % 2 === 0 ? "2 10" : "1 8"}
               />
             ))}
           </g>
@@ -469,20 +501,26 @@ export function PremiumVectorMap({
           })}
         </g>
 
-        <g opacity={density === "route" ? "0.62" : "0.95"}>
+        <g opacity={density === "route" ? "0.95" : "0.76"}>
           {visiblePoints.map((point) => {
             const dot = project(point.lat, point.lng);
             const tone = toneFor(point);
             const normalized = Math.max(0.18, Math.min(1, (point.scans || 1) / maxScan));
-            const radius = density === "heat" ? 44 + normalized * 60 : 32 + normalized * 34;
-            return (
+            const radius = density === "heat" ? 32 + normalized * 46 : 16 + normalized * 18;
+            const color = pointColor(tone);
+            return density === "route" ? (
+              <g key={`signal-${point.id}`}>
+                <circle cx={dot.x} cy={dot.y} r={radius} fill="none" stroke={color} strokeWidth="1.1" strokeDasharray="2 7" opacity={tone === "risk" ? "0.48" : "0.32"} />
+                <circle cx={dot.x} cy={dot.y} r={Math.max(9, radius * 0.38)} fill={heatColor(tone)} opacity={tone === "risk" ? "0.24" : "0.14"} />
+              </g>
+            ) : (
               <circle
                 key={`heat-${point.id}`}
                 cx={dot.x}
                 cy={dot.y}
                 r={radius}
                 fill={heatColor(tone)}
-                opacity={tone === "risk" ? "0.78" : "0.62"}
+                opacity={tone === "risk" ? "0.48" : "0.32"}
               />
             );
           })}
@@ -570,7 +608,7 @@ export function PremiumVectorMap({
             <span className="rounded-full border border-emerald-300/25 bg-emerald-500/12 px-2 py-1 text-emerald-100">{routeCount} rutas</span>
             <span className="rounded-full border border-rose-300/25 bg-rose-500/12 px-2 py-1 text-rose-100">{riskCount} riesgo</span>
             {tokenCount ? <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">{tokenCount} NFT</span> : null}
-            <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">sin API paga</span>
+            <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">motor propio</span>
           </div>
         </div>
       ) : null}
@@ -583,7 +621,7 @@ export function PremiumVectorMap({
           <div className="rounded-xl border border-white/10 bg-slate-950/78 px-3 py-2 text-xs text-slate-200 shadow-xl backdrop-blur-md">
             <p className="font-semibold text-white">{selectedPoint ? `${selectedPoint.label}${selectedPoint.sublabel ? `, ${selectedPoint.sublabel}` : ""}` : "Sin punto seleccionado"}</p>
             <p className="mt-0.5 text-[11px] text-slate-300">
-              {caption || "Mapa vectorial propio para trazabilidad, calor de actividad y rutas de confianza."}
+              {caption || "Mapa propio para trazabilidad, actividad y rutas de confianza."}
             </p>
           </div>
           {mapStorySteps.length ? (

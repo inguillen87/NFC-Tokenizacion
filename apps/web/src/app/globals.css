@@ -1331,6 +1331,10 @@ html.theme-light .animate-card-shift:hover {
   filter: drop-shadow(0 0 18px rgba(45, 212, 191, 0.15));
 }
 
+.sun-passport-brand .brand-wordmark-shadow {
+  display: none;
+}
+
 .sun-passport-brand__caption {
   margin-left: 0.15rem;
   color: rgba(186, 230, 253, 0.72);
