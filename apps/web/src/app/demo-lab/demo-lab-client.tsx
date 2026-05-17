@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { PremiumVectorMap, WorldMapRealtime } from "@product/ui";
@@ -556,10 +556,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                   vertical={vertical}
                   product={activeVertical.product}
                   beat={beat}
-                  fallbackClassName={`${activeVertical.visual} demo-lab-live-visual demo-lab-product-illustration-wrap ${beat === 3 ? "tampered" : "scanning"}`}
-                >
-                  <ProductIllustration key={`${vertical}-${beat}`} vertical={vertical} product={activeVertical.product} label={activeVertical.label} beat={beat} />
-                </DemoLabProductThreeStage>
+                />
                 <span className="demo-lab-tap-chip">SUN</span>
                 <span className="demo-lab-tap-wave" />
               </div>
@@ -1324,29 +1321,25 @@ function DemoLabProductThreeStage({
   vertical,
   product,
   beat,
-  fallbackClassName,
-  children,
 }: {
   vertical: Vertical;
   product: string;
   beat: Beat;
-  fallbackClassName: string;
-  children: ReactNode;
 }) {
   const [ready, setReady] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
   const threeVertical = mapDemoVerticalToThree(vertical);
 
   useEffect(() => {
     setReady(false);
+    setShowLoader(true);
+    const timeoutId = window.setTimeout(() => setShowLoader(false), 900);
+    return () => window.clearTimeout(timeoutId);
   }, [threeVertical]);
 
   return (
     <div className="demo-lab-three-product">
-      {!ready ? (
-        <div className={fallbackClassName}>
-          {children}
-        </div>
-      ) : null}
+      {!ready && showLoader ? <span className="demo-lab-three-product-loader" aria-hidden="true" /> : null}
       <HeroThreeStage
         active={threeVertical}
         product={product}
