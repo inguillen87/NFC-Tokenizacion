@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useMemo, type KeyboardEvent } from "react";
+import { formatTrustTileUrl, resolveTrustMapSource, type TrustMapSourceOverrides } from "./trust-map-source";
 
 export type VectorMapTone = "origin" | "tap" | "hub" | "risk" | "token";
 export type VectorMapEvidenceTone = "origin" | "tap" | "token" | "risk" | "loyalty" | "marketplace";
@@ -242,7 +243,7 @@ function parseViewBox(value: string) {
   };
 }
 
-function mapTilesForViewBox(viewBox: string, density: MapDensity) {
+function mapTilesForViewBox(viewBox: string, density: MapDensity, rasterTileTemplate: string) {
   const box = parseViewBox(viewBox);
   const zoom = density === "route"
     ? box.width < 190 ? 6 : box.width < 360 ? 5 : box.width < 680 ? 4 : 3
@@ -260,7 +261,7 @@ function mapTilesForViewBox(viewBox: string, density: MapDensity) {
       const wrappedX = ((x % tilesPerAxis) + tilesPerAxis) % tilesPerAxis;
       tiles.push({
         key: `${zoom}-${wrappedX}-${y}-${x}`,
-        href: `https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/${zoom}/${wrappedX}/${y}.png`,
+        href: formatTrustTileUrl(rasterTileTemplate, zoom, wrappedX, y),
         x: x * tileWidth,
         y: y * tileHeight,
         width: tileWidth,
@@ -339,6 +340,7 @@ export function PremiumVectorMap({
   maxRoutes = 24,
   evidenceSteps = [],
   ledgerItems = [],
+  mapSource,
 }: {
   points: VectorMapPoint[];
   routes?: VectorMapRoute[];
@@ -355,6 +357,7 @@ export function PremiumVectorMap({
   maxRoutes?: number;
   evidenceSteps?: VectorMapEvidenceStep[];
   ledgerItems?: VectorMapLedgerItem[];
+  mapSource?: TrustMapSourceOverrides;
 }) {
   const rawId = useId();
   const idPrefix = useMemo(() => rawId.replace(/[^a-zA-Z0-9_-]/g, ""), [rawId]);
@@ -363,7 +366,8 @@ export function PremiumVectorMap({
   const viewBox = fittedViewBox(visiblePoints, visibleRoutes, density);
   const viewBoxMetrics = parseViewBox(viewBox);
   const isTightRouteView = density === "route" && viewBoxMetrics.width < 260;
-  const mapTiles = mapTilesForViewBox(viewBox, density);
+  const trustMapSource = useMemo(() => resolveTrustMapSource(mapSource), [mapSource]);
+  const mapTiles = mapTilesForViewBox(viewBox, density, trustMapSource.rasterTileTemplate);
   const maxScan = Math.max(1, ...visiblePoints.map((point) => point.scans || 1));
   const selectedPoint = visiblePoints.find((point) => point.id === selectedPointId) || visiblePoints[0] || null;
   const riskCount = visiblePoints.filter((point) => (point.risk || 0) > 0 || toneFor(point) === "risk").length;
@@ -430,6 +434,9 @@ export function PremiumVectorMap({
         className="absolute inset-0 h-full w-full"
         aria-hidden={chrome === "minimal"}
         data-nexid-map="premium-vector-map"
+        data-nexid-map-engine={trustMapSource.mode}
+        data-nexid-map-source={trustMapSource.id}
+        data-nexid-pmtiles-url={trustMapSource.pmtilesUrl || undefined}
       >
         <defs>
           <linearGradient id={`${idPrefix}-ocean`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -644,7 +651,7 @@ export function PremiumVectorMap({
             stroke="rgba(2,6,23,0.72)"
             strokeWidth="3"
           >
-            CARTO / OpenStreetMap
+            {trustMapSource.attribution}
           </text>
         ) : null}
 
@@ -772,7 +779,7 @@ export function PremiumVectorMap({
             <span className="rounded-full border border-emerald-300/25 bg-emerald-500/12 px-2 py-1 text-emerald-100">{routeCount} rutas</span>
             <span className="rounded-full border border-rose-300/25 bg-rose-500/12 px-2 py-1 text-rose-100">{riskCount} riesgo</span>
             {tokenCount ? <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">{tokenCount} NFT</span> : null}
-            <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">motor propio</span>
+            <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">{trustMapSource.badge}</span>
           </div>
         </div>
       ) : null}

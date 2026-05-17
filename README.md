@@ -98,3 +98,21 @@ For production-grade map hosting (enterprise hardening), define these env vars i
 - `NEXT_PUBLIC_MAPLIBRE_STYLE_URL`
 
 These are required for enterprise mode (no public CDN fallback).
+
+## Trust map configuration (web, dashboard, API)
+
+The customer-facing maps now use a shared nexID trust-map source resolver. The default is a free raster fallback for demos, but production can point to self-hosted raster tiles or a PMTiles asset hosted in your own storage/CDN.
+
+Browser apps (`apps/web`, `apps/dashboard`):
+
+- `NEXT_PUBLIC_NEXID_RASTER_TILE_TEMPLATE`
+- `NEXT_PUBLIC_NEXID_PMTILES_URL`
+- `NEXT_PUBLIC_NEXID_MAP_ATTRIBUTION`
+
+API post-tap passport (`apps/api`):
+
+- `NEXID_RASTER_TILE_TEMPLATE`
+- `NEXID_PMTILES_URL`
+- `NEXID_MAP_ATTRIBUTION`
+
+Recommended production path: generate tenant/region PMTiles offline, serve them from nexID-controlled storage/CDN, and keep the raster template as fallback while the vector renderer is introduced.

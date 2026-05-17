@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./card";
 import { PremiumVectorMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "./premium-vector-map";
+import { resolveTrustMapSource } from "./trust-map-source";
 
 export type GlobalOpsPoint = {
   id: string;
@@ -561,6 +562,7 @@ export function GlobalOpsMap({
   const [mapTheme, setMapTheme] = useState<MapTheme>("dark");
   const [nowMs, setNowMs] = useState(0);
   const [fitRevision, setFitRevision] = useState(0);
+  const trustMapSource = useMemo(() => resolveTrustMapSource(), []);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any | null>(null);
@@ -924,7 +926,7 @@ export function GlobalOpsMap({
         <div>
           <p className="text-sm font-semibold text-white">{isDemoMode ? title : `${title} - mapa vivo nexID`}</p>
           <p className="text-xs text-slate-400">
-            {isDemoMode ? subtitle : `${subtitle} (${mode}) - ${mapTheme === "light" ? "mapa claro" : "mapa oscuro"}.`}
+            {isDemoMode ? `${subtitle} - ${trustMapSource.badge}` : `${subtitle} (${mode}) - ${mapTheme === "light" ? "mapa claro" : "mapa oscuro"} - ${trustMapSource.badge}.`}
           </p>
         </div>
         <div className="global-ops-map-stats grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">

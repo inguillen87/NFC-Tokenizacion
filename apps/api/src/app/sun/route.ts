@@ -1521,10 +1521,17 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const wineryLng = contract.iot.wineryCoordinates?.lng ?? tapLng ?? -68.7794;
   const destinationLat = tapLat ?? wineryLat;
   const destinationLng = tapLng ?? wineryLng;
-  const projectWorld = (lat: number, lng: number) => ({
-    x: ((lng + 180) / 360) * 1000,
-    y: ((90 - lat) / 180) * 460,
-  });
+  const mapWidth = 1000;
+  const mapHeight = 460;
+  const projectWorld = (lat: number, lng: number) => {
+    const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, lat));
+    const sin = Math.sin((clippedLat * Math.PI) / 180);
+    return {
+      x: ((lng + 180) / 360) * mapWidth,
+      y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * mapHeight,
+    };
+  };
+  const clampMap = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
   const wineryPoint = projectWorld(wineryLat, wineryLng);
   const tapPoint = projectWorld(destinationLat, destinationLng);
   const toRad = (v: number) => v * (Math.PI / 180);
@@ -1533,6 +1540,43 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const dLng = toRad(destinationLng - wineryLng);
   const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(wineryLat)) * Math.cos(toRad(destinationLat)) * Math.sin(dLng / 2) ** 2;
   const routeDistanceKm = Math.round(earthKm * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa)));
+  const rasterTileTemplate = process.env.NEXID_RASTER_TILE_TEMPLATE
+    || process.env.NEXT_PUBLIC_NEXID_RASTER_TILE_TEMPLATE
+    || "https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png";
+  const pmtilesUrl = process.env.NEXID_PMTILES_URL || process.env.NEXT_PUBLIC_NEXID_PMTILES_URL || "";
+  const mapSourceLabel = pmtilesUrl
+    ? "PMTiles ready"
+    : rasterTileTemplate.startsWith("/") || rasterTileTemplate.includes("nexid.lat")
+      ? "Self-hosted tiles"
+      : "Free raster fallback";
+  const mapAttribution = process.env.NEXID_MAP_ATTRIBUTION || process.env.NEXT_PUBLIC_NEXID_MAP_ATTRIBUTION || "CARTO / OpenStreetMap";
+  const routeSpanX = Math.abs(wineryPoint.x - tapPoint.x);
+  const routeSpanY = Math.abs(wineryPoint.y - tapPoint.y);
+  const atlasViewWidth = clampMap(Math.max(210, routeSpanX * 3.8), 210, mapWidth);
+  const atlasViewHeight = clampMap(Math.max(132, routeSpanY * 4.7), 132, mapHeight);
+  const atlasCenterX = (wineryPoint.x + tapPoint.x) / 2;
+  const atlasCenterY = (wineryPoint.y + tapPoint.y) / 2;
+  const atlasViewX = clampMap(atlasCenterX - atlasViewWidth / 2, 0, mapWidth - atlasViewWidth);
+  const atlasViewY = clampMap(atlasCenterY - atlasViewHeight / 2, 0, mapHeight - atlasViewHeight);
+  const atlasViewBox = `${atlasViewX.toFixed(1)} ${atlasViewY.toFixed(1)} ${atlasViewWidth.toFixed(1)} ${atlasViewHeight.toFixed(1)}`;
+  const atlasTileZoom = atlasViewWidth < 260 ? 5 : atlasViewWidth < 520 ? 4 : 3;
+  const atlasTilesPerAxis = 2 ** atlasTileZoom;
+  const atlasTileWidth = mapWidth / atlasTilesPerAxis;
+  const atlasTileHeight = mapHeight / atlasTilesPerAxis;
+  const atlasTileMinX = Math.floor(atlasViewX / atlasTileWidth) - 1;
+  const atlasTileMaxX = Math.ceil((atlasViewX + atlasViewWidth) / atlasTileWidth) + 1;
+  const atlasTileMinY = Math.max(0, Math.floor(atlasViewY / atlasTileHeight) - 1);
+  const atlasTileMaxY = Math.min(atlasTilesPerAxis - 1, Math.ceil((atlasViewY + atlasViewHeight) / atlasTileHeight) + 1);
+  const atlasTileImages = Array.from({ length: Math.max(0, atlasTileMaxY - atlasTileMinY + 1) }, (_, rowIndex) => atlasTileMinY + rowIndex)
+    .flatMap((tileY) => Array.from({ length: Math.max(0, atlasTileMaxX - atlasTileMinX + 1) }, (_, colIndex) => atlasTileMinX + colIndex)
+      .map((tileX) => {
+        const wrappedX = ((tileX % atlasTilesPerAxis) + atlasTilesPerAxis) % atlasTilesPerAxis;
+        const href = rasterTileTemplate
+          .replaceAll("{z}", String(atlasTileZoom))
+          .replaceAll("{x}", String(wrappedX))
+          .replaceAll("{y}", String(tileY));
+        return `<image href="${htmlText(href)}" x="${(tileX * atlasTileWidth).toFixed(2)}" y="${(tileY * atlasTileHeight).toFixed(2)}" width="${atlasTileWidth.toFixed(2)}" height="${atlasTileHeight.toFixed(2)}" preserveAspectRatio="none"/>`;
+      })).join("");
   const oldestTraceEvent = timeline[timeline.length - 1] || null;
   const newestTraceEvent = timeline[0] || null;
   const tokenProof = contract.tokenization.tokenId
@@ -1596,7 +1640,20 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     const p = projectWorld(Number(lat), Number(lng));
     return `<circle key="${index}" cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="2.8" fill="#e0f2fe" opacity="${opacity}"/>`;
   }).join('');
-  const atlasSvg = `<svg class="world-route-overlay" viewBox="0 0 1000 460" aria-hidden="true"><defs><linearGradient id="sun-ocean" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06243c"/><stop offset="52%" stop-color="#071827"/><stop offset="100%" stop-color="#111136"/></linearGradient><linearGradient id="sun-land" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0f766e" stop-opacity=".44"/><stop offset="55%" stop-color="#0e7490" stop-opacity=".34"/><stop offset="100%" stop-color="#312e81" stop-opacity=".34"/></linearGradient><filter id="sun-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="1000" height="460" fill="url(#sun-ocean)"/><path d="M55 86 H945 M55 158 H945 M55 230 H945 M55 302 H945 M55 374 H945 M116 38 V422 M248 38 V422 M500 38 V422 M752 38 V422 M884 38 V422" fill="none" stroke="rgba(125,211,252,.11)" stroke-width="1" stroke-dasharray="8 14"/><path d="M120 152 C98 116 136 74 204 66 C276 56 345 74 376 112 C414 158 383 204 328 210 C285 215 274 254 236 263 C190 274 164 238 132 248 C98 258 82 194 120 152Z" fill="url(#sun-land)" stroke="rgba(186,230,253,.18)" stroke-width="1.5"/><path d="M280 268 C326 282 350 324 346 364 C342 404 310 430 280 438 C260 396 250 360 256 322 C260 296 262 276 280 268Z" fill="url(#sun-land)" stroke="rgba(186,230,253,.18)" stroke-width="1.5"/><path d="M462 92 C512 62 596 74 620 112 C650 160 596 186 532 176 C482 168 438 136 462 92Z" fill="url(#sun-land)" stroke="rgba(186,230,253,.18)" stroke-width="1.5"/><path d="M504 194 C572 168 644 202 658 258 C674 322 606 370 548 342 C492 315 464 220 504 194Z" fill="url(#sun-land)" stroke="rgba(186,230,253,.18)" stroke-width="1.5"/><path d="M626 124 C706 78 842 92 908 152 C968 206 928 282 828 278 C766 276 736 312 680 294 C614 272 572 184 626 124Z" fill="url(#sun-land)" stroke="rgba(186,230,253,.18)" stroke-width="1.5"/><path d="M64 384 C170 368 320 378 446 386 S730 396 938 372" fill="none" stroke="rgba(125,211,252,.16)" stroke-width="1.4"/><g filter="url(#sun-glow)">${atlasLights}</g><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="54" fill="rgba(34,211,238,.26)"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="62" fill="rgba(249,115,22,.24)"/><path d="${atlasRoutePath}" fill="none" stroke="rgba(2,6,23,.78)" stroke-width="10" stroke-linecap="round"/><path d="${atlasRoutePath}" fill="none" stroke="#f97316" stroke-width="3.8" stroke-linecap="round" stroke-dasharray="10 12"><animate attributeName="stroke-dashoffset" values="0;-54" dur="3s" repeatCount="indefinite"/></path><circle r="5" fill="#facc15"><animateMotion dur="4.2s" repeatCount="indefinite" path="${atlasRoutePath}"/></circle><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="8" fill="#22d3ee" stroke="#ecfeff" stroke-width="2"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="9" fill="#f97316" stroke="#fff7ed" stroke-width="2"/><text x="${(wineryPoint.x + 12).toFixed(2)}" y="${(wineryPoint.y - 13).toFixed(2)}" fill="#e0f2fe" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">${labels.origin}</text><text x="${(tapPoint.x + 12).toFixed(2)}" y="${(tapPoint.y - 13).toFixed(2)}" fill="#fed7aa" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">Tap</text></svg>`;
+  const compactMapLabel = (value: unknown, max = 24) => {
+    const text = String(value ?? "-").trim() || "-";
+    return text.length > max ? `${text.slice(0, Math.max(1, max - 3))}...` : text;
+  };
+  const atlasPanelWidth = clampMap(atlasViewWidth - 24, 142, 190);
+  const atlasOriginPanelX = atlasViewX + 12;
+  const atlasOriginPanelY = atlasViewY + atlasViewHeight - 54;
+  const atlasTapPanelX = atlasViewX + atlasViewWidth - atlasPanelWidth - 12;
+  const atlasTapPanelY = atlasViewY + 52;
+  const atlasOriginSafeLabel = htmlText(compactMapLabel(contract.iot.wineryLocation || contract.provenance.origin || labels.origin));
+  const atlasTapSafeLabel = htmlText(compactMapLabel([contract.tapContext.city, contract.tapContext.country].filter(Boolean).join(", ") || labels.tapLocation));
+  const atlasSvg = `<svg class="world-route-overlay" viewBox="${atlasViewBox}" aria-hidden="true" data-map-source="${htmlText(mapSourceLabel)}"><defs><linearGradient id="sun-ocean" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06243c"/><stop offset="52%" stop-color="#071827"/><stop offset="100%" stop-color="#111136"/></linearGradient><filter id="sun-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="${mapWidth}" height="${mapHeight}" fill="url(#sun-ocean)"/><g opacity=".98">${atlasTileImages}</g><rect width="${mapWidth}" height="${mapHeight}" fill="rgba(2,6,23,.44)"/><path d="M0 86 H1000 M0 158 H1000 M0 230 H1000 M0 302 H1000 M0 374 H1000 M116 0 V460 M248 0 V460 M500 0 V460 M752 0 V460 M884 0 V460" fill="none" stroke="rgba(226,232,240,.13)" stroke-width="1" stroke-dasharray="8 14"/><g filter="url(#sun-glow)">${atlasLights}</g><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="54" fill="rgba(34,211,238,.24)"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="62" fill="rgba(249,115,22,.22)"/><path d="${atlasRoutePath}" fill="none" stroke="rgba(2,6,23,.82)" stroke-width="12" stroke-linecap="round"/><path d="${atlasRoutePath}" fill="none" stroke="#f97316" stroke-width="4.2" stroke-linecap="round" stroke-dasharray="10 12"><animate attributeName="stroke-dashoffset" values="0;-54" dur="3s" repeatCount="indefinite"/></path><circle r="5.5" fill="#facc15"><animateMotion dur="4.2s" repeatCount="indefinite" path="${atlasRoutePath}"/></circle><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="9" fill="#22d3ee" stroke="#ecfeff" stroke-width="2.4"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="10" fill="#f97316" stroke="#fff7ed" stroke-width="2.4"/><g transform="translate(${(atlasViewX + 12).toFixed(2)} ${(atlasViewY + 16).toFixed(2)})"><rect x="0" y="0" width="178" height="28" rx="14" fill="rgba(2,6,23,.74)" stroke="rgba(125,211,252,.32)"/><text x="14" y="18" fill="#cffafe" font-size="11" font-weight="800" letter-spacing="1.4">${htmlText(mapSourceLabel)}</text></g><text x="${(wineryPoint.x + 12).toFixed(2)}" y="${(wineryPoint.y - 13).toFixed(2)}" fill="#e0f2fe" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">${labels.origin}</text><text x="${(tapPoint.x + 12).toFixed(2)}" y="${(tapPoint.y - 13).toFixed(2)}" fill="#fed7aa" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">Tap</text><text x="${(atlasViewX + atlasViewWidth - 12).toFixed(2)}" y="${(atlasViewY + atlasViewHeight - 10).toFixed(2)}" text-anchor="end" fill="#cbd5e1" font-size="9" font-weight="700" opacity=".72" paint-order="stroke" stroke="rgba(2,6,23,.8)" stroke-width="3">${htmlText(mapAttribution)}</text></svg>`;
+  const atlasSafePanels = `<g transform="translate(${atlasOriginPanelX.toFixed(2)} ${atlasOriginPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(34,211,238,.34)"/><text x="12" y="16" fill="#67e8f9" font-size="9" font-weight="900" letter-spacing="1.4">${htmlText(labels.origin)}</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasOriginSafeLabel}</text></g><g transform="translate(${atlasTapPanelX.toFixed(2)} ${atlasTapPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(249,115,22,.38)"/><text x="12" y="16" fill="#fed7aa" font-size="9" font-weight="900" letter-spacing="1.4">TAP</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasTapSafeLabel}</text></g>`;
+  const responsiveAtlasSvg = atlasSvg.replace("</svg>", `${atlasSafePanels}</svg>`);
   const maskedBid = maskIdentityValue(contract.identity.bid);
   const maskedUid = contract.uidMasked;
 
@@ -1612,7 +1669,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <section class="card"><div class="section-head"><h3>${copy.provenancePanel}</h3><span class="section-tag">${labels.traceability}</span></div><p>${labels.origin}: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.iotPanel}</h3><span class="section-tag">${labels.sensorIntelligence}</span></div><p>${labels.winery}: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>${labels.altitude}: <b>${contract.iot.altitude || '-'}</b> · ${labels.oak}: <b>${contract.iot.oakType || '-'}</b></p><p>${labels.cellarTemp}: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · ${labels.humidity}: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>${labels.light}: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · ${labels.transit}: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceKm} km</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
-  <div class="world-map-wrap"><div class="world-map-canvas">${atlasSvg}</div><div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div></div>
+  <div class="world-map-wrap"><div class="world-map-canvas">${responsiveAtlasSvg}</div><div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div></div>
   <div class="trace-story" style="margin-top:10px;border:1px solid rgba(34,211,238,.22);border-radius:14px;padding:10px;background:linear-gradient(180deg,rgba(8,47,73,.44),rgba(15,23,42,.28))"><div class="trace-story-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><h4 style="margin:0;font-size:14px">${labels.mapStoryTitle}</h4><p style="margin:2px 0 0;color:#9fb5d9;font-size:11px">${labels.mapStorySubtitle}</p></div><span class="section-tag">${labels.mapLedgerTitle}</span></div><div class="story-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px">${traceStoryHtml}</div><div class="ledger-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:8px">${traceLedgerHtml}</div><p style="margin:9px 0 0;font-size:11px;color:#a7f3d0">${labels.mapInvestorSignal}: ${contract.provenance.timelineSummary.length} ${labels.events}, ${routeDistanceKm} km, ${htmlText(tokenProof)}. ${labels.mapConsumerSignal}: ${labels.linkPortal} + ${labels.linkRewards}.</p></div>
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${labels.routeSummary}: ${contract.iot.wineryLocation || labels.origin} → ${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'} · ${labels.mapLegend}.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>

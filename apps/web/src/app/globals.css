@@ -12982,3 +12982,124 @@ html.theme-light .demo-lab-policy-card--blocked {
     font-size: 0.96rem;
   }
 }
+
+@media (max-width: 720px) {
+  .hero-object-frame {
+    --hero-mobile-safe-edge: 0.62rem;
+  }
+
+  .hero-trace-map {
+    inset: 0.5rem;
+  }
+
+  .hero-map-pin {
+    max-width: min(7.1rem, 34vw);
+    border-radius: 0.82rem;
+    padding: 0.38rem 0.48rem;
+    transform: none !important;
+  }
+
+  .hero-map-pin span {
+    font-size: 0.46rem;
+    letter-spacing: 0.1em;
+  }
+
+  .hero-map-pin strong {
+    font-size: 0.58rem;
+  }
+
+  .hero-map-intel,
+  .hero-trace-caption {
+    display: none;
+  }
+
+  .hero-map-pin--tap {
+    top: 4.85rem !important;
+    right: var(--hero-mobile-safe-edge) !important;
+    bottom: auto !important;
+    left: auto !important;
+  }
+
+  .hero-map-pin--origin {
+    top: auto !important;
+    right: auto !important;
+    bottom: 6.6rem !important;
+    left: var(--hero-mobile-safe-edge) !important;
+  }
+
+  .hero-trace-caption {
+    left: var(--hero-mobile-safe-edge);
+    bottom: var(--hero-mobile-safe-edge);
+    width: min(10.9rem, 46%);
+  }
+
+  .hero-origin-link {
+    left: auto;
+    right: var(--hero-mobile-safe-edge);
+    bottom: var(--hero-mobile-safe-edge);
+    max-width: min(8.8rem, 44%);
+  }
+}
+
+@media (max-width: 420px) {
+  .hero-map-intel {
+    width: calc(100% - 1rem);
+  }
+
+  .hero-map-intel span {
+    display: none;
+  }
+
+  .hero-map-pin {
+    max-width: min(6.35rem, 36vw);
+  }
+
+  .hero-map-pin--tap {
+    top: 4.35rem !important;
+  }
+
+  .hero-map-pin--origin {
+    bottom: 6.25rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .demo-lab-stage-route-layer {
+    inset: 0.55rem !important;
+  }
+
+  .demo-lab-route-chip,
+  .demo-lab-route-distance,
+  .demo-lab-route-state {
+    max-width: min(7.2rem, 35vw) !important;
+    border-radius: 0.78rem !important;
+    padding: 0.42rem 0.52rem !important;
+    font-size: 0.64rem !important;
+    line-height: 1.08 !important;
+    z-index: 16 !important;
+  }
+
+  .demo-lab-route-chip small {
+    display: none;
+  }
+
+  .demo-lab-route-distance {
+    top: 0.62rem !important;
+    left: 0.62rem !important;
+  }
+
+  .demo-lab-route-chip--tap {
+    top: 0.62rem !important;
+    right: 3.75rem !important;
+  }
+
+  .demo-lab-route-chip--origin {
+    left: 0.62rem !important;
+    bottom: 0.62rem !important;
+  }
+
+  .demo-lab-route-state {
+    right: 0.62rem !important;
+    bottom: 0.62rem !important;
+  }
+}

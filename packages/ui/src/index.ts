@@ -7,6 +7,7 @@ export * from "./sidebar";
 export * from "./world-map-realtime";
 export * from "./world-map-placeholder";
 export * from "./premium-vector-map";
+export * from "./trust-map-source";
 export * from "./ops-panel";
 export * from "./status-chip";
 export * from "./empty-state";
