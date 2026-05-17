@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import type { ProductInteractionState, ProductKind } from "../../components/hero-three-stage";
 
 const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), {
@@ -18,6 +19,10 @@ type SunProductHeroStageProps = {
   tapDisplay: string;
   distanceDisplay: string;
   state: ProductInteractionState;
+  originLat?: number | null;
+  originLng?: number | null;
+  tapLat?: number | null;
+  tapLng?: number | null;
 };
 
 function toThreeKind(kind: SunVisualKind): ProductKind {
@@ -125,9 +130,58 @@ export function SunProductHeroStage({
   tapDisplay,
   distanceDisplay,
   state,
+  originLat,
+  originLng,
+  tapLat,
+  tapLng,
 }: SunProductHeroStageProps) {
   const [ready, setReady] = useState(false);
   const threeKind = toThreeKind(kind);
+  const hasTraceCoordinates = originLat != null && originLng != null && tapLat != null && tapLng != null;
+  const traceTone = state === "blocked" ? "warn" : state === "opened" ? "success" : "info";
+  const tracePoints: VectorMapPoint[] = hasTraceCoordinates
+    ? [
+        {
+          id: "sun-origin",
+          label: shortLocation(originDisplay),
+          sublabel: "Origen del producto",
+          lat: Number(originLat),
+          lng: Number(originLng),
+          scans: 1,
+          risk: 0,
+          tone: "origin",
+          stageLabel: "Origen",
+          evidence: "Lote, productor y pasaporte interno",
+        },
+        {
+          id: "sun-current-tap",
+          label: shortLocation(tapDisplay),
+          sublabel: "Tap actual",
+          lat: Number(tapLat),
+          lng: Number(tapLng),
+          scans: state === "blocked" ? 2 : 1,
+          risk: state === "blocked" ? 1 : 0,
+          tone: state === "blocked" ? "risk" : "tap",
+          stageLabel: "Tap fisico",
+          evidence: state === "opened" ? "Sello abierto y evento comercial registrado" : "Lectura fisica del chip",
+        },
+      ]
+    : [];
+  const traceRoutes: VectorMapRoute[] = hasTraceCoordinates
+    ? [
+        {
+          id: "sun-origin-current-tap",
+          fromLat: Number(originLat),
+          fromLng: Number(originLng),
+          toLat: Number(tapLat),
+          toLng: Number(tapLng),
+          label: "Origen -> tap",
+          tone: traceTone,
+          distanceLabel: distanceDisplay,
+          evidence: "Ruta real de confianza del producto",
+        },
+      ]
+    : [];
 
   useEffect(() => {
     setReady(false);
@@ -135,14 +189,28 @@ export function SunProductHeroStage({
 
   return (
     <div className={`sun-product-stage sun-product-stage--realtime sun-product-stage--${kind}`}>
-      <div className="sun-stage-map" aria-hidden="true">
-        <span className="sun-stage-map__land sun-stage-map__land--origin" />
-        <span className="sun-stage-map__land sun-stage-map__land--tap" />
-        <span className="sun-stage-map__route" />
-        <span className="sun-stage-map__route sun-stage-map__route--glow" />
-        <span className="sun-stage-map__point sun-stage-map__point--origin" />
-        <span className="sun-stage-map__point sun-stage-map__point--tap" />
-      </div>
+      {hasTraceCoordinates ? (
+        <div className="sun-stage-real-map" aria-hidden="true">
+          <PremiumVectorMap
+            points={tracePoints}
+            routes={traceRoutes}
+            selectedPointId="sun-current-tap"
+            density="route"
+            chrome="minimal"
+            heightClassName="h-full"
+            className="sun-stage-real-map__vector"
+          />
+        </div>
+      ) : (
+        <div className="sun-stage-map" aria-hidden="true">
+          <span className="sun-stage-map__land sun-stage-map__land--origin" />
+          <span className="sun-stage-map__land sun-stage-map__land--tap" />
+          <span className="sun-stage-map__route" />
+          <span className="sun-stage-map__route sun-stage-map__route--glow" />
+          <span className="sun-stage-map__point sun-stage-map__point--origin" />
+          <span className="sun-stage-map__point sun-stage-map__point--tap" />
+        </div>
+      )}
       <span className="sun-stage-pin sun-stage-pin--origin">
         <b>Origen</b>
         <em>{shortLocation(originDisplay)}</em>

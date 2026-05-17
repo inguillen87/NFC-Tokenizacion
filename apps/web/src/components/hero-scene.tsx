@@ -409,10 +409,41 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function projectMapPoint(point: LocationPoint) {
-  const x = clamp(((point.lng + 90) / 105) * 100, 10, 90);
-  const y = clamp((1 - (point.lat + 42) / 92) * 100, 13, 82);
+const HERO_MAP_WIDTH = 1200;
+const HERO_MAP_HEIGHT = 620;
+
+function projectMercator(point: LocationPoint) {
+  const x = ((point.lng + 180) / 360) * HERO_MAP_WIDTH;
+  const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, point.lat));
+  const sin = Math.sin((clippedLat * Math.PI) / 180);
+  const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * HERO_MAP_HEIGHT;
   return { x, y };
+}
+
+function traceViewBox(origin: LocationPoint, tap: LocationPoint) {
+  const coords = [projectMercator(origin), projectMercator(tap)];
+  const minX = Math.min(...coords.map((coord) => coord.x));
+  const maxX = Math.max(...coords.map((coord) => coord.x));
+  const minY = Math.min(...coords.map((coord) => coord.y));
+  const maxY = Math.max(...coords.map((coord) => coord.y));
+  const width = Math.min(HERO_MAP_WIDTH, Math.max(150, Math.max(1, maxX - minX) * 4.2));
+  const height = Math.min(HERO_MAP_HEIGHT, Math.max(116, Math.max(1, maxY - minY) * 4.8));
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  return {
+    x: clamp(centerX - width / 2, 0, HERO_MAP_WIDTH - width),
+    y: clamp(centerY - height / 2, 0, HERO_MAP_HEIGHT - height),
+    width,
+    height,
+  };
+}
+
+function projectMapPoint(point: LocationPoint, origin: LocationPoint, tap: LocationPoint) {
+  const box = traceViewBox(origin, tap);
+  const projected = projectMercator(point);
+  const x = ((projected.x - box.x) / box.width) * 100;
+  const y = ((projected.y - box.y) / box.height) * 100;
+  return { x: clamp(x, 8, 92), y: clamp(y, 13, 84) };
 }
 
 function mapsHref(point: LocationPoint) {
@@ -432,8 +463,8 @@ function HeroTraceMap({
   numberLocale: string;
   txt: Pick<(typeof labels)["es-AR"], "routeTitle" | "originMap" | "tapMap" | "openOriginMap" | "custody">;
 }) {
-  const originPoint = projectMapPoint(origin);
-  const tapPoint = projectMapPoint(tap);
+  const originPoint = projectMapPoint(origin, origin, tap);
+  const tapPoint = projectMapPoint(tap, origin, tap);
   const formattedDistance = distance.toLocaleString(numberLocale);
   const routeHeadline = txt.routeTitle === "Trust route" ? "Live route" : txt.routeTitle.startsWith("Rota") ? "Rota viva" : "Ruta viva";
   const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque fisico" : "Tap fisico";

@@ -900,23 +900,75 @@ export function GlobalOpsMap({
   };
 
   const canRenderMap = true;
+  const isDemoMode = mode === "demo";
+  const totalScans = visiblePoints.reduce((sum, point) => sum + point.scans, 0);
+  const riskyPoints = visiblePoints.filter((point) => point.risk > 0);
+  const firstVisibleRoute = visibleRoutes[0] || null;
+  const originPoint = selectedJourney?.fromPoint || visiblePoints.find((point) => point.role === "origin") || null;
+  const tapPoint = selectedJourney?.toPoint || visiblePoints.find((point) => point.role === "tap") || selectedPoint;
+  const originLabel = selectedJourney?.fromLabel || (originPoint ? `${originPoint.city}, ${originPoint.country}` : "Origen");
+  const tapLabel = selectedJourney?.toLabel || (tapPoint ? `${tapPoint.city}, ${tapPoint.country}` : "Tap cliente");
+  const shortOriginLabel = originLabel.split(",")[0] || "Origen";
+  const shortTapLabel = tapLabel.split(",")[0] || "Tap";
+  const demoDistanceLabel = selectedJourney
+    ? formatDistance(selectedJourney.distanceKm)
+    : firstVisibleRoute
+      ? formatDistance(haversineKm(firstVisibleRoute.fromLat, firstVisibleRoute.fromLng, firstVisibleRoute.toLat, firstVisibleRoute.toLng))
+      : "n/a";
+  const demoProductName = selectedJourney?.productName || selectedPoint?.productName || visiblePoints.find((point) => point.productName)?.productName || "Producto verificado";
+  const demoRiskLabel = replayTamper > 0 ? "replay/tamper" : riskyPoints.length ? "riesgo activo" : "ruta limpia";
 
   return (
     <Card className="worldmap-card global-ops-map-card overflow-hidden p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">{title} · mapa vivo nexID</p>
-          <p className="text-xs text-slate-400">{subtitle} ({mode}) · {mapTheme === "light" ? "mapa claro" : "mapa oscuro"}.</p>
+          <p className="text-sm font-semibold text-white">{isDemoMode ? title : `${title} - mapa vivo nexID`}</p>
+          <p className="text-xs text-slate-400">
+            {isDemoMode ? subtitle : `${subtitle} (${mode}) - ${mapTheme === "light" ? "mapa claro" : "mapa oscuro"}.`}
+          </p>
         </div>
         <div className="global-ops-map-stats grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
-          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Nodos: <b>{visiblePoints.length}</b></div>
-          <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Regiones: <b>{kpiCountries}</b></div>
-          <div className="rounded-lg border border-rose-300/25 bg-rose-500/10 px-2 py-1 text-rose-100">Riesgo: <b>{visiblePoints.filter((p) => p.risk > 0).length}</b></div>
-          <div className="rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-amber-100">Replay/tamper: <b>{replayTamper}</b></div>
+          {isDemoMode ? (
+            <>
+              <div className="rounded-lg border border-emerald-300/25 bg-emerald-500/10 px-2 py-1 text-emerald-100">Ruta: <b>{shortOriginLabel} - {shortTapLabel}</b></div>
+              <div className="rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-cyan-100">Distancia: <b>{demoDistanceLabel}</b></div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Eventos: <b>{totalScans || visiblePoints.length}</b></div>
+              <div className="rounded-lg border border-violet-300/25 bg-violet-500/10 px-2 py-1 text-violet-100">Estado: <b>{demoRiskLabel}</b></div>
+            </>
+          ) : (
+            <>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Nodos: <b>{visiblePoints.length}</b></div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Regiones: <b>{kpiCountries}</b></div>
+              <div className="rounded-lg border border-rose-300/25 bg-rose-500/10 px-2 py-1 text-rose-100">Riesgo: <b>{riskyPoints.length}</b></div>
+              <div className="rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-amber-100">Replay/tamper: <b>{replayTamper}</b></div>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="global-ops-map-controls mt-3 grid gap-2 md:grid-cols-7">
+      {isDemoMode ? (
+        <div className="global-ops-map-story mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch">
+          <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">01 origen</p>
+            <p className="mt-1 text-sm font-semibold text-white">{originLabel}</p>
+            <p className="mt-1 text-[11px] text-emerald-100/80">Lote, tenant y pasaporte nacen antes de la gondola.</p>
+          </div>
+          <div className="hidden w-10 items-center justify-center text-cyan-200 md:flex">--</div>
+          <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">02 tap fisico</p>
+            <p className="mt-1 text-sm font-semibold text-white">{tapLabel}</p>
+            <p className="mt-1 text-[11px] text-cyan-100/80">Lectura fresca, SUN, estado del sello y ubicacion razonable.</p>
+          </div>
+          <div className="hidden w-10 items-center justify-center text-violet-200 md:flex">--</div>
+          <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-200">03 ownership</p>
+            <p className="mt-1 text-sm font-semibold text-white">{demoProductName}</p>
+            <p className="mt-1 text-[11px] text-violet-100/80">Claim, wallet/NFT, club, garantia y marketplace.</p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className={isDemoMode ? "hidden" : "global-ops-map-controls mt-3 grid gap-2 md:grid-cols-7"}>
         <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={tenant} onChange={(event) => setTenant(event.target.value)}>
           {tenants.map((item) => <option key={item} value={item}>{item === "ALL" ? "Tenant: todos" : item}</option>)}
         </select>
@@ -937,22 +989,22 @@ export function GlobalOpsMap({
         <button suppressHydrationWarning type="button" onClick={centerOperationalMap} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-100">Centrar mapa</button>
       </div>
 
-      <div className="global-ops-map-layout mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">
+      <div className={`global-ops-map-layout mt-3 grid gap-3 ${isDemoMode ? "" : "lg:grid-cols-[1fr_22rem]"}`}>
         <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(90deg,rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(160deg,#020617,#0f172a,#111827)] bg-[length:4.5rem_4.5rem,4.5rem_4.5rem,auto]">
-          <div className="global-ops-map-canvas relative h-[29rem]">
+          <div className={`global-ops-map-canvas relative ${isDemoMode ? "h-[24rem] md:h-[31rem]" : "h-[29rem]"}`}>
             <PremiumVectorMap
-              title="Mapa operativo premium"
-              subtitle="Rutas de confianza, taps y clusters renderizados con motor propio."
-              caption="Origen, tap, riesgo y evidencia comercial en una vista limpia de trazabilidad."
+              title={isDemoMode ? "Ruta de confianza" : "Mapa operativo premium"}
+              subtitle={isDemoMode ? `${shortOriginLabel} -> ${shortTapLabel} con evidencia SUN y tap fisico.` : "Rutas de confianza, taps y clusters renderizados con motor propio."}
+              caption={isDemoMode ? "Origen, tap, estado del sello, claim de dueno y capa comercial en una sola historia." : "Origen, tap, riesgo y evidencia comercial en una vista limpia de trazabilidad."}
               points={vectorPoints}
               routes={vectorRoutes}
               selectedPointId={selectedPoint?.id}
               density={mode === "global" ? "heat" : "route"}
-              chrome="compact"
+              chrome={isDemoMode ? "minimal" : "compact"}
               className="h-full rounded-none border-0 shadow-none"
               heightClassName="h-full"
-              maxPoints={mode === "global" ? 120 : 64}
-              maxRoutes={mode === "global" ? 120 : 72}
+              maxPoints={isDemoMode ? 28 : mode === "global" ? 120 : 64}
+              maxRoutes={isDemoMode ? 18 : mode === "global" ? 120 : 72}
               evidenceSteps={mapEvidenceSteps}
               ledgerItems={mapLedgerItems}
               onPointSelect={(point) => {
@@ -1015,19 +1067,59 @@ export function GlobalOpsMap({
                 Motor vectorial nativo activo. Mostrando vista operativa propia.
               </div>
             ) : null}
-            <div className="global-ops-map-legend absolute right-3 top-3 grid gap-1 rounded-xl border border-white/10 bg-slate-950/80 p-2 text-[10px] text-slate-200 shadow-xl backdrop-blur-md">
-              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-300" /> ORIGEN</span>
-              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-cyan-300" /> TAP CLIENTE</span>
-              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-rose-300" /> TAMPER-RISK</span>
-              <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-violet-300" /> TOKENIZED</span>
-            </div>
+            {isDemoMode ? (
+              <div className="absolute left-3 top-3 max-w-[18rem] rounded-xl border border-cyan-300/20 bg-slate-950/70 p-3 text-xs text-slate-200 shadow-xl backdrop-blur-md">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Mapa vivo del producto</p>
+                <p className="mt-1 font-semibold text-white">{demoProductName}</p>
+                <p className="mt-1 text-[11px] text-slate-300">La ruta no es decoracion: explica origen, distancia, tap fisico, riesgo y proxima accion.</p>
+              </div>
+            ) : (
+              <div className="global-ops-map-legend absolute right-3 top-3 grid gap-1 rounded-xl border border-white/10 bg-slate-950/80 p-2 text-[10px] text-slate-200 shadow-xl backdrop-blur-md">
+                <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-300" /> ORIGEN</span>
+                <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-cyan-300" /> TAP CLIENTE</span>
+                <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-rose-300" /> TAMPER-RISK</span>
+                <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-violet-300" /> TOKENIZED</span>
+              </div>
+            )}
             <div className="global-ops-map-caption absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
-              Rutas origen-tap, senales de riesgo y clusters optimizados ({visibleRoutes.length} rutas renderizadas).
+              {isDemoMode ? `Ruta ${originLabel} -> ${tapLabel}. ${demoDistanceLabel} con evidencia fisica y comercial.` : `Rutas origen-tap, senales de riesgo y clusters optimizados (${visibleRoutes.length} rutas renderizadas).`}
             </div>
           </div>
         </div>
 
-        <aside className="global-ops-map-drawer h-[29rem] overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200">
+        {isDemoMode ? (
+          <aside className="global-ops-map-demo-drawer grid gap-3 rounded-xl border border-cyan-300/15 bg-slate-950/62 p-3 text-xs text-slate-200 md:grid-cols-3">
+            <div className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Tap seleccionado</p>
+              <p className="mt-1 text-sm font-semibold text-white">{tapLabel}</p>
+              <p className="mt-2 text-slate-300">UID: <b>{selectedPoint?.uid || selectedJourney?.uid || "n/a"}</b></p>
+              <p className="text-slate-300">Estado: <b>{selectedPoint?.verdict || "VALID"}</b></p>
+              {tapPoint ? (
+                <a href={mapLink(tapPoint.lat, tapPoint.lng)} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-2 py-1 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-400/20">
+                  Abrir ubicacion del tap
+                </a>
+              ) : null}
+            </div>
+            <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200">Ruta verificada</p>
+              <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <span className="rounded-lg bg-emerald-400/10 px-2 py-1 text-emerald-100">{shortOriginLabel}</span>
+                <span className="text-slate-500">--</span>
+                <span className="rounded-lg bg-cyan-400/10 px-2 py-1 text-cyan-100">{shortTapLabel}</span>
+              </div>
+              <p className="mt-3 text-2xl font-black text-white">{demoDistanceLabel}</p>
+              <p className="text-[11px] text-slate-300">Origen, distancia y accion quedan unidos al evento del producto.</p>
+            </div>
+            <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-violet-200">Despues del tap</p>
+              <p className="mt-1 text-sm font-semibold text-white">Ownership + NFT + marketplace</p>
+              <p className="mt-2 text-slate-300">El usuario entiende que puede reclamar dueno, crear wallet, guardar NFT, activar garantia, club y reventa.</p>
+              <p className="mt-3 rounded-lg border border-white/10 bg-slate-950/50 px-2 py-1 text-[11px] text-slate-200">Riesgo: <b>{demoRiskLabel}</b></p>
+            </div>
+          </aside>
+        ) : null}
+
+        <aside className={isDemoMode ? "hidden" : "global-ops-map-drawer h-[29rem] overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200"}>
           <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Detalle del punto</p>
           {selectedPoint ? (
             <div className="global-ops-map-selected mt-2 space-y-2 rounded-lg border border-cyan-300/25 bg-cyan-500/10 p-3">
@@ -1094,9 +1186,17 @@ export function GlobalOpsMap({
         </aside>
       </div>
 
-      <div className="mt-3">
-        <input suppressHydrationWarning type="range" min={10} max={100} step={10} value={progress} onChange={(event) => setProgress(Number(event.target.value))} className="w-full" />
-      </div>
+      {isDemoMode ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
+          <button suppressHydrationWarning type="button" onClick={() => setPlayback((value) => !value)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1.5 font-semibold text-cyan-100">{playback ? "Pausar ruta" : "Reproducir ruta"}</button>
+          <button suppressHydrationWarning type="button" onClick={centerOperationalMap} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 font-semibold text-emerald-100">Reencuadrar</button>
+          <span>La vista demo evita filtros tecnicos para vender la historia del producto.</span>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <input suppressHydrationWarning type="range" min={10} max={100} step={10} value={progress} onChange={(event) => setProgress(Number(event.target.value))} className="w-full" />
+        </div>
+      )}
     </Card>
   );
 }

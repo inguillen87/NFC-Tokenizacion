@@ -473,7 +473,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     }]
     : [];
   const orderedTimelinePoints = [...timelinePoints].reverse();
-  const mapRoutes: Array<{
+  const rawMapRoutes: Array<{
     fromLat: number;
     fromLng: number;
     toLat: number;
@@ -485,7 +485,23 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ...(wineryPoint.length && !orderedTimelinePoints.length && currentTapPoint.length ? [{ fromLat: wineryPoint[0].lat, fromLng: wineryPoint[0].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Origen del producto → tap actual", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
     ...(orderedTimelinePoints.length > 1 ? orderedTimelinePoints.slice(1).map((point, idx) => ({ fromLat: orderedTimelinePoints[idx].lat, fromLng: orderedTimelinePoints[idx].lng, toLat: point.lat, toLng: point.lng, tone: point.risk > 0 ? "warn" as const : "info" as const })) : []),
     ...(orderedTimelinePoints.length && currentTapPoint.length ? [{ fromLat: orderedTimelinePoints[orderedTimelinePoints.length - 1].lat, fromLng: orderedTimelinePoints[orderedTimelinePoints.length - 1].lng, toLat: currentTapPoint[0].lat, toLng: currentTapPoint[0].lng, label: "Último evento → tap actual", tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const }] : []),
-  ].filter((route) => (haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng) || 0) >= 1);
+  ];
+  const filteredMapRoutes = rawMapRoutes.filter((route) => (haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng) || 0) >= 1);
+  const originToCurrentTapRoute = wineryPoint.length && currentTapPoint.length
+    ? {
+      fromLat: wineryPoint[0].lat,
+      fromLng: wineryPoint[0].lng,
+      toLat: currentTapPoint[0].lat,
+      toLng: currentTapPoint[0].lng,
+      label: "Origen del producto -> tap actual",
+      tone: currentTapPoint[0].risk > 0 ? "warn" as const : "info" as const,
+    }
+    : null;
+  const mapRoutes = filteredMapRoutes.length
+    ? filteredMapRoutes
+    : originToCurrentTapRoute && (haversineKm(originToCurrentTapRoute.fromLat, originToCurrentTapRoute.fromLng, originToCurrentTapRoute.toLat, originToCurrentTapRoute.toLng) || 0) >= 1
+      ? [originToCurrentTapRoute]
+      : [];
   const originToTapDistance = wineryPoint.length && currentTapPoint.length
     ? haversineKm(wineryPoint[0].lat, wineryPoint[0].lng, currentTapPoint[0].lat, currentTapPoint[0].lng)
     : null;
@@ -958,6 +974,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                  tapDisplay={tapDisplay}
                  distanceDisplay={distanceDisplay}
                  state={productVisualState}
+                 originLat={wineryPoint[0]?.lat}
+                 originLng={wineryPoint[0]?.lng}
+                 tapLat={currentTapPoint[0]?.lat}
+                 tapLng={currentTapPoint[0]?.lng}
                />
 
                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-1">{result.product?.winery || "Bodega Premium"}</p>

@@ -2614,6 +2614,42 @@ html.theme-light .sun-priority-panel a {
   pointer-events: none;
 }
 
+.sun-stage-real-map {
+  position: absolute;
+  inset: 0.75rem;
+  z-index: 0;
+  border-radius: 1.35rem;
+  overflow: hidden;
+  pointer-events: none;
+  background: #07111f;
+  box-shadow:
+    inset 0 0 0 1px rgba(125, 211, 252, 0.14),
+    inset 0 -5rem 7rem rgba(2, 6, 23, 0.7);
+}
+
+.sun-stage-real-map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.06), rgba(2, 6, 23, 0.42)),
+    radial-gradient(circle at 50% 48%, transparent 0 42%, rgba(2, 6, 23, 0.42) 78%);
+  pointer-events: none;
+}
+
+.sun-stage-real-map__vector {
+  height: 100%;
+  border: 0 !important;
+  border-radius: inherit !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.sun-stage-real-map__vector svg {
+  opacity: 0.98;
+  filter: saturate(0.95) contrast(1.06);
+}
+
 .sun-stage-map::before,
 .sun-stage-map::after {
   content: "";
@@ -3007,7 +3043,7 @@ html.theme-light .sun-priority-panel a {
   top: 31%;
   height: 38%;
   border-top-color: rgba(103, 232, 249, 0.48);
-  opacity: 0.72;
+  opacity: 0.2;
 }
 
 .sun-three-product-shell {
@@ -3496,6 +3532,7 @@ html.theme-light #fresh-tap-required p {
   min-height: clamp(23.5rem, 28vw, 28rem);
   display: grid;
   place-items: center;
+  isolation: isolate;
   border-radius: 1.2rem;
   background:
     radial-gradient(circle at 50% 48%, rgba(34, 211, 238, 0.16), transparent 32%),
@@ -3513,14 +3550,14 @@ html.theme-light #fresh-tap-required p {
 .hero-object-frame::before {
   content: "";
   position: absolute;
-  z-index: 2;
+  z-index: 0;
   inset: 1rem;
   border-radius: 1rem;
   border: 1px solid rgba(125, 211, 252, 0.1);
   background:
     linear-gradient(90deg, transparent 0 49.9%, rgba(125, 211, 252, 0.09) 50%, transparent 50.1% 100%),
     linear-gradient(180deg, transparent 0 49.9%, rgba(125, 211, 252, 0.08) 50%, transparent 50.1% 100%);
-  opacity: 0.65;
+  opacity: 0.42;
   pointer-events: none;
 }
 
@@ -3533,14 +3570,14 @@ html.theme-light #fresh-tap-required p {
   background:
     radial-gradient(ellipse at center, transparent 0 48%, rgba(125, 211, 252, 0.12) 48.4% 48.8%, transparent 49.2% 100%),
     radial-gradient(ellipse at center, transparent 0 67%, rgba(45, 212, 191, 0.09) 67.2% 67.6%, transparent 68% 100%);
-  opacity: 0.5;
+  opacity: 0.28;
   pointer-events: none;
 }
 
 .hero-trace-map {
   position: absolute;
   inset: 0.6rem;
-  z-index: 1;
+  z-index: auto;
   border-radius: 1rem;
   overflow: hidden;
   pointer-events: none;
@@ -3658,7 +3695,7 @@ html.theme-light #fresh-tap-required p {
 
 .hero-map-pin {
   position: absolute;
-  z-index: 3;
+  z-index: 6;
   max-width: 8rem;
   transform: translate(-50%, -100%);
   border-radius: 999px;
@@ -3702,7 +3739,7 @@ html.theme-light #fresh-tap-required p {
 
 .hero-map-intel {
   position: absolute;
-  z-index: 3;
+  z-index: 6;
   left: 0.75rem;
   top: 0.75rem;
   width: min(13.5rem, calc(100% - 1.5rem));
@@ -3744,7 +3781,7 @@ html.theme-light #fresh-tap-required p {
 
 .hero-map-event-stack {
   position: absolute;
-  z-index: 3;
+  z-index: 6;
   right: 0.75rem;
   top: 0.75rem;
   display: grid;
@@ -3803,7 +3840,7 @@ html.theme-light #fresh-tap-required p {
 
 .hero-trace-caption {
   position: absolute;
-  z-index: 5;
+  z-index: 7;
   left: 0.75rem;
   bottom: 0.75rem;
   width: min(11.8rem, calc(100% - 1.5rem));
@@ -3816,7 +3853,7 @@ html.theme-light #fresh-tap-required p {
 
 .hero-map-data-strip {
   position: absolute;
-  z-index: 4;
+  z-index: 7;
   left: 50%;
   bottom: 3.05rem;
   display: grid;
@@ -7107,6 +7144,7 @@ html.theme-light .demo-lab-action-tile {
     radial-gradient(circle at 76% 61%, rgba(139, 92, 246, 0.2), transparent 24%),
     linear-gradient(135deg, rgba(7, 29, 49, 0.98), rgba(12, 20, 45, 0.96));
   box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.12), inset 0 -4rem 5rem rgba(8, 13, 32, 0.28);
+  opacity: 0.28 !important;
 }
 
 .theme-light .demo-lab-product-stage::before,
@@ -7122,7 +7160,7 @@ html.theme-light .demo-lab-product-stage::before {
 .demo-lab-product-stage::after {
   inset: clamp(1.15rem, 2.4vw, 1.85rem) !important;
   border-radius: 999px !important;
-  opacity: 0.52 !important;
+  opacity: 0.16 !important;
 }
 
 .demo-lab-product-stage .demo-lab-live-visual {
@@ -7208,8 +7246,22 @@ html.theme-light .demo-lab-product-stage::before {
 }
 
 .demo-lab-stage-route-layer {
-  inset: clamp(1.5rem, 3vw, 2.4rem) !important;
+  inset: clamp(0.75rem, 1.8vw, 1.35rem) !important;
   z-index: 3 !important;
+  background: #07111f !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(125, 211, 252, 0.14),
+    inset 0 -6rem 8rem rgba(2, 6, 23, 0.64);
+}
+
+.demo-lab-stage-vector-map {
+  background: transparent !important;
+  opacity: 1 !important;
+}
+
+.demo-lab-stage-vector-map svg {
+  opacity: 1 !important;
+  filter: saturate(0.95) contrast(1.07);
 }
 
 .demo-lab-route-chip,
@@ -11788,7 +11840,7 @@ html.theme-light .demo-lab-policy-card--blocked {
 .hero-three-stage-label {
   position: absolute;
   left: 50%;
-  bottom: 0.15rem;
+  bottom: 0.55rem;
   z-index: 5;
   display: inline-flex;
   align-items: center;
@@ -11863,6 +11915,12 @@ html.theme-light .demo-lab-policy-card--blocked {
   right: 1.25rem;
   top: 1.25rem;
   z-index: 5;
+}
+
+@media (max-width: 920px) {
+  .hero-map-data-strip {
+    display: none;
+  }
 }
 
 .demo-lab-product-stage {
