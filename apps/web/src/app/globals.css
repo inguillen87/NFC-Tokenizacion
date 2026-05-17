@@ -12079,6 +12079,35 @@ html.theme-light .demo-lab-policy-card--blocked {
   pointer-events: none;
 }
 
+.demo-lab-three-product-loader {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  z-index: 7;
+  width: min(38%, 13rem);
+  height: min(38%, 13rem);
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(34, 211, 238, 0.22), transparent 58%),
+    conic-gradient(from 120deg, transparent, rgba(125, 211, 252, 0.22), transparent 58%);
+  filter: blur(2px);
+  opacity: 0.72;
+  animation: demo-lab-three-loader-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes demo-lab-three-loader-pulse {
+  from {
+    opacity: 0.44;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+
+  to {
+    opacity: 0.74;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+}
+
 .demo-lab-three-product .demo-lab-product-illustration-wrap {
   transition:
     opacity 260ms ease,
