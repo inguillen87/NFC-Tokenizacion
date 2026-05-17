@@ -94,20 +94,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     else if (payload.activateImported) reactivated += 1;
 
     if (row.productName || row.sku) {
+      const media = {
+        imageUrl: row.imageUrl,
+        labelImageUrl: row.labelImageUrl,
+        modelUrl: row.modelUrl,
+        galleryUrls: row.galleryUrls,
+      };
       await sql/*sql*/`
-        INSERT INTO tag_profiles (tag_id, sku, product_name, notes, locale_data, carrier_profile_code)
+        INSERT INTO tag_profiles (tag_id, sku, product_name, notes, image_url, locale_data, carrier_profile_code)
         VALUES (
           ${current.id},
           ${row.sku},
           ${row.productName},
           ${row.lot || row.serial || row.expiresAt ? JSON.stringify({ lot: row.lot, serial: row.serial, expires_at: row.expiresAt }) : null},
-          ${JSON.stringify({ manifest: { lot: row.lot, serial: row.serial, expires_at: row.expiresAt, raw: row.raw, carrier_profile_code: rowCarrierCode, carrier_label: rowCarrier.label } })}::jsonb,
+          ${row.imageUrl},
+          ${JSON.stringify({ media, manifest: { lot: row.lot, serial: row.serial, expires_at: row.expiresAt, raw: row.raw, carrier_profile_code: rowCarrierCode, carrier_label: rowCarrier.label } })}::jsonb,
           ${rowCarrierCode}
         )
         ON CONFLICT (tag_id) DO UPDATE SET
           sku = COALESCE(EXCLUDED.sku, tag_profiles.sku),
           product_name = COALESCE(EXCLUDED.product_name, tag_profiles.product_name),
           notes = COALESCE(EXCLUDED.notes, tag_profiles.notes),
+          image_url = COALESCE(EXCLUDED.image_url, tag_profiles.image_url),
           locale_data = tag_profiles.locale_data || EXCLUDED.locale_data,
           carrier_profile_code = COALESCE(tag_profiles.carrier_profile_code, EXCLUDED.carrier_profile_code),
           updated_at = now()

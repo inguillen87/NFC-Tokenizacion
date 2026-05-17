@@ -39,6 +39,7 @@ export type SunTenantProfilePassport = {
   barrel_months?: number | null;
   temperature_storage?: string | null;
   image_url?: string | null;
+  locale_data?: Record<string, unknown> | null;
 };
 
 export type SunTenantProfile = {
@@ -72,6 +73,7 @@ export type SunTenantProfile = {
     serving: string | null;
     oakType: string | null;
     imageUrl: string | null;
+    media: Record<string, unknown> | null;
   };
 };
 
@@ -196,6 +198,9 @@ export function resolveSunTenantProfile(input: {
   const ownershipPolicy = nonEmptyObject(passport?.sun_profile_ownership_policy);
   const manifestPolicy = nonEmptyObject(passport?.sun_profile_manifest_policy);
   const productName = firstString(passport?.product_name, passport?.sku, readPath(config, ["sun", "product", "name"]));
+  const media = asRecord(readPath(passport?.locale_data, ["media"]))
+    || asRecord(readPath(config, ["sun", "product", "media"]))
+    || null;
 
   if (!tenantId) missing.push("tenant_id");
   if (!tenantSlug) missing.push("tenant_slug");
@@ -260,6 +265,7 @@ export function resolveSunTenantProfile(input: {
         serving: firstString(readPath(config, ["sun", "product", "serving"])),
         oakType: firstString(readPath(config, ["sun", "product", "oakType"])),
         imageUrl: firstString(passport?.image_url, readPath(config, ["sun", "product", "imageUrl"]), readPath(config, ["sun", "product", "image_url"])),
+        media,
       },
     },
   };

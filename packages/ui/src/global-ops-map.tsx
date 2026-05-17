@@ -550,7 +550,7 @@ export function GlobalOpsMap({
 }) {
   const [tenant, setTenant] = useState("ALL");
   const [country, setCountry] = useState("ALL");
-  const [windowMode, setWindowMode] = useState<TimeWindow>("24h");
+  const [windowMode, setWindowMode] = useState<TimeWindow>(mode === "demo" ? "all" : "24h");
   const [verdict, setVerdict] = useState("ALL");
   const [localRiskOnly, setLocalRiskOnly] = useState(Boolean(riskOnly));
   const [playback, setPlayback] = useState(Boolean(playbackEnabled));
@@ -938,7 +938,7 @@ export function GlobalOpsMap({
       </div>
 
       <div className="global-ops-map-layout mt-3 grid gap-3 lg:grid-cols-[1fr_22rem]">
-        <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.25),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(167,139,250,.2),transparent_40%),linear-gradient(160deg,#020617,#0f172a,#111827)]">
+        <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(90deg,rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(160deg,#020617,#0f172a,#111827)] bg-[length:4.5rem_4.5rem,4.5rem_4.5rem,auto]">
           <div className="global-ops-map-canvas relative h-[29rem]">
             <PremiumVectorMap
               title="Mapa operativo premium"

@@ -16,6 +16,7 @@ export async function GET(req: Request) {
       cp.id,
       cp.product_name,
       cp.brand_name,
+      cp.image_url,
       cp.collection_type,
       cp.ownership_status,
       cp.first_tap_event_id,

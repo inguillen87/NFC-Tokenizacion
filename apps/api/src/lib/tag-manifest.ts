@@ -42,6 +42,10 @@ export type ParsedManifestRow = {
   lot: string | null;
   serial: string | null;
   expiresAt: string | null;
+  imageUrl: string | null;
+  labelImageUrl: string | null;
+  modelUrl: string | null;
+  galleryUrls: string[];
   carrierProfileCode: CarrierProfileCode | null;
   raw: Record<string, string>;
 };
@@ -65,6 +69,13 @@ function getColumn(row: Record<string, string>, names: string[]) {
     if (value) return value;
   }
   return "";
+}
+
+function splitUrls(value: string) {
+  return value
+    .split(/[|,;\n]/)
+    .map((item) => item.trim())
+    .filter((item) => /^https?:\/\//i.test(item));
 }
 
 function parseCsv(content: string, delimiter: "," | ";") {
@@ -163,6 +174,10 @@ export function parseTagManifest(content: string, expectedBid: string): Manifest
       lot: getColumn(row, ["lot", "lote", "lot_id"]) || null,
       serial: getColumn(row, ["serial", "serial_number"]) || null,
       expiresAt: getColumn(row, ["expires_at", "expiry", "expiration"]) || null,
+      imageUrl: getColumn(row, ["image_url", "imageUrl", "photo_url", "photoUrl", "hero_image_url", "product_image_url"]) || null,
+      labelImageUrl: getColumn(row, ["label_image_url", "labelImageUrl", "tag_image_url", "tagImageUrl", "packshot_url", "packshotUrl"]) || null,
+      modelUrl: getColumn(row, ["model_url", "modelUrl", "glb_url", "glbUrl", "model3d_url", "model3dUrl"]) || null,
+      galleryUrls: splitUrls(getColumn(row, ["gallery_urls", "galleryUrls", "media_urls", "mediaUrls", "gallery", "images"])),
       carrierProfileCode,
       raw: row,
     });

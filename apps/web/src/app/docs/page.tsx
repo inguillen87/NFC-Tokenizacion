@@ -88,7 +88,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     rolloutTitle: "Estándar operativo para pilotos y rollouts serios",
     rolloutBullets: [
       "Crear batch por cliente/campaña con batch_id, SKU, cantidad esperada y perfil de seguridad definidos.",
-      "Entregar al proveedor un spec cerrado: chip, URL template, key ownership, formato CSV manifest y criterio de activación.",
+      "Entregar al proveedor un spec cerrado: chip, URL template, key ownership, formato CSV manifest, banco visual (image_url/label_image_url/model_url/gallery_urls) y criterio de activación.",
       "Importar manifest solo si el batch_id del archivo coincide exactamente con el batch creado en plataforma.",
       "Operar estados planned / imported / active para detectar diferencias antes de escalar a 10k/50k unidades.",
     ],
@@ -177,7 +177,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     rolloutTitle: "Padrão operacional para pilotos e rollouts sérios",
     rolloutBullets: [
       "Criar batch por cliente/campanha com batch_id, SKU, volume esperado e perfil de segurança definidos.",
-      "Enviar ao fornecedor um spec fechado: chip, URL template, ownership das keys, formato CSV manifest e critério de ativação.",
+      "Enviar ao fornecedor um spec fechado: chip, URL template, ownership das keys, formato CSV manifest, banco visual (image_url/label_image_url/model_url/gallery_urls) e critério de ativação.",
       "Importar manifest apenas se o batch_id do arquivo coincidir exatamente com o batch criado na plataforma.",
       "Operar estados planned / imported / active para detectar diferenças antes de escalar para 10k/50k unidades.",
     ],
@@ -266,7 +266,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     rolloutTitle: "Operational standard for serious pilots and rollouts",
     rolloutBullets: [
       "Create one batch per customer/campaign with batch_id, SKU, expected volume and security profile defined up front.",
-      "Give suppliers a closed spec: chip, URL template, key ownership, CSV manifest format and activation criteria.",
+      "Give suppliers a closed spec: chip, URL template, key ownership, CSV manifest format, visual bank fields (image_url/label_image_url/model_url/gallery_urls) and activation criteria.",
       "Import manifests only when the file batch_id exactly matches the batch created in platform.",
       "Track planned / imported / active states to catch supplier mismatches before scaling to 10k/50k units.",
     ],

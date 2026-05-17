@@ -26,10 +26,21 @@ function apiBase(params?: Record<string, string | string[] | undefined>) {
 }
 
 const KNOWN_ORIGIN_COORDS: Array<{ match: RegExp; lat: number; lng: number }> = [
+  { match: /(demo bodega|bodega demo)/i, lat: -33.2095, lng: -69.1211 },
   { match: /(mendoza|valle de uco|finca altamira)/i, lat: -33.2095, lng: -69.1211 },
   { match: /(san rafael)/i, lat: -34.6177, lng: -68.3301 },
   { match: /(cafayate|salta)/i, lat: -26.0729, lng: -65.9761 },
   { match: /(patagonia|rio negro)/i, lat: -39.033, lng: -67.583 },
+];
+
+const KNOWN_TAP_COORDS: Array<{ match: RegExp; lat: number; lng: number }> = [
+  { match: /(san martin|san martín).*?(ar|argentina|buenos aires)|^(san martin|san martín)$/i, lat: -34.5744, lng: -58.5358 },
+  { match: /(buenos aires|caba|palermo|recoleta|puerto madero)/i, lat: -34.6037, lng: -58.3816 },
+  { match: /(sao paulo|são paulo|brasil|brazil)/i, lat: -23.5558, lng: -46.6396 },
+  { match: /(santiago|chile)/i, lat: -33.4489, lng: -70.6693 },
+  { match: /(miami|florida|estados unidos|united states|usa)/i, lat: 25.7617, lng: -80.1918 },
+  { match: /(zurich|zürich|suiza|switzerland)/i, lat: 47.3769, lng: 8.5417 },
+  { match: /(new york|nyc|manhattan)/i, lat: 40.7128, lng: -74.006 },
 ];
 
 type ProductState =
@@ -92,7 +103,7 @@ type SunContract = {
   tenant?: { id?: string | null; slug?: string | null; name?: string | null; vertical?: string | null; productLabel?: string | null; clubName?: string | null; tokenizationMode?: string | null };
   condition?: SunCarrierFields & { state?: string | null; label?: string | null; summary?: string | null; claimMode?: string | null; tokenizationPolicy?: string | null; marketplaceMode?: string | null; recommendedNextStep?: string | null; requirements?: string[] };
   rightsPolicy?: SunRightsPolicy;
-  product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null; category?: string | null; vertical?: string | null; imageUrl?: string | null; image_url?: string | null; photoUrl?: string | null; photo_url?: string | null };
+  product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null; category?: string | null; vertical?: string | null; imageUrl?: string | null; image_url?: string | null; photoUrl?: string | null; photo_url?: string | null; media?: Record<string, unknown> | null };
   provenance?: {
     origin?: string | null;
     firstVerified?: { at?: string | null; city?: string | null; country?: string | null };
@@ -135,6 +146,12 @@ function fmtDate(value?: string | null) {
 function resolveOriginCoordinates(input: Array<string | null | undefined>) {
   const blob = input.filter(Boolean).join(" · ");
   const match = KNOWN_ORIGIN_COORDS.find((item) => item.match.test(blob));
+  return match ? { lat: match.lat, lng: match.lng } : null;
+}
+
+function resolveKnownTapCoordinates(input: Array<string | null | undefined>) {
+  const blob = input.filter(Boolean).join(" - ");
+  const match = KNOWN_TAP_COORDS.find((item) => item.match.test(blob));
   return match ? { lat: match.lat, lng: match.lng } : null;
 }
 
@@ -387,18 +404,26 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const troubleshooting = result.troubleshooting || [];
   const canAutoOnboard = String(result.status?.reason || "").toLowerCase().includes("unknown batch") && /^DEMO-[A-Z0-9-]{3,40}$/.test(bid);
   const timelinePoints = (result.provenance?.timelineSummary || [])
-    .filter((item) => typeof item.lat === "number" && typeof item.lng === "number")
-    .map((item) => ({
-      city: item.city || "Unknown city",
-      country: item.country || "--",
-      lat: Number(item.lat),
-      lng: Number(item.lng),
-      scans: 1,
-      risk: String(item.result || "").toLowerCase().includes("replay") || String(item.result || "").toLowerCase().includes("tamper") ? 1 : 0,
-      status: item.result || "REVIEW",
-      lastSeen: item.at || undefined,
-      source: "tap_timeline",
-    }));
+    .map((item) => {
+      const city = item.city || "Unknown city";
+      const country = item.country || "--";
+      const knownCoords = resolveKnownTapCoordinates([city, country, `${city}, ${country}`]);
+      const lat = typeof item.lat === "number" ? Number(item.lat) : knownCoords?.lat;
+      const lng = typeof item.lng === "number" ? Number(item.lng) : knownCoords?.lng;
+      if (lat == null || lng == null) return null;
+      return {
+        city,
+        country,
+        lat,
+        lng,
+        scans: 1,
+        risk: String(item.result || "").toLowerCase().includes("replay") || String(item.result || "").toLowerCase().includes("tamper") ? 1 : 0,
+        status: item.result || "REVIEW",
+        lastSeen: item.at || undefined,
+        source: typeof item.lat === "number" && typeof item.lng === "number" ? "tap_timeline" : "tap_city_geocenter",
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
   const resolvedOriginCoords = result.iot?.wineryCoordinates?.lat != null && result.iot?.wineryCoordinates?.lng != null
     ? { lat: Number(result.iot.wineryCoordinates.lat), lng: Number(result.iot.wineryCoordinates.lng) }
     : resolveOriginCoordinates([
@@ -421,16 +446,30 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       source: "winery_origin",
     }]
     : [];
-  const currentTapPoint = result.tapContext?.lat != null && result.tapContext?.lng != null
+  const currentTapFallbackCoords = result.tapContext?.lat != null && result.tapContext?.lng != null
+    ? null
+    : resolveKnownTapCoordinates([
+      result.tapContext?.city,
+      result.tapContext?.country,
+      result.provenance?.lastVerifiedLocation?.city,
+      result.provenance?.lastVerifiedLocation?.country,
+      result.provenance?.timelineSummary?.[0]?.city,
+      result.provenance?.timelineSummary?.[0]?.country,
+    ]);
+  const currentTapLat = result.tapContext?.lat != null ? Number(result.tapContext.lat) : currentTapFallbackCoords?.lat;
+  const currentTapLng = result.tapContext?.lng != null ? Number(result.tapContext.lng) : currentTapFallbackCoords?.lng;
+  const currentTapCity = result.tapContext?.city || result.provenance?.lastVerifiedLocation?.city || result.provenance?.timelineSummary?.[0]?.city || "Tap";
+  const currentTapCountry = result.tapContext?.country || result.provenance?.lastVerifiedLocation?.country || result.provenance?.timelineSummary?.[0]?.country || "--";
+  const currentTapPoint = currentTapLat != null && currentTapLng != null
     ? [{
-      city: result.tapContext.city || "Tap",
-      country: result.tapContext.country || "--",
-      lat: Number(result.tapContext.lat),
-      lng: Number(result.tapContext.lng),
+      city: currentTapCity,
+      country: currentTapCountry,
+      lat: currentTapLat,
+      lng: currentTapLng,
       scans: 1,
       risk: isRiskBlocked ? 1 : 0,
       status: result.status?.code || "REVIEW",
-      source: "current_mobile_tap",
+      source: result.tapContext?.lat != null && result.tapContext?.lng != null ? "current_mobile_tap" : "current_tap_city_geocenter",
     }]
     : [];
   const orderedTimelinePoints = [...timelinePoints].reverse();
@@ -1214,7 +1253,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               {originMapHref ? <a href={originMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-2 text-center font-semibold text-emerald-100">Visitar origen</a> : null}
               {tapMapHref ? <a href={tapMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-2 text-center font-semibold text-cyan-100">Ver tap actual</a> : null}
             </div>
-            <p className="mt-2 text-[10px] text-slate-500">{timelineCities} ciudades reales en timeline. Si no hay coordenadas del tap, el mapa queda vacío en vez de inventar ubicaciones.</p>
+            <p className="mt-2 text-[10px] text-slate-500">{timelineCities} ciudades reales en timeline. Si el tap no trae GPS, se usa centro de ciudad conocido para narrar la ruta sin simular precision exacta.</p>
          </div>
 
          {/* Loyalty & Experiences Mini-app (Consumer Network) */}

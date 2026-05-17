@@ -24,9 +24,15 @@ export async function POST(req: Request) {
     const tag = (await sql`SELECT id FROM tags WHERE batch_id=${batch.id} AND uid_hex=${uidHex} LIMIT 1`)[0];
     if (!tag) continue;
 
-    await sql`INSERT INTO tag_profiles (tag_id, sku, product_name, vintage, grape_varietal, alcohol_pct, barrel_months, harvest_year, vineyard_humidity, soil_humidity, region, winery, temperature_storage, notes, locale_data)
-    VALUES (${tag.id}, ${item.sku || null}, ${item.productName || null}, ${item.vintage || null}, ${item.grapeVarietal || null}, ${item.alcoholPct || null}, ${item.barrelMonths || null}, ${item.harvestYear || null}, ${item.vineyardHumidity || null}, ${item.soilHumidity || null}, ${item.region || null}, 'Demo Bodega', ${item.temperatureStorage || null}, ${item.notes || null}, ${JSON.stringify({ 'es-AR': item, 'pt-BR': item, en: item })}::jsonb)
-    ON CONFLICT (tag_id) DO UPDATE SET sku=EXCLUDED.sku, product_name=EXCLUDED.product_name, locale_data=EXCLUDED.locale_data, updated_at=now()`;
+    const media = {
+      imageUrl: item.imageUrl || null,
+      labelImageUrl: item.labelImageUrl || null,
+      modelUrl: item.modelUrl || null,
+      galleryUrls: item.galleryUrls || [],
+    };
+    await sql`INSERT INTO tag_profiles (tag_id, sku, product_name, vintage, grape_varietal, alcohol_pct, barrel_months, harvest_year, vineyard_humidity, soil_humidity, region, winery, temperature_storage, notes, image_url, locale_data)
+    VALUES (${tag.id}, ${item.sku || null}, ${item.productName || null}, ${item.vintage || null}, ${item.grapeVarietal || null}, ${item.alcoholPct || null}, ${item.barrelMonths || null}, ${item.harvestYear || null}, ${item.vineyardHumidity || null}, ${item.soilHumidity || null}, ${item.region || null}, 'Demo Bodega', ${item.temperatureStorage || null}, ${item.notes || null}, ${item.imageUrl || null}, ${JSON.stringify({ 'es-AR': item, 'pt-BR': item, en: item, media })}::jsonb)
+    ON CONFLICT (tag_id) DO UPDATE SET sku=EXCLUDED.sku, product_name=EXCLUDED.product_name, image_url=COALESCE(EXCLUDED.image_url, tag_profiles.image_url), locale_data=EXCLUDED.locale_data, updated_at=now()`;
     updated += 1;
   }
 

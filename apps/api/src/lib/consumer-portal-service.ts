@@ -57,7 +57,8 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
       tp.sku,
       tp.winery,
       tp.region,
-      tp.grape_varietal
+      tp.grape_varietal,
+      tp.image_url
     FROM events e
     JOIN tags t ON t.uid_hex = e.uid_hex
     JOIN batches b ON b.id = t.batch_id
@@ -74,6 +75,7 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
       : "")
     || `Producto ${event.uid_hex || "NFC"}`;
   const brandName = String(tagProfile?.winery || event.tenant_slug || "Tenant").trim();
+  const imageUrl = String(tagProfile?.image_url || "").trim() || null;
 
   const existingProduct = (await sql/*sql*/`
     SELECT id
@@ -95,6 +97,7 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
           tag_id = COALESCE(${tagProfile?.id || null}, tag_id),
           product_name = COALESCE(NULLIF(${productName}, ''), product_name),
           brand_name = COALESCE(NULLIF(${brandName}, ''), brand_name),
+          image_url = COALESCE(${imageUrl}, image_url),
           updated_at = now()
       WHERE id = ${existingProduct.id}
     `;
@@ -102,7 +105,7 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
   }
 
   await sql/*sql*/`
-    INSERT INTO consumer_products (consumer_id, tenant_id, product_passport_id, tag_id, first_tap_event_id, latest_tap_event_id, ownership_status, collection_type, product_name, brand_name)
+    INSERT INTO consumer_products (consumer_id, tenant_id, product_passport_id, tag_id, first_tap_event_id, latest_tap_event_id, ownership_status, collection_type, product_name, brand_name, image_url)
     VALUES (
       ${input.consumerId},
       ${event.tenant_id},
@@ -113,7 +116,8 @@ export async function saveTapForConsumer(input: { consumerId: string; eventId: s
       'viewed',
       'wine',
       ${productName},
-      ${brandName}
+      ${brandName},
+      ${imageUrl}
     )
     ON CONFLICT DO NOTHING
   `;

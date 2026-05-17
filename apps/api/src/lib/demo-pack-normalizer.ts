@@ -12,6 +12,16 @@ function valueFromPaths(source: GenericRecord, paths: string[]): unknown {
   return undefined;
 }
 
+function urlList(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter((item) => /^https?:\/\//i.test(item));
+  }
+  if (typeof value === "string") {
+    return value.split(/[|,;\n]/).map((item) => item.trim()).filter((item) => /^https?:\/\//i.test(item));
+  }
+  return [];
+}
+
 export type NormalizedSeedProduct = GenericRecord & {
   uidHex: string;
   sku?: string;
@@ -19,6 +29,10 @@ export type NormalizedSeedProduct = GenericRecord & {
   vertical?: string;
   region?: string;
   notes?: string;
+  imageUrl?: string;
+  labelImageUrl?: string;
+  modelUrl?: string;
+  galleryUrls?: string[];
 };
 
 export function normalizeSeedProducts(seedInput: unknown): NormalizedSeedProduct[] {
@@ -42,6 +56,8 @@ export function normalizeSeedProducts(seedInput: unknown): NormalizedSeedProduct
       const product = toObject(item.product);
       const passport = toObject(item.passport);
       const source = toObject(item.source);
+      const media = toObject(valueFromPaths(item, ["media", "product.media", "assets", "product.assets"]));
+      const galleryUrls = urlList(valueFromPaths(item, ["galleryUrls", "gallery_urls", "media.galleryUrls", "media.gallery_urls", "product.galleryUrls", "product.media.galleryUrls"]));
 
       const normalized: NormalizedSeedProduct = {
         ...item,
@@ -51,9 +67,14 @@ export function normalizeSeedProducts(seedInput: unknown): NormalizedSeedProduct
         vertical: String(valueFromPaths(item, ["vertical", "product.vertical", "identity.vertical"]) || "") || undefined,
         region: String(valueFromPaths(item, ["region", "origin.region", "passport.provenance.region"]) || "") || undefined,
         notes: String(valueFromPaths(item, ["notes", "narrative", "passport.story", "metadata.notes"]) || "") || undefined,
+        imageUrl: String(valueFromPaths(item, ["imageUrl", "image_url", "photoUrl", "photo_url", "product.imageUrl", "product.image_url", "media.imageUrl", "media.image_url"]) || "") || undefined,
+        labelImageUrl: String(valueFromPaths(item, ["labelImageUrl", "label_image_url", "product.labelImageUrl", "media.labelImageUrl", "media.label_image_url"]) || "") || undefined,
+        modelUrl: String(valueFromPaths(item, ["modelUrl", "model_url", "glbUrl", "glb_url", "product.modelUrl", "media.modelUrl", "media.model_url"]) || "") || undefined,
+        galleryUrls: galleryUrls.length ? galleryUrls : undefined,
         identity,
         product,
         passport,
+        media,
         source,
       };
 

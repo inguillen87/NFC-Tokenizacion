@@ -15,6 +15,10 @@ const manifestColumns = [
   "lot",
   "serial",
   "expires_at",
+  "image_url",
+  "label_image_url",
+  "model_url",
+  "gallery_urls",
 ];
 
 export function QuickOnboardingPanel({ context = "dashboard" }: Props) {
@@ -64,12 +68,12 @@ export function QuickOnboardingPanel({ context = "dashboard" }: Props) {
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
           <p className="text-sm font-semibold text-white">3. Manifest auditado</p>
-          <p className="mt-2 text-xs leading-5 text-slate-300">CSV/TXT con preflight: duplicados, batch mismatch, identidad de producto y hash de auditoria.</p>
+          <p className="mt-2 text-xs leading-5 text-slate-300">CSV/TXT con preflight: duplicados, batch mismatch, identidad de producto, banco visual y hash de auditoria.</p>
         </div>
       </div>
 
       <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">Columnas recomendadas para proveedor</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">Columnas recomendadas para proveedor + banco visual</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {manifestColumns.map((column) => (
             <span key={column} className="rounded-full border border-white/15 bg-slate-950/45 px-3 py-1 text-xs text-slate-200">

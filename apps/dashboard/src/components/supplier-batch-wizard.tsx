@@ -48,6 +48,10 @@ type ManifestRow = {
   lot: string;
   serial: string;
   expiresAt: string;
+  imageUrl: string;
+  labelImageUrl: string;
+  modelUrl: string;
+  galleryUrls: string;
 };
 
 type ManifestIssue = {
@@ -313,6 +317,10 @@ function parseManifestInput(raw: string, expectedBid: string, productLabel: stri
         lot: getColumn(record, ["lot", "lote", "lot_id"]),
         serial: getColumn(record, ["serial", "serial_number"]),
         expiresAt: getColumn(record, ["expires_at", "expiry", "expiration"]),
+        imageUrl: getColumn(record, ["image_url", "imageurl", "photo_url", "photourl", "hero_image_url", "product_image_url"]),
+        labelImageUrl: getColumn(record, ["label_image_url", "labelimageurl", "tag_image_url", "tagimageurl", "packshot_url", "packshoturl"]),
+        modelUrl: getColumn(record, ["model_url", "modelurl", "glb_url", "glburl", "model3d_url", "model3durl"]),
+        galleryUrls: getColumn(record, ["gallery_urls", "galleryurls", "media_urls", "mediaurls", "gallery", "images"]),
       });
     }
     return { rows, issues, type: "csv" as const };
@@ -343,6 +351,10 @@ function parseManifestInput(raw: string, expectedBid: string, productLabel: stri
       lot: "",
       serial: "",
       expiresAt: "",
+      imageUrl: "",
+      labelImageUrl: "",
+      modelUrl: "",
+      galleryUrls: "",
     });
   });
 
@@ -358,7 +370,7 @@ function manifestRowsToCsv(rows: ManifestRow[]) {
     if (!value.includes(",") && !value.includes("\"") && !value.includes("\n")) return value;
     return `"${value.replace(/"/g, "\"\"")}"`;
   };
-  const header = "batch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at";
+  const header = "batch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at,image_url,label_image_url,model_url,gallery_urls";
   const body = rows.map((row) => [
     row.batchId,
     row.uidHex,
@@ -368,6 +380,10 @@ function manifestRowsToCsv(rows: ManifestRow[]) {
     row.lot,
     row.serial,
     row.expiresAt,
+    row.imageUrl,
+    row.labelImageUrl,
+    row.modelUrl,
+    row.galleryUrls,
   ].map(escape).join(","));
   return `${[header, ...body].join("\n")}\n`;
 }
@@ -675,6 +691,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       lot: "MZA-2026-0424",
       serial: `DEMO-${String(index + 1).padStart(3, "0")}`,
       expiresAt: "",
+      imageUrl: "",
+      labelImageUrl: "",
+      modelUrl: "",
+      galleryUrls: "",
     }))));
     setManifestFileName("demobodega-pilot-manifest.csv");
     setAdminEnabled(false);
@@ -1084,7 +1104,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
                 setManifestMode("paste");
                 setManifestText(event.target.value);
               }}
-              placeholder={"CSV recomendado:\nbatch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at\nBODEGA-2026-001,04A7FFFF1090,ntag424_dna_tt,Gran Reserva Malbec,wine-secure,MZA-2026-01,0001,\n\nTXT permitido:\n04A7FFFF1090\n04B8FFFF1090"}
+              placeholder={"CSV recomendado:\nbatch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at,image_url,label_image_url,model_url,gallery_urls\nBODEGA-2026-001,04A7FFFF1090,ntag424_dna_tt,Gran Reserva Malbec,wine-secure,MZA-2026-01,0001,,https://cdn.marca.com/botella.png,https://cdn.marca.com/etiqueta.png,https://cdn.marca.com/botella.glb,https://cdn.marca.com/frente.png|https://cdn.marca.com/contra.png\n\nTXT permitido:\n04A7FFFF1090\n04B8FFFF1090"}
             />
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <input suppressHydrationWarning type="file" accept=".txt,.csv,text/plain,text/csv" className="block w-full max-w-md text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-white/20" onChange={(event) => void onManifestFile(event)} />
@@ -1116,7 +1136,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
               </div>
             ) : (
               <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-100">
-                Manifest listo para importar. En TXT, el wizard genera CSV auditado con product_name/SKU del tenant para que /sun no quede sin identidad de producto.
+                Manifest listo para importar. En TXT, el wizard genera CSV auditado con product_name/SKU del tenant. En CSV premium, cada UID puede traer foto, etiqueta, GLB y galeria para que /sun, portal y marketplace rendericen el producto real.
               </div>
             )}
             <div className="max-h-64 overflow-auto rounded-2xl border border-white/10 bg-slate-950/55 p-3">
