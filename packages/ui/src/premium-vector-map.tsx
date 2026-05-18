@@ -492,7 +492,7 @@ export function PremiumVectorMap({
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-ocean)`} />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-trace-wash)`} />
         {mapTiles.length ? (
-          <g opacity={density === "route" ? "0.98" : "0.94"}>
+          <g opacity={density === "route" ? "1" : "0.98"}>
             {mapTiles.map((tile) => (
               <image
                 key={tile.key}
@@ -504,16 +504,16 @@ export function PremiumVectorMap({
                 preserveAspectRatio="none"
               />
             ))}
-            <rect width={WIDTH} height={HEIGHT} fill={density === "route" ? "rgba(2,6,23,0.38)" : "rgba(2,6,23,0.46)"} />
-            <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-trace-wash)`} opacity={density === "route" ? "0.22" : "0.28"} />
+            <rect width={WIDTH} height={HEIGHT} fill={density === "route" ? "rgba(2,6,23,0.16)" : "rgba(2,6,23,0.22)"} />
+            <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-trace-wash)`} opacity={density === "route" ? "0.1" : "0.14"} />
           </g>
         ) : null}
-        <rect width={WIDTH} height={HEIGHT} filter={`url(#${idPrefix}-basemap-noise)`} opacity={mapTiles.length ? "0.02" : density === "route" ? "0.05" : "0.18"} />
-        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-micro-grid)`} opacity={mapTiles.length ? "0.07" : density === "route" ? "0.22" : "0.72"} />
-        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-scan-grid)`} opacity={mapTiles.length ? "0.03" : density === "route" ? "0.05" : "0.18"} />
+        <rect width={WIDTH} height={HEIGHT} filter={`url(#${idPrefix}-basemap-noise)`} opacity={mapTiles.length ? "0.006" : density === "route" ? "0.05" : "0.18"} />
+        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-micro-grid)`} opacity={mapTiles.length ? "0.018" : density === "route" ? "0.22" : "0.72"} />
+        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-scan-grid)`} opacity={mapTiles.length ? "0.008" : density === "route" ? "0.05" : "0.18"} />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-vignette)`} />
 
-        <g opacity={mapTiles.length ? "0.02" : density === "route" ? "0.08" : "0.48"}>
+        <g opacity={mapTiles.length ? "0.006" : density === "route" ? "0.08" : "0.48"}>
           {TRACE_WINDOWS.map((window) => (
             <rect
               key={`trace-window-${window.x}-${window.y}`}
@@ -531,7 +531,7 @@ export function PremiumVectorMap({
           ))}
         </g>
 
-        <g opacity={mapTiles.length ? "0.08" : density === "route" ? "0.2" : "0.58"}>
+        <g opacity={mapTiles.length ? "0.02" : density === "route" ? "0.2" : "0.58"}>
           {PARALLELS.map((lat) => {
             const y = project(lat, 0).y;
             return <line key={`lat-${lat}`} x1="58" x2={WIDTH - 58} y1={y} y2={y} stroke="rgba(125,211,252,0.12)" strokeWidth="1.1" strokeDasharray="8 14" />;
@@ -542,7 +542,7 @@ export function PremiumVectorMap({
           })}
         </g>
 
-        <g opacity={mapTiles.length ? "0.02" : density === "route" ? "0.14" : "0.42"}>
+        <g opacity={mapTiles.length ? "0.006" : density === "route" ? "0.14" : "0.42"}>
           {ROUTE_CORRIDORS.map((path, index) => (
             <path
               key={`route-corridor-${index}`}
