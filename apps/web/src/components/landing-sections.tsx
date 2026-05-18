@@ -20,6 +20,11 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
     : isBr
     ? "Garrafa, pulseira, lacre e embalagem: toque real, mapa de origem, autenticidade, clube, pontos e marketplace em uma cena guiada."
     : "Botella, pulsera, sello y envase: toque real, autenticidad, mapa de origen, club, puntos y tienda en una escena guiada.";
+  const heroFlow = isEn
+    ? ["Physical product", "Fresh tap", "Safe claim", "Portal + benefits"]
+    : isBr
+    ? ["Produto fisico", "Toque fresco", "Claim seguro", "Portal + beneficios"]
+    : ["Producto fisico", "Tap fresco", "Claim seguro", "Portal + beneficios"];
   const demoCta = isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir laboratorio";
   const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reuniao" : "Agendar reunion";
 
@@ -46,6 +51,14 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>
                 <p className="mt-1 max-w-2xl text-sm text-slate-300">{demoBody}</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {heroFlow.map((item, index) => (
+                    <span key={item} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-xs font-black text-slate-100">
+                      <strong className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-500/15 text-[10px] text-cyan-100">{index + 1}</strong>
+                      {item}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
@@ -90,6 +103,117 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
              </div>
           </div>
 
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function SimpleTrustFlowSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+      eyebrow: "Understand it in 20 seconds",
+      title: "Tap the product. Know if it is real. Claim benefits only when the purchase is trusted.",
+      body: "nexID does not force people to understand NFC, cryptography or blockchain. First it shows the product, origin, seal status and the next safe step.",
+      primary: "Open Demo Lab",
+      secondary: "See mobile passport",
+      steps: [
+        { label: "Physical product", body: "The brand loads batch, photos, labels, rules and allowed claim policy." },
+        { label: "Fresh tap", body: "The person taps NFC/QR and sees authenticity, origin, map and seal state." },
+        { label: "Safe claim", body: "Email or phone plus fresh tap, purchase proof and risk score unlock ownership." },
+        { label: "Living portal", body: "Warranty, club, points, store, optional NFT and resale require product proof again." },
+      ],
+      audiences: [
+        ["Consumer", "I know what I bought, where it came from and what I can do next."],
+        ["Brand", "I receive demand, geography, risk, leads, warranty and repurchase data."],
+        ["Retailer", "I validate purchase, reduce copy/replay and unlock benefits at checkout."],
+      ],
+      rubros: "One engine for wine, events, cosmetics, agro, health, documents, governments and enterprise assets.",
+    }
+    : isBr
+    ? {
+      eyebrow: "Entender em 20 segundos",
+      title: "Toque o produto. Saiba se e real. Reivindique beneficios somente quando a compra for confiavel.",
+      body: "nexID nao obriga ninguem a entender NFC, criptografia ou blockchain. Primeiro mostra produto, origem, estado do lacre e proximo passo seguro.",
+      primary: "Abrir Demo Lab",
+      secondary: "Ver passport mobile",
+      steps: [
+        { label: "Produto fisico", body: "A marca carrega lote, fotos, etiquetas, regras e politica de claim." },
+        { label: "Toque fresco", body: "A pessoa toca NFC/QR e ve autenticidade, origem, mapa e estado do lacre." },
+        { label: "Claim seguro", body: "Email ou celular mais toque fresco, comprovante e score de risco liberam ownership." },
+        { label: "Portal vivo", body: "Garantia, clube, pontos, loja, NFT opcional e revenda pedem prova fisica de novo." },
+      ],
+      audiences: [
+        ["Consumidor", "Eu sei o que comprei, de onde veio e o que posso fazer agora."],
+        ["Marca", "Recebo demanda, geografia, risco, leads, garantia e recompra."],
+        ["Loja", "Valido compra, reduzo copia/replay e libero beneficios no checkout."],
+      ],
+      rubros: "Um motor para vinho, eventos, cosmetica, agro, saude, documentos, governos e ativos empresariais.",
+    }
+    : {
+      eyebrow: "Entendelo en 20 segundos",
+      title: "Toca el producto. Sabe si es real. Reclama beneficios solo cuando la compra es confiable.",
+      body: "nexID no obliga a nadie a entender NFC, criptografia o blockchain. Primero muestra producto, origen, estado del sello y el proximo paso seguro.",
+      primary: "Abrir Demo Lab",
+      secondary: "Ver pasaporte mobile",
+      steps: [
+        { label: "Producto fisico", body: "La marca carga lote, fotos, etiquetas, reglas y politica de reclamo." },
+        { label: "Tap fresco", body: "La persona toca NFC/QR y ve autenticidad, origen, mapa y estado del sello." },
+        { label: "Claim seguro", body: "Email o celular mas tap fresco, prueba de compra y score de riesgo habilitan ownership." },
+        { label: "Portal vivo", body: "Garantia, club, puntos, tienda, NFT opcional y reventa piden prueba fisica otra vez." },
+      ],
+      audiences: [
+        ["Consumidor", "Se que compre, de donde vino y que puedo hacer ahora."],
+        ["Marca", "Recibo demanda, geografia, riesgo, leads, garantia y recompra."],
+        ["Tienda", "Valido compra, reduzco copia/replay y libero beneficios en caja."],
+      ],
+      rubros: "Un motor para vinos, eventos, cosmetica, agro, salud, documentos, gobiernos y activos empresariales.",
+    };
+
+  return (
+    <section className="container-shell py-10 md:py-14">
+      <div className="relative overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-slate-950/70 p-5 shadow-[0_30px_90px_rgba(8,47,73,0.22)] md:p-7">
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_10%,rgba(34,211,238,0.16),transparent_34%),radial-gradient(circle_at_84%_18%,rgba(16,185,129,0.12),transparent_30%)]" />
+        <div className="relative grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">{copy.eyebrow}</p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight tracking-tight text-white md:text-4xl">{copy.title}</h2>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">{copy.body}</p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link href="/demo-lab" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/25">
+                {copy.primary}
+              </Link>
+              <Link href="/sun" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/20">
+                {copy.secondary}
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="grid gap-3 md:grid-cols-4">
+              {copy.steps.map((step, index) => (
+                <article key={step.label} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/10 text-xs font-black text-cyan-100">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <h3 className="mt-3 text-sm font-black text-white">{step.label}</h3>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">{step.body}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              {copy.audiences.map(([label, body]) => (
+                <article key={label} className="rounded-2xl border border-emerald-300/15 bg-emerald-500/10 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">{label}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-100">{body}</p>
+                </article>
+              ))}
+            </div>
+            <p className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 text-sm font-bold leading-6 text-violet-100">{copy.rubros}</p>
+          </div>
         </div>
       </div>
     </section>

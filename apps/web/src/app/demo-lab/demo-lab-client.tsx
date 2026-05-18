@@ -708,6 +708,26 @@ function DemoLabStudioHero({
     { icon: BadgeCheck, title: "Privacidad por diseno", body: "Solo compartis lo que necesitas" },
     { icon: CheckCircle2, title: "Verifica siempre", body: "Un toque. Cero dudas." },
   ];
+  const quickFlow = locale === "en"
+    ? [
+      { n: "1", title: "Tap", body: "Physical product proof" },
+      { n: "2", title: "Understand", body: "Origin, batch and seal" },
+      { n: "3", title: "Claim", body: "Safe buyer ownership" },
+      { n: "4", title: "Activate", body: "Warranty, club or NFT" },
+    ]
+    : locale === "pt-BR"
+    ? [
+      { n: "1", title: "Toque", body: "Prova do produto fisico" },
+      { n: "2", title: "Entenda", body: "Origem, lote e lacre" },
+      { n: "3", title: "Claim", body: "Dono validado" },
+      { n: "4", title: "Ative", body: "Garantia, clube ou NFT" },
+    ]
+    : [
+      { n: "1", title: "Toca", body: "Prueba fisica del producto" },
+      { n: "2", title: "Entende", body: "Origen, lote y sello" },
+      { n: "3", title: "Reclama", body: "Dueno validado" },
+      { n: "4", title: "Activa", body: "Garantia, club o NFT" },
+    ];
 
   return (
     <section className={`demo-lab-studio demo-lab-studio--${vertical} demo-lab-studio--${scenario.tone}`}>
@@ -717,6 +737,16 @@ function DemoLabStudioHero({
             <p>{txt.heroEyebrow}</p>
             <h1>Descubrir. Verificar. Confiar.</h1>
             <span>{txt.heroBody}</span>
+          </div>
+
+          <div className="demo-lab-studio-plain-flow" aria-label="Resumen simple del flujo">
+            {quickFlow.map((item) => (
+              <div key={item.n}>
+                <strong>{item.n}</strong>
+                <span>{item.title}</span>
+                <small>{item.body}</small>
+              </div>
+            ))}
           </div>
 
           <div className="demo-lab-studio-passport">

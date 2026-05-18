@@ -8,6 +8,7 @@ import {
   MarketplaceNetworkSection,
   PremiumIdentitySection,
   PlansSection,
+  SimpleTrustFlowSection,
   UnitEconomicsSection,
   WhiteLabelOperatingSystemSection,
 } from "../components/landing-sections";
@@ -275,6 +276,7 @@ export default async function HomePage() {
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
 
+      <SimpleTrustFlowSection locale={locale} />
       <PlansSection content={content} locale={locale} />
       <CarrierProfileMatrixSection locale={locale} />
       <EventsTagPositioningSection locale={locale} />
