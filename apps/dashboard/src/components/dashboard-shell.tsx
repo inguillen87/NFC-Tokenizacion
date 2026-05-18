@@ -1,6 +1,6 @@
 "use client";
 
-import { BrandDot, BrandLockup } from "@product/ui";
+import { BrandDot, BrandLockup, ThemeToggle as SharedThemeToggle } from "@product/ui";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
@@ -170,8 +170,8 @@ export function DashboardShellInner({
     : [];
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#020617] text-slate-200 lg:flex-row">
-      <aside className="border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-72 lg:p-6 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.4)]">
+    <div className="dashboard-shell-root flex min-h-screen flex-col bg-[#020617] text-slate-200 lg:flex-row">
+      <aside className="dashboard-sidebar border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-72 lg:p-6 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.4)]">
         <Link href="/" className="mb-8 inline-flex items-center hover:opacity-80 transition-opacity">
           <BrandLockup size={40} variant="pulse" theme="dark" className="brand-surface-sidebar" />
         </Link>
@@ -298,8 +298,8 @@ export function DashboardShellInner({
         ) : null}
       </aside>
 
-      <div className="min-w-0 flex-1 bg-slate-950/50">
-        <header className="sticky top-0 z-30 border-b border-white/5 bg-slate-950/80 px-4 py-4 backdrop-blur-xl lg:px-8">
+      <div className="dashboard-main min-w-0 flex-1 bg-slate-950/50">
+        <header className="dashboard-header sticky top-0 z-30 border-b border-white/5 bg-slate-950/80 px-4 py-4 backdrop-blur-xl lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400 mb-1">
@@ -314,7 +314,7 @@ export function DashboardShellInner({
               <Badge tone="green">{shell.apiConnected}</Badge>
               <div className="h-6 w-px bg-white/10 mx-1" />
               <LocaleSwitcher value={locale} options={[...locales]} />
-              <ThemeToggle />
+              <SharedThemeToggle />
               <Link
                 href="/logout"
                 onClick={(event) => {

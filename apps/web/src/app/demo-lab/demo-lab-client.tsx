@@ -728,6 +728,11 @@ function DemoLabStudioHero({
       { n: "3", title: "Reclama", body: "Dueno validado" },
       { n: "4", title: "Activa", body: "Garantia, club o NFT" },
     ];
+  const topActions = locale === "en"
+    ? { product: "See 3D product", passport: "See passport" }
+    : locale === "pt-BR"
+    ? { product: "Ver produto 3D", passport: "Ver passport" }
+    : { product: "Ver producto 3D", passport: "Ver pasaporte" };
 
   return (
     <section className={`demo-lab-studio demo-lab-studio--${vertical} demo-lab-studio--${scenario.tone}`}>
@@ -747,6 +752,11 @@ function DemoLabStudioHero({
                 <small>{item.body}</small>
               </div>
             ))}
+          </div>
+
+          <div className="demo-lab-studio-top-actions">
+            <a href="#demo-lab-product-stage">{topActions.product}</a>
+            <button suppressHydrationWarning type="button" onClick={onPassport}>{topActions.passport}</button>
           </div>
 
           <div className="demo-lab-studio-passport">
@@ -785,7 +795,7 @@ function DemoLabStudioHero({
           </div>
         </aside>
 
-        <div className="demo-lab-studio-stage">
+        <div id="demo-lab-product-stage" className="demo-lab-studio-stage">
           <div className="demo-lab-studio-stage-head">
             <p>Vista 3D</p>
             <span>Arrastra para rotar. Scroll para acercar. Click/tap para abrir sello.</span>

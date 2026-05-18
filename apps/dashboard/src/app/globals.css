@@ -3,13 +3,27 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: dark light;
+  --dash-bg: #020617;
+  --dash-bg-soft: #07111f;
+  --dash-panel: rgba(15, 23, 42, 0.78);
+  --dash-panel-strong: rgba(2, 6, 23, 0.9);
+  --dash-card: rgba(15, 23, 42, 0.72);
+  --dash-border: rgba(148, 163, 184, 0.16);
+  --dash-border-strong: rgba(34, 211, 238, 0.24);
+  --dash-text: #f8fafc;
+  --dash-muted: #cbd5e1;
+  --dash-soft: #94a3b8;
+  --dash-cyan: #22d3ee;
+  --dash-emerald: #34d399;
+  --dash-violet: #a78bfa;
+  --dash-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
 }
 
 html,
 body {
-  background: #020617;
-  color: #f8fafc;
+  background: var(--dash-bg);
+  color: var(--dash-text);
 }
 
 body {
@@ -35,6 +49,23 @@ select {
 
 .glass {
   @apply border border-white/10 bg-slate-900/65 backdrop-blur-xl;
+}
+
+.dashboard-shell-root {
+  background:
+    radial-gradient(circle at 15% -5%, rgba(59, 130, 246, 0.16), transparent 25%),
+    radial-gradient(circle at 85% 0%, rgba(6, 182, 212, 0.13), transparent 30%),
+    var(--dash-bg);
+  color: var(--dash-muted);
+}
+
+.dashboard-main {
+  background: rgba(2, 6, 23, 0.5);
+}
+
+.dashboard-header,
+.dashboard-sidebar {
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .admin-notification-bell__icon {
@@ -216,6 +247,20 @@ select {
 
 html.theme-light {
   color-scheme: light;
+  --dash-bg: #f7fbff;
+  --dash-bg-soft: #eef6ff;
+  --dash-panel: rgba(255, 255, 255, 0.9);
+  --dash-panel-strong: rgba(248, 252, 255, 0.96);
+  --dash-card: rgba(255, 255, 255, 0.84);
+  --dash-border: rgba(15, 23, 42, 0.12);
+  --dash-border-strong: rgba(14, 116, 144, 0.24);
+  --dash-text: #0f172a;
+  --dash-muted: #334155;
+  --dash-soft: #64748b;
+  --dash-cyan: #0891b2;
+  --dash-emerald: #047857;
+  --dash-violet: #6d28d9;
+  --dash-shadow: 0 24px 70px rgba(15, 23, 42, 0.1);
 }
 
 html.theme-light body {
@@ -297,6 +342,54 @@ html.theme-light .locale-switcher {
   border-color: rgba(15,23,42,0.2);
   background: rgba(255,255,255,0.88);
   color: #0f172a;
+}
+
+.theme-toggle {
+  min-height: 2.45rem;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(34, 211, 238, 0.08)),
+    rgba(2, 6, 23, 0.48) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    0 14px 30px rgba(2, 6, 23, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.theme-toggle:hover {
+  border-color: rgba(103, 232, 249, 0.36) !important;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.14), rgba(167, 139, 250, 0.12)),
+    rgba(2, 6, 23, 0.62) !important;
+  transform: translateY(-1px);
+}
+
+.theme-toggle__glyph {
+  position: relative;
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.theme-toggle__glyph--dark {
+  background: #c4b5fd;
+  box-shadow: inset -0.28rem 0 0 #0f172a, 0 0 0 1px rgba(196, 181, 253, 0.5);
+}
+
+.theme-toggle__glyph--light {
+  background: #f59e0b;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.5), 0 0 0 0.28rem rgba(251, 191, 36, 0.16);
+}
+
+html.theme-light .theme-toggle {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(224, 242, 254, 0.82)) !important;
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  color: #0f172a !important;
+  box-shadow:
+    0 14px 30px rgba(14, 116, 144, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 html.theme-light .worldmap-card {
@@ -631,6 +724,55 @@ html.theme-light aside {
   background: rgba(255, 255, 255, 0.9) !important;
   border-color: rgba(148, 163, 184, 0.32) !important;
   box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .dashboard-shell-root {
+  background:
+    radial-gradient(circle at 10% -5%, rgba(56, 189, 248, 0.14), transparent 32%),
+    radial-gradient(circle at 88% -5%, rgba(124, 58, 237, 0.1), transparent 38%),
+    linear-gradient(180deg, #f8fbff, #eef6ff 72%, #f7fbff) !important;
+  color: var(--dash-muted) !important;
+}
+
+html.theme-light .dashboard-main {
+  background: rgba(239, 246, 255, 0.54) !important;
+}
+
+html.theme-light .dashboard-header,
+html.theme-light .dashboard-sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 252, 255, 0.9)) !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+}
+
+html.theme-light aside nav a {
+  color: #334155 !important;
+  border-color: transparent !important;
+}
+
+html.theme-light aside nav a:hover {
+  background: rgba(14, 165, 233, 0.08) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light aside nav a[class*="bg-cyan"],
+html.theme-light aside nav a[class*="bg-emerald"],
+html.theme-light aside nav a[class*="bg-violet"],
+html.theme-light aside nav a[class*="bg-white"] {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background: rgba(224, 242, 254, 0.72) !important;
+  color: #0e7490 !important;
+  box-shadow: 0 10px 24px rgba(14, 116, 144, 0.08);
+}
+
+html.theme-light option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+html.theme-light input::placeholder,
+html.theme-light textarea::placeholder {
+  color: #64748b !important;
 }
 
 html.theme-light .dashboard-auth-surface {

@@ -25,6 +25,11 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
     : isBr
     ? ["Produto fisico", "Toque fresco", "Claim seguro", "Portal + beneficios"]
     : ["Producto fisico", "Tap fresco", "Claim seguro", "Portal + beneficios"];
+  const heroAssurance = isEn
+    ? "No app download for the buyer. No crypto knowledge required. The tap explains authenticity, origin and next step."
+    : isBr
+    ? "Sem app para o comprador. Sem exigir cripto. O toque explica autenticidade, origem e proximo passo."
+    : "Sin app para el comprador. Sin explicar cripto. El tap muestra autenticidad, origen y proximo paso.";
   const demoCta = isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir laboratorio";
   const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reuniao" : "Agendar reunion";
 
@@ -59,6 +64,9 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
                     </span>
                   ))}
                 </div>
+                <p className="mt-3 max-w-2xl rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold leading-5 text-emerald-100">
+                  {heroAssurance}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
@@ -119,6 +127,8 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       body: "nexID does not force people to understand NFC, cryptography or blockchain. First it shows the product, origin, seal status and the next safe step.",
       primary: "Open Demo Lab",
       secondary: "See mobile passport",
+      claimTitle: "When can ownership or NFT open?",
+      claimBody: "Only after a fresh physical tap, verified email or phone, purchase proof or retailer token, and a risk score that does not look copied.",
       steps: [
         { label: "Physical product", body: "The brand loads batch, photos, labels, rules and allowed claim policy." },
         { label: "Fresh tap", body: "The person taps NFC/QR and sees authenticity, origin, map and seal state." },
@@ -139,6 +149,8 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       body: "nexID nao obriga ninguem a entender NFC, criptografia ou blockchain. Primeiro mostra produto, origem, estado do lacre e proximo passo seguro.",
       primary: "Abrir Demo Lab",
       secondary: "Ver passport mobile",
+      claimTitle: "Quando abre ownership ou NFT?",
+      claimBody: "Somente depois de toque fisico fresco, email ou celular validado, comprovante ou token da loja, e score de risco sem sinais de copia.",
       steps: [
         { label: "Produto fisico", body: "A marca carrega lote, fotos, etiquetas, regras e politica de claim." },
         { label: "Toque fresco", body: "A pessoa toca NFC/QR e ve autenticidade, origem, mapa e estado do lacre." },
@@ -158,6 +170,8 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       body: "nexID no obliga a nadie a entender NFC, criptografia o blockchain. Primero muestra producto, origen, estado del sello y el proximo paso seguro.",
       primary: "Abrir Demo Lab",
       secondary: "Ver pasaporte mobile",
+      claimTitle: "Cuando se abre el dueño o NFT?",
+      claimBody: "Solo despues de tap fisico fresco, email o celular validado, prueba de compra o token de tienda, y score de riesgo sin senales de copia.",
       steps: [
         { label: "Producto fisico", body: "La marca carga lote, fotos, etiquetas, reglas y politica de reclamo." },
         { label: "Tap fresco", body: "La persona toca NFC/QR y ve autenticidad, origen, mapa y estado del sello." },
@@ -212,7 +226,13 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
                 </article>
               ))}
             </div>
-            <p className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 text-sm font-bold leading-6 text-violet-100">{copy.rubros}</p>
+            <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
+              <p className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 text-sm font-bold leading-6 text-violet-100">{copy.rubros}</p>
+              <article className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">{copy.claimTitle}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">{copy.claimBody}</p>
+              </article>
+            </div>
           </div>
         </div>
       </div>

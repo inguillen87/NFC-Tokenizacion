@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-type Theme = "dark" | "light";
+export type Theme = "dark" | "light";
 
-function applyTheme(theme: Theme) {
+export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
   document.documentElement.classList.toggle("theme-light", theme === "light");
+  document.documentElement.style.colorScheme = theme;
   try {
     localStorage.setItem("theme", theme);
     document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
@@ -16,42 +17,54 @@ function applyTheme(theme: Theme) {
   }
 }
 
+function readTheme(): Theme {
+  try {
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark" || saved === "light") return saved;
+  } catch {
+    // ignore
+  }
+
+  const serverTheme = document.documentElement.getAttribute("data-theme");
+  return serverTheme === "light" || serverTheme === "dark" ? serverTheme : "dark";
+}
+
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("theme");
-      if (saved === "dark" || saved === "light") {
-        setTheme(saved);
-        applyTheme(saved);
-        return;
-      }
-    } catch {
-      // ignore
-    }
-
-    const serverTheme = document.documentElement.getAttribute("data-theme");
-    const initial: Theme = serverTheme === "light" || serverTheme === "dark" ? serverTheme : "dark";
+    const initial = readTheme();
     setTheme(initial);
     applyTheme(initial);
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== "theme") return;
+      if (event.newValue !== "dark" && event.newValue !== "light") return;
+      setTheme(event.newValue);
+      applyTheme(event.newValue);
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  const nextTheme = theme === "dark" ? "light" : "dark";
+  const label = theme === "dark" ? "Dark" : "Light";
 
   return (
     <button
       suppressHydrationWarning
       type="button"
       onClick={() => {
-        const next: Theme = theme === "dark" ? "light" : "dark";
-        setTheme(next);
-        applyTheme(next);
+        setTheme(nextTheme);
+        applyTheme(nextTheme);
       }}
       className="theme-toggle inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
-      aria-label="Toggle theme"
-      title="Toggle theme"
+      aria-label={`Switch to ${nextTheme} mode`}
+      title={`Switch to ${nextTheme} mode`}
     >
       <span aria-hidden className={`theme-toggle__glyph theme-toggle__glyph--${theme}`} />
-      <span>{theme === "dark" ? "Dark" : "Light"}</span>
+      <span>{label}</span>
     </button>
   );
 }
