@@ -167,7 +167,7 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
     const toneForScene = tones[active];
     scene.add(createLights(toneForScene));
     scene.add(createStageRings(toneForScene));
-    scene.add(createTelemetryNodes(toneForScene));
+    scene.add(createTelemetryNodes(toneForScene, active));
     const productGroup = createProduct(active);
     const baseProductScale = productGroup.scale.x || 1;
     scene.add(productGroup);
@@ -1384,18 +1384,48 @@ function createStageRings(tone: Tone) {
   return group;
 }
 
-function createTelemetryNodes(tone: Tone) {
+function createTelemetryNodes(tone: Tone, active: ProductKind) {
   const group = new THREE.Group();
-  const nodes: Vec3[] = [
-    [-1.55, -0.52, 0.52],
-    [1.48, -0.42, 0.48],
-    [-1.18, 0.62, 0.25],
-    [1.18, 0.7, 0.18],
-  ];
-  nodes.forEach((position, index) => {
+  const routeNodes: Vec3[] = active === "wine"
+    ? [
+        [-1.7, -1.18, 0.16],
+        [-0.55, -1.34, 0.12],
+        [0.55, -1.34, 0.12],
+        [1.7, -1.18, 0.16],
+      ]
+    : [
+        [-1.7, -1.05, 0.18],
+        [-0.62, -1.28, 0.12],
+        [0.62, -1.28, 0.12],
+        [1.7, -1.05, 0.18],
+      ];
+  routeNodes.forEach((position, index) => {
     group.add(mesh(
-      new THREE.SphereGeometry(index < 2 ? 0.065 : 0.048, 24, 14),
-      basic(index % 2 === 0 ? tone.accent : tone.accentSoft, 0.8),
+      new THREE.SphereGeometry(index === 0 || index === routeNodes.length - 1 ? 0.04 : 0.026, 20, 12),
+      basic(index === 0 ? tone.accentSoft : index === routeNodes.length - 1 ? tone.accent : "#e0f2fe", index === 0 || index === routeNodes.length - 1 ? 0.5 : 0.25),
+      position,
+      undefined,
+      false,
+    ));
+  });
+
+  if (active === "wine") {
+    const path = new THREE.CatmullRomCurve3(routeNodes.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+    const tube = new THREE.TubeGeometry(path, 36, 0.006, 8, false);
+    const route = mesh(tube, basic(tone.accent, 0.18), [0, 0, 0], undefined, false);
+    route.name = "cinemaRouteTrace";
+    group.add(route);
+    return group;
+  }
+
+  const upperNodes: Vec3[] = [
+    [-1.42, 1.02, -0.18],
+    [1.42, 1.06, -0.18],
+  ];
+  upperNodes.forEach((position, index) => {
+    group.add(mesh(
+      new THREE.SphereGeometry(0.03, 18, 10),
+      basic(index % 2 === 0 ? tone.accent : tone.accentSoft, 0.24),
       position,
       undefined,
       false,
@@ -1457,10 +1487,10 @@ function createCinematicRig(tone: Tone, active: ProductKind) {
   }
 
   const tapHalo = mesh(
-    new THREE.RingGeometry(0.34, 0.36, 72),
+    new THREE.RingGeometry(active === "wine" ? 0.18 : 0.34, active === "wine" ? 0.195 : 0.36, 72),
     basic(tone.accent, 0.4),
-    [0.74, 0.75, 0.36],
-    [0, -0.28, 0.02],
+    active === "wine" ? [1.36, -0.98, 0.28] : [0.74, 0.75, 0.36],
+    active === "wine" ? [Math.PI / 2.4, 0, 0.08] : [0, -0.28, 0.02],
     false,
   );
   tapHalo.name = "cinemaTapHalo";

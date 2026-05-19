@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { resolveProductAssetProfile } from "../../../lib/product-asset-bank";
 
 type Listing = {
   id: string;
@@ -8,8 +9,16 @@ type Listing = {
   brand_name?: string;
   brand?: string;
   tenant_slug?: string;
+  bid?: string;
+  batch?: string;
+  sku?: string;
   kind?: string;
   vertical?: string;
+  category?: string;
+  image_url?: string;
+  imageUrl?: string;
+  photo_url?: string;
+  photoUrl?: string;
   points_price?: number;
   cash_price?: number;
   price_amount?: number;
@@ -252,6 +261,16 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
           const status = String(item.stock_status || item.status || "available");
           const requestDisabled = status === "out_of_stock" || item.request_to_buy_enabled === false;
           const cta = requestDisabled ? "No disponible" : busyById[item.id] ? "Enviando..." : item.age_gate_required ? "Confirmar y solicitar" : "Solicitar compra";
+          const assetProfile = resolveProductAssetProfile({
+            tenantSlug: item.tenant_slug,
+            brandName: brandLabel(item),
+            productName: item.title,
+            bid: item.bid || item.batch,
+            vertical: item.vertical || item.kind,
+            category: item.category,
+            imageUrl: item.imageUrl || item.image_url || item.photoUrl || item.photo_url,
+            sku: item.sku,
+          });
           return (
             <article key={item.id || `${item.title || idx}`} className="marketplace-card overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 shadow-xl shadow-black/20">
               <div className="relative h-44 border-b border-white/10 bg-[linear-gradient(135deg,#111827,#020617)]">
@@ -267,6 +286,14 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
               <div className="p-4">
                 <p className="text-sm font-black text-white">{item.title || "Item premium"}</p>
                 <p className="mt-1 text-xs text-slate-400">{brandLabel(item)}</p>
+                <div className="mt-3 rounded-2xl border border-cyan-300/15 bg-cyan-500/10 p-3">
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.1em]">
+                    <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-2 py-1 text-cyan-100">{assetProfile.visualKind}</span>
+                    <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2 py-1 text-emerald-100">{assetProfile.assetScore}/100 assets</span>
+                    <span className="rounded-full border border-violet-300/25 bg-violet-400/10 px-2 py-1 text-violet-100">{assetProfile.batchLabel}</span>
+                  </div>
+                  <p className="mt-2 text-[11px] leading-5 text-cyan-50/85">{assetProfile.marketplaceLine}</p>
+                </div>
                 <p className="mt-3 text-lg font-black text-white">{priceLabel(item)}</p>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-[10px]">
                   <span className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2 py-1 text-center font-semibold uppercase tracking-[0.08em] text-cyan-100">owner</span>

@@ -24,7 +24,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
     ? ["Physical product", "Fresh tap", "Safe claim", "Portal + benefits"]
     : isBr
     ? ["Produto fisico", "Toque fresco", "Claim seguro", "Portal + beneficios"]
-    : ["Producto fisico", "Tap fresco", "Claim seguro", "Portal + beneficios"];
+    : ["Producto fisico", "Tap fresco", "Reclamo seguro", "Portal + beneficios"];
   const heroAssurance = isEn
     ? "No app download for the buyer. No crypto knowledge required. The tap explains authenticity, origin and next step."
     : isBr
@@ -122,7 +122,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const isBr = locale === "pt-BR";
   const copy = isEn
     ? {
-      eyebrow: "Understand it in 20 seconds",
+      eyebrow: "Understand it in 10 seconds",
       title: "Tap the product. Know if it is real. Claim benefits only when the purchase is trusted.",
       body: "nexID does not force people to understand NFC, cryptography or blockchain. First it shows the product, origin, seal status and the next safe step.",
       primary: "Open Demo Lab",
@@ -144,7 +144,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
     }
     : isBr
     ? {
-      eyebrow: "Entender em 20 segundos",
+      eyebrow: "Entender em 10 segundos",
       title: "Toque o produto. Saiba se e real. Reivindique beneficios somente quando a compra for confiavel.",
       body: "nexID nao obriga ninguem a entender NFC, criptografia ou blockchain. Primeiro mostra produto, origem, estado do lacre e proximo passo seguro.",
       primary: "Abrir Demo Lab",
@@ -165,7 +165,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       rubros: "Um motor para vinho, eventos, cosmetica, agro, saude, documentos, governos e ativos empresariais.",
     }
     : {
-      eyebrow: "Entendelo en 20 segundos",
+      eyebrow: "Entendelo en 10 segundos",
       title: "Toca el producto. Sabe si es real. Reclama beneficios solo cuando la compra es confiable.",
       body: "nexID no obliga a nadie a entender NFC, criptografia o blockchain. Primero muestra producto, origen, estado del sello y el proximo paso seguro.",
       primary: "Abrir Demo Lab",
@@ -175,7 +175,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
       steps: [
         { label: "Producto fisico", body: "La marca carga lote, fotos, etiquetas, reglas y politica de reclamo." },
         { label: "Tap fresco", body: "La persona toca NFC/QR y ve autenticidad, origen, mapa y estado del sello." },
-        { label: "Claim seguro", body: "Email o celular mas tap fresco, prueba de compra y score de riesgo habilitan ownership." },
+        { label: "Reclamo seguro", body: "Email o celular mas tap fresco, prueba de compra y score de riesgo habilitan ownership." },
         { label: "Portal vivo", body: "Garantia, club, puntos, tienda, NFT opcional y reventa piden prueba fisica otra vez." },
       ],
       audiences: [

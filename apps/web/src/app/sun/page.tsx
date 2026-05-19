@@ -9,6 +9,7 @@ import { productUrls } from "@product/config";
 import { BrandLockup, DeviceSignatureBadge, EmptyState, GlobalOpsMap, KeyValueSpec, ThemeToggle, TimelineRail } from "@product/ui";
 import type { GlobalOpsPoint, GlobalOpsRoute } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
+import { resolveProductAssetProfile, summarizeAssetReadiness } from "../../lib/product-asset-bank";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
@@ -58,6 +59,7 @@ type ProductState =
 type SunRightsPolicy = {
   vertical?: string | null;
   verticalLabel?: string | null;
+  category?: string | null;
   conditionState?: string | null;
   claimMode?: string | null;
   marketplaceMode?: string | null;
@@ -103,7 +105,7 @@ type SunContract = {
   tenant?: { id?: string | null; slug?: string | null; name?: string | null; vertical?: string | null; productLabel?: string | null; clubName?: string | null; tokenizationMode?: string | null };
   condition?: SunCarrierFields & { state?: string | null; label?: string | null; summary?: string | null; claimMode?: string | null; tokenizationPolicy?: string | null; marketplaceMode?: string | null; recommendedNextStep?: string | null; requirements?: string[] };
   rightsPolicy?: SunRightsPolicy;
-  product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null; category?: string | null; vertical?: string | null; imageUrl?: string | null; image_url?: string | null; photoUrl?: string | null; photo_url?: string | null; media?: Record<string, unknown> | null };
+  product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null; category?: string | null; vertical?: string | null; sku?: string | null; gtin?: string | null; imageUrl?: string | null; image_url?: string | null; photoUrl?: string | null; photo_url?: string | null; media?: Record<string, unknown> | null };
   provenance?: {
     origin?: string | null;
     firstVerified?: { at?: string | null; city?: string | null; country?: string | null };
@@ -860,8 +862,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const sealLabel = sealClosed ? "Sello intacto" : sealOpened ? "Sello abierto" : "Sello no informado";
   const chainLabel = tokenEvidenceLabel;
   const productName = result.product?.name || "Producto Verificado";
-  const productVisualKind = resolveSunVisualKind(result);
   const productImageUrl = result.product?.imageUrl || result.product?.image_url || result.product?.photoUrl || result.product?.photo_url || null;
+  const assetProfile = resolveProductAssetProfile({
+    tenantSlug: result.tenant?.slug || result.identity?.tenantSlug,
+    brandName: result.product?.winery || result.tenant?.name || result.tenant?.slug,
+    productName,
+    bid: result.identity?.bid,
+    vertical: result.product?.vertical || result.rightsPolicy?.vertical || verticalLabel,
+    category: result.product?.category || result.rightsPolicy?.category,
+    imageUrl: productImageUrl,
+    sku: result.product?.sku || result.product?.gtin,
+  });
+  const assetReadinessLabel = summarizeAssetReadiness(assetProfile);
+  const productVisualKind = (assetProfile.visualKind || resolveSunVisualKind(result)) as SunVisualKind;
   const productVisualState = (isReplay || isRiskBlocked)
     ? "blocked"
     : (sealOpened || isVerifiedOpenedState)
@@ -922,9 +935,84 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               ? 1
         : isTamperCarrier
           ? 6
-          : isCryptoCarrier
+        : isCryptoCarrier
             ? 5
             : 0;
+
+  const friendlyStageTitle = isRiskBlocked
+    ? "Necesitamos un nuevo tap fisico"
+    : isSnapshotView
+      ? "Consulta segura del producto"
+      : isVerifiedOpenedState
+        ? "Producto autentico. Sello abierto"
+        : "Producto autentico";
+  const friendlyStageBody = isRiskBlocked
+    ? "Vemos la prueba, pero no habilitamos reclamo, garantia ni NFT con una lectura sospechosa o repetida."
+    : isSnapshotView
+      ? "La autenticidad y la ruta se pueden revisar. Para guardar el producto o reclamar beneficios, toca de nuevo la etiqueta."
+      : isVerifiedOpenedState
+        ? "El producto es real y la apertura quedo registrada. Ahora podes asociarlo a tu cuenta y ver beneficios."
+        : "La lectura es fresca. El siguiente paso es reclamarlo con email o celular para guardarlo en tu Passport.";
+  const primaryPostTapAction = hasOnChainProof && isFreshCommercialTap
+    ? { label: "Ver NFT / Wallet", href: walletHref, tone: "wallet" }
+    : isFreshCommercialTap
+      ? { label: "Reclamar producto", href: "#post-tap-passport", tone: "claim" }
+      : isSnapshotView
+        ? { label: "Hacer nuevo tap fisico", href: "#fresh-tap-required", tone: "fresh" }
+        : isRiskBlocked
+          ? { label: "Reintentar tap fisico", href: reportProblemHref, tone: "risk" }
+          : { label: "Ver ruta de confianza", href: "#geo-trace", tone: "trace" };
+  const simpleJourneySteps = [
+    {
+      label: "Producto autentico",
+      detail: isTechnicallyAuthentic ? "Verificado" : "En revision",
+      state: isTechnicallyAuthentic ? "done" : "warn",
+    },
+    {
+      label: "Origen visible",
+      detail: originToTapDistance != null ? distanceDisplay : "Sin geo",
+      state: originToTapDistance != null ? "done" : "warn",
+    },
+    {
+      label: "Reclamo seguro",
+      detail: isFreshCommercialTap ? "Disponible" : "Nuevo tap",
+      state: isFreshCommercialTap ? "ready" : "locked",
+    },
+    {
+      label: "NFT / beneficios",
+      detail: hasOnChainProof ? "Listo" : isFreshCommercialTap ? "Opcional" : "Protegido",
+      state: hasOnChainProof ? "done" : isFreshCommercialTap ? "ready" : "locked",
+    },
+  ];
+  const friendlyTrustFactors = [
+    { label: "Tap fresco", ok: isFreshCommercialTap },
+    { label: "Chip valido", ok: isTechnicallyAuthentic },
+    { label: "Sello coherente", ok: !isTamperRisk },
+    { label: "Ruta razonable", ok: originToTapDistance != null },
+    { label: "Riesgo bajo", ok: !isRiskBlocked && trustScore >= 65 },
+  ];
+  const passportStorySteps = [
+    {
+      label: "Nacio",
+      title: result.product?.region || result.provenance?.origin || "Origen registrado",
+      body: "La marca cargo lote, producto y reglas antes de salir al canal.",
+    },
+    {
+      label: "Viajo",
+      title: `${originDisplay} -> ${tapDisplay}`,
+      body: `${distanceDisplay} de ruta de confianza entre origen y tap actual.`,
+    },
+    {
+      label: "Se verifico",
+      title: isTechnicallyAuthentic ? "Producto real" : "Lectura en revision",
+      body: isTechnicallyAuthentic ? "El chip y la politica del tenant sostienen la autenticidad." : "El sistema conserva evidencia, pero protege acciones sensibles.",
+    },
+    {
+      label: "Ahora",
+      title: hasOnChainProof ? "NFT disponible" : isFreshCommercialTap ? "Listo para reclamar" : "Acciones protegidas",
+      body: hasOnChainProof ? "El certificado ya tiene evidencia on-chain." : isFreshCommercialTap ? "Valida email o celular para guardarlo en tu Passport." : "Repeti el tap fisico para reclamar, transferir o mintear.",
+    },
+  ];
 
 
   return (
@@ -955,6 +1043,38 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            <Link href={portalHref} className={`min-w-0 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${isFreshCommercialTap ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "pointer-events-none border-white/10 bg-slate-900/60 text-slate-500"}`}>Portal</Link>
            <Link href={walletHref} className={`min-w-0 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "pointer-events-none border-white/10 bg-slate-900/60 text-slate-500"}`}>NFT</Link>
          </div>
+
+         <section className={`sun-simple-guide sun-simple-guide--${primaryPostTapAction.tone}`}>
+           <div className="sun-simple-guide__copy">
+             <p>Entendelo rapido</p>
+             <h1>{friendlyStageTitle}</h1>
+             <span>{friendlyStageBody}</span>
+           </div>
+           <div className="sun-simple-guide__action">
+             <a href={primaryPostTapAction.href}>{primaryPostTapAction.label}</a>
+             <small>{isFreshCommercialTap ? "Email o celular validado, producto guardado y beneficios visibles." : blockedTapReason || recommendedAction.helper}</small>
+           </div>
+           <div className="sun-simple-guide__steps" aria-label="Camino simple del producto">
+             {simpleJourneySteps.map((step, index) => (
+               <div key={step.label} className={`sun-simple-step sun-simple-step--${step.state}`}>
+                 <strong>{index + 1}</strong>
+                 <span>{step.label}</span>
+                 <small>{step.detail}</small>
+               </div>
+             ))}
+           </div>
+           <div className="sun-simple-guide__score" aria-label="Score de confianza para reclamar">
+             <div>
+               <span>Score de confianza</span>
+               <strong>{trustScore}/100</strong>
+             </div>
+             <ul>
+               {friendlyTrustFactors.map((factor) => (
+                 <li key={factor.label} className={factor.ok ? "ok" : "pending"}>{factor.label}</li>
+               ))}
+             </ul>
+           </div>
+         </section>
 
          {isSnapshotView ? (
            <div id="fresh-tap-required" className="rounded-2xl border border-sky-300/25 bg-sky-500/10 p-3 text-xs leading-5 text-sky-100">
@@ -1033,6 +1153,53 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </div>
             </div>
          </div>
+
+         <section className="sun-asset-bank-card rounded-2xl border border-cyan-300/15 bg-slate-900/60 p-4">
+           <div className="sun-asset-bank-card__head">
+             <div>
+               <p>Banco real de assets</p>
+               <h2>{assetProfile.productName}</h2>
+               <span>{assetProfile.heroLine}</span>
+             </div>
+             <strong>{assetProfile.assetScore}/100</strong>
+           </div>
+           <div className="sun-asset-bank-card__meta">
+             <span>{assetProfile.brandName}</span>
+             <span>{assetProfile.batchLabel}</span>
+             <span>{assetReadinessLabel}</span>
+           </div>
+           <div className="sun-asset-bank-card__slots">
+             {assetProfile.slots.map((slot) => (
+               <article key={slot.id} className={`sun-asset-slot sun-asset-slot--${slot.status} sun-asset-slot--${slot.tone}`}>
+                 <b>{slot.label}</b>
+                 <small>{slot.detail}</small>
+                 <em>{slot.status === "ready" ? "asset real" : slot.status === "demo" ? "demo controlada" : "pendiente"}</em>
+               </article>
+             ))}
+           </div>
+           <p className="sun-asset-bank-card__claim">{assetProfile.claimLine}</p>
+         </section>
+
+         <section className="sun-passport-story rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+           <div className="sun-passport-story__head">
+             <div>
+               <p>Historia del Passport</p>
+               <h2>{productName}</h2>
+             </div>
+             <span>{tokenStatusDisplay}</span>
+           </div>
+           <ol>
+             {passportStorySteps.map((step) => (
+               <li key={step.label}>
+                 <strong>{step.label}</strong>
+                 <div>
+                   <span>{step.title}</span>
+                   <small>{step.body}</small>
+                 </div>
+               </li>
+             ))}
+           </ol>
+         </section>
 
           <section className={`sun-security-ledger sun-panel-primary ${isReplay ? "sun-security-ledger--replay" : isRiskBlocked ? "sun-security-ledger--review" : isVerifiedOpenedState ? "sun-security-ledger--opened" : "sun-security-ledger--fresh"}`}>
            <div className="sun-security-ledger__header">

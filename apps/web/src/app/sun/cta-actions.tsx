@@ -144,6 +144,14 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     { label: "Ticket / POS", state: claimMode.includes("purchase") || claimMode.includes("review") ? "Revisable" : "Opcional" },
     { label: "NFT / wallet", state: "Despues del claim" },
   ];
+  const primaryCtaLabel = !canExecute
+    ? "Necesito un nuevo tap fisico"
+    : claimAuthStarted
+      ? "Confirmar codigo"
+      : "Reclamar producto";
+  const primaryCtaHelp = !canExecute
+    ? "Por seguridad, este link solo muestra la prueba. Para guardar, vender, transferir o mintear, toca la etiqueta otra vez."
+    : "Validamos tu contacto y asociamos este producto a tu Passport antes de abrir wallet, NFT o marketplace.";
   const tokenSubtitle = tokenPolicy === "issuer_transfer"
     ? "Tokenizacion por transferencia del issuer: requiere prueba documental antes del mint."
     : tokenPolicy === "lot_anchor"
@@ -552,6 +560,18 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     void trigger(lastRequest.path, lastRequest.method, lastRequest.actionKey);
   }
 
+  function handlePrimaryClaimAction() {
+    if (!canExecute) {
+      setActionError("Para reclamar este producto necesitamos un tap fisico nuevo desde la etiqueta NFC.");
+      return;
+    }
+    if (claimAuthStarted) {
+      void verifyClaimAuthAndRetry();
+      return;
+    }
+    void trigger("/api/public-cta/claim-ownership", "POST", "claimOwnership");
+  }
+
   return (
     <div className="sun-public-cta mt-4 space-y-2">
       {rightsPolicy ? (
@@ -562,14 +582,14 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       <div className={`rounded-2xl border p-3 ${ownerClaimTone}`}>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-80">Protocolo dueño / NFT</p>
-            <h3 className="mt-1 text-sm font-black text-white">Reclamo con identidad, no con link copiable</h3>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-80">Tu producto, tu cuenta</p>
+            <h3 className="mt-1 text-sm font-black text-white">Reclamo seguro, sin depender de un link copiado</h3>
             <p className="mt-1 text-[11px] leading-5 opacity-85">
-              El tap prueba que el producto existe. El email/celular probado define quien puede guardar Passport, wallet, marketplace y NFT.
+              El tap prueba que el producto existe. Tu email o celular probado define quien puede guardarlo, transferirlo o activar beneficios.
             </p>
           </div>
           <div className="shrink-0 rounded-xl border border-white/15 bg-slate-950/50 px-3 py-2 text-right">
-            <span className="block text-[10px] uppercase tracking-[0.12em] opacity-70">score</span>
+            <span className="block text-[10px] uppercase tracking-[0.12em] opacity-70">confianza</span>
             <strong className="text-lg text-white">{ownerClaimScore}</strong>
           </div>
         </div>
@@ -581,8 +601,20 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             </div>
           ))}
         </div>
+        <button
+          suppressHydrationWarning
+          type="button"
+          disabled={pending || claimAuthLoading || (claimAuthStarted && !isClaimCodeValid)}
+          onClick={handlePrimaryClaimAction}
+          className="sun-primary-claim-button mt-3 w-full rounded-xl border border-emerald-300/35 bg-emerald-400 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_16px_40px_rgba(16,185,129,0.22)] transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {pending || claimAuthLoading ? "Procesando..." : primaryCtaLabel}
+        </button>
+        <p className="mt-2 text-[11px] leading-5 opacity-85">{primaryCtaHelp}</p>
       </div>
-      <div className="grid gap-2 text-xs md:grid-cols-2">
+      <details className="sun-advanced-actions rounded-2xl border border-white/10 bg-slate-950/45 p-3 text-xs">
+        <summary className="cursor-pointer text-sm font-black text-slate-100">Opciones avanzadas para marca, garantia y NFT</summary>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
         {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).map((key) => {
           const item = actionMeta[key];
           return (
@@ -612,7 +644,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           </div>
           <p className="mt-1 text-[11px] text-emerald-50/80">{tokenSubtitle}</p>
         </button>
-      </div>
+        </div>
+      </details>
       <p className="sun-cta-tip text-[11px] text-slate-300">{gatedCopy}</p>
       {pending ? <p className="text-xs text-cyan-200" aria-live="polite">Ejecutando acción...</p> : null}
       {lastActionMessage ? <p className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">{lastActionMessage}</p> : null}

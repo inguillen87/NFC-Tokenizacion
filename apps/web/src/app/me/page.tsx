@@ -1,13 +1,29 @@
 import Link from "next/link";
 import { asArray, buildConsumerNextPath, fetchConsumerMe, fetchConsumerPath, requireConsumerSession } from "./_components/consumer-api";
 import { PortalShell } from "./_components/portal-shell";
+import { resolveProductAssetProfile, summarizeAssetReadiness } from "../../lib/product-asset-bank";
 
 type MePayload = {
   ok?: boolean;
   consumer?: { email?: string | null; display_name?: string | null; passport_status?: string | null; preferred_locale?: string | null };
   stats?: { products?: number; taps?: number; memberships?: number; unread?: number; rewards?: number };
 };
-type Product = { product_name?: string; tenant_slug?: string; ownership_record_status?: string | null; ownership_status?: string | null; };
+type Product = {
+  product_name?: string;
+  brand_name?: string | null;
+  tenant_slug?: string;
+  bid?: string | null;
+  batch?: string | null;
+  sku?: string | null;
+  vertical?: string | null;
+  category?: string | null;
+  image_url?: string | null;
+  imageUrl?: string | null;
+  photo_url?: string | null;
+  photoUrl?: string | null;
+  ownership_record_status?: string | null;
+  ownership_status?: string | null;
+};
 type Tap = { created_at?: string; verdict?: string; tenant_slug?: string; city?: string; country?: string };
 type Brand = { slug?: string; name?: string; status?: string };
 
@@ -24,6 +40,25 @@ export default async function MePage({ searchParams }: { searchParams?: Promise<
   const latestTaps = taps.slice(0, 4);
   const savedProducts = products.slice(0, 4);
   const consumerName = String(me?.consumer?.display_name || "").trim() || String(me?.consumer?.email || "Consumer");
+  const savedProductProfiles = savedProducts.map((product) => ({
+    product,
+    profile: resolveProductAssetProfile({
+      tenantSlug: product.tenant_slug,
+      brandName: product.brand_name || product.tenant_slug,
+      productName: product.product_name,
+      bid: product.bid || product.batch,
+      vertical: product.vertical,
+      category: product.category,
+      imageUrl: product.imageUrl || product.image_url || product.photoUrl || product.photo_url,
+      sku: product.sku,
+    }),
+  }));
+  const featuredAsset = savedProductProfiles[0]?.profile || resolveProductAssetProfile({
+    tenantSlug: brands[0]?.slug,
+    brandName: brands[0]?.name,
+    productName: "Primer producto para reclamar",
+  });
+  const featuredAssetReadiness = summarizeAssetReadiness(featuredAsset);
   const passportReadiness = Math.min(100, 42 + verifiedProducts * 18 + activeMemberships * 12 + Math.min(20, latestTaps.length * 5));
   const journey = [
     ["Tap fisico", "Lectura NFC/QR desde producto real."],
@@ -57,6 +92,36 @@ export default async function MePage({ searchParams }: { searchParams?: Promise<
               <div className="h-full rounded-full bg-cyan-300" style={{ width: `${passportReadiness}%` }} />
             </div>
             <p className="mt-3 text-xs text-slate-300">Sube con productos claimados, marcas activas y taps verificables.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-emerald-300/20 bg-emerald-500/10">
+        <div className="grid gap-4 p-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">Tu coleccion verificable</p>
+            <h2 className="mt-2 text-2xl font-black text-white">{featuredAsset.productName}</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/85">
+              {featuredAsset.ownerStory} La idea es simple: producto real, lote real, tap real y certificado guardado en tu Passport.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold">
+              <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-emerald-100">{featuredAsset.brandName}</span>
+              <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-cyan-100">{featuredAsset.batchLabel}</span>
+              <span className="rounded-full border border-violet-300/25 bg-violet-400/10 px-3 py-1 text-violet-100">{featuredAssetReadiness}</span>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {featuredAsset.slots.map((slot) => (
+              <article key={slot.id} className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-black text-white">{slot.label}</p>
+                  <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] ${slot.status === "ready" ? "bg-emerald-400/15 text-emerald-100" : "bg-cyan-400/10 text-cyan-100"}`}>
+                    {slot.status === "ready" ? "real" : "demo"}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-300">{slot.detail}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>

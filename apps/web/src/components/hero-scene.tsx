@@ -479,10 +479,7 @@ function HeroTraceMap({
   return (
     <div className="hero-trace-map" aria-label={txt.routeTitle}>
       <PremiumVectorMap
-        points={[
-          { id: "origin", label: origin.city, sublabel: origin.country, lat: origin.lat, lng: origin.lng, scans: 1, tone: "origin" },
-          { id: "tap", label: tap.city, sublabel: tap.country, lat: tap.lat, lng: tap.lng, scans: 1, tone: "tap" },
-        ]}
+        points={[]}
         routes={[{
           id: "hero-route",
           fromLat: origin.lat,
@@ -493,7 +490,6 @@ function HeroTraceMap({
           distanceLabel: `${formattedDistance} km`,
           evidence: txt.custody,
         }]}
-        selectedPointId="tap"
         chrome="minimal"
         density="route"
         heightClassName="h-full"
