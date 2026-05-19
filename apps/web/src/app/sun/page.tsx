@@ -698,6 +698,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const walletHref = withTapQuery("/me/wallet", "wallet");
   const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");
   const tapMarketplaceHref = localizeHref(result.cta?.marketplaceUrl) || withTapQuery(marketplaceHref, "marketplace");
+  const certificateHref = /^\d+$/.test(eventId) ? `/certificado/${encodeURIComponent(eventId)}` : "";
   const blockedTapReason = isFreshCommercialTap
     ? ""
     : isSnapshotView
@@ -1037,8 +1038,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          </div>
 
-         <div className="sun-quick-nav grid grid-cols-4 gap-2">
-           <a href="#geo-trace" className="min-w-0 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Geo trace</a>
+          <div className="sun-quick-nav grid grid-cols-4 gap-2">
+            {certificateHref ? (
+              <Link href={certificateHref} className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Certificado</Link>
+            ) : (
+              <a href="#geo-trace" className="min-w-0 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Geo trace</a>
+            )}
            <Link href={registerHref} className={`min-w-0 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${isFreshCommercialTap ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "pointer-events-none border-white/10 bg-slate-900/60 text-slate-500"}`}>Crear</Link>
            <Link href={portalHref} className={`min-w-0 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${isFreshCommercialTap ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "pointer-events-none border-white/10 bg-slate-900/60 text-slate-500"}`}>Portal</Link>
            <Link href={walletHref} className={`min-w-0 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "pointer-events-none border-white/10 bg-slate-900/60 text-slate-500"}`}>NFT</Link>
@@ -1251,8 +1256,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                {tokenStatusDisplay}
              </span>
            </div>
-           <div className="mt-4 grid gap-2 sm:grid-cols-3">
-             <Link href={portalHref} className={`sun-certificate-action ${isFreshCommercialTap ? "" : "pointer-events-none opacity-50"}`}>
+            <div className="mt-4 grid gap-2 sm:grid-cols-4">
+              {certificateHref ? (
+                <Link href={certificateHref} className="sun-certificate-action">
+                  <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                  <span>
+                    <b>Certificado</b>
+                    <em>Link publico</em>
+                  </span>
+                </Link>
+              ) : null}
+              <Link href={portalHref} className={`sun-certificate-action ${isFreshCommercialTap ? "" : "pointer-events-none opacity-50"}`}>
                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
                <span>
                  <b>Claim owner</b>
@@ -1274,11 +1288,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </span>
              </Link>
            </div>
-           {tokenExplorerHref ? (
-             <a href={tokenExplorerHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 text-xs font-black text-emerald-100 transition hover:bg-emerald-500/20">
-               Ver transaccion en Polygonscan <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-             </a>
-           ) : (
+            {tokenExplorerHref || certificateHref ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {certificateHref ? (
+                  <Link href={certificateHref} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 text-xs font-black text-cyan-100 transition hover:bg-cyan-500/20">
+                    Abrir certificado digital <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                ) : null}
+                {tokenExplorerHref ? (
+                  <a href={tokenExplorerHref} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 text-xs font-black text-emerald-100 transition hover:bg-emerald-500/20">
+                    Ver transaccion en Polygonscan <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  </a>
+                ) : null}
+              </div>
+            ) : (
              <p className="mt-3 rounded-xl border border-white/10 bg-slate-950/45 p-3 text-[11px] leading-5 text-slate-300">
                Al validar tu cuenta se asocia el tenant, se guarda el producto y queda visible el estado de mint en Wallet/NFT.
              </p>
@@ -1510,10 +1533,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">2) Validás email o celular. El portal asocia este evento #{eventId || "tap"} al tenant {result.identity?.tenantSlug || "tenant-demo"}.</div>
               <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">3) Ves ownership, wallet/NFT, marketplace y beneficios sin perder el contexto del tap.</div>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+            <div className={`mt-3 grid gap-2 text-xs ${certificateHref ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
               <Link href={registerHref} className={`rounded-lg border px-2 py-2 text-center font-semibold ${isFreshCommercialTap ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "pointer-events-none border-white/10 bg-slate-950/60 text-slate-500"}`}>Crear Passport</Link>
               <Link href={portalHref} className={`rounded-lg border px-2 py-2 text-center font-semibold ${isFreshCommercialTap ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "pointer-events-none border-white/10 bg-slate-950/60 text-slate-500"}`}>Abrir Portal</Link>
               <Link href={walletHref} className={`rounded-lg border px-2 py-2 text-center font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "pointer-events-none border-white/10 bg-slate-950/60 text-slate-500"}`}>NFT / Wallet</Link>
+              {certificateHref ? (
+                <Link href={certificateHref} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">Certificado</Link>
+              ) : null}
             </div>
          </div>
 

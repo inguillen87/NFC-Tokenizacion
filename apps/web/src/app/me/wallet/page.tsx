@@ -19,6 +19,12 @@ type WalletPayload = {
     lifetime_points?: number | string | null;
     enabled?: boolean;
   };
+  blockchainWallet?: {
+    address?: string | null;
+    chainId?: string | null;
+    network?: string | null;
+    verifiedAt?: string | null;
+  };
 };
 
 function toNumber(value: unknown) {
@@ -38,6 +44,11 @@ function walletStatus(product: ConsumerPortalProduct) {
   if (String(product.tokenization_status || "none").toLowerCase() !== "none") return `NFT ${product.tokenization_status}`;
   if (ownership === "claimed") return "Ownership activo";
   return "Listo para reclamar";
+}
+
+function certificateHref(product: ConsumerPortalProduct) {
+  const eventId = String(product.latest_tap_event_id || product.first_tap_event_id || "").trim();
+  return eventId ? `/certificado/${encodeURIComponent(eventId)}` : "";
 }
 
 export default async function WalletLedgerPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -133,6 +144,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
                     const tenant = String(product.tenant_slug || selectedTenant || "");
                     const txHash = String(product.tokenization_tx_hash || "");
                     const explorerHref = hasOnChainProof(product) ? `https://amoy.polygonscan.com/tx/${encodeURIComponent(txHash)}` : "";
+                    const certificateUrl = certificateHref(product);
                     return (
                       <article key={`${product.bid || product.product_name || "wallet-product"}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950/65 p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -156,10 +168,14 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
                           </div>
                           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
                             <span className="block text-[10px] uppercase tracking-[0.12em] text-slate-500">Accion</span>
-                            {explorerHref ? (
-                              <a href={explorerHref} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-black text-emerald-100">
-                                Polygonscan <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                              </a>
+                            {certificateUrl ? (
+                              <Link href={certificateUrl} className="mt-1 inline-flex items-center gap-1 font-black text-cyan-100">
+                                Certificado <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                              </Link>
+                            ) : explorerHref ? (
+                                <a href={explorerHref} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 font-black text-emerald-100">
+                                  Polygonscan <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                                </a>
                             ) : (
                               <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className="mt-1 inline-flex font-black text-cyan-100">
                                 Beneficios
@@ -207,7 +223,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
                  ))}
                </div>
             </div>
-            <MetamaskSandboxCard />
+            <MetamaskSandboxCard initialWallet={wallet?.blockchainWallet} />
          </div>
 
       </div>

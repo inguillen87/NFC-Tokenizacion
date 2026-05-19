@@ -16,9 +16,16 @@ async function ensureUuidExtensions() {
   await sql/*sql*/`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
 }
 
+function cacheSchemaInit(task: () => Promise<void>, reset: () => void) {
+  return task().catch((error) => {
+    reset();
+    throw error;
+  });
+}
+
 export async function ensureConsumerAuthSchema() {
   if (!authSchemaReady) {
-    authSchemaReady = (async () => {
+    authSchemaReady = cacheSchemaInit(async () => {
       await ensureUuidExtensions();
       await sql/*sql*/`DO $$ BEGIN CREATE TYPE consumer_status AS ENUM ('anonymous', 'registered', 'verified', 'blocked', 'deleted'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`;
 
@@ -32,6 +39,10 @@ export async function ensureConsumerAuthSchema() {
           preferred_locale text NOT NULL DEFAULT 'es-AR',
           country text,
           city text,
+          wallet_address text,
+          wallet_chain_id text,
+          wallet_network text,
+          wallet_verified_at timestamptz,
           status consumer_status NOT NULL DEFAULT 'anonymous',
           last_login_at timestamptz,
           created_at timestamptz NOT NULL DEFAULT now(),
@@ -39,6 +50,11 @@ export async function ensureConsumerAuthSchema() {
         )
       `;
       await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_consumers_phone ON consumers(phone) WHERE phone IS NOT NULL`;
+      await sql/*sql*/`ALTER TABLE consumers ADD COLUMN IF NOT EXISTS wallet_address text`;
+      await sql/*sql*/`ALTER TABLE consumers ADD COLUMN IF NOT EXISTS wallet_chain_id text`;
+      await sql/*sql*/`ALTER TABLE consumers ADD COLUMN IF NOT EXISTS wallet_network text`;
+      await sql/*sql*/`ALTER TABLE consumers ADD COLUMN IF NOT EXISTS wallet_verified_at timestamptz`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumers_wallet_address ON consumers(lower(wallet_address)) WHERE wallet_address IS NOT NULL`;
 
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS consumer_identities (
@@ -85,14 +101,16 @@ export async function ensureConsumerAuthSchema() {
       await sql/*sql*/`ALTER TABLE consumer_auth_challenges ADD COLUMN IF NOT EXISTS locked_until timestamptz`;
       await sql/*sql*/`ALTER TABLE consumer_auth_challenges ADD COLUMN IF NOT EXISTS ip_hash text`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumer_auth_challenges_contact_created_at ON consumer_auth_challenges(contact, created_at DESC)`;
-    })();
+    }, () => {
+      authSchemaReady = null;
+    });
   }
   return authSchemaReady;
 }
 
 export async function ensureLeadsSchema() {
   if (!leadsSchemaReady) {
-    leadsSchemaReady = (async () => {
+    leadsSchemaReady = cacheSchemaInit(async () => {
       await ensureUuidExtensions();
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS leads (
@@ -125,14 +143,16 @@ export async function ensureLeadsSchema() {
       await sql/*sql*/`ALTER TABLE leads ADD COLUMN IF NOT EXISTS message text`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_leads_source_created_at ON leads(source, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_leads_status_created_at ON leads(status, created_at DESC)`;
-    })();
+    }, () => {
+      leadsSchemaReady = null;
+    });
   }
   return leadsSchemaReady;
 }
 
 export async function ensureTicketsSchema() {
   if (!ticketsSchemaReady) {
-    ticketsSchemaReady = (async () => {
+    ticketsSchemaReady = cacheSchemaInit(async () => {
       await ensureUuidExtensions();
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS tickets (
@@ -158,14 +178,16 @@ export async function ensureTicketsSchema() {
       await sql/*sql*/`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tickets_status_created_at ON tickets(status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tickets_contact_created_at ON tickets(contact, created_at DESC)`;
-    })();
+    }, () => {
+      ticketsSchemaReady = null;
+    });
   }
   return ticketsSchemaReady;
 }
 
 export async function ensureOrderRequestsSchema() {
   if (!orderRequestsSchemaReady) {
-    orderRequestsSchemaReady = (async () => {
+    orderRequestsSchemaReady = cacheSchemaInit(async () => {
       await ensureUuidExtensions();
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS order_requests (
@@ -195,7 +217,9 @@ export async function ensureOrderRequestsSchema() {
       await sql/*sql*/`ALTER TABLE order_requests ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_order_requests_status_created_at ON order_requests(status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_order_requests_contact_created_at ON order_requests(contact, created_at DESC)`;
-    })();
+    }, () => {
+      orderRequestsSchemaReady = null;
+    });
   }
   return orderRequestsSchemaReady;
 }
@@ -207,7 +231,7 @@ export async function ensureCrmOpsSchema() {
 
 export async function ensureCarrierProfileSchema() {
   if (!carrierProfilesSchemaReady) {
-    carrierProfilesSchemaReady = (async () => {
+    carrierProfilesSchemaReady = cacheSchemaInit(async () => {
       await ensureUuidExtensions();
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS carrier_profiles (
@@ -308,14 +332,16 @@ export async function ensureCarrierProfileSchema() {
             updated_at = now()
         `;
       }
-    })();
+    }, () => {
+      carrierProfilesSchemaReady = null;
+    });
   }
   return carrierProfilesSchemaReady;
 }
 
 export async function ensureAlertsSchema() {
   if (!alertsSchemaReady) {
-    alertsSchemaReady = (async () => {
+    alertsSchemaReady = cacheSchemaInit(async () => {
       await ensureUuidExtensions();
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS alert_rules (
@@ -364,14 +390,16 @@ export async function ensureAlertsSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_security_alerts_tenant_created ON security_alerts(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_security_alerts_status ON security_alerts(status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_security_alerts_type ON security_alerts(type, created_at DESC)`;
-    })();
+    }, () => {
+      alertsSchemaReady = null;
+    });
   }
   return alertsSchemaReady;
 }
 
 export async function ensureEnterpriseIamSchema() {
   if (!enterpriseIamSchemaReady) {
-    enterpriseIamSchemaReady = (async () => {
+    enterpriseIamSchemaReady = cacheSchemaInit(async () => {
       await ensureUuidExtensions();
       await sql/*sql*/`DO $$ BEGIN CREATE TYPE membership_role AS ENUM ('super_admin', 'tenant_admin', 'reseller', 'viewer'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`;
       await sql/*sql*/`DO $$ BEGIN CREATE TYPE admin_user_status AS ENUM ('invited', 'pending_activation', 'active', 'disabled'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`;
@@ -542,14 +570,16 @@ export async function ensureEnterpriseIamSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_access_requests_status_created ON access_requests(status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_resource_permissions_user ON resource_permissions(user_id, resource)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_user_auth_events_email_created ON user_auth_events(email, created_at DESC)`;
-    })();
+    }, () => {
+      enterpriseIamSchemaReady = null;
+    });
   }
   return enterpriseIamSchemaReady;
 }
 
 export async function ensureConsumerPortalSchema() {
   if (!portalSchemaReady) {
-    portalSchemaReady = (async () => {
+    portalSchemaReady = cacheSchemaInit(async () => {
       await ensureConsumerAuthSchema();
       await ensureLoyaltySchema();
       await sql/*sql*/`DO $$ BEGIN CREATE TYPE tenant_membership_status AS ENUM ('invited', 'active', 'paused', 'blocked', 'left'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`;
@@ -784,7 +814,9 @@ export async function ensureConsumerPortalSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_tenant ON marketplace_order_requests(tenant_id, created_at DESC)`;
 
       await seedDemoMarketplaceRows();
-    })();
+    }, () => {
+      portalSchemaReady = null;
+    });
   }
   return portalSchemaReady;
 }

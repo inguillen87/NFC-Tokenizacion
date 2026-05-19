@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Gift, PackageCheck, ShieldCheck, WalletCards } from "lucide-react";
+import { ExternalLink, Gift, PackageCheck, ShieldCheck, WalletCards } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import { formatPortalDate, ownershipTone, type ConsumerPortalProduct, type ConsumerTap } from "../_components/consumer-portal-model";
@@ -18,6 +18,11 @@ function statusClasses(status: string) {
   if (tone === "success") return "border-emerald-300/30 bg-emerald-500/10 text-emerald-100";
   if (tone === "danger") return "border-rose-300/30 bg-rose-500/10 text-rose-100";
   return "border-cyan-300/30 bg-cyan-500/10 text-cyan-100";
+}
+
+function certificateHref(product: ConsumerPortalProduct) {
+  const eventId = String(product.latest_tap_event_id || product.first_tap_event_id || "").trim();
+  return eventId ? `/certificado/${encodeURIComponent(eventId)}` : "";
 }
 
 export default async function ProductsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -67,6 +72,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
               const txHash = String(product.tokenization_tx_hash || "");
               const hasTokenProof = Boolean(txHash && tokenStatus !== "none" && !txHash.toUpperCase().includes("DEMO"));
               const tokenExplorerHref = hasTokenProof ? `https://amoy.polygonscan.com/tx/${encodeURIComponent(txHash)}` : "";
+              const certificateUrl = certificateHref(product);
               return (
                 <article key={`${product.product_name || "product"}-${idx}`} className="consumer-product-card overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70">
                   <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
@@ -85,9 +91,16 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                           <p className="mt-1 text-sm text-slate-300">{product.brand_name || "Marca"} - tenant {tenant || "n/a"}</p>
                           <p className="mt-1 text-xs text-slate-500">BID {product.bid || "n/a"} - guardado {formatPortalDate(product.created_at)}</p>
                         </div>
-                        <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-500/20">
-                          Beneficios
-                        </Link>
+                        <div className="flex flex-wrap gap-2">
+                          {certificateUrl ? (
+                            <Link href={certificateUrl} className="inline-flex items-center gap-1 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-xs font-black text-emerald-100 transition hover:bg-emerald-500/20">
+                              Certificado <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                            </Link>
+                          ) : null}
+                          <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-500/20">
+                            Beneficios
+                          </Link>
+                        </div>
                       </div>
 
                       <div className="mt-5 grid gap-2 sm:grid-cols-4">
@@ -118,10 +131,14 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                               {hasTokenProof ? `${product.tokenization_network || "Polygon Amoy"} - token ${product.tokenization_token_id || "pendiente"}` : tokenStatus !== "none" ? `Estado ${tokenStatus}` : "Disponible cuando el tenant active tokenizacion premium."}
                             </p>
                           </div>
-                          {hasTokenProof ? (
-                            <a href={tokenExplorerHref} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-[11px] font-black text-emerald-100">
-                              Ver tx
-                            </a>
+                          {certificateUrl ? (
+                            <Link href={certificateUrl} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-[11px] font-black text-cyan-100">
+                              Ver certificado
+                            </Link>
+                          ) : hasTokenProof ? (
+                              <a href={tokenExplorerHref} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-[11px] font-black text-emerald-100">
+                                Ver tx
+                              </a>
                           ) : (
                             <Link href="/me/wallet" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-black text-slate-200">
                               Wallet

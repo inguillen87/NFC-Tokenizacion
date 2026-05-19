@@ -39,7 +39,7 @@ function walletErrorMessage(error: unknown, fallback: string) {
 
   const normalized = message.toLowerCase();
   if (normalized.includes("already processing") || normalized.includes("request already pending")) {
-    return "Ya hay una solicitud de wallet pendiente. Abrí MetaMask, resolvela y volvé a intentar.";
+    return "Ya hay una solicitud de wallet pendiente. Abri MetaMask, resolvela y volve a intentar.";
   }
   if (normalized.includes("failed to connect to metamask")) {
     return "No pudimos abrir MetaMask. Desbloquea la extension o segui en modo sandbox sin wallet.";
@@ -67,11 +67,15 @@ function findMetaMaskProvider() {
   return getInjectedProviders().find((provider) => provider.isMetaMask) || null;
 }
 
-export function MetamaskSandboxCard() {
-  const [address, setAddress] = useState("");
-  const [chainId, setChainId] = useState("");
+export function MetamaskSandboxCard({
+  initialWallet,
+}: {
+  initialWallet?: { address?: string | null; chainId?: string | null; network?: string | null; verifiedAt?: string | null } | null;
+}) {
+  const [address, setAddress] = useState(initialWallet?.address || "");
+  const [chainId, setChainId] = useState(initialWallet?.chainId || "");
   const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState("Listo para conectar wallet sandbox.");
+  const [message, setMessage] = useState(initialWallet?.address ? "Wallet guardada en tu Passport nexID." : "Listo para conectar wallet sandbox.");
   const [hasMetaMask, setHasMetaMask] = useState(false);
   const isAmoy = chainId.toLowerCase() === POLYGON_AMOY.chainId.toLowerCase();
   const networkLabel = useMemo(() => {
@@ -122,8 +126,13 @@ export function MetamaskSandboxCard() {
       const nextAddress = Array.isArray(accounts) && typeof accounts[0] === "string" ? accounts[0] : "";
       const nextChain = await requestWallet(provider, { method: "eth_chainId" });
       setAddress(nextAddress);
-      setChainId(typeof nextChain === "string" ? nextChain : "");
-      setMessage(nextAddress ? "Wallet conectada localmente. Todavia no se envia al backend." : "No se recibio una cuenta.");
+      const normalizedChain = typeof nextChain === "string" ? nextChain : "";
+      setChainId(normalizedChain);
+      if (nextAddress) {
+        await persistWallet(nextAddress, normalizedChain, "metamask");
+      } else {
+        setMessage("No se recibio una cuenta.");
+      }
     } catch (error) {
       setMessage(walletErrorMessage(error, "No se pudo conectar MetaMask."));
     } finally {
@@ -147,8 +156,13 @@ export function MetamaskSandboxCard() {
         await requestWallet(provider, { method: "wallet_addEthereumChain", params: [POLYGON_AMOY] });
       }
       const nextChain = await requestWallet(provider, { method: "eth_chainId" });
-      setChainId(typeof nextChain === "string" ? nextChain : POLYGON_AMOY.chainId);
-      setMessage("Polygon Amoy listo para pruebas de tokenizacion.");
+      const normalizedChain = typeof nextChain === "string" ? nextChain : POLYGON_AMOY.chainId;
+      setChainId(normalizedChain);
+      if (address) {
+        await persistWallet(address, normalizedChain, "metamask");
+      } else {
+        setMessage("Polygon Amoy listo para pruebas de tokenizacion. Conecta una cuenta para guardarla en tu Passport.");
+      }
     } catch (error) {
       setMessage(walletErrorMessage(error, "No se pudo agregar Polygon Amoy."));
     } finally {
@@ -156,10 +170,29 @@ export function MetamaskSandboxCard() {
     }
   }
 
+  async function persistWallet(nextAddress: string, nextChainId: string, network: string) {
+    try {
+      const response = await fetch("/api/consumer/wallet/connect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address: nextAddress, chainId: nextChainId, network }),
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; wallet?: { addressMasked?: string | null } } | null;
+      if (!response.ok || !payload?.ok) {
+        setMessage("Wallet conectada localmente, pero no se pudo guardar en el Passport. Inicia sesion y volve a intentar.");
+        return;
+      }
+      setMessage(`Wallet ${payload.wallet?.addressMasked || shortAddress(nextAddress)} guardada en tu Passport nexID.`);
+    } catch {
+      setMessage("Wallet conectada localmente, pero el backend no respondio. Reintenta desde esta pantalla.");
+    }
+  }
+
   function continueSandbox() {
-    setAddress("0xA11CE0000000000000000000000000000000424");
+    const sandboxAddress = "0xa11ce00000000000000000000000000000000424";
+    setAddress(sandboxAddress);
     setChainId(POLYGON_AMOY.chainId);
-    setMessage("Modo sandbox activo: wallet simulada para mostrar ownership, garantia y tokenizacion sin extension.");
+    void persistWallet(sandboxAddress, POLYGON_AMOY.chainId, "sandbox");
   }
 
   return (
@@ -168,12 +201,12 @@ export function MetamaskSandboxCard() {
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-300">Wallet sandbox</p>
           <h3 className="mt-1 text-base font-bold text-white">MetaMask + Polygon Amoy</h3>
-          <p className="mt-1 text-xs leading-5 text-cyan-100/75">
-            Demo de ownership y tokenizacion sin mainnet: conectar, agregar red y usar tokens de prueba.
+           <p className="mt-1 text-xs leading-5 text-cyan-100/75">
+             Demo de ownership y tokenizacion: conecta MetaMask o guarda una wallet sandbox en tu Passport.
           </p>
         </div>
         <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${address ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : hasMetaMask ? "border-cyan-300/30 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-950/60 text-slate-400"}`}>
-          {address ? "connected" : hasMetaMask ? "metamask ready" : "local"}
+          {address ? "guardada" : hasMetaMask ? "metamask ready" : "local"}
         </span>
       </div>
 

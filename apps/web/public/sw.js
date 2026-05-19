@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexid-v3";
+const CACHE_NAME = "nexid-v4";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -40,7 +40,32 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetchWithTimeout(request).catch(() => caches.match("/")),
+      fetchWithTimeout(request, 20000).catch(() =>
+        new Response(
+          `<!doctype html>
+          <html lang="es">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>nexID offline</title>
+              <style>
+                body{margin:0;min-height:100vh;display:grid;place-items:center;background:#070b14;color:#e5f9ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+                main{max-width:34rem;padding:2rem;border:1px solid rgba(103,232,249,.22);border-radius:1.5rem;background:rgba(15,23,42,.82)}
+                p{line-height:1.6;color:#b8c7d9}
+                a{color:#67e8f9;font-weight:800}
+              </style>
+            </head>
+            <body>
+              <main>
+                <h1>nexID necesita conexión</h1>
+                <p>Esta pantalla contiene datos vivos del producto. Volvé a intentar cuando el certificado, el tap o el portal puedan sincronizar con la API.</p>
+                <a href="/">Volver al inicio</a>
+              </main>
+            </body>
+          </html>`,
+          { headers: { "content-type": "text/html; charset=utf-8" }, status: 503 },
+        ),
+      ),
     );
     return;
   }

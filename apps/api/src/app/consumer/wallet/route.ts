@@ -21,5 +21,15 @@ export async function GET(req: Request) {
     WHERE consumer_id = ${consumer.id} AND tenant_id IS NULL AND network_scope = 'nexid_network'
     LIMIT 1
   `;
-  return json({ ok: true, tenantWallets, networkWallet: networkWallet[0] || { points_balance: 0, lifetime_points: 0, enabled: false } });
+  return json({
+    ok: true,
+    tenantWallets,
+    networkWallet: networkWallet[0] || { points_balance: 0, lifetime_points: 0, enabled: false },
+    blockchainWallet: {
+      address: consumer.wallet_address || null,
+      chainId: consumer.wallet_chain_id || null,
+      network: consumer.wallet_network || null,
+      verifiedAt: consumer.wallet_verified_at || null,
+    },
+  });
 }

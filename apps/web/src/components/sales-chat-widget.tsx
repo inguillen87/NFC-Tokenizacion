@@ -301,7 +301,7 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   };
 
   return (
-    <div className="sales-widget-root fixed bottom-[6.8rem] right-3 z-[38] w-[calc(100vw-1.5rem)] md:bottom-4 md:left-4 md:right-auto md:z-[70] md:w-[360px] md:max-w-[calc(100vw-1.5rem)]">
+    <div className={`sales-widget-root fixed z-[38] md:bottom-4 md:left-4 md:right-auto md:z-[70] md:max-w-[calc(100vw-1.5rem)] ${open ? "bottom-4 left-3 right-3 w-auto md:w-[360px]" : "bottom-4 right-4 w-auto"}`}>
       {open ? (
         <div className="sales-widget-panel rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
