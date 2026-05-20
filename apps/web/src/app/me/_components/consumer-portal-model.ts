@@ -24,6 +24,7 @@ export type ConsumerTap = {
 export type ConsumerPortalProduct = ConsumerProduct & {
   product_name?: string | null;
   brand_name?: string | null;
+  image_url?: string | null;
   bid?: string | null;
   created_at?: string | null;
   first_tap_event_id?: number | string | null;

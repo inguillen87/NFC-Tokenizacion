@@ -31,6 +31,13 @@ export type ProductAssetProfile = {
   slots: ProductAssetSlot[];
 };
 
+export type ProductAssetMedia = {
+  imageUrl?: string | null;
+  labelImageUrl?: string | null;
+  modelUrl?: string | null;
+  galleryUrls?: string[];
+};
+
 type ProductAssetInput = {
   tenantSlug?: string | null;
   brandName?: string | null;
@@ -60,6 +67,57 @@ function compactKey(value: unknown) {
 
 function useful(...values: unknown[]) {
   return String(values.find((value) => String(value || "").trim()) || "").trim();
+}
+
+function readObject(value: unknown): Record<string, unknown> {
+  if (!value) return {};
+  if (typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value !== "string") return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+function readPath(value: Record<string, unknown>, path: string[]) {
+  let current: unknown = value;
+  for (const key of path) {
+    if (!current || typeof current !== "object" || Array.isArray(current)) return "";
+    current = (current as Record<string, unknown>)[key];
+  }
+  return String(current || "").trim();
+}
+
+function normalizeGallery(value: unknown) {
+  if (Array.isArray(value)) return value.map((item) => String(item || "").trim()).filter((item) => /^https?:\/\//i.test(item));
+  return String(value || "")
+    .split(/[|,;\n]/)
+    .map((item) => item.trim())
+    .filter((item) => /^https?:\/\//i.test(item));
+}
+
+export function readProductAssetMedia(localeData: unknown): ProductAssetMedia {
+  const data = readObject(localeData);
+  const media = readObject(data.media);
+  const es = readObject(data["es-AR"]);
+  const product = readObject(data.product);
+  const gallery = normalizeGallery(
+    media.galleryUrls
+      || media.gallery_urls
+      || data.galleryUrls
+      || data.gallery_urls
+      || product.galleryUrls
+      || es.galleryUrls,
+  );
+
+  return {
+    imageUrl: useful(media.imageUrl, media.image_url, data.imageUrl, data.image_url, product.imageUrl, es.imageUrl) || null,
+    labelImageUrl: useful(media.labelImageUrl, media.label_image_url, data.labelImageUrl, data.label_image_url, product.labelImageUrl, es.labelImageUrl) || null,
+    modelUrl: useful(media.modelUrl, media.model_url, media.glbUrl, media.glb_url, data.modelUrl, data.model_url, product.modelUrl, es.modelUrl) || null,
+    galleryUrls: gallery,
+  };
 }
 
 function inferVisualKind(input: ProductAssetInput): AssetVisualKind {
@@ -157,7 +215,7 @@ function scoreFor(slots: ProductAssetSlot[]) {
   return Math.min(100, 40 + ready * 16 + demo * 6);
 }
 
-export function resolveProductAssetProfile(input: ProductAssetInput = {}): ProductAssetProfile {
+export function buildProductAssetProfile(input: ProductAssetInput = {}): ProductAssetProfile {
   const kind = inferVisualKind(input);
   const tenantSlug = compactKey(useful(input.tenantSlug, input.brandName, "demobodega"));
   const brandName = useful(input.brandName, input.tenantSlug, "DemoBodega");

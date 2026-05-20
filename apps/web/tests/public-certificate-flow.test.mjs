@@ -22,5 +22,7 @@ test("public certificate page gives wallet marketplace and explorer exits", asyn
   assert.match(page, /Marketplace/);
   assert.match(page, /Polygonscan/);
   assert.match(page, /Score de confianza/);
+  assert.match(page, /Banco real de assets/);
+  assert.match(page, /assetProfile\.primaryImageUrl/);
   assert.match(walletCard, /0xa11ce00000000000000000000000000000000424/);
 });

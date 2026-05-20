@@ -864,6 +864,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const chainLabel = tokenEvidenceLabel;
   const productName = result.product?.name || "Producto Verificado";
   const productImageUrl = result.product?.imageUrl || result.product?.image_url || result.product?.photoUrl || result.product?.photo_url || null;
+  const productMedia = (result.product?.media && typeof result.product.media === "object" ? result.product.media : {}) as Record<string, unknown>;
+  const productGalleryUrls = Array.isArray(productMedia.galleryUrls)
+    ? productMedia.galleryUrls.map((item) => String(item || "").trim()).filter(Boolean)
+    : Array.isArray(productMedia.gallery_urls)
+      ? productMedia.gallery_urls.map((item) => String(item || "").trim()).filter(Boolean)
+      : [];
   const assetProfile = resolveProductAssetProfile({
     tenantSlug: result.tenant?.slug || result.identity?.tenantSlug,
     brandName: result.product?.winery || result.tenant?.name || result.tenant?.slug,
@@ -872,6 +878,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     vertical: result.product?.vertical || result.rightsPolicy?.vertical || verticalLabel,
     category: result.product?.category || result.rightsPolicy?.category,
     imageUrl: productImageUrl,
+    labelImageUrl: String(productMedia.labelImageUrl || productMedia.label_image_url || ""),
+    modelUrl: String(productMedia.modelUrl || productMedia.model_url || productMedia.glbUrl || productMedia.glb_url || ""),
+    galleryUrls: productGalleryUrls,
     sku: result.product?.sku || result.product?.gtin,
   });
   const assetReadinessLabel = summarizeAssetReadiness(assetProfile);

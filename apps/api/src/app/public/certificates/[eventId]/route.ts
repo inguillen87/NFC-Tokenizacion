@@ -7,6 +7,7 @@ import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-s
 import { ensureSunTenantProfilesSchema } from "../../../../lib/sun-tenant-profile-schema";
 import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
 import { normalizeTokenizationStatus } from "../../../../lib/tokenization-status";
+import { buildProductAssetProfile, readProductAssetMedia } from "../../../../lib/product-asset-profile";
 
 function cleanId(value: unknown) {
   return String(value || "").trim();
@@ -148,6 +149,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
   const productName = String(row.product_name || productConfig.name || row.sku || "Producto verificado");
   const brandName = String(row.winery || productConfig.producer || row.tenant_name || "Marca verificada");
   const originLabel = String(row.origin_label || row.region || originConfig.label || readPath(localeData, ["origin", "label"]) || "Origen registrado");
+  const media = readProductAssetMedia(row.locale_data);
+  const assetProfile = buildProductAssetProfile({
+    tenantSlug: row.tenant_slug,
+    brandName,
+    productName,
+    bid: row.bid,
+    vertical: row.tenant_vertical || readPath(localeData, ["vertical"]),
+    category: readPath(localeData, ["category"]),
+    imageUrl: media.imageUrl || row.image_url || null,
+    labelImageUrl: media.labelImageUrl || null,
+    modelUrl: media.modelUrl || null,
+    galleryUrls: media.galleryUrls || [],
+    sku: row.sku,
+  });
   const tokenStatus = normalizeTokenizationStatus(row.tokenization_status);
   const txUrl = explorerUrl(row.tokenization_network, row.tokenization_tx_hash);
   const claimed = String(row.ownership_status || "").toLowerCase() === "claimed";
@@ -170,12 +185,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
       name: productName,
       brand: brandName,
       sku: row.sku || null,
-      imageUrl: row.image_url || null,
+      imageUrl: assetProfile.primaryImageUrl || null,
       vertical: row.tenant_vertical || readPath(localeData, ["vertical"]) || "producto",
       vintage: row.vintage || productConfig.vintage || null,
       varietal: row.grape_varietal || productConfig.varietal || null,
       batch: row.bid || null,
     },
+    assets: assetProfile,
     tenant: {
       slug: row.tenant_slug,
       name: row.tenant_name,

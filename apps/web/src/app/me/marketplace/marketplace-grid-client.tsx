@@ -280,7 +280,15 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
                 <div className="absolute right-4 top-4 rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-100">
                   passport-linked
                 </div>
-                <div className={productVisualClass(item, idx)} />
+                {assetProfile.primaryImageUrl ? (
+                  <img
+                    src={assetProfile.primaryImageUrl}
+                    alt={assetProfile.productName}
+                    className="absolute inset-0 h-full w-full object-contain p-5"
+                  />
+                ) : (
+                  <div className={productVisualClass(item, idx)} />
+                )}
               </div>
 
               <div className="p-4">

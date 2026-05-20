@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BadgeCheck, ExternalLink, FileCheck2, Fingerprint, ShieldCheck, Store, WalletCards } from "lucide-react";
 import { productUrls } from "@product/config";
+import { resolveProductAssetProfile, type ProductAssetProfile } from "../../../lib/product-asset-bank";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ type CertificatePayload = {
     tokenization?: { status?: string | null; network?: string | null; txHash?: string | null; tokenId?: string | null; anchorHash?: string | null; processedAt?: string | null; explorerUrl?: string | null };
     trust?: { score?: number | string | null; factors?: CertificateFactor[] };
     timeline?: CertificateTimelineItem[];
+    assets?: ProductAssetProfile;
   };
 };
 
@@ -128,6 +130,15 @@ export default async function PublicCertificatePage({ params }: { params: Promis
   const token = cert.tokenization || {};
   const trust = cert.trust || {};
   const score = Number(trust.score || 0);
+  const assetProfile = cert.assets || resolveProductAssetProfile({
+    tenantSlug: tenant.slug,
+    brandName: product.brand || tenant.name,
+    productName: product.name,
+    bid: product.batch,
+    vertical: product.vertical,
+    imageUrl: product.imageUrl,
+    sku: product.sku,
+  });
   const tenantSlug = String(tenant.slug || "");
   const walletHref = tenantSlug ? `/me/wallet?tenant=${encodeURIComponent(tenantSlug)}&eventId=${encodeURIComponent(String(tap.eventId || eventId))}` : `/me/wallet?eventId=${encodeURIComponent(String(tap.eventId || eventId))}`;
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
@@ -179,6 +190,46 @@ export default async function PublicCertificatePage({ params }: { params: Promis
                 })}
               </div>
             </div>
+
+            <section className="max-w-[calc(100vw-2rem)] rounded-[2rem] border border-cyan-300/20 bg-cyan-950/20 p-5 backdrop-blur-xl sm:max-w-none">
+              <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+                <div className="relative min-h-60 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_50%_20%,rgba(34,211,238,.18),transparent_36%),linear-gradient(180deg,rgba(15,23,42,.74),rgba(2,6,23,.92))]">
+                  {assetProfile.primaryImageUrl ? (
+                    <img
+                      src={assetProfile.primaryImageUrl}
+                      alt={assetProfile.productName}
+                      className="h-full min-h-60 w-full object-contain p-4"
+                    />
+                  ) : (
+                    <div className="grid h-full min-h-60 place-items-center p-6 text-center">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Asset demo controlado</p>
+                        <p className="mt-2 text-xl font-black text-white">{assetProfile.visualKind}</p>
+                        <p className="mt-2 text-xs leading-5 text-slate-400">Cuando el tenant sube foto real, este certificado, el tap y el marketplace muestran el producto exacto.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Banco real de assets</p>
+                  <h2 className="mt-2 text-2xl font-black text-white">{assetProfile.productName}</h2>
+                  <p className="mt-2 text-sm leading-6 text-cyan-50/80">{assetProfile.heroLine}</p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {assetProfile.slots.map((slot) => (
+                      <article key={slot.id} className="rounded-2xl border border-white/10 bg-slate-950/55 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <b className="text-xs text-white">{slot.label}</b>
+                          <span className={slot.status === "ready" ? "text-[10px] font-black uppercase tracking-[0.1em] text-emerald-200" : slot.status === "missing" ? "text-[10px] font-black uppercase tracking-[0.1em] text-amber-200" : "text-[10px] font-black uppercase tracking-[0.1em] text-cyan-200"}>
+                            {slot.status === "ready" ? "real" : slot.status === "missing" ? "pendiente" : "demo"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] leading-5 text-slate-400">{slot.detail}</p>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
 
             <div className="grid max-w-[calc(100vw-2rem)] gap-3 sm:max-w-none sm:grid-cols-3">
               <Link href={walletHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-500/15 px-4 text-sm font-black text-emerald-100 transition hover:bg-emerald-500/25">

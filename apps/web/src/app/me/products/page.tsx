@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import { formatPortalDate, ownershipTone, type ConsumerPortalProduct, type ConsumerTap } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
+import { resolveProductAssetProfile } from "../../../lib/product-asset-bank";
 
 function productVisualKind(product: ConsumerPortalProduct, index: number) {
   const blob = `${product.product_name || ""} ${product.brand_name || ""}`.toLowerCase();
@@ -73,14 +74,32 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
               const hasTokenProof = Boolean(txHash && tokenStatus !== "none" && !txHash.toUpperCase().includes("DEMO"));
               const tokenExplorerHref = hasTokenProof ? `https://amoy.polygonscan.com/tx/${encodeURIComponent(txHash)}` : "";
               const certificateUrl = certificateHref(product);
+              const assetProfile = resolveProductAssetProfile({
+                tenantSlug: product.tenant_slug,
+                brandName: product.brand_name,
+                productName: product.product_name,
+                bid: product.bid,
+                imageUrl: product.image_url,
+              });
               return (
                 <article key={`${product.product_name || "product"}-${idx}`} className="consumer-product-card overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70">
                   <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
                     <div className="consumer-product-visual-panel relative min-h-64 border-b border-white/10 p-5 lg:border-b-0 lg:border-r">
-                      <div className={`consumer-product-visual consumer-product-visual--${visual}`} />
+                      {assetProfile.primaryImageUrl ? (
+                        <img
+                          src={assetProfile.primaryImageUrl}
+                          alt={assetProfile.productName}
+                          className="absolute inset-0 h-full w-full object-contain p-8"
+                        />
+                      ) : (
+                        <div className={`consumer-product-visual consumer-product-visual--${visual}`} />
+                      )}
                       <div className="absolute left-5 top-5 rounded-full border border-cyan-300/25 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">
                         Passport item
                       </div>
+                      <span className="absolute right-5 top-5 rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100">
+                        {assetProfile.assetScore}/100 assets
+                      </span>
                       <span className={`absolute bottom-5 left-5 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusClasses(status)}`}>{status}</span>
                     </div>
 
