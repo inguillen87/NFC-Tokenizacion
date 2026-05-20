@@ -179,6 +179,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
   const certificate = {
     id: `NX-CERT-${row.event_id}`,
     publicUrl: `${publicWebBase()}/certificado/${row.event_id}`,
+    links: {
+      certificateUrl: `${publicWebBase()}/certificado/${row.event_id}`,
+      walletUrl: `${publicWebBase()}/me/wallet?tenant=${encodeURIComponent(String(row.tenant_slug || ""))}&eventId=${encodeURIComponent(String(row.event_id))}`,
+      marketplaceUrl: `${publicWebBase()}/me/marketplace${row.tenant_slug ? `?tenant=${encodeURIComponent(String(row.tenant_slug))}` : ""}`,
+      explorerUrl: txUrl,
+    },
     status: claimed ? "owner_verified" : "product_verified",
     statusLabel: claimed ? "Dueno verificado" : "Producto autentico",
     product: {

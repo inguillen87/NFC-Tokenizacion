@@ -34,6 +34,7 @@ const READONLY_DEMO_ALLOWED = [
   "security-alerts",
   "tokenization/requests",
   "polygon/wallet",
+  "product-assets",
   "tags",
   "tags/",
 ];

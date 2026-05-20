@@ -244,6 +244,47 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       ],
     }, "demo"));
   }
+  if (method === "GET" && normalized === "product-assets") {
+    return NextResponse.json({
+      ok: true,
+      count: 1,
+      items: [
+        {
+          tenantSlug: "demobodega",
+          bid: "DEMO-2026-02",
+          uidHex: "04A1B2C3D4",
+          productName: "Gran Reserva Malbec",
+          brandName: "Demo Bodega",
+          imageUrl: null,
+          labelImageUrl: null,
+          modelUrl: null,
+          galleryUrls: [],
+          assetScore: 64,
+        },
+      ],
+      demoMode: true,
+      dataSource: "demo",
+    });
+  }
+  if (method === "POST" && normalized === "product-assets") {
+    return NextResponse.json({
+      ok: true,
+      item: {
+        tenantSlug: String(payload?.tenantSlug || "demobodega"),
+        bid: String(payload?.bid || "DEMO-2026-02"),
+        uidHex: payload?.uidHex ? String(payload.uidHex) : null,
+        productName: String(payload?.productName || "Gran Reserva Malbec"),
+        brandName: String(payload?.brandName || "Demo Bodega"),
+        imageUrl: payload?.imageUrl ? String(payload.imageUrl) : null,
+        labelImageUrl: payload?.labelImageUrl ? String(payload.labelImageUrl) : null,
+        modelUrl: payload?.modelUrl ? String(payload.modelUrl) : null,
+        galleryUrls: Array.isArray(payload?.galleryUrls) ? payload.galleryUrls : [],
+        assetScore: payload?.imageUrl ? 80 : 64,
+      },
+      demoMode: true,
+      dataSource: "demo",
+    });
+  }
   if (method === "GET" && normalized === "tokenization/requests") {
     return NextResponse.json({
       ok: true,

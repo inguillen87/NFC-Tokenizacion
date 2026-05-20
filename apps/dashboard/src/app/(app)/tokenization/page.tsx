@@ -1,4 +1,5 @@
 import { SectionHeading } from "@product/ui";
+import { ProductAssetBankPanel } from "../../../components/product-asset-bank-panel";
 import { TokenizationQueuePanel } from "../../../components/tokenization-queue-panel";
 
 export default function TokenizationPage() {
@@ -9,6 +10,7 @@ export default function TokenizationPage() {
         title="Tokenization & API runway"
         description="Cola operativa para conectar taps reales, passport publico, marketplace y proof on-chain en Polygon Amoy o modo simulado."
       />
+      <ProductAssetBankPanel />
       <TokenizationQueuePanel />
     </main>
   );

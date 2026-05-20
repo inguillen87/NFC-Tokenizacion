@@ -11,9 +11,10 @@ type CertificateTimelineItem = { eventId?: string; result?: string | null; city?
 
 type CertificatePayload = {
   ok?: boolean;
-  certificate?: {
+    certificate?: {
     id?: string;
     publicUrl?: string;
+    links?: { certificateUrl?: string | null; walletUrl?: string | null; marketplaceUrl?: string | null; explorerUrl?: string | null };
     status?: string;
     statusLabel?: string;
     product?: {
@@ -53,6 +54,20 @@ function chainLabel(status?: string | null) {
   if (normalized === "blocked") return "Protegido";
   if (normalized === "failed") return "Revision";
   return "Disponible";
+}
+
+function blockchainExplainer(token?: NonNullable<CertificatePayload["certificate"]>["tokenization"]) {
+  const status = String(token?.status || "none").toLowerCase();
+  if (token?.explorerUrl || token?.txHash || token?.tokenId) {
+    return "Anclado: este certificado ya tiene prueba visible en Polygon.";
+  }
+  if (status === "pending" || status === "processing" || status === "pending_retry") {
+    return "En cola: la solicitud esta guardada y se muestra la transaccion cuando Polygon confirme.";
+  }
+  if (status === "blocked") {
+    return "Protegido: falta un tap fisico fresco o una politica del tenant antes de mintear.";
+  }
+  return "Disponible: el tenant puede habilitar mint despues del claim de ownership.";
 }
 
 async function fetchCertificate(eventId: string): Promise<CertificatePayload | null> {
@@ -142,6 +157,8 @@ export default async function PublicCertificatePage({ params }: { params: Promis
   const tenantSlug = String(tenant.slug || "");
   const walletHref = tenantSlug ? `/me/wallet?tenant=${encodeURIComponent(tenantSlug)}&eventId=${encodeURIComponent(String(tap.eventId || eventId))}` : `/me/wallet?eventId=${encodeURIComponent(String(tap.eventId || eventId))}`;
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
+  const permanentUrl = cert.links?.certificateUrl || cert.publicUrl || `https://nexid.lat/certificado/${encodeURIComponent(String(tap.eventId || eventId))}`;
+  const blockchainState = blockchainExplainer(token);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#070b14] text-slate-100">
@@ -253,6 +270,21 @@ export default async function PublicCertificatePage({ params }: { params: Promis
           </div>
 
           <aside className="min-w-0 space-y-4">
+            <section className="max-w-[calc(100vw-2rem)] rounded-[2rem] border border-emerald-300/20 bg-emerald-950/20 p-5 backdrop-blur-xl sm:max-w-none">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">Link permanente</p>
+              <h2 className="mt-2 text-xl font-black text-white">Certificado digital compartible</h2>
+              <p className="mt-2 text-sm leading-6 text-emerald-50/80">
+                Este link prueba autenticidad, ownership, estado NFT y evidencia del producto sin exponer el UID completo.
+              </p>
+              <a href={permanentUrl} className="mt-3 block break-all rounded-2xl border border-white/10 bg-slate-950/60 p-3 text-xs font-semibold text-cyan-100">
+                {permanentUrl}
+              </a>
+              <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3 text-xs leading-5 text-slate-300">
+                <b className="block text-white">Blockchain: {chainLabel(token.status)}</b>
+                <span>{blockchainState}</span>
+              </div>
+            </section>
+
             <section className="max-w-[calc(100vw-2rem)] rounded-[2rem] border border-cyan-300/20 bg-cyan-950/20 p-5 backdrop-blur-xl sm:max-w-none">
               <div className="flex items-start justify-between gap-3">
                 <div>
