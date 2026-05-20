@@ -52,9 +52,9 @@ type DocsCopy = {
 
 const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   "es-AR": {
-    eyebrow: "Docs comercial + técnica",
-    title: "nexID = infraestructura de identidad física verificable",
-    description: "No vendemos chips sueltos: vendemos emisión, verificación y analítica de eventos físicos para productos, accesos y documentos.",
+    eyebrow: "Guia comercial + producto",
+    title: "nexID explicado sin jerga: producto real, confianza y postventa en un solo toque",
+    description: "No vendemos chips sueltos ni blockchain como moda. Creamos una capa para que cada producto pueda probar autenticidad, mostrar origen, activar garantia, beneficios, datos y certificado digital.",
     pillarsTitle: "Tesis de producto",
     pillars: [
       "Línea BASIC (NTAG215): volumen, UX por toque, activaciones y control operativo.",
@@ -109,6 +109,9 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ corta para explicar bien el producto",
     faqItems: [
+      { q: "Que problema resuelve para una marca premium?", a: "Permite demostrar que una unidad es real, saber donde se valida, reducir fraude, recuperar datos propios del consumidor y abrir una relacion postventa despues de la compra." },
+      { q: "Que ve el consumidor final?", a: "Una pantalla simple: producto autentico, origen, lote, estado del sello, garantia, beneficios y, si corresponde, certificado digital o ownership." },
+      { q: "Como se empieza sin hacer un proyecto enorme?", a: "Con un piloto sobre una linea, lote o edicion: banco de fotos, reglas de claim, tags o QR, portal mobile, dashboard y metricas de uso." },
       { q: "¿nexID vende chips NFC?", a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR." },
       { q: "¿Sirve solo para antifraude?", a: "No. También habilita ownership, acceso, garantías, vouchers, trazabilidad y analytics." },
       { q: "¿Tokenización y autenticación son lo mismo?", a: "No. La autenticación prueba el objeto; la tokenización digitaliza derechos sobre ese objeto." },
@@ -198,6 +201,9 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ curta para explicar o produto",
     faqItems: [
+      { q: "Que problema resolve para uma marca premium?", a: "Permite demonstrar que uma unidade e real, saber onde foi validada, reduzir fraude, recuperar dados proprios do consumidor e abrir uma relacao pos-venda depois da compra." },
+      { q: "O que o consumidor final ve?", a: "Uma tela simples: produto autentico, origem, lote, estado do lacre, garantia, beneficios e, quando fizer sentido, certificado digital ou ownership." },
+      { q: "Como comecar sem um projeto enorme?", a: "Com um piloto em uma linha, lote ou edicao: banco de fotos, regras de claim, tags ou QR, portal mobile, dashboard e metricas de uso." },
       { q: "A nexID vende chips NFC?", a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR." },
       { q: "Serve só para antifraude?", a: "Não. Também habilita ownership, acesso, garantia, vouchers, rastreabilidade e analytics." },
       { q: "Tokenização e autenticação são iguais?", a: "Não. Autenticação valida o objeto; tokenização digitaliza direitos sobre ele." },
@@ -230,9 +236,9 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     openLab: "Abrir Demo Lab",
   },
   en: {
-    eyebrow: "Commercial + technical docs",
-    title: "nexID = verifiable physical identity infrastructure",
-    description: "We do not sell raw NFC chips; we sell issuance, verification and analytics for physical events.",
+    eyebrow: "Commercial + product guide",
+    title: "nexID without jargon: real products, trust and after-sales in one tap",
+    description: "We do not sell loose chips or blockchain as a trend. We create a layer for each product to prove authenticity, show origin, activate warranty, benefits, data and a digital certificate.",
     pillarsTitle: "Product thesis",
     pillars: [
       "BASIC line (NTAG215): volume UX and operational control.",
@@ -287,6 +293,9 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     quickJumpTitle: "Quick explore",
     faqTitle: "Short FAQ to make the value clear",
     faqItems: [
+      { q: "What problem does this solve for a premium brand?", a: "It proves a unit is real, shows where it is validated, reduces fraud, recovers first-party customer data and opens an after-sales relationship after purchase." },
+      { q: "What does the end customer see?", a: "A simple screen: authentic product, origin, batch, seal status, warranty, benefits and, when relevant, digital certificate or ownership." },
+      { q: "How can a company start without a huge project?", a: "With a pilot on one line, batch or edition: product photos, claim rules, tags or QR, mobile portal, dashboard and usage metrics." },
       { q: "Does nexID sell NFC chips?", a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers." },
       { q: "Is this only anti-fraud?", a: "No. It also enables ownership, access, warranty, vouchers, traceability and analytics." },
       { q: "Are tokenization and authentication the same?", a: "No. Authentication proves the object; tokenization digitizes rights on top of that object." },

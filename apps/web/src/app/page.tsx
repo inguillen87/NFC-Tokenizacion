@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
+  AboutInmovarSection,
   CarrierProfileMatrixSection,
   CtaSection,
   EventsTagPositioningSection,
   HeroSection,
   MarketplaceNetworkSection,
+  PlainLanguageValueSection,
   PremiumIdentitySection,
   PlansSection,
   SimpleTrustFlowSection,
@@ -277,6 +279,7 @@ export default async function HomePage() {
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
 
       <SimpleTrustFlowSection locale={locale} />
+      <PlainLanguageValueSection locale={locale} />
       <PlansSection content={content} locale={locale} />
       <CarrierProfileMatrixSection locale={locale} />
       <EventsTagPositioningSection locale={locale} />
@@ -285,6 +288,7 @@ export default async function HomePage() {
       <MarketplaceNetworkSection locale={locale} />
       <WhiteLabelOperatingSystemSection locale={locale} />
       <UnitEconomicsSection locale={locale} />
+      <AboutInmovarSection locale={locale} />
 
       <section className="hidden">
         <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 md:p-8">
@@ -323,7 +327,7 @@ export default async function HomePage() {
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
             <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand brand-surface-footer" />
           </Link>
-          <p className="text-sm site-muted">nexID es una plataforma de identidad física verificable: une carriers como NFC/QR con verificación, estado y derechos digitales para empresas y gobiernos.</p>
+          <p className="text-sm site-muted">nexID ayuda a marcas y organizaciones a probar autenticidad, contar la historia del producto y activar garantia, beneficios, certificado digital y postventa desde un toque NFC o QR.</p>
           <div className="flex flex-wrap gap-2">
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>

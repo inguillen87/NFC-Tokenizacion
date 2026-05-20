@@ -11,6 +11,18 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
     lead: "Respuestas cortas para que cualquiera entienda la demo y el rollout sin reunión técnica.",
     items: [
       {
+        q: "Que recibe una persona despues de tocar el producto?",
+        a: "Una respuesta simple: si el producto es autentico, de donde viene, que lote tiene y cual es el siguiente paso disponible: garantia, beneficio, certificado, portal o reclamo de dueno.",
+      },
+      {
+        q: "Esto obliga al cliente a entender blockchain o NFT?",
+        a: "No. La experiencia principal habla de confianza, garantia y certificado digital. Blockchain o NFT aparecen solo si la marca decide usarlo para ownership, coleccionables o reventa.",
+      },
+      {
+        q: "Como empieza un piloto real?",
+        a: "Elegimos una linea o lote, cargamos fotos reales, etiqueta, reglas de validacion y beneficios; luego probamos taps fisicos, portal de usuario, certificado y dashboard comercial.",
+      },
+      {
         q: "¿Se puede entender todo sin usar celular?",
         a: "Sí. El simulador desktop muestra estados, riesgos y narrativa comercial para visualizar el flujo completo en reuniones o ventas.",
       },
@@ -33,6 +45,18 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
     lead: "Respostas curtas para entender a demo e o rollout sem reunião técnica.",
     items: [
       {
+        q: "O que a pessoa recebe depois de tocar o produto?",
+        a: "Uma resposta simples: se o produto e autentico, de onde veio, qual lote possui e qual e o proximo passo: garantia, beneficio, certificado, portal ou claim de dono.",
+      },
+      {
+        q: "O cliente precisa entender blockchain ou NFT?",
+        a: "Nao. A experiencia principal fala de confianca, garantia e certificado digital. Blockchain ou NFT aparecem apenas quando a marca decide usar para ownership, colecionaveis ou revenda.",
+      },
+      {
+        q: "Como comeca um piloto real?",
+        a: "Escolhemos uma linha ou lote, carregamos fotos reais, etiqueta, regras de validacao e beneficios; depois testamos taps fisicos, portal, certificado e dashboard comercial.",
+      },
+      {
         q: "Dá para entender tudo sem celular?",
         a: "Sim. O simulador desktop mostra estados, riscos e narrativa comercial para reuniões e vendas.",
       },
@@ -54,6 +78,18 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
     title: "Quick FAQ for customers / investors",
     lead: "Short answers so anyone can understand the demo and rollout without a technical call.",
     items: [
+      {
+        q: "What does a person receive after tapping the product?",
+        a: "A simple answer: whether the product is authentic, where it came from, which batch it belongs to and the next available step: warranty, benefit, certificate, portal or ownership claim.",
+      },
+      {
+        q: "Does the customer need to understand blockchain or NFTs?",
+        a: "No. The primary experience speaks about trust, warranty and a digital certificate. Blockchain or NFTs appear only when the brand chooses ownership, collectibles or resale.",
+      },
+      {
+        q: "How does a real pilot start?",
+        a: "We choose a line or batch, load real product photos, label, validation rules and benefits; then test physical taps, user portal, certificate and commercial dashboard.",
+      },
       {
         q: "Can people understand the flow without using a phone?",
         a: "Yes. The desktop simulator shows trust states, risk alerts and business narrative for meetings and sales.",

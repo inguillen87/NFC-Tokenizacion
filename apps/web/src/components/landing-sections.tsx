@@ -240,6 +240,169 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   );
 }
 
+export function PlainLanguageValueSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+      eyebrow: "In plain language",
+      title: "nexID is not a chip company. It turns each product into a direct trust and after-sales channel.",
+      body: "A premium product should not disappear after it leaves the factory or store. With nexID, every unit can prove it is real, show its story and keep the relationship alive with the buyer.",
+      primary: "Book a 20 minute demo",
+      secondary: "Open customer journey",
+      cards: [
+        { title: "For the brand", body: "Protect products, channels and reputation while collecting first-party data from real validations." },
+        { title: "For the customer", body: "Tap, understand what was bought, claim warranty, receive benefits and keep a digital certificate." },
+        { title: "For stores and distributors", body: "Validate purchase, reduce suspicious claims and activate campaigns by batch, city or channel." },
+      ],
+      story: [
+        "Product is created with batch, origin and visual assets.",
+        "Customer taps NFC or QR and sees a clear answer: authentic, observed or blocked.",
+        "After purchase, contact validation and risk score unlock ownership, warranty and benefits.",
+        "If the case needs it, the certificate can be anchored on Polygon and connected to wallet or marketplace.",
+      ],
+      note: "The user does not need to understand blockchain. The screen must simply say what happened, why it matters and what to do next.",
+    }
+    : isBr
+    ? {
+      eyebrow: "Em palavras simples",
+      title: "nexID nao e uma empresa de chips. Transforma cada produto em um canal direto de confianca e pos-venda.",
+      body: "Um produto premium nao deveria desaparecer depois da fabrica ou da loja. Com nexID, cada unidade prova que e real, conta sua historia e mantem a relacao com o comprador.",
+      primary: "Agendar demo de 20 min",
+      secondary: "Ver jornada do cliente",
+      cards: [
+        { title: "Para a marca", body: "Protege produto, canal e reputacao enquanto gera dados proprios de validacoes reais." },
+        { title: "Para o cliente", body: "Toca, entende o que comprou, ativa garantia, recebe beneficios e guarda certificado digital." },
+        { title: "Para lojas e distribuidores", body: "Valida compra, reduz reclamos suspeitos e ativa campanhas por lote, cidade ou canal." },
+      ],
+      story: [
+        "Produto nasce com lote, origem e banco visual.",
+        "Cliente toca NFC ou QR e ve uma resposta clara: autentico, observado ou bloqueado.",
+        "Depois da compra, contato validado e score de risco liberam ownership, garantia e beneficios.",
+        "Se o caso pedir, o certificado pode ser ancorado na Polygon e conectado a wallet ou marketplace.",
+      ],
+      note: "O usuario nao precisa entender blockchain. A tela deve explicar o que aconteceu, por que importa e qual e o proximo passo.",
+    }
+    : {
+      eyebrow: "En palabras simples",
+      title: "nexID no es una empresa de chips. Convierte cada producto en un canal directo de confianza y postventa.",
+      body: "Un producto premium no deberia desaparecer despues de salir de fabrica o de la tienda. Con nexID, cada unidad puede probar que es real, contar su historia y mantener viva la relacion con el comprador.",
+      primary: "Agendar demo de 20 min",
+      secondary: "Ver experiencia del cliente",
+      cards: [
+        { title: "Para la marca", body: "Protege producto, canal y reputacion mientras genera datos propios desde validaciones reales." },
+        { title: "Para el cliente", body: "Toca, entiende que compro, activa garantia, recibe beneficios y guarda su certificado digital." },
+        { title: "Para tiendas y distribuidores", body: "Valida compra, reduce reclamos sospechosos y activa campanas por lote, ciudad o canal." },
+      ],
+      story: [
+        "El producto nace con lote, origen y banco visual.",
+        "El cliente toca NFC o QR y ve una respuesta clara: autentico, observado o bloqueado.",
+        "Despues de la compra, contacto validado y score de riesgo habilitan dueno, garantia y beneficios.",
+        "Si el caso lo necesita, el certificado puede anclarse en Polygon y conectarse a wallet o marketplace.",
+      ],
+      note: "El usuario no necesita entender blockchain. La pantalla tiene que explicar que paso, por que importa y cual es el proximo paso.",
+    };
+
+  return (
+    <section className="container-shell py-10 md:py-14">
+      <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+        <div className="rounded-[2rem] border border-emerald-300/15 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950/60 p-6 md:p-8">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-300">{copy.eyebrow}</p>
+          <h2 className="mt-3 text-3xl font-black leading-tight tracking-tight text-white md:text-5xl">{copy.title}</h2>
+          <p className="mt-4 text-sm leading-7 text-slate-300 md:text-base">{copy.body}</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm font-black text-emerald-100 transition hover:bg-emerald-500/25">
+              {copy.primary}
+            </a>
+            <Link href="/sun" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:bg-cyan-500/20">
+              {copy.secondary}
+            </Link>
+          </div>
+          <p className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-sm font-semibold leading-6 text-cyan-50">{copy.note}</p>
+        </div>
+
+        <div className="grid gap-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            {copy.cards.map((card) => (
+              <article key={card.title} className="rounded-2xl border border-white/10 bg-slate-950/65 p-5">
+                <h3 className="text-base font-black text-white">{card.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{card.body}</p>
+              </article>
+            ))}
+          </div>
+          <div className="rounded-[2rem] border border-cyan-300/15 bg-slate-950/70 p-5 md:p-6">
+            <div className="grid gap-3 md:grid-cols-4">
+              {copy.story.map((item, index) => (
+                <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/15 text-xs font-black text-cyan-100">{index + 1}</span>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-slate-100">{item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function AboutInmovarSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+      eyebrow: "Who builds it",
+      title: "NexID is an Inmovar product for brands that need trust after the sale.",
+      body: "Inmovar builds technology for AI, automation, integrations, blockchain, tokenization and operational platforms. NexID applies that stack to premium products, export goods, limited editions, credentials and assets where authenticity matters.",
+      founder: "Led by Marcelo Guillen, computer and telecommunications engineer, CEO and founder of Inmovar.",
+      bullets: ["Pilot by product line, batch or edition.", "White-label experience for each brand.", "API, dashboard, portal, marketplace and optional wallet in the same operating layer."],
+      cta: "Talk about a pilot",
+    }
+    : isBr
+    ? {
+      eyebrow: "Quem constroi",
+      title: "NexID e um produto da Inmovar para marcas que precisam de confianca depois da venda.",
+      body: "A Inmovar desenvolve tecnologia com IA, automacao, integracoes, blockchain, tokenizacao e plataformas operacionais. NexID aplica essa experiencia a produtos premium, exportacao, edicoes limitadas, credenciais e ativos onde autenticidade importa.",
+      founder: "Liderado por Marcelo Guillen, engenheiro informatico e de telecomunicacoes, CEO e fundador da Inmovar.",
+      bullets: ["Piloto por linha, lote ou edicao.", "Experiencia white-label para cada marca.", "API, dashboard, portal, marketplace e wallet opcional na mesma camada."],
+      cta: "Falar sobre piloto",
+    }
+    : {
+      eyebrow: "Quienes somos",
+      title: "NexID es un producto de Inmovar para marcas que necesitan confianza despues de la venta.",
+      body: "Inmovar desarrolla tecnologia con inteligencia artificial, automatizacion, integraciones, blockchain, tokenizacion y plataformas operativas. NexID lleva esa experiencia a productos premium, exportacion, ediciones limitadas, credenciales y activos donde la autenticidad importa.",
+      founder: "Liderado por Marcelo Guillen, ingeniero informatico y de telecomunicaciones, CEO y fundador de Inmovar.",
+      bullets: ["Piloto por linea, lote o edicion.", "Experiencia white-label para cada marca.", "API, dashboard, portal, marketplace y wallet opcional en una misma capa operativa."],
+      cta: "Hablar de un piloto",
+    };
+
+  return (
+    <section className="container-shell py-10 md:py-14">
+      <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">{copy.eyebrow}</p>
+            <h2 className="mt-3 text-3xl font-black leading-tight tracking-tight text-white md:text-5xl">{copy.title}</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300 md:text-base">{copy.body}</p>
+            <p className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-sm font-semibold leading-6 text-emerald-50">{copy.founder}</p>
+          </div>
+          <div className="grid gap-3">
+            {copy.bullets.map((item, index) => (
+              <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <span className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{String(index + 1).padStart(2, "0")}</span>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">{item}</p>
+              </div>
+            ))}
+            <Link href="/?contact=sales&intent=pilot#contact-modal" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/25">
+              {copy.cta}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function RadarSection({ radar, locale }: { radar: any; locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
