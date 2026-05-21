@@ -3,6 +3,7 @@ import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   AboutInmovarSection,
   CarrierProfileMatrixSection,
+  CommercialPromiseSection,
   CtaSection,
   EventsTagPositioningSection,
   HeroSection,
@@ -280,6 +281,7 @@ export default async function HomePage() {
 
       <SimpleTrustFlowSection locale={locale} />
       <PlainLanguageValueSection locale={locale} />
+      <CommercialPromiseSection locale={locale} />
       <PlansSection content={content} locale={locale} />
       <CarrierProfileMatrixSection locale={locale} />
       <EventsTagPositioningSection locale={locale} />

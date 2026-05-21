@@ -346,6 +346,82 @@ export function PlainLanguageValueSection({ locale }: { locale: string }) {
   );
 }
 
+export function CommercialPromiseSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+      eyebrow: "Why companies choose nexID",
+      title: "The product does not end at the sale. It becomes a live channel for trust, data and after-sales.",
+      body: "Every validation can prove authenticity, show origin, protect the channel, open warranty, trigger benefits and send useful data back to the brand.",
+      cta: "Plan a pilot",
+      secondary: "See architecture",
+      items: [
+        ["Authenticity", "The buyer sees a clear answer: authentic, observed or blocked. No technical explanation needed."],
+        ["Traceability", "Origin, batch, store, distributor, tap location and product state become part of one readable story."],
+        ["After-sales", "Warranty, club, points, vouchers, support, marketplace and resale can open from the same passport."],
+        ["Data for teams", "Marketing, operations, risk and sales get first-party signals by batch, city, channel and campaign."],
+      ],
+    }
+    : isBr
+    ? {
+      eyebrow: "Por que empresas escolhem nexID",
+      title: "O produto não termina na venda. Ele vira um canal vivo de confiança, dados e pós-venda.",
+      body: "Cada validação pode provar autenticidade, mostrar origem, proteger o canal, abrir garantia, ativar benefícios e devolver dados úteis para a marca.",
+      cta: "Planejar piloto",
+      secondary: "Ver arquitetura",
+      items: [
+        ["Autenticidade", "O comprador vê uma resposta clara: autêntico, observado ou bloqueado. Sem explicação técnica."],
+        ["Rastreabilidade", "Origem, lote, loja, distribuidor, local do toque e estado do produto viram uma história legível."],
+        ["Pós-venda", "Garantia, clube, pontos, vouchers, suporte, marketplace e revenda podem abrir no mesmo passaporte."],
+        ["Dados para equipes", "Marketing, operações, risco e vendas recebem sinais por lote, cidade, canal e campanha."],
+      ],
+    }
+    : {
+      eyebrow: "Por que una empresa elige nexID",
+      title: "El producto no termina en la venta. Se convierte en un canal vivo de confianza, datos y postventa.",
+      body: "Cada validación puede probar autenticidad, mostrar origen, proteger el canal, abrir garantía, activar beneficios y devolver datos útiles a la marca.",
+      cta: "Planear un piloto",
+      secondary: "Ver arquitectura",
+      items: [
+        ["Autenticidad", "El comprador ve una respuesta clara: auténtico, observado o bloqueado. Sin explicación técnica."],
+        ["Trazabilidad", "Origen, lote, tienda, distribuidor, lugar del tap y estado del producto se cuentan como una historia simple."],
+        ["Postventa", "Garantía, club, puntos, vouchers, soporte, marketplace y reventa pueden abrir desde el mismo pasaporte."],
+        ["Datos para equipos", "Marketing, operaciones, riesgo y ventas reciben señales por lote, ciudad, canal y campaña."],
+      ],
+    };
+
+  return (
+    <section className="container-shell py-10 md:py-14">
+      <div className="commercial-promise-card rounded-[2rem] border border-cyan-300/15 bg-slate-950/70 p-6 md:p-8">
+        <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">{copy.eyebrow}</p>
+            <h2 className="mt-3 text-3xl font-black leading-tight tracking-tight text-white md:text-5xl">{copy.title}</h2>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">{copy.body}</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm font-black text-emerald-100 transition hover:bg-emerald-500/25">
+                {copy.cta}
+              </a>
+              <Link href="/docs" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:bg-cyan-500/20">
+                {copy.secondary}
+              </Link>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {copy.items.map(([title, body]) => (
+              <article key={title} className="commercial-promise-tile rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <h3 className="text-base font-black text-white">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function AboutInmovarSection({ locale }: { locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";

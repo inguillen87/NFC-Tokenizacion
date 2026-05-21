@@ -12,6 +12,15 @@ const labels = {
     sales: "Hablar con agente",
     whats: "WhatsApp directo",
     jumpTitle: "Explorar programa reseller",
+    commercialEyebrow: "Canal comercial",
+    commercialTitle: "Un canal para vender confianza, no solo tecnología",
+    commercialBody: "El partner puede ofrecer autenticidad, trazabilidad, postventa, beneficios, marketplace y datos propios para marcas premium sin reconstruir toda la plataforma.",
+    commercialCards: [
+      "Agencias y estudios: suman identidad digital a packaging, campañas y lanzamientos.",
+      "Distribuidores y retailers: validan producto, comprador y canal con reglas claras.",
+      "Integradores: conectan nexID con CRM, e-commerce, ERP, soporte y dashboards.",
+      "Marcas: operan experiencia white-label con control de lotes, datos y beneficios.",
+    ],
     whyTitle: "Por qué el canal reseller tiene sentido",
     whyBullets: [
       "Permite entrar más rápido a verticales donde el partner ya tiene distribución, diseño o fabricación.",
@@ -40,6 +49,15 @@ const labels = {
     sales: "Falar com agente",
     whats: "WhatsApp direto",
     jumpTitle: "Explorar programa reseller",
+    commercialEyebrow: "Canal comercial",
+    commercialTitle: "Um canal para vender confiança, não apenas tecnologia",
+    commercialBody: "O parceiro pode oferecer autenticidade, rastreabilidade, pós-venda, benefícios, marketplace e dados próprios para marcas premium sem reconstruir a plataforma.",
+    commercialCards: [
+      "Agências e estúdios: somam identidade digital a packaging, campanhas e lançamentos.",
+      "Distribuidores e varejo: validam produto, comprador e canal com regras claras.",
+      "Integradores: conectam nexID com CRM, e-commerce, ERP, suporte e dashboards.",
+      "Marcas: operam experiência white-label com controle de lotes, dados e benefícios.",
+    ],
     whyTitle: "Por que o canal reseller faz sentido",
     whyBullets: [
       "Acelera entrada em verticais onde o parceiro já tem distribuição, design ou manufatura.",
@@ -68,6 +86,15 @@ const labels = {
     sales: "Talk to agent",
     whats: "Direct WhatsApp",
     jumpTitle: "Explore reseller program",
+    commercialEyebrow: "Commercial channel",
+    commercialTitle: "A channel to sell trust, not just technology",
+    commercialBody: "Partners can offer authenticity, traceability, after-sales, benefits, marketplace and first-party data for premium brands without rebuilding the whole platform.",
+    commercialCards: [
+      "Agencies and studios: add digital identity to packaging, campaigns and launches.",
+      "Distributors and retailers: validate product, buyer and channel with clear rules.",
+      "Integrators: connect nexID with CRM, e-commerce, ERP, support and dashboards.",
+      "Brands: run a white-label experience with batch, data and benefit control.",
+    ],
     whyTitle: "Why the reseller channel matters",
     whyBullets: [
       "It accelerates entry into verticals where partners already own distribution, design or manufacturing access.",
@@ -100,9 +127,27 @@ export default async function ResellersPage() {
   const t = labels[locale];
 
   return (
-    <main className="container-shell space-y-8 py-16">
+    <main className="knowledge-page-surface public-page-shell reseller-page container-shell space-y-8 py-16">
       <BackLink />
       <SectionHeading eyebrow={content.reseller.eyebrow} title={content.reseller.title} description={content.reseller.description} />
+
+      <Card className="public-clarity-card p-6">
+        <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-end">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">{t.commercialEyebrow}</p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-white md:text-3xl">{t.commercialTitle}</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">{t.commercialBody}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {t.commercialCards.map((item, index) => (
+              <article key={item} className="public-clarity-tile rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm font-semibold leading-6 text-slate-100">
+                <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-500/15 text-xs text-emerald-100">{String(index + 1).padStart(2, "0")}</span>
+                {item}
+              </article>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       <div className="space-y-3">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">

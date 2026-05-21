@@ -6517,6 +6517,42 @@ html.theme-light .knowledge-page-surface code {
   color: #0f172a !important;
 }
 
+.public-page-shell .public-clarity-card,
+.landing-root .commercial-promise-card {
+  border-color: rgba(34, 211, 238, 0.18) !important;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(34, 211, 238, 0.16), transparent 32%),
+    radial-gradient(circle at 90% 12%, rgba(139, 92, 246, 0.12), transparent 32%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.9)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 60px rgba(2, 6, 23, 0.24);
+}
+
+.public-page-shell .public-clarity-tile,
+.landing-root .commercial-promise-tile {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+html.theme-light .public-page-shell .public-clarity-card,
+html.theme-light .landing-root .commercial-promise-card {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(14, 165, 233, 0.1), transparent 32%),
+    radial-gradient(circle at 90% 12%, rgba(99, 102, 241, 0.09), transparent 32%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.94)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 18px 44px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .public-page-shell .public-clarity-tile,
+html.theme-light .landing-root .commercial-promise-tile {
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+}
+
 html.theme-light .contact-modal-overlay {
   background: rgba(226, 242, 255, 0.78) !important;
 }
@@ -13916,4 +13952,127 @@ html.theme-light .demo-lab-studio-top-actions button:hover {
     right: 0.62rem !important;
     bottom: 0.62rem !important;
   }
+}
+
+/* Premium light-mode pass for the public hero demo. The product/map stage stays cinematic,
+   while surrounding explanation cards become readable business UI instead of dark remnants. */
+html.theme-light .hero-demo-shell {
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(14, 165, 233, 0.1), transparent 34%),
+    radial-gradient(circle at 88% 10%, rgba(99, 102, 241, 0.08), transparent 36%),
+    rgba(255, 255, 255, 0.78);
+  padding: clamp(1rem, 2.1vw, 1.55rem);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.1);
+}
+
+html.theme-light .hero-scene {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(14, 165, 233, 0.08), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.92)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 20px 54px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .hero-scene-stage-card,
+html.theme-light .hero-scene-result-card,
+html.theme-light .hero-result-explain,
+html.theme-light .hero-flow-step,
+html.theme-light .hero-commercial-rail,
+html.theme-light .hero-output-row,
+html.theme-light .hero-passport-summary,
+html.theme-light .hero-commerce-card,
+html.theme-light .hero-scene-band {
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(240, 249, 255, 0.78)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 10px 26px rgba(15, 23, 42, 0.05);
+}
+
+html.theme-light .hero-object-frame {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(34, 211, 238, 0.16), transparent 34%),
+    radial-gradient(circle at 20% 28%, rgba(20, 184, 166, 0.12), transparent 26%),
+    radial-gradient(circle at 80% 66%, rgba(99, 102, 241, 0.14), transparent 27%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.96), rgba(15, 23, 42, 0.94)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -4.5rem 6.5rem rgba(2, 6, 23, 0.36),
+    0 18px 44px rgba(15, 23, 42, 0.18);
+}
+
+html.theme-light .hero-flow-step p,
+html.theme-light .hero-commercial-rail em,
+html.theme-light .hero-output-row strong,
+html.theme-light .hero-passport-summary strong,
+html.theme-light .hero-commerce-card strong,
+html.theme-light .hero-result-explain p:last-child,
+html.theme-light .hero-scene-microcopy,
+html.theme-light .hero-scene-band {
+  color: #0f172a !important;
+}
+
+html.theme-light .hero-flow-step span,
+html.theme-light .hero-commercial-rail span,
+html.theme-light .hero-output-row span,
+html.theme-light .hero-passport-summary span,
+html.theme-light .hero-commerce-card span,
+html.theme-light .hero-result-explain p:first-child {
+  color: #0e7490 !important;
+}
+
+html.theme-light .hero-passport-summary em,
+html.theme-light .hero-scene-result-state {
+  color: #047857 !important;
+}
+
+html.theme-light .hero-vertical-pill,
+html.theme-light .hero-scene-swap {
+  border-color: rgba(148, 163, 184, 0.36);
+  background: rgba(255, 255, 255, 0.84);
+  color: #334155;
+}
+
+html.theme-light .hero-vertical-pill--active,
+html.theme-light .hero-scene-swap:hover {
+  border-color: rgba(14, 116, 144, 0.36);
+  background: rgba(207, 250, 254, 0.76);
+  color: #075985;
+}
+
+html.theme-light .hero-map-pin,
+html.theme-light .hero-map-intel,
+html.theme-light .hero-map-event,
+html.theme-light .hero-trace-caption,
+html.theme-light .hero-map-data-strip,
+html.theme-light .hero-origin-link {
+  background: rgba(2, 6, 23, 0.76) !important;
+  border-color: rgba(125, 211, 252, 0.22) !important;
+  color: #f8fafc !important;
+}
+
+html.theme-light .hero-map-pin strong,
+html.theme-light .hero-map-intel strong,
+html.theme-light .hero-map-event strong,
+html.theme-light .hero-trace-caption strong {
+  color: #f8fafc !important;
+}
+
+html.theme-light .hero-map-pin span,
+html.theme-light .hero-map-intel p,
+html.theme-light .hero-map-event span,
+html.theme-light .hero-trace-caption p {
+  color: #67e8f9 !important;
+}
+
+html.theme-light .hero-map-intel span,
+html.theme-light .hero-trace-caption span,
+html.theme-light .hero-map-data-strip span {
+  color: #cbd5e1 !important;
 }

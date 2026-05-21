@@ -10,6 +10,10 @@ type DocsCopy = {
   eyebrow: string;
   title: string;
   description: string;
+  simpleFlowEyebrow: string;
+  simpleFlowTitle: string;
+  simpleFlowBody: string;
+  simpleFlow: string[];
   pillarsTitle: string;
   pillars: string[];
   chipTitle: string;
@@ -54,7 +58,16 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   "es-AR": {
     eyebrow: "Guia comercial + producto",
     title: "nexID explicado sin jerga: producto real, confianza y postventa en un solo toque",
-    description: "No vendemos chips sueltos ni blockchain como moda. Creamos una capa para que cada producto pueda probar autenticidad, mostrar origen, activar garantia, beneficios, datos y certificado digital.",
+    description: "No vendemos chips sueltos ni blockchain como moda. Creamos una capa para que cada producto pueda probar autenticidad, mostrar origen, activar garantía, beneficios, datos y certificado digital.",
+    simpleFlowEyebrow: "Arquitectura simple",
+    simpleFlowTitle: "La arquitectura en una frase",
+    simpleFlowBody: "Un producto físico recibe una identidad digital; cada toque valida si es real, cuenta su historia y abre el siguiente paso comercial seguro.",
+    simpleFlow: [
+      "Producto + lote + fotos reales",
+      "NFC o QR seguro",
+      "Tap con resultado claro",
+      "Pasaporte, garantía, beneficios y certificado",
+    ],
     pillarsTitle: "Tesis de producto",
     pillars: [
       "Línea BASIC (NTAG215): volumen, UX por toque, activaciones y control operativo.",
@@ -147,6 +160,15 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     eyebrow: "Docs comercial + técnica",
     title: "nexID = infraestrutura de identidade física verificável",
     description: "Não vendemos chips isolados: vendemos emissão, verificação e analytics de eventos físicos.",
+    simpleFlowEyebrow: "Arquitetura simples",
+    simpleFlowTitle: "A arquitetura em uma frase",
+    simpleFlowBody: "Um produto físico recebe uma identidade digital; cada toque valida se é real, conta sua história e abre o próximo passo comercial seguro.",
+    simpleFlow: [
+      "Produto + lote + fotos reais",
+      "NFC ou QR seguro",
+      "Toque com resultado claro",
+      "Passaporte, garantia, benefícios e certificado",
+    ],
     pillarsTitle: "Tese de produto",
     pillars: [
       "Linha BASIC (NTAG215): volume, UX por toque e operação.",
@@ -239,6 +261,15 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     eyebrow: "Commercial + product guide",
     title: "nexID without jargon: real products, trust and after-sales in one tap",
     description: "We do not sell loose chips or blockchain as a trend. We create a layer for each product to prove authenticity, show origin, activate warranty, benefits, data and a digital certificate.",
+    simpleFlowEyebrow: "Simple architecture",
+    simpleFlowTitle: "Architecture in one sentence",
+    simpleFlowBody: "A physical product receives a digital identity; each tap checks if it is real, tells its story and opens the next safe commercial step.",
+    simpleFlow: [
+      "Product + batch + real photos",
+      "Secure NFC or QR",
+      "Tap with a clear result",
+      "Passport, warranty, benefits and certificate",
+    ],
     pillarsTitle: "Product thesis",
     pillars: [
       "BASIC line (NTAG215): volume UX and operational control.",
@@ -337,6 +368,24 @@ export default async function DocsPage() {
     <main className="knowledge-page-surface docs-page container-shell space-y-8 py-16">
       <BackLink />
       <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+
+      <Card className="public-clarity-card p-6">
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">{copy.simpleFlowEyebrow}</p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-white md:text-3xl">{copy.simpleFlowTitle}</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">{copy.simpleFlowBody}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-4">
+            {copy.simpleFlow.map((item, index) => (
+              <div key={item} className="public-clarity-tile rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm font-semibold leading-6 text-slate-100">
+                <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/15 text-xs text-cyan-100">{index + 1}</span>
+                <p>{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       <div className="space-y-4">
         <div className="space-y-3">

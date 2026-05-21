@@ -80,13 +80,13 @@ export const landingContent: Record<AppLocale, LandingContent> = {
       ],
     },
     plans: {
-      eyebrow: "Basic vs Secure vs Enterprise",
-      title: "Planes por riesgo operativo y nivel de protección",
-      description: "Compará alcance técnico/comercial por plan o entrá a /pricing para ver el detalle completo.",
+      eyebrow: "Planes según objetivo",
+      title: "Empezá con un piloto claro y escalá cuando el negocio lo pruebe",
+      description: "No se trata de comprar chips. Se trata de elegir cuánto querés proteger, medir y activar después de cada venta.",
       cards: [
-        { name: "BASIC", badge: "NTAG215", price: "Cotización por volumen", body: "Para activaciones, eventos y journeys de marketing con trazabilidad base.", bullets: ["Tap-to-web", "Analítica de escaneos", "Sin criptografía SUN"] },
-        { name: "SECURE", badge: "NTAG 424 DNA TT", price: "Piloto + hardware codificado + SaaS", body: "Para marcas que necesitan autenticación criptográfica y control anti-clonado.", bullets: ["SUN validation", "Duplicate alerts", "Tamper intelligence"] },
-        { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Para multi-tenant, canal partner y operación con SLA + integraciones.", bullets: ["Branding white-label", "API keys y webhooks", "Capas premium de identidad digital"] },
+        { name: "BASIC", badge: "NTAG215", price: "Cotización por volumen", body: "Para activar campañas, eventos, garantías simples y analítica de escaneos.", bullets: ["Tap-to-web", "Datos por ciudad y canal", "Ideal para alto volumen"] },
+        { name: "SECURE", badge: "NTAG 424 DNA TT", price: "Piloto + hardware codificado + SaaS", body: "Para marcas que necesitan probar autenticidad, evitar copia y controlar apertura o uso.", bullets: ["Validación dinámica", "Alertas por copia", "Sello físico y trazabilidad"] },
+        { name: "ENTERPRISE / RESELLER", badge: "White-label", price: "Custom", body: "Para operar varias marcas, canales, países o integraciones con CRM, ERP y marketplace.", bullets: ["Marca propia", "API y webhooks", "Portal, dashboard y soporte"] },
       ],
     },
     secure: {
@@ -142,18 +142,18 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     },
     reseller: {
       eyebrow: "Canal",
-      title: "Programa reseller / white-label desde día uno",
-      description: "Agencias, convertidores y distribuidores operan sobre rails compartidas.",
+      title: "Programa reseller y white-label para llevar nexID a más industrias",
+      description: "Partners, agencias, distribuidores e integradores pueden vender autenticidad, trazabilidad y postventa digital con una plataforma lista para operar.",
       cards: [
-        { title: "Co-branded operations", body: "Lanzamiento rápido con gobierno central de autenticación." },
-        { title: "Private-label workspace", body: "Experiencia partner con marca propia y operación guiada." },
+        { title: "Co-branded operations", body: "Salimos rápido con una propuesta compartida para bodega, cosmética, eventos, agro o lujo." },
+        { title: "Private-label workspace", body: "El partner opera con su marca, sus clientes y reglas comerciales, usando nuestra infraestructura." },
       ],
     },
     api: {
-      eyebrow: "Developer-friendly",
-      title: "API gateway listo para integraciones enterprise",
-      description: "Contratos previsibles para activación, validación y observabilidad.",
-      bullets: ["Gateway de autenticación de alta disponibilidad", "Flujos administrativos internos con control por rol", "Eventos y telemetría de seguridad", "Base enterprise para SDK y webhooks"],
+      eyebrow: "Arquitectura",
+      title: "Una capa simple para conectar producto, consumidor, marca y sistemas",
+      description: "La parte técnica queda ordenada atrás: el usuario ve una respuesta clara y la empresa recibe datos útiles para operar.",
+      bullets: ["Validacion de autenticidad y estado", "Portal mobile para consumidor", "Eventos y alertas para el dashboard", "Integracion con CRM, e-commerce, ERP y webhooks"],
     },
     identity: {
       eyebrow: "Capa premium",

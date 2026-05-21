@@ -40,6 +40,15 @@ export default async function PricingPage() {
           talkSales: "Talk to sales",
           reseller: "Become reseller",
           cardInfo: "Quote is tailored by vertical, volume, SLA, setup, dashboard and API depth.",
+          commercialEyebrow: "Commercial model",
+          commercialTitle: "Pricing is built around business value, not around the chip alone",
+          commercialBody: "A serious rollout includes product identity, visual assets, claim rules, mobile passport, dashboard, alerts, integrations and support. Hardware is only one layer.",
+          commercialCards: [
+            "Pilot: validate one product line, batch or edition with real users.",
+            "Hardware: NFC, QR, seals or cards according to risk and volume.",
+            "Platform: authentication, passport, warranty, benefits, analytics and alerts.",
+            "Scale: reseller or white-label rollout with governance and integrations.",
+          ],
           roiCta: "Request pilot budget",
           modelTitle: "Business model clarity",
           modelCards: [
@@ -96,6 +105,15 @@ export default async function PricingPage() {
           talkSales: "Falar com vendas",
           reseller: "Quero ser reseller",
           cardInfo: "A proposta varia por vertical, volume, SLA, setup, dashboard e profundidade de API.",
+          commercialEyebrow: "Modelo comercial",
+          commercialTitle: "O preço nasce do valor de negócio, não do chip isolado",
+          commercialBody: "Um rollout sério inclui identidade do produto, banco visual, regras de titularidade, passaporte mobile, dashboard, alertas, integrações e suporte. O hardware é apenas uma camada.",
+          commercialCards: [
+            "Piloto: validar uma linha, lote ou edição com usuários reais.",
+            "Hardware: NFC, QR, lacres ou cards conforme risco e volume.",
+            "Plataforma: autenticação, passaporte, garantia, benefícios, analytics e alertas.",
+            "Escala: canal reseller ou white-label com governança e integrações.",
+          ],
           roiCta: "Solicitar orçamento de piloto",
           modelTitle: "Clareza do modelo de negócio",
           modelCards: [
@@ -151,6 +169,15 @@ export default async function PricingPage() {
           talkSales: "Hablar con ventas",
           reseller: "Quiero ser reseller",
           cardInfo: "La propuesta se ajusta por vertical, volumen, SLA, setup, dashboard y profundidad de API.",
+          commercialEyebrow: "Modelo comercial",
+          commercialTitle: "El precio se arma por valor de negocio, no por el chip suelto",
+          commercialBody: "Un rollout serio incluye identidad del producto, banco visual, reglas de reclamo, pasaporte mobile, dashboard, alertas, integraciones y soporte. El hardware es solo una capa.",
+          commercialCards: [
+            "Piloto: validar una línea, lote o edición con usuarios reales.",
+            "Hardware: NFC, QR, sellos o tarjetas según riesgo y volumen.",
+            "Plataforma: autenticación, pasaporte, garantía, beneficios, analytics y alertas.",
+            "Escala: canal reseller o white-label con gobernanza e integraciones.",
+          ],
           roiCta: "Solicitar presupuesto piloto",
           modelTitle: "Claridad del modelo de negocio",
           modelCards: [
@@ -201,9 +228,27 @@ export default async function PricingPage() {
         };
 
   return (
-    <main className="knowledge-page-surface container-shell py-16 pricing-page">
+    <main className="knowledge-page-surface public-page-shell container-shell py-16 pricing-page">
       <BackLink />
       <SectionHeading eyebrow={content.plans.eyebrow} title={content.plans.title} description={content.plans.description} />
+
+      <Card className="public-clarity-card mt-8 p-6">
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.commercialEyebrow}</p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-white md:text-3xl">{labels.commercialTitle}</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">{labels.commercialBody}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {labels.commercialCards.map((item, index) => (
+              <div key={item} className="public-clarity-tile rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm font-semibold leading-6 text-slate-100">
+                <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/15 text-xs text-cyan-100">{index + 1}</span>
+                <p>{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       <Card className="mt-6 p-5 pricing-page-card border border-cyan-300/10 bg-gradient-to-br from-cyan-500/10 via-slate-950/40 to-slate-950/80">
         <h3 className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200"><Sparkles className="h-4 w-4" />{labels.includeTitle}</h3>
