@@ -34,7 +34,7 @@ const eventClubs = [
     product: "Vinos premium",
     members: "842 miembros",
     signal: "4.9 estrellas verificadas",
-    body: "Dueños y compradores comparten experiencia, apertura, guarda, reventa y recomendaciones.",
+    body: "Duenos y compradores comparten experiencia, apertura, guarda, reventa y recomendaciones.",
   },
   {
     name: "Beauty Passport",

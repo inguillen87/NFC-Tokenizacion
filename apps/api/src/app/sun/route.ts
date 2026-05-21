@@ -259,7 +259,7 @@ async function safeHitSunRateLimit(scope: string, scopeKey: string, windowSecond
   try {
     return await hitSunRateLimit(scope, scopeKey, windowSeconds, maxHits);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "rate_limit_unavailable";
+    const reason = error instanceof Error ?error.message : "rate_limit_unavailable";
     console.warn("[sun_rate_limit_unavailable]", JSON.stringify({ scope, scopeKey, reason: sanitizePublicErrorReason(reason) }));
     return { hits: 0, limited: false, unavailable: true };
   }
@@ -442,29 +442,29 @@ function resolveTrustState(status: string, reason: string, productState?: string
 function summarizeUserAgent(ua: string) {
   const normalized = ua.toLowerCase();
   const os = normalized.includes("iphone") || normalized.includes("ipad")
-    ? "iOS"
+    ?"iOS"
     : normalized.includes("android")
-      ? "Android"
+      ?"Android"
       : normalized.includes("windows")
-        ? "Windows"
+        ?"Windows"
         : normalized.includes("mac os") || normalized.includes("macintosh")
-          ? "macOS"
+          ?"macOS"
           : "Unknown OS";
   const browser = normalized.includes("edg/")
-    ? "Edge"
+    ?"Edge"
     : normalized.includes("samsungbrowser")
-      ? "Samsung Internet"
+      ?"Samsung Internet"
       : normalized.includes("chrome/")
-        ? "Chrome"
+        ?"Chrome"
         : normalized.includes("safari/")
-          ? "Safari"
+          ?"Safari"
           : normalized.includes("firefox/")
-            ? "Firefox"
+            ?"Firefox"
             : "Unknown Browser";
   const device = normalized.includes("mobile") || normalized.includes("iphone") || normalized.includes("android")
-    ? "Mobile"
+    ?"Mobile"
     : normalized.includes("ipad") || normalized.includes("tablet")
-      ? "Tablet"
+      ?"Tablet"
       : "Desktop";
   return { os, browser, device };
 }
@@ -487,15 +487,15 @@ function safeDecode(value: string | null) {
 async function getPassportSnapshot(bid: string, uid: string | undefined): Promise<PassportSnapshot> {
   if (!uid) return null;
   await ensureTokenizationRequestsSchema().catch((error) => {
-    const reason = error instanceof Error ? error.message : "tokenization_schema_unavailable";
+    const reason = error instanceof Error ?error.message : "tokenization_schema_unavailable";
     console.warn("[tokenization_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
   });
   await ensureSunTenantProfilesSchema().catch((error) => {
-    const reason = error instanceof Error ? error.message : "sun_tenant_profile_schema_unavailable";
+    const reason = error instanceof Error ?error.message : "sun_tenant_profile_schema_unavailable";
     console.warn("[sun_tenant_profile_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
   });
   await ensureCarrierProfileSchema().catch((error) => {
-    const reason = error instanceof Error ? error.message : "carrier_profile_schema_unavailable";
+    const reason = error instanceof Error ?error.message : "carrier_profile_schema_unavailable";
     console.warn("[carrier_profile_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
   });
   const rows = await sql/*sql*/`
@@ -590,19 +590,19 @@ async function getTimelineSummary(bid: string, uid: string | undefined): Promise
     LIMIT 6
   `;
   return (rows as Array<Record<string, unknown>>).map((row) => {
-    const meta = (row.meta && typeof row.meta === "object") ? row.meta as Record<string, unknown> : {};
-    const sensors = (meta.sensors && typeof meta.sensors === "object") ? meta.sensors as Record<string, unknown> : {};
+    const meta = (row.meta && typeof row.meta === "object") ?row.meta as Record<string, unknown> : {};
+    const sensors = (meta.sensors && typeof meta.sensors === "object") ?meta.sensors as Record<string, unknown> : {};
     return {
-      at: row.at ? String(row.at) : null,
-      result: row.result ? String(row.result) : null,
-      city: row.city ? String(row.city) : null,
-      country: row.country ? String(row.country) : null,
-      device: row.device ? String(row.device) : null,
-      lat: typeof row.lat === "number" ? Number(row.lat) : null,
-      lng: typeof row.lng === "number" ? Number(row.lng) : null,
-      sensorTempC: typeof sensors.temperatureC === "number" ? Number(sensors.temperatureC) : null,
-      sensorHumidity: typeof sensors.humidityPct === "number" ? Number(sensors.humidityPct) : null,
-      stage: typeof sensors.stage === "string" ? String(sensors.stage) : null,
+      at: row.at ?String(row.at) : null,
+      result: row.result ?String(row.result) : null,
+      city: row.city ?String(row.city) : null,
+      country: row.country ?String(row.country) : null,
+      device: row.device ?String(row.device) : null,
+      lat: typeof row.lat === "number" ?Number(row.lat) : null,
+      lng: typeof row.lng === "number" ?Number(row.lng) : null,
+      sensorTempC: typeof sensors.temperatureC === "number" ?Number(sensors.temperatureC) : null,
+      sensorHumidity: typeof sensors.humidityPct === "number" ?Number(sensors.humidityPct) : null,
+      stage: typeof sensors.stage === "string" ?String(sensors.stage) : null,
     } satisfies TimelineEvent;
   });
 }
@@ -636,10 +636,10 @@ function buildDemoSensorHistory(timeline: TimelineEvent[], fallbackStorage: stri
     return timeline.map((event, index) => ({
       at: event.at,
       stage: event.stage || stages[Math.min(index, stages.length - 1)],
-      temperatureC: event.sensorTempC ?? Number((baselineTemp + Math.sin(index + 1) * 0.8).toFixed(1)),
-      humidityPct: event.sensorHumidity ?? Number((baselineHumidity + Math.cos(index + 1) * 2.2).toFixed(0)),
+      temperatureC: event.sensorTempC != null ? Number(event.sensorTempC) : Number((baselineTemp + Math.sin(index + 1) * 0.8).toFixed(1)),
+      humidityPct: event.sensorHumidity != null ? Number(event.sensorHumidity) : Number((baselineHumidity + Math.cos(index + 1) * 2.2).toFixed(0)),
       barrelAgeMonths: barrelMonths,
-      alert: (event.result || "").toLowerCase().includes("replay") ? "Payload replay detectado" : null,
+      alert: (event.result || "").toLowerCase().includes("replay") ?"Payload replay detectado" : null,
     }));
   }
   return [{
@@ -662,33 +662,33 @@ function buildPublicContract(params: {
   raw: { picc_data: string; enc: string; cmac: string };
   tap: { userAgent: string; city: string | null; country: string | null; lat: number | null; lng: number | null };
 }) {
-  const status = params.result.result || (params.result.ok ? 'VALID' : 'INVALID');
+  const status = params.result.result || (params.result.ok ?'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
   const trust = resolveTrustState(status, reason, params.result.product_state || null, params.result.enc_plain_status_byte || null);
   const verdictRisk = mapVerdictAndRisk({ statusCode: status, productState: params.result.product_state || null, reason, encPlainStatusByte: params.result.enc_plain_status_byte || null });
   const troubleshooting = buildTroubleshooting(reason, params.bid);
   const tenantResolution = resolveSunTenantProfile({ bid: params.bid, passport: params.passport, result: params.result as Record<string, unknown> });
   const setupWebBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
-  const setupEventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
+  const setupEventId = (params.result as { event_id?: string | number | null }).event_id ?String((params.result as { event_id?: string | number | null }).event_id) : null;
   const setupUa = summarizeUserAgent(params.tap.userAgent);
   const resultMeta = params.result as Record<string, unknown>;
   const carrierProfileCode = params.passport?.carrier_profile_code || null;
   const inferredCryptoCarrier = Boolean(resultMeta.tamper_supported || resultMeta.enc_plain_status_byte || resultMeta.tag_tamper);
   const carrierLabel = params.passport?.carrier_label
-    || (carrierProfileCode === "ntag424_dna_tt" ? "NTAG 424 DNA TagTamper TT" : null)
-    || (carrierProfileCode === "ntag424_dna" ? "NTAG 424 DNA" : null)
-    || (carrierProfileCode === "ntag216" ? "NTAG216" : null)
-    || (carrierProfileCode === "ntag215" ? "NTAG215" : null)
-    || (carrierProfileCode === "ntag213" ? "NTAG213" : null)
-    || (carrierProfileCode === "gs1_digital_link" ? "QR GS1 Digital Link" : null)
-    || (carrierProfileCode === "qr_basic" ? "QR comun" : null)
-    || (inferredCryptoCarrier ? "NTAG 424 DNA" : "Carrier sin configurar");
+    || (carrierProfileCode === "ntag424_dna_tt" ?"NTAG 424 DNA TagTamper TT" : null)
+    || (carrierProfileCode === "ntag424_dna" ?"NTAG 424 DNA" : null)
+    || (carrierProfileCode === "ntag216" ?"NTAG216" : null)
+    || (carrierProfileCode === "ntag215" ?"NTAG215" : null)
+    || (carrierProfileCode === "ntag213" ?"NTAG213" : null)
+    || (carrierProfileCode === "gs1_digital_link" ?"QR GS1 Digital Link" : null)
+    || (carrierProfileCode === "qr_basic" ?"QR comun" : null)
+    || (inferredCryptoCarrier ?"NTAG 424 DNA" : "Carrier sin configurar");
   const carrierSecurityLevel = params.passport?.carrier_security_level || null;
   const rawCarrierConsumerCopy = params.passport?.carrier_consumer_copy as unknown;
   const carrierConsumerCopy = typeof rawCarrierConsumerCopy === "string"
-    ? rawCarrierConsumerCopy
+    ?rawCarrierConsumerCopy
     : rawCarrierConsumerCopy && typeof rawCarrierConsumerCopy === "object"
-      ? String(
+      ?String(
           (rawCarrierConsumerCopy as { body?: unknown }).body
           || (rawCarrierConsumerCopy as { headline?: unknown }).headline
           || (rawCarrierConsumerCopy as { disclaimer?: unknown }).disclaimer
@@ -700,7 +700,7 @@ function buildPublicContract(params: {
   const carrierCapabilities = (params.passport?.carrier_capabilities || {}) as Record<string, unknown>;
   const readCarrierCapability = (camelKey: string, snakeKey: string, fallback: boolean) => {
     const value = carrierCapabilities[camelKey] ?? carrierCapabilities[snakeKey];
-    return typeof value === "boolean" ? value : fallback;
+    return typeof value === "boolean" ?value : fallback;
   };
   const carrierSupportsOwnership = readCarrierCapability("supportsOwnership", "supports_ownership", inferredCryptoCarrier);
   const carrierSupportsTokenization = readCarrierCapability("supportsTokenization", "supports_tokenization", inferredCryptoCarrier);
@@ -713,11 +713,11 @@ function buildPublicContract(params: {
     const setupProductName = params.passport?.product_name || params.passport?.sku || `Batch ${params.bid}`;
     const setupIsAuthentic = ["VALID", "OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"].includes(trust.code);
     const setupIsReplay = trust.code === "REPLAY_SUSPECT" || verdictRisk.verdict === "replay_suspect";
-    const setupScore = setupIsReplay ? 22 : setupIsAuthentic ? (trust.code === "VALID" ? 72 : 64) : 35;
+    const setupScore = setupIsReplay ?22 : setupIsAuthentic ?(trust.code === "VALID" ?72 : 64) : 35;
     const setupRiskLevel = setupIsReplay || verdictRisk.verdict === "tampered"
-      ? "high"
+      ?"high"
       : setupIsAuthentic
-        ? "medium"
+        ?"medium"
         : verdictRisk.riskLevel;
     return {
       ok: false,
@@ -859,7 +859,7 @@ function buildPublicContract(params: {
         lat: roundCoord(params.tap.lat, 2),
         lng: roundCoord(params.tap.lng, 2),
       },
-      quality: { score: setupScore, tier: setupIsReplay ? "Replay Hold" : setupIsAuthentic ? "Setup Hold" : "Setup Required" },
+      quality: { score: setupScore, tier: setupIsReplay ?"Replay Hold" : setupIsAuthentic ?"Setup Hold" : "Setup Required" },
       cta: {
         claimOwnership: false,
         registerWarranty: false,
@@ -881,9 +881,9 @@ function buildPublicContract(params: {
       tenantId: tenantResolution.tenantId,
       tenantSlug,
       batchId: params.bid,
-      tagId: params.uid ? maskIdentityValue(params.uid) : null,
+      tagId: params.uid ?maskIdentityValue(params.uid) : null,
       uidMasked: maskIdentityValue(params.uid || ""),
-      verdict: setupIsAuthentic ? "tenant_setup_required_authentic" : "tenant_setup_required",
+      verdict: setupIsAuthentic ?"tenant_setup_required_authentic" : "tenant_setup_required",
       riskLevel: setupRiskLevel,
       tag_tamper: params.result.tag_tamper || null,
       productName: setupProductName,
@@ -909,7 +909,7 @@ function buildPublicContract(params: {
   const tenantSlug = tenantProfile.tenantSlug;
   const tenantId = tenantProfile.tenantId;
   const webBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
-  const eventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
+  const eventId = (params.result as { event_id?: string | number | null }).event_id ?String((params.result as { event_id?: string | number | null }).event_id) : null;
   const tapQuery = new URLSearchParams({
     tenant: tenantSlug,
     fromTap: "1",
@@ -917,8 +917,8 @@ function buildPublicContract(params: {
   if (eventId) tapQuery.set("eventId", eventId);
   const wineryLocation = tenantProfile.origin.address || tenantProfile.origin.label || null;
   const sensorHistory = buildDemoSensorHistory(params.timeline, fallbackStorage, params.passport?.barrel_months || fallbackBarrelMonths);
-  const avgTemp = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
-  const avgHumidity = sensorHistory.length ? (sensorHistory.reduce((acc, item) => acc + (item.humidityPct || 0), 0) / sensorHistory.length) : null;
+  const avgTemp = sensorHistory.length ?(sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
+  const avgHumidity = sensorHistory.length ?(sensorHistory.reduce((acc, item) => acc + (item.humidityPct || 0), 0) / sensorHistory.length) : null;
   const timelineLatest = params.timeline[0] || null;
   const timelineOldest = params.timeline[params.timeline.length - 1] || null;
   const ua = summarizeUserAgent(params.tap.userAgent);
@@ -953,8 +953,8 @@ function buildPublicContract(params: {
     blockCarrierAction("join");
   }
   const carrierRequirements = [
-    !carrierSupportsOwnership ? `${carrierLabel}: ownership publico requiere compra/custodia o carrier seguro.` : "",
-    !carrierSupportsTokenization ? `${carrierLabel}: tokenizacion automatica requiere NTAG 424 DNA/TT o aprobacion manual.` : "",
+    !carrierSupportsOwnership ?`${carrierLabel}: ownership publico requiere compra/custodia o carrier seguro.` : "",
+    !carrierSupportsTokenization ?`${carrierLabel}: tokenizacion automatica requiere NTAG 424 DNA/TT o aprobacion manual.` : "",
   ].filter(Boolean);
   const effectiveRequirements = Array.from(new Set([...rightsPolicy.requirements, ...carrierRequirements]));
   const actionMatrix = {
@@ -962,28 +962,28 @@ function buildPublicContract(params: {
     blockedActions: Array.from(carrierBlockedActions),
   };
   const trustPenalty = trust.code === "VALID"
-    ? 0
+    ?0
     : isVerifiedOpenedTap
-      ? 8
+      ?8
       : trust.code === "REPLAY_SUSPECT"
-        ? 35
+        ?35
         : trust.code === "TAMPER_RISK"
-          ? 44
+          ?44
           : 22;
-  const sensorPenalty = sensorHistory.some((item) => item.alert) ? 10 : 0;
+  const sensorPenalty = sensorHistory.some((item) => item.alert) ?10 : 0;
   const qualityScore = Math.max(0, Math.min(100, 92 - trustPenalty - sensorPenalty));
   const compatibilityTokenizationPolicy = actionMatrix.allowedActions.includes("tokenization")
-    ? isVerifiedOpenedTap
-      ? "verified_opened_tap"
+    ?isVerifiedOpenedTap
+      ?"verified_opened_tap"
       : "fresh_valid_tap"
     : !carrierSupportsTokenization
-      ? "blocked_carrier_profile"
+      ?"blocked_carrier_profile"
       : String(rightsPolicy.tokenizationPolicy || "").startsWith("blocked_")
-      ? rightsPolicy.tokenizationPolicy
+      ?rightsPolicy.tokenizationPolicy
       : verdictRisk.verdict === "replay_suspect"
-        ? "blocked_replay"
+        ?"blocked_replay"
         : verdictRisk.verdict === "tampered"
-          ? "blocked_tamper"
+          ?"blocked_tamper"
           : "blocked_policy";
   const tokenizationPolicy = compatibilityTokenizationPolicy;
 
@@ -1126,10 +1126,10 @@ function buildPublicContract(params: {
       originLabel: tenantProfile.origin.label,
       originType: tenantProfile.vertical,
       sensorSnapshot: {
-        cellarTemperature: avgTemp != null ? `${avgTemp.toFixed(1)}°C` : null,
-        humidity: avgHumidity != null ? `${avgHumidity.toFixed(0)}%` : null,
+        cellarTemperature: avgTemp != null ?`${avgTemp.toFixed(1)}°C` : null,
+        humidity: avgHumidity != null ?`${avgHumidity.toFixed(0)}%` : null,
         lightExposure: "Low / protected",
-        transitShock: sensorHistory.some((item) => item.alert) ? "Potential handling alert detected" : "No critical shocks detected",
+        transitShock: sensorHistory.some((item) => item.alert) ?"Potential handling alert detected" : "No critical shocks detected",
       },
       sensorHistory,
     },
@@ -1144,7 +1144,7 @@ function buildPublicContract(params: {
     },
     quality: {
       score: qualityScore,
-      tier: qualityScore >= 85 ? "Premium" : qualityScore >= 75 ? "Verified Open" : qualityScore >= 65 ? "Monitored" : "At Risk",
+      tier: qualityScore >= 85 ?"Premium" : qualityScore >= 75 ?"Verified Open" : qualityScore >= 65 ?"Monitored" : "At Risk",
     },
     cta: {
       claimOwnership: actionMatrix.allowedActions.includes("claim"),
@@ -1162,7 +1162,7 @@ function buildPublicContract(params: {
     tenantId,
     tenantSlug,
     batchId: params.bid,
-    tagId: params.uid ? maskIdentityValue(params.uid) : null,
+    tagId: params.uid ?maskIdentityValue(params.uid) : null,
     uidMasked: maskIdentityValue(params.uid || ""),
     verdict: verdictRisk.verdict,
     riskLevel: verdictRisk.riskLevel,
@@ -1189,7 +1189,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     return next.pathname + next.search;
   };
   const labels = locale === "pt-BR"
-    ? {
+    ?{
       manualOpened: "Produto autêntico. Selo marcado como aberto por operador.",
       opened: "Produto autêntico, mas o selo foi aberto.",
       openedPreviously: "Autenticidade confirmada. O selo foi aberto anteriormente.",
@@ -1273,7 +1273,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       mapConsumerSignal: "Sinal para consumidor",
     }
     : locale === "en"
-      ? {
+      ?{
         manualOpened: "Authentic product. Seal flagged as opened by operator.",
         opened: "Authentic product, but the seal was opened.",
         openedPreviously: "Authenticity confirmed. The seal was opened previously.",
@@ -1439,70 +1439,70 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         mapInvestorSignal: "Señal para marca",
         mapConsumerSignal: "Señal para consumidor",
       };
-  const tone = contract.status.tone === 'good' ? '#22c55e' : contract.status.tone === 'risk' ? '#ef4444' : '#f59e0b';
+  const tone = contract.status.tone === 'good' ?'#22c55e' : contract.status.tone === 'risk' ?'#ef4444' : '#f59e0b';
   const isRiskBlocked = contract.blockedActions.includes("claim");
-  const authRibbonTone = contract.status.tone === "good" ? "#22c55e" : contract.status.tone === "risk" ? "#ef4444" : "#f59e0b";
+  const authRibbonTone = contract.status.tone === "good" ?"#22c55e" : contract.status.tone === "risk" ?"#ef4444" : "#f59e0b";
   const riskLevelLabel = contract.riskLevel === "none"
-    ? (copy.lang === "en" ? "low risk" : copy.lang === "pt-BR" ? "risco baixo" : "riesgo bajo")
+    ?(copy.lang === "en" ?"low risk" : copy.lang === "pt-BR" ?"risco baixo" : "riesgo bajo")
     : contract.riskLevel === "critical"
-      ? (copy.lang === "en" ? "critical risk" : copy.lang === "pt-BR" ? "risco crítico" : "riesgo crítico")
+      ?(copy.lang === "en" ?"critical risk" : copy.lang === "pt-BR" ?"risco crítico" : "riesgo crítico")
       : contract.riskLevel === "high"
-        ? (copy.lang === "en" ? "high risk" : copy.lang === "pt-BR" ? "risco alto" : "riesgo alto")
+        ?(copy.lang === "en" ?"high risk" : copy.lang === "pt-BR" ?"risco alto" : "riesgo alto")
         : contract.riskLevel === "medium"
-          ? (copy.lang === "en" ? "medium risk" : copy.lang === "pt-BR" ? "risco moderado" : "riesgo medio")
-          : (copy.lang === "en" ? "controlled risk" : copy.lang === "pt-BR" ? "risco controlado" : "riesgo controlado");
+          ?(copy.lang === "en" ?"medium risk" : copy.lang === "pt-BR" ?"risco moderado" : "riesgo medio")
+          : (copy.lang === "en" ?"controlled risk" : copy.lang === "pt-BR" ?"risco controlado" : "riesgo controlado");
   const riskTone = contract.riskLevel === "none"
-    ? "#22c55e"
+    ?"#22c55e"
     : contract.riskLevel === "critical" || contract.riskLevel === "high"
-      ? "#ef4444"
+      ?"#ef4444"
       : "#f59e0b";
   const tokenizationStatusLabel = !contract.tokenization.status || contract.tokenization.status === "none"
-    ? (copy.lang === "en" ? "not tokenized yet" : copy.lang === "pt-BR" ? "ainda sem tokenização" : "aún sin tokenización")
+    ?(copy.lang === "en" ?"not tokenized yet" : copy.lang === "pt-BR" ?"ainda sem tokenização" : "aún sin tokenización")
     : contract.tokenization.status;
   const productState = String(contract.status.productState || "").toUpperCase();
   const statusSummary = String(contract.status.summary || "").toUpperCase();
   const encPlainStatusByte = String((contract.status as { encPlainStatusByte?: string | null }).encPlainStatusByte || "").toUpperCase();
   const statusByteSignal = encPlainStatusByte === "43"
-    ? "closed"
+    ?"closed"
     : encPlainStatusByte === "4F"
-      ? "opened"
+      ?"opened"
       : statusSummary.includes("(CLOSED)") || statusSummary.includes("SELLO INTACTO")
-        ? "closed"
+        ?"closed"
         : statusSummary.includes("(OPENED)") || statusSummary.includes("SELLO FUE ABIERTO")
-          ? "opened"
+          ?"opened"
           : "unknown";
   const authPanelMessage = isRiskBlocked
-    ? copy.authReplay
+    ?copy.authReplay
     : statusByteSignal === "closed"
-      ? (copy.lang === "en" ? "Authenticity confirmed. Seal intact (CLOSED)." : copy.lang === "pt-BR" ? "Autenticidade confirmada. Selo intacto (CLOSED)." : "Autenticidad confirmada. Sello intacto (CLOSED).")
+      ?(copy.lang === "en" ?"Authenticity confirmed. Seal intact (CLOSED)." : copy.lang === "pt-BR" ?"Autenticidade confirmada. Selo intacto (CLOSED)." : "Autenticidad confirmada. Sello intacto (CLOSED).")
       : statusByteSignal === "opened"
-        ? (copy.lang === "en" ? "Authentic product, but the seal was opened (OPENED)." : copy.lang === "pt-BR" ? "Produto autêntico, mas o selo foi aberto (OPENED)." : "Producto auténtico, pero el sello fue abierto (OPENED).")
+        ?(copy.lang === "en" ?"Authentic product, but the seal was opened (OPENED)." : copy.lang === "pt-BR" ?"Produto autêntico, mas o selo foi aberto (OPENED)." : "Producto auténtico, pero el sello fue abierto (OPENED).")
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
-      ? labels.manualOpened
+      ?labels.manualOpened
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
-      ? labels.opened
+      ?labels.opened
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
-        ? labels.openedPreviously
+        ?labels.openedPreviously
       : productState === "VALID_UNKNOWN_TAMPER"
-        ? labels.unknownTamper
+        ?labels.unknownTamper
         : copy.authOk;
   const commercialStateLabel = isRiskBlocked
-    ? `${labels.commercialState}: ${labels.hold}`
+    ?`${labels.commercialState}: ${labels.hold}`
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
-      ? `${labels.commercialState}: DEMO_OPENED`
+      ?`${labels.commercialState}: DEMO_OPENED`
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
-      ? `${labels.commercialState}: ${labels.review}`
+      ?`${labels.commercialState}: ${labels.review}`
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
-        ? `${labels.commercialState}: ${labels.reviewPrev}`
+        ?`${labels.commercialState}: ${labels.reviewPrev}`
       : `${labels.commercialState}: ${labels.ok}`;
   const riskStateLabel = isRiskBlocked
-    ? `${labels.risk}: ${labels.riskReplay}`
+    ?`${labels.risk}: ${labels.riskReplay}`
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
-      ? `${labels.risk}: ${labels.riskManual}`
+      ?`${labels.risk}: ${labels.riskManual}`
       : productState === "VALID_OPENED" || contract.status.code === "OPENED"
-      ? `${labels.risk}: ${labels.riskTamper}`
+      ?`${labels.risk}: ${labels.riskTamper}`
       : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
-        ? `${labels.risk}: ${labels.riskPrev}`
+        ?`${labels.risk}: ${labels.riskPrev}`
       : `${labels.risk}: ${labels.riskControlled}`;
   const timeline = contract.provenance.timelineSummary;
   const timelineHtml = timeline.length
@@ -1544,13 +1544,16 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     || process.env.NEXT_PUBLIC_NEXID_RASTER_TILE_TEMPLATE
     || "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
   const rasterTileTemplate = rawRasterTileTemplate.includes("voyager_nolabels")
-    ? "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+    ?"https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
     : rawRasterTileTemplate;
+  const lightRasterTileTemplate = rasterTileTemplate.includes("/dark_all/")
+    ?rasterTileTemplate.replace("/dark_all/", "/light_all/")
+    : rasterTileTemplate;
   const pmtilesUrl = process.env.NEXID_PMTILES_URL || process.env.NEXT_PUBLIC_NEXID_PMTILES_URL || "";
   const mapSourceLabel = pmtilesUrl
-    ? "PMTiles ready"
+    ?"PMTiles ready"
     : rasterTileTemplate.startsWith("/") || rasterTileTemplate.includes("nexid.lat")
-      ? "Self-hosted tiles"
+      ?"Self-hosted tiles"
       : "Free raster fallback";
   const mapAttribution = process.env.NEXID_MAP_ATTRIBUTION || process.env.NEXT_PUBLIC_NEXID_MAP_ATTRIBUTION || "CARTO / OpenStreetMap";
   const routeSpanX = Math.abs(wineryPoint.x - tapPoint.x);
@@ -1562,7 +1565,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const atlasViewX = clampMap(atlasCenterX - atlasViewWidth / 2, 0, mapWidth - atlasViewWidth);
   const atlasViewY = clampMap(atlasCenterY - atlasViewHeight / 2, 0, mapHeight - atlasViewHeight);
   const atlasViewBox = `${atlasViewX.toFixed(1)} ${atlasViewY.toFixed(1)} ${atlasViewWidth.toFixed(1)} ${atlasViewHeight.toFixed(1)}`;
-  const atlasTileZoom = atlasViewWidth < 260 ? 5 : atlasViewWidth < 520 ? 4 : 3;
+  const atlasTileZoom = atlasViewWidth < 260 ?5 : atlasViewWidth < 520 ?4 : 3;
   const atlasTilesPerAxis = 2 ** atlasTileZoom;
   const atlasTileWidth = mapWidth / atlasTilesPerAxis;
   const atlasTileHeight = mapHeight / atlasTilesPerAxis;
@@ -1570,22 +1573,24 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const atlasTileMaxX = Math.ceil((atlasViewX + atlasViewWidth) / atlasTileWidth) + 1;
   const atlasTileMinY = Math.max(0, Math.floor(atlasViewY / atlasTileHeight) - 1);
   const atlasTileMaxY = Math.min(atlasTilesPerAxis - 1, Math.ceil((atlasViewY + atlasViewHeight) / atlasTileHeight) + 1);
-  const atlasTileImages = Array.from({ length: Math.max(0, atlasTileMaxY - atlasTileMinY + 1) }, (_, rowIndex) => atlasTileMinY + rowIndex)
+  const buildAtlasTileImages = (tileTemplate: string) => Array.from({ length: Math.max(0, atlasTileMaxY - atlasTileMinY + 1) }, (_, rowIndex) => atlasTileMinY + rowIndex)
     .flatMap((tileY) => Array.from({ length: Math.max(0, atlasTileMaxX - atlasTileMinX + 1) }, (_, colIndex) => atlasTileMinX + colIndex)
       .map((tileX) => {
         const wrappedX = ((tileX % atlasTilesPerAxis) + atlasTilesPerAxis) % atlasTilesPerAxis;
-        const href = rasterTileTemplate
+        const href = tileTemplate
           .replaceAll("{z}", String(atlasTileZoom))
           .replaceAll("{x}", String(wrappedX))
           .replaceAll("{y}", String(tileY));
         return `<image href="${htmlText(href)}" x="${(tileX * atlasTileWidth).toFixed(2)}" y="${(tileY * atlasTileHeight).toFixed(2)}" width="${atlasTileWidth.toFixed(2)}" height="${atlasTileHeight.toFixed(2)}" preserveAspectRatio="none"/>`;
       })).join("");
+  const atlasTileImages = buildAtlasTileImages(rasterTileTemplate);
+  const atlasLightTileImages = buildAtlasTileImages(lightRasterTileTemplate);
   const oldestTraceEvent = timeline[timeline.length - 1] || null;
   const newestTraceEvent = timeline[0] || null;
   const tokenProof = contract.tokenization.tokenId
-    ? `Token #${contract.tokenization.tokenId}`
+    ?`Token #${contract.tokenization.tokenId}`
     : contract.tokenization.txHash
-      ? maskIdentityValue(contract.tokenization.txHash)
+      ?maskIdentityValue(contract.tokenization.txHash)
       : tokenizationStatusLabel;
   const storyStyle = (kind: string) => {
     if (kind === "origin") return "border-color:rgba(52,211,153,.28);background:rgba(6,78,59,.22)";
@@ -1645,7 +1650,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   }).join('');
   const compactMapLabel = (value: unknown, max = 24) => {
     const text = String(value ?? "-").trim() || "-";
-    return text.length > max ? `${text.slice(0, Math.max(1, max - 3))}...` : text;
+    return text.length > max ?`${text.slice(0, Math.max(1, max - 3))}...` : text;
   };
   const atlasPanelWidth = clampMap(atlasViewWidth - 24, 142, 190);
   const atlasOriginPanelX = atlasViewX + 12;
@@ -1654,7 +1659,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const atlasTapPanelY = atlasViewY + 52;
   const atlasOriginSafeLabel = htmlText(compactMapLabel(contract.iot.wineryLocation || contract.provenance.origin || labels.origin));
   const atlasTapSafeLabel = htmlText(compactMapLabel([contract.tapContext.city, contract.tapContext.country].filter(Boolean).join(", ") || labels.tapLocation));
-  const atlasSvg = `<svg class="world-route-overlay" viewBox="${atlasViewBox}" aria-hidden="true" data-map-source="${htmlText(mapSourceLabel)}"><defs><linearGradient id="sun-ocean" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06243c"/><stop offset="52%" stop-color="#071827"/><stop offset="100%" stop-color="#111136"/></linearGradient><filter id="sun-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="${mapWidth}" height="${mapHeight}" fill="url(#sun-ocean)"/><g opacity="1">${atlasTileImages}</g><rect width="${mapWidth}" height="${mapHeight}" fill="rgba(2,6,23,.16)"/><path d="M0 86 H1000 M0 158 H1000 M0 230 H1000 M0 302 H1000 M0 374 H1000 M116 0 V460 M248 0 V460 M500 0 V460 M752 0 V460 M884 0 V460" fill="none" stroke="rgba(226,232,240,.055)" stroke-width="1" stroke-dasharray="8 14"/><g filter="url(#sun-glow)">${atlasLights}</g><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="54" fill="rgba(34,211,238,.16)"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="62" fill="rgba(249,115,22,.16)"/><path d="${atlasRoutePath}" fill="none" stroke="rgba(2,6,23,.82)" stroke-width="12" stroke-linecap="round"/><path d="${atlasRoutePath}" fill="none" stroke="#f97316" stroke-width="4.2" stroke-linecap="round" stroke-dasharray="10 12"><animate attributeName="stroke-dashoffset" values="0;-54" dur="3s" repeatCount="indefinite"/></path><circle r="5.5" fill="#facc15"><animateMotion dur="4.2s" repeatCount="indefinite" path="${atlasRoutePath}"/></circle><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="9" fill="#22d3ee" stroke="#ecfeff" stroke-width="2.4"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="10" fill="#f97316" stroke="#fff7ed" stroke-width="2.4"/><g transform="translate(${(atlasViewX + 12).toFixed(2)} ${(atlasViewY + 16).toFixed(2)})"><rect x="0" y="0" width="178" height="28" rx="14" fill="rgba(2,6,23,.74)" stroke="rgba(125,211,252,.32)"/><text x="14" y="18" fill="#cffafe" font-size="11" font-weight="800" letter-spacing="1.4">${htmlText(mapSourceLabel)}</text></g><text x="${(wineryPoint.x + 12).toFixed(2)}" y="${(wineryPoint.y - 13).toFixed(2)}" fill="#e0f2fe" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">${labels.origin}</text><text x="${(tapPoint.x + 12).toFixed(2)}" y="${(tapPoint.y - 13).toFixed(2)}" fill="#fed7aa" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">Tap</text><text x="${(atlasViewX + atlasViewWidth - 12).toFixed(2)}" y="${(atlasViewY + atlasViewHeight - 10).toFixed(2)}" text-anchor="end" fill="#cbd5e1" font-size="9" font-weight="700" opacity=".72" paint-order="stroke" stroke="rgba(2,6,23,.8)" stroke-width="3">${htmlText(mapAttribution)}</text></svg>`;
+  const atlasSvg = `<svg class="world-route-overlay" viewBox="${atlasViewBox}" aria-hidden="true" data-map-source="${htmlText(mapSourceLabel)}"><defs><linearGradient id="sun-ocean" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="var(--sun-ocean-1,#06243c)"/><stop offset="52%" stop-color="var(--sun-ocean-2,#071827)"/><stop offset="100%" stop-color="var(--sun-ocean-3,#111136)"/></linearGradient><filter id="sun-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="${mapWidth}" height="${mapHeight}" fill="url(#sun-ocean)"/><g class="atlas-tiles atlas-tiles-dark">${atlasTileImages}</g><g class="atlas-tiles atlas-tiles-light">${atlasLightTileImages}</g><rect width="${mapWidth}" height="${mapHeight}" fill="var(--sun-tile-overlay,rgba(2,6,23,.16))"/><path d="M0 86 H1000 M0 158 H1000 M0 230 H1000 M0 302 H1000 M0 374 H1000 M116 0 V460 M248 0 V460 M500 0 V460 M752 0 V460 M884 0 V460" fill="none" stroke="var(--sun-grid-stroke,rgba(226,232,240,.055))" stroke-width="1" stroke-dasharray="8 14"/><g filter="url(#sun-glow)">${atlasLights}</g><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="54" fill="rgba(34,211,238,.16)"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="62" fill="rgba(249,115,22,.16)"/><path d="${atlasRoutePath}" fill="none" stroke="rgba(2,6,23,.82)" stroke-width="12" stroke-linecap="round"/><path d="${atlasRoutePath}" fill="none" stroke="#f97316" stroke-width="4.2" stroke-linecap="round" stroke-dasharray="10 12"><animate attributeName="stroke-dashoffset" values="0;-54" dur="3s" repeatCount="indefinite"/></path><circle r="5.5" fill="#facc15"><animateMotion dur="4.2s" repeatCount="indefinite" path="${atlasRoutePath}"/></circle><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="9" fill="#22d3ee" stroke="#ecfeff" stroke-width="2.4"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="10" fill="#f97316" stroke="#fff7ed" stroke-width="2.4"/><g transform="translate(${(atlasViewX + 12).toFixed(2)} ${(atlasViewY + 16).toFixed(2)})"><rect x="0" y="0" width="178" height="28" rx="14" fill="rgba(2,6,23,.74)" stroke="rgba(125,211,252,.32)"/><text x="14" y="18" fill="#cffafe" font-size="11" font-weight="800" letter-spacing="1.4">${htmlText(mapSourceLabel)}</text></g><text x="${(wineryPoint.x + 12).toFixed(2)}" y="${(wineryPoint.y - 13).toFixed(2)}" fill="#e0f2fe" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">${labels.origin}</text><text x="${(tapPoint.x + 12).toFixed(2)}" y="${(tapPoint.y - 13).toFixed(2)}" fill="#fed7aa" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">Tap</text><text x="${(atlasViewX + atlasViewWidth - 12).toFixed(2)}" y="${(atlasViewY + atlasViewHeight - 10).toFixed(2)}" text-anchor="end" fill="#cbd5e1" font-size="9" font-weight="700" opacity=".72" paint-order="stroke" stroke="rgba(2,6,23,.8)" stroke-width="3">${htmlText(mapAttribution)}</text></svg>`;
   const atlasSafePanels = `<g transform="translate(${atlasOriginPanelX.toFixed(2)} ${atlasOriginPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(34,211,238,.34)"/><text x="12" y="16" fill="#67e8f9" font-size="9" font-weight="900" letter-spacing="1.4">${htmlText(labels.origin)}</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasOriginSafeLabel}</text></g><g transform="translate(${atlasTapPanelX.toFixed(2)} ${atlasTapPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(249,115,22,.38)"/><text x="12" y="16" fill="#fed7aa" font-size="9" font-weight="900" letter-spacing="1.4">TAP</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasTapSafeLabel}</text></g>`;
   const responsiveAtlasSvg = atlasSvg.replace("</svg>", `${atlasSafePanels}</svg>`);
   const maskedBid = maskIdentityValue(contract.identity.bid);
@@ -1664,20 +1669,20 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-icon" />
-  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.wrap{max-width:760px;margin:0 auto;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom))}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%);border:1px solid rgba(34,211,238,.22)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.trust-sticky{position:sticky;top:8px;z-index:40;border:1px solid rgba(34,211,238,.35);background:rgba(8,16,36,.85);backdrop-filter:blur(8px);padding:10px 12px;border-radius:12px;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}.trust-label{display:flex;align-items:center;gap:8px}.trust-dot{width:8px;height:8px;border-radius:999px;display:inline-block}.auth-card{border-color:rgba(34,211,238,.28);box-shadow:0 8px 28px rgba(34,211,238,.08)}.auth-topline{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;margin-bottom:8px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.lang-switch{display:flex;gap:6px;margin-top:6px}.lang-switch a{text-decoration:none;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.4);color:#dbeafe}.lang-switch a.active{border-color:#22d3ee;color:#67e8f9;background:rgba(34,211,238,.12)}.hero h1{margin:10px 0 4px;font-size:clamp(1.7rem,6vw,2.1rem);line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.chip-soft{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.35)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:10px;background:rgba(2,6,23,.45);min-height:72px;display:flex;flex-direction:column;justify-content:center}.kpi b{display:block;font-size:14px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,.2)}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-route-overlay{position:absolute;inset:0;width:100%;height:100%}.world-map-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (hover:hover){.card{transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(2,6,23,.44)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}.trust-sticky{padding:9px 10px}.trust-label{line-height:1.25}.kpi{min-height:64px}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.chip-soft{background:#ecfeff;border-color:#a5f3fc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%);border-color:#93c5fd}.world-map-canvas{background:#dbeafe}.world-map-image{filter:saturate(1) contrast(1)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.wrap{max-width:760px;margin:0 auto;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom))}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%);border:1px solid rgba(34,211,238,.22)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.trust-sticky{position:sticky;top:8px;z-index:40;border:1px solid rgba(34,211,238,.35);background:rgba(8,16,36,.85);backdrop-filter:blur(8px);padding:10px 12px;border-radius:12px;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}.trust-label{display:flex;align-items:center;gap:8px}.trust-dot{width:8px;height:8px;border-radius:999px;display:inline-block}.auth-card{border-color:rgba(34,211,238,.28);box-shadow:0 8px 28px rgba(34,211,238,.08)}.auth-topline{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;margin-bottom:8px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.lang-switch{display:flex;gap:6px;margin-top:6px}.lang-switch a{text-decoration:none;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.4);color:#dbeafe}.lang-switch a.active{border-color:#22d3ee;color:#67e8f9;background:rgba(34,211,238,.12)}.hero h1{margin:10px 0 4px;font-size:clamp(1.7rem,6vw,2.1rem);line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.chip-soft{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.35)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:10px;background:rgba(2,6,23,.45);min-height:72px;display:flex;flex-direction:column;justify-content:center}.kpi b{display:block;font-size:14px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,.2)}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-route-overlay{position:absolute;inset:0;width:100%;height:100%;--sun-ocean-1:#06243c;--sun-ocean-2:#071827;--sun-ocean-3:#111136;--sun-tile-overlay:rgba(2,6,23,.16);--sun-grid-stroke:rgba(226,232,240,.055)}.atlas-tiles-light{display:none}.world-map-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (hover:hover){.card{transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(2,6,23,.44)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}.trust-sticky{padding:9px 10px}.trust-label{line-height:1.25}.kpi{min-height:64px}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.chip-soft{background:#ecfeff;border-color:#a5f3fc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#f8fcff 0%,#dff4ff 100%);border-color:#93c5fd}.world-map-canvas{background:#eaf7ff}.world-route-overlay{--sun-ocean-1:#effaff;--sun-ocean-2:#e0f7ff;--sun-ocean-3:#eef4ff;--sun-tile-overlay:rgba(255,255,255,.28);--sun-grid-stroke:rgba(14,116,144,.1)}.atlas-tiles-dark{display:none}.atlas-tiles-light{display:block}.world-map-image{filter:saturate(.9) contrast(.92) brightness(1.08)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
   <div class="trust-sticky"><span class="trust-label"><span class="trust-dot" style="background:${authRibbonTone}"></span><b>${copy.authPanel}:</b> <span style="color:${authRibbonTone};font-weight:700">${contract.status.label}</span></span><span class="chip" style="margin-top:0;border-color:${riskTone};color:${riskTone};background:rgba(2,6,23,.36)">${riskLevelLabel}</span></div>
-  <section class="card hero"><div class="hero-top"><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">NexID Verified Tap</span></div><h1>${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><p class="hero-meta">${labels.heroRoute} · ${labels.eventLabel} #${contract.identity.eventId || 'N/A'}</p><div class="lang-switch"><a href="${langUrl('es-AR')}" class="${locale === 'es-AR' ? 'active' : ''}">ES</a><a href="${langUrl('pt-BR')}" class="${locale === 'pt-BR' ? 'active' : ''}">PT</a><a href="${langUrl('en')}" class="${locale === 'en' ? 'active' : ''}">EN</a></div></div><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span></div><div class="chips"><span class="chip">BID ${maskedBid}</span><span class="chip">UID ${maskedUid}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ? "pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div><div class="kpis"><div class="kpi"><b>${contract.provenance.timelineSummary.length}</b><span>${labels.events}</span></div><div class="kpi"><b>${tokenizationStatusLabel}</b><span>${labels.tokenization}</span></div><div class="kpi"><b>${contract.tapContext.deviceType || "-"}</b><span>${labels.device}</span></div></div></section>
-  <section class="card auth-card"><div class="auth-topline">Trust signal</div><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips">${encPlainStatusByte ? `<span class="chip chip-soft">TTStatus byte: ${encPlainStatusByte}</span>` : ""}</div><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">${labels.dashboardSync}</span></div></section>
+  <section class="card hero"><div class="hero-top"><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">NexID Verified Tap</span></div><h1>${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><p class="hero-meta">${labels.heroRoute} · ${labels.eventLabel} #${contract.identity.eventId || 'N/A'}</p><div class="lang-switch"><a href="${langUrl('es-AR')}" class="${locale === 'es-AR' ?'active' : ''}">ES</a><a href="${langUrl('pt-BR')}" class="${locale === 'pt-BR' ?'active' : ''}">PT</a><a href="${langUrl('en')}" class="${locale === 'en' ?'active' : ''}">EN</a></div></div><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span></div><div class="chips"><span class="chip">BID ${maskedBid}</span><span class="chip">UID ${maskedUid}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ?"pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div><div class="kpis"><div class="kpi"><b>${contract.provenance.timelineSummary.length}</b><span>${labels.events}</span></div><div class="kpi"><b>${tokenizationStatusLabel}</b><span>${labels.tokenization}</span></div><div class="kpi"><b>${contract.tapContext.deviceType || "-"}</b><span>${labels.device}</span></div></div></section>
+  <section class="card auth-card"><div class="auth-topline">Trust signal</div><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips">${encPlainStatusByte ?`<span class="chip chip-soft">TTStatus byte: ${encPlainStatusByte}</span>` : ""}</div><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">${labels.dashboardSync}</span></div></section>
   <section class="card"><div class="section-head"><h3>${copy.identityPanel}</h3><span class="section-tag">${labels.wineProfile}</span></div><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.varietal}</span><span class="v">${contract.product.varietal || '-'}</span></div><div class="detail-item"><span class="k">${labels.vintage}</span><span class="v">${contract.product.vintage || '-'}</span></div><div class="detail-item"><span class="k">${labels.harvest}</span><span class="v">${contract.product.harvestYear || '-'}</span></div><div class="detail-item"><span class="k">${labels.barrel}</span><span class="v">${contract.product.barrelMonths || '-'} ${labels.months}</span></div><div class="detail-item"><span class="k">${labels.alcohol}</span><span class="v">${contract.product.alcohol || '-'}</span></div><div class="detail-item"><span class="k">${labels.serving}</span><span class="v">${contract.product.serving || '-'}</span></div></div><p style="margin-top:10px">${labels.bottleFormat}: <b>${contract.product.bottle || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.provenancePanel}</h3><span class="section-tag">${labels.traceability}</span></div><p>${labels.origin}: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.iotPanel}</h3><span class="section-tag">${labels.sensorIntelligence}</span></div><p>${labels.winery}: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>${labels.altitude}: <b>${contract.iot.altitude || '-'}</b> · ${labels.oak}: <b>${contract.iot.oakType || '-'}</b></p><p>${labels.cellarTemp}: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · ${labels.humidity}: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>${labels.light}: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · ${labels.transit}: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
-  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ? ` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceKm} km</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
+  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ?` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceKm} km</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
   <div class="world-map-wrap"><div class="world-map-canvas">${responsiveAtlasSvg}</div><div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div></div>
   <div class="trace-story" style="margin-top:10px;border:1px solid rgba(34,211,238,.22);border-radius:14px;padding:10px;background:linear-gradient(180deg,rgba(8,47,73,.44),rgba(15,23,42,.28))"><div class="trace-story-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><h4 style="margin:0;font-size:14px">${labels.mapStoryTitle}</h4><p style="margin:2px 0 0;color:#9fb5d9;font-size:11px">${labels.mapStorySubtitle}</p></div><span class="section-tag">${labels.mapLedgerTitle}</span></div><div class="story-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px">${traceStoryHtml}</div><div class="ledger-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:8px">${traceLedgerHtml}</div><p style="margin:9px 0 0;font-size:11px;color:#a7f3d0">${labels.mapInvestorSignal}: ${contract.provenance.timelineSummary.length} ${labels.events}, ${routeDistanceKm} km, ${htmlText(tokenProof)}. ${labels.mapConsumerSignal}: ${labels.linkPortal} + ${labels.linkRewards}.</p></div>
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${labels.routeSummary}: ${contract.iot.wineryLocation || labels.origin} → ${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'} · ${labels.mapLegend}.</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>${labels.statusLabel}: <b>${contract.tokenization.status}</b> · ${labels.networkLabel}: <b>${contract.tokenization.network || '-'}</b></p><p>${labels.tokenIdLabel}: ${contract.tokenization.tokenId || '-'} · ${labels.txLabel}: ${contract.tokenization.txHash || '-'}</p></section>
-  <section class="card"><div class="section-head"><h3>${copy.actionsPanel}</h3><span class="section-tag">${labels.consumerJourney}</span></div><p class="subtitle" style="margin-bottom:10px">${labels.actionSubtitle}</p><div class="journey-steps"><div class="journey-step"><b>${labels.journey1}</b><span>${labels.journey1Desc}</span></div><div class="journey-step"><b>${labels.journey2}</b><span>${labels.journey2Desc}</span></div><div class="journey-step"><b>${labels.journey3}</b><span>${labels.journey3Desc}</span></div></div><div class="actions-grid" style="margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" data-gated-link="marketplace" class="link-btn" style="color:#a5f3fc;background:rgba(6,182,212,.12)">🛍 ${labels.linkMarketplace} ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" data-gated-link="rewards" class="link-btn" style="color:#ddd6fe;background:rgba(139,92,246,.12)">🎁 ${labels.linkRewards}</a><a href="${contract.cta.registerUrl}" data-gated-link="register" class="link-btn" style="color:#d1fae5;background:rgba(16,185,129,.12)">🧾 ${labels.linkRegister}</a><a href="${contract.cta.portalUrl}" data-gated-link="portal" class="link-btn" style="color:#dbeafe;background:rgba(59,130,246,.12)">👤 ${labels.linkPortal}</a></div><div class="actions-grid"><button type="button" data-cta="claim-ownership" ${contract.cta.claimOwnership ? "" : "disabled"}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${contract.cta.registerWarranty ? "" : "disabled"}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance" ${contract.cta.provenance ? "" : "disabled"}>📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${contract.cta.tokenize ? "" : "disabled"}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isRiskBlocked ? copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#94a3b8">${labels.tapHelp}</p>${shareToken ? "" : `<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">${labels.demoMode}</p>`}</section>
+  <section class="card"><div class="section-head"><h3>${copy.actionsPanel}</h3><span class="section-tag">${labels.consumerJourney}</span></div><p class="subtitle" style="margin-bottom:10px">${labels.actionSubtitle}</p><div class="journey-steps"><div class="journey-step"><b>${labels.journey1}</b><span>${labels.journey1Desc}</span></div><div class="journey-step"><b>${labels.journey2}</b><span>${labels.journey2Desc}</span></div><div class="journey-step"><b>${labels.journey3}</b><span>${labels.journey3Desc}</span></div></div><div class="actions-grid" style="margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" data-gated-link="marketplace" class="link-btn" style="color:#a5f3fc;background:rgba(6,182,212,.12)">🛍 ${labels.linkMarketplace} ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" data-gated-link="rewards" class="link-btn" style="color:#ddd6fe;background:rgba(139,92,246,.12)">🎁 ${labels.linkRewards}</a><a href="${contract.cta.registerUrl}" data-gated-link="register" class="link-btn" style="color:#d1fae5;background:rgba(16,185,129,.12)">🧾 ${labels.linkRegister}</a><a href="${contract.cta.portalUrl}" data-gated-link="portal" class="link-btn" style="color:#dbeafe;background:rgba(59,130,246,.12)">👤 ${labels.linkPortal}</a></div><div class="actions-grid"><button type="button" data-cta="claim-ownership" ${contract.cta.claimOwnership ?"" : "disabled"}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${contract.cta.registerWarranty ?"" : "disabled"}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance" ${contract.cta.provenance ?"" : "disabled"}>📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${contract.cta.tokenize ?"" : "disabled"}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isRiskBlocked ?copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#94a3b8">${labels.tapHelp}</p>${shareToken ?"" : `<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">${labels.demoMode}</p>`}</section>
 <script>
 (() => {
   const share = ${JSON.stringify(shareToken)};
@@ -1686,7 +1691,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const copy = ${JSON.stringify(copy)};
   const labels = ${JSON.stringify(labels)};
   const ui = copy.lang === 'pt-BR'
-    ? {
+    ?{
       askContact: 'Informe seu e-mail ou telefone para registrar/associar ao tenant:',
       askCode: 'Código de verificação (demo):',
       askRewards: 'E-mail para ativar promoções/rewards do clube:',
@@ -1699,7 +1704,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       nfcFail: 'Não foi possível iniciar NFC neste dispositivo.',
     }
     : copy.lang === 'en'
-      ? {
+      ?{
         askContact: 'Enter your email or phone to register/link your account to this tenant:',
         askCode: 'Verification code (demo):',
         askRewards: 'Email to activate club promos/rewards:',
@@ -1738,7 +1743,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       contact = window.prompt(ui.askContact) || '';
       if (!contact.trim()) return { ok: false, reason: 'cancelled' };
       const normalizedContact = contact.trim();
-      const payload = normalizedContact.includes('@') ? { email: normalizedContact } : { phone: normalizedContact };
+      const payload = normalizedContact.includes('@') ?{ email: normalizedContact } : { phone: normalizedContact };
       const start = await jsonFetch('/consumer/auth/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => null);
       if (!start?.ok) return { ok: false, reason: 'start_failed' };
       let entered = String(start.code || '').trim();
@@ -1747,7 +1752,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       }
       if (!entered) return { ok: false, reason: 'code_cancelled' };
       const buildVerifyPayload = (code) => normalizedContact.includes('@')
-        ? { email: normalizedContact, code }
+        ?{ email: normalizedContact, code }
         : { phone: normalizedContact, code };
       let verify = await jsonFetch('/consumer/auth/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildVerifyPayload(entered)) }).catch(() => null);
       if (!verify?.ok && start?.code) {
@@ -1767,7 +1772,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
           await jsonFetch('/mobile/passport/' + encodeURIComponent(eventId) + '/loyalty/enroll', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(contactForEnroll.includes('@') ? { email: contactForEnroll } : { phone: contactForEnroll }),
+            body: JSON.stringify(contactForEnroll.includes('@') ?{ email: contactForEnroll } : { phone: contactForEnroll }),
           }).catch(() => null);
         }
       }
@@ -1783,9 +1788,9 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       const auth = await ensureAuthAndTenant(action);
       if (!auth.ok) {
         if (statusNode) statusNode.textContent = auth.reason === 'tap_not_verified'
-          ? ui.notVerified
+          ?ui.notVerified
           : auth.reason === 'start_failed' || auth.reason === 'verify_failed'
-            ? ui.hostFail
+            ?ui.hostFail
             : ui.assocFail + ' (' + auth.reason + ').';
         if (auth.reason === 'start_failed' || auth.reason === 'verify_failed') {
           window.location.href = ${JSON.stringify(contract.cta.registerUrl)};
@@ -1818,10 +1823,10 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       button.disabled = true;
       button.textContent = copy.processing;
       if (statusNode) statusNode.textContent = copy.processing + ' ' + action;
-      const shareQuery = share ? '&share=' + encodeURIComponent(share) : '';
-      const endpoint = '/public/cta/' + action + '?' + (share ? 'share=' + encodeURIComponent(share) : '');
+      const shareQuery = share ?'&share=' + encodeURIComponent(share) : '';
+      const endpoint = '/public/cta/' + action + '?' + (share ?'share=' + encodeURIComponent(share) : '');
       try {
-        const res = await fetch(endpoint, action === 'provenance' ? { method: 'GET', cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bid, uid, event_id: eventId, source: 'sun_mobile_preview' }) });
+        const res = await fetch(endpoint, action === 'provenance' ?{ method: 'GET', cache: 'no-store' } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bid, uid, event_id: eventId, source: 'sun_mobile_preview' }) });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok || !payload?.ok) {
           const reason = payload?.reason || ('HTTP ' + res.status);
@@ -1832,7 +1837,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         button.textContent = labels.actionDone;
         if (statusNode) statusNode.textContent = action + ' ' + copy.actionOk;
         if (action === 'provenance') {
-          const timeline = Array.isArray(payload?.timeline) ? payload.timeline : [];
+          const timeline = Array.isArray(payload?.timeline) ?payload.timeline : [];
           if (statusNode) statusNode.textContent = labels.provenanceLoaded + ': ' + timeline.length + ' ' + labels.eventsLoaded + '.';
         }
       } catch {
@@ -1860,7 +1865,7 @@ async function dispatchValidScanWebhook(payload: Record<string, unknown>) {
   const secret = process.env.SCAN_WEBHOOK_SECRET || '';
   await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...(secret ? { 'x-nexid-signature': secret } : {}) },
+    headers: { 'content-type': 'application/json', ...(secret ?{ 'x-nexid-signature': secret } : {}) },
     body: JSON.stringify(payload),
     cache: 'no-store',
   }).catch(() => null);
@@ -1974,8 +1979,8 @@ export async function GET(req: Request): Promise<Response> {
         userAgent: ua,
         city: geoCity,
         countryCode: geoCountry,
-        lat: Number.isFinite(geoLat) ? geoLat : null,
-        lng: Number.isFinite(geoLng) ? geoLng : null,
+        lat: Number.isFinite(geoLat) ?geoLat : null,
+        lng: Number.isFinite(geoLng) ?geoLng : null,
         source: 'real',
         meta: {
           trace_id: traceId,
@@ -1984,14 +1989,14 @@ export async function GET(req: Request): Promise<Response> {
       },
     }), SUN_PIPELINE_TIMEOUT_MS, "sun_pipeline");
   } catch (error) {
-    const internalReason = error instanceof Error ? error.message : 'sun_processing_error';
+    const internalReason = error instanceof Error ?error.message : 'sun_processing_error';
     result = { status: 200, body: { ok: false, reason: sanitizePublicErrorReason(internalReason) } };
     console.error("[sun_scan_error]", JSON.stringify({ traceId, bid, reason: internalReason }));
   }
 
   const uid = result.body.uid || null;
   const eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
-  const ctr = typeof result.body.ctr === 'number' ? result.body.ctr : null;
+  const ctr = typeof result.body.ctr === 'number' ?result.body.ctr : null;
   if (uid && ctr != null) {
     const uidCtrRate = await safeHitSunRateLimit('uid_ctr', `${uid}:${ctr}`, 60, RATE_LIMIT_MAX_UID_CTR);
     if (uidCtrRate.limited) {
@@ -2016,8 +2021,8 @@ export async function GET(req: Request): Promise<Response> {
       userAgent: ua,
       city: geoCity,
       country: geoCountry,
-      lat: Number.isFinite(geoLat) ? geoLat : null,
-      lng: Number.isFinite(geoLng) ? geoLng : null,
+      lat: Number.isFinite(geoLat) ?geoLat : null,
+      lng: Number.isFinite(geoLng) ?geoLng : null,
     },
   });
   (contract as Record<string, unknown>).trace_id = traceId;
@@ -2030,8 +2035,8 @@ export async function GET(req: Request): Promise<Response> {
         city: geoCity || "Unknown",
         country: geoCountry || "--",
         device: `${contract.tapContext.os} · ${contract.tapContext.browser}`,
-        lat: Number.isFinite(geoLat) ? geoLat : null,
-        lng: Number.isFinite(geoLng) ? geoLng : null,
+        lat: Number.isFinite(geoLat) ?geoLat : null,
+        lng: Number.isFinite(geoLng) ?geoLng : null,
         stage: "current_tap",
       },
     ];
@@ -2041,9 +2046,9 @@ export async function GET(req: Request): Promise<Response> {
   const tapTokenizationPolicy = String(contract.tapSecurity?.policy || "");
   const tenantAllowsAutoTokenization =
     tenantTokenizationMode === "valid_and_opened"
-      ? tapTokenizationPolicy === "fresh_valid_tap" || tapTokenizationPolicy === "verified_opened_tap"
+      ?tapTokenizationPolicy === "fresh_valid_tap" || tapTokenizationPolicy === "verified_opened_tap"
       : tenantTokenizationMode === "valid_only"
-        ? tapTokenizationPolicy === "fresh_valid_tap"
+        ?tapTokenizationPolicy === "fresh_valid_tap"
         : false;
   const canAutoTokenizeFreshTap =
     Boolean(result.body.ok && uid)
@@ -2057,13 +2062,13 @@ export async function GET(req: Request): Promise<Response> {
   if (canAutoTokenizeFreshTap && uid) {
     const autoMint = await queueAutoTokenizationForValidTap({ bid, uid, traceId, eventId }).catch((error) => ({
       ok: false,
-      reason: error instanceof Error ? error.message : "auto_tokenization_failed",
+      reason: error instanceof Error ?error.message : "auto_tokenization_failed",
       status: "failed",
     }));
     if (autoMint && typeof autoMint === "object" && "ok" in autoMint) {
       if (autoMint.ok === false) {
-        const mintReason = "reason" in autoMint ? String(autoMint.reason || "unknown_error") : "unknown_error";
-        const autoStatus = "status" in autoMint ? String(autoMint.status || "failed").toLowerCase() : "failed";
+        const mintReason = "reason" in autoMint ?String(autoMint.reason || "unknown_error") : "unknown_error";
+        const autoStatus = "status" in autoMint ?String(autoMint.status || "failed").toLowerCase() : "failed";
         const publicReason = sanitizePublicErrorReason(mintReason);
         const tokenizationMeta = contract.tokenization as Record<string, unknown>;
         if ("request_id" in autoMint && autoMint.request_id) tokenizationMeta.requestId = String(autoMint.request_id);
@@ -2120,10 +2125,10 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   if (result.body.ok) {
-    void dispatchValidScanWebhook({ event: 'tag.scan.valid', bid, uid: result.body.uid, counter: result.body.ctr, ip, userAgent: ua, geoCity, geoCountry, geoLat: Number.isFinite(geoLat) ? geoLat : null, geoLng: Number.isFinite(geoLng) ? geoLng : null, ts: new Date().toISOString() });
+    void dispatchValidScanWebhook({ event: 'tag.scan.valid', bid, uid: result.body.uid, counter: result.body.ctr, ip, userAgent: ua, geoCity, geoCountry, geoLat: Number.isFinite(geoLat) ?geoLat : null, geoLng: Number.isFinite(geoLng) ?geoLng : null, ts: new Date().toISOString() });
   }
 
-  const maskedUid = uid ? `${String(uid).slice(0, 4)}***${String(uid).slice(-4)}` : null;
+  const maskedUid = uid ?`${String(uid).slice(0, 4)}***${String(uid).slice(-4)}` : null;
   const verdict = String(contract.status.code || result.body.result || "UNKNOWN");
   const diagnosticId = await insertSunDiagnostic({
     trace_id: traceId,
@@ -2131,9 +2136,9 @@ export async function GET(req: Request): Promise<Response> {
     bid,
     uid_hex: uid || null,
     uid_masked: maskedUid,
-    read_counter: typeof ctr === "number" ? ctr : null,
+    read_counter: typeof ctr === "number" ?ctr : null,
     auth_status: String((result.body as { auth_status?: string }).auth_status || result.body.result || "UNKNOWN"),
-    replay_status: verdict === "REPLAY_SUSPECT" ? "REPLAY_SUSPECT" : "NO_REPLAY",
+    replay_status: verdict === "REPLAY_SUSPECT" ?"REPLAY_SUSPECT" : "NO_REPLAY",
     product_state: (result.body as { product_state?: string }).product_state || null,
     tamper_status: (result.body as { tamper_status?: string }).tamper_status || null,
     tamper_signal: (result.body as { tamper_signal?: string }).tamper_signal || null,
@@ -2166,7 +2171,7 @@ export async function GET(req: Request): Promise<Response> {
 
   if (wantsHtml(req, url)) {
     const freshHandoffToken = diagnosticId && contract.tapSecurity?.freshTap && !contract.tapSecurity?.replayDetected && eventId
-      ? (() => {
+      ?(() => {
           try {
             const now = Math.floor(Date.now() / 1000);
             return createSunFreshHandoffToken({
@@ -2180,21 +2185,21 @@ export async function GET(req: Request): Promise<Response> {
             console.warn("[sun_fresh_handoff_unavailable]", JSON.stringify({
               traceId,
               diagnosticId,
-              reason: sanitizePublicErrorReason(error instanceof Error ? error.message : "fresh_handoff_error"),
+              reason: sanitizePublicErrorReason(error instanceof Error ?error.message : "fresh_handoff_error"),
             }));
             return null;
           }
         })()
       : null;
-    const webTarget = wantsInlineApiHtml(url) ? null : buildWebSunSnapshotUrl(url, diagnosticId, traceId, locale, freshHandoffToken);
+    const webTarget = wantsInlineApiHtml(url) ?null : buildWebSunSnapshotUrl(url, diagnosticId, traceId, locale, freshHandoffToken);
     if (webTarget) {
       return Response.redirect(webTarget, 303);
     }
     const shareToken = uid || eventId
-      ? (() => {
+      ?(() => {
           try {
             const now = Math.floor(Date.now() / 1000);
-            return createDemoShareToken({ bid, uid: uid || (eventId ? eventShareUid(eventId) : ""), exp: now + 60 * 30 });
+            return createDemoShareToken({ bid, uid: uid || (eventId ?eventShareUid(eventId) : ""), exp: now + 60 * 30 });
           } catch {
             return null;
           }

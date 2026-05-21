@@ -926,7 +926,47 @@ html.theme-light [data-nexid-map="premium-vector-map"] {
 html.theme-light .sun-stage-real-map [data-nexid-map="premium-vector-map"],
 html.theme-light .sun-map-section--enterprise [data-nexid-map="premium-vector-map"],
 html.theme-light .global-ops-map-stage [data-nexid-map="premium-vector-map"] {
-  filter: saturate(0.86) brightness(1.08) contrast(0.88);
+  filter: saturate(0.78) brightness(1.18) contrast(0.78);
+}
+
+html.theme-light .hero-trust-map-stage [data-nexid-map="premium-vector-map"],
+html.theme-light .demo-lab-product-stage [data-nexid-map="premium-vector-map"],
+html.theme-light .sun-stage-real-map [data-nexid-map="premium-vector-map"] {
+  --nexid-vector-ocean-1: #f7fdff;
+  --nexid-vector-ocean-2: #eef9ff;
+  --nexid-vector-ocean-3: #f6f2ff;
+  --nexid-vector-land-1: #0ea5e9;
+  --nexid-vector-land-2: #14b8a6;
+  --nexid-vector-land-3: #8b5cf6;
+  --nexid-vector-land-opacity-1: 0.16;
+  --nexid-vector-land-opacity-2: 0.14;
+  --nexid-vector-land-opacity-3: 0.1;
+  --nexid-vector-land-edge-opacity-1: 0.14;
+  --nexid-vector-land-edge-opacity-2: 0.22;
+  --nexid-vector-land-edge-opacity-3: 0.12;
+  --nexid-vector-vignette-1: rgba(255, 255, 255, 0.2);
+  --nexid-vector-vignette-2: rgba(224, 242, 254, 0.1);
+  --nexid-vector-vignette-3: rgba(186, 230, 253, 0.1);
+  --nexid-vector-tile-overlay-route: rgba(255, 255, 255, 0.3);
+  --nexid-vector-tile-overlay: rgba(255, 255, 255, 0.34);
+  --nexid-vector-grid-major: rgba(14, 116, 144, 0.045);
+  --nexid-vector-grid-minor: rgba(14, 116, 144, 0.032);
+}
+
+html.theme-light .sun-stage-real-map,
+html.theme-light .demo-lab-product-stage,
+html.theme-light .hero-trust-map-stage {
+  background:
+    radial-gradient(circle at 18% 28%, rgba(14, 165, 233, 0.12), transparent 18rem),
+    radial-gradient(circle at 82% 18%, rgba(167, 139, 250, 0.12), transparent 20rem),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(224, 242, 254, 0.76)) !important;
+}
+
+html.theme-light .sun-map-section--enterprise .global-ops-map-stage,
+html.theme-light .sun-map-section--enterprise .global-ops-map-card {
+  background:
+    radial-gradient(circle at 20% 24%, rgba(14, 165, 233, 0.12), transparent 16rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(232, 251, 255, 0.72)) !important;
 }
 
 body:has(.sun-mobile-surface) .helpbot-hint {

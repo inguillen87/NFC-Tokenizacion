@@ -33,7 +33,7 @@ export default async function PricingPage() {
 
   const labels =
     locale === "en"
-      ? {
+      ?{
           includeTitle: "What is included in every quote",
           includes: ["Encoded chips by vertical and tag profile", "Authentication API + dashboard operations", "Onboarding, setup and integration scope", "Fraud/tamper rules + monitoring + support"],
           requestQuote: "Request quote",
@@ -98,7 +98,7 @@ export default async function PricingPage() {
           ],
         }
       : locale === "pt-BR"
-      ? {
+      ?{
           includeTitle: "O que inclui cada proposta",
           includes: ["Chips codificados por vertical e perfil de tag", "API de autenticação + operação no dashboard", "Onboarding, setup e escopo de integração", "Regras anti-fraude/tamper + monitoramento + suporte"],
           requestQuote: "Solicitar orçamento",
@@ -163,41 +163,41 @@ export default async function PricingPage() {
           ],
         }
       : {
-          includeTitle: "Qué incluye cada propuesta",
-          includes: ["Chips codificados por vertical y perfil de tag", "API de autenticación + operación de dashboard", "Onboarding, setup y alcance de integración", "Reglas anti-fraude/tamper + monitoreo + soporte"],
+          includeTitle: "Que incluye cada propuesta",
+          includes: ["Tags o QR segun el nivel de riesgo", "Portal, dashboard y experiencia mobile", "Carga de lote, fotos, reglas y beneficios", "Alertas, soporte y plan de salida a mercado"],
           requestQuote: "Solicitar presupuesto",
           talkSales: "Hablar con ventas",
           reseller: "Quiero ser reseller",
           cardInfo: "La propuesta se ajusta por vertical, volumen, SLA, setup, dashboard y profundidad de API.",
           commercialEyebrow: "Modelo comercial",
-          commercialTitle: "El precio se arma por valor de negocio, no por el chip suelto",
-          commercialBody: "Un rollout serio incluye identidad del producto, banco visual, reglas de reclamo, pasaporte mobile, dashboard, alertas, integraciones y soporte. El hardware es solo una capa.",
+          commercialTitle: "No vendemos chips: vendemos una capa de confianza para vender mejor",
+          commercialBody: "Un piloto serio incluye producto real, banco visual, reglas de reclamo, pasaporte mobile, dashboard, alertas, integraciones y soporte. El tag es solo el punto de contacto.",
           commercialCards: [
-            "Piloto: validar una línea, lote o edición con usuarios reales.",
-            "Hardware: NFC, QR, sellos o tarjetas según riesgo y volumen.",
-            "Plataforma: autenticación, pasaporte, garantía, beneficios, analytics y alertas.",
-            "Escala: canal reseller o white-label con gobernanza e integraciones.",
+            "Piloto: probar una linea, lote o edicion con usuarios reales.",
+            "Producto: QR, NFC, sello o tarjeta segun riesgo y volumen.",
+            "Experiencia: autenticidad, historia, garantia, club, reviews y marketplace.",
+            "Escala: reseller o white-label con gobernanza e integraciones.",
           ],
           roiCta: "Solicitar presupuesto piloto",
           modelTitle: "Claridad del modelo de negocio",
           modelCards: [
-            "Línea Basic (NTAG215): hardware por volumen + setup + operación de dashboard.",
-            "Línea Secure (NTAG 424 DNA TT): hardware codificado + autenticación antifraude + SaaS.",
-            "Enterprise: integración, SLA, API, gobernanza y analítica avanzada.",
+            "Linea Basic: campañas, garantia simple, clubes y datos de escaneo.",
+            "Linea Secure: autenticidad fuerte, anti-copia, sello y trazabilidad.",
+            "Enterprise: integracion, SLA, API, marketplace y analitica avanzada.",
             "Reseller: go-to-market white-label con margen recurrente y rollout asistido.",
           ],
-          chooseTitle: "Cuándo elegir cada línea",
+          chooseTitle: "Cuando elegir cada linea",
           chooseBullets: [
-            "Elegí Basic cuando el margen/riesgo por unidad es bajo y la prioridad es velocidad/volumen.",
-            "Elegí Secure cuando necesitás autenticidad, anti-clone, evidencia legal o control de canal.",
-            "Estrategia híbrida en eventos: Basic para asistentes y Secure para VIP/staff crítico.",
+            "Elegi Basic cuando queres velocidad, volumen y beneficios postventa.",
+            "Elegi Secure cuando necesitas probar autenticidad, evitar copia o controlar apertura.",
+            "Usa estrategia hibrida cuando hay publico masivo y accesos VIP o productos criticos.",
           ],
-          layersTitle: "Cómo se construye el pricing en nexID",
+          layersTitle: "Como se construye el pricing en nexID",
           layers: [
-            "Capa 1 · Setup/Pilot: alcance, onboarding, adaptación de packaging y plan de activación.",
-            "Capa 2 · Hardware: tags/inlays/cards/seals por volumen y perfil de seguridad.",
-            "Capa 3 · SaaS/Usage: verificaciones, analítica, alertas y ownership workflows.",
-            "Capa 4 · Canal: gobernanza reseller/white-label, margen compartido y soporte.",
+            "Capa 1 - Setup/Pilot: alcance, packaging, banco visual y plan de activacion.",
+            "Capa 2 - Producto fisico: tags, QR, tarjetas o sellos por volumen y seguridad.",
+            "Capa 3 - SaaS: verificaciones, portal, alertas, experiencias y ownership.",
+            "Capa 4 - Canal: reseller, white-label, margen compartido y soporte.",
           ],
           pilotTitle: "Pricing piloto sugerido por vertical (USD)",
           pilotRows: [
@@ -262,14 +262,14 @@ export default async function PricingPage() {
       <div className="mt-10 grid gap-6 xl:grid-cols-3">
         {content.plans.cards.map((plan) => (
           <Card key={plan.name} className="group p-6 pricing-page-card transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
-            <Badge tone={plan.name.includes("ENTERPRISE") ? "amber" : "cyan"}>{plan.badge}</Badge>
+            <Badge tone={plan.name.includes("ENTERPRISE") ?"amber" : "cyan"}>{plan.badge}</Badge>
             <h3 className="mt-4 text-2xl font-semibold text-white">{plan.name}<Info text={labels.cardInfo} /></h3>
             <p className="mt-3 text-sm text-slate-400">{plan.body}</p>
             <p className="mt-4 text-cyan-300">{plan.price}</p>
             <ul className="mt-4 space-y-1 text-sm text-slate-300">{plan.bullets.map((b) => <li key={b}>• {b}</li>)}</ul>
             <div className="mt-5 grid gap-2 sm:grid-cols-2">
               <Link href="/?contact=quote#contact-modal"><Button>{labels.requestQuote}</Button></Link>
-              <Link href={plan.name.includes("RESELLER") ? "/?contact=reseller#contact-modal" : "/?contact=sales#contact-modal"}><Button variant="secondary">{plan.name.includes("RESELLER") ? labels.reseller : labels.talkSales}</Button></Link>
+              <Link href={plan.name.includes("RESELLER") ?"/?contact=reseller#contact-modal" : "/?contact=sales#contact-modal"}><Button variant="secondary">{plan.name.includes("RESELLER") ?labels.reseller : labels.talkSales}</Button></Link>
             </div>
           </Card>
         ))}

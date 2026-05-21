@@ -370,10 +370,13 @@ export function PremiumVectorMap({
   const isTightRouteView = density === "route" && viewBoxMetrics.width < 260;
   useEffect(() => {
     const root = document.documentElement;
-    const syncTheme = () => setIsLightTheme(root.classList.contains("theme-light"));
+    const syncTheme = () => {
+      const explicitTheme = root.getAttribute("data-theme") || root.getAttribute("data-nexid-theme");
+      setIsLightTheme(root.classList.contains("theme-light") || explicitTheme === "light");
+    };
     syncTheme();
     const observer = new MutationObserver(syncTheme);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    observer.observe(root, { attributes: true, attributeFilter: ["class", "data-theme", "data-nexid-theme"] });
     return () => observer.disconnect();
   }, []);
   const trustMapSource = useMemo(() => {

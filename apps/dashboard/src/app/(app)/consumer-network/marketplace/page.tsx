@@ -18,7 +18,7 @@ type Item = {
 type Draft = Omit<Item, "id">;
 
 const emptyDraft: Draft = {
-  emoji: "🆕",
+  emoji: "NX",
   name: "",
   priceArs: 0,
   vertical: "",
@@ -59,7 +59,7 @@ function checkoutChip(mode: CheckoutMode) {
 
 function visibilityChip(visibility: Visibility) {
   if (visibility === "network") {
-    return <span className="inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">Público (Network)</span>;
+    return <span className="inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">Publico (Network)</span>;
   }
   return <span className="inline-flex rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-400">Oculto</span>;
 }
@@ -224,7 +224,7 @@ export default function TenantMarketplacePage() {
       setItems((prev) => [...data.items, ...prev]);
       setNotice(`${data.imported} productos importados.`);
     } catch {
-      setNotice("JSON inválido para importar.");
+      setNotice("JSON invalido para importar.");
     } finally {
       setImporting(false);
     }
@@ -235,7 +235,7 @@ export default function TenantMarketplacePage() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Marketplace & Network</h1>
-          <p className="mt-1 text-sm text-slate-400">Publicá, editá y administrá productos en el NexID Consumer Network desde una sola vista.</p>
+          <p className="mt-1 text-sm text-slate-400">Publica, edita y administra productos en el NexID Consumer Network desde una sola vista.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <label className="cursor-pointer rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10">
@@ -250,7 +250,7 @@ export default function TenantMarketplacePage() {
 
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 text-sm text-slate-200">Items activos: <b className="text-white">{totals.total}</b></div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Públicos en network: <b>{totals.publicCount}</b></div>
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Publicos en network: <b>{totals.publicCount}</b></div>
         <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 text-sm text-cyan-100">Direct checkout listos: <b>{totals.directCount}</b></div>
       </div>
 
@@ -304,18 +304,18 @@ export default function TenantMarketplacePage() {
         <input suppressHydrationWarning value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto o vertical..." className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30" />
         <select suppressHydrationWarning value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as "all" | Visibility)} className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30">
           <option value="all">Todas las visibilidades</option>
-          <option value="network">Público (Network)</option>
+          <option value="network">Publico (Network)</option>
           <option value="private">Oculto</option>
         </select>
       </div>
 
       <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-950/10 p-6 backdrop-blur-md">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-violet-400">
-          <span className="text-xl">🌐</span>
+          <span className="text-xs font-black">NX</span>
         </div>
         <div>
           <h3 className="text-sm font-bold text-white">Estado de la Red: Activo</h3>
-          <p className="mt-1 max-w-2xl text-xs text-slate-400">Tus productos públicos son visibles para consumidores verificados de otras marcas. Sin exponer datos sensibles de tus clientes.</p>
+          <p className="mt-1 max-w-2xl text-xs text-slate-400">Tus productos publicos son visibles para consumidores verificados de otras marcas. Sin exponer datos sensibles de tus clientes.</p>
         </div>
       </div>
 
@@ -367,7 +367,7 @@ export default function TenantMarketplacePage() {
             ))}
             {!loading && filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Todavía no hay productos. Publicá el primero.</td>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Todavia no hay productos. Publica el primero.</td>
               </tr>
             ) : null}
           </tbody>
@@ -388,7 +388,7 @@ export default function TenantMarketplacePage() {
               <option value="external">External URL</option>
             </select>
             <select suppressHydrationWarning value={draft.visibility} onChange={(e) => setDraft((prev) => ({ ...prev, visibility: e.target.value as Visibility }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40">
-              <option value="network">Público (Network)</option>
+              <option value="network">Publico (Network)</option>
               <option value="private">Oculto</option>
             </select>
           </div>

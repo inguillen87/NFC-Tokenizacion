@@ -70,28 +70,28 @@ export default async function MePage({ searchParams }: { searchParams?: Promise<
   return (
     <PortalShell
       title="Tu pasaporte de productos autenticos"
-      subtitle="Perfil premium conectado a tus taps reales, ownership verificable, memberships por tenant y marketplace contextual."
+      subtitle="Todo lo que tocaste y guardaste: autenticidad, origen, dueno, beneficios, wallet y marketplace en una sola cuenta."
       notificationCount={Number(stats.unread || 0)}
     >
       <section className="overflow-hidden rounded-2xl border border-cyan-300/25 bg-cyan-500/10">
         <div className="grid gap-4 p-5 lg:grid-cols-[1.15fr_0.85fr]">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Consumer profile</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Tu cuenta nexID</p>
             <p className="mt-2 text-2xl font-semibold text-white">{consumerName}</p>
-            <p className="mt-1 text-xs text-cyan-50/90">{me?.consumer?.email || "email no disponible"} · locale {me?.consumer?.preferred_locale || "es-AR"}</p>
+            <p className="mt-1 text-xs text-cyan-50/90">{me?.consumer?.email || "email no disponible"} - idioma {me?.consumer?.preferred_locale || "es-AR"}</p>
             <p className="mt-4 max-w-xl text-sm leading-6 text-slate-200">
-              Este portal une la prueba fisica del tap con identidad, ownership, beneficios y futura transferencia tokenizada.
+              Aca ves que productos son tuyos, que beneficios tenes disponibles y que certificado digital podes guardar o compartir.
             </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-slate-950/55 p-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Passport readiness</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Passport listo</p>
               <p className="text-2xl font-black text-cyan-100">{passportReadiness}</p>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
               <div className="h-full rounded-full bg-cyan-300" style={{ width: `${passportReadiness}%` }} />
             </div>
-            <p className="mt-3 text-xs text-slate-300">Sube con productos claimados, marcas activas y taps verificables.</p>
+            <p className="mt-3 text-xs text-slate-300">Sube cuando guardas productos, reclamas ownership y te unes a marcas activas.</p>
           </div>
         </div>
       </section>
@@ -157,28 +157,28 @@ export default async function MePage({ searchParams }: { searchParams?: Promise<
       <section className="grid gap-3 lg:grid-cols-2">
         <article className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-white">Últimos taps</p>
+            <p className="text-sm font-semibold text-white">Ultimos taps</p>
             <Link href="/me/taps" className="text-xs text-cyan-200 hover:text-cyan-100">Ver todos</Link>
           </div>
           <div className="mt-2 space-y-2">
             {latestTaps.length ? latestTaps.map((tap, index) => (
               <p key={`${tap.created_at || index}`} className="text-xs text-slate-300">
-                <span className="font-semibold text-cyan-100">{String(tap.verdict || "unknown").toUpperCase()}</span> · {tap.city || "Unknown"}, {tap.country || "--"} · tenant {tap.tenant_slug || "n/a"}
+                <span className="font-semibold text-cyan-100">{String(tap.verdict || "unknown").toUpperCase()}</span> - {tap.city || "Unknown"}, {tap.country || "--"} - tenant {tap.tenant_slug || "n/a"}
               </p>
-            )) : <p className="text-xs text-slate-400">Todavía no hay taps asociados.</p>}
+            )) : <p className="text-xs text-slate-400">Todavia no hay taps asociados.</p>}
           </div>
         </article>
         <article className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-white">Productos guardados</p>
-            <Link href="/me/products" className="text-xs text-cyan-200 hover:text-cyan-100">Ver colección</Link>
+            <Link href="/me/products" className="text-xs text-cyan-200 hover:text-cyan-100">Ver coleccion</Link>
           </div>
           <div className="mt-2 space-y-2">
             {savedProducts.length ? savedProducts.map((product, index) => (
               <p key={`${product.product_name || index}`} className="text-xs text-slate-300">
-                <span className="font-semibold text-white">{product.product_name || "Producto"}</span> · tenant {product.tenant_slug || "n/a"} · estado {String(product.ownership_record_status || product.ownership_status || "viewed")}
+                <span className="font-semibold text-white">{product.product_name || "Producto"}</span> - tenant {product.tenant_slug || "n/a"} - estado {String(product.ownership_record_status || product.ownership_status || "viewed")}
               </p>
-            )) : <p className="text-xs text-slate-400">Aún no hay productos guardados.</p>}
+            )) : <p className="text-xs text-slate-400">Aun no hay productos guardados.</p>}
           </div>
         </article>
       </section>
@@ -186,8 +186,8 @@ export default async function MePage({ searchParams }: { searchParams?: Promise<
       <section className="grid gap-3 lg:grid-cols-3">
         {[
           ["/me/products", "Mis productos", "Biblioteca real de productos guardados/claimados."],
-          ["/me/brands", "Mis marcas", "Membresías activas por tenant y estado."],
-          ["/me/marketplace", "Ir al marketplace", "Abrí catálogo contextual según tenant asociado."],
+          ["/me/brands", "Mis marcas", "Membresias activas por tenant y estado."],
+          ["/me/marketplace", "Ir al marketplace", "Abrir catalogo contextual segun tenant asociado."],
         ].map(([href, title, desc]) => (
           <Link key={href} href={href} className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4 transition hover:border-cyan-300/40 hover:bg-cyan-500/15">
             <p className="text-sm font-semibold text-cyan-100">{title}</p>

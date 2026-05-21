@@ -492,6 +492,43 @@ html.theme-light .global-ops-map-stage {
   background-size: 4.5rem 4.5rem, 4.5rem 4.5rem, auto !important;
 }
 
+html.theme-light [data-nexid-map="premium-vector-map"] {
+  --nexid-vector-ocean-1: #effaff;
+  --nexid-vector-ocean-2: #f8fcff;
+  --nexid-vector-ocean-3: #eef4ff;
+  --nexid-vector-land-1: #67e8f9;
+  --nexid-vector-land-2: #5eead4;
+  --nexid-vector-land-3: #c4b5fd;
+  --nexid-vector-land-opacity-1: 0.24;
+  --nexid-vector-land-opacity-2: 0.2;
+  --nexid-vector-land-opacity-3: 0.18;
+  --nexid-vector-land-edge-1: #0891b2;
+  --nexid-vector-land-edge-2: #0f766e;
+  --nexid-vector-land-edge-3: #7c3aed;
+  --nexid-vector-land-edge-opacity-1: 0.2;
+  --nexid-vector-land-edge-opacity-2: 0.28;
+  --nexid-vector-land-edge-opacity-3: 0.14;
+  --nexid-vector-trace-wash-1: rgba(14, 165, 233, 0.12);
+  --nexid-vector-trace-wash-2: rgba(45, 212, 191, 0.06);
+  --nexid-vector-trace-wash-3: rgba(255, 255, 255, 0);
+  --nexid-vector-vignette-1: rgba(14, 165, 233, 0.08);
+  --nexid-vector-vignette-2: rgba(255, 255, 255, 0.04);
+  --nexid-vector-vignette-3: rgba(186, 230, 253, 0.16);
+  --nexid-vector-tile-overlay-route: rgba(255, 255, 255, 0.18);
+  --nexid-vector-tile-overlay: rgba(255, 255, 255, 0.24);
+  --nexid-vector-trace-opacity-route: 0.24;
+  --nexid-vector-trace-opacity: 0.22;
+  --nexid-vector-noise-opacity-tiles: 0.002;
+  --nexid-vector-grid-opacity-tiles: 0.04;
+  --nexid-vector-scan-opacity-tiles: 0.012;
+  --nexid-vector-grid-major: rgba(14, 116, 144, 0.06);
+  --nexid-vector-grid-minor: rgba(14, 116, 144, 0.045);
+}
+
+html.theme-light .global-ops-map-stage [data-nexid-map="premium-vector-map"] {
+  filter: saturate(0.88) brightness(1.08) contrast(0.9);
+}
+
 html.theme-light .global-ops-map-legend,
 html.theme-light .global-ops-map-caption,
 html.theme-light .global-ops-map-drawer {
