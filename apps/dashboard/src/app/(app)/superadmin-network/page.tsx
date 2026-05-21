@@ -1,105 +1,251 @@
-export default function SuperadminConsumerNetworkPage() {
+import Link from "next/link";
+import { Card, SectionHeading, StatusChip } from "@product/ui";
+import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "../../../components/ops-command-center";
+import { requireDashboardSession } from "../../../lib/session";
+import { getServerOrigin } from "../../../lib/server-origin";
+
+type TenantRow = Record<string, unknown>;
+type BatchRow = Record<string, unknown>;
+type TagsPayload = {
+  rows?: Array<Record<string, unknown>>;
+  totals?: Record<string, unknown>;
+};
+type ExperiencesPayload = {
+  items?: Array<Record<string, unknown>>;
+  moderation?: Record<string, number>;
+};
+
+async function fetchJson<T>(origin: string, path: string, fallback: T): Promise<T> {
+  try {
+    const response = await fetch(`${origin}${path}`, { cache: "no-store" });
+    if (!response.ok) return fallback;
+    return await response.json() as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function numberFrom(value: unknown) {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function resolveTenantStatus(scans: number, duplicates: number, tamper: number): OpsCommandTenantRow["status"] {
+  if (tamper >= 3 || duplicates > Math.max(scans * 0.12, 4)) return "risk";
+  if (scans <= 0) return "pending";
+  if (duplicates + tamper > 0) return "healthy";
+  return "active";
+}
+
+function riskScore(scans: number, duplicates: number, tamper: number) {
+  if (!scans) return 0;
+  const score = ((duplicates * 40 + tamper * 60) / scans) * 100;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+export default async function SuperadminConsumerNetworkPage() {
+  const session = await requireDashboardSession();
+  const origin = await getServerOrigin();
+  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
+  const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
+  const [tenants, batches, tagsPayload, experiencesPayload] = await Promise.all([
+    fetchJson<TenantRow[]>(origin, "/api/admin/tenants?withStats=1", []),
+    fetchJson<BatchRow[]>(origin, `/api/admin/batches${query}`, []),
+    fetchJson<TagsPayload>(origin, `/api/admin/tags${query ? `${query}&` : "?"}limit=100`, { rows: [], totals: {} }),
+    fetchJson<ExperiencesPayload>(origin, `/api/admin/consumer-experiences${query}`, { items: [], moderation: {} }),
+  ]);
+
+  const scopedTenants = tenantScope ? tenants.filter((row) => String(row.slug || row.tenant_slug || "").toLowerCase() === tenantScope) : tenants;
+  const totals = tagsPayload.totals || {};
+  const tagRows = tagsPayload.rows || [];
+  const experiences = experiencesPayload.items || [];
+  const moderation = experiencesPayload.moderation || {};
+  const activeTags = numberFrom(totals.active_tags);
+  const mintedTags = numberFrom(totals.minted_tags);
+  const pendingTokenization = numberFrom(totals.pending_tokenization);
+  const totalTags = numberFrom(totals.total) || tagRows.length;
+  const importedTags = batches.reduce((sum, row) => sum + numberFrom(row.imported_tags || row.quantity || row.qty), 0);
+  const plannedTags = batches.reduce((sum, row) => sum + numberFrom(row.requested_quantity || row.quantity || row.qty), 0);
+  const secureBatches = batches.filter((row) => String(row.carrier_profile_code || row.carrier_label || "").toLowerCase().includes("424")).length;
+  const totalScans = scopedTenants.reduce((sum, row) => sum + numberFrom(row.scans), 0);
+  const totalDuplicates = scopedTenants.reduce((sum, row) => sum + numberFrom(row.duplicates), 0);
+  const totalTamper = scopedTenants.reduce((sum, row) => sum + numberFrom(row.tamper), 0);
+  const pendingExperiences = numberFrom(moderation.pending);
+  const approvedExperiences = numberFrom(moderation.approved);
+
+  const batchByTenant = new Map<string, { batches: number; tags: number }>();
+  for (const row of batches) {
+    const slug = String(row.tenant_slug || row.tenant_id || tenantScope || "tenant").toLowerCase();
+    const current = batchByTenant.get(slug) || { batches: 0, tags: 0 };
+    current.batches += 1;
+    current.tags += numberFrom(row.active_tags || row.quantity || row.qty || row.requested_quantity);
+    batchByTenant.set(slug, current);
+  }
+
+  const tenantRows: OpsCommandTenantRow[] = scopedTenants.map((row) => {
+    const slug = String(row.slug || row.tenant_slug || row.tenant_id || "tenant").toLowerCase();
+    const scans = numberFrom(row.scans);
+    const duplicates = numberFrom(row.duplicates);
+    const tamper = numberFrom(row.tamper);
+    const batchInfo = batchByTenant.get(slug) || { batches: 0, tags: 0 };
+    return {
+      name: String(row.name || row.slug || slug),
+      slug,
+      scans,
+      riskScore: riskScore(scans, duplicates, tamper),
+      batches: batchInfo.batches,
+      tags: batchInfo.tags,
+      status: resolveTenantStatus(scans, duplicates, tamper),
+    };
+  });
+
+  const steps: OpsCommandStep[] = [
+    {
+      label: "Tenants listos para operar",
+      body: "Cada marca debe tener origen, reglas de claim, portal, assets y permisos antes de recibir tags masivos.",
+      status: scopedTenants.length ? "ready" : "blocked",
+      owner: "Superadmin",
+    },
+    {
+      label: "Batches con carrier declarado",
+      body: "El dashboard separa QR, NFC UID, NTAG424 DNA y TT para vender la seguridad correcta.",
+      status: secureBatches > 0 ? "ready" : batches.length ? "working" : "blocked",
+      owner: "Auditor",
+    },
+    {
+      label: "Tags activos y testeables",
+      body: "El reseller o tenant puede ver cuantos tags ya estan listos para pegar y cuantos faltan.",
+      status: activeTags > 0 ? "ready" : importedTags > 0 ? "working" : "blocked",
+      owner: "Reseller",
+    },
+    {
+      label: "Riesgo bajo control",
+      body: "Duplicados, replay y tamper se tratan como bloqueo comercial, no como dato tecnico escondido.",
+      status: totalDuplicates + totalTamper > Math.max(totalScans * 0.12, 4) ? "blocked" : totalScans > 0 ? "ready" : "working",
+      owner: "Auditor",
+    },
+    {
+      label: "Club y experiencias verificadas",
+      body: "La red B2C queda moderada: no hay reviews anonimas que puedan danar marcas premium.",
+      status: approvedExperiences > 0 ? "ready" : pendingExperiences > 0 ? "working" : "working",
+      owner: "Tenant",
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Global Consumer Network</h1>
-          <p className="mt-1 text-sm text-slate-400">Visión portfolio de la adopción B2C, métricas agregadas y cruces de marketplace.</p>
-        </div>
-        <div className="flex items-center gap-3">
-           <button suppressHydrationWarning className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors">Exportar Reporte</button>
-           <button suppressHydrationWarning className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-colors">Configurar Settlement</button>
-        </div>
-      </header>
+    <main className="space-y-8">
+      <SectionHeading
+        eyebrow="Superadmin network"
+        title="Consola global para operar tenants, resellers, auditores y clubes"
+        description="Una vista ejecutiva y operativa para pasar de piloto a rollout: lotes, tags, riesgo, marketplace, experiencias verificadas y tokenizacion."
+      />
 
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
-        <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <p className="text-xs uppercase tracking-widest text-slate-400">Total B2C Users</p>
-          <p className="mt-2 text-3xl font-bold text-white">84.2k</p>
-          <p className="mt-1 text-[10px] text-emerald-400">+5.4k (Últimos 30d)</p>
-        </article>
-        <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <p className="text-xs uppercase tracking-widest text-slate-400">Marcas Opt-In</p>
-          <p className="mt-2 text-3xl font-bold text-white">42</p>
-          <p className="mt-1 text-[10px] text-slate-500">12 pendientes de onboarding</p>
-        </article>
-        <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <p className="text-xs uppercase tracking-widest text-slate-400">Tap a Registro</p>
-          <p className="mt-2 text-3xl font-bold text-cyan-400">18.5%</p>
-          <p className="mt-1 text-[10px] text-slate-500">Promedio Global</p>
-        </article>
-        <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <p className="text-xs uppercase tracking-widest text-slate-400">Marketplace Intents</p>
-          <p className="mt-2 text-3xl font-bold text-violet-400">1,240</p>
-          <p className="mt-1 text-[10px] text-slate-500">Order Requests generadas</p>
-        </article>
-        <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
-          <p className="text-xs uppercase tracking-widest text-slate-400">GMV Proxy</p>
-          <p className="mt-2 text-3xl font-bold text-white">$145k</p>
-          <p className="mt-1 text-[10px] text-slate-500">Volumen canalizado USD</p>
-        </article>
+      <OpsCommandCenter
+        mode={session.role === "tenant-admin" ? "tenant" : "global"}
+        metrics={[
+          { label: "Tenants", value: String(scopedTenants.length), detail: tenantScope ? `Scope ${tenantScope}` : "Marcas conectadas a la red", tone: scopedTenants.length ? "good" : "warn" },
+          { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${totalTags.toLocaleString("es-AR")} tags en inventario`, tone: activeTags > 0 ? "good" : "warn" },
+          { label: "Batches premium", value: String(secureBatches), detail: "NTAG424 DNA / TT declarados", tone: secureBatches > 0 ? "good" : "warn" },
+          { label: "Moderacion", value: String(pendingExperiences), detail: "Experiencias pendientes de aprobar", tone: pendingExperiences > 0 ? "warn" : "good" },
+        ]}
+        steps={steps}
+        tenants={tenantRows}
+        funnel={[
+          { stage: "Tenants", value: scopedTenants.length },
+          { stage: "Batches", value: batches.length },
+          { stage: "Tags", value: activeTags },
+          { stage: "Minted", value: mintedTags },
+          { stage: "Reviews", value: approvedExperiences },
+        ]}
+        readiness={[
+          { label: "Manifest", ready: importedTags, pending: Math.max(plannedTags - importedTags, 0) },
+          { label: "Tags", ready: activeTags, pending: Math.max(totalTags - activeTags, 0) },
+          { label: "Token", ready: mintedTags, pending: pendingTokenization },
+          { label: "Club", ready: approvedExperiences, pending: pendingExperiences },
+        ]}
+      />
+
+      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="overflow-hidden p-0">
+          <div className="border-b border-white/10 p-5">
+            <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Prioridades del dia</h2>
+            <p className="mt-1 text-sm text-slate-400">Lo que un superadmin o auditor deberia mirar antes de aprobar nuevos rollouts.</p>
+          </div>
+          <div className="divide-y divide-white/10">
+            {[
+              {
+                title: "Auditar carrier y promesa comercial",
+                body: "Ningun QR comun debe venderse como autenticidad criptografica. NTAG424 DNA/TT debe tener llaves y pretest SUN.",
+                tone: secureBatches > 0 ? "good" : "warn",
+                href: "/batches",
+              },
+              {
+                title: "Revisar experiencias verificadas",
+                body: "Aprobar solo comentarios con tap fisico, contacto validado y producto guardado/reclamado.",
+                tone: pendingExperiences > 0 ? "warn" : "good",
+                href: "/loyalty/experiences",
+              },
+              {
+                title: "Controlar tokenizacion y wallet",
+                body: "Las unidades premium tienen que mostrar certificado, wallet custodial o MetaMask y link de blockchain cuando aplique.",
+                tone: pendingTokenization > 0 ? "warn" : "good",
+                href: "/tokenization",
+              },
+            ].map((item) => (
+              <Link key={item.title} href={item.href} className="block p-5 transition hover:bg-white/[0.03]">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-black text-white">{item.title}</h3>
+                    <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">{item.body}</p>
+                  </div>
+                  <StatusChip label={item.tone === "good" ? "controlado" : "revisar"} tone={item.tone as "good" | "warn"} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Handoff para no tecnicos</h2>
+              <p className="mt-1 text-sm text-slate-400">Checklist que entiende un reseller, una bodega o un auditor externo.</p>
+            </div>
+            <StatusChip label="operativo" tone="good" />
+          </div>
+          <div className="mt-4 space-y-3">
+            {[
+              "1. Recibi la caja de tags y el remito del proveedor.",
+              "2. Subi manifest CSV/TXT con UID, lote, SKU, producto y fotos.",
+              "3. nexID valido duplicados, carrier, batch y llaves.",
+              "4. Pegue una muestra y toque el producto real.",
+              "5. El passport mobile mostro producto, origen, estado y CTA correcto.",
+              "6. Active portal, marketplace, club, garantia y NFT opcional.",
+            ].map((line) => (
+              <div key={line} className="rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm font-semibold text-slate-200">{line}</div>
+            ))}
+          </div>
+        </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_350px]">
-         {/* Tenant Leaderboard */}
-         <div className="rounded-xl border border-white/10 bg-slate-900/50 overflow-hidden">
-            <div className="p-5 border-b border-white/5 flex items-center justify-between">
-               <h3 className="text-sm font-bold text-white">Adopción por Tenant</h3>
-               <span className="text-xs font-medium text-cyan-400 cursor-pointer hover:text-cyan-300">Ver listado completo</span>
-            </div>
-            <table className="w-full text-left text-sm text-slate-300">
-               <thead className="bg-slate-800/30 text-[10px] uppercase tracking-widest text-slate-500">
-                  <tr>
-                     <th className="px-5 py-3 font-medium">Marca (Tenant)</th>
-                     <th className="px-5 py-3 font-medium text-right">Usuarios Registrados</th>
-                     <th className="px-5 py-3 font-medium text-right">Tasa Conversión</th>
-                     <th className="px-5 py-3 font-medium text-right">Marketplace Offers</th>
-                  </tr>
-               </thead>
-               <tbody className="divide-y divide-white/5">
-                  <tr className="hover:bg-white/5">
-                     <td className="px-5 py-3 font-bold text-white">Demo Bodega (Mendoza)</td>
-                     <td className="px-5 py-3 text-right">2,358</td>
-                     <td className="px-5 py-3 text-right text-emerald-400">22%</td>
-                     <td className="px-5 py-3 text-right">4 Activas</td>
-                  </tr>
-                  <tr className="hover:bg-white/5">
-                     <td className="px-5 py-3 font-bold text-white">Bodega Finca Sur</td>
-                     <td className="px-5 py-3 text-right">1,842</td>
-                     <td className="px-5 py-3 text-right text-emerald-400">19%</td>
-                     <td className="px-5 py-3 text-right">2 Activas</td>
-                  </tr>
-                  <tr className="hover:bg-white/5">
-                     <td className="px-5 py-3 font-bold text-white">Le Parfum (Latam)</td>
-                     <td className="px-5 py-3 text-right">1,105</td>
-                     <td className="px-5 py-3 text-right text-amber-400">14%</td>
-                     <td className="px-5 py-3 text-right text-slate-500">Opt-out</td>
-                  </tr>
-               </tbody>
-            </table>
-         </div>
-
-         {/* BotIA Global Insights */}
-         <div className="rounded-xl border border-cyan-500/30 bg-slate-950/80 backdrop-blur shadow-[0_0_30px_rgba(6,182,212,0.1)] flex flex-col h-[400px]">
-            <div className="p-4 border-b border-white/10 bg-slate-900/50 flex items-center gap-3">
-               <div className="w-8 h-8 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center font-bold">🤖</div>
-               <div>
-                  <h3 className="text-sm font-bold text-white">Portfolio Insights</h3>
-                  <p className="text-[10px] text-cyan-300">NexID Network AI</p>
-               </div>
-            </div>
-
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
-               <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 text-slate-300 rounded-bl-none ml-2 mr-6">
-                  El vertical <b>Perfumes</b> está creciendo un 35% MoM en Brasil, pero la adopción del Marketplace es baja. Sugiero contactar al Reseller regional para incentivar la publicación de Drops cruzados.
-               </div>
-            </div>
-
-            <div className="p-3 border-t border-white/10 bg-slate-900/50">
-               <button suppressHydrationWarning className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white rounded transition">Generar Resumen Ejecutivo</button>
-            </div>
-         </div>
-      </div>
-    </div>
+      <Card className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Accesos rapidos</h2>
+          <span className="text-xs text-slate-500">Superadmin / demobodega / auditor</span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          {[
+            { label: "Registrar supplier batch", href: "/batches/supplier" },
+            { label: "Inventario de tags", href: "/tags" },
+            { label: "Experiencias verificadas", href: "/loyalty/experiences" },
+            { label: "Marketplace premium", href: "/consumer-network/marketplace" },
+          ].map((item) => (
+            <Link key={item.href} href={item.href} className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/20">
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </Card>
+    </main>
   );
 }

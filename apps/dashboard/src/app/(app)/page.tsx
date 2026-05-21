@@ -5,6 +5,7 @@ import { AnalyticsPanels } from "../../components/analytics-panels";
 import { DataTable } from "../../components/data-table";
 import { ModuleGrid } from "../../components/module-grid";
 import { MultirubroOpsPanel } from "../../components/multirubro-ops-panel";
+import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "../../components/ops-command-center";
 import { RealtimeOpsMonitor } from "../../components/realtime-ops-monitor";
 import { VerifiedExperiencesPanel } from "../../components/verified-experiences-panel";
 import type { TenantTapRealtimeEvent } from "../../lib/realtime-feed";
@@ -64,6 +65,21 @@ async function getTokenizationRows() {
   }
 }
 
+async function getBatchRows(tenantScope = "") {
+  try {
+    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
+    const response = await fetch(`${API_BASE}/admin/batches${query}`, {
+      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return [] as Array<Record<string, unknown>>;
+    const payload = await response.json().catch(() => []) as Array<Record<string, unknown>>;
+    return Array.isArray(payload) ? payload : [] as Array<Record<string, unknown>>;
+  } catch {
+    return [] as Array<Record<string, unknown>>;
+  }
+}
+
 function resolveTenantStatus(scans: number, duplicates: number, tamper: number) {
   if (scans === 0) return "pending";
   if (scans < 25) return "pending";
@@ -115,7 +131,7 @@ export default async function DashboardHome() {
   const session = await requireDashboardSession();
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const isTenantAdmin = session.role === "tenant-admin";
-  const [overviewRaw, liveEvents, tokenizationRows]: [Array<Record<string, unknown>>, Array<Record<string, unknown>>, Array<Record<string, unknown>>] = await Promise.all([getOverviewRows(), getLiveEvents(), getTokenizationRows()]);
+  const [overviewRaw, liveEvents, tokenizationRows, batchRows]: [Array<Record<string, unknown>>, Array<Record<string, unknown>>, Array<Record<string, unknown>>, Array<Record<string, unknown>>] = await Promise.all([getOverviewRows(), getLiveEvents(), getTokenizationRows(), getBatchRows(tenantScope)]);
 
   const labels = locale === "en"
     ? {
@@ -155,6 +171,9 @@ export default async function DashboardHome() {
   const scopedTokenizationRows = tenantScope
     ? tokenizationRows.filter((row: Record<string, unknown>) => String(row.tenant_slug || "").toLowerCase() === tenantScope)
     : tokenizationRows;
+  const scopedBatchRows = tenantScope
+    ? batchRows.filter((row: Record<string, unknown>) => String(row.tenant_slug || row.tenant_id || "").toLowerCase() === tenantScope)
+    : batchRows;
 
   const overviewRows = scopedOverviewRaw.map((row: Record<string, unknown>) => {
     const scans = Number(row.scans || 0);
@@ -179,6 +198,70 @@ export default async function DashboardHome() {
     tokenizationByStatus[status] = Number(tokenizationByStatus[status] || 0) + 1;
   }
 
+  const totalScans = scopedOverviewRaw.reduce((sum, row) => sum + Number(row.scans || 0), 0);
+  const totalDuplicates = scopedOverviewRaw.reduce((sum, row) => sum + Number(row.duplicates || 0), 0);
+  const totalTamper = scopedOverviewRaw.reduce((sum, row) => sum + Number(row.tamper || 0), 0);
+  const plannedTags = scopedBatchRows.reduce((sum, row) => sum + Number(row.requested_quantity || row.qty || row.quantity || 0), 0);
+  const importedTags = scopedBatchRows.reduce((sum, row) => sum + Number(row.imported_tags || row.quantity || row.qty || 0), 0);
+  const activeTags = scopedBatchRows.reduce((sum, row) => sum + Number(row.active_tags || 0), 0);
+  const mintedTokens = Number(tokenizationByStatus.anchored || 0) + Number(tokenizationByStatus.minted || 0);
+  const tenantBatchCounts = new Map<string, { batches: number; tags: number }>();
+  for (const row of scopedBatchRows) {
+    const slug = String(row.tenant_slug || row.tenant_id || "tenant").toLowerCase();
+    const current = tenantBatchCounts.get(slug) || { batches: 0, tags: 0 };
+    current.batches += 1;
+    current.tags += Number(row.active_tags || row.quantity || row.qty || row.requested_quantity || 0);
+    tenantBatchCounts.set(slug, current);
+  }
+  const opsTenantRows: OpsCommandTenantRow[] = scopedOverviewRaw.map((row) => {
+    const slug = String(row.slug || row.tenant_slug || row.tenant_id || "tenant").toLowerCase();
+    const scans = Number(row.scans || 0);
+    const duplicates = Number(row.duplicates || 0);
+    const tamper = Number(row.tamper || 0);
+    const batchInfo = tenantBatchCounts.get(slug) || { batches: 0, tags: 0 };
+    return {
+      name: String(row.name || row.slug || slug),
+      slug,
+      scans,
+      riskScore: buildTenantRiskScore(scans, duplicates, tamper),
+      batches: batchInfo.batches,
+      tags: batchInfo.tags,
+      status: resolveTenantStatus(scans, duplicates, tamper),
+    };
+  });
+  const opsSteps: OpsCommandStep[] = [
+    {
+      label: "Tenant y reglas comerciales",
+      body: tenantScope ? "El tenant esta acotado a una marca. Revisar ownership, portal y marketplace antes de publicar." : "Superadmin ve todos los tenants y detecta quien esta listo para rollout.",
+      status: scopedOverviewRaw.length ? "ready" : "blocked",
+      owner: "Superadmin",
+    },
+    {
+      label: "Batch supplier cargado",
+      body: "El lote debe traer carrier, BID, SKU, llaves cuando aplique y manifest auditable.",
+      status: scopedBatchRows.length ? "ready" : "working",
+      owner: "Reseller",
+    },
+    {
+      label: "Tags importados y activos",
+      body: "Una persona no tecnica necesita ver cantidad planeada, importada, activa y pendiente sin consola.",
+      status: activeTags > 0 ? "ready" : importedTags > 0 ? "working" : "blocked",
+      owner: "Tenant",
+    },
+    {
+      label: "Tap fisico + riesgo",
+      body: "Auditoria confirma taps reales, replay bajo, tamper coherente y mapa de confianza.",
+      status: totalScans > 0 && totalDuplicates + totalTamper < Math.max(totalScans * 0.12, 3) ? "ready" : totalScans > 0 ? "working" : "blocked",
+      owner: "Auditor",
+    },
+    {
+      label: "Ownership, NFT y experiencia",
+      body: "Portal, wallet, tokenizacion y experiencias verificadas quedan como salida comercial del tap.",
+      status: mintedTokens > 0 ? "ready" : "working",
+      owner: "Tenant",
+    },
+  ];
+
   const demoPacks = [
     { key: "wine-secure", label: "Wine secure", tenant: "demobodega", itemId: "demo-item-001" },
     { key: "events-basic", label: "Events basic", tenant: "demoevents", itemId: "demo-item-001" },
@@ -198,6 +281,30 @@ export default async function DashboardHome() {
 
       <AnalyticsPanels kpis={kpis} extra={copy.analytics} />
       <MultirubroOpsPanel />
+      <OpsCommandCenter
+        mode={isTenantAdmin ? "tenant" : "global"}
+        metrics={[
+          { label: "Tenants", value: String(scopedOverviewRaw.length), detail: tenantScope ? "Scope demobodega / tenant" : "Marcas bajo operacion", tone: scopedOverviewRaw.length ? "good" : "warn" },
+          { label: "Batches", value: String(scopedBatchRows.length), detail: `${importedTags.toLocaleString("es-AR")} tags importados`, tone: scopedBatchRows.length ? "good" : "warn" },
+          { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${plannedTags.toLocaleString("es-AR")} planificados`, tone: activeTags > 0 ? "good" : "warn" },
+          { label: "Riesgo", value: `${(totalDuplicates + totalTamper).toLocaleString("es-AR")}`, detail: "Duplicados + tamper en el scope", tone: totalDuplicates + totalTamper > Math.max(totalScans * 0.12, 3) ? "risk" : totalDuplicates + totalTamper > 0 ? "warn" : "good" },
+        ]}
+        steps={opsSteps}
+        tenants={opsTenantRows}
+        funnel={[
+          { stage: "Tenants", value: scopedOverviewRaw.length },
+          { stage: "Batches", value: scopedBatchRows.length },
+          { stage: "Tags", value: activeTags },
+          { stage: "Taps", value: totalScans },
+          { stage: "NFT", value: mintedTokens },
+        ]}
+        readiness={[
+          { label: "Manifest", ready: importedTags, pending: Math.max(plannedTags - importedTags, 0) },
+          { label: "Activacion", ready: activeTags, pending: Math.max(importedTags - activeTags, 0) },
+          { label: "Riesgo", ready: Math.max(totalScans - totalDuplicates - totalTamper, 0), pending: totalDuplicates + totalTamper },
+          { label: "Token", ready: mintedTokens, pending: Math.max(scopedTokenizationRows.length - mintedTokens, 0) },
+        ]}
+      />
       <VerifiedExperiencesPanel />
 
       <RealtimeOpsMonitor

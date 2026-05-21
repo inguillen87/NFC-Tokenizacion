@@ -3,6 +3,7 @@ import { Card, SectionHeading } from "@product/ui";
 import { productUrls } from "@product/config";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
+import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "../../../components/ops-command-center";
 import { QuickOnboardingPanel } from "../../../components/quick-onboarding-panel";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
@@ -61,7 +62,7 @@ const carrierLadder = [
   },
 ];
 
-async function getBatchRows(tenantScope = "") {
+async function getBatchRows(tenantScope = ""): Promise<Array<Record<string, unknown>>> {
   try {
     const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
     const response = await fetch(`${API_BASE}/admin/batches${query}`, {
@@ -82,6 +83,58 @@ export default async function BatchesPage() {
   const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
   const batchRows = await getBatchRows(tenantScope);
+  const plannedTags = batchRows.reduce((sum, row) => sum + Number(row.requested_quantity || row.qty || row.quantity || 0), 0);
+  const importedTags = batchRows.reduce((sum, row) => sum + Number(row.imported_tags || row.quantity || row.qty || 0), 0);
+  const activeTags = batchRows.reduce((sum, row) => sum + Number(row.active_tags || 0), 0);
+  const inactiveTags = batchRows.reduce((sum, row) => sum + Number(row.inactive_tags || Math.max(Number(row.quantity || row.qty || 0) - Number(row.active_tags || 0), 0)), 0);
+  const secureBatches = batchRows.filter((row) => String(row.carrier_profile_code || row.carrier_label || "").toLowerCase().includes("424")).length;
+  const supplierBatches = batchRows.filter((row) => String(row.batch_profile || row.type || row.carrier_label || "").toLowerCase().includes("supplier") || Boolean(row.has_meta_key || row.has_file_key)).length;
+  const statusCounts = batchRows.reduce((acc, row) => {
+    const status = String(row.status || "pending").toLowerCase();
+    acc[status] = Number(acc[status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const batchTenantMap = new Map<string, OpsCommandTenantRow>();
+  for (const row of batchRows) {
+    const slug = String(row.tenant_slug || row.tenant_id || "tenant pendiente").toLowerCase();
+    const current = batchTenantMap.get(slug) || { name: slug, slug, scans: 0, riskScore: 0, batches: 0, tags: 0, status: "pending" as const };
+    current.batches += 1;
+    current.tags += Number(row.active_tags || row.quantity || row.qty || row.requested_quantity || 0);
+    current.status = statusCounts.revoked || statusCounts.blocked ? "risk" : current.tags > 0 ? "active" : "pending";
+    batchTenantMap.set(slug, current);
+  }
+  const opsSteps: OpsCommandStep[] = [
+    {
+      label: "Tenant passport completo",
+      body: "Antes de importar tags, el tenant necesita rubro, origen, politica de claim, portal, marketplace y copy simple.",
+      status: tenantScope || batchRows.length ? "ready" : "working",
+      owner: isTenantAdmin ? "Tenant" : "Superadmin",
+    },
+    {
+      label: "Carrier y seguridad elegidos",
+      body: "QR, NFC UID, NTAG424 DNA o TT deben quedar declarados para no vender seguridad que el soporte no tiene.",
+      status: secureBatches > 0 ? "ready" : batchRows.length ? "working" : "blocked",
+      owner: "Auditor",
+    },
+    {
+      label: "Manifest con producto real",
+      body: "UID, BID, SKU, lote, foto, etiqueta y modelo 3D deben viajar juntos para que /sun y marketplace no sean genericos.",
+      status: importedTags > 0 ? "ready" : "blocked",
+      owner: "Reseller",
+    },
+    {
+      label: "Activacion y prueba fisica",
+      body: "El operador pega una muestra, hace tap real y confirma que el producto se ve bien antes de entregar miles de unidades.",
+      status: activeTags > 0 ? "ready" : importedTags > 0 ? "working" : "blocked",
+      owner: "Tenant",
+    },
+    {
+      label: "Salida comercial",
+      body: "Portal, club, NFT opcional, experiencias verificadas y marketplace quedan habilitados por politica del tenant.",
+      status: activeTags > 0 && secureBatches > 0 ? "ready" : "working",
+      owner: "Superadmin",
+    },
+  ];
 
   const rows = batchRows.map((row: Record<string, unknown>) => {
     const quantity = Number(row.quantity || 0);
@@ -125,6 +178,32 @@ export default async function BatchesPage() {
           decision: "Decidis si el sistema escala desde piloto a rollout masivo sin perder control.",
           cta: "Mostralo cuando quieras hablar de implementacion real y no solo de demo.",
         }}
+      />
+      <OpsCommandCenter
+        mode={isTenantAdmin ? "tenant" : "global"}
+        title="Rollout center de batches"
+        subtitle="Pensado para resellers, administradores y auditores: recibe la caja de tags, carga el manifest, valida el lote y deja el producto listo para venta sin depender de un tecnico."
+        metrics={[
+          { label: "Batches", value: String(batchRows.length), detail: `${supplierBatches} con llaves/perfil supplier`, tone: batchRows.length ? "good" : "warn" },
+          { label: "Tags planificados", value: plannedTags.toLocaleString("es-AR"), detail: "Cantidad declarada por lote", tone: plannedTags > 0 ? "good" : "warn" },
+          { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${inactiveTags.toLocaleString("es-AR")} pendientes`, tone: activeTags > 0 ? "good" : "warn" },
+          { label: "Carrier premium", value: String(secureBatches), detail: "NTAG424 DNA / TT detectados", tone: secureBatches > 0 ? "good" : "warn" },
+        ]}
+        steps={opsSteps}
+        tenants={Array.from(batchTenantMap.values())}
+        funnel={[
+          { stage: "Batches", value: batchRows.length },
+          { stage: "Plan", value: plannedTags },
+          { stage: "Import", value: importedTags },
+          { stage: "Active", value: activeTags },
+          { stage: "Secure", value: secureBatches },
+        ]}
+        readiness={[
+          { label: "Manifest", ready: importedTags, pending: Math.max(plannedTags - importedTags, 0) },
+          { label: "Activacion", ready: activeTags, pending: inactiveTags },
+          { label: "Carrier", ready: secureBatches, pending: Math.max(batchRows.length - secureBatches, 0) },
+          { label: "Supplier", ready: supplierBatches, pending: Math.max(batchRows.length - supplierBatches, 0) },
+        ]}
       />
       {!isTenantAdmin ? (
         <Card className="p-5 text-sm text-slate-300">

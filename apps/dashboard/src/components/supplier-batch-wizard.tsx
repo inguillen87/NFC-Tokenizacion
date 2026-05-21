@@ -920,6 +920,39 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     }
   }
 
+  const operatorGates = [
+    {
+      label: "Identidad de marca",
+      status: tenantProfileReady ? "listo" : "falta",
+      body: tenantProfileReady ? `${tenantName || tenantSlug} ya tiene origen, rubro y politica.` : "Completa tenant, producto, origen y politica de ownership.",
+      ready: tenantProfileReady,
+    },
+    {
+      label: "Seguridad prometida",
+      status: selectedCarrier ? selectedCarrier.label : "falta",
+      body: selectedCarrier ? selectedCarrier.promise : "Elegir QR, NFC UID, NTAG424 DNA o TT antes de importar.",
+      ready: Boolean(selectedCarrier),
+    },
+    {
+      label: "Llaves / carrier",
+      status: keysReady ? "listo" : "bloquea",
+      body: keysReady ? "K_META/K_FILE presentes cuando el carrier lo exige." : "Sin llaves no se debe vender como SUN/anti-replay.",
+      ready: keysReady,
+    },
+    {
+      label: "Manifest auditable",
+      status: manifestReady ? `${uniqueUidCount} UID` : "falta",
+      body: manifestReady ? "UID, batch, SKU y producto ya tienen preflight local." : "Carga TXT/CSV y corrige duplicados o mismatch de BID.",
+      ready: manifestReady,
+    },
+    {
+      label: "Prueba de campo",
+      status: validationCode === "VALID" ? "tap ok" : "pendiente",
+      body: validationCode === "VALID" ? "Una URL SUN real valido batch, llaves y estado." : "Antes de entregar, hacer tap fisico de muestra.",
+      ready: validationCode === "VALID",
+    },
+  ];
+
   return (
     <div className="space-y-6 supplier-batch-wizard">
       <Card className="p-5 sm:p-6">
@@ -974,6 +1007,26 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           <Metric label="Manifest rows" value={String(uniqueUidCount)} tone={manifestReady ? "good" : "neutral"} />
           <Metric label="Issues" value={String(manifest.issues.length)} tone={manifest.issues.length ? "bad" : "good"} />
           <Metric label="Active tags" value={String(activeCount)} tone={activeCount ? "good" : "neutral"} />
+        </div>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">Semaforo para reseller / operador</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">La pantalla tiene que explicar si el lote se puede pegar, probar y vender sin pedir ayuda tecnica.</p>
+            </div>
+            <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-3 py-1 text-xs font-black text-cyan-100">
+              {operatorGates.filter((gate) => gate.ready).length}/{operatorGates.length} gates
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-5">
+            {operatorGates.map((gate) => (
+              <article key={gate.label} className={`rounded-2xl border p-3 ${gate.ready ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] opacity-75">{gate.label}</p>
+                <p className="mt-2 text-sm font-black text-white">{gate.status}</p>
+                <p className="mt-2 text-xs leading-5 opacity-85">{gate.body}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </Card>
 
