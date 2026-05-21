@@ -1018,20 +1018,20 @@ export function GlobalOpsMap({
             />
             <div ref={mapContainerRef} className="hidden" />
             {!canRenderMap ? (
-              <svg viewBox="0 0 1200 620" className="absolute inset-0 h-full w-full">
+              <svg viewBox="0 0 1200 620" className="absolute inset-0 h-full w-full" data-nexid-map="global-ops-fallback">
                 <defs>
                   <radialGradient id="opsHeatGood" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(34,211,238,.5)" />
+                    <stop offset="0%" stopColor="var(--nexid-ops-heat-good, rgba(34,211,238,.5))" />
                     <stop offset="100%" stopColor="rgba(34,211,238,0)" />
                   </radialGradient>
                   <radialGradient id="opsHeatRisk" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="rgba(251,113,133,.52)" />
+                    <stop offset="0%" stopColor="var(--nexid-ops-heat-risk, rgba(251,113,133,.52))" />
                     <stop offset="100%" stopColor="rgba(251,113,133,0)" />
                   </radialGradient>
                 </defs>
-                <rect x="0" y="0" width="1200" height="620" fill="rgba(15,23,42,.45)" />
-                <ellipse cx="600" cy="310" rx="410" ry="240" fill="none" stroke="rgba(148,163,184,.18)" strokeWidth="1.5" />
-                <ellipse cx="600" cy="310" rx="320" ry="190" fill="none" stroke="rgba(34,211,238,.18)" strokeWidth="1.2" />
+                <rect x="0" y="0" width="1200" height="620" fill="var(--nexid-ops-fallback-fill, rgba(15,23,42,.45))" />
+                <ellipse cx="600" cy="310" rx="410" ry="240" fill="none" stroke="var(--nexid-ops-fallback-ring, rgba(148,163,184,.18))" strokeWidth="1.5" />
+                <ellipse cx="600" cy="310" rx="320" ry="190" fill="none" stroke="var(--nexid-ops-fallback-ring-accent, rgba(34,211,238,.18))" strokeWidth="1.2" />
                 {visiblePoints.map((point) => {
                   const dot = project(point.lat, point.lng);
                   return <circle key={`heat-${point.id}`} cx={dot.x} cy={dot.y} r={point.risk > 0 ? 64 : 52} fill={point.risk > 0 ? "url(#opsHeatRisk)" : "url(#opsHeatGood)"} opacity="0.9" />;
@@ -1042,7 +1042,7 @@ export function GlobalOpsMap({
                   const riskStroke = route.risk > 0 ? "rgba(251,113,133,.85)" : "rgba(34,211,238,.65)";
                   return (
                     <g key={route.id}>
-                      <path d={curve(a, b, route.risk > 0 ? 56 : 42)} stroke="rgba(2,6,23,.72)" strokeWidth={route.risk > 0 ? 7 : 5} fill="none" opacity="0.75" />
+                      <path d={curve(a, b, route.risk > 0 ? 56 : 42)} stroke="var(--nexid-ops-route-shadow, rgba(2,6,23,.72))" strokeWidth={route.risk > 0 ? 7 : 5} fill="none" opacity="0.75" />
                       <path d={curve(a, b, route.risk > 0 ? 56 : 42)} stroke={riskStroke} strokeWidth={route.risk > 0 ? 3.2 : 2.4} fill="none" strokeDasharray="5 7" opacity="0.95" />
                     </g>
                   );
@@ -1055,7 +1055,7 @@ export function GlobalOpsMap({
                     <g key={point.id}>
                       <circle cx={dot.x} cy={dot.y} r={isSelected ? 10 : Math.min(8, 4 + point.scans / 40)} fill={pointFill} />
                       {(isSelected || point.role === "origin" || point.role === "tap") ? (
-                        <text x={dot.x + 12} y={dot.y - 8} fill="rgba(226,232,240,.88)" fontSize="18" fontWeight="700">
+                        <text x={dot.x + 12} y={dot.y - 8} fill="var(--nexid-ops-label-fill, rgba(226,232,240,.88))" fontSize="18" fontWeight="700">
                           {point.role === "origin" ? "Origen" : point.role === "tap" ? "Tap cliente" : point.city}
                         </text>
                       ) : null}

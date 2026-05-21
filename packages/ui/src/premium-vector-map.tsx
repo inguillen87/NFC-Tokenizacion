@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
 import { formatTrustTileUrl, resolveTrustMapSource, type TrustMapSourceOverrides } from "./trust-map-source";
 
 export type VectorMapTone = "origin" | "tap" | "hub" | "risk" | "token";
@@ -53,6 +53,7 @@ type MapChrome = "full" | "compact" | "minimal";
 
 const WIDTH = 1200;
 const HEIGHT = 620;
+const LIGHT_PUBLIC_RASTER_TEMPLATE = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
 
 type AtlasRegionTone = "americas" | "europe" | "africa" | "asia" | "oceania" | "south";
 
@@ -361,12 +362,31 @@ export function PremiumVectorMap({
 }) {
   const rawId = useId();
   const idPrefix = useMemo(() => rawId.replace(/[^a-zA-Z0-9_-]/g, ""), [rawId]);
+  const [isLightTheme, setIsLightTheme] = useState(false);
   const visiblePoints = points.slice(0, maxPoints);
   const visibleRoutes = routes.slice(0, maxRoutes);
   const viewBox = fittedViewBox(visiblePoints, visibleRoutes, density);
   const viewBoxMetrics = parseViewBox(viewBox);
   const isTightRouteView = density === "route" && viewBoxMetrics.width < 260;
-  const trustMapSource = useMemo(() => resolveTrustMapSource(mapSource), [mapSource]);
+  useEffect(() => {
+    const root = document.documentElement;
+    const syncTheme = () => setIsLightTheme(root.classList.contains("theme-light"));
+    syncTheme();
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  const trustMapSource = useMemo(() => {
+    const resolved = resolveTrustMapSource(mapSource);
+    if (isLightTheme && resolved.mode === "public-raster" && resolved.rasterTileTemplate.includes("/dark_all/")) {
+      return {
+        ...resolved,
+        rasterTileTemplate: LIGHT_PUBLIC_RASTER_TEMPLATE,
+        detail: "Fallback publico claro sin API key; reemplazable por PMTiles o tiles propios.",
+      };
+    }
+    return resolved;
+  }, [isLightTheme, mapSource]);
   const mapTiles = mapTilesForViewBox(viewBox, density, trustMapSource.rasterTileTemplate);
   const maxScan = Math.max(1, ...visiblePoints.map((point) => point.scans || 1));
   const selectedPoint = visiblePoints.find((point) => point.id === selectedPointId) || visiblePoints[0] || null;
@@ -436,13 +456,14 @@ export function PremiumVectorMap({
         data-nexid-map="premium-vector-map"
         data-nexid-map-engine={trustMapSource.mode}
         data-nexid-map-source={trustMapSource.id}
+        data-nexid-map-theme={isLightTheme ? "light" : "dark"}
         data-nexid-pmtiles-url={trustMapSource.pmtilesUrl || undefined}
       >
         <defs>
           <linearGradient id={`${idPrefix}-ocean`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#061d32" />
-            <stop offset="46%" stopColor="#071523" />
-            <stop offset="100%" stopColor="#0b1026" />
+            <stop offset="0%" stopColor="var(--nexid-vector-ocean-1, #061d32)" />
+            <stop offset="46%" stopColor="var(--nexid-vector-ocean-2, #071523)" />
+            <stop offset="100%" stopColor="var(--nexid-vector-ocean-3, #0b1026)" />
           </linearGradient>
           <linearGradient id={`${idPrefix}-route-band`} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#22d3ee" stopOpacity="0" />
@@ -450,24 +471,24 @@ export function PremiumVectorMap({
             <stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
           </linearGradient>
           <linearGradient id={`${idPrefix}-land`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#0f766e" stopOpacity="0.34" />
-            <stop offset="52%" stopColor="#0e7490" stopOpacity="0.24" />
-            <stop offset="100%" stopColor="#1e3a8a" stopOpacity="0.18" />
+            <stop offset="0%" stopColor="var(--nexid-vector-land-1, #0f766e)" stopOpacity="var(--nexid-vector-land-opacity-1, 0.34)" />
+            <stop offset="52%" stopColor="var(--nexid-vector-land-2, #0e7490)" stopOpacity="var(--nexid-vector-land-opacity-2, 0.24)" />
+            <stop offset="100%" stopColor="var(--nexid-vector-land-3, #1e3a8a)" stopOpacity="var(--nexid-vector-land-opacity-3, 0.18)" />
           </linearGradient>
           <linearGradient id={`${idPrefix}-land-edge`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.18" />
-            <stop offset="50%" stopColor="#ccfbf1" stopOpacity="0.46" />
-            <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.16" />
+            <stop offset="0%" stopColor="var(--nexid-vector-land-edge-1, #67e8f9)" stopOpacity="var(--nexid-vector-land-edge-opacity-1, 0.18)" />
+            <stop offset="50%" stopColor="var(--nexid-vector-land-edge-2, #ccfbf1)" stopOpacity="var(--nexid-vector-land-edge-opacity-2, 0.46)" />
+            <stop offset="100%" stopColor="var(--nexid-vector-land-edge-3, #a78bfa)" stopOpacity="var(--nexid-vector-land-edge-opacity-3, 0.16)" />
           </linearGradient>
           <radialGradient id={`${idPrefix}-trace-wash`} cx="52%" cy="46%" r="72%">
-            <stop offset="0%" stopColor="rgba(20,184,166,0.08)" />
-            <stop offset="46%" stopColor="rgba(8,47,73,0.055)" />
-            <stop offset="100%" stopColor="rgba(2,6,23,0)" />
+            <stop offset="0%" stopColor="var(--nexid-vector-trace-wash-1, rgba(20,184,166,0.08))" />
+            <stop offset="46%" stopColor="var(--nexid-vector-trace-wash-2, rgba(8,47,73,0.055))" />
+            <stop offset="100%" stopColor="var(--nexid-vector-trace-wash-3, rgba(2,6,23,0))" />
           </radialGradient>
           <radialGradient id={`${idPrefix}-vignette`} cx="50%" cy="48%" r="66%">
-            <stop offset="0%" stopColor="rgba(34,211,238,0.12)" />
-            <stop offset="58%" stopColor="rgba(15,23,42,0.12)" />
-            <stop offset="100%" stopColor="rgba(2,6,23,0.76)" />
+            <stop offset="0%" stopColor="var(--nexid-vector-vignette-1, rgba(34,211,238,0.12))" />
+            <stop offset="58%" stopColor="var(--nexid-vector-vignette-2, rgba(15,23,42,0.12))" />
+            <stop offset="100%" stopColor="var(--nexid-vector-vignette-3, rgba(2,6,23,0.76))" />
           </radialGradient>
           <filter id={`${idPrefix}-soft-glow`} x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur stdDeviation="7" result="blur" />
@@ -482,10 +503,10 @@ export function PremiumVectorMap({
             <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0.10 0 0 0 0 0.55 0 0 0 0 0.65 0 0 0 .18 0" />
           </filter>
           <pattern id={`${idPrefix}-micro-grid`} width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M 60 0 H 0 V 60" fill="none" stroke="rgba(125,211,252,0.075)" strokeWidth="1" />
+            <path d="M 60 0 H 0 V 60" fill="none" stroke="var(--nexid-vector-grid-major, rgba(125,211,252,0.075))" strokeWidth="1" />
           </pattern>
           <pattern id={`${idPrefix}-scan-grid`} width="18" height="18" patternUnits="userSpaceOnUse">
-            <path d="M 18 0 H 0 V 18" fill="none" stroke="rgba(148,163,184,0.08)" strokeWidth="0.6" />
+            <path d="M 18 0 H 0 V 18" fill="none" stroke="var(--nexid-vector-grid-minor, rgba(148,163,184,0.08))" strokeWidth="0.6" />
           </pattern>
         </defs>
 
@@ -504,13 +525,13 @@ export function PremiumVectorMap({
                 preserveAspectRatio="none"
               />
             ))}
-            <rect width={WIDTH} height={HEIGHT} fill={density === "route" ? "rgba(2,6,23,0.16)" : "rgba(2,6,23,0.22)"} />
-            <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-trace-wash)`} opacity={density === "route" ? "0.1" : "0.14"} />
+            <rect width={WIDTH} height={HEIGHT} fill={density === "route" ? "var(--nexid-vector-tile-overlay-route, rgba(2,6,23,0.16))" : "var(--nexid-vector-tile-overlay, rgba(2,6,23,0.22))"} />
+            <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-trace-wash)`} opacity={density === "route" ? "var(--nexid-vector-trace-opacity-route, 0.1)" : "var(--nexid-vector-trace-opacity, 0.14)"} />
           </g>
         ) : null}
-        <rect width={WIDTH} height={HEIGHT} filter={`url(#${idPrefix}-basemap-noise)`} opacity={mapTiles.length ? "0.006" : density === "route" ? "0.05" : "0.18"} />
-        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-micro-grid)`} opacity={mapTiles.length ? "0.018" : density === "route" ? "0.22" : "0.72"} />
-        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-scan-grid)`} opacity={mapTiles.length ? "0.008" : density === "route" ? "0.05" : "0.18"} />
+        <rect width={WIDTH} height={HEIGHT} filter={`url(#${idPrefix}-basemap-noise)`} opacity={mapTiles.length ? "var(--nexid-vector-noise-opacity-tiles, 0.006)" : density === "route" ? "var(--nexid-vector-noise-opacity-route, 0.05)" : "var(--nexid-vector-noise-opacity, 0.18)"} />
+        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-micro-grid)`} opacity={mapTiles.length ? "var(--nexid-vector-grid-opacity-tiles, 0.018)" : density === "route" ? "var(--nexid-vector-grid-opacity-route, 0.22)" : "var(--nexid-vector-grid-opacity, 0.72)"} />
+        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-scan-grid)`} opacity={mapTiles.length ? "var(--nexid-vector-scan-opacity-tiles, 0.008)" : density === "route" ? "var(--nexid-vector-scan-opacity-route, 0.05)" : "var(--nexid-vector-scan-opacity, 0.18)"} />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-vignette)`} />
 
         <g opacity={mapTiles.length ? "0.006" : density === "route" ? "0.08" : "0.48"}>

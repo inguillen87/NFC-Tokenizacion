@@ -791,6 +791,13 @@ html.theme-light .global-ops-map-stage {
     linear-gradient(rgba(14, 116, 144, 0.05) 1px, transparent 1px),
     linear-gradient(160deg, rgba(248, 252, 255, 0.96), rgba(224, 242, 254, 0.82)) !important;
   background-size: 4.5rem 4.5rem, 4.5rem 4.5rem, auto !important;
+  --nexid-ops-fallback-fill: rgba(255, 255, 255, 0.08);
+  --nexid-ops-fallback-ring: rgba(14, 116, 144, 0.12);
+  --nexid-ops-fallback-ring-accent: rgba(14, 165, 233, 0.16);
+  --nexid-ops-route-shadow: rgba(255, 255, 255, 0.72);
+  --nexid-ops-label-fill: rgba(15, 23, 42, 0.82);
+  --nexid-ops-heat-good: rgba(14, 165, 233, 0.22);
+  --nexid-ops-heat-risk: rgba(244, 63, 94, 0.25);
 }
 
 html.theme-light .global-ops-map-legend,
@@ -809,6 +816,117 @@ html.theme-light .global-ops-map-card .text-cyan-100 {
 html.theme-light .global-ops-map-drawer .text-emerald-100,
 html.theme-light .global-ops-map-drawer .text-emerald-200 {
   color: #047857 !important;
+}
+
+html.theme-light .global-ops-map-story > div,
+html.theme-light .global-ops-map-demo-drawer > div {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(14, 116, 144, 0.16) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .global-ops-map-story .text-white,
+html.theme-light .global-ops-map-demo-drawer .text-white,
+html.theme-light .global-ops-map-demo-drawer .text-slate-200,
+html.theme-light .global-ops-map-demo-drawer .text-slate-300 {
+  color: #0f172a !important;
+}
+
+html.theme-light .global-ops-map-story .text-cyan-200,
+html.theme-light .global-ops-map-demo-drawer .text-cyan-200,
+html.theme-light .global-ops-map-demo-drawer .text-cyan-100 {
+  color: #075985 !important;
+}
+
+html.theme-light .global-ops-map-story .text-emerald-200,
+html.theme-light .global-ops-map-demo-drawer .text-emerald-200,
+html.theme-light .global-ops-map-demo-drawer .text-emerald-100 {
+  color: #047857 !important;
+}
+
+html.theme-light .global-ops-map-story .text-violet-200,
+html.theme-light .global-ops-map-demo-drawer .text-violet-200 {
+  color: #6d28d9 !important;
+}
+
+html.theme-light .global-ops-map-story [class*="text-emerald-100"],
+html.theme-light .global-ops-map-story [class*="text-cyan-100"],
+html.theme-light .global-ops-map-story [class*="text-violet-100"],
+html.theme-light .global-ops-map-story [class*="text-slate-300"],
+html.theme-light .global-ops-map-story [class*="text-slate-400"] {
+  color: #334155 !important;
+}
+
+[data-nexid-map="premium-vector-map"] {
+  --nexid-vector-ocean-1: #061d32;
+  --nexid-vector-ocean-2: #071523;
+  --nexid-vector-ocean-3: #0b1026;
+  --nexid-vector-trace-wash-1: rgba(20, 184, 166, 0.08);
+  --nexid-vector-trace-wash-2: rgba(8, 47, 73, 0.055);
+  --nexid-vector-trace-wash-3: rgba(2, 6, 23, 0);
+  --nexid-vector-vignette-1: rgba(34, 211, 238, 0.12);
+  --nexid-vector-vignette-2: rgba(15, 23, 42, 0.12);
+  --nexid-vector-vignette-3: rgba(2, 6, 23, 0.64);
+  --nexid-vector-tile-overlay-route: rgba(2, 6, 23, 0.1);
+  --nexid-vector-tile-overlay: rgba(2, 6, 23, 0.16);
+  --nexid-vector-trace-opacity-route: 0.16;
+  --nexid-vector-trace-opacity: 0.18;
+  --nexid-vector-noise-opacity-tiles: 0.004;
+  --nexid-vector-grid-opacity-tiles: 0.026;
+  --nexid-vector-scan-opacity-tiles: 0.006;
+  --nexid-vector-grid-major: rgba(125, 211, 252, 0.072);
+  --nexid-vector-grid-minor: rgba(148, 163, 184, 0.06);
+}
+
+.sun-stage-real-map [data-nexid-map="premium-vector-map"],
+.sun-map-section--enterprise [data-nexid-map="premium-vector-map"],
+.global-ops-map-stage [data-nexid-map="premium-vector-map"] {
+  --nexid-vector-ocean-1: #082f49;
+  --nexid-vector-ocean-2: #061826;
+  --nexid-vector-ocean-3: #070b1d;
+  --nexid-vector-vignette-3: rgba(2, 6, 23, 0.5);
+  --nexid-vector-tile-overlay-route: rgba(8, 47, 73, 0.08);
+  --nexid-vector-tile-overlay: rgba(2, 6, 23, 0.12);
+  filter: saturate(1.12) brightness(1.09) contrast(0.96);
+}
+
+html.theme-light [data-nexid-map="premium-vector-map"] {
+  --nexid-vector-ocean-1: #effaff;
+  --nexid-vector-ocean-2: #f8fcff;
+  --nexid-vector-ocean-3: #eef4ff;
+  --nexid-vector-land-1: #67e8f9;
+  --nexid-vector-land-2: #5eead4;
+  --nexid-vector-land-3: #c4b5fd;
+  --nexid-vector-land-opacity-1: 0.24;
+  --nexid-vector-land-opacity-2: 0.2;
+  --nexid-vector-land-opacity-3: 0.18;
+  --nexid-vector-land-edge-1: #0891b2;
+  --nexid-vector-land-edge-2: #0f766e;
+  --nexid-vector-land-edge-3: #7c3aed;
+  --nexid-vector-land-edge-opacity-1: 0.2;
+  --nexid-vector-land-edge-opacity-2: 0.28;
+  --nexid-vector-land-edge-opacity-3: 0.14;
+  --nexid-vector-trace-wash-1: rgba(14, 165, 233, 0.12);
+  --nexid-vector-trace-wash-2: rgba(45, 212, 191, 0.06);
+  --nexid-vector-trace-wash-3: rgba(255, 255, 255, 0);
+  --nexid-vector-vignette-1: rgba(14, 165, 233, 0.08);
+  --nexid-vector-vignette-2: rgba(255, 255, 255, 0.04);
+  --nexid-vector-vignette-3: rgba(186, 230, 253, 0.16);
+  --nexid-vector-tile-overlay-route: rgba(255, 255, 255, 0.18);
+  --nexid-vector-tile-overlay: rgba(255, 255, 255, 0.24);
+  --nexid-vector-trace-opacity-route: 0.24;
+  --nexid-vector-trace-opacity: 0.22;
+  --nexid-vector-noise-opacity-tiles: 0.002;
+  --nexid-vector-grid-opacity-tiles: 0.04;
+  --nexid-vector-scan-opacity-tiles: 0.012;
+  --nexid-vector-grid-major: rgba(14, 116, 144, 0.06);
+  --nexid-vector-grid-minor: rgba(14, 116, 144, 0.045);
+}
+
+html.theme-light .sun-stage-real-map [data-nexid-map="premium-vector-map"],
+html.theme-light .sun-map-section--enterprise [data-nexid-map="premium-vector-map"],
+html.theme-light .global-ops-map-stage [data-nexid-map="premium-vector-map"] {
+  filter: saturate(0.86) brightness(1.08) contrast(0.88);
 }
 
 body:has(.sun-mobile-surface) .helpbot-hint {
@@ -2873,6 +2991,29 @@ html.theme-light .sun-product-stage {
   background-size: auto, auto, 3.2rem 3.2rem, 3.2rem 3.2rem, auto;
 }
 
+html.theme-light .sun-stage-real-map {
+  background:
+    radial-gradient(circle at 22% 42%, rgba(45, 212, 191, 0.18), transparent 18rem),
+    linear-gradient(145deg, rgba(248, 252, 255, 0.94), rgba(224, 242, 254, 0.76));
+  box-shadow:
+    inset 0 0 0 1px rgba(14, 116, 144, 0.14),
+    inset 0 -4.5rem 6rem rgba(186, 230, 253, 0.18),
+    0 1.2rem 3.2rem rgba(14, 116, 144, 0.12);
+  --nexid-ops-fallback-fill: rgba(255, 255, 255, 0.16);
+  --nexid-ops-fallback-ring: rgba(14, 116, 144, 0.12);
+  --nexid-ops-fallback-ring-accent: rgba(8, 145, 178, 0.18);
+  --nexid-ops-route-shadow: rgba(255, 255, 255, 0.66);
+  --nexid-ops-label-fill: rgba(15, 23, 42, 0.86);
+  --nexid-ops-heat-good: rgba(14, 165, 233, 0.22);
+  --nexid-ops-heat-risk: rgba(244, 63, 94, 0.24);
+}
+
+html.theme-light .sun-stage-real-map::after {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(240, 249, 255, 0.16)),
+    radial-gradient(circle at 50% 52%, transparent 0 58%, rgba(14, 116, 144, 0.08) 86%);
+}
+
 html.theme-light .sun-product-stage::before {
   border-color: rgba(14, 116, 144, 0.2);
 }
@@ -3227,13 +3368,24 @@ html.theme-light .sun-priority-panel a {
     inset 0 -4.5rem 6rem rgba(2, 6, 23, 0.38);
 }
 
+.sun-stage-real-map,
+.sun-map-section--enterprise .global-ops-map-stage {
+  --nexid-ops-fallback-fill: rgba(8, 28, 42, 0.22);
+  --nexid-ops-fallback-ring: rgba(148, 163, 184, 0.12);
+  --nexid-ops-fallback-ring-accent: rgba(34, 211, 238, 0.18);
+  --nexid-ops-route-shadow: rgba(2, 6, 23, 0.58);
+  --nexid-ops-label-fill: rgba(226, 232, 240, 0.92);
+  --nexid-ops-heat-good: rgba(34, 211, 238, 0.42);
+  --nexid-ops-heat-risk: rgba(251, 113, 133, 0.5);
+}
+
 .sun-stage-real-map::after {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(2, 6, 23, 0.02), rgba(2, 6, 23, 0.2)),
-    radial-gradient(circle at 50% 48%, transparent 0 55%, rgba(2, 6, 23, 0.24) 82%);
+    linear-gradient(180deg, rgba(2, 6, 23, 0.01), rgba(2, 6, 23, 0.12)),
+    radial-gradient(circle at 50% 48%, transparent 0 58%, rgba(2, 6, 23, 0.18) 84%);
   pointer-events: none;
 }
 
@@ -13954,8 +14106,8 @@ html.theme-light .demo-lab-studio-top-actions button:hover {
   }
 }
 
-/* Premium light-mode pass for the public hero demo. The product/map stage stays cinematic,
-   while surrounding explanation cards become readable business UI instead of dark remnants. */
+/* Premium light-mode pass for the public hero demo. The map also adapts to light mode
+   instead of looking like a dark iframe embedded in a bright product page. */
 html.theme-light .hero-demo-shell {
   border: 1px solid rgba(148, 163, 184, 0.32);
   border-radius: 2rem;
@@ -13997,14 +14149,88 @@ html.theme-light .hero-scene-band {
 html.theme-light .hero-object-frame {
   border-color: rgba(14, 116, 144, 0.2) !important;
   background:
-    radial-gradient(circle at 50% 48%, rgba(34, 211, 238, 0.16), transparent 34%),
-    radial-gradient(circle at 20% 28%, rgba(20, 184, 166, 0.12), transparent 26%),
-    radial-gradient(circle at 80% 66%, rgba(99, 102, 241, 0.14), transparent 27%),
-    linear-gradient(135deg, rgba(8, 47, 73, 0.96), rgba(15, 23, 42, 0.94)) !important;
+    radial-gradient(circle at 50% 48%, rgba(14, 165, 233, 0.17), transparent 36%),
+    radial-gradient(circle at 20% 28%, rgba(20, 184, 166, 0.1), transparent 28%),
+    radial-gradient(circle at 82% 66%, rgba(99, 102, 241, 0.11), transparent 30%),
+    linear-gradient(135deg, rgba(240, 249, 255, 0.98), rgba(255, 255, 255, 0.96) 52%, rgba(238, 242, 255, 0.9)) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 -4.5rem 6.5rem rgba(2, 6, 23, 0.36),
-    0 18px 44px rgba(15, 23, 42, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 0 -4rem 6rem rgba(186, 230, 253, 0.42),
+    0 18px 44px rgba(15, 23, 42, 0.1);
+}
+
+html.theme-light .hero-object-frame::before {
+  border-color: rgba(14, 116, 144, 0.13) !important;
+  background:
+    linear-gradient(90deg, transparent 0 49.9%, rgba(14, 116, 144, 0.1) 50%, transparent 50.1% 100%),
+    linear-gradient(180deg, transparent 0 49.9%, rgba(14, 116, 144, 0.08) 50%, transparent 50.1% 100%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(224, 242, 254, 0.12)) !important;
+  opacity: 0.5;
+}
+
+html.theme-light .hero-object-frame::after {
+  background:
+    radial-gradient(ellipse at center, transparent 0 48%, rgba(14, 165, 233, 0.15) 48.4% 48.8%, transparent 49.2% 100%),
+    radial-gradient(ellipse at center, transparent 0 67%, rgba(20, 184, 166, 0.11) 67.2% 67.6%, transparent 68% 100%) !important;
+  opacity: 0.22;
+}
+
+html.theme-light .hero-trace-map::before {
+  background:
+    linear-gradient(90deg, rgba(14, 116, 144, 0.07) 1px, transparent 1px),
+    linear-gradient(rgba(14, 116, 144, 0.065) 1px, transparent 1px),
+    radial-gradient(circle at 20% 36%, rgba(14, 165, 233, 0.16), transparent 34%),
+    radial-gradient(circle at 78% 62%, rgba(99, 102, 241, 0.1), transparent 32%),
+    linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(248, 250, 252, 0.92)) !important;
+  background-size: 4.2rem 4.2rem, 4.2rem 4.2rem, auto, auto, auto;
+}
+
+html.theme-light .hero-trace-map [data-nexid-map="premium-vector-map"] {
+  opacity: 0.52;
+  filter: saturate(0.86) brightness(1.18) contrast(0.82);
+}
+
+html.theme-light .hero-trace-map__water {
+  fill: rgba(224, 242, 254, 0.58) !important;
+}
+
+html.theme-light .hero-trace-map__land,
+html.theme-light .hero-trace-map__land--americas,
+html.theme-light .hero-trace-map__land--europe,
+html.theme-light .hero-trace-map__land--africa {
+  fill: rgba(14, 165, 233, 0.045) !important;
+  stroke: rgba(14, 116, 144, 0.24) !important;
+  opacity: 0.78;
+}
+
+html.theme-light .hero-trace-map__coast {
+  stroke: rgba(14, 116, 144, 0.32) !important;
+}
+
+html.theme-light .hero-trace-map__grid {
+  stroke: rgba(14, 116, 144, 0.16) !important;
+}
+
+html.theme-light .hero-trace-map__road {
+  stroke: rgba(14, 116, 144, 0.28) !important;
+}
+
+html.theme-light .hero-trace-map__road--secondary {
+  stroke: rgba(124, 58, 237, 0.22) !important;
+}
+
+html.theme-light .hero-trace-map__label {
+  fill: rgba(15, 23, 42, 0.54) !important;
+}
+
+html.theme-light .hero-trace-map__route-shadow {
+  stroke: rgba(255, 255, 255, 0.94) !important;
+  opacity: 0.96 !important;
+}
+
+html.theme-light .hero-trace-map__route {
+  stroke: rgba(6, 182, 212, 0.94) !important;
+  filter: drop-shadow(0 0 4px rgba(14, 165, 233, 0.25)) !important;
 }
 
 html.theme-light .hero-flow-step p,
@@ -14052,27 +14278,29 @@ html.theme-light .hero-map-event,
 html.theme-light .hero-trace-caption,
 html.theme-light .hero-map-data-strip,
 html.theme-light .hero-origin-link {
-  background: rgba(2, 6, 23, 0.76) !important;
-  border-color: rgba(125, 211, 252, 0.22) !important;
-  color: #f8fafc !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12) !important;
+  backdrop-filter: blur(12px);
 }
 
 html.theme-light .hero-map-pin strong,
 html.theme-light .hero-map-intel strong,
 html.theme-light .hero-map-event strong,
 html.theme-light .hero-trace-caption strong {
-  color: #f8fafc !important;
+  color: #0f172a !important;
 }
 
 html.theme-light .hero-map-pin span,
 html.theme-light .hero-map-intel p,
 html.theme-light .hero-map-event span,
 html.theme-light .hero-trace-caption p {
-  color: #67e8f9 !important;
+  color: #0e7490 !important;
 }
 
 html.theme-light .hero-map-intel span,
 html.theme-light .hero-trace-caption span,
 html.theme-light .hero-map-data-strip span {
-  color: #cbd5e1 !important;
+  color: #475569 !important;
 }
