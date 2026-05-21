@@ -26,6 +26,27 @@ const emptyDraft: Draft = {
   visibility: "network",
 };
 
+const verifiedSignals = [
+  { label: "Experiencias verificadas", value: "Owner-only", body: "Solo usuarios con tap, contacto o ownership." },
+  { label: "Trust visible", value: "0-100", body: "Score visible para marca y auditor." },
+  { label: "Feedback global", value: "Multi-idioma", body: "Traduccion automatica por mercado." },
+];
+
+const socialPreview = [
+  {
+    product: "Gran Reserva Malbec",
+    stars: "5.0",
+    badge: "Dueno verificado",
+    quote: "Veo origen, apertura y certificado; no es una opinion anonima.",
+  },
+  {
+    product: "Serum premium",
+    stars: "4.8",
+    badge: "Compra validada",
+    quote: "La garantia quedo guardada y el sello me mostro autenticidad.",
+  },
+];
+
 function checkoutChip(mode: CheckoutMode) {
   if (mode === "request") {
     return <span className="inline-flex rounded border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-400">Request to Buy</span>;
@@ -232,6 +253,52 @@ export default function TenantMarketplacePage() {
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Públicos en network: <b>{totals.publicCount}</b></div>
         <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 text-sm text-cyan-100">Direct checkout listos: <b>{totals.directCount}</b></div>
       </div>
+
+      <section className="rounded-2xl border border-violet-500/20 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.18),transparent_36%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.98))] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Marketplace con prueba social real</p>
+            <h2 className="mt-2 text-xl font-black text-white">Cada producto puede mostrar reputacion verificada, no reviews anonimas.</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+              Las experiencias se publican solo si el usuario paso por tap fisico, identidad y politica de compra o club.
+              Esto hace que la reputacion suba valor de marca, reventa, NFT y confianza del comprador.
+            </p>
+          </div>
+          <button suppressHydrationWarning onClick={() => window.location.assign("/loyalty/experiences")} className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-100">
+            Gestionar experiencias
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3 lg:grid-cols-[0.85fr_1.15fr]">
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            {verifiedSignals.map((signal) => (
+              <div key={signal.label} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{signal.label}</p>
+                <p className="mt-2 text-2xl font-black text-white">{signal.value}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{signal.body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {socialPreview.map((review) => (
+              <article key={review.product} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-white">{review.product}</p>
+                    <p className="mt-1 text-xs text-emerald-200">{review.badge}</p>
+                  </div>
+                  <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-1 text-xs font-black text-amber-100">{review.stars}</span>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-slate-200">&quot;{review.quote}&quot;</p>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100">
+                  <span className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2 py-1">tap</span>
+                  <span className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2 py-1">club</span>
+                  <span className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2 py-1">safe</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-3 md:grid-cols-[1fr_auto]">
         <input suppressHydrationWarning value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto o vertical..." className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30" />

@@ -10,6 +10,57 @@ import { requireDashboardSession } from "../../../lib/session";
 
 const API_BASE = productUrls.api;
 
+const rolloutSteps = [
+  {
+    step: "01",
+    title: "Recibir tags",
+    body: "El proveedor entrega QR, NFC simple o NTAG424 DNA TT con lote, remito y manifest.",
+  },
+  {
+    step: "02",
+    title: "Subir manifest",
+    body: "CSV/TXT con UID, BID, SKU, carrier, producto, fotos, etiqueta, GLB y galeria si existen.",
+  },
+  {
+    step: "03",
+    title: "Preflight",
+    body: "nexID valida duplicados, carrier, batch mismatch, llaves, cantidad y politica de claim.",
+  },
+  {
+    step: "04",
+    title: "Pegar y probar",
+    body: "El operador pega tags, hace un tap real y confirma que /sun muestra producto, mapa y acciones.",
+  },
+  {
+    step: "05",
+    title: "Publicar",
+    body: "Portal, marketplace, club, garantia, ownership, NFT y experiencias verificadas quedan listos.",
+  },
+];
+
+const carrierLadder = [
+  {
+    label: "QR comun",
+    promise: "Contenido, leads, promociones y analytics basico.",
+    warning: "No vender como anti-clon ni autenticidad criptografica.",
+  },
+  {
+    label: "NFC UID",
+    promise: "Tap-to-web, serializacion y reglas de plataforma.",
+    warning: "Bueno para UX, no para prueba premium por si solo.",
+  },
+  {
+    label: "NTAG424 DNA",
+    promise: "SUN dinamico, anti-replay y validacion criptografica.",
+    warning: "El ownership sigue dependiendo de compra o politica del tenant.",
+  },
+  {
+    label: "NTAG424 DNA TT",
+    promise: "SUN + estado fisico de sello abierto/cerrado.",
+    warning: "Ideal para vino, cosmetica, lujo, pharma ligera y cajas premium.",
+  },
+];
+
 async function getBatchRows(tenantScope = "") {
   try {
     const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
@@ -95,6 +146,42 @@ export default async function BatchesPage() {
           </div>
         </Card>
       ) : null}
+      <Card className="overflow-hidden p-0">
+        <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,0.98))] p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">Operacion no tecnica</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-white">De caja de tags a producto vendiendo</h2>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+                Este flujo tiene que servirle a un reseller, bodega, operador de marketing o auditor: recibe tags, sube el lote,
+                valida, pega, prueba un tap fisico y publica la experiencia completa sin tocar codigo.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/batches/supplier" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100">Abrir wizard proveedor</Link>
+              <Link href="/loyalty/experiences" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100">Activar club/reviews</Link>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-5">
+            {rolloutSteps.map((item) => (
+              <div key={item.step} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/10 text-xs font-black text-cyan-100">{item.step}</span>
+                <h3 className="mt-3 text-sm font-black text-white">{item.title}</h3>
+                <p className="mt-2 text-xs leading-5 text-slate-400">{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-3 p-5 sm:p-6 md:grid-cols-4">
+          {carrierLadder.map((item) => (
+            <article key={item.label} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+              <h3 className="text-base font-black text-white">{item.label}</h3>
+              <p className="mt-2 text-xs leading-5 text-emerald-100">{item.promise}</p>
+              <p className="mt-3 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">{item.warning}</p>
+            </article>
+          ))}
+        </div>
+      </Card>
       <Card className="p-5 text-sm text-slate-300">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Wizard lineal recomendado (1 - 7)</h2>
         <div className="mt-3 grid gap-2 md:grid-cols-2">

@@ -683,6 +683,37 @@ export async function ensureConsumerPortalSchema() {
       await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_consumer_product_ownerships_active_uid ON consumer_product_ownerships(tenant_id, uid_hex) WHERE status = 'claimed'`;
 
       await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS consumer_product_experiences (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          consumer_id uuid NOT NULL REFERENCES consumers(id) ON DELETE CASCADE,
+          ownership_id uuid REFERENCES consumer_product_ownerships(id) ON DELETE SET NULL,
+          event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+          uid_hex text,
+          product_name text NOT NULL DEFAULT 'Producto verificado',
+          rating integer NOT NULL CHECK (rating BETWEEN 1 AND 5),
+          title text,
+          body text NOT NULL,
+          original_locale text NOT NULL DEFAULT 'es-AR',
+          country text,
+          city text,
+          photo_urls_json jsonb NOT NULL DEFAULT '[]'::jsonb,
+          verification_badges_json jsonb NOT NULL DEFAULT '[]'::jsonb,
+          trust_score integer NOT NULL DEFAULT 0 CHECK (trust_score BETWEEN 0 AND 100),
+          moderation_status text NOT NULL DEFAULT 'pending' CHECK (moderation_status IN ('pending', 'approved', 'rejected', 'needs_brand_response', 'private')),
+          visibility text NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'tenant', 'public')),
+          brand_response text,
+          translation_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumer_product_experiences_tenant_status ON consumer_product_experiences(tenant_id, moderation_status, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumer_product_experiences_consumer ON consumer_product_experiences(consumer_id, created_at DESC)`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_consumer_product_experiences_ownership ON consumer_product_experiences(consumer_id, ownership_id) WHERE ownership_id IS NOT NULL`;
+
+      await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS consumer_reward_wallets (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           consumer_id uuid NOT NULL REFERENCES consumers(id) ON DELETE CASCADE,
