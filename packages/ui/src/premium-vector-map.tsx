@@ -368,6 +368,16 @@ export function PremiumVectorMap({
   const viewBox = fittedViewBox(visiblePoints, visibleRoutes, density);
   const viewBoxMetrics = parseViewBox(viewBox);
   const isTightRouteView = density === "route" && viewBoxMetrics.width < 260;
+  const routeHaloColor = isLightTheme ? "#ffffff" : "#020617";
+  const routeHaloOpacity = isLightTheme ? "0.86" : "0.42";
+  const labelPanelFill = isLightTheme ? "rgba(255,255,255,0.9)" : "rgba(2,6,23,0.74)";
+  const labelPanelStrokeOpacity = isLightTheme ? "0.42" : "0.32";
+  const labelTextFill = isLightTheme ? "#0f172a" : "#e0f2fe";
+  const labelMutedFill = isLightTheme ? "#334155" : "#94a3b8";
+  const labelHaloColor = isLightTheme ? "rgba(255,255,255,0.92)" : "rgba(2,6,23,0.72)";
+  const pointCenterFill = isLightTheme ? "rgba(255,255,255,0.88)" : "rgba(2,6,23,0.7)";
+  const atlasLabelFill = isLightTheme ? "#155e75" : "#bae6fd";
+  const atlasHaloColor = isLightTheme ? "rgba(255,255,255,0.92)" : "rgba(2,6,23,0.7)";
   useEffect(() => {
     const root = document.documentElement;
     const syncTheme = () => {
@@ -623,13 +633,13 @@ export function PremiumVectorMap({
               key={item.label}
               x={item.x}
               y={item.y}
-              fill="#bae6fd"
+              fill={atlasLabelFill}
               fontSize="15"
               fontWeight="900"
               letterSpacing="4"
-              opacity="0.58"
+              opacity={isLightTheme ? "0.44" : "0.58"}
               paintOrder="stroke"
-              stroke="rgba(2,6,23,0.7)"
+              stroke={atlasHaloColor}
               strokeWidth="5"
             >
               {item.label}
@@ -647,13 +657,13 @@ export function PremiumVectorMap({
                 x={dot.x}
                 y={dot.y}
                 textAnchor="middle"
-                fill={isCity ? "#e0f2fe" : "#bae6fd"}
+                fill={isCity ? labelTextFill : atlasLabelFill}
                 fontSize={isCity ? "13" : "16"}
                 fontWeight={isCity ? "850" : "950"}
                 letterSpacing={isCity ? "1.6" : "4.2"}
-                opacity={isCity ? "0.68" : "0.38"}
+                opacity={isLightTheme ? (isCity ? "0.58" : "0.32") : (isCity ? "0.68" : "0.38")}
                 paintOrder="stroke"
-                stroke="rgba(2,6,23,0.78)"
+                stroke={labelHaloColor}
                 strokeWidth={isCity ? "4" : "5"}
               >
                 {item.label}
@@ -667,12 +677,12 @@ export function PremiumVectorMap({
             x={WIDTH - 24}
             y={HEIGHT - 16}
             textAnchor="end"
-            fill="#94a3b8"
+            fill={labelMutedFill}
             fontSize="10"
             fontWeight="700"
             opacity="0.72"
             paintOrder="stroke"
-            stroke="rgba(2,6,23,0.72)"
+            stroke={labelHaloColor}
             strokeWidth="3"
           >
             {trustMapSource.attribution}
@@ -733,7 +743,7 @@ export function PremiumVectorMap({
             const label = route.distanceLabel || route.label;
             return (
               <g key={route.id}>
-                <path d={d} fill="none" stroke="#020617" strokeWidth={route.tone === "warn" ? "12" : "10"} strokeLinecap="round" opacity="0.42" />
+                <path d={d} fill="none" stroke={routeHaloColor} strokeWidth={route.tone === "warn" ? "12" : "10"} strokeLinecap="round" opacity={routeHaloOpacity} />
                 <path d={d} fill="none" stroke={color} strokeWidth={route.tone === "warn" ? "4.6" : "3.8"} strokeLinecap="round" opacity="0.16" filter={`url(#${idPrefix}-soft-glow)`} />
                 <path d={d} fill="none" stroke={color} strokeWidth={route.tone === "warn" ? "2.8" : "2.2"} strokeLinecap="round" strokeDasharray="10 14" opacity="0.94" filter={`url(#${idPrefix}-soft-glow)`}>
                   <animate attributeName="stroke-dashoffset" values="0;-72" dur={speed} repeatCount="indefinite" />
@@ -743,8 +753,8 @@ export function PremiumVectorMap({
                 </circle>
                 {label && chrome !== "minimal" ? (
                   <g transform={`translate(${labelX.toFixed(1)} ${labelY.toFixed(1)})`} opacity={index > 6 ? "0.68" : "0.92"}>
-                    <rect x="-58" y="-14" width="116" height="27" rx="13.5" fill="rgba(2,6,23,0.74)" stroke={color} strokeOpacity="0.32" />
-                    <text x="0" y="4" textAnchor="middle" fill="#e0f2fe" fontSize="12" fontWeight="850" letterSpacing="1.4">
+                    <rect x="-58" y="-14" width="116" height="27" rx="13.5" fill={labelPanelFill} stroke={color} strokeOpacity={labelPanelStrokeOpacity} />
+                    <text x="0" y="4" textAnchor="middle" fill={labelTextFill} fontSize="12" fontWeight="850" letterSpacing="1.4" paintOrder="stroke" stroke={labelHaloColor} strokeWidth="2">
                       {label}
                     </text>
                   </g>
@@ -776,12 +786,12 @@ export function PremiumVectorMap({
                   <animate attributeName="r" values={`${radius + 5};${radius + 18};${radius + 5}`} dur={selected ? "2.1s" : "3.4s"} repeatCount="indefinite" />
                   <animate attributeName="opacity" values="0.75;0.12;0.75" dur={selected ? "2.1s" : "3.4s"} repeatCount="indefinite" />
                 </circle>
-                <circle cx={dot.x} cy={dot.y} r={radius + 3} fill="rgba(2,6,23,0.7)" stroke={color} strokeWidth="1.2" />
+                <circle cx={dot.x} cy={dot.y} r={radius + 3} fill={pointCenterFill} stroke={color} strokeWidth="1.2" />
                 <circle cx={dot.x} cy={dot.y} r={radius} fill={color} stroke="#f8fafc" strokeWidth={selected ? "3" : "2"} filter={`url(#${idPrefix}-soft-glow)`} />
                 {shouldLabel ? (
                   <g transform={`translate(${dot.x + 16} ${dot.y - 18})`}>
-                    <rect x="0" y="-18" width={Math.max(70, Math.min(155, point.label.length * 8 + 24))} height="28" rx="14" fill="rgba(2,6,23,0.7)" stroke={color} strokeOpacity="0.28" />
-                    <text x="12" y="1" fill="#e0f2fe" fontSize={selected ? "13" : "12"} fontWeight="850" paintOrder="stroke" stroke="rgba(2,6,23,0.42)" strokeWidth="2">
+                    <rect x="0" y="-18" width={Math.max(70, Math.min(155, point.label.length * 8 + 24))} height="28" rx="14" fill={labelPanelFill} stroke={color} strokeOpacity={labelPanelStrokeOpacity} />
+                    <text x="12" y="1" fill={labelTextFill} fontSize={selected ? "13" : "12"} fontWeight="850" paintOrder="stroke" stroke={labelHaloColor} strokeWidth="2">
                       {point.label}
                     </text>
                   </g>

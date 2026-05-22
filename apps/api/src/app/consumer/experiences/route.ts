@@ -39,11 +39,24 @@ function cleanLocale(value: unknown) {
   return /^[a-z]{2}(-[A-Z]{2})?$/.test(locale) ? locale : "es-AR";
 }
 
+function cleanPhotoUrl(value: unknown) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^https?:\/\//i.test(text)) return cleanText(text, 900);
+  if (
+    text.length <= 1_700_000 &&
+    /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i.test(text)
+  ) {
+    return text;
+  }
+  return "";
+}
+
 function cleanPhotoUrls(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value
-    .map((item) => cleanText(item, 600))
-    .filter((item) => /^https?:\/\//i.test(item))
+    .map(cleanPhotoUrl)
+    .filter(Boolean)
     .slice(0, 4);
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, MessageSquareText, Send, ShieldCheck, Star } from "lucide-react";
+import { type ChangeEvent, useMemo, useRef, useState } from "react";
+import { AlertCircle, Camera, CheckCircle2, Link2, MessageSquareText, Send, ShieldCheck, Star, X } from "lucide-react";
 
 type Props = {
   initialEventId?: string;
@@ -10,6 +10,9 @@ type Props = {
 };
 
 type SubmitState = "idle" | "sending" | "success" | "error";
+
+const MAX_PHOTO_BYTES = 1_200_000;
+const acceptedPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const errorCopy: Record<string, string> = {
   unauthorized: "Necesitas iniciar sesion o validar tu email/celular antes de opinar.",
@@ -37,13 +40,53 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [photoFileName, setPhotoFileName] = useState("");
+  const [photoError, setPhotoError] = useState("");
   const [state, setState] = useState<SubmitState>("idle");
   const [message, setMessage] = useState("");
   const [createdTrust, setCreatedTrust] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const canSubmit = useMemo(() => {
     return Boolean(eventId && rating >= 1 && rating <= 5 && body.trim().length >= 12 && state !== "sending");
   }, [body, eventId, rating, state]);
+
+  function clearPhoto() {
+    setPhotoUrl("");
+    setPhotoFileName("");
+    setPhotoError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handlePhotoFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!acceptedPhotoTypes.has(file.type)) {
+      setPhotoError("Usa una foto JPG, PNG o WEBP.");
+      return;
+    }
+
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError("La foto pesa demasiado. Usa una imagen de hasta 1.2 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (!result.startsWith("data:image/")) {
+        setPhotoError("No pudimos leer esa foto.");
+        return;
+      }
+
+      setPhotoUrl(result);
+      setPhotoFileName(file.name);
+      setPhotoError("");
+    };
+    reader.onerror = () => setPhotoError("No pudimos leer esa foto.");
+    reader.readAsDataURL(file);
+  }
 
   async function submitExperience() {
     if (!canSubmit) {
@@ -85,7 +128,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
     setMessage("Lista. Quedo guardada como experiencia privada y pasa a moderacion de la marca.");
     setTitle("");
     setBody("");
-    setPhotoUrl("");
+    clearPhoto();
   }
 
   return (
@@ -163,15 +206,59 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
                 className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40"
               />
             </label>
-            <label className="block rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+            <div className="block rounded-2xl border border-white/10 bg-slate-950/60 p-4">
               <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Foto opcional</span>
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                Subi una foto real del producto. En mobile abre camara; en desktop permite elegir archivo.
+              </p>
               <input
-                value={photoUrl}
-                onChange={(event) => setPhotoUrl(event.target.value)}
-                placeholder="https://..."
-                className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40"
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                capture="environment"
+                className="sr-only"
+                onChange={handlePhotoFile}
               />
-            </label>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-400/18"
+                >
+                  <Camera className="h-4 w-4" aria-hidden="true" />
+                  Subir foto
+                </button>
+                {photoUrl ? (
+                  <button
+                    type="button"
+                    onClick={clearPhoto}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-slate-200 transition hover:bg-white/[0.08]"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                    Quitar
+                  </button>
+                ) : null}
+              </div>
+              <p className="mt-2 text-[11px] font-semibold text-slate-500">
+                {photoFileName ? `Foto lista: ${photoFileName}` : "Tambien podes pegar un link de imagen si ya la tenes subida."}
+              </p>
+              <div className="mt-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+                Link opcional
+              </div>
+              <input
+                value={photoUrl.startsWith("data:") ? "" : photoUrl}
+                disabled={photoUrl.startsWith("data:")}
+                onChange={(event) => {
+                  setPhotoFileName("");
+                  setPhotoError("");
+                  setPhotoUrl(event.target.value);
+                }}
+                placeholder="https://..."
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              {photoError ? <p className="mt-2 text-xs font-semibold text-rose-200">{photoError}</p> : null}
+            </div>
           </div>
 
           <label className="block rounded-2xl border border-white/10 bg-slate-950/60 p-4">

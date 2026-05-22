@@ -1432,16 +1432,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          <div id="geo-trace" className="sun-map-section sun-map-section--enterprise sun-panel-map rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
             <div className="sun-map-section__header">
               <div>
-                <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Geo trace enterprise</p>
-                <h2 className="px-1 text-lg font-black text-white">Mapa de confianza origen - tap</h2>
+                <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Ruta de confianza</p>
+                <h2 className="px-1 text-lg font-black text-white">Origen, tap y ownership en una sola historia</h2>
               </div>
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">Mapa vivo + ruta</span>
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">Producto vivo</span>
             </div>
             <div className="mt-2">
                {opsMapPoints.length ? (
                   <GlobalOpsMap
-                    title="Trazabilidad geografica SUN"
-                    subtitle="Vista limpia: origen, verificaciones y tap actual en una ruta entendible."
+                    title="Ruta de confianza del producto"
+                    subtitle="Origen real, tap fisico, distancia, riesgo y proximo paso sin jerga tecnica."
                     points={opsMapPoints}
                     routes={opsMapRoutes}
                     mode="demo"
@@ -1450,7 +1450,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   />
                ) : (
                   <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-400">
-                    Sin coordenadas disponibles para este tap. Se mostrará el mapa al recibir eventos geo.
+                    Sin coordenadas disponibles para este tap. El mapa aparece cuando llegan eventos con ubicacion.
                   </div>
                )}
             </div>
@@ -1472,7 +1472,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               {originMapHref ? <a href={originMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-2 text-center font-semibold text-emerald-100">Visitar origen</a> : null}
               {tapMapHref ? <a href={tapMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-2 text-center font-semibold text-cyan-100">Ver tap actual</a> : null}
             </div>
-            <p className="mt-2 text-[10px] text-slate-500">{timelineCities} ciudades reales en timeline. Si el tap no trae GPS, se usa centro de ciudad conocido para narrar la ruta sin simular precision exacta.</p>
+            <p className="mt-2 text-[10px] text-slate-500">{timelineCities} ciudades reales en timeline. Si el tap no trae GPS, se usa centro de ciudad conocido para contar la ruta sin simular precision exacta.</p>
          </div>
 
          {/* Loyalty & Experiences Mini-app (Consumer Network) */}

@@ -479,7 +479,30 @@ function HeroTraceMap({
   return (
     <div className="hero-trace-map" aria-label={txt.routeTitle}>
       <PremiumVectorMap
-        points={[]}
+        points={[
+          {
+            id: "hero-origin",
+            label: origin.city,
+            sublabel: origin.country,
+            lat: origin.lat,
+            lng: origin.lng,
+            scans: 1,
+            tone: "origin",
+            stageLabel: txt.originMap,
+            evidence: "Lote y origen",
+          },
+          {
+            id: "hero-tap",
+            label: tap.city,
+            sublabel: tap.country,
+            lat: tap.lat,
+            lng: tap.lng,
+            scans: 1,
+            tone: "tap",
+            stageLabel: txt.tapMap,
+            evidence: txt.custody,
+          },
+        ]}
         routes={[{
           id: "hero-route",
           fromLat: origin.lat,
@@ -527,6 +550,21 @@ function HeroTraceMap({
         <span>lote</span>
         <span>SUN</span>
         <span>owner data</span>
+      </div>
+      <div className="hero-mobile-route-summary" aria-hidden="true">
+        <div>
+          <span>{txt.originMap}</span>
+          <strong>{origin.city}</strong>
+        </div>
+        <i />
+        <div>
+          <span>{txt.tapMap}</span>
+          <strong>{tap.city}</strong>
+        </div>
+        <div>
+          <span>{txt.routeTitle}</span>
+          <strong>{formattedDistance} km</strong>
+        </div>
       </div>
       <a className="hero-origin-link" href={mapsHref(origin)} target="_blank" rel="noreferrer">
         {txt.openOriginMap}

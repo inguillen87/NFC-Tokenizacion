@@ -1,11 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { PremiumVectorMap, WorldMapRealtime } from "@product/ui";
-import { BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -733,9 +734,14 @@ function DemoLabStudioHero({
     : locale === "pt-BR"
     ? { product: "Ver produto 3D", passport: "Ver passport" }
     : { product: "Ver producto 3D", passport: "Ver pasaporte" };
+  const backHome = locale === "en" ? "Back to landing" : locale === "pt-BR" ? "Voltar para a landing" : "Volver a la landing";
 
   return (
     <section className={`demo-lab-studio demo-lab-studio--${vertical} demo-lab-studio--${scenario.tone}`}>
+      <Link href="/" className="demo-lab-back-home" aria-label={backHome}>
+        <ArrowLeft size={18} strokeWidth={2.5} />
+        <span>{backHome}</span>
+      </Link>
       <div className="demo-lab-studio-grid">
         <aside className="demo-lab-studio-left">
           <div className="demo-lab-studio-copy">
