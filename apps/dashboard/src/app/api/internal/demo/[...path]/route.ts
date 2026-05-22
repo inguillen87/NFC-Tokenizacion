@@ -16,15 +16,20 @@ type DemoEvent = { id: number; result: string; uid_hex: string; city: string; co
 type SimulateTapPayload = {
   mode?: string;
   scenario?: string;
+  result?: string;
   vertical?: string;
   city?: string;
   country?: string;
+  country_code?: string;
   lat?: number;
   lng?: number;
   device?: string;
   productName?: string;
+  product_name?: string;
   tenant?: string;
+  tenant_slug?: string;
   tenantName?: string;
+  tenant_name?: string;
   bid?: string;
   tapUrl?: string;
   marketplacePath?: string;
@@ -172,29 +177,34 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
   }
   if (endpoint === "simulate-tap") {
     const payload = body as SimulateTapPayload;
-    const mode = String(payload.mode || "valid");
-    const scenario = String(payload.scenario || "valid");
+    const explicitResult = String(payload.result || "").trim().toUpperCase();
+    const mode = String(payload.mode || "valid").trim().toLowerCase();
+    const scenario = String(payload.scenario || "valid").trim().toLowerCase();
     const vertical = String(payload.vertical || "wine");
-    const result =
-      scenario === "claim"
+    const allowedResults = ["VALID", "CLAIMED", "REDEEMED", "CHECK_IN", "TAMPER", "REPLAY_SUSPECT"];
+    const result = allowedResults.includes(explicitResult)
+      ? explicitResult
+      : scenario === "claim"
         ? "CLAIMED"
         : scenario === "redeem"
           ? "REDEEMED"
           : scenario === "checkin"
             ? "CHECK_IN"
-            : mode === "tamper"
+            : scenario === "tamper" || mode === "tamper"
               ? "TAMPER"
-              : mode === "replay"
+              : scenario === "replay" || mode === "replay"
                 ? "REPLAY_SUSPECT"
                 : "VALID";
+    const riskScore = result === "REPLAY_SUSPECT" ? 76 : result === "TAMPER" ? 42 : 3;
+    const qualityScore = result === "REPLAY_SUSPECT" ? 21 : result === "TAMPER" ? 58 : 94;
     const city = String(payload.city || "New York");
-    const country = String(payload.country || "US");
+    const country = String(payload.country_code || payload.country || "US");
     const lat = toNumberOrNull(payload.lat) ?? 40.7831;
     const lng = toNumberOrNull(payload.lng) ?? -73.9712;
-    const tenant = String(payload.tenant || "demobodega");
-    const tenantName = String(payload.tenantName || "Demo Bodega");
+    const tenant = String(payload.tenant_slug || payload.tenant || "demobodega");
+    const tenantName = String(payload.tenant_name || payload.tenantName || "Demo Bodega");
     const bid = String(payload.bid || "DEMO-2026-02");
-    const productName = String(payload.productName || "Gran Reserva Malbec");
+    const productName = String(payload.product_name || payload.productName || "Gran Reserva Malbec");
     const device = String(payload.device || "iPhone 15 Pro");
     const tapUrl = parseTapUrl(payload.tapUrl);
     const marketplacePath = String(payload.marketplacePath || `/me/marketplace?tenant=${encodeURIComponent(tenant)}`);
@@ -211,7 +221,7 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
       bid,
       product_name: productName,
       device,
-      risk: mode === "replay" ? 76 : mode === "tamper" ? 42 : 3,
+      risk: riskScore,
     });
     pushStateEventFromRuntime(demoEvent);
     return {
@@ -221,11 +231,11 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
       scenario,
       result,
       tap: {
-        status: "VALID",
-        product_state: mode === "tamper" ? "VALID_OPENED" : "VALID_CLOSED",
-        tamper_status: mode === "tamper" ? "OPENED" : "CLOSED",
-        risk_score: mode === "replay" ? 76 : mode === "tamper" ? 42 : 3,
-        quality_score: mode === "replay" ? 21 : mode === "tamper" ? 58 : 94,
+        status: result,
+        product_state: result === "TAMPER" ? "VALID_OPENED" : result === "REPLAY_SUSPECT" ? "REPLAY_SUSPECT" : "VALID_CLOSED",
+        tamper_status: result === "TAMPER" ? "OPENED" : "CLOSED",
+        risk_score: riskScore,
+        quality_score: qualityScore,
         tenant,
         tenant_name: tenantName,
         bid,

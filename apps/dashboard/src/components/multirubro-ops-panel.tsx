@@ -126,15 +126,20 @@ export function MultirubroOpsPanel() {
     return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   }
 
+  function isDemoDashboardRuntime() {
+    if (typeof window === "undefined") return false;
+    return isLocalDashboardRuntime() || ["1", "true", "sandbox"].includes(new URLSearchParams(window.location.search).get("demo") || "");
+  }
+
   function adminPath(path: string) {
-    if (!isLocalDashboardRuntime()) return path;
+    if (!isDemoDashboardRuntime()) return path;
     const url = new URL(path, window.location.origin);
     url.searchParams.set("sandbox", "1");
     return `${url.pathname}${url.search}`;
   }
 
   function demoPath(path: string) {
-    if (!isLocalDashboardRuntime()) return path;
+    if (!isDemoDashboardRuntime()) return path;
     const url = new URL(path, window.location.origin);
     url.searchParams.set("demo", "1");
     return `${url.pathname}${url.search}`;
@@ -162,7 +167,7 @@ export function MultirubroOpsPanel() {
     const hasGeo = Number.isFinite(lat) && Number.isFinite(lng);
     const createdAt = payload.created_at || new Date().toISOString();
     const result = String(payload.result || "").toUpperCase();
-    const isValid = result === "VALID" || result === "TAP_VALID";
+    const isValid = ["VALID", "TAP_VALID", "CLAIMED", "REDEEMED", "CHECK_IN"].includes(result);
     const isReplay = String(payload.reason || "").toLowerCase().includes("replay");
     const isInvalidLike = !isValid;
 
@@ -449,6 +454,45 @@ export function MultirubroOpsPanel() {
       return;
     }
     setDemoActionStatus(success);
+    const events = Array.isArray(response?.events) ? response.events : [];
+    const tap = response?.tap;
+    const realtime = response?.dashboard_realtime;
+    const tapEvent: StreamEventPayload | null = tap && realtime
+      ? {
+          id: realtime.event_id,
+          result: response?.result || tap.status || "VALID",
+          reason:
+            response?.result === "CLAIMED"
+              ? "ownership_claimed"
+              : response?.result === "REPLAY_SUSPECT"
+                ? "replay_detected"
+                : response?.result === "TAMPER"
+                  ? "tamper_opened"
+                  : "sun_ok",
+          uid_hex: "04A710DEMO",
+          bid: tap.bid,
+          tenant_slug: tap.tenant,
+          city: tap.city,
+          country_code: tap.country,
+          lat: tap.lat,
+          lng: tap.lng,
+          created_at: new Date().toISOString(),
+          request_id: realtime.event_id,
+        }
+      : null;
+    const incomingEvents = tapEvent ? [tapEvent] : events;
+    for (const event of incomingEvents) {
+      const payload = event as StreamEventPayload;
+      applyIncomingEvent(payload);
+      const item = normalizeFeedItem(payload);
+      setLiveFeed((prev) => [item, ...prev.filter((row) => row.id !== item.id)].slice(0, 12));
+      setLastEventAt(new Date().toISOString());
+    }
+    if (incomingEvents.length) {
+      setDemoDataMode(true);
+      setStreamState("connected");
+      return;
+    }
     void loadData();
   }
 

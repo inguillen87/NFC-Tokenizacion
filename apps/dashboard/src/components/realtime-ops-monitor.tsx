@@ -46,10 +46,15 @@ export function RealtimeOpsMonitor({
   labels: Labels;
 }) {
   const [events, setEvents] = useState<TenantTapRealtimeEvent[]>(initialEvents);
+  const [hydrated, setHydrated] = useState(false);
   const [connected, setConnected] = useState(false);
-  const [lastUpdateAt, setLastUpdateAt] = useState<string>(new Date().toISOString());
+  const [lastUpdateAt, setLastUpdateAt] = useState<string>(initialEvents[0]?.occurredAt || "");
   const [latestEventId, setLatestEventId] = useState<string>("");
   const [selectedTenant, setSelectedTenant] = useState<string>("all");
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
@@ -128,6 +133,7 @@ export function RealtimeOpsMonitor({
     return { valid, risk, uniqueTags, uniqueCities };
   }, [visibleEvents]);
   const realtimePulse = useMemo(() => {
+    if (!hydrated) return { recentCount: 0, tapsPerMinute: 0, topTenants: [] as Array<{ tenant: string; taps: number; risk: number }> };
     const now = Date.now();
     const fiveMinutesAgo = now - 5 * 60 * 1000;
     const recent = visibleEvents.filter((event) => {
@@ -148,8 +154,16 @@ export function RealtimeOpsMonitor({
       .sort((a, b) => b.taps - a.taps)
       .slice(0, 4);
     return { recentCount: recent.length, tapsPerMinute, topTenants };
-  }, [visibleEvents]);
+  }, [hydrated, visibleEvents]);
   const minuteBars = useMemo(() => {
+    if (!hydrated) {
+      return Array.from({ length: 10 }, (_, index) => ({
+        key: `pending-${index}`,
+        label: "--",
+        count: 0,
+        height: 8,
+      }));
+    }
     const now = Date.now();
     const buckets = Array.from({ length: 10 }, (_, index) => {
       const minuteStart = now - (9 - index) * 60_000;
@@ -170,9 +184,10 @@ export function RealtimeOpsMonitor({
       count: bucket.count,
       height: Math.max(8, Math.round((bucket.count / max) * 52)),
     }));
-  }, [visibleEvents]);
+  }, [hydrated, visibleEvents]);
 
   function timeAgo(value: unknown) {
+    if (!hydrated) return "en vivo";
     const d = new Date(String(value || ""));
     if (Number.isNaN(d.getTime())) return "justo ahora";
     const sec = Math.max(1, Math.round((Date.now() - d.getTime()) / 1000));
@@ -205,7 +220,7 @@ export function RealtimeOpsMonitor({
             <Badge tone={connected ? "green" : "amber"}>{connected ? "Live stream" : "Reconnecting..."}</Badge>
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">Última actualización: {new Date(lastUpdateAt).toLocaleTimeString("es-AR")}</p>
+        <p className="mt-2 text-[11px] text-slate-400">Última actualización: {hydrated && lastUpdateAt ? new Date(lastUpdateAt).toLocaleTimeString("es-AR") : "sincronizando"}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs text-emerald-100">
             <p className="uppercase tracking-[0.12em] text-emerald-200/80">Taps válidos</p>

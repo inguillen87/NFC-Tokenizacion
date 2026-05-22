@@ -25,7 +25,10 @@ import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { ProductExitLink } from "../components/product-exit-link";
 import { productUrls, schedulingUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, ShieldCheck } from "lucide-react";
+
+const afipDataFiscalHref = "https://qr.afip.gob.ar/?qr=-F2blnmFe6pmSP-chYnylQ,,";
+const mipymeCertificateHref = "/certificados/certificado-mipyme-intellitech.pdf";
 
 export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
@@ -336,6 +339,48 @@ export default async function HomePage() {
             <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</Link>
             <a href={meetingHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/40 px-3 py-2 text-xs text-emerald-300">{labels.scheduleMeeting}</a>
           </div>
+        </div>
+
+        <div className="container-shell grid gap-3 pb-10 md:grid-cols-2">
+          <a
+            href={afipDataFiscalHref}
+            target="_F960AFIPInfo"
+            rel="noopener noreferrer"
+            className="group rounded-2xl border border-slate-200 bg-white/90 p-4 text-left text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:border-cyan-300/50"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">Data fiscal</p>
+                <p className="mt-1 text-sm font-black">Inscripcion digital AFIP</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Acceso publico a informacion fiscal para clientes, partners e inversores.</p>
+              </div>
+              <ExternalLink className="mt-1 h-4 w-4 text-slate-400 transition group-hover:text-cyan-600 dark:text-slate-500 dark:group-hover:text-cyan-300" />
+            </div>
+            <span className="mt-4 inline-flex rounded-xl border border-slate-200 bg-white p-2 shadow-sm dark:border-white/10">
+              <img src="https://www.afip.gob.ar/images/f960/DATAWEB.jpg" alt="Formulario 960 Data Fiscal AFIP" className="h-10 w-auto" />
+            </span>
+          </a>
+
+          <a
+            href={mipymeCertificateHref}
+            download
+            className="group rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 text-left text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-400 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-white dark:hover:border-emerald-300/60"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">Certificado MiPyME</p>
+                <p className="mt-1 text-sm font-black">Respaldo institucional SEPyME</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Documento oficial descargable para validacion institucional, comercial y regional.</p>
+              </div>
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-emerald-700 shadow-sm dark:bg-white/10 dark:text-emerald-200">
+                <ShieldCheck className="h-4 w-4" />
+              </span>
+            </div>
+            <span className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white transition group-hover:bg-emerald-700 dark:bg-white dark:text-slate-950 dark:group-hover:bg-emerald-100">
+              <Download className="h-4 w-4" />
+              Descargar certificado
+            </span>
+          </a>
         </div>
       </footer>
 
