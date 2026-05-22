@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, Gift, PackageCheck, ShieldCheck, WalletCards } from "lucide-react";
+import { ExternalLink, Gift, MessageSquareText, PackageCheck, ShieldCheck, WalletCards } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import { formatPortalDate, ownershipTone, type ConsumerPortalProduct, type ConsumerTap } from "../_components/consumer-portal-model";
@@ -24,6 +24,18 @@ function statusClasses(status: string) {
 function certificateHref(product: ConsumerPortalProduct) {
   const eventId = String(product.latest_tap_event_id || product.first_tap_event_id || "").trim();
   return eventId ? `/certificado/${encodeURIComponent(eventId)}` : "";
+}
+
+function experienceHref(product: ConsumerPortalProduct) {
+  const eventId = String(product.latest_tap_event_id || product.first_tap_event_id || "").trim();
+  const tenant = String(product.tenant_slug || "").trim();
+  const productName = String(product.product_name || "Producto verificado").trim();
+  const query = new URLSearchParams();
+  if (tenant) query.set("tenant", tenant);
+  if (eventId) query.set("eventId", eventId);
+  if (productName) query.set("product", productName);
+  const suffix = query.toString();
+  return suffix ? `/me/experiences?${suffix}` : "/me/experiences";
 }
 
 export default async function ProductsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -118,6 +130,9 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                           ) : null}
                           <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-500/20">
                             Beneficios
+                          </Link>
+                          <Link href={experienceHref(product)} className="inline-flex items-center gap-1 rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-xs font-black text-amber-100 transition hover:bg-amber-500/20">
+                            Experiencia <MessageSquareText className="h-3 w-3" aria-hidden="true" />
                           </Link>
                         </div>
                       </div>

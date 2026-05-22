@@ -281,10 +281,11 @@ export function TapAssociationBanner() {
           ) : null}
         </div>
       ) : (
-        <div className="mt-3 grid gap-2 sm:grid-cols-4">
+        <div className="mt-3 grid gap-2 sm:grid-cols-5">
           <Link href={`/me?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-sm text-slate-100">Mi portal</Link>
           <Link href={`/me/marketplace?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-center text-sm text-cyan-100">Marketplace</Link>
           <Link href={`/me/wallet?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-100">Wallet/NFT</Link>
+          <Link href={`/me/experiences?tenant=${encodeURIComponent(tenant || "")}&eventId=${encodeURIComponent(eventId || "")}`} className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100">Experiencia</Link>
           <Link href={`/me/rewards?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-sm text-violet-100">Promos</Link>
         </div>
       )}

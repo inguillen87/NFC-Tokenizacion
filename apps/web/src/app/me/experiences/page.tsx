@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarDays, MessageSquareText, ShieldCheck, Sparkles, Star, Store, TicketCheck, WalletCards } from "lucide-react";
 import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import { PortalShell } from "../_components/portal-shell";
+import { VerifiedExperienceForm } from "./verified-experience-form";
 
 type VerifiedExperience = {
   id?: string;
@@ -41,6 +42,8 @@ export default async function ConsumerExperiencesPage({ searchParams }: { search
   const params = (await searchParams) || {};
   await requireConsumerSession(buildConsumerNextPath("/me/experiences", params));
   const tenant = typeof params.tenant === "string" ? params.tenant : "";
+  const eventId = typeof params.eventId === "string" ? params.eventId : "";
+  const productName = typeof params.product === "string" ? params.product : "";
   const payload = (await fetchConsumerPath("experiences")) as { verifiedExperiences?: unknown } | null;
   const verifiedExperiences = asArray<VerifiedExperience>(payload?.verifiedExperiences);
 
@@ -50,6 +53,8 @@ export default async function ConsumerExperiencesPage({ searchParams }: { search
       subtitle="Opiniones, beneficios y accesos que nacen de productos reales: tap fisico, contacto validado y ownership cuando corresponde."
     >
       <div className="space-y-8">
+        <VerifiedExperienceForm initialEventId={eventId} initialProductName={productName} tenant={tenant} />
+
         <section className="rounded-3xl border border-emerald-300/20 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.9),rgba(2,6,23,0.96))] p-5 sm:p-6">
           <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
