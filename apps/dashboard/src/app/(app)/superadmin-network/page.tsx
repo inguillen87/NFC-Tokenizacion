@@ -14,6 +14,16 @@ type ExperiencesPayload = {
   items?: Array<Record<string, unknown>>;
   moderation?: Record<string, number>;
 };
+type ProductAssetsPayload = {
+  items?: Array<{
+    profile?: {
+      assetScore?: number | string | null;
+      primaryImageUrl?: string | null;
+      labelImageUrl?: string | null;
+      modelUrl?: string | null;
+    } | null;
+  }>;
+};
 
 async function fetchJson<T>(origin: string, path: string, fallback: T): Promise<T> {
   try {
@@ -48,17 +58,20 @@ export default async function SuperadminConsumerNetworkPage() {
   const origin = await getServerOrigin();
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-  const [tenants, batches, tagsPayload, experiencesPayload] = await Promise.all([
+  const assetQuery = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}&limit=80` : "?limit=80";
+  const [tenants, batches, tagsPayload, experiencesPayload, productAssetsPayload] = await Promise.all([
     fetchJson<TenantRow[]>(origin, "/api/admin/tenants?withStats=1", []),
     fetchJson<BatchRow[]>(origin, `/api/admin/batches${query}`, []),
     fetchJson<TagsPayload>(origin, `/api/admin/tags${query ? `${query}&` : "?"}limit=100`, { rows: [], totals: {} }),
     fetchJson<ExperiencesPayload>(origin, `/api/admin/consumer-experiences${query}`, { items: [], moderation: {} }),
+    fetchJson<ProductAssetsPayload>(origin, `/api/admin/product-assets${assetQuery}`, { items: [] }),
   ]);
 
   const scopedTenants = tenantScope ? tenants.filter((row) => String(row.slug || row.tenant_slug || "").toLowerCase() === tenantScope) : tenants;
   const totals = tagsPayload.totals || {};
   const tagRows = tagsPayload.rows || [];
   const experiences = experiencesPayload.items || [];
+  const productAssets = productAssetsPayload.items || [];
   const moderation = experiencesPayload.moderation || {};
   const activeTags = numberFrom(totals.active_tags);
   const mintedTags = numberFrom(totals.minted_tags);
@@ -72,6 +85,11 @@ export default async function SuperadminConsumerNetworkPage() {
   const totalTamper = scopedTenants.reduce((sum, row) => sum + numberFrom(row.tamper), 0);
   const pendingExperiences = numberFrom(moderation.pending);
   const approvedExperiences = numberFrom(moderation.approved);
+  const assetScores = productAssets.map((item) => numberFrom(item.profile?.assetScore)).filter((score) => score > 0);
+  const averageAssetScore = assetScores.length ? Math.round(assetScores.reduce((sum, score) => sum + score, 0) / assetScores.length) : 0;
+  const readyAssets = productAssets.filter((item) => numberFrom(item.profile?.assetScore) >= 80).length;
+  const realPhotoAssets = productAssets.filter((item) => Boolean(item.profile?.primaryImageUrl)).length;
+  const labelAssets = productAssets.filter((item) => Boolean(item.profile?.labelImageUrl)).length;
 
   const batchByTenant = new Map<string, { batches: number; tags: number }>();
   for (const row of batches) {
@@ -119,6 +137,12 @@ export default async function SuperadminConsumerNetworkPage() {
       owner: "Reseller",
     },
     {
+      label: "Banco visual listo",
+      body: "Cada lote premium debe tener foto real, etiqueta frontal, tag aplicado y ficha comercial antes de publicar /sun y marketplace.",
+      status: readyAssets > 0 ? "ready" : productAssets.length ? "working" : "blocked",
+      owner: "Tenant",
+    },
+    {
       label: "Riesgo bajo control",
       body: "Duplicados, replay y tamper se tratan como bloqueo comercial, no como dato tecnico escondido.",
       status: totalDuplicates + totalTamper > Math.max(totalScans * 0.12, 4) ? "blocked" : totalScans > 0 ? "ready" : "working",
@@ -146,6 +170,7 @@ export default async function SuperadminConsumerNetworkPage() {
           { label: "Tenants", value: String(scopedTenants.length), detail: tenantScope ? `Scope ${tenantScope}` : "Marcas conectadas a la red", tone: scopedTenants.length ? "good" : "warn" },
           { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${totalTags.toLocaleString("es-AR")} tags en inventario`, tone: activeTags > 0 ? "good" : "warn" },
           { label: "Batches premium", value: String(secureBatches), detail: "NTAG424 DNA / TT declarados", tone: secureBatches > 0 ? "good" : "warn" },
+          { label: "Assets reales", value: String(productAssets.length), detail: `${readyAssets} listos - score ${averageAssetScore}/100`, tone: readyAssets > 0 ? "good" : productAssets.length ? "warn" : "risk" },
           { label: "Moderacion", value: String(pendingExperiences), detail: "Experiencias pendientes de aprobar", tone: pendingExperiences > 0 ? "warn" : "good" },
         ]}
         steps={steps}
@@ -161,6 +186,7 @@ export default async function SuperadminConsumerNetworkPage() {
           { label: "Manifest", ready: importedTags, pending: Math.max(plannedTags - importedTags, 0) },
           { label: "Tags", ready: activeTags, pending: Math.max(totalTags - activeTags, 0) },
           { label: "Token", ready: mintedTags, pending: pendingTokenization },
+          { label: "Assets", ready: readyAssets, pending: Math.max(productAssets.length - readyAssets, 0) },
           { label: "Club", ready: approvedExperiences, pending: pendingExperiences },
         ]}
       />
@@ -177,6 +203,12 @@ export default async function SuperadminConsumerNetworkPage() {
                 title: "Auditar carrier y promesa comercial",
                 body: "Ningun QR comun debe venderse como autenticidad criptografica. NTAG424 DNA/TT debe tener llaves y pretest SUN.",
                 tone: secureBatches > 0 ? "good" : "warn",
+                href: "/batches",
+              },
+              {
+                title: "Completar banco visual de producto",
+                body: `Antes de presentar a cliente premium: ${realPhotoAssets} fotos reales, ${labelAssets} etiquetas y score visual ${averageAssetScore}/100.`,
+                tone: readyAssets > 0 ? "good" : "warn",
                 href: "/batches",
               },
               {

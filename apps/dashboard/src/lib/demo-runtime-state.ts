@@ -1,0 +1,281 @@
+export type DashboardDemoEvent = {
+  id: string;
+  sequence: number;
+  result: string;
+  reason: string;
+  uid_hex: string;
+  bid: string;
+  tenant_slug: string;
+  city: string;
+  country_code: string;
+  lat: number;
+  lng: number;
+  product_name: string;
+  device: string;
+  vertical: string;
+  mode: string;
+  scenario: string;
+  risk: number;
+  source: string;
+  created_at: string;
+};
+
+type DashboardDemoState = {
+  sequence: number;
+  updatedAt: string;
+  events: DashboardDemoEvent[];
+};
+
+const runtimeKey = Symbol.for("nexid.dashboard.demoRuntimeState");
+
+const demoCities = [
+  { city: "Mendoza", country_code: "AR", lat: -32.8895, lng: -68.8458 },
+  { city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816 },
+  { city: "Zurich", country_code: "CH", lat: 47.3769, lng: 8.5417 },
+  { city: "Sao Paulo", country_code: "BR", lat: -23.5505, lng: -46.6333 },
+  { city: "Miami", country_code: "US", lat: 25.7617, lng: -80.1918 },
+  { city: "Santiago", country_code: "CL", lat: -33.4489, lng: -70.6693 },
+];
+
+function getState(): DashboardDemoState {
+  const globalStore = globalThis as typeof globalThis & { [runtimeKey]?: DashboardDemoState };
+  if (!globalStore[runtimeKey]) {
+    globalStore[runtimeKey] = {
+      sequence: 0,
+      updatedAt: new Date().toISOString(),
+      events: [],
+    };
+  }
+  return globalStore[runtimeKey]!;
+}
+
+function normalizeResult(result: unknown, mode: unknown, scenario: unknown) {
+  const rawResult = String(result || "").trim().toUpperCase();
+  if (rawResult) return rawResult;
+  const rawMode = String(mode || "").trim().toLowerCase();
+  const rawScenario = String(scenario || "").trim().toLowerCase();
+  if (rawScenario === "claim") return "CLAIMED";
+  if (rawScenario === "redeem") return "REDEEMED";
+  if (rawScenario === "checkin") return "CHECK_IN";
+  if (rawMode === "tamper") return "TAMPER";
+  if (rawMode === "replay") return "REPLAY_SUSPECT";
+  return "VALID";
+}
+
+function reasonFor(result: string) {
+  if (result === "REPLAY_SUSPECT") return "replay_detected";
+  if (result === "TAMPER") return "tamper_opened";
+  if (result === "CLAIMED") return "ownership_claimed";
+  if (result === "REDEEMED") return "benefit_redeemed";
+  if (result === "CHECK_IN") return "event_check_in";
+  return "sun_ok";
+}
+
+function riskFor(result: string, risk: unknown) {
+  const parsed = Number(risk);
+  if (Number.isFinite(parsed)) return parsed;
+  if (result === "REPLAY_SUSPECT") return 82;
+  if (result === "TAMPER") return 48;
+  return 4;
+}
+
+function productByVertical(vertical: string) {
+  if (vertical === "events") return "Brazalete VIP evento";
+  if (vertical === "cosmetics") return "Frasco crema alta gama";
+  if (vertical === "agro") return "Semillas certificadas";
+  if (vertical === "pharma") return "Caja pharma segura";
+  return "Gran Reserva Malbec";
+}
+
+function isRiskEvent(event: Pick<DashboardDemoEvent, "result" | "risk">) {
+  return event.result === "REPLAY_SUSPECT" || event.result === "TAMPER" || event.risk >= 40;
+}
+
+export function recordDashboardDemoEvent(input: Partial<DashboardDemoEvent> = {}) {
+  const state = getState();
+  const cityFallback = demoCities[state.sequence % demoCities.length] || demoCities[0];
+  const result = normalizeResult(input.result, input.mode, input.scenario);
+  const now = new Date().toISOString();
+  const event: DashboardDemoEvent = {
+    id: input.id || `demo-evt-${Date.now()}-${state.sequence + 1}`,
+    sequence: state.sequence + 1,
+    result,
+    reason: input.reason || reasonFor(result),
+    uid_hex: String(input.uid_hex || `04A7${String(1000 + state.sequence).padStart(4, "0")}1090`).toUpperCase(),
+    bid: String(input.bid || "DEMO-2026-02"),
+    tenant_slug: String(input.tenant_slug || "demobodega"),
+    city: String(input.city || cityFallback.city),
+    country_code: String(input.country_code || cityFallback.country_code),
+    lat: Number.isFinite(Number(input.lat)) ? Number(input.lat) : cityFallback.lat,
+    lng: Number.isFinite(Number(input.lng)) ? Number(input.lng) : cityFallback.lng,
+    product_name: String(input.product_name || productByVertical(String(input.vertical || "wine"))),
+    device: String(input.device || "iPhone demo tap"),
+    vertical: String(input.vertical || "wine"),
+    mode: String(input.mode || "valid"),
+    scenario: String(input.scenario || "valid"),
+    risk: riskFor(result, input.risk),
+    source: String(input.source || "dashboard-demo-runtime"),
+    created_at: input.created_at || now,
+  };
+  state.sequence = event.sequence;
+  state.updatedAt = now;
+  state.events = [event, ...state.events].slice(0, 160);
+  return event;
+}
+
+export function generateDashboardDemoEvents(count = 8) {
+  const results = ["VALID", "VALID", "VALID", "CLAIMED", "REPLAY_SUSPECT", "TAMPER"];
+  const verticals = ["wine", "wine", "events", "cosmetics", "agro"];
+  const events: DashboardDemoEvent[] = [];
+  const bounded = Math.min(Math.max(Number(count) || 8, 1), 40);
+  for (let index = 0; index < bounded; index += 1) {
+    const result = results[index % results.length] || "VALID";
+    events.push(
+      recordDashboardDemoEvent({
+        result,
+        vertical: verticals[index % verticals.length] || "wine",
+        mode: result === "TAMPER" ? "tamper" : result === "REPLAY_SUSPECT" ? "replay" : "valid",
+        city: demoCities[index % demoCities.length]?.city,
+        country_code: demoCities[index % demoCities.length]?.country_code,
+        lat: demoCities[index % demoCities.length]?.lat,
+        lng: demoCities[index % demoCities.length]?.lng,
+      }),
+    );
+  }
+  return events;
+}
+
+export function resetDashboardDemoEvents() {
+  const state = getState();
+  state.sequence = 0;
+  state.updatedAt = new Date().toISOString();
+  state.events = [];
+}
+
+export function getDashboardDemoEvents(limit = 80) {
+  return getState().events.slice(0, Math.max(0, limit));
+}
+
+export function toDemoAdminEventRow(event: DashboardDemoEvent) {
+  return {
+    id: event.id,
+    result: event.result,
+    reason: event.reason,
+    uid_hex: event.uid_hex,
+    created_at: event.created_at,
+    city: event.city,
+    country_code: event.country_code,
+    lat: event.lat,
+    lng: event.lng,
+    bid: event.bid,
+    tenant_slug: event.tenant_slug,
+    product_name: event.product_name,
+    device: event.device,
+    source: event.source,
+  };
+}
+
+export function toDemoRealtimeEvent(event: DashboardDemoEvent) {
+  return {
+    ...toDemoAdminEventRow(event),
+    stream_sent_at: new Date().toISOString(),
+    stream_latency_ms: Math.max(8, Math.min(180, 20 + event.sequence * 3)),
+    origin_trace_id: event.id,
+  };
+}
+
+export function toDemoFeedRow(event: DashboardDemoEvent) {
+  return {
+    id: event.id,
+    uidHex: event.uid_hex,
+    bid: event.bid,
+    result: event.result === "VALID" || event.result === "CLAIMED" ? "ok" : event.result.toLowerCase(),
+    city: event.city,
+    country: event.country_code,
+    device: event.device,
+    productName: event.product_name,
+    createdAt: event.created_at,
+  };
+}
+
+export function aggregateDemoGeoPoints(events: DashboardDemoEvent[]) {
+  const byKey = new Map<string, { city: string; country: string; scans: number; risk: number; lat: number; lng: number }>();
+  for (const event of events) {
+    const key = `${event.city}:${event.country_code}`;
+    const current = byKey.get(key);
+    if (current) {
+      current.scans += 1;
+      if (isRiskEvent(event)) current.risk += 1;
+    } else {
+      byKey.set(key, {
+        city: event.city,
+        country: event.country_code,
+        scans: 1,
+        risk: isRiskEvent(event) ? 1 : 0,
+        lat: event.lat,
+        lng: event.lng,
+      });
+    }
+  }
+  return Array.from(byKey.values()).map((point) => ({
+    ...point,
+    risk: point.scans ? Number(((point.risk / point.scans) * 100).toFixed(1)) : 0,
+  }));
+}
+
+export function mergeDemoGeoPoints<T extends { city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }>(
+  base: T[],
+  demo: ReturnType<typeof aggregateDemoGeoPoints>,
+) {
+  const byKey = new Map<string, T & { country?: string; scans: number; risk: number }>();
+  for (const point of base) {
+    byKey.set(`${point.city}:${point.country || "--"}`, {
+      ...point,
+      country: point.country || "--",
+      scans: Number(point.scans || 0),
+      risk: Number(point.risk || 0),
+    });
+  }
+  for (const point of demo) {
+    const key = `${point.city}:${point.country}`;
+    const current = byKey.get(key);
+    if (current) {
+      current.scans = Number(current.scans || 0) + point.scans;
+      current.risk = Math.max(Number(current.risk || 0), point.risk);
+    } else {
+      byKey.set(key, point as T & { country?: string; scans: number; risk: number });
+    }
+  }
+  return Array.from(byKey.values());
+}
+
+export function mergeDemoTrend<T extends { day: string; scans: number; duplicates: number; tamper: number }>(
+  base: T[],
+  events: DashboardDemoEvent[],
+) {
+  const byDay = new Map<string, T>();
+  for (const row of base) byDay.set(row.day, { ...row });
+  for (const event of events) {
+    const day = event.created_at.slice(0, 10);
+    const current = byDay.get(day) || ({ day, scans: 0, duplicates: 0, tamper: 0 } as T);
+    current.scans += 1;
+    if (event.result === "REPLAY_SUSPECT") current.duplicates += 1;
+    if (event.result === "TAMPER") current.tamper += 1;
+    byDay.set(day, current);
+  }
+  return Array.from(byDay.values()).sort((a, b) => a.day.localeCompare(b.day)).slice(-30);
+}
+
+export function demoRuntimeSummary(events: DashboardDemoEvent[]) {
+  const scans = events.length;
+  const risk = events.filter(isRiskEvent).length;
+  const valid = events.filter((event) => event.result === "VALID" || event.result === "CLAIMED" || event.result === "REDEEMED" || event.result === "CHECK_IN").length;
+  return {
+    scans,
+    valid,
+    invalid: Math.max(scans - valid, 0),
+    duplicates: events.filter((event) => event.result === "REPLAY_SUSPECT").length,
+    tamper: events.filter((event) => event.result === "TAMPER").length,
+    risk,
+  };
+}

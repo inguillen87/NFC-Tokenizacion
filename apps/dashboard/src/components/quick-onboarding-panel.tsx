@@ -10,6 +10,7 @@ type Props = {
 const manifestColumns = [
   "batch_id",
   "uid_hex",
+  "carrier_profile_code",
   "product_name",
   "sku",
   "lot",

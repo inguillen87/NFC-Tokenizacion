@@ -143,7 +143,7 @@ export function OpsCommandCenter({
 
   return (
     <Card className="overflow-hidden p-0">
-      <div className="border-b border-white/10 bg-[radial-gradient(circle_at_8%_10%,rgba(45,212,191,0.2),transparent_28%),radial-gradient(circle_at_88%_18%,rgba(59,130,246,0.16),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-5 sm:p-6">
+      <div className="dashboard-hero-panel dashboard-hero-panel--cyan border-b border-white/10 bg-[radial-gradient(circle_at_8%_10%,rgba(45,212,191,0.2),transparent_28%),radial-gradient(circle_at_88%_18%,rgba(59,130,246,0.16),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-5 sm:p-6">
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <div>
             <div className="flex flex-wrap items-center gap-2">

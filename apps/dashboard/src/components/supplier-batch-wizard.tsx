@@ -549,6 +549,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   } as const;
   const progress = Math.round(((activeStep - 1) / (steps.length - 1)) * 100);
   const manifestCsvForServer = useMemo(() => manifestRowsToCsv(manifest.rows), [manifest.rows]);
+  const manifestPhotoCount = manifest.rows.filter((row) => row.imageUrl.trim()).length;
+  const manifestLabelCount = manifest.rows.filter((row) => row.labelImageUrl.trim()).length;
+  const manifestModelCount = manifest.rows.filter((row) => row.modelUrl.trim()).length;
   const expectedNdefTemplate = `${productUrls.api}/sun?v=1&bid=${encodeURIComponent(bid || "<BID>")}&picc_data=<dynamic>&enc=<dynamic>&cmac=<dynamic>`;
   const nextAction = !stepReady[1]
     ? "Completa identidad, origen y politica de ownership del tenant."
@@ -743,7 +746,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   function downloadCsvTemplate() {
     downloadText(
       `${bid.trim() || "batch"}-manifest-template.csv`,
-      `batch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at\n${bid.trim() || "<BID>"},<UID_HEX>,${carrierProfileCode || "<carrier_profile_code>"},${productLabel.trim() || "<product_name>"},${sku.trim() || "<sku>"},<lot>,<serial>,<expires_at>\n`,
+      `batch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at,image_url,label_image_url,model_url,gallery_urls\n${bid.trim() || "<BID>"},<UID_HEX>,${carrierProfileCode || "<carrier_profile_code>"},${productLabel.trim() || "<product_name>"},${sku.trim() || "<sku>"},<lot>,<serial>,<expires_at>,<foto_producto_real>,<etiqueta_frontal>,<glb_opcional>,<foto_tag_aplicado|galeria>\n`,
       "text/csv;charset=utf-8",
     );
   }
@@ -1171,6 +1174,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
               <Metric label="Tipo" value={manifest.type.toUpperCase()} tone="neutral" />
               <Metric label="Carrier" value={selectedCarrier?.label || "Pendiente"} tone={selectedCarrier ? "good" : "warn"} />
               <Metric label="Producto" value={productLabel || sku || "Pendiente"} tone={productLabel || sku ? "good" : "warn"} />
+              <Metric label="Fotos reales" value={String(manifestPhotoCount)} tone={manifestPhotoCount ? "good" : "warn"} />
+              <Metric label="Etiquetas" value={String(manifestLabelCount)} tone={manifestLabelCount ? "good" : "warn"} />
+              <Metric label="GLB/3D" value={String(manifestModelCount)} tone={manifestModelCount ? "good" : "neutral"} />
             </div>
             <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-xs text-slate-200">
               <input suppressHydrationWarning type="checkbox" checked={manifestActivated} onChange={(event) => setManifestActivated(event.target.checked)} />
@@ -1199,6 +1205,11 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
                   <div key={row.uidHex} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
                     <b className="text-white">{row.uidHex}</b>
                     <span className="mt-1 block text-slate-400">{row.productName || row.sku} / {row.batchId} / {row.carrierProfileCode || "carrier pendiente"}</span>
+                    <span className="mt-2 flex flex-wrap gap-1">
+                      <em className={`not-italic rounded-full border px-2 py-0.5 text-[10px] font-bold ${row.imageUrl ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>{row.imageUrl ? "foto real" : "foto pendiente"}</em>
+                      <em className={`not-italic rounded-full border px-2 py-0.5 text-[10px] font-bold ${row.labelImageUrl ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>{row.labelImageUrl ? "etiqueta" : "etiqueta pendiente"}</em>
+                      <em className={`not-italic rounded-full border px-2 py-0.5 text-[10px] font-bold ${row.modelUrl ? "border-cyan-300/25 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-white/5 text-slate-400"}`}>{row.modelUrl ? "3D listo" : "3D opcional"}</em>
+                    </span>
                   </div>
                 ))}
                 {!manifest.rows.length ? <p className="text-xs text-slate-400">Sin rows validas todavia.</p> : null}

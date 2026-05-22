@@ -121,6 +121,25 @@ export function MultirubroOpsPanel() {
   const [alertSeverityFilter, setAlertSeverityFilter] = useState<string>("");
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>("");
 
+  function isLocalDashboardRuntime() {
+    if (typeof window === "undefined") return false;
+    return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  }
+
+  function adminPath(path: string) {
+    if (!isLocalDashboardRuntime()) return path;
+    const url = new URL(path, window.location.origin);
+    url.searchParams.set("sandbox", "1");
+    return `${url.pathname}${url.search}`;
+  }
+
+  function demoPath(path: string) {
+    if (!isLocalDashboardRuntime()) return path;
+    const url = new URL(path, window.location.origin);
+    url.searchParams.set("demo", "1");
+    return `${url.pathname}${url.search}`;
+  }
+
   function normalizeFeedItem(payload: StreamEventPayload): LiveFeedItem {
     return {
       id: String(payload.id || `${payload.created_at || Date.now()}-${payload.uid_hex || "evt"}`),
@@ -233,12 +252,12 @@ export function MultirubroOpsPanel() {
 
   async function loadData() {
     const [a, s, alertsPayload, t, w, d] = await Promise.all([
-      fetchJson<AnalyticsPayload>("/api/admin/analytics?range=24h"),
-      fetchJson<SecurityPayload>("/api/admin/security-alerts?hours=24"),
-      fetchJson<AlertsPayload>(withQuery("/api/admin/alerts", { severity: alertSeverityFilter, type: alertTypeFilter })),
-      fetchJson<TokenizationPayload>("/api/admin/tokenization/requests?limit=20"),
-      fetchJson<WalletPayload>("/api/admin/polygon/wallet"),
-      fetchJson<DiagnosticsPayload>("/api/admin/diagnostics/live-pipeline"),
+      fetchJson<AnalyticsPayload>(adminPath("/api/admin/analytics?range=24h")),
+      fetchJson<SecurityPayload>(adminPath("/api/admin/security-alerts?hours=24")),
+      fetchJson<AlertsPayload>(adminPath(withQuery("/api/admin/alerts", { severity: alertSeverityFilter, type: alertTypeFilter }))),
+      fetchJson<TokenizationPayload>(adminPath("/api/admin/tokenization/requests?limit=20")),
+      fetchJson<WalletPayload>(adminPath("/api/admin/polygon/wallet")),
+      fetchJson<DiagnosticsPayload>(adminPath("/api/admin/diagnostics/live-pipeline")),
     ]);
     const nextWarnings = [
       a?.reason,
@@ -299,7 +318,7 @@ export function MultirubroOpsPanel() {
 
     const connect = () => {
       if (!active || typeof window === "undefined") return;
-      stream = new EventSource("/api/admin/events/stream?limit=8");
+      stream = new EventSource(adminPath("/api/admin/events/stream?limit=8"));
       setStreamOnline(false);
       setStreamState("reconnecting");
       streamOnlineRef.current = false;
@@ -421,7 +440,7 @@ export function MultirubroOpsPanel() {
   async function runDemoAction(path: string, success: string) {
     setBusy(true);
     setDemoActionStatus("");
-    const response = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store" })
+    const response = await fetch(demoPath(path), { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store" })
       .then((r) => r.json())
       .catch(() => ({ ok: false, reason: "network_error" }));
     setBusy(false);
@@ -547,18 +566,23 @@ export function MultirubroOpsPanel() {
       <div className="mt-4">
         <WorldMapRealtime title="Heatmap de taps en tiempo real" subtitle="Mercados grises, zonas de fraude y expansión comercial por geolocalización." points={points} initialExpanded />
       </div>
-      {!points.length ? (
-        <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-          <p className="font-semibold">Sin puntos en el heatmap todavía.</p>
-          <p className="mt-1 text-cyan-50/90">Podés generar actividad demo para validar KPI, feed y mapa en menos de 30s.</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/seed', 'Seed demo ejecutada correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Seed demo</button>
-            <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/generate-live-scans', 'Scans demo generados.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Generate live scans</button>
-            <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/simulate-tap', 'Tap simulado correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 disabled:opacity-60">Simulate tap</button>
+      <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold">Control de prueba end-to-end</p>
+            <p className="mt-1 text-cyan-50/90">
+              Emula tags y lotes para ver cambios en KPI, mapa, feed realtime, riesgos, tokenizacion y resumen operativo.
+            </p>
           </div>
-          {demoActionStatus ? <p className="mt-2 text-[11px] text-cyan-100">{demoActionStatus}</p> : null}
+          <StatusChip label={points.length ? `${points.length} hubs activos` : "sin hubs"} tone={points.length ? "good" : "warn"} />
         </div>
-      ) : null}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/seed', 'Seed demo ejecutada correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 disabled:opacity-60">Seed demo</button>
+          <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/generate-live-scans', 'Scans demo generados.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 disabled:opacity-60">Generar taps vivos</button>
+          <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/simulate-tap', 'Tap simulado correctamente.')} disabled={busy} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 disabled:opacity-60">Emular tap fisico</button>
+        </div>
+        {demoActionStatus ? <p className="mt-2 text-[11px] text-cyan-100">{demoActionStatus}</p> : null}
+      </div>
 
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">

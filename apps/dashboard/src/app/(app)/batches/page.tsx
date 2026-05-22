@@ -76,19 +76,62 @@ async function getBatchRows(tenantScope = ""): Promise<Array<Record<string, unkn
   }
 }
 
+type ProductAssetItem = {
+  uidMasked?: string | null;
+  tagStatus?: string | null;
+  tenantSlug?: string | null;
+  bid?: string | null;
+  assetReadiness?: string | null;
+  profile?: {
+    productName?: string | null;
+    brandName?: string | null;
+    verticalLabel?: string | null;
+    assetScore?: number | null;
+    primaryImageUrl?: string | null;
+    labelImageUrl?: string | null;
+    modelUrl?: string | null;
+    uploadChecklist?: string[] | null;
+    slots?: Array<{ id: string; label: string; status: "ready" | "demo" | "missing"; detail?: string | null }>;
+  } | null;
+};
+
+async function getAssetRows(tenantScope = ""): Promise<ProductAssetItem[]> {
+  try {
+    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}&limit=60` : "?limit=60";
+    const response = await fetch(`${API_BASE}/admin/product-assets${query}`, {
+      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return [];
+    const payload = await response.json() as { items?: ProductAssetItem[] };
+    return Array.isArray(payload.items) ? payload.items : [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function BatchesPage() {
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession("batches:read");
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
-  const batchRows = await getBatchRows(tenantScope);
+  const [batchRows, assetRows] = await Promise.all([
+    getBatchRows(tenantScope),
+    getAssetRows(tenantScope),
+  ]);
   const plannedTags = batchRows.reduce((sum, row) => sum + Number(row.requested_quantity || row.qty || row.quantity || 0), 0);
   const importedTags = batchRows.reduce((sum, row) => sum + Number(row.imported_tags || row.quantity || row.qty || 0), 0);
   const activeTags = batchRows.reduce((sum, row) => sum + Number(row.active_tags || 0), 0);
   const inactiveTags = batchRows.reduce((sum, row) => sum + Number(row.inactive_tags || Math.max(Number(row.quantity || row.qty || 0) - Number(row.active_tags || 0), 0)), 0);
   const secureBatches = batchRows.filter((row) => String(row.carrier_profile_code || row.carrier_label || "").toLowerCase().includes("424")).length;
   const supplierBatches = batchRows.filter((row) => String(row.batch_profile || row.type || row.carrier_label || "").toLowerCase().includes("supplier") || Boolean(row.has_meta_key || row.has_file_key)).length;
+  const assetScores = assetRows.map((item) => Number(item.profile?.assetScore || 0)).filter((score) => score > 0);
+  const averageAssetScore = assetScores.length ? Math.round(assetScores.reduce((sum, score) => sum + score, 0) / assetScores.length) : 0;
+  const assetReadyRows = assetRows.filter((item) => Number(item.profile?.assetScore || 0) >= 80).length;
+  const realPhotoRows = assetRows.filter((item) => Boolean(item.profile?.primaryImageUrl)).length;
+  const realLabelRows = assetRows.filter((item) => Boolean(item.profile?.labelImageUrl)).length;
+  const modelRows = assetRows.filter((item) => Boolean(item.profile?.modelUrl)).length;
   const statusCounts = batchRows.reduce((acc, row) => {
     const status = String(row.status || "pending").toLowerCase();
     acc[status] = Number(acc[status] || 0) + 1;
@@ -205,6 +248,93 @@ export default async function BatchesPage() {
           { label: "Supplier", ready: supplierBatches, pending: Math.max(batchRows.length - supplierBatches, 0) },
         ]}
       />
+      <Card className="overflow-hidden p-0">
+        <div className="dashboard-hero-panel dashboard-hero-panel--green border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,0.98))] p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">Banco visual por lote</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Producto real antes de publicar el batch</h2>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+                Para competir con pasaportes premium, cada UID debe salir con foto real, etiqueta frontal, tag aplicado,
+                ficha comercial, reglas de claim y GLB opcional. Si falta esto, /sun y marketplace se sienten genericos.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/onboarding" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100">Cargar assets en manifest</Link>
+              <Link href="/consumer-network/marketplace" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100">Ver salida comercial</Link>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-5">
+            {[
+              { label: "UID con perfil visual", value: assetRows.length.toLocaleString("es-AR"), detail: "tag_profiles/product-assets" },
+              { label: "Listos premium", value: assetReadyRows.toLocaleString("es-AR"), detail: "score >= 80/100" },
+              { label: "Fotos reales", value: realPhotoRows.toLocaleString("es-AR"), detail: "packshot/producto" },
+              { label: "Etiquetas reales", value: realLabelRows.toLocaleString("es-AR"), detail: "label_image_url" },
+              { label: "Modelos 3D", value: modelRows.toLocaleString("es-AR"), detail: "GLB/model_url" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{item.label}</p>
+                <p className="mt-2 text-2xl font-black text-white">{item.value}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
+            Readiness visual promedio: {averageAssetScore}/100. Objetivo para salir a cliente grande: foto real + etiqueta + tag aplicado en al menos una muestra por producto/lote.
+          </p>
+        </div>
+        <div className="grid gap-4 p-5 sm:p-6 lg:grid-cols-3">
+          {(assetRows.length ? assetRows.slice(0, 6) : [
+            {
+              uidMasked: "pendiente",
+              tagStatus: "setup",
+              tenantSlug: tenantScope || "tenant",
+              bid: "sin manifest",
+              assetReadiness: "0 reales / 0 demo / 5 pendientes",
+              profile: {
+                productName: "Primer producto real del lote",
+                brandName: "Marca / tenant",
+                verticalLabel: "Vertical comercial",
+                assetScore: 0,
+                uploadChecklist: ["Foto producto", "Etiqueta frontal", "Foto tag aplicado", "Ficha comercial", "Reglas claim/NFT", "Modelo GLB opcional"],
+                slots: [],
+              },
+            },
+          ]).map((item, index) => {
+            const score = Number(item.profile?.assetScore || 0);
+            const checklist = Array.isArray(item.profile?.uploadChecklist) ? item.profile?.uploadChecklist || [] : [];
+            const slots = Array.isArray(item.profile?.slots) ? item.profile?.slots || [] : [];
+            return (
+              <article key={`${item.bid || "asset"}-${item.uidMasked || index}`} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">{item.tenantSlug || "tenant"} / {item.bid || "batch"}</p>
+                    <h3 className="mt-1 text-lg font-black text-white">{item.profile?.productName || "Producto sin nombre"}</h3>
+                    <p className="mt-1 text-xs text-slate-400">{item.profile?.brandName || "Marca pendiente"} - {item.profile?.verticalLabel || "Vertical pendiente"}</p>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-black ${score >= 80 ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : score >= 55 ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>{score}/100</span>
+                </div>
+                <p className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">{item.assetReadiness || "readiness pendiente"}</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {slots.slice(0, 4).map((slot) => (
+                    <div key={slot.id} className={`rounded-xl border px-3 py-2 text-xs ${slot.status === "ready" ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : slot.status === "demo" ? "border-amber-300/25 bg-amber-500/10 text-amber-100" : "border-white/10 bg-slate-900/55 text-slate-300"}`}>
+                      <b className="block text-white">{slot.label}</b>
+                      <span>{slot.status}</span>
+                    </div>
+                  ))}
+                </div>
+                {!slots.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {checklist.map((label) => (
+                      <span key={label} className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300">{label}</span>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      </Card>
       {!isTenantAdmin ? (
         <Card className="p-5 text-sm text-slate-300">
           <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Elegi modo de operacion</h2>
@@ -226,7 +356,7 @@ export default async function BatchesPage() {
         </Card>
       ) : null}
       <Card className="overflow-hidden p-0">
-        <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,0.98))] p-5 sm:p-6">
+        <div className="dashboard-hero-panel dashboard-hero-panel--cyan border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,0.98))] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">Operacion no tecnica</p>

@@ -1,6 +1,12 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import {
+  generateDashboardDemoEvents,
+  recordDashboardDemoEvent,
+  resetDashboardDemoEvents,
+  type DashboardDemoEvent,
+} from "../../../../../lib/demo-runtime-state";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const DEMO_FALLBACK_ENABLED = String(process.env.NEXID_ENABLE_DEMO_FALLBACK || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
@@ -69,6 +75,22 @@ function pushEvent(vertical = "wine", result = "VALID") {
     product_name: productByVertical(vertical),
     vertical,
     created_at: new Date().toISOString(),
+  };
+  state.events = [ev, ...state.events].slice(0, 25);
+}
+
+function pushStateEventFromRuntime(event: DashboardDemoEvent) {
+  const ev: DemoEvent = {
+    id: event.sequence,
+    result: event.result,
+    uid_hex: event.uid_hex,
+    city: event.city,
+    country_code: event.country_code,
+    lat: event.lat,
+    lng: event.lng,
+    product_name: event.product_name,
+    vertical: event.vertical,
+    created_at: event.created_at,
   };
   state.events = [ev, ...state.events].slice(0, 25);
 }
@@ -144,8 +166,9 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
   }
   if (endpoint === "generate-live-scans") {
     const count = Math.min(Math.max(Number(body.count || 10), 1), 30);
-    for (let i = 0; i < count; i++) pushEvent(rand(["wine", "events", "cosmetics", "agro", "pharma"]), rand(["VALID", "VALID", "VALID", "TAMPER", "REPLAY_SUSPECT"]));
-    return { ok: true, source: "fallback", count };
+    const events = generateDashboardDemoEvents(count);
+    for (const event of events) pushStateEventFromRuntime(event);
+    return { ok: true, source: "fallback", count, events: events.slice(0, 8) };
   }
   if (endpoint === "simulate-tap") {
     const payload = body as SimulateTapPayload;
@@ -164,7 +187,6 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
               : mode === "replay"
                 ? "REPLAY_SUSPECT"
                 : "VALID";
-    pushEvent(vertical, result);
     const city = String(payload.city || "New York");
     const country = String(payload.country || "US");
     const lat = toNumberOrNull(payload.lat) ?? 40.7831;
@@ -176,6 +198,22 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
     const device = String(payload.device || "iPhone 15 Pro");
     const tapUrl = parseTapUrl(payload.tapUrl);
     const marketplacePath = String(payload.marketplacePath || `/me/marketplace?tenant=${encodeURIComponent(tenant)}`);
+    const demoEvent = recordDashboardDemoEvent({
+      result,
+      mode,
+      scenario,
+      vertical,
+      city,
+      country_code: country,
+      lat,
+      lng,
+      tenant_slug: tenant,
+      bid,
+      product_name: productName,
+      device,
+      risk: mode === "replay" ? 76 : mode === "tamper" ? 42 : 3,
+    });
+    pushStateEventFromRuntime(demoEvent);
     return {
       ok: true,
       source: "fallback",
@@ -206,6 +244,7 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
         cta: ["view_marketplace", "activate_benefits", "create_account", "tokenize_ownership"],
       },
       dashboard_realtime: {
+        event_id: demoEvent.id,
         taps_delta: 1,
         region_delta: `${country} +1`,
         risk_density_recomputed: true,
@@ -227,6 +266,7 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
   }
   if (endpoint === "reset") {
     state.events = [];
+    resetDashboardDemoEvents();
     state.batch = { bid: "DEMO-2026-02", status: "active" };
     return { ok: true, source: "fallback", message: "Demo state reset" };
   }
