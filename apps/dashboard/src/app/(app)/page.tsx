@@ -278,13 +278,18 @@ export default async function DashboardHome() {
   const session = await requireDashboardSession();
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const isTenantAdmin = session.role === "tenant-admin";
-  const [overviewRaw, liveEvents, tokenizationRows, batchRows, analyticsData] = await Promise.all([
+  const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult, analyticsDataResult] = await Promise.all([
     getOverviewRows(),
     getLiveEvents(),
     getTokenizationRows(),
     getBatchRows(tenantScope),
     getAnalyticsData(),
   ]);
+  const overviewRaw = overviewRawResult as Array<Record<string, unknown>>;
+  const liveEvents = liveEventsResult as Array<Record<string, unknown>>;
+  const tokenizationRows = tokenizationRowsResult as Array<Record<string, unknown>>;
+  const batchRows = batchRowsResult as Array<Record<string, unknown>>;
+  const analyticsData = analyticsDataResult as Parameters<typeof AnalyticsPanels>[0]["data"];
 
   const labels = locale === "en"
     ? {
