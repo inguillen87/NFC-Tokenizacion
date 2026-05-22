@@ -45,6 +45,7 @@ export async function GET(request: Request) {
   const upstream = new URL(`${API_BASE}/admin/events/stream`);
   const requestId = request.headers.get("x-request-id") || request.headers.get("x-nexid-request-id") || randomUUID();
   const limit = Math.min(Math.max(Number(incoming.searchParams.get("limit") || 8), 1), 50);
+  const forceSandbox = ["1", "true", "sandbox"].includes(String(incoming.searchParams.get("sandbox") || incoming.searchParams.get("demoFallback") || "").toLowerCase());
   incoming.searchParams.forEach((value, key) => upstream.searchParams.set(key, value));
 
   const token = String(process.env.ADMIN_API_KEY || "").trim();
@@ -59,6 +60,11 @@ export async function GET(request: Request) {
         : session?.role
           ? "readonly_demo"
           : "";
+  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+
+  if (forceSandbox && (!isProduction || Boolean(scopedRole))) {
+    return fallbackStream("dashboard demo sandbox stream", requestId, limit);
+  }
 
   if (requireScopedAdminAuth && !scopedRole) return fallbackStream("Scoped admin auth required", requestId, limit);
   if (!token && !scopedRole) return fallbackStream("ADMIN_API_KEY missing in dashboard environment", requestId, limit);
