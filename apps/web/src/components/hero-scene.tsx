@@ -785,14 +785,6 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
                 <div className="hero-object-map-pane">
                   <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
                 </div>
-                <div className="hero-object-product-pane" aria-hidden="true">
-                  <div className={`hero-product-render hero-product-render--prime hero-product-render--${active}`}>
-                    <span className="hero-product-render-floor" />
-                    <HeroProductVisual active={active} product={data.product} />
-                    <span className="hero-product-render-reflection" />
-                  </div>
-                  <div className="hero-nfc-beam" />
-                </div>
               </div>
               <div className="hero-scene-phone">
                 <span />
