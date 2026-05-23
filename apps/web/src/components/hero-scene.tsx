@@ -781,7 +781,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
               <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100">{data.profile}</span>
             </div>
             <div className={`hero-product-stage hero-product-stage--${active} mt-3`}>
-              <div className="hero-object-frame">
+              <div className="hero-object-frame hero-object-frame--split">
                 <div className="hero-object-map-pane">
                   <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
                 </div>
