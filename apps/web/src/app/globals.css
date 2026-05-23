@@ -14798,3 +14798,236 @@ html.theme-light .sun-panel-map [class*="text-slate-"] {
     font-size: 0.74rem;
   }
 }
+
+/* Final landing route/product split: the map is no longer a backdrop hidden behind the product. */
+.landing-hero-section .hero-object-frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1.24fr) minmax(8.75rem, 0.46fr);
+  align-items: stretch;
+  gap: clamp(0.65rem, 1.25vw, 1rem);
+  min-height: auto !important;
+  padding: clamp(0.55rem, 1vw, 0.8rem);
+  place-items: stretch;
+}
+
+.landing-hero-section .hero-object-frame::before,
+.landing-hero-section .hero-object-frame::after {
+  inset: 0.65rem;
+  pointer-events: none;
+}
+
+.hero-object-map-pane,
+.hero-object-product-pane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.landing-hero-section .hero-object-map-pane {
+  z-index: 1;
+}
+
+.landing-hero-section .hero-object-product-pane {
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 1rem;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(34, 211, 238, 0.13), transparent 36%),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.18), rgba(2, 6, 23, 0.48));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.landing-hero-section .hero-object-map-pane .hero-trace-map {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1 !important;
+  width: 100%;
+  height: 100%;
+  min-height: clamp(19rem, 31vw, 25rem);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -3rem 4.2rem rgba(2, 6, 23, 0.24),
+    0 1.2rem 2.8rem rgba(2, 6, 23, 0.22);
+}
+
+.landing-hero-section .hero-object-product-pane .hero-product-render--prime {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 2 !important;
+  width: min(10.25rem, 78%);
+  height: clamp(17.5rem, 30vw, 23rem);
+  min-height: 17.5rem;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.landing-hero-section .hero-object-product-pane .hero-product-render--prime .hero-product-visual-shell {
+  width: min(100%, 11.5rem);
+  min-height: 100%;
+}
+
+.landing-hero-section .hero-object-product-pane .hero-nfc-beam {
+  position: absolute;
+  top: clamp(0.8rem, 1.5vw, 1.2rem);
+  right: clamp(0.75rem, 1.4vw, 1.1rem);
+  z-index: 5;
+}
+
+.landing-hero-section .hero-object-product-pane .hero-product-render::after {
+  opacity: 0.46;
+}
+
+html.theme-light .landing-hero-section .hero-object-product-pane {
+  border-color: rgba(14, 116, 144, 0.18);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(6, 182, 212, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(219, 234, 254, 0.54));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 1rem 2.4rem rgba(14, 116, 144, 0.08);
+}
+
+html.theme-light .landing-hero-section .hero-object-map-pane .hero-trace-map {
+  border-color: rgba(14, 116, 144, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1rem 2.2rem rgba(14, 116, 144, 0.08);
+}
+
+.demo-lab-back-home {
+  min-height: 3rem;
+  padding: 0.78rem 1.12rem;
+  font-size: 0.9rem;
+  border-width: 1px;
+  box-shadow:
+    0 1rem 2.4rem rgba(34, 211, 238, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.demo-lab-back-home span {
+  white-space: nowrap;
+}
+
+@media (min-width: 1180px) {
+  .demo-lab-back-home {
+    position: fixed;
+    top: calc(var(--nav-offset, 4.8rem) + 0.85rem);
+    left: max(1rem, calc((100vw - 1760px) / 2 + 1rem));
+  }
+}
+
+@media (max-width: 1100px) {
+  .landing-hero-section .hero-object-frame {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-hero-section .hero-object-map-pane .hero-trace-map {
+    min-height: clamp(18rem, 54vw, 23rem);
+  }
+
+  .landing-hero-section .hero-object-product-pane {
+    min-height: clamp(13.25rem, 42vw, 17rem);
+  }
+
+  .landing-hero-section .hero-object-product-pane .hero-product-render--prime {
+    width: min(8.4rem, 30vw);
+    height: clamp(12.6rem, 38vw, 16rem);
+    min-height: 12.6rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .landing-hero-section .hero-object-frame {
+    gap: 0.68rem;
+    padding: 0.62rem;
+    border-radius: 1.15rem;
+    min-height: 0 !important;
+  }
+
+  .landing-hero-section .hero-object-map-pane .hero-trace-map {
+    min-height: 17.4rem;
+    border-radius: 0.95rem;
+  }
+
+  .landing-hero-section .hero-map-intel {
+    display: block !important;
+    left: 0.72rem;
+    top: 0.72rem;
+    width: min(12.2rem, calc(100% - 1.44rem));
+  }
+
+  .landing-hero-section .hero-map-pin {
+    display: block !important;
+    max-width: 7rem;
+  }
+
+  .landing-hero-section .hero-map-event-stack {
+    display: grid !important;
+    right: 0.72rem;
+    top: 0.72rem;
+    width: min(10.2rem, 42%);
+    gap: 0.36rem;
+  }
+
+  .landing-hero-section .hero-map-event {
+    padding: 0.42rem 0.5rem;
+    border-radius: 0.72rem;
+  }
+
+  .landing-hero-section .hero-map-event strong {
+    font-size: 0.52rem;
+  }
+
+  .landing-hero-section .hero-map-event span {
+    font-size: 0.46rem;
+  }
+
+  .landing-hero-section .hero-trace-caption,
+  .landing-hero-section .hero-origin-link {
+    display: block !important;
+  }
+
+  .landing-hero-section .hero-object-product-pane {
+    min-height: 12.2rem;
+  }
+
+  .landing-hero-section .hero-object-product-pane .hero-product-render--prime {
+    bottom: auto !important;
+    width: min(7.25rem, 32vw);
+    height: 11.85rem;
+    min-height: 11.85rem;
+  }
+
+  .landing-hero-section .hero-mobile-route-summary {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    margin-top: 0.62rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .landing-hero-section .hero-object-map-pane .hero-trace-map {
+    min-height: 16.2rem;
+  }
+
+  .landing-hero-section .hero-map-event-stack {
+    width: min(9rem, 40%);
+  }
+
+  .landing-hero-section .hero-object-product-pane {
+    min-height: 11.2rem;
+  }
+
+  .landing-hero-section .hero-object-product-pane .hero-product-render--prime {
+    width: min(6.5rem, 31vw);
+    height: 10.9rem;
+    min-height: 10.9rem;
+  }
+}

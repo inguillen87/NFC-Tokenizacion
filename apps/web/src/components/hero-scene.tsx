@@ -782,13 +782,17 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
             </div>
             <div className={`hero-product-stage hero-product-stage--${active} mt-3`}>
               <div className="hero-object-frame">
-                <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
-                <div className={`hero-product-render hero-product-render--prime hero-product-render--${active}`} aria-hidden="true">
-                  <span className="hero-product-render-floor" />
-                  <HeroProductVisual active={active} product={data.product} />
-                  <span className="hero-product-render-reflection" />
+                <div className="hero-object-map-pane">
+                  <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
                 </div>
-                <div className="hero-nfc-beam" />
+                <div className="hero-object-product-pane" aria-hidden="true">
+                  <div className={`hero-product-render hero-product-render--prime hero-product-render--${active}`}>
+                    <span className="hero-product-render-floor" />
+                    <HeroProductVisual active={active} product={data.product} />
+                    <span className="hero-product-render-reflection" />
+                  </div>
+                  <div className="hero-nfc-beam" />
+                </div>
               </div>
               <div className="hero-scene-phone">
                 <span />
