@@ -5,12 +5,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
-import { PremiumVectorMap, WorldMapRealtime } from "@product/ui";
+import { WorldMapRealtime } from "@product/ui";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
+import { InstitutionalVideoPanel } from "../../components/institutional-video-panel";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
-type Vertical = "wine" | "seeds" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket";
+type Vertical = "wine" | "seeds" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket" | "sneaker";
 type SimulationMode = "valid" | "tamper" | "replay";
 type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
 type DemoModalView = "mobile" | "nft" | "claim" | null;
@@ -28,8 +29,22 @@ type DemoScenario = {
 };
 
 type ThreeProductVertical = "wine" | "seeds" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket";
+type DemoRealProductVariant = "studio" | "cinematic" | "stage";
 
 const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), { ssr: false });
+
+const DEMO_VERTICAL_ORDER: Vertical[] = ["wine", "seeds", "creamJar", "perfume", "bracelet", "sneaker"];
+
+const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> = {
+  wine: { imageUrl: "/demo/wine-secure/real-malbec-bottle-pexels.jpg", credit: "Pexels / Imperio Ame" },
+  seeds: { imageUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg", credit: "Pexels / RDNE Stock project" },
+  creamJar: { imageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg", credit: "Pexels / mskin pro" },
+  perfume: { imageUrl: "/demo/cosmetics-secure/real-luxury-perfume-pexels.jpg", credit: "Pexels / Suhashan Jar" },
+  creamTube: { imageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg", credit: "Pexels / mskin pro" },
+  bracelet: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
+  ticket: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
+  sneaker: { imageUrl: "/demo/luxury-basic/real-sneakers-pexels.jpg", credit: "Pexels / Hurrah suhail" },
+};
 
 type DemoEvent = {
   id?: string;
@@ -103,11 +118,12 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Botella", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
-      creamJar: { label: "Frasco crema", profile: "NTAG 424 DNA", product: "Frasco crema alta gama", visual: "cream-jar-demo", proof: ["Sello puente tapa-envase", "Apertura cambia estado", "Garantia", "Anti mercado gris"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicion limitada", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "Garantia", "Anti falsificacion"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set skincare premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "Garantia premium", "Anti mercado gris"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "Garantia", "Anti falsificacion"] },
       creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "Garantia", "Recompra"] },
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
+      sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "Dueno/token"] },
     },
     controls: {
       narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto fisico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Linea animada, distancia y enlaces de ubicacion para construir confianza.", realFeed: "Registro publico real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Crear NFT", syncing: "Conectando con DemoBodega...", synced: "DemoBodega sincronizado con servidor.", unavailable: "DemoBodega no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en DemoBodega.", failedScan: "No se pudo simular el toque.", configs: [
@@ -143,11 +159,12 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Garrafa", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta na garrafa", "Rolha / lacre aberto", "SUN anti-replay", "Origem + toque global"] },
       seeds: { label: "Sementes", profile: "QR + NFC UID", product: "Envelope de semente certificada", visual: "seed-packet-demo", proof: ["Envelope antifraude", "Lote e variedade", "Custodia agro", "Uso rural"] },
-      creamJar: { label: "Pote creme", profile: "NTAG 424 DNA", product: "Pote de creme premium", visual: "cream-jar-demo", proof: ["Lacre entre tampa e pote", "Abertura muda estado", "Garantia", "Anti grey-market"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume edicao limitada", visual: "perfume-demo", proof: ["Lacre entre tampa e gargalo", "Lote e serie", "Garantia", "Antifalsificacao"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set skincare premium", visual: "cream-jar-demo", proof: ["Lacre tampa-envase", "Abertura muda estado", "Garantia premium", "Anti grey-market"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Lacre entre tampa e gargalo", "Lote e serie", "Garantia", "Antifalsificacao"] },
       creamTube: { label: "Creme", profile: "NTAG213 + lote", product: "Creme dermocosmetico", visual: "cream-tube-demo", proof: ["Lacre sobre tampa flip", "Lote visivel", "Garantia", "Recompra"] },
       bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulseira", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
       ticket: { label: "Ingresso", profile: "QR + NFC UID", product: "Ingresso festa VIP", visual: "party-ticket-demo", proof: ["QR visivel", "UID respaldo", "Acesso por zona", "Replay bloqueado"] },
+      sneaker: { label: "Tenis", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque na lingueta", "UID + SUN", "Raridade visivel", "Dono/token"] },
     },
     controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/demo: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao DemoBodega...", synced: "DemoBodega sincronizado com backend.", unavailable: "DemoBodega indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no DemoBodega.", failedScan: "Nao foi possivel simular o toque.", configs: [
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
@@ -182,11 +199,12 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Bottle", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Label on bottle", "Uncork / broken seal", "SUN anti-replay", "Origin + global tap"] },
       seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Certified seed packet", visual: "seed-packet-demo", proof: ["Anti-counterfeit packet", "Lot and variety", "Agro custody", "Rural use"] },
-      creamJar: { label: "Cream jar", profile: "NTAG 424 DNA", product: "Premium cream jar", visual: "cream-jar-demo", proof: ["Seal bridges lid and jar", "Opening changes state", "Warranty", "Anti grey-market"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Limited edition perfume", visual: "perfume-demo", proof: ["Seal bridges cap and neck", "Lot and serial", "Warranty", "Anti-counterfeit"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Premium skincare set", visual: "cream-jar-demo", proof: ["Lid-package seal", "Opening changes state", "Premium warranty", "Anti grey-market"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Premium perfume", visual: "perfume-demo", proof: ["Cap-neck seal", "Lot and serial", "Warranty", "Anti-counterfeit"] },
       creamTube: { label: "Cream", profile: "NTAG213 + batch", product: "Dermocosmetic cream", visual: "cream-tube-demo", proof: ["Seal over flip cap", "Visible batch", "Warranty", "Repurchase"] },
       bracelet: { label: "Wristband", profile: "NTAG215", product: "VIP event wristband", visual: "event-bracelet-demo", proof: ["Phone taps wristband", "Serialized UID", "VIP zones", "Duplicate block"] },
       ticket: { label: "Ticket", profile: "QR + NFC UID", product: "VIP party ticket", visual: "party-ticket-demo", proof: ["Visible QR", "UID fallback", "Zone access", "Replay blocked"] },
+      sneaker: { label: "Sneaker", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Tongue tap", "UID + SUN", "Rarity visible", "Owner/token"] },
     },
     controls: { narrative: "Audience narrative", cinematicStart: "Start cinematic", cinematicStop: "Pause cinematic", product: "Physical product", mobile: "Mobile result", feed: "Command feed", valid: "Register valid Zurich tap", tamper: "Break seal / uncork", replay: "Simulate duplicate replay", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Live map: product origin vs customer tap", mapSubtitle: "Animated route, distance and location links to build trust.", realFeed: "Real public feed connected.", adminKey: "Read-only demo mode: private scan writes run in the secured environment.", noGeo: "No geolocated API events yet.", origin: "Origin", currentTap: "Current tap", distance: "Distance", openOrigin: "Open origin", openTap: "Open tap", joinClub: "Join club", warranty: "Activate warranty", tokenize: "Tokenize premium", syncing: "Connecting to DemoBodega...", synced: "DemoBodega synced with backend.", unavailable: "DemoBodega unavailable.", sendingScan: "Sending scan", registeredScan: "Scan registered in DemoBodega.", failedScan: "Could not simulate the tap.", configs: [
       { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
@@ -218,6 +236,12 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 
 function mapsLink(location: { lat: number; lng: number }) {
   return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
+}
+
+function getRealProductBadge(locale: AppLocale) {
+  if (locale === "en") return "Real product";
+  if (locale === "pt-BR") return "Produto real";
+  return "Producto real";
 }
 
 function formatEventResult(value?: string | null) {
@@ -356,6 +380,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
   const destination = LOCATIONS[activeBeat.location];
   const routeKm = haversineKm(LOCATIONS.origin, destination);
   const scenario = getScenarioState(txt, beat, routeKm, locale);
+  const realProductBadge = getRealProductBadge(locale);
   const liveEvents = Array.isArray(summary?.events) ? summary.events : [];
   const latestEvent = liveEvents[0];
   const livePoints = liveEvents.flatMap((event) => {
@@ -489,6 +514,8 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
 
       <DemoDifferentiatorStrip beat={beat} onGuided={startGuidedDemo} />
 
+      <InstitutionalVideoPanel locale={locale} variant="demo" className="mt-5" />
+
       <DemoCinematicShowcase
         beat={beat}
         locale={locale}
@@ -545,7 +572,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {(Object.keys(txt.verticals) as Vertical[]).map((item) => (
+                {DEMO_VERTICAL_ORDER.map((item) => (
                   <button suppressHydrationWarning key={item} type="button" onClick={() => setVertical(item)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${vertical === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>{txt.verticals[item].label}</button>
                 ))}
               </div>
@@ -557,6 +584,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                   vertical={vertical}
                   product={activeVertical.product}
                   beat={beat}
+                  badge={realProductBadge}
                 />
                 <span className="demo-lab-tap-chip">SUN</span>
                 <span className="demo-lab-tap-wave" />
@@ -687,7 +715,7 @@ function DemoLabStudioHero({
   onOpen: () => void;
   onReplay: () => void;
 }) {
-  const verticalList = (Object.keys(txt.verticals) as Vertical[]);
+  const verticalList = DEMO_VERTICAL_ORDER;
   const productFacts = [
     { icon: PackageCheck, label: "Producto", value: activeVertical.product },
     { icon: MapPin, label: "Origen", value: "Valle de Uco, Argentina" },
@@ -730,10 +758,10 @@ function DemoLabStudioHero({
       { n: "4", title: "Activa", body: "Garantia, club o NFT" },
     ];
   const topActions = locale === "en"
-    ? { product: "See 3D product", passport: "See passport" }
+    ? { product: "See product proof", passport: "See passport" }
     : locale === "pt-BR"
-    ? { product: "Ver produto 3D", passport: "Ver passport" }
-    : { product: "Ver producto 3D", passport: "Ver pasaporte" };
+    ? { product: "Ver prova do produto", passport: "Ver passport" }
+    : { product: "Ver prueba del producto", passport: "Ver pasaporte" };
   const backHome = locale === "en" ? "Back to landing" : locale === "pt-BR" ? "Voltar para a landing" : "Volver a la landing";
 
   return (
@@ -803,8 +831,8 @@ function DemoLabStudioHero({
 
         <div id="demo-lab-product-stage" className="demo-lab-studio-stage">
           <div className="demo-lab-studio-stage-head">
-            <p>Vista 3D</p>
-            <span>Arrastra para rotar. Scroll para acercar. Click/tap para abrir sello.</span>
+            <p>Producto real</p>
+            <span>Producto, tag NFC y pasaporte celular en una sola prueba.</span>
           </div>
           <div className="demo-lab-studio-callout demo-lab-studio-callout--nfc">
             <strong>NFC</strong>
@@ -814,12 +842,14 @@ function DemoLabStudioHero({
           <div className="demo-lab-studio-product">
             <span className="demo-lab-studio-pedestal" />
             <span className="demo-lab-studio-reflection" />
-            <HeroThreeStage
-              active={mapDemoVerticalToThree(vertical)}
+            <DemoCinematicProductRender
+              vertical={vertical}
               product={activeVertical.product}
-              className="demo-lab-studio-three"
-              state={beat === 3 ? "opened" : beat === 2 ? "blocked" : "idle"}
-              onAction={(nextState) => onBeat(nextState === "opened" ? 3 : 1)}
+              badge={getRealProductBadge(locale)}
+              beat={beat}
+              title={scenario.stateLabel}
+              stat={scenario.chain}
+              variant="studio"
             />
           </div>
           <div className="demo-lab-studio-statusbar">
@@ -1170,11 +1200,13 @@ function DemoCinematicShowcase({
         <span className="demo-lab-cinematic-orbit demo-lab-cinematic-orbit--one" aria-hidden="true" />
         <span className="demo-lab-cinematic-orbit demo-lab-cinematic-orbit--two" aria-hidden="true" />
         <div className="demo-lab-cinematic-product-shell">
-          <HeroThreeStage
-            active={mapDemoVerticalToThree(vertical)}
+          <DemoCinematicProductRender
+            vertical={vertical}
             product={product}
-            className="demo-lab-cinematic-three-stage"
-            state={beat === 3 ? "opened" : beat === 2 ? "blocked" : "idle"}
+            badge={getRealProductBadge(locale)}
+            beat={beat}
+            title={active.title}
+            stat={active.stat}
           />
         </div>
 
@@ -1209,6 +1241,59 @@ function DemoCinematicShowcase({
         </div>
       </div>
     </section>
+  );
+}
+
+function DemoCinematicProductRender({
+  vertical,
+  product,
+  badge,
+  beat,
+  title,
+  stat,
+  variant = "cinematic",
+}: {
+  vertical: Vertical;
+  product: string;
+  badge: string;
+  beat: Beat;
+  title: string;
+  stat: string;
+  variant?: "cinematic" | "studio";
+}) {
+  const state = beat === 2 ? "risk" : beat === 3 ? "open" : beat === 1 ? "ok" : "origin";
+  const phoneStatus = beat === 2 ? "BLOQUEADO" : beat === 3 ? "SELLO ABIERTO" : beat === 1 ? "AUTENTICADO" : "LISTO";
+  return (
+    <div className={`demo-lab-cinematic-render demo-lab-cinematic-render--${variant} demo-lab-cinematic-render--${vertical} demo-lab-cinematic-render--${state}`} role="img" aria-label={`${badge}: ${product}. ${title}.`}>
+      <span className="demo-lab-cinematic-render__glow" aria-hidden="true" />
+      <span className="demo-lab-cinematic-render__floor" aria-hidden="true" />
+      <div className="demo-lab-cinematic-render__product" aria-hidden="true">
+        <span className="demo-lab-cinematic-render__main" />
+        <span className="demo-lab-cinematic-render__neck" />
+        <span className="demo-lab-cinematic-render__cap" />
+        <span className="demo-lab-cinematic-render__accent" />
+        <span className="demo-lab-cinematic-render__sole" />
+        <span className="demo-lab-cinematic-render__lace demo-lab-cinematic-render__lace--one" />
+        <span className="demo-lab-cinematic-render__lace demo-lab-cinematic-render__lace--two" />
+        <span className="demo-lab-cinematic-render__lace demo-lab-cinematic-render__lace--three" />
+        <span className="demo-lab-cinematic-render__label">
+          <em>nexID</em>
+          <strong>{product}</strong>
+        </span>
+        <span className="demo-lab-cinematic-render__seal">NFC</span>
+      </div>
+      <div className="demo-lab-cinematic-render__phone" aria-hidden="true">
+        <i />
+        <small>SALIDA CELULAR</small>
+        <strong>{phoneStatus}</strong>
+        <span>UID 04A7****1090</span>
+      </div>
+      <div className="demo-lab-cinematic-render__proof" aria-hidden="true">
+        <small>{badge}</small>
+        <strong>{product}</strong>
+        <span>{stat}</span>
+      </div>
+    </div>
   );
 }
 
@@ -1367,10 +1452,12 @@ function DemoLabProductThreeStage({
   vertical,
   product,
   beat,
+  badge,
 }: {
   vertical: Vertical;
   product: string;
   beat: Beat;
+  badge: string;
 }) {
   const [ready, setReady] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
@@ -1383,17 +1470,186 @@ function DemoLabProductThreeStage({
     return () => window.clearTimeout(timeoutId);
   }, [threeVertical]);
 
+  if (isEventAccessVertical(vertical)) {
+    return <DemoEventAccessProduct vertical={vertical} product={product} badge={badge} beat={beat} variant="stage" />;
+  }
+
+  if (isPremiumCosmeticVertical(vertical)) {
+    return <DemoPremiumCosmeticProduct vertical={vertical} product={product} badge={badge} beat={beat} variant="stage" />;
+  }
+
   return (
-    <div className="demo-lab-three-product">
-      {!ready && showLoader ? <span className="demo-lab-three-product-loader" aria-hidden="true" /> : null}
-      <HeroThreeStage
-        active={threeVertical}
-        product={product}
-        className="demo-lab-three-stage"
-        state={beat === 3 ? "opened" : beat === 2 ? "blocked" : "idle"}
-        onReady={() => setReady(true)}
-      />
+    <>
+      <DemoRealProductShot vertical={vertical} product={product} badge={badge} variant="stage" />
+      <div className="demo-lab-three-product demo-lab-three-product--with-real">
+        {!ready && showLoader ? <span className="demo-lab-three-product-loader" aria-hidden="true" /> : null}
+        <HeroThreeStage
+          active={threeVertical}
+          product={product}
+          className="demo-lab-three-stage"
+          state={beat === 3 ? "opened" : beat === 2 ? "blocked" : "idle"}
+          onReady={() => setReady(true)}
+        />
+      </div>
+    </>
+  );
+}
+
+function isEventAccessVertical(vertical: Vertical) {
+  return vertical === "bracelet" || vertical === "ticket";
+}
+
+function isPremiumCosmeticVertical(vertical: Vertical) {
+  return vertical === "creamJar" || vertical === "perfume" || vertical === "creamTube";
+}
+
+function isEditorialProductVertical(vertical: Vertical) {
+  return isEventAccessVertical(vertical) || isPremiumCosmeticVertical(vertical);
+}
+
+function DemoPremiumCosmeticProduct({
+  vertical,
+  product,
+  badge,
+  beat,
+  variant,
+}: {
+  vertical: Vertical;
+  product: string;
+  badge: string;
+  beat: Beat;
+  variant: DemoRealProductVariant;
+}) {
+  const asset = demoLabRealAssets[vertical];
+  const blocked = beat === 2;
+  const opened = beat === 3;
+  const isPerfume = vertical === "perfume";
+  const status = blocked ? "RIESGO BLOQUEADO" : opened ? "SELLO ABIERTO" : beat === 0 ? "SELLADO" : "AUTENTICADO";
+  const tagLabel = isPerfume ? "Cap seal" : "Pack seal";
+  const action = blocked ? "Sin reclamo" : opened ? "Garantia lista" : "Compra confiable";
+  const referenceLabel = isPerfume ? "Referencia fragancia" : vertical === "creamJar" ? "Referencia skincare" : "Referencia dermo";
+
+  return (
+    <div
+      className={`demo-lab-cosmetic-product demo-lab-cosmetic-product--${variant} demo-lab-cosmetic-product--${vertical} demo-lab-cosmetic-product--beat-${beat}`}
+      role="img"
+      aria-label={`${badge}: ${product}. ${status}.`}
+    >
+      <figure className="demo-lab-cosmetic-reference" data-credit={asset.credit}>
+        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <figcaption>
+          <span>{referenceLabel}</span>
+          <strong>{badge}</strong>
+        </figcaption>
+      </figure>
+      <div className="demo-lab-cosmetic-product-pack" aria-hidden="true">
+        <span className="demo-lab-cosmetic-product-pack__aura" />
+        <span className="demo-lab-cosmetic-product-pack__shadow" />
+        <span className="demo-lab-cosmetic-product-pack__cap" />
+        <span className="demo-lab-cosmetic-product-pack__neck" />
+        <span className="demo-lab-cosmetic-product-pack__body" />
+        <span className="demo-lab-cosmetic-product-pack__glass" />
+        <span className="demo-lab-cosmetic-product-pack__label">nexID</span>
+        <span className="demo-lab-cosmetic-product-pack__seal">{tagLabel}</span>
+        <span className="demo-lab-cosmetic-product-pack__nfc">NFC</span>
+        <span className="demo-lab-cosmetic-product-pack__serial">NTAG 424 DNA</span>
+      </div>
+      <div className="demo-lab-cosmetic-phone" aria-hidden="true">
+        <i />
+        <span>Salida celular</span>
+        <strong>{status}</strong>
+        <small>UID 04A7****1090</small>
+        <em>{action}</em>
+      </div>
+      <div className="demo-lab-cosmetic-proof-card" aria-hidden="true">
+        <span>NTAG 424 DNA</span>
+        <strong>{isPerfume ? "Tapa + serie + lote" : "Envase + sello + lote"}</strong>
+        <small>{blocked ? "Replay no abre garantia" : "SUN dinamico validado"}</small>
+      </div>
     </div>
+  );
+}
+
+function DemoEventAccessProduct({
+  vertical,
+  product,
+  badge,
+  beat,
+  variant,
+}: {
+  vertical: Vertical;
+  product: string;
+  badge: string;
+  beat: Beat;
+  variant: DemoRealProductVariant;
+}) {
+  const asset = demoLabRealAssets[vertical];
+  const blocked = beat === 2;
+  const opened = beat === 3;
+  const status = blocked ? "COPIA BLOQUEADA" : opened ? "SELLO ABIERTO" : beat === 0 ? "LISTO PARA TOQUE" : "ACCESO VERIFICADO";
+  const primary = vertical === "ticket" ? "Entrada VIP" : "Pulsera VIP";
+  const action = blocked ? "Sin beneficios" : opened ? "Reclamo listo" : "Autentico";
+
+  return (
+    <div
+      className={`demo-lab-event-product demo-lab-event-product--${variant} demo-lab-event-product--${vertical} demo-lab-event-product--beat-${beat}`}
+      role="img"
+      aria-label={`${badge}: ${product}. ${status}.`}
+    >
+      <figure className="demo-lab-event-photo" data-credit={asset.credit}>
+        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <figcaption>
+          <span>{badge}</span>
+          <strong>{product}</strong>
+        </figcaption>
+      </figure>
+      <div className="demo-lab-event-wristband" aria-hidden="true">
+        <span className="demo-lab-event-wristband__band" />
+        <span className="demo-lab-event-wristband__tag">N</span>
+        <span className="demo-lab-event-wristband__chip" />
+        <span className="demo-lab-event-wristband__lock">{opened ? "OPEN" : blocked ? "RISK" : "SUN"}</span>
+      </div>
+      <div className="demo-lab-event-phone" aria-hidden="true">
+        <i />
+        <span>{primary}</span>
+        <strong>{status}</strong>
+        <small>UID 04A7****1090</small>
+        <em>{action}</em>
+      </div>
+      <div className="demo-lab-event-proof-card" aria-hidden="true">
+        <span>NTAG215</span>
+        <strong>NFC + pasaporte</strong>
+        <small>{blocked ? "Replay no abre reclamo" : "Toque fisico validado"}</small>
+      </div>
+    </div>
+  );
+}
+
+function DemoRealProductShot({
+  vertical,
+  product,
+  badge,
+  variant,
+}: {
+  vertical: Vertical;
+  product: string;
+  badge: string;
+  variant: DemoRealProductVariant;
+}) {
+  const asset = demoLabRealAssets[vertical];
+  return (
+    <figure
+      className={`demo-lab-real-product-shot demo-lab-real-product-shot--${variant} demo-lab-real-product-shot--${vertical}`}
+      data-credit={asset.credit}
+      role="img"
+      aria-label={`${badge}: ${product}`}
+    >
+      <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+      <figcaption>
+        <span>{badge}</span>
+        <strong>{product}</strong>
+      </figcaption>
+    </figure>
   );
 }
 
@@ -1404,6 +1660,7 @@ function mapDemoVerticalToThree(vertical: Vertical): ThreeProductVertical {
   if (vertical === "creamJar") return "creamJar";
   if (vertical === "perfume") return "perfume";
   if (vertical === "creamTube") return "creamTube";
+  if (vertical === "sneaker") return "ticket";
   return "wine";
 }
 
@@ -1940,54 +2197,128 @@ function StageRouteLayer({
   scenario: DemoScenario;
   locale: AppLocale;
 }) {
-  const routeTone = scenario.tone === "risk" ? "warn" : scenario.tone === "open" ? "success" : "info";
+  const routeCopy = locale === "en"
+    ? {
+      eyebrow: "Live route",
+      title: "Origin to tap verified",
+      distance: "Distance",
+      origin: "Origin",
+      tap: "Current tap",
+      chain: "Proof chain",
+      path: "Audited product route",
+      pathBody: "One readable proof: product, UID, SUN, seal and channel policy.",
+      checkpointA: "UID",
+      checkpointB: "SUN",
+      checkpointC: "Policy",
+    }
+    : locale === "pt-BR"
+    ? {
+      eyebrow: "Rota viva",
+      title: "Origem e toque verificados",
+      distance: "Distancia",
+      origin: "Origem",
+      tap: "Toque atual",
+      chain: "Cadeia de prova",
+      path: "Rota auditada do produto",
+      pathBody: "Uma prova legivel: produto, UID, SUN, lacre e politica do canal.",
+      checkpointA: "UID",
+      checkpointB: "SUN",
+      checkpointC: "Politica",
+    }
+    : {
+      eyebrow: "Ruta viva",
+      title: "Origen y toque verificados",
+      distance: "Distancia",
+      origin: "Origen",
+      tap: "Toque actual",
+      chain: "Cadena de prueba",
+      path: "Ruta auditada del producto",
+      pathBody: "Una prueba legible: producto, UID, SUN, sello y politica de canal.",
+      checkpointA: "UID",
+      checkpointB: "SUN",
+      checkpointC: "Politica",
+    };
+  const proofStrip = [
+    { label: txt.controls.origin, value: LOCATIONS.origin.city },
+    { label: txt.controls.currentTap, value: destination.city },
+    { label: "SUN", value: scenario.tone === "risk" ? "bloqueado" : "valido" },
+    { label: routeCopy.checkpointC, value: scenario.stateLabel },
+  ];
 
   return (
     <div className={`demo-lab-stage-route-layer demo-lab-stage-route-layer--${scenario.tone}`} aria-hidden="true">
-      <PremiumVectorMap
-        points={[
-          {
-            id: "origin",
-            label: LOCATIONS.origin.city,
-            sublabel: LOCATIONS.origin.country,
-            lat: LOCATIONS.origin.lat,
-            lng: LOCATIONS.origin.lng,
-            scans: 1,
-            tone: "origin",
-            stageLabel: txt.controls.origin,
-          },
-          {
-            id: "tap",
-            label: destination.city,
-            sublabel: destination.country,
-            lat: destination.lat,
-            lng: destination.lng,
-            scans: scenario.tone === "risk" ? 4 : 2,
-            tone: scenario.tone === "risk" ? "risk" : "tap",
-            stageLabel: txt.controls.currentTap,
-            evidence: scenario.stateLabel,
-          },
-        ]}
-        routes={[{
-          id: "stage-route",
-          fromLat: LOCATIONS.origin.lat,
-          fromLng: LOCATIONS.origin.lng,
-          toLat: destination.lat,
-          toLng: destination.lng,
-          tone: routeTone,
-          distanceLabel: `${routeKm.toLocaleString(locale)} km`,
-          evidence: scenario.stateLabel,
-        }]}
-        selectedPointId="tap"
-        chrome="minimal"
-        density="route"
-        heightClassName="h-full"
-        className="demo-lab-stage-vector-map h-full rounded-none border-0 shadow-none"
-      />
-      <span className="demo-lab-route-chip demo-lab-route-chip--origin"><small>{txt.controls.origin}</small>{LOCATIONS.origin.city}</span>
-      <span className="demo-lab-route-chip demo-lab-route-chip--tap"><small>{txt.controls.currentTap}</small>{destination.city}</span>
-      <span className="demo-lab-route-distance">{routeKm.toLocaleString(locale)} km</span>
-      <span className="demo-lab-route-state">{scenario.stateLabel}</span>
+      <div className="demo-lab-route-backdrop">
+        <svg className="demo-lab-route-diagram" viewBox="0 0 720 360" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="demo-lab-route-line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#34d399" />
+              <stop offset="48%" stopColor="#22d3ee" />
+              <stop offset="100%" stopColor={scenario.tone === "risk" ? "#fb7185" : scenario.tone === "open" ? "#a78bfa" : "#60a5fa"} />
+            </linearGradient>
+            <radialGradient id="demo-lab-route-radar" cx="50%" cy="50%" r="58%">
+              <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.22" />
+              <stop offset="64%" stopColor="#22d3ee" stopOpacity="0.06" />
+              <stop offset="100%" stopColor="#020617" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="720" height="360" rx="26" fill="url(#demo-lab-route-radar)" />
+          <path className="demo-lab-route-diagram__grid" d="M92 56 H640 M92 118 H640 M92 180 H640 M92 242 H640 M92 304 H640 M128 34 V328 M248 34 V328 M368 34 V328 M488 34 V328 M608 34 V328" />
+          <path className="demo-lab-route-diagram__ghost" d="M116 246 C214 112 318 98 402 176 C484 252 566 210 632 90" />
+          <path className="demo-lab-route-diagram__line" d="M116 246 C214 112 318 98 402 176 C484 252 566 210 632 90" />
+          <g className="demo-lab-route-diagram__node demo-lab-route-diagram__node--origin" transform="translate(116 246)">
+            <circle r="33" />
+            <circle r="11" />
+          </g>
+          <g className={`demo-lab-route-diagram__node demo-lab-route-diagram__node--tap demo-lab-route-diagram__node--${scenario.tone}`} transform="translate(632 90)">
+            <circle r="38" />
+            <circle r="13" />
+          </g>
+          <g className="demo-lab-route-diagram__checkpoint" transform="translate(264 125)">
+            <rect x="-36" y="-18" width="72" height="36" rx="14" />
+            <text textAnchor="middle" y="5">{routeCopy.checkpointA}</text>
+          </g>
+          <g className="demo-lab-route-diagram__checkpoint" transform="translate(410 181)">
+            <rect x="-38" y="-18" width="76" height="36" rx="14" />
+            <text textAnchor="middle" y="5">{routeCopy.checkpointB}</text>
+          </g>
+          <g className="demo-lab-route-diagram__checkpoint" transform="translate(538 198)">
+            <rect x="-48" y="-18" width="96" height="36" rx="14" />
+            <text textAnchor="middle" y="5">{routeCopy.checkpointC}</text>
+          </g>
+        </svg>
+      </div>
+      <div className="demo-lab-route-command">
+        <small>{routeCopy.eyebrow}</small>
+        <strong>{routeCopy.title}</strong>
+        <span>{LOCATIONS.origin.city}{" -> "}{destination.city}</span>
+      </div>
+      <div className="demo-lab-route-summary">
+        <span>
+          <small>{routeCopy.distance}</small>
+          <strong>{routeKm.toLocaleString(locale)} km</strong>
+        </span>
+        <span>
+          <small>{routeCopy.tap}</small>
+          <strong>{destination.city}</strong>
+        </span>
+        <span>
+          <small>Estado</small>
+          <strong>{scenario.stateLabel}</strong>
+        </span>
+      </div>
+      <div className="demo-lab-route-proof-strip">
+        {proofStrip.map((item) => (
+          <span key={item.label}>
+            <small>{item.label}</small>
+            <strong>{item.value}</strong>
+          </span>
+        ))}
+      </div>
+      <div className="demo-lab-route-path-card">
+        <small>{routeCopy.path}</small>
+        <strong>{LOCATIONS.origin.city} - {destination.city}</strong>
+        <span>{routeCopy.pathBody}</span>
+      </div>
     </div>
   );
 }

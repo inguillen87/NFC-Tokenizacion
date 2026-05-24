@@ -2,6 +2,7 @@ import { Card, SectionHeading, Badge, Button, WorldMapRealtime } from "@product/
 import { schedulingUrls } from "@product/config";
 import Link from "next/link";
 import { HeroScene } from "./hero-scene";
+import { InstitutionalVideoPanel } from "./institutional-video-panel";
 
 type Content = any;
 
@@ -78,6 +79,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
               </div>
             </div>
             <HeroScene locale={locale as any} />
+            <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" />
           </div>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">

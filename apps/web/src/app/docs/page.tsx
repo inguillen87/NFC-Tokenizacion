@@ -4,6 +4,7 @@ import { ProductExitLink, productExitHref } from "../../components/product-exit-
 import { PublicLinkChip } from "../../components/public-link-chip";
 import { Card, SectionHeading } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
+import { legacyInstitutionalVideo } from "../../lib/institutional-video";
 import { ArrowRight, BookOpen, CircleHelp, Layers3, Rocket, ShieldCheck, Sparkles } from "lucide-react";
 
 type DocsCopy = {
@@ -477,6 +478,18 @@ export default async function DocsPage() {
       <div id="faq" className="scroll-mt-28">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
+          {locale === "en" ? (
+            <div className="docs-faq-video mt-4">
+              <div>
+                <p>Video explainer</p>
+                <strong>Original institutional cut</strong>
+                <span>A useful English FAQ companion for buyers who want the story before entering Demo Lab.</span>
+              </div>
+              <video controls preload="metadata" playsInline controlsList="nodownload" aria-label="nexID original institutional FAQ video">
+                <source src={legacyInstitutionalVideo} type="video/mp4" />
+              </video>
+            </div>
+          ) : null}
           <div className="mt-4 grid gap-3">
             {copy.faqItems.map((item) => (
               <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-all duration-200 open:border-cyan-300/30 open:bg-cyan-500/5 hover:border-white/20">

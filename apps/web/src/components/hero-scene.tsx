@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
 import { PremiumVectorMap } from "@product/ui";
 
-type Vertical = "wine" | "events" | "cosmetics" | "agro";
+type Vertical = "wine" | "events" | "cosmetics" | "agro" | "fashion";
 
 const HeroThreeStage = dynamic(() => import("./hero-three-stage").then((mod) => mod.HeroThreeStage), {
   ssr: false,
@@ -62,6 +62,10 @@ const labels: Record<AppLocale, {
   tapMap: string;
   openOriginMap: string;
   custody: string;
+  assetBank: string;
+  realAsset: string;
+  renderFallback: string;
+  evidenceChart: string;
   labels: {
     product: string;
     origin: string;
@@ -73,7 +77,12 @@ const labels: Record<AppLocale, {
     nextAction: string;
     marketplace: string;
     loyalty: string;
-    businessValue: string;
+      businessValue: string;
+  };
+  metrics: {
+    authenticity: string;
+    traceability: string;
+    commercial: string;
   };
   items: Record<Vertical, Scene>;
 }> = {
@@ -82,7 +91,7 @@ const labels: Record<AppLocale, {
     microcopy: "Cada toque convierte seguridad en relacion: prueba de origen, club, garantia, puntos, recompra y tienda contextual para la marca.",
     commercialRail: "Capa comercial que se activa despues del toque",
     valuePills: ["Club VIP", "Puntos", "Garantia", "Dato para CRM", "Tienda", "Token opcional"],
-    ctaBands: ["Bodegas", "Eventos", "Cosmetica", "Agro", "Salud"],
+    ctaBands: ["Bodegas", "Eventos", "Cosmetica", "Agro", "Moda", "Salud"],
     phoneLabel: "Salida celular",
     swapTap: "Cambiar toque",
     liveTap: "Toque simulado",
@@ -92,6 +101,10 @@ const labels: Record<AppLocale, {
     tapMap: "Toque",
     openOriginMap: "Ver origen en Maps",
     custody: "Origen, distancia y accion quedan unidos al evento.",
+    assetBank: "Banco visual",
+    realAsset: "Foto real",
+    renderFallback: "Render interactivo",
+    evidenceChart: "Evidencia del toque",
     labels: {
       product: "Producto",
       origin: "Origen",
@@ -104,6 +117,11 @@ const labels: Record<AppLocale, {
       marketplace: "Tienda",
       loyalty: "Beneficios",
       businessValue: "Valor para marca",
+    },
+    metrics: {
+      authenticity: "Autenticidad",
+      traceability: "Trazabilidad",
+      commercial: "Post-tap",
     },
     items: {
       wine: {
@@ -178,6 +196,24 @@ const labels: Record<AppLocale, {
         phoneTag: "AGRO - LOT_OK",
         steps: ["Lectura en campo", "Lote confirmado", "Origen visible", "Soporte activo"],
       },
+      fashion: {
+        label: "Zapatillas",
+        profile: "NTAG 424 DNA",
+        action: "Zapatilla coleccionable verificada: UID, rareza, dueno y beneficio quedan unidos al toque.",
+        result: "Autenticada con dueno",
+        product: "Drop Runner 37Z",
+        batch: "SNK-37Z-055",
+        uid: "04F1****37Z9",
+        origin: { city: "Buenos Aires", country: "Argentina", label: "drop studio", lat: -34.5875, lng: -58.3974 },
+        security: "SUN dinamico + UID + reclamo de dueno",
+        nextAction: "Verificar dueno, garantia, reventa o token premium",
+        marketplace: "Drop exclusivo, reventa controlada y beneficios de comunidad",
+        loyalty: "Acceso a drops, puntos y certificado de coleccion",
+        businessValue: "Anti copia + ownership + canal de resale",
+        objectClass: "sneaker-demo scanning",
+        phoneTag: "SNEAKER - OWNER_OK",
+        steps: ["Toque en lengueta", "SUN valida pieza", "Rareza visible", "Dueno/token habilitado"],
+      },
     },
   },
   "pt-BR": {
@@ -185,7 +221,7 @@ const labels: Record<AppLocale, {
     microcopy: "Cada toque transforma seguranca em relacionamento: prova de origem, clube, garantia, pontos, recompra e marketplace contextual para a marca.",
     commercialRail: "Camada comercial ativada depois do toque",
     valuePills: ["Clube VIP", "Pontos", "Garantia", "CRM lead", "Marketplace", "Token opcional"],
-    ctaBands: ["Vinhos", "Eventos", "Cosmeticos", "Agro", "Pharma"],
+    ctaBands: ["Vinhos", "Eventos", "Cosmeticos", "Agro", "Moda", "Pharma"],
     phoneLabel: "Saida mobile",
     swapTap: "Trocar toque",
     liveTap: "Toque simulado",
@@ -195,6 +231,10 @@ const labels: Record<AppLocale, {
     tapMap: "Toque",
     openOriginMap: "Ver origem no Maps",
     custody: "Origem, distancia e acao ficam ligados ao evento.",
+    assetBank: "Banco visual",
+    realAsset: "Foto real",
+    renderFallback: "Render interativo",
+    evidenceChart: "Evidencia do toque",
     labels: {
       product: "Produto",
       origin: "Origem",
@@ -207,6 +247,11 @@ const labels: Record<AppLocale, {
       marketplace: "Marketplace",
       loyalty: "Loyalty",
       businessValue: "Valor empresa",
+    },
+    metrics: {
+      authenticity: "Autenticidade",
+      traceability: "Rastreabilidade",
+      commercial: "Pos-toque",
     },
     items: {
       wine: {
@@ -281,6 +326,24 @@ const labels: Record<AppLocale, {
         phoneTag: "AGRO - LOT_OK",
         steps: ["Scan no campo", "Lote confirmado", "Origem visivel", "Suporte ativo"],
       },
+      fashion: {
+        label: "Tenis",
+        profile: "NTAG 424 DNA",
+        action: "Tenis colecionavel verificado: UID, raridade, dono e beneficio ficam ligados ao toque.",
+        result: "Autenticado com dono",
+        product: "Drop Runner 37Z",
+        batch: "SNK-37Z-055",
+        uid: "04F1****37Z9",
+        origin: { city: "Buenos Aires", country: "Argentina", label: "drop studio", lat: -34.5875, lng: -58.3974 },
+        security: "SUN dinamico + UID + claim de dono",
+        nextAction: "Verificar dono, garantia, revenda ou token premium",
+        marketplace: "Drop exclusivo, revenda controlada e beneficios de comunidade",
+        loyalty: "Acesso a drops, pontos e certificado de colecao",
+        businessValue: "Anti copia + ownership + canal de resale",
+        objectClass: "sneaker-demo scanning",
+        phoneTag: "SNEAKER - OWNER_OK",
+        steps: ["Toque na lingueta", "SUN valida peca", "Raridade visivel", "Dono/token habilitado"],
+      },
     },
   },
   en: {
@@ -288,7 +351,7 @@ const labels: Record<AppLocale, {
     microcopy: "Every tap turns security into relationship: origin proof, club, warranty, points, reorder and a contextual marketplace for the brand.",
     commercialRail: "Commercial layer unlocked after the tap",
     valuePills: ["VIP club", "Points", "Warranty", "CRM lead", "Marketplace", "Optional token"],
-    ctaBands: ["Wineries", "Events", "Cosmetics", "Agro", "Pharma"],
+    ctaBands: ["Wineries", "Events", "Cosmetics", "Agro", "Fashion", "Pharma"],
     phoneLabel: "Mobile output",
     swapTap: "Change tap",
     liveTap: "Simulated tap",
@@ -298,6 +361,10 @@ const labels: Record<AppLocale, {
     tapMap: "Tap",
     openOriginMap: "Open origin map",
     custody: "Origin, distance and physical action are attached to the event.",
+    assetBank: "Visual bank",
+    realAsset: "Real photo",
+    renderFallback: "Interactive render",
+    evidenceChart: "Tap evidence",
     labels: {
       product: "Product",
       origin: "Origin",
@@ -310,6 +377,11 @@ const labels: Record<AppLocale, {
       marketplace: "Marketplace",
       loyalty: "Loyalty",
       businessValue: "Business value",
+    },
+    metrics: {
+      authenticity: "Authenticity",
+      traceability: "Traceability",
+      commercial: "Post-tap",
     },
     items: {
       wine: {
@@ -383,6 +455,24 @@ const labels: Record<AppLocale, {
         objectClass: "agro-demo tampered scanning",
         phoneTag: "AGRO - LOT_OK",
         steps: ["Field scan", "Lot is confirmed", "Origin is visible", "Support opens"],
+      },
+      fashion: {
+        label: "Sneakers",
+        profile: "NTAG 424 DNA",
+        action: "Collectible sneaker verified: UID, rarity, owner and benefits stay attached to the tap.",
+        result: "Authenticated owner",
+        product: "Drop Runner 37Z",
+        batch: "SNK-37Z-055",
+        uid: "04F1****37Z9",
+        origin: { city: "Buenos Aires", country: "Argentina", label: "drop studio", lat: -34.5875, lng: -58.3974 },
+        security: "Dynamic SUN + UID + ownership claim",
+        nextAction: "Verify owner, warranty, resale or premium token",
+        marketplace: "Exclusive drop, controlled resale and community benefits",
+        loyalty: "Drop access, points and collector certificate",
+        businessValue: "Anti-copy + ownership + resale channel",
+        objectClass: "sneaker-demo scanning",
+        phoneTag: "SNEAKER - OWNER_OK",
+        steps: ["Tap on tongue", "SUN validates item", "Rarity visible", "Owner/token enabled"],
       },
     },
   },
@@ -468,16 +558,15 @@ function HeroTraceMap({
   const formattedDistance = distance.toLocaleString(numberLocale);
   const routeHeadline = txt.routeTitle === "Trust route" ? "Live route" : txt.routeTitle.startsWith("Rota") ? "Rota viva" : "Ruta viva";
   const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque fisico" : "Tap fisico";
-  const ownerCopy = txt.routeTitle === "Trust route" ? "Owner claim" : txt.routeTitle.startsWith("Rota") ? "Claim de dono" : "Claim de dueno";
-  const dataRows = [
-    { label: txt.originMap, value: `${origin.city}, ${origin.country}` },
-    { label: tapCopy, value: `${tap.city}, ${tap.country}` },
-    { label: "CRM", value: "pais / ciudad / canal" },
-    { label: "NFT", value: ownerCopy },
-  ];
+  const distanceCopy = txt.routeTitle === "Trust route" ? "Distance" : txt.routeTitle.startsWith("Rota") ? "Distancia" : "Distancia";
+  const evidenceCopy = txt.routeTitle === "Trust route"
+    ? `${formattedDistance} km with physical tap, SUN and channel evidence.`
+    : txt.routeTitle.startsWith("Rota")
+      ? `${formattedDistance} km com evidencia de toque, SUN e canal.`
+      : `${formattedDistance} km con evidencia de toque fisico, SUN y canal.`;
 
   return (
-    <div className="hero-trace-map" aria-label={txt.routeTitle}>
+    <div className="hero-trace-map hero-trace-map--clear" aria-label={txt.routeTitle}>
       <PremiumVectorMap
         points={[
           {
@@ -521,7 +610,7 @@ function HeroTraceMap({
       <div className="hero-map-intel">
         <p>{routeHeadline}</p>
         <strong>{origin.city} / {tap.city}</strong>
-        <span>{formattedDistance} km con evidencia de tap y canal.</span>
+        <span>{evidenceCopy}</span>
       </div>
       <div className="hero-map-pin hero-map-pin--origin" style={{ left: `${originPoint.x}%`, top: `${originPoint.y}%` }}>
         <span>{txt.originMap}</span>
@@ -531,44 +620,25 @@ function HeroTraceMap({
         <span>{txt.tapMap}</span>
         <strong>{tap.city}</strong>
       </div>
-      <div className="hero-map-event-stack" aria-hidden="true">
-        {dataRows.map((row, index) => (
-          <div className="hero-map-event" key={`${row.label}-${index}`}>
-            <i>{String(index + 1).padStart(2, "0")}</i>
-            <span>{row.label}</span>
-            <strong>{row.value}</strong>
-          </div>
-        ))}
-      </div>
-      <div className="hero-trace-caption">
-        <p>{txt.routeTitle}</p>
-        <strong>{formattedDistance} km</strong>
-        <span>{txt.custody}</span>
-      </div>
-      <div className="hero-map-data-strip" aria-hidden="true">
-        <span>UID hash</span>
-        <span>lote</span>
-        <span>SUN</span>
-        <span>owner data</span>
-      </div>
-      <div className="hero-mobile-route-summary" aria-hidden="true">
-        <div>
-          <span>{txt.originMap}</span>
-          <strong>{origin.city}</strong>
+      <div className="hero-route-summary-card">
+        <div className="hero-route-summary-grid">
+          <span>
+            <small>{txt.originMap}</small>
+            <strong>{origin.city}</strong>
+          </span>
+          <span>
+            <small>{tapCopy}</small>
+            <strong>{tap.city}</strong>
+          </span>
+          <span>
+            <small>{distanceCopy}</small>
+            <strong>{formattedDistance} km</strong>
+          </span>
         </div>
-        <i />
-        <div>
-          <span>{txt.tapMap}</span>
-          <strong>{tap.city}</strong>
-        </div>
-        <div>
-          <span>{txt.routeTitle}</span>
-          <strong>{formattedDistance} km</strong>
-        </div>
+        <a className="hero-route-map-link" href={mapsHref(origin)} target="_blank" rel="noreferrer">
+          {txt.openOriginMap}
+        </a>
       </div>
-      <a className="hero-origin-link" href={mapsHref(origin)} target="_blank" rel="noreferrer">
-        {txt.openOriginMap}
-      </a>
     </div>
   );
 }
@@ -583,6 +653,51 @@ const heroPrimeProducts: Record<Vertical, {
   events: { kind: "bracelet", seal: "VIP", detail: "UID OK", accent: "#2dd4bf" },
   cosmetics: { kind: "perfume", seal: "AUTH", detail: "LOTE OK", accent: "#a78bfa" },
   agro: { kind: "seeds", seal: "LOTE", detail: "ORIGEN", accent: "#84cc16" },
+  fashion: { kind: "bracelet", seal: "DROP", detail: "OWNER", accent: "#22d3ee" },
+};
+
+const heroRealAssets: Partial<Record<Vertical, {
+  imageUrl: string;
+  alt: string;
+  bank: string;
+  sourceLabel: string;
+  sourceUrl: string;
+}>> = {
+  wine: {
+    imageUrl: "/demo/wine-secure/real-malbec-bottle-pexels.jpg",
+    alt: "Botella real de vino Malbec con copa, usada como asset demo del banco visual.",
+    bank: "Pexels",
+    sourceLabel: "Pexels / Imperio Ame",
+    sourceUrl: "https://www.pexels.com/photo/close-up-photo-of-a-bottle-of-wine-15063487/",
+  },
+  events: {
+    imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg",
+    alt: "Brazalete real de festival en una muneca, usado como asset demo del banco visual.",
+    bank: "Pexels",
+    sourceLabel: "Pexels / freestocks.org",
+    sourceUrl: "https://www.pexels.com/photo/woman-holding-black-steel-pole-during-daytime-119788/",
+  },
+  cosmetics: {
+    imageUrl: "/demo/cosmetics-secure/real-cosmetic-bottles-pexels.jpg",
+    alt: "Botellas reales de cosmetica premium, usadas como asset demo del banco visual.",
+    bank: "Pexels",
+    sourceLabel: "Pexels / Daria Liudnaya",
+    sourceUrl: "https://www.pexels.com/photo/blank-perfume-bottles-8166611/",
+  },
+  agro: {
+    imageUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg",
+    alt: "Paquete real de semillas siendo usado en campo, asset demo para trazabilidad agro.",
+    bank: "Pexels",
+    sourceLabel: "Pexels / RDNE Stock project",
+    sourceUrl: "https://www.pexels.com/photo/person-catching-seeds-from-a-packet-7782889/",
+  },
+  fashion: {
+    imageUrl: "/demo/luxury-basic/real-sneakers-pexels.jpg",
+    alt: "Zapatillas reales usadas como asset demo para autenticidad, ownership y reventa controlada.",
+    bank: "Pexels",
+    sourceLabel: "Pexels / Hurrah suhail",
+    sourceUrl: "https://www.pexels.com/photo/11324516/",
+  },
 };
 
 function HeroPrimeProduct({ active, product }: { active: Vertical; product: string }) {
@@ -716,11 +831,152 @@ function HeroPrimeProduct({ active, product }: { active: Vertical; product: stri
 
 function HeroProductVisual({ active, product }: { active: Vertical; product: string }) {
   const [threeReady, setThreeReady] = useState(false);
+  const threeActive = active === "fashion" ? "ticket" : active;
 
   return (
     <div className="hero-product-visual-shell">
       {!threeReady ? <HeroPrimeProduct active={active} product={product} /> : null}
-      <HeroThreeStage key={active} active={active} product={product} onReady={() => setThreeReady(true)} />
+      <HeroThreeStage key={active} active={threeActive} product={product} onReady={() => setThreeReady(true)} />
+    </div>
+  );
+}
+
+function trustMetricValues(active: Vertical, distance: number) {
+  const distanceScore = clamp(Math.round(64 + Math.min(distance, 2200) / 42), 70, 96);
+  if (active === "wine") return [98, distanceScore, 91];
+  if (active === "events") return [86, 78, 84];
+  if (active === "cosmetics") return [95, 82, 88];
+  if (active === "fashion") return [96, 84, 93];
+  return [81, 90, 82];
+}
+
+function HeroEvidenceChart({
+  active,
+  distance,
+  numberLocale,
+  txt,
+}: {
+  active: Vertical;
+  distance: number;
+  numberLocale: string;
+  txt: Pick<(typeof labels)["es-AR"], "evidenceChart" | "metrics">;
+}) {
+  const values = trustMetricValues(active, distance);
+  const metricLabels = [txt.metrics.authenticity, txt.metrics.traceability, txt.metrics.commercial];
+  const polyline = values
+    .map((value, index) => `${22 + index * 48},${92 - value * 0.62}`)
+    .join(" ");
+
+  return (
+    <div className="hero-evidence-chart" aria-label={txt.evidenceChart}>
+      <div className="hero-evidence-chart-head">
+        <span>{txt.evidenceChart}</span>
+        <strong>{distance.toLocaleString(numberLocale)} km</strong>
+      </div>
+      <svg viewBox="0 0 140 58" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id={`hero-evidence-line-${active}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#22d3ee" />
+            <stop offset="58%" stopColor="#34d399" />
+            <stop offset="100%" stopColor="#a78bfa" />
+          </linearGradient>
+        </defs>
+        <path d="M10 48H132M10 30H132M10 12H132" />
+        <polyline points={polyline} />
+        {values.map((value, index) => (
+          <circle key={metricLabels[index]} cx={22 + index * 48} cy={92 - value * 0.62} r="3.1" />
+        ))}
+      </svg>
+      <div className="hero-evidence-bars">
+        {values.map((value, index) => (
+          <div key={metricLabels[index]}>
+            <span>{metricLabels[index]}</span>
+            <em>
+              <i style={{ width: `${value}%` }} />
+            </em>
+            <strong>{value}%</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HeroPassportPhone({
+  active,
+  data,
+  distance,
+  numberLocale,
+  txt,
+}: {
+  active: Vertical;
+  data: Scene;
+  distance: number;
+  numberLocale: string;
+  txt: Pick<(typeof labels)["es-AR"], "phoneLabel" | "labels">;
+}) {
+  const asset = heroRealAssets[active];
+  const actionLine = data.nextAction.length > 46 ? `${data.nextAction.slice(0, 44)}...` : data.nextAction;
+
+  return (
+    <div className={`hero-passport-phone hero-passport-phone--${active}`} aria-hidden="true">
+      <span className="hero-passport-notch" />
+      <div className="hero-passport-thumb">
+        {asset ? <img src={asset.imageUrl} alt="" loading="eager" /> : <HeroProductVisual active={active} product={data.product} />}
+      </div>
+      <div className="hero-passport-body">
+        <span>{txt.phoneLabel}</span>
+        <strong>{data.product}</strong>
+        <dl>
+          <div>
+            <dt>{txt.labels.uid}</dt>
+            <dd>{data.uid}</dd>
+          </div>
+          <div>
+            <dt>{txt.labels.distance}</dt>
+            <dd>{distance.toLocaleString(numberLocale)} km</dd>
+          </div>
+        </dl>
+        <p><i />{data.result}</p>
+        <em>{actionLine}</em>
+      </div>
+    </div>
+  );
+}
+
+function HeroProductShowcase({
+  active,
+  data,
+  distance,
+  numberLocale,
+  txt,
+}: {
+  active: Vertical;
+  data: Scene;
+  distance: number;
+  numberLocale: string;
+  txt: Pick<(typeof labels)["es-AR"], "assetBank" | "realAsset" | "renderFallback" | "evidenceChart" | "metrics" | "phoneLabel" | "labels">;
+}) {
+  const asset = heroRealAssets[active];
+
+  return (
+    <div className={`hero-asset-showcase hero-asset-showcase--${active}`}>
+      <div className="hero-asset-media">
+        {asset ? (
+          <img src={asset.imageUrl} alt={asset.alt} loading="eager" />
+        ) : (
+          <HeroProductVisual active={active} product={data.product} />
+        )}
+        <span className="hero-asset-nfc">NFC</span>
+        <span className="hero-asset-status">{data.profile}</span>
+        <HeroPassportPhone active={active} data={data} distance={distance} numberLocale={numberLocale} txt={txt} />
+      </div>
+      <div className="hero-asset-copy">
+        <span>{txt.assetBank} / {asset ? txt.realAsset : txt.renderFallback}</span>
+        <strong>{data.product}</strong>
+        <p>{data.batch} - {data.security}</p>
+      </div>
+      <HeroEvidenceChart active={active} distance={distance} numberLocale={numberLocale} txt={txt} />
     </div>
   );
 }
@@ -764,7 +1020,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
           </button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {(["wine", "events", "cosmetics", "agro"] as const).map((key) => (
+          {(["wine", "events", "cosmetics", "agro", "fashion"] as const).map((key) => (
             <button suppressHydrationWarning key={key} type="button" onClick={() => setActive(key)} className={`hero-vertical-pill ${active === key ? "hero-vertical-pill--active" : ""}`}>
               {txt.items[key].label}
             </button>
@@ -784,6 +1040,9 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
               <div className="hero-object-frame hero-object-frame--split">
                 <div className="hero-object-map-pane">
                   <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
+                </div>
+                <div className="hero-object-product-pane">
+                  <HeroProductShowcase active={active} data={data} distance={distance} numberLocale={numberLocale} txt={txt} />
                 </div>
               </div>
               <div className="hero-scene-phone">

@@ -1,4 +1,4 @@
-export type AssetVisualKind = "wine" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket" | "seeds";
+export type AssetVisualKind = "wine" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket" | "seeds" | "sneaker" | "apparel";
 
 export type ProductAssetSlot = {
   id: string;
@@ -50,6 +50,45 @@ type ProductAssetInput = {
   modelUrl?: string | null;
   galleryUrls?: string[] | null;
   sku?: string | null;
+};
+
+const demoStockAssets: Partial<Record<AssetVisualKind, { productImageUrl: string; sourceLabel: string }>> = {
+  wine: {
+    productImageUrl: "/demo/wine-secure/real-malbec-bottle-pexels.jpg",
+    sourceLabel: "Pexels / Imperio Ame",
+  },
+  bracelet: {
+    productImageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg",
+    sourceLabel: "Pexels / freestocks.org",
+  },
+  ticket: {
+    productImageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg",
+    sourceLabel: "Pexels / freestocks.org",
+  },
+  creamJar: {
+    productImageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg",
+    sourceLabel: "Pexels / mskin pro",
+  },
+  creamTube: {
+    productImageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg",
+    sourceLabel: "Pexels / mskin pro",
+  },
+  perfume: {
+    productImageUrl: "/demo/cosmetics-secure/real-luxury-perfume-pexels.jpg",
+    sourceLabel: "Pexels / Suhashan Jar",
+  },
+  seeds: {
+    productImageUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg",
+    sourceLabel: "Pexels / RDNE Stock project",
+  },
+  sneaker: {
+    productImageUrl: "/demo/luxury-basic/real-sneakers-pexels.jpg",
+    sourceLabel: "Pexels / Hurrah suhail",
+  },
+  apparel: {
+    productImageUrl: "/demo/luxury-basic/real-apparel-tag-pexels.jpg",
+    sourceLabel: "Pexels / Andrzej Gdula",
+  },
 };
 
 function normalize(value: unknown) {
@@ -122,6 +161,8 @@ export function readProductAssetMedia(localeData: unknown): ProductAssetMedia {
 
 function inferVisualKind(input: ProductAssetInput): AssetVisualKind {
   const blob = normalize(`${input.productName || ""} ${input.brandName || ""} ${input.vertical || ""} ${input.category || ""}`);
+  if (blob.includes("zapatilla") || blob.includes("sneaker") || blob.includes("shoe") || blob.includes("calzado")) return "sneaker";
+  if (blob.includes("prenda") || blob.includes("ropa") || blob.includes("apparel") || blob.includes("clothing") || blob.includes("garment") || blob.includes("textil")) return "apparel";
   if (blob.includes("ticket") || blob.includes("entrada")) return "ticket";
   if (blob.includes("pulsera") || blob.includes("bracelet") || blob.includes("wristband") || blob.includes("evento")) return "bracelet";
   if (blob.includes("semilla") || blob.includes("seed") || blob.includes("agro")) return "seeds";
@@ -134,16 +175,19 @@ function verticalLabel(kind: AssetVisualKind) {
   if (kind === "bracelet" || kind === "ticket") return "Eventos y acceso";
   if (kind === "creamJar" || kind === "creamTube" || kind === "perfume") return "Cosmetica premium";
   if (kind === "seeds") return "Agro trazable";
+  if (kind === "sneaker" || kind === "apparel") return "Moda y lujo";
   return "Vinos y bebidas premium";
 }
 
 function defaultProductName(kind: AssetVisualKind) {
   if (kind === "bracelet") return "Brazalete VIP evento";
   if (kind === "ticket") return "Entrada verificada";
-  if (kind === "creamJar") return "Frasco crema alta gama";
-  if (kind === "creamTube") return "Crema dermocosmetica";
-  if (kind === "perfume") return "Perfume edicion limitada";
+  if (kind === "creamJar") return "Set skincare premium";
+  if (kind === "creamTube") return "Set skincare premium";
+  if (kind === "perfume") return "Perfume premium";
   if (kind === "seeds") return "Semillas trazables";
+  if (kind === "sneaker") return "Zapatillas autenticadas";
+  if (kind === "apparel") return "Prenda premium autenticada";
   return "Gran Reserva Malbec";
 }
 
@@ -152,17 +196,26 @@ function slotSet(kind: AssetVisualKind, input: ProductAssetInput): ProductAssetS
   const hasLabel = Boolean(input.labelImageUrl);
   const hasModel = Boolean(input.modelUrl);
   const hasGallery = Boolean((input.galleryUrls || []).length);
+  const stockAsset = demoStockAssets[kind];
   const productLabel = kind === "wine"
     ? "Foto botella real"
     : kind === "bracelet" || kind === "ticket"
       ? "Foto acceso real"
       : kind === "seeds"
         ? "Foto empaque real"
+        : kind === "sneaker"
+          ? "Foto calzado real"
+          : kind === "apparel"
+            ? "Foto prenda real"
         : "Foto producto real";
   const tagDetail = kind === "wine"
     ? "Tag sobre capsula/cuello, listo para cortar al abrir."
     : kind === "bracelet" || kind === "ticket"
       ? "NFC en zona de tap del celular para acceso."
+      : kind === "sneaker"
+        ? "NFC en lengueta, plantilla o packaging para autenticidad y recompra."
+        : kind === "apparel"
+          ? "NFC en etiqueta colgante o interior para autenticidad, cuidado y reventa."
       : kind === "perfume"
         ? "Tag en union tapa/frasco para evidenciar apertura."
         : "Tag en punto de apertura entre tapa y envase.";
@@ -171,10 +224,14 @@ function slotSet(kind: AssetVisualKind, input: ProductAssetInput): ProductAssetS
     {
       id: "product-photo",
       label: productLabel,
-      detail: hasImage ? "Foto real del tenant usada en tap, Passport, certificado y marketplace." : "Demo render hasta que el tenant suba foto real.",
+      detail: hasImage
+        ? "Foto real del tenant usada en tap, Passport, certificado y marketplace."
+        : stockAsset
+          ? `Foto real de banco visual demo (${stockAsset.sourceLabel}) hasta que el tenant suba su packshot.`
+          : "Demo render hasta que el tenant suba foto real.",
       status: hasImage ? "ready" : "demo",
       tone: "photo",
-      imageUrl: input.imageUrl || null,
+      imageUrl: input.imageUrl || stockAsset?.productImageUrl || null,
     },
     {
       id: "front-label",
@@ -224,6 +281,7 @@ export function buildProductAssetProfile(input: ProductAssetInput = {}): Product
   const skuLabel = useful(input.sku, `${kind.toUpperCase()}-DEMO`);
   const galleryUrls = Array.isArray(input.galleryUrls) ? input.galleryUrls.filter(Boolean) : [];
   const slots = slotSet(kind, { ...input, galleryUrls });
+  const stockAsset = demoStockAssets[kind];
 
   return {
     key: `${tenantSlug}-${compactKey(productName)}-${compactKey(batchLabel)}`,
@@ -234,7 +292,7 @@ export function buildProductAssetProfile(input: ProductAssetInput = {}): Product
     visualKind: kind,
     batchLabel,
     skuLabel,
-    primaryImageUrl: input.imageUrl || galleryUrls[0] || null,
+    primaryImageUrl: input.imageUrl || galleryUrls[0] || stockAsset?.productImageUrl || null,
     labelImageUrl: input.labelImageUrl || null,
     modelUrl: input.modelUrl || null,
     galleryUrls,
