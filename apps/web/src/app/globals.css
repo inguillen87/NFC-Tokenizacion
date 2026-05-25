@@ -14755,6 +14755,608 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
   width: min(48%, 13rem);
 }
 
+.demo-lab-wine-product {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.demo-lab-wine-product__aura,
+.demo-lab-wine-product__floor {
+  position: absolute;
+  pointer-events: none;
+}
+
+.demo-lab-wine-product__aura {
+  inset: 7% 3% 17%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 44% 42%, rgba(103, 232, 249, 0.2), transparent 34%),
+    radial-gradient(circle at 68% 51%, rgba(110, 231, 183, 0.13), transparent 38%),
+    radial-gradient(circle at 56% 64%, rgba(167, 139, 250, 0.16), transparent 44%);
+  filter: blur(2px);
+}
+
+.demo-lab-wine-product__floor {
+  left: 50%;
+  bottom: 7%;
+  width: 76%;
+  height: 18%;
+  transform: translateX(-50%) rotateX(62deg);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(34, 211, 238, 0.22), transparent 58%),
+    linear-gradient(90deg, transparent, rgba(125, 211, 252, 0.18), transparent);
+  box-shadow: 0 1.7rem 3rem rgba(2, 6, 23, 0.34);
+}
+
+.demo-lab-wine-product__packshot {
+  position: absolute;
+  z-index: 10;
+  overflow: visible;
+  border-radius: 2.1rem 2.1rem 2.45rem 2.45rem;
+  transform-style: preserve-3d;
+}
+
+.demo-lab-wine-product__packshot::before,
+.demo-lab-wine-product__packshot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.demo-lab-wine-product__packshot::before {
+  left: 50%;
+  top: 0;
+  width: 52%;
+  height: 100%;
+  transform: translateX(-50%) skewX(-2deg);
+  border-radius: 2.2rem 2.2rem 2.7rem 2.7rem;
+  background:
+    linear-gradient(96deg, rgba(255, 255, 255, 0.16) 0 10%, transparent 13% 34%, rgba(255, 255, 255, 0.22) 38%, transparent 44%),
+    radial-gradient(circle at 52% 18%, rgba(255, 255, 255, 0.18), transparent 28%),
+    linear-gradient(96deg, #020617 0%, #06131e 17%, #360713 47%, #06070b 74%, #000 100%);
+  box-shadow:
+    inset 0.7rem 0 1.15rem rgba(255, 255, 255, 0.06),
+    inset -0.9rem 0 1.5rem rgba(0, 0, 0, 0.72),
+    0 2.2rem 3.4rem rgba(0, 0, 0, 0.48);
+}
+
+.demo-lab-wine-product__packshot::after {
+  left: 54%;
+  top: 6%;
+  width: 7%;
+  height: 84%;
+  transform: translateX(-50%) rotate(2deg);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.44), transparent 34%, rgba(255, 255, 255, 0.13) 62%, transparent);
+  filter: blur(0.5px);
+  mix-blend-mode: screen;
+}
+
+.demo-lab-wine-product__bottle-shadow {
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: -4%;
+  height: 13%;
+  transform: rotateX(68deg);
+  border-radius: 999px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.72), transparent 64%);
+  filter: blur(3px);
+}
+
+.demo-lab-wine-product__bottle-cork,
+.demo-lab-wine-product__bottle-capsule,
+.demo-lab-wine-product__bottle-neck,
+.demo-lab-wine-product__bottle-shoulder,
+.demo-lab-wine-product__bottle-body,
+.demo-lab-wine-product__bottle-punt,
+.demo-lab-wine-product__bottle-label {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.demo-lab-wine-product__bottle-cork {
+  left: 42.5%;
+  top: -6%;
+  width: 15%;
+  height: 9%;
+  border-radius: 0.28rem 0.28rem 0.2rem 0.2rem;
+  background: linear-gradient(90deg, #5b250d, #a24916 52%, #54180b);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+.demo-lab-wine-product__bottle-capsule {
+  left: 39.5%;
+  top: -1%;
+  width: 21%;
+  height: 19%;
+  border-radius: 0.32rem 0.32rem 0.18rem 0.18rem;
+  background:
+    linear-gradient(90deg, #3b0507, #a41e19 45%, #3b0507),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 4px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.demo-lab-wine-product__bottle-neck {
+  left: 42%;
+  top: 12%;
+  width: 16%;
+  height: 24%;
+  border-radius: 0.2rem;
+  background:
+    linear-gradient(92deg, rgba(255, 255, 255, 0.18), transparent 18%),
+    linear-gradient(90deg, #03070b, #2f0611 45%, #000);
+}
+
+.demo-lab-wine-product__bottle-shoulder {
+  left: 31%;
+  top: 29%;
+  width: 38%;
+  height: 15%;
+  border-radius: 2rem 2rem 0.3rem 0.3rem;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.12), transparent 42%),
+    linear-gradient(92deg, #020617, #3c0714 50%, #010101);
+}
+
+.demo-lab-wine-product__bottle-body {
+  left: 27%;
+  top: 39%;
+  width: 46%;
+  height: 52%;
+  border-radius: 0.62rem 0.62rem 1.7rem 1.7rem;
+  background:
+    linear-gradient(96deg, rgba(255, 255, 255, 0.16) 0 12%, transparent 18% 40%, rgba(255, 255, 255, 0.1) 48%, transparent 54%),
+    linear-gradient(90deg, #020617, #2f0610 43%, #130308 67%, #000);
+  box-shadow:
+    inset 0.55rem 0 1rem rgba(255, 255, 255, 0.05),
+    inset -0.85rem 0 1.35rem rgba(0, 0, 0, 0.72);
+}
+
+.demo-lab-wine-product__bottle-punt {
+  left: 35%;
+  bottom: 7%;
+  width: 8%;
+  height: 12%;
+  border-radius: 0.1rem;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.demo-lab-wine-product__bottle-label {
+  left: 31%;
+  right: 31%;
+  top: 57%;
+  display: grid;
+  gap: 0.13rem;
+  min-height: 18%;
+  transform: rotate(-1.2deg);
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 0.28rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.92));
+  padding: 0.36rem 0.28rem;
+  color: #0f172a;
+  text-align: center;
+  box-shadow: 0 0.8rem 1.2rem rgba(0, 0, 0, 0.18);
+}
+
+.demo-lab-wine-product__bottle-label em {
+  color: #0891b2;
+  font-size: 0.43rem;
+  font-style: normal;
+  font-weight: 1000;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-wine-product__bottle-label strong {
+  color: #111827;
+  font-size: clamp(0.46rem, 0.78vw, 0.66rem);
+  font-weight: 1000;
+  line-height: 1.02;
+}
+
+.demo-lab-wine-product__bottle-label small {
+  color: #64748b;
+  font-size: 0.39rem;
+  font-weight: 850;
+  line-height: 1.05;
+}
+
+.demo-lab-wine-product__reference {
+  position: absolute;
+  z-index: 8;
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.22);
+  border-radius: 1.15rem;
+  background: rgba(2, 6, 23, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 1.5rem 3rem rgba(0, 0, 0, 0.34);
+}
+
+.demo-lab-wine-product__reference::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, transparent 46%, rgba(2, 6, 23, 0.86)),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.1), transparent 42%, rgba(167, 139, 250, 0.12));
+  pointer-events: none;
+}
+
+.demo-lab-wine-product__reference img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 46% 54%;
+  filter: saturate(1.02) contrast(1.07) brightness(0.9);
+}
+
+.demo-lab-wine-product__reference figcaption {
+  position: absolute;
+  left: 0.66rem;
+  right: 0.66rem;
+  bottom: 0.62rem;
+  z-index: 2;
+  display: grid;
+  gap: 0.18rem;
+  color: #ffffff;
+  text-shadow: 0 0.55rem 1.25rem rgba(2, 6, 23, 0.9);
+}
+
+.demo-lab-wine-product__reference figcaption span,
+.demo-lab-wine-product__proof span {
+  width: fit-content;
+  border: 1px solid rgba(103, 232, 249, 0.42);
+  border-radius: 999px;
+  background: rgba(8, 47, 73, 0.76);
+  padding: 0.22rem 0.52rem;
+  color: #a7f3d0;
+  font-size: 0.54rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-wine-product__reference figcaption strong {
+  color: #ffffff;
+  font-size: clamp(0.82rem, 1.14vw, 1rem);
+  font-weight: 1000;
+  line-height: 1.02;
+}
+
+.demo-lab-wine-product__seal {
+  position: absolute;
+  z-index: 13;
+  display: grid;
+  gap: 0.16rem;
+  width: min(19%, 7.6rem);
+  min-width: 5.8rem;
+  transform: rotate(-5deg);
+  border: 1px solid rgba(14, 116, 144, 0.26);
+  border-radius: 0.72rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(224, 242, 254, 0.9));
+  padding: 0.52rem;
+  color: #0f172a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1.1rem 1.8rem rgba(2, 6, 23, 0.24);
+}
+
+.demo-lab-wine-product__seal::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -1.75rem;
+  width: 0.8rem;
+  height: 2rem;
+  transform: translateX(-50%);
+  border-radius: 0.2rem;
+  background:
+    linear-gradient(180deg, rgba(236, 254, 255, 0.9), rgba(103, 232, 249, 0.54));
+  box-shadow: 0 0.65rem 1rem rgba(2, 6, 23, 0.16);
+}
+
+.demo-lab-wine-product__seal span {
+  color: #0e7490;
+  font-size: 0.54rem;
+  font-weight: 1000;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-wine-product__seal strong {
+  color: #0f172a;
+  font-size: 0.62rem;
+  font-weight: 1000;
+  line-height: 1.05;
+}
+
+.demo-lab-wine-product__seal em {
+  width: fit-content;
+  border-radius: 999px;
+  background: #0f766e;
+  padding: 0.18rem 0.42rem;
+  color: #ecfeff;
+  font-size: 0.48rem;
+  font-style: normal;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.demo-lab-wine-product--beat-2 .demo-lab-wine-product__seal em {
+  background: #be123c;
+}
+
+.demo-lab-wine-product--beat-3 .demo-lab-wine-product__seal em {
+  background: #6d28d9;
+}
+
+.demo-lab-wine-product__chip {
+  position: absolute;
+  z-index: 14;
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 1px solid rgba(236, 254, 255, 0.78);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.84);
+  color: #ecfeff;
+  font-size: 0.54rem;
+  font-weight: 1000;
+  box-shadow:
+    0 0 0 0.32rem rgba(34, 211, 238, 0.14),
+    0 0.75rem 1.3rem rgba(2, 6, 23, 0.24);
+}
+
+.demo-lab-wine-product__phone {
+  position: absolute;
+  z-index: 14;
+  display: grid;
+  grid-template-rows: auto auto auto auto 1fr;
+  gap: 0.32rem;
+  width: min(22%, 9.7rem);
+  min-width: 7.1rem;
+  aspect-ratio: 0.56;
+  transform: rotate(7deg);
+  border: 0.32rem solid #020617;
+  border-radius: 1.42rem;
+  background: linear-gradient(180deg, #f8fafc, #eef9fb 48%, #f5f3ff);
+  padding: 1.14rem 0.7rem 0.7rem;
+  color: #0f172a;
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.18),
+    0 1.5rem 2.6rem rgba(0, 0, 0, 0.36);
+}
+
+.demo-lab-wine-product__phone::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.26rem;
+  width: 38%;
+  height: 0.52rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #020617;
+}
+
+.demo-lab-wine-product__phone i {
+  width: 2.9rem;
+  height: 2.9rem;
+  place-self: center;
+  border: 0.44rem solid rgba(8, 145, 178, 0.24);
+  border-top-color: #14b8a6;
+  border-right-color: #c084fc;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 0.38rem rgba(15, 23, 42, 0.08);
+}
+
+.demo-lab-wine-product__phone span,
+.demo-lab-wine-product__phone small {
+  color: #475569;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-wine-product__phone strong {
+  color: #0f172a;
+  font-size: clamp(0.86rem, 1.12vw, 1.08rem);
+  font-weight: 1000;
+  line-height: 1.03;
+}
+
+.demo-lab-wine-product__phone em {
+  align-self: end;
+  justify-self: stretch;
+  border-radius: 0.74rem;
+  background: #0f766e;
+  padding: 0.48rem 0.52rem;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 950;
+  text-align: center;
+}
+
+.demo-lab-wine-product--beat-2 .demo-lab-wine-product__phone em {
+  background: #be123c;
+}
+
+.demo-lab-wine-product--beat-3 .demo-lab-wine-product__phone em {
+  background: #6d28d9;
+}
+
+.demo-lab-wine-product__proof {
+  position: absolute;
+  z-index: 13;
+  display: grid;
+  gap: 0.24rem;
+  width: min(34%, 15rem);
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 1rem;
+  background:
+    linear-gradient(145deg, rgba(8, 47, 73, 0.9), rgba(15, 23, 42, 0.78));
+  padding: 0.72rem 0.82rem;
+  box-shadow: 0 1.2rem 2.4rem rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+}
+
+.demo-lab-wine-product__proof strong {
+  color: #f8fafc;
+  font-size: 0.92rem;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.demo-lab-wine-product__proof small {
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__packshot {
+  right: clamp(6.6rem, 13vw, 10rem);
+  top: clamp(2.7rem, 5.2vw, 3.65rem);
+  width: min(42%, 18rem);
+  aspect-ratio: 0.72;
+  transform: rotateX(4deg) rotateY(-6deg) rotateZ(-0.8deg);
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__reference {
+  right: clamp(1.2rem, 3.6vw, 2.8rem);
+  top: clamp(3.65rem, 6.9vw, 5rem);
+  width: min(24%, 10.8rem);
+  aspect-ratio: 0.82;
+  opacity: 0.56;
+  transform: rotate(1.4deg) translateZ(-10px);
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__seal {
+  right: clamp(12.2rem, 23.2vw, 17.8rem);
+  top: clamp(5.5rem, 10.2vw, 7.25rem);
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__chip {
+  right: clamp(9.7rem, 18.7vw, 14.25rem);
+  top: clamp(8.1rem, 15vw, 10.35rem);
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__phone {
+  right: clamp(0.85rem, 2.5vw, 1.65rem);
+  top: clamp(4.55rem, 8vw, 5.75rem);
+  width: min(17%, 7.8rem);
+  min-width: 6.6rem;
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__proof {
+  right: clamp(1rem, 3.1vw, 2rem);
+  bottom: clamp(1.8rem, 4.1vw, 3.05rem);
+  width: min(29%, 12.8rem);
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__packshot {
+  left: 32%;
+  top: 13%;
+  width: min(41%, 18.2rem);
+  aspect-ratio: 0.72;
+  transform: rotateX(4deg) rotateY(-7deg) rotateZ(-1deg);
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__reference {
+  right: 16%;
+  top: 22%;
+  width: min(20%, 10rem);
+  aspect-ratio: 0.82;
+  opacity: 0.48;
+  transform: rotate(1deg) translateZ(-10px);
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__seal {
+  left: 39%;
+  top: 39%;
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__chip {
+  left: 51%;
+  top: 39%;
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__phone {
+  right: 16%;
+  top: 23%;
+  width: min(18%, 8.7rem);
+  min-width: 7rem;
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__proof {
+  left: 43%;
+  bottom: 16%;
+  width: min(31%, 14rem);
+}
+
+.demo-lab-wine-product--cinematic .demo-lab-wine-product__packshot {
+  left: 1%;
+  top: 8%;
+  width: min(72%, 17.2rem);
+  aspect-ratio: 0.72;
+  transform: rotateX(4deg) rotateZ(-1deg);
+}
+
+.demo-lab-wine-product--cinematic .demo-lab-wine-product__reference {
+  left: 23%;
+  top: 20%;
+  width: min(38%, 10.5rem);
+  aspect-ratio: 0.82;
+  opacity: 0.44;
+  transform: rotate(2deg) translateZ(-12px);
+}
+
+.demo-lab-wine-product--cinematic .demo-lab-wine-product__seal {
+  left: 27%;
+  top: 42%;
+  width: min(24%, 6.1rem);
+  min-width: 4.9rem;
+}
+
+.demo-lab-wine-product--cinematic .demo-lab-wine-product__chip {
+  left: 54%;
+  top: 39%;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.demo-lab-wine-product--cinematic .demo-lab-wine-product__phone {
+  right: 1%;
+  top: 21%;
+  width: min(29%, 8.5rem);
+  min-width: 7rem;
+}
+
+.demo-lab-wine-product--cinematic .demo-lab-wine-product__proof {
+  left: 31%;
+  bottom: 9%;
+  width: min(48%, 13rem);
+}
+
 .demo-lab-sneaker-product {
   position: absolute;
   inset: 0;
@@ -16337,6 +16939,8 @@ html.theme-light .demo-lab-cosmetic-reference {
 
 html.theme-light .demo-lab-event-photo,
 html.theme-light .demo-lab-event-proof-card,
+html.theme-light .demo-lab-wine-product__reference,
+html.theme-light .demo-lab-wine-product__proof,
 html.theme-light .demo-lab-sneaker-product__photo,
 html.theme-light .demo-lab-sneaker-product__proof {
   border-color: rgba(14, 116, 144, 0.24);
@@ -16352,6 +16956,20 @@ html.theme-light .demo-lab-sneaker-product__photo::before {
     linear-gradient(90deg, rgba(224, 242, 254, 0.58), rgba(14, 116, 144, 0.12), rgba(241, 245, 249, 0.46));
 }
 
+html.theme-light .demo-lab-wine-product__reference::after {
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.34), transparent 32%),
+    linear-gradient(90deg, rgba(224, 242, 254, 0.5), rgba(14, 116, 144, 0.1), rgba(241, 245, 249, 0.44));
+}
+
+html.theme-light .demo-lab-wine-product__proof strong {
+  color: #0f172a;
+}
+
+html.theme-light .demo-lab-wine-product__proof small {
+  color: #475569;
+}
+
 html.theme-light .demo-lab-sneaker-product__proof strong {
   color: #0f172a;
 }
@@ -16361,6 +16979,44 @@ html.theme-light .demo-lab-sneaker-product__proof small {
 }
 
 @media (max-width: 900px) {
+  .demo-lab-wine-product--stage .demo-lab-wine-product__packshot {
+    right: 5.9rem;
+    top: 4.35rem;
+    width: min(50%, 15.2rem);
+  }
+
+  .demo-lab-wine-product--stage .demo-lab-wine-product__reference {
+    right: 0.85rem;
+    top: 5.7rem;
+    width: min(30%, 8.4rem);
+  }
+
+  .demo-lab-wine-product--stage .demo-lab-wine-product__seal {
+    right: 11rem;
+    top: 9.4rem;
+    min-width: 4.8rem;
+  }
+
+  .demo-lab-wine-product--stage .demo-lab-wine-product__chip {
+    right: 7.8rem;
+    top: 8.4rem;
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+
+  .demo-lab-wine-product--stage .demo-lab-wine-product__phone {
+    right: 0.72rem;
+    top: 6.7rem;
+    width: min(22%, 6.9rem);
+    min-width: 5.8rem;
+  }
+
+  .demo-lab-wine-product--stage .demo-lab-wine-product__proof {
+    right: 0.8rem;
+    bottom: 1.8rem;
+    width: min(44%, 11.8rem);
+  }
+
   .demo-lab-sneaker-product--stage .demo-lab-sneaker-product__photo {
     left: 0.8rem;
     top: 5rem;

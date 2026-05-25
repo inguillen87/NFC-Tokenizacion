@@ -1264,6 +1264,10 @@ function DemoCinematicProductRender({
   const state = beat === 2 ? "risk" : beat === 3 ? "open" : beat === 1 ? "ok" : "origin";
   const phoneStatus = beat === 2 ? "BLOQUEADO" : beat === 3 ? "SELLO ABIERTO" : beat === 1 ? "AUTENTICADO" : "LISTO";
 
+  if (vertical === "wine") {
+    return <DemoWineProduct product={product} badge={badge} beat={beat} stat={stat} variant={variant} />;
+  }
+
   if (isEventAccessVertical(vertical)) {
     return <DemoEventAccessProduct vertical={vertical} product={product} badge={badge} beat={beat} variant={variant} />;
   }
@@ -1495,6 +1499,10 @@ function DemoLabProductThreeStage({
     return <DemoSneakerProduct product={product} badge={badge} beat={beat} variant="stage" />;
   }
 
+  if (vertical === "wine") {
+    return <DemoWineProduct product={product} badge={badge} beat={beat} variant="stage" />;
+  }
+
   return (
     <>
       <DemoRealProductShot vertical={vertical} product={product} badge={badge} variant="stage" />
@@ -1522,6 +1530,77 @@ function isPremiumCosmeticVertical(vertical: Vertical) {
 
 function isEditorialProductVertical(vertical: Vertical) {
   return isEventAccessVertical(vertical) || isPremiumCosmeticVertical(vertical);
+}
+
+function DemoWineProduct({
+  product,
+  badge,
+  beat,
+  stat,
+  variant,
+}: {
+  product: string;
+  badge: string;
+  beat: Beat;
+  stat?: string;
+  variant: DemoRealProductVariant;
+}) {
+  const asset = demoLabRealAssets.wine;
+  const blocked = beat === 2;
+  const opened = beat === 3;
+  const status = blocked ? "COPIA BLOQUEADA" : opened ? "SELLO ABIERTO" : beat === 0 ? "LISTO PARA TOQUE" : "AUTENTICADO";
+  const action = blocked ? "Replay bloqueado" : opened ? "Reclamo + token listo" : "Compra confiable";
+  const proof = stat || (blocked ? "SUN bloquea copia y beneficios" : "Origen, lote, sello y canal auditados");
+
+  return (
+    <div
+      className={`demo-lab-wine-product demo-lab-wine-product--${variant} demo-lab-wine-product--beat-${beat}`}
+      role="img"
+      aria-label={`${badge}: ${product}. ${status}.`}
+    >
+      <span className="demo-lab-wine-product__aura" aria-hidden="true" />
+      <span className="demo-lab-wine-product__floor" aria-hidden="true" />
+      <div className="demo-lab-wine-product__packshot" aria-hidden="true">
+        <span className="demo-lab-wine-product__bottle-shadow" />
+        <span className="demo-lab-wine-product__bottle-cork" />
+        <span className="demo-lab-wine-product__bottle-capsule" />
+        <span className="demo-lab-wine-product__bottle-neck" />
+        <span className="demo-lab-wine-product__bottle-shoulder" />
+        <span className="demo-lab-wine-product__bottle-body" />
+        <span className="demo-lab-wine-product__bottle-punt" />
+        <span className="demo-lab-wine-product__bottle-label">
+          <em>nexID</em>
+          <strong>{product}</strong>
+          <small>Valle de Uco · 2022</small>
+        </span>
+      </div>
+      <figure className="demo-lab-wine-product__reference" data-credit={asset.credit}>
+        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <figcaption>
+          <span>Banco visual</span>
+          <strong>Foto real</strong>
+        </figcaption>
+      </figure>
+      <div className="demo-lab-wine-product__seal" aria-hidden="true">
+        <span>nexID</span>
+        <strong>NTAG 424 DNA TT</strong>
+        <em>{opened ? "abierto" : blocked ? "riesgo" : "sellado"}</em>
+      </div>
+      <div className="demo-lab-wine-product__chip" aria-hidden="true">NFC</div>
+      <div className="demo-lab-wine-product__phone" aria-hidden="true">
+        <i />
+        <span>Salida celular</span>
+        <strong>{status}</strong>
+        <small>UID 04A7****1090</small>
+        <em>{action}</em>
+      </div>
+      <div className="demo-lab-wine-product__proof" aria-hidden="true">
+        <span>{badge}</span>
+        <strong>Botella + sello + lote</strong>
+        <small>{proof}</small>
+      </div>
+    </div>
+  );
 }
 
 function DemoPremiumCosmeticProduct({
