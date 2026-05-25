@@ -195,6 +195,8 @@ function resolveSunVisualKind(result: SunContract): SunVisualKind {
     result.rightsPolicy?.verticalLabel,
   ].filter(Boolean).join(" ").toLowerCase();
 
+  if (/(sneaker|zapatilla|shoe|runner|calzado|footwear)/i.test(text)) return "sneaker";
+  if (/(apparel|ropa|prenda|campera|jacket|remera|hoodie|textil|fashion|moda)/i.test(text)) return "apparel";
   if (/(ticket|entrada|pass|qr)/i.test(text)) return "ticket";
   if (/(bracelet|brazalete|pulsera|evento|event|vip access)/i.test(text)) return "bracelet";
   if (/(seed|semilla|agro|bolsa|saco|packet)/i.test(text)) return "seeds";
@@ -202,6 +204,41 @@ function resolveSunVisualKind(result: SunContract): SunVisualKind {
   if (/(tubo|tube|dermo|serum)/i.test(text)) return "creamTube";
   if (/(crema|cream|cosmetic|cosmetica|cosmetico|jar|frasco)/i.test(text)) return "creamJar";
   return "wine";
+}
+
+function readParam(params: Record<string, string | string[] | undefined>, key: string) {
+  const value = params[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function demoProductFromParams(params: Record<string, string | string[] | undefined>) {
+  const requestedProduct = readParam(params, "product") || readParam(params, "productName") || readParam(params, "name");
+  const requestedVertical = readParam(params, "vertical") || readParam(params, "category");
+  const text = `${requestedProduct} ${requestedVertical}`.toLowerCase();
+
+  if (/(sneaker|zapatilla|shoe|runner|calzado|footwear)/i.test(text)) {
+    return { name: requestedProduct || "Drop Runner 37Z", vertical: "zapatilla", category: "Calzado premium" };
+  }
+  if (/(apparel|ropa|prenda|campera|jacket|remera|hoodie|textil|fashion|moda)/i.test(text)) {
+    return { name: requestedProduct || "Prenda premium conectada", vertical: "moda", category: "Indumentaria" };
+  }
+  if (/(bracelet|brazalete|pulsera|evento|event|vip access)/i.test(text)) {
+    return { name: requestedProduct || "Brazalete VIP evento", vertical: "eventos", category: "Acceso fisico" };
+  }
+  if (/(ticket|entrada|pass|qr)/i.test(text)) {
+    return { name: requestedProduct || "Entrada certificada", vertical: "eventos", category: "Ticket NFC" };
+  }
+  if (/(seed|semilla|agro|bolsa|saco|packet)/i.test(text)) {
+    return { name: requestedProduct || "Sobre semilla certificada", vertical: "agro", category: "Agro" };
+  }
+  if (/(perfume|fragancia|fragrance|parfum)/i.test(text)) {
+    return { name: requestedProduct || "Perfume premium", vertical: "perfume", category: "Fragancia" };
+  }
+  if (/(skincare|serum|dermo|crema|cream|cosmetic|cosmetica|cosmetico|jar|frasco)/i.test(text)) {
+    return { name: requestedProduct || "Set skincare premium", vertical: "skincare", category: "Dermocosmetica" };
+  }
+
+  return { name: requestedProduct || "Gran Reserva Malbec", vertical: requestedVertical || "vino", category: requestedVertical || "Vino" };
 }
 
 function sunFallbackResult(params: Record<string, string | string[] | undefined>, isDemoPreview: boolean): SunContract {
@@ -238,6 +275,8 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     };
   }
 
+  const demoProduct = demoProductFromParams(params);
+
   return {
     ok: true,
     status: {
@@ -260,13 +299,15 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
       tenantSlug: "demobodega",
     },
     product: {
-      name: "Gran Reserva Malbec",
+      name: demoProduct.name,
       winery: "Demo Bodega",
       region: "Valle de Uco, Mendoza",
-      varietal: "Malbec",
+      varietal: demoProduct.vertical === "vino" ? "Malbec" : demoProduct.category,
       vintage: "2021",
       barrelMonths: 12,
       storage: "Cava 16C",
+      category: demoProduct.category,
+      vertical: demoProduct.vertical,
     },
     provenance: {
       origin: "Valle de Uco, Mendoza",
@@ -885,6 +926,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   });
   const assetReadinessLabel = summarizeAssetReadiness(assetProfile);
   const productVisualKind = (assetProfile.visualKind || resolveSunVisualKind(result)) as SunVisualKind;
+  const productDisplayName = assetProfile.productName || productName;
+  const productHeroImageUrl = assetProfile.primaryImageUrl || productImageUrl;
   const productVisualState = (isReplay || isRiskBlocked)
     ? "blocked"
     : (sealOpened || isVerifiedOpenedState)
@@ -1102,8 +1145,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="rounded-[1.75rem] border border-white/5 bg-slate-950 p-5 relative z-10 text-center">
                <SunProductHeroStage
                  kind={productVisualKind}
-                 productName={productName}
-                 imageUrl={productImageUrl}
+                 productName={productDisplayName}
+                 imageUrl={productHeroImageUrl}
                  originDisplay={originDisplay}
                  tapDisplay={tapDisplay}
                  distanceDisplay={distanceDisplay}
@@ -1115,7 +1158,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                />
 
                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-1">{result.product?.winery || "Bodega Premium"}</p>
-               <h1 className="text-xl font-bold text-white leading-tight mb-2">{productName}</h1>
+               <h1 className="text-xl font-bold text-white leading-tight mb-2">{productDisplayName}</h1>
                <p className="text-xs text-slate-500">{result.product?.region || "Mendoza, Argentina"} · {result.product?.varietal || "Blend"}</p>
                <div className="sun-route-card mt-5">
                  <div>
@@ -1198,7 +1241,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            <div className="sun-passport-story__head">
              <div>
                <p>Historia del Passport</p>
-               <h2>{productName}</h2>
+               <h2>{productDisplayName}</h2>
              </div>
              <span>{tokenStatusDisplay}</span>
            </div>

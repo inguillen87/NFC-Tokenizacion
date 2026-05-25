@@ -9,7 +9,7 @@ const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage")
   ssr: false,
 });
 
-export type SunVisualKind = "wine" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket" | "seeds";
+export type SunVisualKind = "wine" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket" | "seeds" | "sneaker" | "apparel";
 
 type SunProductHeroStageProps = {
   kind: SunVisualKind;
@@ -43,7 +43,8 @@ function SunProductFallback({ kind, productName }: { kind: SunVisualKind; produc
   const isWine = kind === "wine";
   const isCream = kind === "creamJar" || kind === "creamTube";
   const isPerfume = kind === "perfume";
-  const isWearable = kind === "bracelet" || kind === "ticket";
+  const isSneaker = kind === "sneaker";
+  const isWearable = kind === "bracelet" || kind === "ticket" || kind === "apparel";
   const title = productName.length > 22 ? `${productName.slice(0, 20)}...` : productName;
 
   return (
@@ -99,6 +100,22 @@ function SunProductFallback({ kind, productName }: { kind: SunVisualKind; produc
           <text x="180" y="227" textAnchor="middle" fill="#ecfeff" fontSize="19" fontWeight="900" letterSpacing="2">{kind === "ticket" ? "VIP" : "NFC"}</text>
           <rect x="244" y="186" width="58" height="82" rx="13" fill="#020617" />
           <circle cx="273" cy="219" r="15" fill="#22d3ee" opacity="0.8" />
+        </g>
+      ) : null}
+
+      {isSneaker ? (
+        <g filter={`url(#sunFallbackShadow-${kind})`} transform="rotate(-8 180 214)">
+          <path d="M58 249c38-17 64-41 90-82 13-20 32-28 56-19l31 12c19 7 34 20 45 38l16 26c9 14 20 24 34 30l3 2c18 8 22 31 8 45-15 15-43 27-79 30l-150 12c-38 3-73-12-89-39-11-20 0-45 35-55Z" fill="#f8fafc" />
+          <path d="M64 273c59 19 147 21 263 6l14 25c-28 20-66 31-114 33l-113 5c-38 2-70-11-88-35-11-15 3-31 38-34Z" fill="#cbd5e1" />
+          <path d="M129 180c32 18 55 34 72 50 26 2 51-1 75-10-11-19-25-33-43-43l-32-16c-27-14-51-7-72 19Z" fill="#e0f2fe" />
+          <path d="M119 234c46 9 91 8 136-2" fill="none" stroke="#0f172a" strokeWidth="7" strokeLinecap="round" opacity="0.82" />
+          <path d="M148 198l30 36M179 198l29 34M210 201l25 27" fill="none" stroke="#0f172a" strokeWidth="5" strokeLinecap="round" opacity="0.72" />
+          <path d="M79 285h246" stroke="#64748b" strokeWidth="8" strokeLinecap="round" opacity="0.75" />
+          <rect x="88" y="213" width="82" height="43" rx="12" fill="#f8fafc" stroke="#22d3ee" strokeWidth="3" />
+          <text x="129" y="235" textAnchor="middle" fill="#0f172a" fontSize="13" fontWeight="900">NEXID</text>
+          <text x="129" y="249" textAnchor="middle" fill="#0f172a" fontSize="10" fontWeight="800">NFC TAG</text>
+          <circle cx="296" cy="238" r="21" fill="#020617" stroke="#67e8f9" strokeWidth="4" />
+          <text x="296" y="243" textAnchor="middle" fill="#ecfeff" fontSize="11" fontWeight="900">NFC</text>
         </g>
       ) : null}
 

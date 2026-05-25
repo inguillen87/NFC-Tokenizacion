@@ -555,6 +555,14 @@ function HeroTraceMap({
 }) {
   const originPoint = projectMapPoint(origin, origin, tap);
   const tapPoint = projectMapPoint(tap, origin, tap);
+  const pinDistance = Math.hypot(originPoint.x - tapPoint.x, originPoint.y - tapPoint.y);
+  const pinsOverlap = pinDistance < 18;
+  const originPinPoint = pinsOverlap
+    ? { x: clamp(originPoint.x - 14, 14, 74), y: clamp(originPoint.y + 12, 26, 76) }
+    : originPoint;
+  const tapPinPoint = pinsOverlap
+    ? { x: clamp(tapPoint.x + 14, 26, 86), y: clamp(tapPoint.y - 12, 22, 72) }
+    : tapPoint;
   const formattedDistance = distance.toLocaleString(numberLocale);
   const routeHeadline = txt.routeTitle === "Trust route" ? "Live route" : txt.routeTitle.startsWith("Rota") ? "Rota viva" : "Ruta viva";
   const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque fisico" : "Tap fisico";
@@ -612,11 +620,11 @@ function HeroTraceMap({
         <strong>{origin.city} / {tap.city}</strong>
         <span>{evidenceCopy}</span>
       </div>
-      <div className="hero-map-pin hero-map-pin--origin" style={{ left: `${originPoint.x}%`, top: `${originPoint.y}%` }}>
+      <div className="hero-map-pin hero-map-pin--origin" style={{ left: `${originPinPoint.x}%`, top: `${originPinPoint.y}%` }}>
         <span>{txt.originMap}</span>
         <strong>{origin.city}</strong>
       </div>
-      <div className="hero-map-pin hero-map-pin--tap" style={{ left: `${tapPoint.x}%`, top: `${tapPoint.y}%` }}>
+      <div className="hero-map-pin hero-map-pin--tap" style={{ left: `${tapPinPoint.x}%`, top: `${tapPinPoint.y}%` }}>
         <span>{txt.tapMap}</span>
         <strong>{tap.city}</strong>
       </div>

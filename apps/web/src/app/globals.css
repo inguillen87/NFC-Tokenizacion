@@ -3898,6 +3898,28 @@ html.theme-light .sun-priority-panel a {
   animation: sunBottleFloat 5.2s ease-in-out infinite;
 }
 
+.sun-product-photo-shell::before,
+.sun-product-photo-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sun-product-photo-shell::before {
+  z-index: -1;
+  border-radius: 1.6rem;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(34, 211, 238, 0.24), transparent 48%),
+    radial-gradient(circle at 42% 62%, rgba(167, 139, 250, 0.16), transparent 42%);
+  filter: blur(18px);
+}
+
+.sun-product-photo-shell::after {
+  z-index: 2;
+  border-radius: inherit;
+}
+
 .sun-product-photo {
   display: block;
   width: 100%;
@@ -3907,6 +3929,58 @@ html.theme-light .sun-priority-panel a {
     drop-shadow(0 2rem 2.3rem rgba(0, 0, 0, 0.5))
     saturate(1.06)
     contrast(1.04);
+}
+
+.sun-product-stage--sneaker .sun-product-photo-shell,
+.sun-product-stage--apparel .sun-product-photo-shell {
+  width: min(82%, 21rem);
+  height: min(64%, 18rem);
+  overflow: hidden;
+  transform: rotate(-2deg);
+  border: 1px solid rgba(226, 232, 240, 0.22);
+  border-radius: 1.45rem;
+  background:
+    linear-gradient(145deg, rgba(248, 250, 252, 0.14), rgba(8, 47, 73, 0.24)),
+    rgba(2, 6, 23, 0.74);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 2rem 3.6rem rgba(0, 0, 0, 0.42);
+}
+
+.sun-product-stage--sneaker .sun-product-photo-shell::after,
+.sun-product-stage--apparel .sun-product-photo-shell::after {
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.24), transparent 30%),
+    linear-gradient(180deg, transparent 42%, rgba(2, 6, 23, 0.72)),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.14), transparent 42%, rgba(167, 139, 250, 0.14));
+}
+
+.sun-product-stage--sneaker .sun-product-photo,
+.sun-product-stage--apparel .sun-product-photo {
+  object-fit: cover;
+  object-position: 50% 55%;
+  filter:
+    saturate(0.92)
+    contrast(1.08)
+    brightness(0.96);
+}
+
+.sun-product-stage--sneaker .sun-product-photo {
+  filter:
+    grayscale(0.18)
+    saturate(0.58)
+    hue-rotate(146deg)
+    contrast(1.12)
+    brightness(0.96);
+}
+
+.sun-product-stage--sneaker .sun-product-photo-seal,
+.sun-product-stage--apparel .sun-product-photo-seal {
+  left: auto;
+  right: 0.9rem;
+  top: 0.9rem;
+  transform: none;
+  z-index: 3;
 }
 
 .sun-product-photo-seal {
@@ -14681,6 +14755,385 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
   width: min(48%, 13rem);
 }
 
+.demo-lab-sneaker-product {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.demo-lab-sneaker-product__aura,
+.demo-lab-sneaker-product__floor {
+  position: absolute;
+  pointer-events: none;
+}
+
+.demo-lab-sneaker-product__aura {
+  inset: 8% 4% 18%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 42% 42%, rgba(103, 232, 249, 0.2), transparent 36%),
+    radial-gradient(circle at 68% 50%, rgba(167, 139, 250, 0.16), transparent 42%);
+  filter: blur(2px);
+}
+
+.demo-lab-sneaker-product__floor {
+  left: 50%;
+  bottom: 7%;
+  width: 72%;
+  height: 18%;
+  transform: translateX(-50%) rotateX(62deg);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(34, 211, 238, 0.2), transparent 58%),
+    linear-gradient(90deg, transparent, rgba(125, 211, 252, 0.18), transparent);
+  box-shadow: 0 1.6rem 3rem rgba(2, 6, 23, 0.34);
+}
+
+.demo-lab-sneaker-product__photo {
+  position: absolute;
+  z-index: 10;
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.2);
+  border-radius: 1.15rem;
+  background: rgba(2, 6, 23, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 1.7rem 3.4rem rgba(0, 0, 0, 0.36);
+  transform-style: preserve-3d;
+}
+
+.demo-lab-sneaker-product__photo::before,
+.demo-lab-sneaker-product__photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.demo-lab-sneaker-product__photo::before {
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.22), transparent 32%),
+    linear-gradient(90deg, rgba(8, 47, 73, 0.48), rgba(14, 116, 144, 0.16), rgba(15, 23, 42, 0.42));
+}
+
+.demo-lab-sneaker-product__photo::after {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, transparent 38%, rgba(2, 6, 23, 0.82)),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.12), transparent 42%, rgba(167, 139, 250, 0.14));
+}
+
+.demo-lab-sneaker-product__photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 55%;
+  filter: grayscale(0.22) saturate(0.56) hue-rotate(148deg) contrast(1.12) brightness(0.94);
+  transform: scale(1.08);
+}
+
+.demo-lab-sneaker-product__photo figcaption {
+  position: absolute;
+  left: 0.82rem;
+  right: 0.82rem;
+  bottom: 0.78rem;
+  z-index: 2;
+  display: grid;
+  gap: 0.26rem;
+  color: #ffffff;
+  text-shadow: 0 0.55rem 1.2rem rgba(2, 6, 23, 0.86);
+}
+
+.demo-lab-sneaker-product__photo figcaption span,
+.demo-lab-sneaker-product__proof span {
+  width: fit-content;
+  border: 1px solid rgba(103, 232, 249, 0.42);
+  border-radius: 999px;
+  background: rgba(8, 47, 73, 0.76);
+  padding: 0.22rem 0.52rem;
+  color: #a7f3d0;
+  font-size: 0.54rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-sneaker-product__photo figcaption strong {
+  color: #ffffff;
+  font-size: clamp(1.02rem, 1.55vw, 1.34rem);
+  font-weight: 1000;
+  line-height: 1.02;
+}
+
+.demo-lab-sneaker-product__tag {
+  position: absolute;
+  z-index: 13;
+  display: grid;
+  gap: 0.18rem;
+  width: min(18%, 7.4rem);
+  min-width: 5.6rem;
+  transform: rotate(-4deg);
+  border: 1px solid rgba(14, 116, 144, 0.28);
+  border-radius: 0.72rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(224, 242, 254, 0.88));
+  padding: 0.55rem;
+  color: #0f172a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1.1rem 1.8rem rgba(2, 6, 23, 0.26);
+}
+
+.demo-lab-sneaker-product__tag span {
+  color: #0e7490;
+  font-size: 0.54rem;
+  font-weight: 1000;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-sneaker-product__tag strong {
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 1000;
+  line-height: 1.02;
+}
+
+.demo-lab-sneaker-product__tag em {
+  width: fit-content;
+  border-radius: 999px;
+  background: #0f766e;
+  padding: 0.2rem 0.45rem;
+  color: #ecfeff;
+  font-size: 0.48rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.demo-lab-sneaker-product__chip {
+  position: absolute;
+  z-index: 14;
+  display: grid;
+  width: 2.55rem;
+  height: 2.55rem;
+  place-items: center;
+  border: 1px solid rgba(236, 254, 255, 0.78);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.82);
+  color: #ecfeff;
+  font-size: 0.54rem;
+  font-weight: 1000;
+  box-shadow:
+    0 0 0 0.32rem rgba(34, 211, 238, 0.14),
+    0 0.75rem 1.3rem rgba(2, 6, 23, 0.24);
+}
+
+.demo-lab-sneaker-product__phone {
+  position: absolute;
+  z-index: 14;
+  display: grid;
+  grid-template-rows: auto auto auto auto 1fr;
+  gap: 0.34rem;
+  width: min(22%, 9.8rem);
+  min-width: 7.4rem;
+  aspect-ratio: 0.56;
+  transform: rotate(7deg);
+  border: 0.32rem solid #020617;
+  border-radius: 1.42rem;
+  background: linear-gradient(180deg, #f8fafc, #eef9fb 48%, #f5f3ff);
+  padding: 1.16rem 0.72rem 0.72rem;
+  color: #0f172a;
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.18),
+    0 1.5rem 2.6rem rgba(0, 0, 0, 0.36);
+}
+
+.demo-lab-sneaker-product__phone::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.26rem;
+  width: 38%;
+  height: 0.52rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #020617;
+}
+
+.demo-lab-sneaker-product__phone i {
+  width: 3rem;
+  height: 3rem;
+  place-self: center;
+  border: 0.44rem solid rgba(8, 145, 178, 0.24);
+  border-top-color: #14b8a6;
+  border-right-color: #c084fc;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 0.38rem rgba(15, 23, 42, 0.08);
+}
+
+.demo-lab-sneaker-product__phone span,
+.demo-lab-sneaker-product__phone small {
+  color: #475569;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-sneaker-product__phone strong {
+  color: #0f172a;
+  font-size: clamp(0.88rem, 1.15vw, 1.08rem);
+  font-weight: 1000;
+  line-height: 1.03;
+}
+
+.demo-lab-sneaker-product__phone em {
+  align-self: end;
+  justify-self: stretch;
+  border-radius: 0.74rem;
+  background: #0f766e;
+  padding: 0.48rem 0.52rem;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 950;
+  text-align: center;
+}
+
+.demo-lab-sneaker-product--beat-2 .demo-lab-sneaker-product__phone em {
+  background: #be123c;
+}
+
+.demo-lab-sneaker-product--beat-3 .demo-lab-sneaker-product__phone em {
+  background: #6d28d9;
+}
+
+.demo-lab-sneaker-product__proof {
+  position: absolute;
+  z-index: 13;
+  display: grid;
+  gap: 0.24rem;
+  width: min(33%, 14.8rem);
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 1rem;
+  background:
+    linear-gradient(145deg, rgba(8, 47, 73, 0.9), rgba(15, 23, 42, 0.78));
+  padding: 0.72rem 0.82rem;
+  box-shadow: 0 1.2rem 2.4rem rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+}
+
+.demo-lab-sneaker-product__proof strong {
+  color: #f8fafc;
+  font-size: 0.92rem;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.demo-lab-sneaker-product__proof small {
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+.demo-lab-sneaker-product--stage .demo-lab-sneaker-product__photo {
+  left: clamp(1rem, 4vw, 2.6rem);
+  top: clamp(4.2rem, 8vw, 5.8rem);
+  width: min(58%, 26rem);
+  aspect-ratio: 1.45;
+  transform: rotateX(4deg) rotateY(-6deg) rotateZ(-1.2deg);
+}
+
+.demo-lab-sneaker-product--stage .demo-lab-sneaker-product__tag {
+  left: clamp(4rem, 18vw, 9.6rem);
+  top: clamp(8.4rem, 16vw, 11rem);
+}
+
+.demo-lab-sneaker-product--stage .demo-lab-sneaker-product__chip {
+  left: clamp(12rem, 34vw, 20.5rem);
+  top: clamp(7rem, 13vw, 9.5rem);
+}
+
+.demo-lab-sneaker-product--stage .demo-lab-sneaker-product__phone {
+  right: clamp(1rem, 6vw, 4rem);
+  top: clamp(3.9rem, 8vw, 5.7rem);
+}
+
+.demo-lab-sneaker-product--stage .demo-lab-sneaker-product__proof {
+  right: clamp(1rem, 4vw, 2.6rem);
+  bottom: clamp(2.3rem, 4.6vw, 3.6rem);
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__photo {
+  left: 12%;
+  top: 14%;
+  width: min(58%, 30rem);
+  aspect-ratio: 1.45;
+  transform: rotateX(4deg) rotateY(-7deg) rotateZ(-1deg);
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__tag {
+  left: 23%;
+  top: 43%;
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__chip {
+  left: 48%;
+  top: 34%;
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__phone {
+  right: 8%;
+  top: 19%;
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__proof {
+  right: 9%;
+  bottom: 18%;
+}
+
+.demo-lab-sneaker-product--cinematic .demo-lab-sneaker-product__photo {
+  left: 4%;
+  top: 16%;
+  width: min(62%, 23rem);
+  aspect-ratio: 1.45;
+  transform: rotateX(4deg) rotateZ(-1deg);
+}
+
+.demo-lab-sneaker-product--cinematic .demo-lab-sneaker-product__tag {
+  left: 16%;
+  top: 47%;
+  width: min(23%, 6.3rem);
+  min-width: 5rem;
+}
+
+.demo-lab-sneaker-product--cinematic .demo-lab-sneaker-product__chip {
+  left: 48%;
+  top: 38%;
+}
+
+.demo-lab-sneaker-product--cinematic .demo-lab-sneaker-product__phone {
+  right: 2%;
+  top: 20%;
+  width: min(28%, 8.8rem);
+  min-width: 7.2rem;
+}
+
+.demo-lab-sneaker-product--cinematic .demo-lab-sneaker-product__proof {
+  left: 32%;
+  bottom: 10%;
+  width: min(48%, 13rem);
+}
+
 .demo-lab-cosmetic-product {
   position: absolute;
   inset: 0;
@@ -15694,46 +16147,84 @@ html.theme-light .institutional-video-device {
 }
 
 .demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__body {
-  bottom: 8%;
-  width: 78%;
-  height: 69%;
-  border-radius: 0.9rem 0.9rem 1.45rem 1.45rem;
+  bottom: 6%;
+  width: 62%;
+  height: 74%;
+  border-radius: 0.42rem 0.42rem 1.25rem 1.25rem;
   background:
-    radial-gradient(circle at 32% 18%, rgba(255, 255, 255, 0.7), transparent 19%),
-    linear-gradient(115deg, rgba(224, 242, 254, 0.76), rgba(14, 116, 144, 0.36) 46%, rgba(15, 23, 42, 0.68)),
+    radial-gradient(circle at 30% 16%, rgba(255, 255, 255, 0.82), transparent 18%),
+    linear-gradient(110deg, rgba(248, 250, 252, 0.86), rgba(125, 211, 252, 0.36) 34%, rgba(15, 23, 42, 0.78) 82%),
     #0f172a;
 }
 
-.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__cap {
-  top: 3%;
-  width: 45%;
-  height: 20%;
-  border-radius: 0.55rem 0.55rem 0.35rem 0.35rem;
+.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__body::before,
+.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__body::after,
+.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__cap::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__body::before {
+  inset: 8% 12% 18%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.52rem 0.52rem 1rem 1rem;
   background:
-    linear-gradient(145deg, #0f172a, #475569 48%, #111827);
+    linear-gradient(105deg, rgba(255, 255, 255, 0.16), transparent 38%),
+    radial-gradient(circle at 60% 20%, rgba(103, 232, 249, 0.18), transparent 30%);
+}
+
+.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__body::after {
+  left: 16%;
+  right: 16%;
+  bottom: 8%;
+  height: 18%;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(14, 116, 144, 0.44), transparent 72%);
+}
+
+.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__cap {
+  top: 1%;
+  width: 34%;
+  height: 16%;
+  border-radius: 0.32rem 0.32rem 0.2rem 0.2rem;
+  background:
+    linear-gradient(145deg, #020617, #475569 46%, #0f172a);
+}
+
+.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__cap::before {
+  left: 50%;
+  top: -34%;
+  width: 70%;
+  height: 44%;
+  transform: translateX(-50%);
+  border-radius: 0.22rem 0.22rem 0.14rem 0.14rem;
+  background: linear-gradient(145deg, #f8fafc, #94a3b8 48%, #334155);
+  box-shadow: 0 0.55rem 0.9rem rgba(2, 6, 23, 0.2);
 }
 
 .demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__neck {
   left: 50%;
-  top: 22%;
+  top: 16%;
   z-index: 3;
-  width: 24%;
-  height: 12%;
+  width: 18%;
+  height: 14%;
   transform: translateX(-50%);
   border: 1px solid rgba(255, 255, 255, 0.46);
-  border-radius: 0.32rem;
+  border-radius: 0.2rem;
   background: linear-gradient(90deg, #e2e8f0, #94a3b8 48%, #f8fafc);
   box-shadow: 0 0.35rem 0.8rem rgba(2, 6, 23, 0.26);
 }
 
 .demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__label {
   top: 62%;
-  width: 58%;
+  width: 62%;
+  border-radius: 0.28rem;
 }
 
 .demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-product-pack__seal {
-  left: 56%;
-  top: 29%;
+  left: 64%;
+  top: 27%;
   width: 27%;
   transform: rotate(5deg);
 }
@@ -15845,12 +16336,62 @@ html.theme-light .demo-lab-cosmetic-reference {
 }
 
 html.theme-light .demo-lab-event-photo,
-html.theme-light .demo-lab-event-proof-card {
+html.theme-light .demo-lab-event-proof-card,
+html.theme-light .demo-lab-sneaker-product__photo,
+html.theme-light .demo-lab-sneaker-product__proof {
   border-color: rgba(14, 116, 144, 0.24);
   background: rgba(248, 250, 252, 0.9);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.86),
     0 1.2rem 2.8rem rgba(15, 23, 42, 0.14);
+}
+
+html.theme-light .demo-lab-sneaker-product__photo::before {
+  background:
+    linear-gradient(125deg, rgba(255, 255, 255, 0.32), transparent 32%),
+    linear-gradient(90deg, rgba(224, 242, 254, 0.58), rgba(14, 116, 144, 0.12), rgba(241, 245, 249, 0.46));
+}
+
+html.theme-light .demo-lab-sneaker-product__proof strong {
+  color: #0f172a;
+}
+
+html.theme-light .demo-lab-sneaker-product__proof small {
+  color: #475569;
+}
+
+@media (max-width: 900px) {
+  .demo-lab-sneaker-product--stage .demo-lab-sneaker-product__photo {
+    left: 0.8rem;
+    top: 5rem;
+    width: min(62%, 18rem);
+  }
+
+  .demo-lab-sneaker-product--stage .demo-lab-sneaker-product__tag {
+    left: 1.4rem;
+    top: 12.4rem;
+    min-width: 4.9rem;
+  }
+
+  .demo-lab-sneaker-product--stage .demo-lab-sneaker-product__chip {
+    left: 45%;
+    top: 8.8rem;
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+
+  .demo-lab-sneaker-product--stage .demo-lab-sneaker-product__phone {
+    right: 0.72rem;
+    top: 6.7rem;
+    width: min(22%, 6.9rem);
+    min-width: 5.8rem;
+  }
+
+  .demo-lab-sneaker-product--stage .demo-lab-sneaker-product__proof {
+    right: 0.8rem;
+    bottom: 1.8rem;
+    width: min(44%, 11.8rem);
+  }
 }
 
 html.theme-light .demo-lab-event-proof-card strong {

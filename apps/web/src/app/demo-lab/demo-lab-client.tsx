@@ -1263,6 +1263,19 @@ function DemoCinematicProductRender({
 }) {
   const state = beat === 2 ? "risk" : beat === 3 ? "open" : beat === 1 ? "ok" : "origin";
   const phoneStatus = beat === 2 ? "BLOQUEADO" : beat === 3 ? "SELLO ABIERTO" : beat === 1 ? "AUTENTICADO" : "LISTO";
+
+  if (isEventAccessVertical(vertical)) {
+    return <DemoEventAccessProduct vertical={vertical} product={product} badge={badge} beat={beat} variant={variant} />;
+  }
+
+  if (isPremiumCosmeticVertical(vertical)) {
+    return <DemoPremiumCosmeticProduct vertical={vertical} product={product} badge={badge} beat={beat} variant={variant} />;
+  }
+
+  if (vertical === "sneaker") {
+    return <DemoSneakerProduct product={product} badge={badge} beat={beat} stat={stat} variant={variant} />;
+  }
+
   return (
     <div className={`demo-lab-cinematic-render demo-lab-cinematic-render--${variant} demo-lab-cinematic-render--${vertical} demo-lab-cinematic-render--${state}`} role="img" aria-label={`${badge}: ${product}. ${title}.`}>
       <span className="demo-lab-cinematic-render__glow" aria-hidden="true" />
@@ -1478,6 +1491,10 @@ function DemoLabProductThreeStage({
     return <DemoPremiumCosmeticProduct vertical={vertical} product={product} badge={badge} beat={beat} variant="stage" />;
   }
 
+  if (vertical === "sneaker") {
+    return <DemoSneakerProduct product={product} badge={badge} beat={beat} variant="stage" />;
+  }
+
   return (
     <>
       <DemoRealProductShot vertical={vertical} product={product} badge={badge} variant="stage" />
@@ -1625,6 +1642,63 @@ function DemoEventAccessProduct({
   );
 }
 
+function DemoSneakerProduct({
+  product,
+  badge,
+  beat,
+  stat,
+  variant,
+}: {
+  product: string;
+  badge: string;
+  beat: Beat;
+  stat?: string;
+  variant: DemoRealProductVariant;
+}) {
+  const asset = demoLabRealAssets.sneaker;
+  const blocked = beat === 2;
+  const opened = beat === 3;
+  const status = blocked ? "COPIA BLOQUEADA" : opened ? "OWNER LISTO" : beat === 0 ? "LISTO PARA TOQUE" : "AUTENTICADO";
+  const action = blocked ? "Repetir tap fisico" : opened ? "Claim + token listo" : "SUN dinamico validado";
+  const proof = stat || (blocked ? "Replay no habilita beneficios" : "Lengueta NFC + UID + lote verificable");
+
+  return (
+    <div
+      className={`demo-lab-sneaker-product demo-lab-sneaker-product--${variant} demo-lab-sneaker-product--beat-${beat}`}
+      role="img"
+      aria-label={`${badge}: ${product}. ${status}.`}
+    >
+      <span className="demo-lab-sneaker-product__aura" aria-hidden="true" />
+      <span className="demo-lab-sneaker-product__floor" aria-hidden="true" />
+      <figure className="demo-lab-sneaker-product__photo" data-credit={asset.credit}>
+        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <figcaption>
+          <span>{badge}</span>
+          <strong>{product}</strong>
+        </figcaption>
+      </figure>
+      <div className="demo-lab-sneaker-product__tag" aria-hidden="true">
+        <span>nexID</span>
+        <strong>{product}</strong>
+        <em>NFC</em>
+      </div>
+      <div className="demo-lab-sneaker-product__chip" aria-hidden="true">NFC</div>
+      <div className="demo-lab-sneaker-product__phone" aria-hidden="true">
+        <i />
+        <span>Salida celular</span>
+        <strong>{status}</strong>
+        <small>UID 04A7****1090</small>
+        <em>{action}</em>
+      </div>
+      <div className="demo-lab-sneaker-product__proof" aria-hidden="true">
+        <span>NTAG 424 DNA</span>
+        <strong>Lengueta + UID + ownership</strong>
+        <small>{proof}</small>
+      </div>
+    </div>
+  );
+}
+
 function DemoRealProductShot({
   vertical,
   product,
@@ -1660,7 +1734,7 @@ function mapDemoVerticalToThree(vertical: Vertical): ThreeProductVertical {
   if (vertical === "creamJar") return "creamJar";
   if (vertical === "perfume") return "perfume";
   if (vertical === "creamTube") return "creamTube";
-  if (vertical === "sneaker") return "ticket";
+  if (vertical === "sneaker") return "wine";
   return "wine";
 }
 
