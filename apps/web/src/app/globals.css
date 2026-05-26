@@ -13706,7 +13706,7 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
 
 .nexid-motion-glyph--perfume .nexid-motion-glyph-seal {
   left: 50%;
-  top: 27%;
+  top: 19%;
   width: 42%;
   height: 7.5%;
   transform: translateX(-50%) rotate(-3deg);
@@ -15357,6 +15357,190 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
   width: min(48%, 13rem);
 }
 
+.demo-lab-wine-product__packshot {
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.2);
+  border-radius: 1.35rem;
+  background: #020617;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 1.55rem 3.2rem rgba(0, 0, 0, 0.38);
+}
+
+.demo-lab-wine-product__packshot::before,
+.demo-lab-wine-product__packshot::after {
+  z-index: 2;
+}
+
+.demo-lab-wine-product__packshot::before {
+  inset: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, transparent 48%, rgba(2, 6, 23, 0.9)),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.18), transparent 30%, rgba(20, 184, 166, 0.1) 74%, transparent);
+  box-shadow: none;
+}
+
+.demo-lab-wine-product__packshot::after {
+  inset: 0.62rem;
+  width: auto;
+  height: auto;
+  transform: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 1rem;
+  background: transparent;
+  filter: none;
+  mix-blend-mode: normal;
+}
+
+.demo-lab-wine-product__packshot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 39% 50%;
+  filter: saturate(1.08) contrast(1.08) brightness(0.9);
+  transform: scale(1.03);
+}
+
+.demo-lab-wine-product__packshot figcaption {
+  position: absolute;
+  left: 0.74rem;
+  right: 0.74rem;
+  bottom: 0.68rem;
+  z-index: 5;
+  display: grid;
+  gap: 0.22rem;
+  color: #ffffff;
+  text-shadow: 0 0.55rem 1.25rem rgba(2, 6, 23, 0.9);
+}
+
+.demo-lab-wine-product__brand-mask {
+  position: absolute;
+  left: 10%;
+  top: 8%;
+  z-index: 3;
+  display: block;
+  width: 52%;
+  height: 76%;
+  border-radius: 1.6rem 1.6rem 0.9rem 0.9rem;
+  background:
+    linear-gradient(100deg, #020617 0%, rgba(15, 23, 42, 0.98) 52%, rgba(88, 28, 36, 0.9) 100%),
+    radial-gradient(circle at 68% 30%, rgba(255, 255, 255, 0.14), transparent 34%),
+    radial-gradient(circle at 28% 82%, rgba(127, 29, 29, 0.42), transparent 46%);
+  box-shadow:
+    inset 0.35rem 0 0.82rem rgba(255, 255, 255, 0.08),
+    inset -0.28rem 0 0.75rem rgba(2, 6, 23, 0.45),
+    0 1rem 2rem rgba(2, 6, 23, 0.34);
+  clip-path: polygon(36% 0, 64% 0, 68% 14%, 86% 23%, 92% 100%, 8% 100%, 14% 23%, 32% 14%);
+  pointer-events: none;
+}
+
+.demo-lab-wine-product__label-cover {
+  position: absolute;
+  left: 25%;
+  top: 39%;
+  z-index: 4;
+  display: grid;
+  width: 34%;
+  min-height: 25%;
+  place-items: center;
+  gap: 0.1rem;
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 0.25rem;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.92)),
+    repeating-linear-gradient(45deg, transparent 0 7px, rgba(14, 116, 144, 0.06) 7px 8px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0.8rem 1.6rem rgba(2, 6, 23, 0.26);
+  color: #0f172a;
+  text-align: center;
+  transform: rotate(-1.6deg);
+}
+
+.demo-lab-wine-product__label-cover em {
+  color: #0891b2;
+  font-size: 0.52rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-wine-product__label-cover strong {
+  max-width: 92%;
+  color: #111827;
+  font-size: clamp(0.58rem, 0.95vw, 0.78rem);
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.demo-lab-wine-product__label-cover small {
+  color: #475569;
+  font-size: 0.44rem;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.demo-lab-wine-product__packshot figcaption span,
+.demo-lab-wine-product__proof span {
+  width: fit-content;
+  border: 1px solid rgba(103, 232, 249, 0.42);
+  border-radius: 999px;
+  background: rgba(8, 47, 73, 0.78);
+  padding: 0.22rem 0.52rem;
+  color: #a7f3d0;
+  font-size: 0.54rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-wine-product__packshot figcaption strong {
+  color: #ffffff;
+  font-size: clamp(0.9rem, 1.18vw, 1.08rem);
+  font-weight: 1000;
+  line-height: 1.02;
+}
+
+.demo-lab-wine-product__packshot figcaption small {
+  color: #dbeafe;
+  font-size: 0.62rem;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__packshot {
+  left: clamp(1rem, 3vw, 2rem);
+  right: auto;
+  top: clamp(3.9rem, 7vw, 5.15rem);
+  width: min(38%, 14.4rem);
+  aspect-ratio: 0.74;
+  transform: rotate(-1.2deg);
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__packshot {
+  left: 37%;
+  top: 18%;
+  width: min(25%, 12.8rem);
+  aspect-ratio: 0.74;
+  transform: rotate(-1.5deg);
+}
+
+.demo-lab-wine-product--cinematic .demo-lab-wine-product__packshot {
+  left: 11%;
+  top: 18%;
+  width: min(38%, 12.2rem);
+  aspect-ratio: 0.74;
+  transform: rotate(-1.2deg);
+}
+
 .demo-lab-sneaker-product {
   position: absolute;
   inset: 0;
@@ -15795,10 +15979,19 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
 .demo-lab-cosmetic-product--creamJar .demo-lab-cosmetic-photo img,
 .demo-lab-cosmetic-product--creamTube .demo-lab-cosmetic-photo img {
   object-position: 20% 78%;
+  filter: saturate(0.96) contrast(1.04) brightness(0.78);
 }
 
 .demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-photo img {
   object-position: 50% 72%;
+}
+
+.demo-lab-cosmetic-product--creamJar .demo-lab-cosmetic-photo::after,
+.demo-lab-cosmetic-product--creamTube .demo-lab-cosmetic-photo::after {
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.08), rgba(2, 6, 23, 0.9)),
+    linear-gradient(90deg, rgba(2, 6, 23, 0.5), transparent 32%, rgba(2, 6, 23, 0.18)),
+    linear-gradient(105deg, rgba(34, 211, 238, 0.1), transparent 42%, rgba(139, 92, 246, 0.16));
 }
 
 .demo-lab-cosmetic-photo figcaption {
@@ -16939,6 +17132,7 @@ html.theme-light .demo-lab-cosmetic-reference {
 
 html.theme-light .demo-lab-event-photo,
 html.theme-light .demo-lab-event-proof-card,
+html.theme-light .demo-lab-wine-product__packshot,
 html.theme-light .demo-lab-wine-product__reference,
 html.theme-light .demo-lab-wine-product__proof,
 html.theme-light .demo-lab-sneaker-product__photo,
@@ -16962,6 +17156,12 @@ html.theme-light .demo-lab-wine-product__reference::after {
     linear-gradient(90deg, rgba(224, 242, 254, 0.5), rgba(14, 116, 144, 0.1), rgba(241, 245, 249, 0.44));
 }
 
+html.theme-light .demo-lab-wine-product__packshot::before {
+  background:
+    linear-gradient(180deg, transparent 48%, rgba(15, 23, 42, 0.72)),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.26), transparent 30%, rgba(14, 116, 144, 0.12) 74%, transparent);
+}
+
 html.theme-light .demo-lab-wine-product__proof strong {
   color: #0f172a;
 }
@@ -16980,9 +17180,11 @@ html.theme-light .demo-lab-sneaker-product__proof small {
 
 @media (max-width: 900px) {
   .demo-lab-wine-product--stage .demo-lab-wine-product__packshot {
-    right: 5.9rem;
+    left: 0.9rem;
+    right: auto;
     top: 4.35rem;
-    width: min(50%, 15.2rem);
+    width: min(42%, 12.6rem);
+    aspect-ratio: 0.74;
   }
 
   .demo-lab-wine-product--stage .demo-lab-wine-product__reference {
@@ -19047,6 +19249,102 @@ html.theme-light .sun-panel-map [class*="text-slate-"] {
   object-position: 50% 57%;
 }
 
+.hero-asset-brand-mask,
+.hero-asset-label-cover {
+  position: absolute;
+  pointer-events: none;
+}
+
+.hero-asset-brand-mask {
+  z-index: 2;
+  display: none;
+}
+
+.hero-asset-label-cover {
+  z-index: 3;
+  display: none;
+  place-items: center;
+  gap: 0.08rem;
+  border: 1px solid rgba(226, 232, 240, 0.84);
+  border-radius: 0.36rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0.8rem 1.7rem rgba(2, 6, 23, 0.26);
+  color: #0f172a;
+  text-align: center;
+  transform: rotate(-1deg);
+}
+
+.hero-asset-label-cover em {
+  color: #0891b2;
+  font-size: 0.48rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.hero-asset-label-cover strong {
+  max-width: 92%;
+  color: #111827;
+  font-size: clamp(0.58rem, 0.9vw, 0.78rem);
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.hero-asset-label-cover small {
+  color: #475569;
+  font-size: 0.42rem;
+  font-weight: 850;
+  line-height: 1.08;
+}
+
+.hero-asset-showcase--wine .hero-asset-brand-mask,
+.hero-asset-showcase--wine .hero-asset-label-cover,
+.hero-asset-showcase--cosmetics .hero-asset-brand-mask,
+.hero-asset-showcase--cosmetics .hero-asset-label-cover {
+  display: grid;
+}
+
+.hero-asset-showcase--wine .hero-asset-brand-mask {
+  left: 10%;
+  top: 9%;
+  width: 52%;
+  height: 75%;
+  border-radius: 1.5rem 1.5rem 0.9rem 0.9rem;
+  background:
+    linear-gradient(100deg, #020617 0%, rgba(15, 23, 42, 0.98) 52%, rgba(88, 28, 36, 0.88) 100%),
+    radial-gradient(circle at 68% 30%, rgba(255, 255, 255, 0.14), transparent 34%),
+    radial-gradient(circle at 28% 82%, rgba(127, 29, 29, 0.4), transparent 46%);
+  clip-path: polygon(36% 0, 64% 0, 68% 14%, 86% 23%, 92% 100%, 8% 100%, 14% 23%, 32% 14%);
+}
+
+.hero-asset-showcase--wine .hero-asset-label-cover {
+  left: 25%;
+  top: 39%;
+  width: 34%;
+  min-height: 24%;
+}
+
+.hero-asset-showcase--cosmetics .hero-asset-brand-mask {
+  left: 8%;
+  right: 8%;
+  top: 18%;
+  height: 62%;
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.08), rgba(2, 6, 23, 0.72)),
+    linear-gradient(90deg, rgba(2, 6, 23, 0.42), transparent 34%, rgba(2, 6, 23, 0.22));
+}
+
+.hero-asset-showcase--cosmetics .hero-asset-label-cover {
+  left: 34%;
+  top: 42%;
+  width: 42%;
+  min-height: 19%;
+}
+
 .hero-asset-media::before,
 .hero-asset-media::after {
   content: "";
@@ -20163,6 +20461,90 @@ html.theme-light .hero-route-map-link {
   }
 }
 
+/* Final landing hero map pass: readable route proof, no floating-label pileup. */
+.landing-hero-section .hero-object-map-pane .hero-trace-map--clear {
+  min-height: clamp(24rem, 32vw, 30rem);
+  overflow: hidden;
+}
+
+.landing-hero-section .hero-trace-map--clear [data-nexid-map="premium-vector-map"] {
+  opacity: 0.72;
+  filter: saturate(0.96) brightness(0.92) contrast(0.92);
+}
+
+.landing-hero-section .hero-trace-map--clear .hero-map-intel {
+  width: min(16.4rem, calc(100% - 1.4rem));
+  padding: 0.74rem 0.82rem;
+  border-radius: 1rem;
+}
+
+.landing-hero-section .hero-trace-map--clear .hero-map-intel span {
+  display: none;
+}
+
+.landing-hero-section .hero-trace-map--clear .hero-map-pin {
+  display: none !important;
+}
+
+.landing-hero-section .hero-route-summary-card {
+  left: 0.78rem;
+  right: 0.78rem;
+  bottom: 0.78rem;
+  gap: 0.42rem;
+}
+
+.landing-hero-section .hero-route-summary-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.88fr);
+  border-radius: 1rem;
+}
+
+.landing-hero-section .hero-route-summary-grid span {
+  min-height: 3.2rem;
+  padding: 0.54rem 0.66rem;
+}
+
+.landing-hero-section .hero-route-summary-grid span:nth-child(3) {
+  grid-column: 1 / -1;
+  border-left: 0;
+  border-top: 1px solid rgba(125, 211, 252, 0.13);
+}
+
+.landing-hero-section .hero-route-summary-grid small {
+  font-size: 0.46rem;
+  letter-spacing: 0.08em;
+}
+
+.landing-hero-section .hero-route-summary-grid strong {
+  font-size: clamp(0.66rem, 0.82vw, 0.76rem);
+}
+
+.landing-hero-section .hero-route-map-link {
+  justify-self: start;
+  max-width: none;
+  padding-inline: 0.86rem;
+}
+
+html.theme-light .landing-hero-section .hero-trace-map--clear [data-nexid-map="premium-vector-map"] {
+  opacity: 0.8;
+  filter: saturate(0.82) brightness(1.08) contrast(0.82);
+}
+
+@media (min-width: 1180px) {
+  .landing-hero-section .hero-object-frame {
+    grid-template-columns: minmax(18rem, 0.95fr) minmax(14rem, 0.74fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .landing-hero-section .hero-object-map-pane .hero-trace-map--clear {
+    min-height: 19.2rem !important;
+  }
+
+  .landing-hero-section .hero-route-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .docs-faq-video {
   display: grid;
   grid-template-columns: minmax(0, 0.82fr) minmax(16rem, 1.18fr);
@@ -20238,5 +20620,458 @@ html.theme-light .docs-faq-video span {
 @media (max-width: 720px) {
   .docs-faq-video {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Demo Lab final product-stage pass: one real product visual per vertical, no duplicated fake packshots. */
+.demo-lab-studio {
+  overflow: clip;
+}
+
+.demo-lab-studio-grid {
+  min-height: clamp(39rem, calc(100vh - 9.5rem), 47rem);
+}
+
+.demo-lab-studio-stage {
+  align-content: start;
+  min-height: clamp(35rem, 72vh, 45rem);
+  padding-top: clamp(5.8rem, 8vh, 6.9rem);
+  padding-bottom: clamp(4.8rem, 7vh, 6.2rem);
+}
+
+.demo-lab-studio-stage-head {
+  left: clamp(1rem, 3vw, 2.6rem);
+  top: clamp(0.95rem, 2vw, 1.65rem);
+}
+
+.demo-lab-studio-callout--nfc {
+  left: clamp(1rem, 3vw, 2.6rem);
+  top: clamp(4.5rem, 9vw, 6.2rem);
+}
+
+.demo-lab-studio-product {
+  width: min(100%, 45rem);
+  min-height: clamp(25rem, 53vh, 32.5rem);
+}
+
+.demo-lab-studio-pedestal {
+  bottom: 2.45rem;
+  height: 5.6rem;
+}
+
+.demo-lab-studio-reflection {
+  bottom: 2.2rem;
+}
+
+.demo-lab-studio-statusbar {
+  bottom: 1.1rem;
+}
+
+.demo-lab-studio-actions {
+  bottom: 4.55rem;
+}
+
+.demo-lab-cosmetic-product-pack,
+.demo-lab-cosmetic-reference {
+  display: none !important;
+}
+
+.demo-lab-cosmetic-photo {
+  overflow: hidden;
+  border-color: rgba(216, 180, 254, 0.32);
+  background:
+    radial-gradient(circle at 45% 20%, rgba(255, 255, 255, 0.18), transparent 36%),
+    rgba(15, 23, 42, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 1.65rem 3.6rem rgba(2, 6, 23, 0.42);
+}
+
+.demo-lab-cosmetic-photo::before {
+  background:
+    linear-gradient(126deg, rgba(255, 255, 255, 0.26), transparent 32%),
+    radial-gradient(circle at 24% 20%, rgba(34, 211, 238, 0.16), transparent 30%);
+}
+
+.demo-lab-cosmetic-photo::after {
+  background:
+    linear-gradient(180deg, transparent 42%, rgba(2, 6, 23, 0.84)),
+    linear-gradient(105deg, rgba(34, 211, 238, 0.12), transparent 42%, rgba(139, 92, 246, 0.16));
+}
+
+.demo-lab-cosmetic-photo figcaption {
+  z-index: 6;
+  gap: 0.22rem;
+}
+
+.demo-lab-cosmetic-label-cover {
+  position: absolute;
+  left: 42%;
+  top: 43%;
+  z-index: 5;
+  display: grid;
+  width: 36%;
+  min-height: 18%;
+  place-items: center;
+  gap: 0.1rem;
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 0.42rem;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.9)),
+    radial-gradient(circle at 12% 18%, rgba(34, 211, 238, 0.12), transparent 36%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0.9rem 1.8rem rgba(2, 6, 23, 0.24);
+  color: #0f172a;
+  text-align: center;
+  transform: rotate(-1.2deg);
+}
+
+.demo-lab-cosmetic-label-cover em {
+  color: #0891b2;
+  font-size: 0.5rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.demo-lab-cosmetic-label-cover strong {
+  max-width: 92%;
+  color: #111827;
+  font-size: clamp(0.58rem, 0.9vw, 0.76rem);
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.demo-lab-cosmetic-label-cover small {
+  color: #475569;
+  font-size: 0.44rem;
+  font-weight: 850;
+  line-height: 1.08;
+}
+
+.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-label-cover {
+  left: 30%;
+  top: 47%;
+  width: 42%;
+  min-height: 15%;
+}
+
+.demo-lab-cosmetic-product--creamJar .demo-lab-cosmetic-label-cover {
+  left: 31%;
+  top: 35%;
+  width: 52%;
+  min-height: 23%;
+}
+
+.demo-lab-cosmetic-product--creamTube .demo-lab-cosmetic-label-cover {
+  left: 31%;
+  top: 36%;
+  width: 52%;
+  min-height: 23%;
+}
+
+.demo-lab-cosmetic-photo figcaption small {
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-photo img {
+  object-position: 50% 54%;
+}
+
+.demo-lab-cosmetic-product--creamJar .demo-lab-cosmetic-photo img {
+  object-position: 43% 60%;
+  filter: saturate(0.92) contrast(1.06) brightness(0.56);
+}
+
+.demo-lab-cosmetic-product--creamTube .demo-lab-cosmetic-photo img {
+  object-position: 47% 56%;
+  filter: saturate(0.92) contrast(1.06) brightness(0.56);
+}
+
+.demo-lab-cosmetic-product--creamJar .demo-lab-cosmetic-photo::after,
+.demo-lab-cosmetic-product--creamTube .demo-lab-cosmetic-photo::after {
+  background:
+    radial-gradient(circle at 55% 43%, rgba(2, 6, 23, 0.2), transparent 22%),
+    linear-gradient(90deg, rgba(2, 6, 23, 0.62), rgba(2, 6, 23, 0.18) 42%, rgba(2, 6, 23, 0.58)),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.12), rgba(2, 6, 23, 0.84));
+}
+
+.demo-lab-cosmetic-product-chip {
+  position: absolute;
+  z-index: 15;
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid rgba(125, 211, 252, 0.58);
+  border-radius: 999px;
+  background: rgba(2, 8, 23, 0.82);
+  color: #ecfeff;
+  font-size: 0.62rem;
+  font-weight: 950;
+  box-shadow:
+    0 0 0 0.34rem rgba(34, 211, 238, 0.13),
+    0 1rem 1.6rem rgba(2, 6, 23, 0.3);
+}
+
+.demo-lab-cosmetic-product--stage .demo-lab-cosmetic-photo {
+  left: clamp(1rem, 4vw, 2.4rem);
+  top: clamp(4.15rem, 7vw, 5.1rem);
+  width: min(57%, 25rem);
+  aspect-ratio: 1.12;
+}
+
+.demo-lab-cosmetic-product--stage.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-photo {
+  width: min(48%, 20rem);
+  aspect-ratio: 0.78;
+}
+
+.demo-lab-cosmetic-product--stage .demo-lab-cosmetic-product-chip {
+  left: clamp(15rem, 36vw, 23rem);
+  top: clamp(7.2rem, 13vw, 9.3rem);
+}
+
+.demo-lab-cosmetic-product--stage .demo-lab-cosmetic-phone {
+  right: clamp(1rem, 4vw, 2.6rem);
+  top: clamp(4.15rem, 7vw, 5.35rem);
+}
+
+.demo-lab-cosmetic-product--stage .demo-lab-cosmetic-proof-card {
+  right: clamp(1rem, 4vw, 2.6rem);
+  bottom: clamp(2rem, 4vw, 3.15rem);
+}
+
+.demo-lab-cosmetic-product--studio .demo-lab-cosmetic-photo {
+  left: 10%;
+  top: 7%;
+  width: min(58%, 28rem);
+  aspect-ratio: 1.12;
+}
+
+.demo-lab-cosmetic-product--studio.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-photo {
+  left: 16%;
+  top: 4%;
+  width: min(38%, 17.2rem);
+  aspect-ratio: 0.76;
+}
+
+.demo-lab-cosmetic-product--studio .demo-lab-cosmetic-product-chip {
+  left: 52%;
+  top: 33%;
+}
+
+.demo-lab-cosmetic-product--studio .demo-lab-cosmetic-phone {
+  right: 8%;
+  top: 12%;
+}
+
+.demo-lab-cosmetic-product--studio .demo-lab-cosmetic-proof-card {
+  right: 8%;
+  bottom: 16%;
+}
+
+.demo-lab-cosmetic-product--cinematic .demo-lab-cosmetic-photo {
+  left: 4%;
+  top: 10%;
+  width: min(60%, 22rem);
+  aspect-ratio: 1.12;
+}
+
+.demo-lab-cosmetic-product--cinematic.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-photo {
+  left: 9%;
+  top: 8%;
+  width: min(43%, 16rem);
+  aspect-ratio: 0.76;
+}
+
+.demo-lab-cosmetic-product--cinematic .demo-lab-cosmetic-product-chip {
+  left: 48%;
+  top: 34%;
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__packshot {
+  left: 10%;
+  top: 5%;
+  width: min(42%, 19rem);
+  aspect-ratio: 0.78;
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__seal {
+  left: 36%;
+  top: 34%;
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__chip {
+  left: 47%;
+  top: 31%;
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__phone {
+  right: 8%;
+  top: 12%;
+  width: min(23%, 8.8rem);
+}
+
+.demo-lab-wine-product--studio .demo-lab-wine-product__proof {
+  right: 8%;
+  bottom: 16%;
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__packshot {
+  left: clamp(1rem, 4vw, 2.4rem);
+  top: clamp(4rem, 7vw, 5.2rem);
+  width: min(44%, 20rem);
+  aspect-ratio: 0.78;
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__phone {
+  right: clamp(1rem, 4vw, 2.8rem);
+  top: clamp(4rem, 7vw, 5.35rem);
+}
+
+.demo-lab-wine-product--stage .demo-lab-wine-product__proof {
+  right: clamp(1rem, 4vw, 2.6rem);
+  bottom: clamp(2rem, 4vw, 3.2rem);
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__photo {
+  left: 8%;
+  top: 8%;
+  width: min(62%, 29rem);
+  aspect-ratio: 1.42;
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__tag {
+  left: 20%;
+  top: 49%;
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__chip {
+  left: 50%;
+  top: 36%;
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__phone {
+  right: 8%;
+  top: 12%;
+}
+
+.demo-lab-sneaker-product--studio .demo-lab-sneaker-product__proof {
+  right: 8%;
+  bottom: 16%;
+}
+
+.demo-lab-event-product--studio .demo-lab-event-photo {
+  left: 10%;
+  top: 7%;
+  width: min(56%, 27rem);
+  aspect-ratio: 1.52;
+}
+
+.demo-lab-event-product--studio .demo-lab-event-wristband {
+  left: 12%;
+  bottom: 19%;
+  width: min(40%, 17rem);
+}
+
+.demo-lab-event-product--studio .demo-lab-event-phone {
+  right: 8%;
+  top: 12%;
+}
+
+.demo-lab-event-product--studio .demo-lab-event-proof-card {
+  right: 8%;
+  bottom: 16%;
+}
+
+@media (max-width: 1180px) {
+  .demo-lab-studio-grid {
+    min-height: auto;
+  }
+
+  .demo-lab-studio-stage {
+    min-height: clamp(31rem, 62vw, 38rem);
+    padding-top: 5.35rem;
+  }
+
+  .demo-lab-studio-product {
+    min-height: clamp(24rem, 52vw, 31rem);
+  }
+}
+
+@media (max-width: 720px) {
+  .demo-lab-studio-stage {
+    min-height: 31rem;
+    padding: 4.9rem 0.85rem 4.2rem;
+  }
+
+  .demo-lab-studio-callout--nfc {
+    top: 4.4rem;
+  }
+
+  .demo-lab-studio-product {
+    min-height: 23.5rem;
+  }
+
+  .demo-lab-studio-statusbar {
+    grid-template-columns: 1fr auto;
+    width: calc(100% - 1.4rem);
+  }
+
+  .demo-lab-studio-statusbar span:nth-child(2),
+  .demo-lab-studio-statusbar span:nth-child(3) {
+    display: none;
+  }
+
+  .demo-lab-cosmetic-product--studio .demo-lab-cosmetic-photo,
+  .demo-lab-cosmetic-product--stage .demo-lab-cosmetic-photo,
+  .demo-lab-wine-product--studio .demo-lab-wine-product__packshot,
+  .demo-lab-wine-product--stage .demo-lab-wine-product__packshot,
+  .demo-lab-sneaker-product--studio .demo-lab-sneaker-product__photo,
+  .demo-lab-sneaker-product--stage .demo-lab-sneaker-product__photo,
+  .demo-lab-event-product--studio .demo-lab-event-photo,
+  .demo-lab-event-product--stage .demo-lab-event-photo {
+    left: 50%;
+    top: 4.1rem;
+    width: min(72%, 18rem);
+    transform: translateX(-50%) rotateZ(-1deg);
+  }
+
+  .demo-lab-cosmetic-product--studio.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-photo,
+  .demo-lab-cosmetic-product--stage.demo-lab-cosmetic-product--perfume .demo-lab-cosmetic-photo {
+    width: min(54%, 14rem);
+  }
+
+  .demo-lab-cosmetic-phone,
+  .demo-lab-wine-product__phone,
+  .demo-lab-sneaker-product__phone,
+  .demo-lab-event-phone {
+    right: 0.75rem !important;
+    top: 8.6rem !important;
+    width: min(32%, 7.4rem) !important;
+    min-width: 6.5rem !important;
+  }
+
+  .demo-lab-cosmetic-proof-card,
+  .demo-lab-wine-product__proof,
+  .demo-lab-sneaker-product__proof,
+  .demo-lab-event-proof-card {
+    left: 0.75rem !important;
+    right: auto !important;
+    bottom: 3.1rem !important;
+    width: min(58%, 13rem) !important;
+  }
+
+  .demo-lab-cosmetic-product-chip,
+  .demo-lab-wine-product__chip,
+  .demo-lab-sneaker-product__chip {
+    left: auto !important;
+    right: 7rem !important;
+    top: 7.2rem !important;
   }
 }

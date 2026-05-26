@@ -40,7 +40,7 @@ const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> 
   seeds: { imageUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg", credit: "Pexels / RDNE Stock project" },
   creamJar: { imageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg", credit: "Pexels / mskin pro" },
   perfume: { imageUrl: "/demo/cosmetics-secure/real-luxury-perfume-pexels.jpg", credit: "Pexels / Suhashan Jar" },
-  creamTube: { imageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg", credit: "Pexels / mskin pro" },
+  creamTube: { imageUrl: "/demo/cosmetics-secure/real-cosmetic-bottles-pexels.jpg", credit: "Pexels / Daria Liudnaya" },
   bracelet: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
   ticket: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
   sneaker: { imageUrl: "/demo/luxury-basic/real-sneakers-pexels.jpg", credit: "Pexels / Hurrah suhail" },
@@ -1560,25 +1560,18 @@ function DemoWineProduct({
     >
       <span className="demo-lab-wine-product__aura" aria-hidden="true" />
       <span className="demo-lab-wine-product__floor" aria-hidden="true" />
-      <div className="demo-lab-wine-product__packshot" aria-hidden="true">
-        <span className="demo-lab-wine-product__bottle-shadow" />
-        <span className="demo-lab-wine-product__bottle-cork" />
-        <span className="demo-lab-wine-product__bottle-capsule" />
-        <span className="demo-lab-wine-product__bottle-neck" />
-        <span className="demo-lab-wine-product__bottle-shoulder" />
-        <span className="demo-lab-wine-product__bottle-body" />
-        <span className="demo-lab-wine-product__bottle-punt" />
-        <span className="demo-lab-wine-product__bottle-label">
+      <figure className="demo-lab-wine-product__packshot" data-credit={asset.credit} aria-hidden="true">
+        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <span className="demo-lab-wine-product__brand-mask" />
+        <span className="demo-lab-wine-product__label-cover">
           <em>nexID</em>
           <strong>{product}</strong>
-          <small>Valle de Uco · 2022</small>
+          <small>Valle de Uco - 2022</small>
         </span>
-      </div>
-      <figure className="demo-lab-wine-product__reference" data-credit={asset.credit}>
-        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
         <figcaption>
-          <span>Banco visual</span>
-          <strong>Foto real</strong>
+          <span>Producto real</span>
+          <strong>{product}</strong>
+          <small>Valle de Uco - 2022 - NTAG 424 DNA TT</small>
         </figcaption>
       </figure>
       <div className="demo-lab-wine-product__seal" aria-hidden="true">
@@ -1621,9 +1614,9 @@ function DemoPremiumCosmeticProduct({
   const opened = beat === 3;
   const isPerfume = vertical === "perfume";
   const status = blocked ? "RIESGO BLOQUEADO" : opened ? "SELLO ABIERTO" : beat === 0 ? "SELLADO" : "AUTENTICADO";
-  const tagLabel = isPerfume ? "Cap seal" : "Pack seal";
   const action = blocked ? "Sin reclamo" : opened ? "Garantia lista" : "Compra confiable";
-  const referenceLabel = isPerfume ? "Referencia fragancia" : vertical === "creamJar" ? "Referencia skincare" : "Referencia dermo";
+  const referenceLabel = isPerfume ? "Perfume premium" : vertical === "creamJar" ? "Skincare premium" : "Dermo premium";
+  const proofLabel = isPerfume ? "Tapa NFC + lote" : "Envase sellado + lote";
 
   return (
     <div
@@ -1631,25 +1624,20 @@ function DemoPremiumCosmeticProduct({
       role="img"
       aria-label={`${badge}: ${product}. ${status}.`}
     >
-      <figure className="demo-lab-cosmetic-reference" data-credit={asset.credit}>
+      <figure className="demo-lab-cosmetic-photo" data-credit={asset.credit} aria-hidden="true">
         <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <span className="demo-lab-cosmetic-label-cover">
+          <em>nexID</em>
+          <strong>{product}</strong>
+          <small>{proofLabel}</small>
+        </span>
         <figcaption>
           <span>{referenceLabel}</span>
-          <strong>{badge}</strong>
+          <strong>{product}</strong>
+          <small>{proofLabel}</small>
         </figcaption>
       </figure>
-      <div className="demo-lab-cosmetic-product-pack" aria-hidden="true">
-        <span className="demo-lab-cosmetic-product-pack__aura" />
-        <span className="demo-lab-cosmetic-product-pack__shadow" />
-        <span className="demo-lab-cosmetic-product-pack__cap" />
-        <span className="demo-lab-cosmetic-product-pack__neck" />
-        <span className="demo-lab-cosmetic-product-pack__body" />
-        <span className="demo-lab-cosmetic-product-pack__glass" />
-        <span className="demo-lab-cosmetic-product-pack__label">nexID</span>
-        <span className="demo-lab-cosmetic-product-pack__seal">{tagLabel}</span>
-        <span className="demo-lab-cosmetic-product-pack__nfc">NFC</span>
-        <span className="demo-lab-cosmetic-product-pack__serial">NTAG 424 DNA</span>
-      </div>
+      <div className="demo-lab-cosmetic-product-chip" aria-hidden="true">NFC</div>
       <div className="demo-lab-cosmetic-phone" aria-hidden="true">
         <i />
         <span>Salida celular</span>

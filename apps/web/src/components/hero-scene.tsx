@@ -971,7 +971,15 @@ function HeroProductShowcase({
     <div className={`hero-asset-showcase hero-asset-showcase--${active}`}>
       <div className="hero-asset-media">
         {asset ? (
-          <img src={asset.imageUrl} alt={asset.alt} loading="eager" />
+          <>
+            <img src={asset.imageUrl} alt={asset.alt} loading="eager" />
+            <span className="hero-asset-brand-mask" aria-hidden="true" />
+            <span className="hero-asset-label-cover" aria-hidden="true">
+              <em>nexID</em>
+              <strong>{data.product}</strong>
+              <small>{data.profile}</small>
+            </span>
+          </>
         ) : (
           <HeroProductVisual active={active} product={data.product} />
         )}

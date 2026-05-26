@@ -36,8 +36,203 @@ const manifestPath = hasPackFolder ? path.join(packDir, "manifest.csv") : path.j
 const seedPath = hasPackFolder ? path.join(packDir, "seed.json") : path.join(demoDir, "demobodega_seed.json");
 const manifestCsv = fs.readFileSync(manifestPath, "utf8");
 const seedJson = JSON.parse(fs.readFileSync(seedPath, "utf8"));
+const carrierProfileCode = "ntag424_dna_tt";
+const demoProduct = {
+  sku: "GRM-2022-DEMO",
+  name: "Gran Reserva Malbec",
+  winery: "Demo Bodega",
+  region: "Valle de Uco, Mendoza",
+  varietal: "Malbec",
+  vintage: "2022",
+  alcoholPct: 14.5,
+  storage: "16C",
+  imageUrl: "https://nexid.lat/demo/wine-secure/real-malbec-bottle-pexels.jpg",
+};
+const demoOrigin = {
+  label: "Valle de Uco, Mendoza",
+  address: "Finca Altamira, Mendoza, AR",
+  lat: -33.3667,
+  lng: -69.15,
+  altitude: "1,050 msnm",
+};
+const ownershipPolicy = {
+  requiresPurchaseProof: true,
+  requiresFreshTap: true,
+  requiresTenantMembership: true,
+  allowsPublicClaim: false,
+  antiReplayRequired: true,
+};
+const manifestPolicy = {
+  acceptedFormats: ["csv", "txt"],
+  requiredColumns: ["uid_hex"],
+  csvOptionalColumns: ["batch_id", "product_name", "sku", "lot", "serial", "expires_at", "image_url", "label_image_url", "model_url", "gallery_urls"],
+  activateDefault: false,
+  rejectDuplicates: true,
+};
+const sdmConfig = {
+  profile: "demobodega",
+  pack: requestedPack,
+  carrier_profile_code: carrierProfileCode,
+  chip_model: "NTAG 424 DNA TT",
+  tagtamper_enabled: true,
+  tamper_status_enabled: true,
+  tamper_status_source: "enc_decrypted",
+  tamper_status_offset: 0,
+  tamper_status_length: 1,
+  tamper_closed_values: ["43"],
+  tamper_open_values: ["4F"],
+  tamper_unknown_policy: "UNKNOWN",
+  ttstatus_enabled: false,
+  ttstatus_source: "none",
+  ttstatus_notes: "Pilot DEMO-2026-02 reads a single encrypted TagTamper status byte: 43 closed, 4F opened.",
+  sun: {
+    product: {
+      name: demoProduct.name,
+      producer: demoProduct.winery,
+      varietal: demoProduct.varietal,
+      vintage: demoProduct.vintage,
+      alcohol: "14.5%",
+      bottle: "750ml",
+      serving: "16C - decantar 20 min",
+      storage: demoProduct.storage,
+      oakType: "Roble frances tostado medio",
+      imageUrl: demoProduct.imageUrl,
+    },
+    origin: {
+      label: demoOrigin.label,
+      region: demoProduct.region,
+      address: demoOrigin.address,
+      lat: demoOrigin.lat,
+      lng: demoOrigin.lng,
+      altitude: demoOrigin.altitude,
+    },
+    passport: {
+      claimPolicy: "purchase_proof_required",
+      tokenizationMode: "valid_and_opened",
+      publicClaimAllowed: false,
+    },
+  },
+};
 
 const sql = neon(url);
+
+await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+await sql`
+  CREATE TABLE IF NOT EXISTS carrier_profiles (
+    code text PRIMARY KEY,
+    label text NOT NULL,
+    family text NOT NULL,
+    security_level integer NOT NULL DEFAULT 1,
+    cost_band text NOT NULL DEFAULT 'entry',
+    estimated_unit_cost_usd_min numeric(10,4),
+    estimated_unit_cost_usd_max numeric(10,4),
+    capabilities jsonb NOT NULL DEFAULT '{}'::jsonb,
+    recommended_verticals jsonb NOT NULL DEFAULT '[]'::jsonb,
+    allowed_actions jsonb NOT NULL DEFAULT '[]'::jsonb,
+    blocked_actions jsonb NOT NULL DEFAULT '[]'::jsonb,
+    consumer_copy jsonb NOT NULL DEFAULT '{}'::jsonb,
+    admin_copy jsonb NOT NULL DEFAULT '{}'::jsonb,
+    default_policy jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )
+`;
+await sql`
+  INSERT INTO carrier_profiles (
+    code, label, family, security_level, cost_band, capabilities, recommended_verticals, allowed_actions, blocked_actions, consumer_copy, admin_copy, default_policy
+  ) VALUES (
+    ${carrierProfileCode},
+    'NTAG 424 DNA TT',
+    'nfc',
+    6,
+    'premium',
+    ${JSON.stringify({
+      supportsQr: false,
+      supportsGs1: false,
+      supportsNfc: true,
+      supportsSun: true,
+      supportsUid: true,
+      cryptographic: true,
+      supportsTamper: true,
+      supportsReplayDetection: true,
+      supportsOwnership: true,
+      supportsTokenization: true,
+      supportsLoyalty: true,
+      supportsMarketplace: true,
+    })}::jsonb,
+    ${JSON.stringify(['wine', 'luxury', 'pharma', 'documents', 'collectibles'])}::jsonb,
+    ${JSON.stringify(['verify', 'claim', 'loyalty', 'tokenize', 'marketplace'])}::jsonb,
+    ${JSON.stringify(['public_claim_without_fresh_tap'])}::jsonb,
+    ${JSON.stringify({
+      headline: 'Autenticidad + sello fisico',
+      body: 'Valida criptografia y estado del sello: cerrado, abierto o tamper para productos premium.',
+      disclaimer: 'Ownership y tokenizacion requieren tap fresco y politica comercial del tenant.',
+    })}::jsonb,
+    ${JSON.stringify({
+      positioning: 'Capa premium para confianza, lifecycle y evidencia de apertura.',
+      bestFor: 'Vino, lujo, pharma, documentos, coleccionables y productos con reventa o garantia.',
+      avoid: 'No habilitar ownership automatico sin venta, ticket o aprobacion del tenant.',
+    })}::jsonb,
+    ${JSON.stringify({ requiresFreshTap: true, requiresPurchaseProof: true, tokenizationMode: 'valid_and_opened' })}::jsonb
+  )
+  ON CONFLICT (code) DO UPDATE SET
+    label = EXCLUDED.label,
+    family = EXCLUDED.family,
+    security_level = EXCLUDED.security_level,
+    cost_band = EXCLUDED.cost_band,
+    capabilities = EXCLUDED.capabilities,
+    recommended_verticals = EXCLUDED.recommended_verticals,
+    allowed_actions = EXCLUDED.allowed_actions,
+    blocked_actions = EXCLUDED.blocked_actions,
+    consumer_copy = EXCLUDED.consumer_copy,
+    admin_copy = EXCLUDED.admin_copy,
+    default_policy = EXCLUDED.default_policy,
+    updated_at = now()
+`;
+await sql`CREATE TABLE IF NOT EXISTS tenant_sun_profiles (
+  tenant_id uuid PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+  vertical text,
+  club_name text,
+  product_label text,
+  origin_label text,
+  origin_address text,
+  origin_lat double precision,
+  origin_lng double precision,
+  tokenization_mode text,
+  claim_policy text,
+  ownership_policy jsonb NOT NULL DEFAULT '{}'::jsonb,
+  manifest_policy jsonb NOT NULL DEFAULT '{}'::jsonb,
+  theme jsonb NOT NULL DEFAULT '{}'::jsonb,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`;
+await sql`ALTER TABLE batches ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
+await sql`ALTER TABLE batches ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
+await sql`ALTER TABLE tags ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
+await sql`CREATE TABLE IF NOT EXISTS tag_profiles (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tag_id uuid NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  sku text,
+  product_name text,
+  vintage text,
+  grape_varietal text,
+  alcohol_pct numeric(4,2),
+  barrel_months integer,
+  harvest_year integer,
+  vineyard_humidity numeric(5,2),
+  soil_humidity numeric(5,2),
+  region text,
+  winery text,
+  temperature_storage text,
+  notes text,
+  image_url text,
+  locale_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+)`;
+await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_tag_profiles_tag_id_unique ON tag_profiles(tag_id)`;
+await sql`ALTER TABLE tag_profiles ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
 
 function encryptKey16(hex) {
   const kmsHex = process.env.KMS_MASTER_KEY_HEX;
@@ -126,9 +321,9 @@ const accounts = [
   { email: "viewer+demo@nexid.local", fullName: "Demo Viewer", role: "viewer", tenantScoped: true, password: "demo-viewer-2026" },
 ];
 
-await sql`INSERT INTO tenants (slug, name, root_key_ct)
-VALUES ('demobodega', 'Demo Bodega', 'demo-root-key')
-ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name`;
+await sql`INSERT INTO tenants (slug, name, type, status, root_key_ct)
+VALUES ('demobodega', 'Demo Bodega', 'winery', 'active', 'demo-root-key')
+ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, type = 'winery', status = 'active'`;
 const tenant = (await sql`SELECT id, slug, name FROM tenants WHERE slug='demobodega' LIMIT 1`)[0];
 
 for (const account of accounts) {
@@ -144,15 +339,22 @@ for (const account of accounts) {
   ON CONFLICT (user_id, tenant_id, role) DO NOTHING`;
 }
 
-await sql`INSERT INTO batches (tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config)
-VALUES (${tenant.id}, ${bid}, 'active', ${encryptKey16(metaHex)}, ${encryptKey16(fileHex)}, ${JSON.stringify({ profile: 'demobodega', pack: requestedPack })}::jsonb)
-ON CONFLICT (bid) DO NOTHING`;
+await sql`INSERT INTO batches (tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config, carrier_profile_code)
+VALUES (${tenant.id}, ${bid}, 'active', ${encryptKey16(metaHex)}, ${encryptKey16(fileHex)}, ${JSON.stringify(sdmConfig)}::jsonb, ${carrierProfileCode})
+ON CONFLICT (bid) DO UPDATE SET
+  tenant_id = EXCLUDED.tenant_id,
+  status = 'active',
+  meta_key_ct = EXCLUDED.meta_key_ct,
+  file_key_ct = EXCLUDED.file_key_ct,
+  sdm_config = EXCLUDED.sdm_config,
+  carrier_profile_code = EXCLUDED.carrier_profile_code,
+  updated_at = now()`;
 const batch = (await sql`SELECT id, bid FROM batches WHERE bid=${bid} LIMIT 1`)[0];
 
 for (const row of manifestRows) {
-  await sql`INSERT INTO tags (batch_id, uid_hex, status)
-  VALUES (${batch.id}, ${row.uid_hex}, 'active')
-  ON CONFLICT (batch_id, uid_hex) DO UPDATE SET status = 'active'`;
+  await sql`INSERT INTO tags (batch_id, uid_hex, status, carrier_profile_code)
+  VALUES (${batch.id}, ${row.uid_hex}, 'active', ${carrierProfileCode})
+  ON CONFLICT (batch_id, uid_hex) DO UPDATE SET status = 'active', carrier_profile_code = EXCLUDED.carrier_profile_code`;
 
   const tag = (await sql`SELECT id FROM tags WHERE batch_id = ${batch.id} AND uid_hex = ${row.uid_hex} LIMIT 1`)[0];
   const p = productByUid.get(row.uid_hex) || {};
@@ -160,16 +362,101 @@ for (const row of manifestRows) {
 
   await sql`INSERT INTO tag_profiles (
     tag_id, sku, product_name, vintage, grape_varietal, alcohol_pct, barrel_months, harvest_year,
-    vineyard_humidity, soil_humidity, region, winery, temperature_storage, notes, image_url, locale_data
+    vineyard_humidity, soil_humidity, region, winery, temperature_storage, notes, image_url, locale_data, carrier_profile_code
   ) VALUES (
-    ${tag.id}, ${p.sku || row.roll_id || null}, ${p.productName || `${vertical.toUpperCase()} Demo Item ${row.roll_id || ''}`}, ${p.vintage || null}, ${p.grapeVarietal || null},
-    ${p.alcoholPct || null}, ${p.barrelMonths || null}, ${p.harvestYear || null}, ${p.vineyardHumidity || null}, ${p.soilHumidity || null},
-    ${p.region || 'LATAM'}, 'Demo Bodega', ${p.temperatureStorage || null}, ${p.notes || 'Demo premium traceability story.'},
-    'https://images.unsplash.com/photo-1516594915697-87eb3b1c14ea',
-    ${JSON.stringify({ vertical, pack: requestedPack, uid_masked: `${row.uid_hex.slice(0, 4)}***${row.uid_hex.slice(-2)}`, 'es-AR': p, 'pt-BR': p, en: p })}::jsonb
+    ${tag.id}, ${p.sku || demoProduct.sku}, ${p.productName || demoProduct.name}, ${p.vintage || demoProduct.vintage}, ${p.grapeVarietal || demoProduct.varietal},
+    ${p.alcoholPct || demoProduct.alcoholPct}, ${p.barrelMonths || 12}, ${p.harvestYear || 2022}, ${p.vineyardHumidity || null}, ${p.soilHumidity || null},
+    ${p.region || demoProduct.region}, ${demoProduct.winery}, ${p.temperatureStorage || demoProduct.storage}, ${p.notes || `Perfil SUN real del piloto demobodega para lote ${bid}.`},
+    ${p.imageUrl || demoProduct.imageUrl},
+    ${JSON.stringify({
+      vertical,
+      pack: requestedPack,
+      uid_masked: `${row.uid_hex.slice(0, 4)}***${row.uid_hex.slice(-2)}`,
+      lot: "MZA-2026-0424",
+      origin: demoOrigin,
+      claimPolicy: "purchase_proof_required",
+      tokenizationMode: "valid_and_opened",
+      media: { hero: demoProduct.imageUrl, packshot: demoProduct.imageUrl },
+      'es-AR': p,
+      'pt-BR': p,
+      en: p,
+    })}::jsonb,
+    ${carrierProfileCode}
   )
-  ON CONFLICT (tag_id) DO UPDATE SET sku=EXCLUDED.sku, product_name=EXCLUDED.product_name, locale_data=EXCLUDED.locale_data, updated_at=now()`;
+  ON CONFLICT (tag_id) DO UPDATE SET
+    sku=EXCLUDED.sku,
+    product_name=EXCLUDED.product_name,
+    vintage=EXCLUDED.vintage,
+    grape_varietal=EXCLUDED.grape_varietal,
+    alcohol_pct=EXCLUDED.alcohol_pct,
+    barrel_months=EXCLUDED.barrel_months,
+    harvest_year=EXCLUDED.harvest_year,
+    region=EXCLUDED.region,
+    winery=EXCLUDED.winery,
+    temperature_storage=EXCLUDED.temperature_storage,
+    notes=EXCLUDED.notes,
+    image_url=EXCLUDED.image_url,
+    locale_data=COALESCE(tag_profiles.locale_data, '{}'::jsonb) || EXCLUDED.locale_data,
+    carrier_profile_code=EXCLUDED.carrier_profile_code,
+    updated_at=now()`;
 }
+
+await sql`
+  INSERT INTO tenant_sun_profiles (
+    tenant_id,
+    vertical,
+    club_name,
+    product_label,
+    origin_label,
+    origin_address,
+    origin_lat,
+    origin_lng,
+    tokenization_mode,
+    claim_policy,
+    ownership_policy,
+    manifest_policy,
+    theme,
+    metadata
+  ) VALUES (
+    ${tenant.id},
+    'wine',
+    'Club Terroir',
+    'Vino premium',
+    ${demoOrigin.label},
+    ${demoOrigin.address},
+    ${demoOrigin.lat},
+    ${demoOrigin.lng},
+    'valid_and_opened',
+    'purchase_proof_required',
+    ${JSON.stringify(ownershipPolicy)}::jsonb,
+    ${JSON.stringify(manifestPolicy)}::jsonb,
+    ${JSON.stringify({ accent: "cyan", secondary: "violet", mapStyle: "luxury" })}::jsonb,
+    ${JSON.stringify({
+      pilot: "demobodega",
+      supportsOpenedSealLifecycle: true,
+      defaultBatch: bid,
+      loyalty: {
+        pointsName: "Uvas",
+        rules: { pointsPerValidTap: 10, cooldownSeconds: 3600 },
+      },
+    })}::jsonb
+  )
+  ON CONFLICT (tenant_id) DO UPDATE SET
+    vertical = EXCLUDED.vertical,
+    club_name = EXCLUDED.club_name,
+    product_label = EXCLUDED.product_label,
+    origin_label = EXCLUDED.origin_label,
+    origin_address = EXCLUDED.origin_address,
+    origin_lat = EXCLUDED.origin_lat,
+    origin_lng = EXCLUDED.origin_lng,
+    tokenization_mode = EXCLUDED.tokenization_mode,
+    claim_policy = EXCLUDED.claim_policy,
+    ownership_policy = EXCLUDED.ownership_policy,
+    manifest_policy = EXCLUDED.manifest_policy,
+    theme = tenant_sun_profiles.theme || EXCLUDED.theme,
+    metadata = tenant_sun_profiles.metadata || EXCLUDED.metadata,
+    updated_at = now()
+`;
 
 await sql`
   INSERT INTO marketplace_brand_profiles (
