@@ -700,11 +700,11 @@ const heroRealAssets: Partial<Record<Vertical, {
     sourceUrl: "https://www.pexels.com/photo/person-catching-seeds-from-a-packet-7782889/",
   },
   fashion: {
-    imageUrl: "/demo/luxury-basic/real-sneakers-pexels.jpg",
+    imageUrl: "/demo/luxury-basic/real-premium-sneakers-neutral-pexels.jpg",
     alt: "Zapatillas reales usadas como asset demo para autenticidad, ownership y reventa controlada.",
     bank: "Pexels",
-    sourceLabel: "Pexels / Hurrah suhail",
-    sourceUrl: "https://www.pexels.com/photo/11324516/",
+    sourceLabel: "Pexels / Jibarofoto",
+    sourceUrl: "https://www.pexels.com/photo/14212621/",
   },
 };
 

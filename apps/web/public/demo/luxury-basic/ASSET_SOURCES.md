@@ -2,5 +2,7 @@
 
 - `real-sneakers-pexels.jpg`: Pexels photo by Hurrah suhail, used as a demo visual-bank asset for sneaker/footwear flows.
   Source: https://www.pexels.com/photo/11324516/
+- `real-premium-sneakers-neutral-pexels.jpg`: Pexels photo by Jibarofoto, used as the primary neutral premium sneaker/footwear demo asset.
+  Source: https://www.pexels.com/photo/14212621/
 - `real-apparel-tag-pexels.jpg`: Pexels photo by Andrzej Gdula, used as a demo visual-bank asset for apparel/garment-tag flows.
   Source: https://www.pexels.com/photo/a-simple-tag-on-textile-11134390/

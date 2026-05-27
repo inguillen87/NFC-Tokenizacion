@@ -43,7 +43,7 @@ const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> 
   creamTube: { imageUrl: "/demo/cosmetics-secure/real-cosmetic-bottles-pexels.jpg", credit: "Pexels / Daria Liudnaya" },
   bracelet: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
   ticket: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
-  sneaker: { imageUrl: "/demo/luxury-basic/real-sneakers-pexels.jpg", credit: "Pexels / Hurrah suhail" },
+  sneaker: { imageUrl: "/demo/luxury-basic/real-premium-sneakers-neutral-pexels.jpg", credit: "Pexels / Jibarofoto" },
 };
 
 type DemoEvent = {
@@ -1562,12 +1562,6 @@ function DemoWineProduct({
       <span className="demo-lab-wine-product__floor" aria-hidden="true" />
       <figure className="demo-lab-wine-product__packshot" data-credit={asset.credit} aria-hidden="true">
         <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
-        <span className="demo-lab-wine-product__brand-mask" />
-        <span className="demo-lab-wine-product__label-cover">
-          <em>nexID</em>
-          <strong>{product}</strong>
-          <small>Valle de Uco - 2022</small>
-        </span>
         <figcaption>
           <span>Producto real</span>
           <strong>{product}</strong>
@@ -1615,7 +1609,7 @@ function DemoPremiumCosmeticProduct({
   const isPerfume = vertical === "perfume";
   const status = blocked ? "RIESGO BLOQUEADO" : opened ? "SELLO ABIERTO" : beat === 0 ? "SELLADO" : "AUTENTICADO";
   const action = blocked ? "Sin reclamo" : opened ? "Garantia lista" : "Compra confiable";
-  const referenceLabel = isPerfume ? "Perfume premium" : vertical === "creamJar" ? "Skincare premium" : "Dermo premium";
+  const referenceLabel = isPerfume ? "Perfume premium real" : vertical === "creamJar" ? "Set skincare real" : "Dermo premium real";
   const proofLabel = isPerfume ? "Tapa NFC + lote" : "Envase sellado + lote";
 
   return (
@@ -1626,11 +1620,6 @@ function DemoPremiumCosmeticProduct({
     >
       <figure className="demo-lab-cosmetic-photo" data-credit={asset.credit} aria-hidden="true">
         <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
-        <span className="demo-lab-cosmetic-label-cover">
-          <em>nexID</em>
-          <strong>{product}</strong>
-          <small>{proofLabel}</small>
-        </span>
         <figcaption>
           <span>{referenceLabel}</span>
           <strong>{product}</strong>

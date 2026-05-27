@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { json } from '../../lib/http';
 import { processSunScan } from '../../lib/sun-service';
 import { createDemoShareToken } from '../../lib/demo-share';
+import { seedDemoPack } from '../../lib/demo-seed';
 import { sql } from '../../lib/db';
 import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
 import { ensureTokenizationRequestsSchema } from '../../lib/tokenization-schema';
@@ -26,6 +27,7 @@ const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 const HEX_RE = /^[0-9A-F]+$/i;
 
 const SUN_PIPELINE_TIMEOUT_MS = Number(process.env.SUN_PIPELINE_TIMEOUT_MS || 8000);
+const DEMO_BODEGA_BID = "DEMO-2026-02";
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -263,6 +265,12 @@ async function safeHitSunRateLimit(scope: string, scopeKey: string, windowSecond
     console.warn("[sun_rate_limit_unavailable]", JSON.stringify({ scope, scopeKey, reason: sanitizePublicErrorReason(reason) }));
     return { hits: 0, limited: false, unavailable: true };
   }
+}
+
+function shouldRepairDemoBodegaSun(bid: string, result: SunResult) {
+  if (bid !== DEMO_BODEGA_BID) return false;
+  const reason = String(result.body?.reason || "").toLowerCase();
+  return result.status === 404 && reason.includes("unknown batch");
 }
 
 
@@ -1966,32 +1974,61 @@ export async function GET(req: Request): Promise<Response> {
   if (!HEX_RE.test(enc) || enc.length !== 32) return json({ ok: false, reason: 'invalid enc hex (expected 32 hex chars)' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
   if (!HEX_RE.test(cmac) || cmac.length !== 16) return json({ ok: false, reason: 'invalid cmac hex (expected 16 hex chars)' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
 
+  const sunScanInput = {
+    bid,
+    piccDataHex: picc_data,
+    encHex: enc,
+    cmacHex: cmac,
+    rawQuery: Object.fromEntries(url.searchParams.entries()),
+    context: {
+      ip,
+      userAgent: ua,
+      city: geoCity,
+      countryCode: geoCountry,
+      lat: Number.isFinite(geoLat) ?geoLat : null,
+      lng: Number.isFinite(geoLng) ?geoLng : null,
+      source: 'real' as const,
+      meta: {
+        trace_id: traceId,
+        request_id: req.headers.get('x-request-id') || null,
+      },
+    },
+  };
   let result: SunResult;
   try {
-    result = await withTimeout(processSunScan({
-      bid,
-      piccDataHex: picc_data,
-      encHex: enc,
-      cmacHex: cmac,
-      rawQuery: Object.fromEntries(url.searchParams.entries()),
-      context: {
-        ip,
-        userAgent: ua,
-        city: geoCity,
-        countryCode: geoCountry,
-        lat: Number.isFinite(geoLat) ?geoLat : null,
-        lng: Number.isFinite(geoLng) ?geoLng : null,
-        source: 'real',
-        meta: {
-          trace_id: traceId,
-          request_id: req.headers.get('x-request-id') || null,
-        },
-      },
-    }), SUN_PIPELINE_TIMEOUT_MS, "sun_pipeline");
+    result = await withTimeout(processSunScan(sunScanInput), SUN_PIPELINE_TIMEOUT_MS, "sun_pipeline");
   } catch (error) {
     const internalReason = error instanceof Error ?error.message : 'sun_processing_error';
     result = { status: 200, body: { ok: false, reason: sanitizePublicErrorReason(internalReason) } };
     console.error("[sun_scan_error]", JSON.stringify({ traceId, bid, reason: internalReason }));
+  }
+
+  if (shouldRepairDemoBodegaSun(bid, result)) {
+    try {
+      const seeded = await withTimeout(seedDemoPack({ pack: "wine-secure", forceBid: bid }), 6000, "demo_bodega_seed_repair");
+      console.warn("[sun_demo_bodega_repaired]", JSON.stringify({
+        traceId,
+        bid,
+        pack: seeded.pack,
+        imported: seeded.imported,
+      }));
+      result = await withTimeout(processSunScan({
+        ...sunScanInput,
+        context: {
+          ...sunScanInput.context,
+          meta: {
+            ...sunScanInput.context.meta,
+            demo_bodega_auto_repaired: true,
+          },
+        },
+      }), SUN_PIPELINE_TIMEOUT_MS, "sun_pipeline_repaired");
+    } catch (error) {
+      console.error("[sun_demo_bodega_repair_failed]", JSON.stringify({
+        traceId,
+        bid,
+        reason: error instanceof Error ?error.message : "demo_bodega_repair_failed",
+      }));
+    }
   }
 
   const uid = result.body.uid || null;

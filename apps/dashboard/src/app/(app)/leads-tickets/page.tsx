@@ -1,6 +1,5 @@
 import { Card, SectionHeading } from "@product/ui";
 import { DataTable } from "../../../components/data-table";
-import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
@@ -32,6 +31,22 @@ function leadTenant(lead: Record<string, unknown>) {
   return (parseMeta(lead.message, "tenant") || parseMeta(lead.notes, "tenant") || String(lead.tenant_slug || "")).toLowerCase();
 }
 
+function hasMeetingSignal(item: Record<string, unknown>) {
+  const text = [
+    item.source,
+    item.title,
+    item.detail,
+    item.message,
+    item.notes,
+    item.role_interest,
+  ].map((value) => String(value || "").toLowerCase()).join(" ");
+  return /realtime|meeting|reunion|private|privada|demo|call|llamada|videollamada/.test(text);
+}
+
+function fieldDate(value: unknown) {
+  return String(value || "").toString().slice(0, 19).replace("T", " ") || "-";
+}
+
 export default async function LeadsTicketsPage({
   searchParams,
 }: {
@@ -43,7 +58,6 @@ export default async function LeadsTicketsPage({
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
-  const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
 
   const [leads, tickets, orders] = await Promise.all([
@@ -53,15 +67,61 @@ export default async function LeadsTicketsPage({
   ]);
 
   const leadsArray = Array.isArray(leads) ? leads as Array<Record<string, unknown>> : [];
-  const scopedLeads = tenantScope ? leadsArray.filter((lead) => leadTenant(lead) === tenantScope) : leadsArray;
   const ticketsArray = Array.isArray(tickets) ? tickets as Array<Record<string, unknown>> : [];
   const ordersArray = Array.isArray(orders) ? orders as Array<Record<string, unknown>> : [];
+  const scopedLeads = tenantScope ? leadsArray.filter((lead) => leadTenant(lead) === tenantScope) : leadsArray;
   const scopedTickets = tenantScope ? ticketsArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ticketsArray;
   const scopedOrders = tenantScope ? ordersArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ordersArray;
   const leadCount = scopedLeads.length;
   const ticketCount = scopedTickets.length;
   const orderCount = scopedOrders.length;
-  const hotPipeline = leadCount + orderCount;
+  const privateMeetingCount = [...scopedLeads, ...scopedTickets].filter(hasMeetingSignal).length;
+  const hotPipeline = leadCount + orderCount + privateMeetingCount;
+
+  const labels = locale === "en"
+    ? {
+        leads: "Prospects",
+        tickets: "Tickets",
+        meetings: "Private meetings",
+        orders: "Orders",
+        hot: "Hot pipeline",
+        feed: "Commercial control room",
+        scope: "Current scope",
+        global: "global / multi-tenant",
+        source: "Lead source",
+        crmLite: "CRM-lite consolidated",
+        opportunities: "Commercial opportunities",
+        why: "Why this view matters",
+      }
+    : locale === "pt-BR"
+      ? {
+          leads: "Prospects",
+          tickets: "Tickets",
+          meetings: "Reunioes privadas",
+          orders: "Pedidos",
+          hot: "Pipeline quente",
+          feed: "Sala de controle comercial",
+          scope: "Escopo atual",
+          global: "global / multi-tenant",
+          source: "Fonte do lead",
+          crmLite: "CRM-lite consolidado",
+          opportunities: "Oportunidades comerciais",
+          why: "Por que esta vista importa",
+        }
+      : {
+          leads: "Prospectos",
+          tickets: "Tickets",
+          meetings: "Reuniones privadas",
+          orders: "Ordenes",
+          hot: "Pipeline caliente",
+          feed: "Sala comercial",
+          scope: "Scope actual",
+          global: "global / multi-tenant",
+          source: "Fuente del lead",
+          crmLite: "CRM-lite consolidado",
+          opportunities: "Oportunidades comerciales",
+          why: "Por que esta vista importa",
+        };
 
   const ctaOpportunities = leadsArray
     .map((lead) => {
@@ -70,7 +130,7 @@ export default async function LeadsTicketsPage({
       const interest = parseMeta(lead.message, "interest") || String(lead.role_interest || "-");
       return { lead, tenant, session, interest, source: String(lead.source || "unknown") };
     })
-    .filter((item) => item.source.includes("public") || item.source.includes("demo"));
+    .filter((item) => /public|demo|assistant|sales|realtime|chat/.test(item.source));
   const effectiveTenantFilter = tenantScope || tenantFilter;
   const filteredOpportunities = ctaOpportunities.filter((item) => {
     const byTenant = effectiveTenantFilter ? item.tenant.toLowerCase() === effectiveTenantFilter : true;
@@ -84,38 +144,15 @@ export default async function LeadsTicketsPage({
   }, {});
   const topSources = Object.entries(sourceStats).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 4) as Array<[string, number]>;
 
-  const labels = locale === "en"
-    ? {
-        leads: "Leads",
-        tickets: "Tickets",
-        orders: "Orders",
-        hot: "Hot pipeline",
-        feed: "Commercial control room feed",
-      }
-    : locale === "pt-BR"
-    ? {
-        leads: "Leads",
-        tickets: "Tickets",
-        orders: "Pedidos",
-        hot: "Pipeline quente",
-        feed: "Feed comercial de controle",
-      }
-    : {
-        leads: "Leads",
-        tickets: "Tickets",
-        orders: "Órdenes",
-        hot: "Pipeline caliente",
-        feed: "Feed comercial de control",
-      };
-
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.leadsTickets} title={copy.pages.leadsTickets.title} description={copy.pages.leadsTickets.description} />
+
       <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
-        Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
+        {labels.scope}: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : labels.global}</b>.
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-5">
         <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
           <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{labels.leads}</p>
           <p className="mt-2 text-2xl font-semibold text-white">{leadCount}</p>
@@ -123,6 +160,10 @@ export default async function LeadsTicketsPage({
         <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
           <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{labels.tickets}</p>
           <p className="mt-2 text-2xl font-semibold text-white">{ticketCount}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{labels.meetings}</p>
+          <p className="mt-2 text-2xl font-semibold text-white">{privateMeetingCount}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
           <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{labels.orders}</p>
@@ -137,7 +178,7 @@ export default async function LeadsTicketsPage({
       <section className="grid gap-3 md:grid-cols-4">
         {topSources.length ? topSources.map(([source, count]: [string, number]) => (
           <div key={source} className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-violet-200">Lead source</p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-violet-200">{labels.source}</p>
             <p className="mt-1 text-sm text-white">{source}</p>
             <p className="mt-2 text-xl font-semibold text-violet-100">{count}</p>
           </div>
@@ -145,13 +186,13 @@ export default async function LeadsTicketsPage({
       </section>
 
       <section className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-sm text-cyan-100">
-        <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">CRM-lite consolidated (public CTA)</p>
-        <p className="mt-1">Opportunities from demo/public CTA: <b>{filteredOpportunities.length}</b></p>
-        <p className="mt-1 text-xs text-cyan-200">Filters · tenant: <b>{effectiveTenantFilter || "all"}</b> · session: <b>{sessionFilter || "all"}</b></p>
+        <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">{labels.crmLite}</p>
+        <p className="mt-1">{labels.opportunities}: <b>{filteredOpportunities.length}</b></p>
+        <p className="mt-1 text-xs text-cyan-200">Filters - tenant: <b>{effectiveTenantFilter || "all"}</b> - session: <b>{sessionFilter || "all"}</b></p>
       </section>
 
       <DataTable
-        title="CTA opportunities ⓘ"
+        title={labels.opportunities}
         columns={[
           { key: "created_at", label: "Created" },
           { key: "tenant", label: "Tenant" },
@@ -161,7 +202,7 @@ export default async function LeadsTicketsPage({
           { key: "status", label: "Status" },
         ]}
         rows={filteredOpportunities.map((item) => ({
-          created_at: String((item.lead.created_at || "").toString().slice(0, 19).replace("T", " ") || "-"),
+          created_at: fieldDate(item.lead.created_at),
           tenant: item.tenant || "-",
           session: item.session || "-",
           interest: item.interest || "-",
@@ -180,26 +221,26 @@ export default async function LeadsTicketsPage({
       <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
         <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-cyan-200">{labels.feed}</h2>
         <div className="mt-3 grid gap-2">
-          {[...scopedLeads.slice(0, 3), ...scopedTickets.slice(0, 2), ...scopedOrders.slice(0, 2)].map((item: Record<string, unknown>, idx: number) => (
+          {[...scopedLeads.slice(0, 3), ...scopedTickets.slice(0, 3), ...scopedOrders.slice(0, 2)].map((item: Record<string, unknown>, idx: number) => (
             <div key={`${String(item.contact || item.title || "entry")}-${idx}`} className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-300">
-              <p className="font-semibold text-white">{String(item.contact || item.title || "-")}</p>
-              <p className="mt-1">{String(item.company || item.detail || item.status || "-")}</p>
+              <p className="font-semibold text-white">{String(item.contact || item.title || item.name || "-")}</p>
+              <p className="mt-1">{String(item.company || item.detail || item.message || item.status || "-")}</p>
             </div>
           ))}
         </div>
       </section>
 
       <Card className="p-5 text-sm text-slate-300">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Por qué esta vista sí importa</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.why}</h2>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Leads = demanda y nuevos casos de uso entrando al sistema.</div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Tickets = fricción real que hay que resolver para retener y escalar.</div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Orders = pipeline que ya se acerca a revenue y abastecimiento.</div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Leads = demanda, vertical, contacto y caso de uso entrando al sistema.</div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Tickets = seguimiento operativo para cotizacion, demo, soporte y reunion privada.</div>
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Orders = pipeline cercano a revenue, muestras y abastecimiento.</div>
         </div>
       </Card>
 
       <DataTable
-        title="Leads inbox ⓘ"
+        title="Prospects inbox"
         columns={[{ key: "name", label: "Name" }, { key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "vertical", label: "Vertical" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "estimated", label: "Est. volume" }]}
         rows={scopedLeads.map((item: Record<string, unknown>) => ({
           name: String(item.name || "-"),
@@ -220,11 +261,12 @@ export default async function LeadsTicketsPage({
       />
 
       <DataTable
-        title="Tickets ⓘ"
-        columns={[{ key: "contact", label: "Contact" }, { key: "title", label: "Title" }, { key: "status", label: "Status" }]}
+        title="Tickets and meetings"
+        columns={[{ key: "contact", label: "Contact" }, { key: "title", label: "Title" }, { key: "source", label: "Source" }, { key: "status", label: "Status" }]}
         rows={scopedTickets.map((item: Record<string, unknown>) => ({
           contact: String(item.contact || "-"),
           title: String(item.title || "-"),
+          source: String(item.source || "-"),
           status: String(item.status || "open"),
         }))}
         filterKey="status"
@@ -237,7 +279,7 @@ export default async function LeadsTicketsPage({
       />
 
       <DataTable
-        title="Orders / Chip requests ⓘ"
+        title="Orders / chip requests"
         columns={[{ key: "name", label: "Name" }, { key: "contact", label: "Contact" }, { key: "company", label: "Company" }, { key: "vertical", label: "Vertical" }, { key: "status", label: "Status" }, { key: "source", label: "Source" }, { key: "estimated", label: "Est. volume" }]}
         rows={scopedOrders.map((item: Record<string, unknown>) => ({
           name: String(item.name || "-"),

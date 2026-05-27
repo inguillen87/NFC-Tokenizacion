@@ -96,10 +96,15 @@ export async function GET() {
     return publicProofFallback();
   }
 
-  const response = await fetch(`${productUrls.api}/internal/demo/summary`, {
-    headers: { Authorization: `Bearer ${adminKey}` },
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${productUrls.api}/internal/demo/summary`, {
+      headers: { Authorization: `Bearer ${adminKey}` },
+      cache: "no-store",
+    });
+  } catch {
+    return publicProofFallback();
+  }
   const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
   if (!response.ok || data?.ok === false) {
     return publicProofFallback();

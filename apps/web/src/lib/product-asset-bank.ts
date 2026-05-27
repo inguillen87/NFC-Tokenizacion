@@ -75,8 +75,8 @@ const demoStockAssets: Partial<Record<AssetVisualKind, { productImageUrl: string
     sourceLabel: "Pexels / RDNE Stock project",
   },
   sneaker: {
-    productImageUrl: "/demo/luxury-basic/real-sneakers-pexels.jpg",
-    sourceLabel: "Pexels / Hurrah suhail",
+    productImageUrl: "/demo/luxury-basic/real-premium-sneakers-neutral-pexels.jpg",
+    sourceLabel: "Pexels / Jibarofoto",
   },
   apparel: {
     productImageUrl: "/demo/luxury-basic/real-apparel-tag-pexels.jpg",
