@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
@@ -28,10 +27,7 @@ type DemoScenario = {
   primaryLabel: string;
 };
 
-type ThreeProductVertical = "wine" | "seeds" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket";
 type DemoRealProductVariant = "studio" | "cinematic" | "stage";
-
-const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), { ssr: false });
 
 const DEMO_VERTICAL_ORDER: Vertical[] = ["wine", "seeds", "creamJar", "perfume", "bracelet", "sneaker"];
 
@@ -1261,54 +1257,191 @@ function DemoCinematicProductRender({
   stat: string;
   variant?: "cinematic" | "studio";
 }) {
-  const state = beat === 2 ? "risk" : beat === 3 ? "open" : beat === 1 ? "ok" : "origin";
-  const phoneStatus = beat === 2 ? "BLOQUEADO" : beat === 3 ? "SELLO ABIERTO" : beat === 1 ? "AUTENTICADO" : "LISTO";
+  return <DemoPremiumProductScene vertical={vertical} product={product} badge={badge} beat={beat} title={title} stat={stat} variant={variant} />;
+}
+
+function getPremiumSceneTone(beat: Beat): DemoScenarioTone {
+  if (beat === 2) return "risk";
+  if (beat === 3) return "open";
+  if (beat === 1) return "ok";
+  return "origin";
+}
+
+function getPremiumSceneAccent(beat: Beat) {
+  if (beat === 2) return "#fb7185";
+  if (beat === 3) return "#a78bfa";
+  if (beat === 1) return "#34d399";
+  return "#22d3ee";
+}
+
+function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat?: string) {
+  const tone = getPremiumSceneTone(beat);
+  const status =
+    tone === "risk"
+      ? "BLOQUEADO"
+      : tone === "open"
+        ? "SELLO ABIERTO"
+        : tone === "ok"
+          ? "AUTENTICADO"
+          : "LISTO";
+  const phoneAction =
+    tone === "risk"
+      ? "Repetir tap fisico"
+      : tone === "open"
+        ? "Reclamar dueno"
+        : tone === "ok"
+          ? "Compra confiable"
+          : "Acercar telefono";
+  const sun = tone === "risk" ? "SUN bloquea copia" : tone === "origin" ? "SUN listo" : "SUN valido";
+  const lifecycle = tone === "open" ? "Beneficios abiertos" : tone === "risk" ? "Beneficios bloqueados" : "Beneficios listos";
+
+  const proofBody =
+    tone === "risk"
+      ? "Acciones bloqueadas hasta nuevo tap fisico."
+      : tone === "open"
+        ? "Postventa, dueno y beneficios habilitados."
+        : "Producto, UID y canal validados.";
+
+  const base = {
+    tone,
+    status,
+    phoneAction,
+    sun,
+    lifecycle,
+    credential: badge,
+    proofBody,
+    chips: [badge, sun, lifecycle],
+  };
 
   if (vertical === "wine") {
-    return <DemoWineProduct product={product} badge={badge} beat={beat} stat={stat} variant={variant} />;
-  }
-
-  if (isEventAccessVertical(vertical)) {
-    return <DemoEventAccessProduct vertical={vertical} product={product} badge={badge} beat={beat} variant={variant} />;
-  }
-
-  if (isPremiumCosmeticVertical(vertical)) {
-    return <DemoPremiumCosmeticProduct vertical={vertical} product={product} badge={badge} beat={beat} variant={variant} />;
+    return {
+      ...base,
+      family: "Botella premium real",
+      evidence: "Malbec, lote y sello unidos al SUN",
+      proofTitle: "Botella + sello + lote",
+      tagTitle: "NTAG 424 DNA TT",
+      crop: "portrait",
+    };
   }
 
   if (vertical === "sneaker") {
-    return <DemoSneakerProduct product={product} badge={badge} beat={beat} stat={stat} variant={variant} />;
+    return {
+      ...base,
+      family: "Zapatilla coleccionable real",
+      evidence: "UID, rareza, dueno y beneficio vinculados",
+      proofTitle: "Lengueta NFC + owner",
+      tagTitle: "Drop verificado",
+      crop: "wide",
+    };
   }
 
+  if (vertical === "seeds") {
+    return {
+      ...base,
+      family: "Sobre de semillas certificado",
+      evidence: "Lote, origen y canal agricola auditados",
+      proofTitle: "QR + NFC UID",
+      tagTitle: "Lote trazable",
+      crop: "wide",
+    };
+  }
+
+  if (vertical === "bracelet" || vertical === "ticket") {
+    return {
+      ...base,
+      family: "Acceso real de evento",
+      evidence: "Pulsera VIP, ingreso y postventa unidos",
+      proofTitle: "Pulsera + UID + canal",
+      tagTitle: "NTAG215",
+      crop: "wide",
+    };
+  }
+
+  if (vertical === "perfume") {
+    return {
+      ...base,
+      family: "Perfume premium real",
+      evidence: "Tapa NFC, serie, lote y garantia",
+      proofTitle: "Tapa + serie + lote",
+      tagTitle: "NTAG 424 DNA",
+      crop: "portrait",
+    };
+  }
+
+  return {
+    ...base,
+    family: "Set skincare premium",
+    evidence: "Envase sellado, lote y recompra verificada",
+    proofTitle: "Envase + sello + lote",
+    tagTitle: "NTAG 424 DNA",
+    crop: "square",
+  };
+}
+
+function DemoPremiumProductScene({
+  vertical,
+  product,
+  badge,
+  beat,
+  title,
+  stat,
+  variant,
+}: {
+  vertical: Vertical;
+  product: string;
+  badge: string;
+  beat: Beat;
+  title?: string;
+  stat?: string;
+  variant: DemoRealProductVariant;
+}) {
+  const asset = demoLabRealAssets[vertical];
+  const meta = getPremiumSceneMeta(vertical, beat, badge, stat);
+  const style = { "--scene-accent": getPremiumSceneAccent(beat) } as CSSProperties;
+
   return (
-    <div className={`demo-lab-cinematic-render demo-lab-cinematic-render--${variant} demo-lab-cinematic-render--${vertical} demo-lab-cinematic-render--${state}`} role="img" aria-label={`${badge}: ${product}. ${title}.`}>
-      <span className="demo-lab-cinematic-render__glow" aria-hidden="true" />
-      <span className="demo-lab-cinematic-render__floor" aria-hidden="true" />
-      <div className="demo-lab-cinematic-render__product" aria-hidden="true">
-        <span className="demo-lab-cinematic-render__main" />
-        <span className="demo-lab-cinematic-render__neck" />
-        <span className="demo-lab-cinematic-render__cap" />
-        <span className="demo-lab-cinematic-render__accent" />
-        <span className="demo-lab-cinematic-render__sole" />
-        <span className="demo-lab-cinematic-render__lace demo-lab-cinematic-render__lace--one" />
-        <span className="demo-lab-cinematic-render__lace demo-lab-cinematic-render__lace--two" />
-        <span className="demo-lab-cinematic-render__lace demo-lab-cinematic-render__lace--three" />
-        <span className="demo-lab-cinematic-render__label">
-          <em>nexID</em>
+    <div
+      className={`demo-lab-premium-scene demo-lab-premium-scene--${variant} demo-lab-premium-scene--${vertical} demo-lab-premium-scene--${meta.tone} demo-lab-premium-scene--crop-${meta.crop}`}
+      role="img"
+      aria-label={`${badge}: ${product}. ${title || meta.status}.`}
+      style={style}
+    >
+      <span className="demo-lab-premium-scene__aura" aria-hidden="true" />
+      <span className="demo-lab-premium-scene__floor" aria-hidden="true" />
+
+      <figure className="demo-lab-premium-scene__media" data-credit={asset.credit} aria-hidden="true">
+        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <figcaption>
+          <span>{meta.family}</span>
           <strong>{product}</strong>
-        </span>
-        <span className="demo-lab-cinematic-render__seal">NFC</span>
+          <small>{meta.evidence}</small>
+        </figcaption>
+      </figure>
+
+      <div className="demo-lab-premium-scene__tag-card" aria-hidden="true">
+        <span>nexID</span>
+        <strong>{meta.tagTitle}</strong>
+        <em>{meta.tone === "risk" ? "riesgo" : meta.tone === "open" ? "abierto" : "sellado"}</em>
       </div>
-      <div className="demo-lab-cinematic-render__phone" aria-hidden="true">
+
+      <div className="demo-lab-premium-scene__phone" aria-hidden="true">
         <i />
-        <small>SALIDA CELULAR</small>
-        <strong>{phoneStatus}</strong>
-        <span>UID 04A7****1090</span>
+        <span>Salida celular</span>
+        <strong>{meta.status}</strong>
+        <small>UID 04A7****1090</small>
+        <em>{meta.phoneAction}</em>
       </div>
-      <div className="demo-lab-cinematic-render__proof" aria-hidden="true">
-        <small>{badge}</small>
-        <strong>{product}</strong>
-        <span>{stat}</span>
+
+      <div className="demo-lab-premium-scene__proof" aria-hidden="true">
+        <span>Producto real</span>
+        <strong>{meta.proofTitle}</strong>
+        <small>{meta.proofBody}</small>
+      </div>
+
+      <div className="demo-lab-premium-scene__ribbon" aria-hidden="true">
+        {meta.chips.map((chip) => (
+          <span key={chip}>{chip}</span>
+        ))}
       </div>
     </div>
   );
@@ -1476,48 +1609,7 @@ function DemoLabProductThreeStage({
   beat: Beat;
   badge: string;
 }) {
-  const [ready, setReady] = useState(false);
-  const [showLoader, setShowLoader] = useState(true);
-  const threeVertical = mapDemoVerticalToThree(vertical);
-
-  useEffect(() => {
-    setReady(false);
-    setShowLoader(true);
-    const timeoutId = window.setTimeout(() => setShowLoader(false), 900);
-    return () => window.clearTimeout(timeoutId);
-  }, [threeVertical]);
-
-  if (isEventAccessVertical(vertical)) {
-    return <DemoEventAccessProduct vertical={vertical} product={product} badge={badge} beat={beat} variant="stage" />;
-  }
-
-  if (isPremiumCosmeticVertical(vertical)) {
-    return <DemoPremiumCosmeticProduct vertical={vertical} product={product} badge={badge} beat={beat} variant="stage" />;
-  }
-
-  if (vertical === "sneaker") {
-    return <DemoSneakerProduct product={product} badge={badge} beat={beat} variant="stage" />;
-  }
-
-  if (vertical === "wine") {
-    return <DemoWineProduct product={product} badge={badge} beat={beat} variant="stage" />;
-  }
-
-  return (
-    <>
-      <DemoRealProductShot vertical={vertical} product={product} badge={badge} variant="stage" />
-      <div className="demo-lab-three-product demo-lab-three-product--with-real">
-        {!ready && showLoader ? <span className="demo-lab-three-product-loader" aria-hidden="true" /> : null}
-        <HeroThreeStage
-          active={threeVertical}
-          product={product}
-          className="demo-lab-three-stage"
-          state={beat === 3 ? "opened" : beat === 2 ? "blocked" : "idle"}
-          onReady={() => setReady(true)}
-        />
-      </div>
-    </>
-  );
+  return <DemoPremiumProductScene vertical={vertical} product={product} badge={badge} beat={beat} variant="stage" />;
 }
 
 function isEventAccessVertical(vertical: Vertical) {
@@ -1526,10 +1618,6 @@ function isEventAccessVertical(vertical: Vertical) {
 
 function isPremiumCosmeticVertical(vertical: Vertical) {
   return vertical === "creamJar" || vertical === "perfume" || vertical === "creamTube";
-}
-
-function isEditorialProductVertical(vertical: Vertical) {
-  return isEventAccessVertical(vertical) || isPremiumCosmeticVertical(vertical);
 }
 
 function DemoWineProduct({
@@ -1781,17 +1869,6 @@ function DemoRealProductShot({
       </figcaption>
     </figure>
   );
-}
-
-function mapDemoVerticalToThree(vertical: Vertical): ThreeProductVertical {
-  if (vertical === "bracelet") return "bracelet";
-  if (vertical === "ticket") return "ticket";
-  if (vertical === "seeds") return "seeds";
-  if (vertical === "creamJar") return "creamJar";
-  if (vertical === "perfume") return "perfume";
-  if (vertical === "creamTube") return "creamTube";
-  if (vertical === "sneaker") return "wine";
-  return "wine";
 }
 
 function ProductIllustration({ vertical, product, label, beat }: { vertical: Vertical; product: string; label: string; beat: Beat }) {

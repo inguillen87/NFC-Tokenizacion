@@ -133,6 +133,12 @@ export function parseSessionCookie(value: string | undefined | null) {
   return { sessionId, secret };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isUuidString(value: string | undefined | null) {
+  return Boolean(value && UUID_RE.test(value));
+}
+
 export function parsePermissions(value: unknown) {
   if (Array.isArray(value)) return value.map((item) => String(item));
   return [];
@@ -209,6 +215,7 @@ export async function createSession(sql: Sql, payload: { user: AuthUser; ip?: st
 export async function resolveSession(sql: Sql, cookieValue: string | undefined | null) : Promise<SessionRecord | null> {
   const parsed = parseSessionCookie(cookieValue);
   if (!parsed) return null;
+  if (!isUuidString(parsed.sessionId)) return null;
   await ensureEnterpriseIamSchema();
   const rows = await sql/*sql*/`
     SELECT s.id, s.user_id, s.session_token_hash, s.role::text AS role, s.tenant_id, s.permissions, s.mfa_verified, s.expires_at, s.last_seen_at, s.revoked_at,
@@ -256,6 +263,7 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
 export async function revokeSession(sql: Sql, cookieValue: string | undefined | null) {
   const parsed = parseSessionCookie(cookieValue);
   if (!parsed) return null;
+  if (!isUuidString(parsed.sessionId)) return null;
   await ensureEnterpriseIamSchema();
   const rows = await sql/*sql*/`
     UPDATE auth_sessions

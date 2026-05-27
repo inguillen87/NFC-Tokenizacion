@@ -14,6 +14,10 @@ export async function GET(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const auth = req.headers.get('authorization') || '';
+  const bearerToken = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (bearerToken.startsWith('demo.')) return json({ ok: true, demoMode: true });
+
   await ensureEnterpriseIamSchema();
   const { error, session, meta, token } = await requireApiSession(req);
   if (error || !session) return json({ ok: true });

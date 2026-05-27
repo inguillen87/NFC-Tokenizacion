@@ -90,6 +90,7 @@ export function DashboardShellInner({
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const { mode, setMode } = useAudienceMode();
 
@@ -131,6 +132,14 @@ export function DashboardShellInner({
   const forbidden = (pathname === "/tenants" && currentRole === "tenant-admin") || (pathname.startsWith("/superadmin") && currentRole !== "super-admin");
   const isDemoMode = currentLabel.toLowerCase().includes("demo") || currentEmail.includes("demo");
   const canAccessDemoLab = currentPermissions.includes("demo:run") || currentRole === "super-admin" || isDemoMode;
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    if (!window.confirm("Queres salir ahora?")) return;
+    setLoggingOut(true);
+    await fetch("/logout", { method: "POST", cache: "no-store" }).catch(() => null);
+    router.replace("/login");
+    router.refresh();
+  };
 
   const quick = { faq: "FAQ", stack: "Tech Stack", glossary: "Glossary", docs: "Docs" };
   const publicMobile = `${productUrls.web}/sun/simulate`;
@@ -315,15 +324,14 @@ export function DashboardShellInner({
               <div className="h-6 w-px bg-white/10 mx-1" />
               <LocaleSwitcher value={locale} options={[...locales]} />
               <SharedThemeToggle />
-              <Link
-                href="/logout"
-                onClick={(event) => {
-                  if (!window.confirm("¿Querés salir ahora?")) event.preventDefault();
-                }}
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
                 className="rounded-lg border border-rose-500/20 hover:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 transition-colors"
               >
-                 {shell.logout}
-              </Link>
+                 {loggingOut ? "Saliendo..." : shell.logout}
+              </button>
             </div>
           </div>
           {isDemoMode ? (

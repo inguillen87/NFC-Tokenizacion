@@ -15,7 +15,10 @@ export default async function RegisterPage() {
             <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Link href="/" aria-label="nexID home" className="inline-flex items-center"><BrandLockup size={56} variant="pulse" theme="dark" className="brand-surface-auth" /></Link>
-                <Link href="https://nexid.lat" className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200 transition hover:border-cyan-300/30 hover:text-cyan-100">← Volver al landing</Link>
+                <Link href="https://nexid.lat" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2.5 text-sm font-bold text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.16)] transition hover:border-cyan-200/70 hover:bg-cyan-400/16">
+                  <span aria-hidden="true" className="grid h-6 w-6 place-items-center rounded-full bg-cyan-300/15 text-cyan-100">{"<-"}</span>
+                  <span>Volver a nexID</span>
+                </Link>
               </div>
               <h1 className="mt-6 text-3xl font-bold text-white">{t.common.register}</h1>
               <p className="mt-2 text-sm text-slate-300">Alta de cuentas para operación enterprise por tenant. Creá admins, resellers y perfiles de auditoría en el Centro de Control.</p>

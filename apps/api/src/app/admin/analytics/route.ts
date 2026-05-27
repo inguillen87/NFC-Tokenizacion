@@ -68,12 +68,30 @@ type ProductRow = {
   provenance_text: string | null;
 };
 
+let analyticsEventsSchemaReady: Promise<void> | null = null;
+
+async function ensureAnalyticsEventsSchema() {
+  if (!analyticsEventsSchemaReady) {
+    analyticsEventsSchemaReady = (async () => {
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS geo_lat double precision`;
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS geo_lng double precision`;
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS lat double precision`;
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS lng double precision`;
+    })().catch((error) => {
+      analyticsEventsSchemaReady = null;
+      throw error;
+    });
+  }
+  return analyticsEventsSchemaReady;
+}
+
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
   const { tenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  await ensureAnalyticsEventsSchema();
 
   const [overviewRows, trendRows, batchRows, geoRows, deviceRows, journeyRows] = await Promise.all([
     tenant
