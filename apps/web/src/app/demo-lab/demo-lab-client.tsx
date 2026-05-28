@@ -34,7 +34,7 @@ const DEMO_VERTICAL_ORDER: Vertical[] = ["wine", "seeds", "creamJar", "perfume",
 const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> = {
   wine: { imageUrl: "/demo/wine-secure/real-malbec-bottle-pexels.jpg", credit: "Pexels / Imperio Ame" },
   seeds: { imageUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg", credit: "Pexels / RDNE Stock project" },
-  creamJar: { imageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg", credit: "Pexels / mskin pro" },
+  creamJar: { imageUrl: "/demo/cosmetics-secure/real-premium-skincare-pexels.jpg", credit: "Pexels / skincare studio" },
   perfume: { imageUrl: "/demo/cosmetics-secure/real-premium-perfume-crop-pexels.jpg", credit: "Pexels / Suhashan Jar" },
   creamTube: { imageUrl: "/demo/cosmetics-secure/real-cosmetic-bottles-pexels.jpg", credit: "Pexels / Daria Liudnaya" },
   bracelet: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
@@ -114,7 +114,7 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Botella", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
-      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set skincare premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "Garantia premium", "Anti mercado gris"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "Garantia premium", "Anti mercado gris"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "Garantia", "Anti falsificacion"] },
       creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "Garantia", "Recompra"] },
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
@@ -155,7 +155,7 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Garrafa", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta na garrafa", "Rolha / lacre aberto", "SUN anti-replay", "Origem + toque global"] },
       seeds: { label: "Sementes", profile: "QR + NFC UID", product: "Envelope de semente certificada", visual: "seed-packet-demo", proof: ["Envelope antifraude", "Lote e variedade", "Custodia agro", "Uso rural"] },
-      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set skincare premium", visual: "cream-jar-demo", proof: ["Lacre tampa-envase", "Abertura muda estado", "Garantia premium", "Anti grey-market"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Lacre tampa-envase", "Abertura muda estado", "Garantia premium", "Anti grey-market"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Lacre entre tampa e gargalo", "Lote e serie", "Garantia", "Antifalsificacao"] },
       creamTube: { label: "Creme", profile: "NTAG213 + lote", product: "Creme dermocosmetico", visual: "cream-tube-demo", proof: ["Lacre sobre tampa flip", "Lote visivel", "Garantia", "Recompra"] },
       bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulseira", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
@@ -195,7 +195,7 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Bottle", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Label on bottle", "Uncork / broken seal", "SUN anti-replay", "Origin + global tap"] },
       seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Certified seed packet", visual: "seed-packet-demo", proof: ["Anti-counterfeit packet", "Lot and variety", "Agro custody", "Rural use"] },
-      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Premium skincare set", visual: "cream-jar-demo", proof: ["Lid-package seal", "Opening changes state", "Premium warranty", "Anti grey-market"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Premium dermocosmetic set", visual: "cream-jar-demo", proof: ["Lid-package seal", "Opening changes state", "Premium warranty", "Anti grey-market"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Premium perfume", visual: "perfume-demo", proof: ["Cap-neck seal", "Lot and serial", "Warranty", "Anti-counterfeit"] },
       creamTube: { label: "Cream", profile: "NTAG213 + batch", product: "Dermocosmetic cream", visual: "cream-tube-demo", proof: ["Seal over flip cap", "Visible batch", "Warranty", "Repurchase"] },
       bracelet: { label: "Wristband", profile: "NTAG215", product: "VIP event wristband", visual: "event-bracelet-demo", proof: ["Phone taps wristband", "Serialized UID", "VIP zones", "Duplicate block"] },

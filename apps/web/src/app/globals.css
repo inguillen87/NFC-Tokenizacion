@@ -19247,7 +19247,7 @@ html.theme-light .sun-panel-map [class*="text-slate-"] {
 /* Final landing route/product split: the map is no longer a backdrop hidden behind the product. */
 .landing-hero-section .hero-object-frame {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(13rem, 0.68fr);
+  grid-template-columns: minmax(0, 0.96fr) minmax(17.5rem, 0.82fr);
   align-items: stretch;
   gap: clamp(0.65rem, 1.25vw, 1rem);
   min-height: auto !important;
@@ -19311,7 +19311,19 @@ html.theme-light .sun-panel-map [class*="text-slate-"] {
     0 1.2rem 2.8rem rgba(2, 6, 23, 0.24);
 }
 
-.hero-asset-media img {
+.hero-asset-photo {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.hero-asset-photo--fallback {
+  display: grid;
+  place-items: center;
+}
+
+.hero-asset-photo > img.hero-real-asset {
   display: block;
   width: 100%;
   height: 100%;
@@ -19322,23 +19334,23 @@ html.theme-light .sun-panel-map [class*="text-slate-"] {
   transform: scale(1.025);
 }
 
-.hero-asset-showcase--wine .hero-asset-media img {
+.hero-asset-showcase--wine .hero-asset-photo > img.hero-real-asset {
   object-position: 42% 52%;
 }
 
-.hero-asset-showcase--events .hero-asset-media img {
+.hero-asset-showcase--events .hero-asset-photo > img.hero-real-asset {
   object-position: 66% 50%;
 }
 
-.hero-asset-showcase--cosmetics .hero-asset-media img {
+.hero-asset-showcase--cosmetics .hero-asset-photo > img.hero-real-asset {
   object-position: 46% 54%;
 }
 
-.hero-asset-showcase--agro .hero-asset-media img {
+.hero-asset-showcase--agro .hero-asset-photo > img.hero-real-asset {
   object-position: 52% 48%;
 }
 
-.hero-asset-showcase--fashion .hero-asset-media img {
+.hero-asset-showcase--fashion .hero-asset-photo > img.hero-real-asset {
   object-position: 50% 57%;
 }
 
@@ -19613,12 +19625,15 @@ html.theme-light .sun-panel-map [class*="text-slate-"] {
 .hero-passport-body p {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.28rem;
   margin: 0.1rem 0 0;
+  overflow-wrap: anywhere;
   color: #047857;
   font-size: 0.58rem;
   font-weight: 950;
   line-height: 1.14;
+  text-align: center;
 }
 
 .hero-passport-body p i {
@@ -20677,10 +20692,45 @@ html.theme-light .landing-hero-section .hero-trace-map--clear [data-nexid-map="p
 }
 
 .landing-hero-section .hero-asset-media {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.08fr) minmax(5.9rem, 0.48fr);
+  align-items: stretch;
+  gap: 0.78rem;
+  min-height: clamp(15.8rem, 24vw, 20rem);
+  padding: 0.68rem;
   background: rgba(8, 47, 73, 0.16) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 0.7rem 1.4rem rgba(2, 6, 23, 0.14) !important;
+}
+
+.landing-hero-section .hero-asset-photo {
+  position: relative;
+  inset: auto;
+  min-width: 0;
+  min-height: 100%;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 0.82rem;
+  background: #020617;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.landing-hero-section .hero-asset-photo > img.hero-real-asset {
+  min-height: 0;
+  transform: scale(1.015);
+}
+
+.landing-hero-section .hero-asset-showcase--wine .hero-asset-photo > img.hero-real-asset {
+  object-position: 38% 52%;
+}
+
+.landing-hero-section .hero-asset-showcase--cosmetics .hero-asset-photo > img.hero-real-asset {
+  object-position: 44% 50%;
+}
+
+.landing-hero-section .hero-asset-showcase--fashion .hero-asset-photo > img.hero-real-asset,
+.landing-hero-section .hero-asset-showcase--events .hero-asset-photo > img.hero-real-asset {
+  object-position: 50% 52%;
 }
 
 .landing-hero-section .hero-asset-media::before,
@@ -20706,7 +20756,23 @@ html.theme-light .landing-hero-section .hero-trace-map--clear [data-nexid-map="p
 }
 
 .landing-hero-section .hero-passport-phone {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  z-index: 5;
+  align-self: center;
+  justify-self: center;
+  width: min(100%, 7.35rem);
+  min-width: 6.35rem;
   filter: drop-shadow(0 1.1rem 1.8rem rgba(2, 6, 23, 0.28));
+}
+
+.landing-hero-section .hero-asset-nfc {
+  right: calc(0.78rem + min(7.35rem, 22%));
+}
+
+.landing-hero-section .hero-asset-status {
+  display: none;
 }
 
 .landing-hero-section .hero-trace-map--clear::after {
@@ -20747,6 +20813,25 @@ html.theme-light .landing-hero-section .hero-asset-media {
 
   .landing-hero-section .hero-asset-label-cover {
     inset: auto 0.55rem 0.55rem 0.55rem !important;
+  }
+
+  .landing-hero-section .hero-asset-media {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: auto;
+    padding: 0.55rem;
+  }
+
+  .landing-hero-section .hero-asset-photo {
+    min-height: 12.5rem;
+  }
+
+  .landing-hero-section .hero-passport-phone {
+    width: min(78%, 8.7rem);
+    min-width: 7rem;
+  }
+
+  .landing-hero-section .hero-asset-nfc {
+    right: 0.72rem;
   }
 }
 
@@ -23243,6 +23328,53 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 
 .demo-lab-premium-scene--sneaker .demo-lab-premium-scene__media figcaption {
   background: rgba(2, 6, 23, 0.72) !important;
+}
+
+.demo-lab-premium-scene--creamJar .demo-lab-premium-scene__media,
+.demo-lab-premium-scene--creamTube .demo-lab-premium-scene__media {
+  background:
+    radial-gradient(circle at 46% 58%, rgba(186, 230, 253, 0.26), transparent 48%),
+    linear-gradient(145deg, rgba(248, 250, 252, 0.96), rgba(224, 242, 254, 0.8)) !important;
+}
+
+.demo-lab-premium-scene--creamJar .demo-lab-premium-scene__media::after,
+.demo-lab-premium-scene--creamTube .demo-lab-premium-scene__media::after {
+  background:
+    linear-gradient(180deg, transparent 55%, rgba(2, 6, 23, 0.36)),
+    radial-gradient(circle at 42% 48%, rgba(255, 255, 255, 0.22), transparent 42%) !important;
+}
+
+.demo-lab-premium-scene--creamJar .demo-lab-premium-scene__media img,
+.demo-lab-premium-scene--creamTube .demo-lab-premium-scene__media img {
+  object-fit: cover !important;
+  object-position: 39% 52% !important;
+  transform: scale(1.02) !important;
+  filter: saturate(1.02) contrast(1.06) brightness(1.08) !important;
+}
+
+.demo-lab-premium-scene--creamJar.demo-lab-premium-scene--stage .demo-lab-premium-scene__media,
+.demo-lab-premium-scene--creamTube.demo-lab-premium-scene--stage .demo-lab-premium-scene__media {
+  left: clamp(1.2rem, 3vw, 2rem);
+  width: min(42%, 21rem);
+  aspect-ratio: 1;
+}
+
+.demo-lab-premium-scene--creamJar.demo-lab-premium-scene--stage .demo-lab-premium-scene__phone,
+.demo-lab-premium-scene--creamTube.demo-lab-premium-scene--stage .demo-lab-premium-scene__phone {
+  right: clamp(1.1rem, 3vw, 2.1rem);
+}
+
+.demo-lab-premium-scene--creamJar.demo-lab-premium-scene--stage .demo-lab-premium-scene__tag-card,
+.demo-lab-premium-scene--creamTube.demo-lab-premium-scene--stage .demo-lab-premium-scene__tag-card {
+  right: clamp(9.6rem, 24vw, 15rem);
+  width: min(24%, 11.5rem);
+}
+
+.demo-lab-premium-scene--creamJar.demo-lab-premium-scene--stage .demo-lab-premium-scene__proof,
+.demo-lab-premium-scene--creamTube.demo-lab-premium-scene--stage .demo-lab-premium-scene__proof {
+  left: 38%;
+  bottom: clamp(4rem, 6.2vw, 5rem);
+  width: min(35%, 18rem);
 }
 
 .demo-lab-premium-scene__phone strong,

@@ -91,6 +91,20 @@ export type SunTenantProfileResolution =
       missing: string[];
     };
 
+const DEMO_BODEGA_BID = "DEMO-2026-02";
+const DEMO_BODEGA_OWNERSHIP_POLICY = {
+  requiresPurchaseProof: true,
+  requiresFreshTap: true,
+  requiresTenantMembership: true,
+  allowsPublicClaim: false,
+  antiReplayRequired: true,
+};
+const DEMO_BODEGA_MANIFEST_POLICY = {
+  acceptedFormats: ["csv", "txt"],
+  requiredColumns: ["uid_hex"],
+  rejectDuplicates: true,
+};
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
@@ -180,24 +194,52 @@ export function resolveSunTenantProfile(input: {
 }): SunTenantProfileResolution {
   const passport = input.passport || null;
   const result = input.result || null;
-  const config = passport?.batch_sdm_config || null;
+  const config = passport?.batch_sdm_config || asRecord(result?.batch_sdm_config) || null;
   const missing: string[] = [];
 
-  const tenantId = firstString(passport?.tenant_id, result?.tenant_id);
-  const tenantSlug = normalizeTenantSlug(firstString(passport?.tenant_slug, result?.tenant_slug));
-  const tenantName = firstString(passport?.tenant_name, result?.tenant_name);
-  const vertical = normalizeSunVertical(passport?.sun_profile_vertical);
-  const clubName = firstString(passport?.sun_profile_club_name);
-  const productLabel = firstString(passport?.sun_profile_product_label);
-  const originLabel = firstString(passport?.sun_profile_origin_label);
-  const originAddress = firstString(passport?.sun_profile_origin_address);
-  const originLat = toNumber(passport?.sun_profile_origin_lat);
-  const originLng = toNumber(passport?.sun_profile_origin_lng);
-  const tokenizationMode = normalizeTokenizationMode(passport?.sun_profile_tokenization_mode);
-  const claimPolicy = normalizeClaimPolicy(passport?.sun_profile_claim_policy);
-  const ownershipPolicy = nonEmptyObject(passport?.sun_profile_ownership_policy);
-  const manifestPolicy = nonEmptyObject(passport?.sun_profile_manifest_policy);
-  const productName = firstString(passport?.product_name, passport?.sku, readPath(config, ["sun", "product", "name"]));
+  const tenantSlug = normalizeTenantSlug(firstString(passport?.tenant_slug, result?.tenant_slug, result?.tenant));
+  const isDemoBodega = input.bid === DEMO_BODEGA_BID && tenantSlug === "demobodega";
+  const tenantId = firstString(passport?.tenant_id, result?.tenant_id, isDemoBodega ? "demobodega" : null);
+  const tenantName = firstString(passport?.tenant_name, result?.tenant_name, isDemoBodega ? "Demo Bodega" : null);
+  const vertical = normalizeSunVertical(passport?.sun_profile_vertical)
+    || normalizeSunVertical(readPath(config, ["sun", "vertical"]))
+    || (isDemoBodega ? "wine" : null);
+  const clubName = firstString(passport?.sun_profile_club_name, readPath(config, ["sun", "clubName"]), isDemoBodega ? "Club Terroir" : null);
+  const productLabel = firstString(passport?.sun_profile_product_label, readPath(config, ["sun", "product", "label"]), isDemoBodega ? "Vino premium" : null);
+  const originLabel = firstString(
+    passport?.sun_profile_origin_label,
+    readPath(config, ["sun", "origin", "label"]),
+    readPath(config, ["sun", "origin", "region"]),
+    isDemoBodega ? "Valle de Uco, Mendoza" : null,
+  );
+  const originAddress = firstString(
+    passport?.sun_profile_origin_address,
+    readPath(config, ["sun", "origin", "address"]),
+    isDemoBodega ? "Finca Altamira, Mendoza, AR" : null,
+  );
+  const originLat = toNumber(passport?.sun_profile_origin_lat)
+    ?? toNumber(readPath(config, ["sun", "origin", "lat"]))
+    ?? (isDemoBodega ? -33.3667 : null);
+  const originLng = toNumber(passport?.sun_profile_origin_lng)
+    ?? toNumber(readPath(config, ["sun", "origin", "lng"]))
+    ?? (isDemoBodega ? -69.15 : null);
+  const tokenizationMode = normalizeTokenizationMode(passport?.sun_profile_tokenization_mode)
+    || normalizeTokenizationMode(readPath(config, ["sun", "passport", "tokenizationMode"]))
+    || normalizeTokenizationMode(readPath(config, ["sun", "tokenizationMode"]))
+    || (isDemoBodega ? "valid_and_opened" : null);
+  const claimPolicy = normalizeClaimPolicy(passport?.sun_profile_claim_policy)
+    || normalizeClaimPolicy(readPath(config, ["sun", "passport", "claimPolicy"]))
+    || normalizeClaimPolicy(readPath(config, ["sun", "claimPolicy"]))
+    || (isDemoBodega ? "purchase_proof_required" : null);
+  const ownershipPolicy = nonEmptyObject(passport?.sun_profile_ownership_policy)
+    || nonEmptyObject(readPath(config, ["sun", "passport", "ownershipPolicy"]))
+    || nonEmptyObject(readPath(config, ["sun", "ownershipPolicy"]))
+    || (isDemoBodega ? DEMO_BODEGA_OWNERSHIP_POLICY : null);
+  const manifestPolicy = nonEmptyObject(passport?.sun_profile_manifest_policy)
+    || nonEmptyObject(readPath(config, ["sun", "passport", "manifestPolicy"]))
+    || nonEmptyObject(readPath(config, ["sun", "manifestPolicy"]))
+    || (isDemoBodega ? DEMO_BODEGA_MANIFEST_POLICY : null);
+  const productName = firstString(passport?.product_name, passport?.sku, readPath(config, ["sun", "product", "name"]), isDemoBodega ? "Gran Reserva Malbec" : null);
   const media = asRecord(readPath(passport?.locale_data, ["media"]))
     || asRecord(readPath(config, ["sun", "product", "media"]))
     || null;
@@ -257,8 +299,8 @@ export function resolveSunTenantProfile(input: {
         region: firstString(passport?.region, readPath(config, ["sun", "origin", "region"])),
         varietal: firstString(passport?.grape_varietal, readPath(config, ["sun", "product", "varietal"])),
         vintage: firstString(passport?.vintage, readPath(config, ["sun", "product", "vintage"])),
-        harvestYear: typeof passport?.harvest_year === "number" ? passport.harvest_year : null,
-        barrelMonths: typeof passport?.barrel_months === "number" ? passport.barrel_months : null,
+        harvestYear: typeof passport?.harvest_year === "number" ? passport.harvest_year : toNumber(readPath(config, ["sun", "product", "harvestYear"])),
+        barrelMonths: typeof passport?.barrel_months === "number" ? passport.barrel_months : toNumber(readPath(config, ["sun", "product", "barrelMonths"])),
         storage: firstString(passport?.temperature_storage, readPath(config, ["sun", "product", "storage"])),
         alcohol: firstString(readPath(config, ["sun", "product", "alcohol"])),
         bottle: firstString(readPath(config, ["sun", "product", "bottle"])),

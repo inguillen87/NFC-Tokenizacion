@@ -59,11 +59,11 @@ const demoStockAssets: Partial<Record<AssetVisualKind, { productImageUrl: string
     sourceLabel: "Pexels / freestocks.org",
   },
   creamJar: {
-    productImageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg",
+    productImageUrl: "/demo/cosmetics-secure/real-premium-skincare-pexels.jpg",
     sourceLabel: "Pexels / mskin pro",
   },
   creamTube: {
-    productImageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg",
+    productImageUrl: "/demo/cosmetics-secure/real-premium-skincare-pexels.jpg",
     sourceLabel: "Pexels / mskin pro",
   },
   perfume: {
@@ -124,7 +124,7 @@ function verticalLabel(kind: AssetVisualKind) {
 function defaultProductName(kind: AssetVisualKind) {
   if (kind === "bracelet") return "Brazalete VIP evento";
   if (kind === "ticket") return "Entrada verificada";
-  if (kind === "creamJar") return "Set skincare premium";
+  if (kind === "creamJar") return "Set dermocosmetico premium";
   if (kind === "creamTube") return "Set skincare premium";
   if (kind === "perfume") return "Perfume premium";
   if (kind === "seeds") return "Semillas trazables";

@@ -17,7 +17,7 @@ const manifestPolicy = {
   rejectDuplicates: true,
 };
 
-test("demobodega resolves only when database passport/profile/product data is present", () => {
+test("demobodega resolves when database passport/profile/product data is present", () => {
   const result = resolveSunTenantProfile({
     bid: "DEMO-2026-02",
     passport: {
@@ -47,6 +47,40 @@ test("demobodega resolves only when database passport/profile/product data is pr
   assert.equal(result.profile.tokenizationMode, "valid_and_opened");
   assert.equal(result.profile.claimPolicy, "purchase_proof_required");
   assert.equal(result.profile.origin.coordinates.lat, -33.3667);
+  assert.equal(result.profile.product.name, "Gran Reserva Malbec");
+});
+
+test("demobodega tap can resolve from SUN result when UID snapshot is unavailable", () => {
+  const result = resolveSunTenantProfile({
+    bid: "DEMO-2026-02",
+    result: {
+      tenant_id: "00000000-0000-0000-0000-000000000001",
+      tenant_slug: "demobodega",
+      tenant_name: "Demo Bodega",
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profile.tenantSlug, "demobodega");
+  assert.equal(result.profile.product.name, "Gran Reserva Malbec");
+  assert.equal(result.profile.origin.label, "Valle de Uco, Mendoza");
+  assert.equal(result.profile.tokenizationMode, "valid_and_opened");
+});
+
+test("demobodega tap can resolve from production SUN tenant field without UID", () => {
+  const result = resolveSunTenantProfile({
+    bid: "DEMO-2026-02",
+    result: {
+      tenant: "demobodega",
+      status: 403,
+      verdict: "TENANT_SETUP_REQUIRED",
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profile.tenantId, "demobodega");
+  assert.equal(result.profile.tenantSlug, "demobodega");
+  assert.equal(result.profile.tenantName, "Demo Bodega");
   assert.equal(result.profile.product.name, "Gran Reserva Malbec");
 });
 

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { json } from '../../lib/http';
 import { processSunScan } from '../../lib/sun-service';
+import { normalizeDemoBodegaSunResult } from '../../lib/sun-demo-bodega-normalizer';
 import { createDemoShareToken } from '../../lib/demo-share';
 import { seedDemoPack } from '../../lib/demo-seed';
 import { sql } from '../../lib/db';
@@ -231,6 +232,16 @@ function webBaseUrl(sourceUrl?: URL) {
   }
 
   return "https://nexid.lat";
+}
+
+function dashboardBaseUrl() {
+  const configured =
+    process.env.NEXT_PUBLIC_DASHBOARD_URL
+    || process.env.NEXT_PUBLIC_DASHBOARD_BASE_URL
+    || process.env.DASHBOARD_BASE_URL
+    || process.env.DASHBOARD_URL
+    || process.env.APP_DASHBOARD_URL;
+  return (configured || "https://app.nexid.lat").replace(/\/$/, "");
 }
 
 function buildWebSunSnapshotUrl(url: URL, diagnosticId: number | null, traceId: string, locale: SunLocale, freshToken?: string | null) {
@@ -499,11 +510,11 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
     console.warn("[tokenization_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
   });
   await ensureSunTenantProfilesSchema().catch((error) => {
-    const reason = error instanceof Error ?error.message : "sun_tenant_profile_schema_unavailable";
+    const reason = error instanceof Error ? error.message : "sun_tenant_profile_schema_unavailable";
     console.warn("[sun_tenant_profile_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
   });
   await ensureCarrierProfileSchema().catch((error) => {
-    const reason = error instanceof Error ?error.message : "carrier_profile_schema_unavailable";
+    const reason = error instanceof Error ? error.message : "carrier_profile_schema_unavailable";
     console.warn("[carrier_profile_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
   });
   const rows = await sql/*sql*/`
@@ -582,6 +593,73 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       LIMIT 1
     ) tok ON TRUE
     WHERE b.bid = ${bid} AND UPPER(t.uid_hex) = UPPER(${uid})
+    LIMIT 1
+  `;
+  return (rows[0] || null) as PassportSnapshot;
+}
+
+async function getBatchSunContext(bid: string): Promise<PassportSnapshot> {
+  await ensureSunTenantProfilesSchema().catch((error) => {
+    const reason = error instanceof Error ? error.message : "sun_tenant_profile_schema_unavailable";
+    console.warn("[sun_tenant_profile_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
+  });
+  await ensureCarrierProfileSchema().catch((error) => {
+    const reason = error instanceof Error ? error.message : "carrier_profile_schema_unavailable";
+    console.warn("[carrier_profile_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
+  });
+  const rows = await sql/*sql*/`
+    SELECT
+      b.tenant_id::text AS tenant_id,
+      b.status::text AS batch_status,
+      b.sdm_config AS batch_sdm_config,
+      tn.slug AS tenant_slug,
+      tn.name AS tenant_name,
+      COALESCE(b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', '')) AS carrier_profile_code,
+      cp.label AS carrier_label,
+      cp.security_level AS carrier_security_level,
+      cp.capabilities AS carrier_capabilities,
+      cp.consumer_copy AS carrier_consumer_copy,
+      cp.admin_copy AS carrier_admin_copy,
+      tsp.vertical AS sun_profile_vertical,
+      tsp.club_name AS sun_profile_club_name,
+      tsp.product_label AS sun_profile_product_label,
+      tsp.origin_label AS sun_profile_origin_label,
+      tsp.origin_address AS sun_profile_origin_address,
+      tsp.origin_lat AS sun_profile_origin_lat,
+      tsp.origin_lng AS sun_profile_origin_lng,
+      tsp.tokenization_mode AS sun_profile_tokenization_mode,
+      tsp.claim_policy AS sun_profile_claim_policy,
+      tsp.ownership_policy AS sun_profile_ownership_policy,
+      tsp.manifest_policy AS sun_profile_manifest_policy,
+      NULL::text AS product_name,
+      NULL::text AS sku,
+      NULL::text AS winery,
+      NULL::text AS region,
+      NULL::text AS grape_varietal,
+      NULL::text AS vintage,
+      NULL::integer AS harvest_year,
+      NULL::integer AS barrel_months,
+      NULL::text AS temperature_storage,
+      NULL::text AS image_url,
+      NULL::jsonb AS locale_data,
+      NULL::text AS tag_status,
+      NULL::integer AS scan_count,
+      NULL::text AS first_verified_at,
+      NULL::text AS first_city,
+      NULL::text AS first_country,
+      NULL::text AS last_verified_at,
+      NULL::text AS last_city,
+      NULL::text AS last_country,
+      NULL::text AS last_result,
+      NULL::text AS tokenization_status,
+      NULL::text AS tokenization_network,
+      NULL::text AS tokenization_tx_hash,
+      NULL::text AS tokenization_token_id
+    FROM batches b
+    JOIN tenants tn ON tn.id = b.tenant_id
+    LEFT JOIN carrier_profiles cp ON cp.code = COALESCE(b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', ''))
+    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = b.tenant_id
+    WHERE b.bid = ${bid}
     LIMIT 1
   `;
   return (rows[0] || null) as PassportSnapshot;
@@ -676,8 +754,8 @@ function buildPublicContract(params: {
   const verdictRisk = mapVerdictAndRisk({ statusCode: status, productState: params.result.product_state || null, reason, encPlainStatusByte: params.result.enc_plain_status_byte || null });
   const troubleshooting = buildTroubleshooting(reason, params.bid);
   const tenantResolution = resolveSunTenantProfile({ bid: params.bid, passport: params.passport, result: params.result as Record<string, unknown> });
-  const setupWebBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
-  const setupEventId = (params.result as { event_id?: string | number | null }).event_id ?String((params.result as { event_id?: string | number | null }).event_id) : null;
+  const setupDashboardBase = dashboardBaseUrl();
+  const setupEventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
   const setupUa = summarizeUserAgent(params.tap.userAgent);
   const resultMeta = params.result as Record<string, unknown>;
   const carrierProfileCode = params.passport?.carrier_profile_code || null;
@@ -874,10 +952,10 @@ function buildPublicContract(params: {
         provenance: false,
         tokenize: false,
         clubName: null,
-        registerUrl: `${setupWebBase}/admin/onboarding?${setupQuery.toString()}`,
-        portalUrl: `${setupWebBase}/admin/onboarding?${setupQuery.toString()}`,
-        marketplaceUrl: `${setupWebBase}/admin/onboarding?${setupQuery.toString()}`,
-        rewardsUrl: `${setupWebBase}/admin/onboarding?${setupQuery.toString()}`,
+        registerUrl: `${setupDashboardBase}/onboarding?${setupQuery.toString()}`,
+        portalUrl: `${setupDashboardBase}/onboarding?${setupQuery.toString()}`,
+        marketplaceUrl: `${setupDashboardBase}/onboarding?${setupQuery.toString()}`,
+        rewardsUrl: `${setupDashboardBase}/onboarding?${setupQuery.toString()}`,
       },
       troubleshooting: [
         ...troubleshooting,
@@ -2031,16 +2109,39 @@ export async function GET(req: Request): Promise<Response> {
     }
   }
 
-  const uid = result.body.uid || null;
-  const eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
-  const ctr = typeof result.body.ctr === 'number' ?result.body.ctr : null;
+  let uid = result.body.uid || null;
+  let eventId = Number((result.body as { event_id?: number }).event_id || 0) || null;
+  let ctr = typeof result.body.ctr === 'number' ?result.body.ctr : null;
   if (uid && ctr != null) {
     const uidCtrRate = await safeHitSunRateLimit('uid_ctr', `${uid}:${ctr}`, 60, RATE_LIMIT_MAX_UID_CTR);
     if (uidCtrRate.limited) {
       return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
     }
   }
-  const passport = await withTimeout(getPassportSnapshot(bid, uid || undefined), 2500, "sun_passport_snapshot").catch(() => null);
+  const tagPassport = await withTimeout(getPassportSnapshot(bid, uid || undefined), 2500, "sun_passport_snapshot").catch(() => null);
+  const batchContext = tagPassport
+    ? null
+    : await withTimeout(getBatchSunContext(bid), 2500, "sun_batch_context").catch(() => null);
+  const passport = tagPassport || batchContext;
+  const normalizedResult = normalizeDemoBodegaSunResult({
+    bid,
+    result,
+    passport: passport as Record<string, unknown> | null,
+  });
+  if (normalizedResult !== result) {
+    console.warn("[sun_demo_bodega_result_normalized]", JSON.stringify({
+      traceId,
+      bid,
+      previousStatus: result.status,
+      previousResult: result.body.result || null,
+      previousReason: result.body.reason || null,
+      eventId,
+    }));
+    result = normalizedResult as SunResult;
+    uid = result.body.uid || uid;
+    eventId = Number((result.body as { event_id?: number }).event_id || eventId || 0) || null;
+    ctr = typeof result.body.ctr === 'number' ?result.body.ctr : ctr;
+  }
   const timeline = await withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]);
   const ctaTimeline = await withTimeout(getCtaTimelineSummary(bid, uid || undefined), 2500, "sun_cta_timeline").catch(() => [] as TimelineEvent[]);
   const mergedTimeline = [...timeline, ...ctaTimeline]

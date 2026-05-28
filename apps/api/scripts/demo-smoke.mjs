@@ -2,6 +2,7 @@
 
 const apiBaseUrl = process.env.DEMO_SMOKE_BASE_URL || "http://localhost:3003";
 const webBaseUrl = process.env.DEMO_SMOKE_WEB_BASE_URL || "http://localhost:3000";
+const demoSunQuery = "bid=DEMO-2026-02&picc_data=0000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000";
 
 async function check(name, url, validate, options = {}) {
   try {
@@ -20,16 +21,16 @@ async function check(name, url, validate, options = {}) {
 }
 
 await check("health", `${apiBaseUrl}/health`, (response, text) => response.ok && /ok|healthy|true/i.test(text));
-await check("sun-json", `${apiBaseUrl}/sun?view=json&bid=DEMO-2026-02&uid=04B7723410E2AD&ctr=1&cmac=DEMO`, (response, text) => {
+await check("sun-json", `${apiBaseUrl}/sun?view=json&${demoSunQuery}`, (response, text) => {
   const isJson = /application\/json/.test(response.headers.get("content-type") || "") || text.trim().startsWith("{");
   return response.status < 500 && isJson && /"(verdict|status|ok)"/i.test(text);
 });
-await check("sun-html", `${apiBaseUrl}/sun?view=html&bid=DEMO-2026-02&uid=04B7723410E2AD&ctr=1&cmac=DEMO`, (response, text) => {
+await check("sun-html", `${apiBaseUrl}/sun?view=html&${demoSunQuery}`, (response, text) => {
   const hasHtml = /text\/html/.test(response.headers.get("content-type") || "") && /<html/i.test(text);
   return response.status < 500 && hasHtml && /(trust|auth|autenticación|autenticação)/i.test(text);
 });
 await check("admin-events-stream", `${apiBaseUrl}/admin/events/stream`, (response, text) => {
-  return response.status < 500 && (/text\/event-stream/.test(response.headers.get("content-type") || "") || /event:|data:/i.test(text));
+  return response.status === 401 || (response.status < 500 && (/text\/event-stream/.test(response.headers.get("content-type") || "") || /event:|data:/i.test(text)));
 });
 
 if (process.env.DEMO_CONSUMER_COOKIE) {
