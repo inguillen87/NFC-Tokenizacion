@@ -35,11 +35,11 @@ const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> 
   wine: { imageUrl: "/demo/wine-secure/real-malbec-bottle-pexels.jpg", credit: "Pexels / Imperio Ame" },
   seeds: { imageUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg", credit: "Pexels / RDNE Stock project" },
   creamJar: { imageUrl: "/demo/cosmetics-secure/real-premium-skincare-set-pexels.jpg", credit: "Pexels / mskin pro" },
-  perfume: { imageUrl: "/demo/cosmetics-secure/real-luxury-perfume-pexels.jpg", credit: "Pexels / Suhashan Jar" },
+  perfume: { imageUrl: "/demo/cosmetics-secure/real-premium-perfume-crop-pexels.jpg", credit: "Pexels / Suhashan Jar" },
   creamTube: { imageUrl: "/demo/cosmetics-secure/real-cosmetic-bottles-pexels.jpg", credit: "Pexels / Daria Liudnaya" },
   bracelet: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
   ticket: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
-  sneaker: { imageUrl: "/demo/luxury-basic/real-premium-sneakers-neutral-pexels.jpg", credit: "Pexels / Jibarofoto" },
+  sneaker: { imageUrl: "/demo/luxury-basic/real-premium-sneakers-stage-crop.jpg", credit: "Pexels / Jibarofoto" },
 };
 
 type DemoEvent = {
@@ -1360,9 +1360,9 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
   if (vertical === "perfume") {
     return {
       ...base,
-      family: "Perfume premium real",
-      evidence: "Tapa NFC, serie, lote y garantia",
-      proofTitle: "Tapa + serie + lote",
+      family: "Fragancia premium real",
+      evidence: "Tapa, serie y lote validados antes de compra",
+      proofTitle: "Frasco + tapa + lote",
       tagTitle: "NTAG 424 DNA",
       crop: "portrait",
     };
