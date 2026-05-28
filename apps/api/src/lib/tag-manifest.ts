@@ -1,5 +1,12 @@
 import crypto from "node:crypto";
 import { parse } from "csv-parse/sync";
+import {
+  buildSunPayloadHashes,
+  isCompleteSunPayload,
+  parseSunPayloadFromManifestRow,
+  type SunPayloadHashes,
+  type SunPayloadParts,
+} from "./sun-payload.ts";
 
 export type CarrierProfileCode =
   | "qr_basic"
@@ -47,6 +54,8 @@ export type ParsedManifestRow = {
   modelUrl: string | null;
   galleryUrls: string[];
   carrierProfileCode: CarrierProfileCode | null;
+  sunPayload: SunPayloadParts | null;
+  sunPayloadHashes: SunPayloadHashes | null;
   raw: Record<string, string>;
 };
 
@@ -165,6 +174,23 @@ export function parseTagManifest(content: string, expectedBid: string): Manifest
       rejectedRows.push({ row: index + 1, reason: "invalid_carrier_profile", value: carrierProfileInput });
       return;
     }
+    const sunPayload = parseSunPayloadFromManifestRow(row, expectedBid);
+    if (sunPayload && !isCompleteSunPayload(sunPayload)) {
+      rejectedRows.push({ row: index + 1, reason: "invalid_sun_payload", value: JSON.stringify(sunPayload) });
+      return;
+    }
+    if (sunPayload?.bid && sunPayload.bid !== expectedBid) {
+      rejectedRows.push({ row: index + 1, reason: "batch_id_mismatch", value: sunPayload.bid });
+      return;
+    }
+    const sunPayloadHashes = sunPayload
+      ? buildSunPayloadHashes({
+          bid: sunPayload.bid || expectedBid,
+          piccDataHex: sunPayload.piccDataHex,
+          encHex: sunPayload.encHex,
+          cmacHex: sunPayload.cmacHex,
+        })
+      : null;
     seen.add(uidHex);
     rows.push({
       uidHex,
@@ -179,17 +205,11 @@ export function parseTagManifest(content: string, expectedBid: string): Manifest
       modelUrl: getColumn(row, ["model_url", "modelUrl", "glb_url", "glbUrl", "model3d_url", "model3dUrl"]) || null,
       galleryUrls: splitUrls(getColumn(row, ["gallery_urls", "galleryUrls", "media_urls", "mediaUrls", "gallery", "images"])),
       carrierProfileCode,
+      sunPayload,
+      sunPayloadHashes,
       raw: row,
     });
   });
-
-  if (manifestType === "csv" && rows.some((row) => !row.productName && !row.sku)) {
-    rows.forEach((row, index) => {
-      if (!row.productName && !row.sku) {
-        rejectedRows.push({ row: index + 1, reason: "product_name_or_sku_required", value: row.uidHex });
-      }
-    });
-  }
 
   return { contentHash, manifestType, rows, duplicateUids, rejectedRows };
 }

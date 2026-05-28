@@ -1,11 +1,13 @@
 import { sql } from './db';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { decryptKey16 } from './keys';
 import { verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
 import { decodeTTStatus, parseTTStatusFromDecryptedPayload } from './ttstatus';
 import { recordTapEvent } from './tap-event-service';
 import type { NexidEventVerdict } from '@product/core';
+import { buildSunPayloadHashes } from './sun-payload.ts';
+import { findRegisteredSunPayload } from './sun-payload-registry.ts';
 
 const AUTHENTIC_SCAN_RESULTS = new Set([
   "VALID",
@@ -28,33 +30,6 @@ const OPENED_SCAN_RESULTS = new Set([
   "VALID_OPENED_PREVIOUSLY",
   "VALID_MANUAL_OPENED",
 ]);
-
-function sha256Fingerprint(value: string) {
-  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
-}
-
-function normalizeHashInput(value: string | undefined | null) {
-  return String(value || "").trim().toUpperCase();
-}
-
-function buildSunPayloadHashes(input: {
-  bid: string;
-  piccDataHex: string;
-  encHex: string;
-  cmacHex: string;
-}) {
-  const bid = String(input.bid || "").trim();
-  const picc = normalizeHashInput(input.piccDataHex);
-  const enc = normalizeHashInput(input.encHex);
-  const cmac = normalizeHashInput(input.cmacHex);
-  const canonicalPayload = `bid=${bid}&picc_data=${picc}&enc=${enc}&cmac=${cmac}`;
-  return {
-    piccDataHash: sha256Fingerprint(picc),
-    encHash: sha256Fingerprint(enc),
-    cmacHash: sha256Fingerprint(cmac),
-    rawUrlHash: sha256Fingerprint(canonicalPayload),
-  };
-}
 
 export type ScanContext = {
   ip?: string | null;
@@ -431,47 +406,86 @@ export async function processSunScan(input: {
     kFileHex: kFile,
   });
 
+  const registeredPayloadMatch = res.ok
+    ? null
+    : await findRegisteredSunPayload({ batchId: String(batch.id), hashes: scanHashes }).catch(() => null);
+  const resolvedUidHex = res.ok ? res.uidHex : registeredPayloadMatch?.uidHex || null;
+  const resolvedCtr = res.ok ? res.ctr : null;
+  const cryptographicVerification = Boolean(res.ok);
+  const cryptoErrorReason = res.ok ? null : res.reason;
+  const supplierPayloadMatch = Boolean(registeredPayloadMatch);
+  const payloadVerified = cryptographicVerification || supplierPayloadMatch;
+
   let allowlisted = false;
   let tagStatus: string | null = null;
   let replaySuspect = false;
 
-  if (res.ok) {
-    const priorEventRows = await sql/*sql*/`
+  const priorPayloadEventRows = await sql/*sql*/`
+    SELECT id
+    FROM events
+    WHERE batch_id = ${batch.id}
+      AND (
+        (picc_data_hash = ${scanHashes.piccDataHash} AND cmac_hash = ${scanHashes.cmacHash})
+        OR raw_url_hash = ${scanHashes.rawUrlHash}
+      )
+    ORDER BY created_at ASC
+    LIMIT 1
+  `;
+  if (priorPayloadEventRows[0]) {
+    replaySuspect = true;
+    replayOriginalEventId = Number((priorPayloadEventRows[0] as { id?: number }).id || 0) || null;
+  }
+
+  if (res.ok && resolvedUidHex && resolvedCtr != null) {
+    const priorCounterEventRows = await sql/*sql*/`
       SELECT id
       FROM events
       WHERE batch_id = ${batch.id}
-        AND (
-          (UPPER(uid_hex) = UPPER(${res.uidHex}) AND sdm_read_ctr = ${res.ctr})
-          OR (picc_data_hash = ${scanHashes.piccDataHash} AND cmac_hash = ${scanHashes.cmacHash})
-          OR raw_url_hash = ${scanHashes.rawUrlHash}
-        )
+        AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
+        AND sdm_read_ctr = ${resolvedCtr}
       ORDER BY created_at ASC
       LIMIT 1
     `;
-    if (priorEventRows[0]) {
+    if (priorCounterEventRows[0]) {
       replaySuspect = true;
-      replayOriginalEventId = Number((priorEventRows[0] as { id?: number }).id || 0) || null;
+      replayOriginalEventId = replayOriginalEventId || Number((priorCounterEventRows[0] as { id?: number }).id || 0) || null;
     }
+  }
 
+  if (resolvedUidHex) {
     const tagRows = await sql/*sql*/`
       SELECT id, status, last_seen_ctr
       FROM tags
-      WHERE batch_id = ${batch.id} AND UPPER(uid_hex) = UPPER(${res.uidHex})
+      WHERE batch_id = ${batch.id} AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
       LIMIT 1
     `;
     const tag = tagRows[0];
-    if (tag) {
+    if (tag || registeredPayloadMatch) {
       allowlisted = true;
-      tagStatus = tag.status;
-      if (typeof tag.last_seen_ctr === 'number' && res.ctr <= tag.last_seen_ctr) replaySuspect = true;
-      await sql/*sql*/`
-        UPDATE tags
-        SET scan_count = scan_count + 1,
-            first_seen_at = COALESCE(first_seen_at, now()),
-            last_seen_at = now(),
-            last_seen_ctr = GREATEST(COALESCE(last_seen_ctr, -1), ${res.ctr})
-        WHERE id = ${tag.id}
-      `;
+      tagStatus = String(tag?.status || registeredPayloadMatch?.tagStatus || registeredPayloadMatch?.payloadStatus || "active");
+      if (res.ok && typeof tag?.last_seen_ctr === 'number' && resolvedCtr != null && resolvedCtr <= tag.last_seen_ctr) replaySuspect = true;
+      const tagId = tag?.id || registeredPayloadMatch?.tagId || null;
+      if (tagId) {
+        await sql/*sql*/`
+          UPDATE tags
+          SET scan_count = scan_count + 1,
+              first_seen_at = COALESCE(first_seen_at, now()),
+              last_seen_at = now(),
+              last_seen_ctr = CASE
+                WHEN ${resolvedCtr}::integer IS NULL THEN tags.last_seen_ctr
+                ELSE GREATEST(COALESCE(last_seen_ctr, -1), ${resolvedCtr})
+              END
+          WHERE id = ${tagId}
+        `;
+      } else {
+        await sql/*sql*/`
+          UPDATE tags
+          SET scan_count = scan_count + 1,
+              first_seen_at = COALESCE(first_seen_at, now()),
+              last_seen_at = now()
+          WHERE batch_id = ${batch.id} AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
+        `;
+      }
     }
   }
 
@@ -532,7 +546,7 @@ export async function processSunScan(input: {
     }
     return "UNKNOWN" as const;
   })();
-  const authStatus = !res.ok
+  const authStatus = !payloadVerified
     ? 'INVALID'
     : replaySuspect
       ? 'REPLAY_SUSPECT'
@@ -552,7 +566,7 @@ export async function processSunScan(input: {
           ? 'NOT_ACTIVE'
           : 'VALID';
   let result = authStatus;
-  const manualTamper = await getManualTamperOverride(res.ok ? res.uidHex : null);
+  const manualTamper = await getManualTamperOverride(resolvedUidHex);
   const manualOpened = String(manualTamper?.tamper_status || "").toUpperCase() === "MANUAL_OPENED" || String(manualTamper?.tamper_status || "").toUpperCase() === "OPENED";
   const resolvedTamperStatus = manualOpened ? "MANUAL_OPENED" as const : tamperStatus;
   const tamperSource = manualOpened ? "manual" as const : (tamperConfigured ? "electronic" as const : "unavailable" as const);
@@ -567,10 +581,12 @@ export async function processSunScan(input: {
       ? `tagtamper_opened_previously:${ttstatusParsed?.raw || configuredStatusHex || tamperSignal.raw || 'signal'}`
     : requireTamperEvidence && !tamperConfigured
       ? 'tagtamper_unconfigured'
+    : supplierPayloadMatch && !cryptographicVerification
+      ? `supplier_payload_manifest_match:${cryptoErrorReason || "crypto_decode_failed"}`
     : tamperSignal.tamper
       ? `tagtamper_alert:${configuredStatusHex || tamperSignal.raw || 'signal'}`
       : null;
-  const resolvedReason = !res.ok ? res.reason : successReason;
+  const resolvedReason = !payloadVerified ? cryptoErrorReason : successReason;
   const ttStateRaw = ttstatusParsed?.product_state;
   const ttState: TTStatusProductState | null =
     ttStateRaw === "VALID_CLOSED"
@@ -579,9 +595,9 @@ export async function processSunScan(input: {
     || ttStateRaw === "VALID_UNKNOWN_TAMPER"
       ? ttStateRaw
       : null;
-  const authValid = res.ok && authStatus === "VALID";
+  const authValid = payloadVerified && authStatus === "VALID";
   const productState: ProductState = (() => {
-    if (!res.ok || authStatus === "INVALID") return "INVALID";
+    if (!payloadVerified || authStatus === "INVALID") return "INVALID";
     if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT";
     if (ttState === "VALID_OPENED" || ttState === "VALID_OPENED_PREVIOUSLY") return ttState;
     if (ttState === "VALID_CLOSED") return "VALID_CLOSED";
@@ -610,9 +626,9 @@ export async function processSunScan(input: {
   input.context = { ...input.context, requestId };
 
   const eventId = await insertEvent({
-    uidHex: res.ok ? res.uidHex : null,
-    ctr: res.ok ? res.ctr : null,
-    cmacOk: res.ok,
+    uidHex: resolvedUidHex,
+    ctr: resolvedCtr,
+    cmacOk: cryptographicVerification,
     allowlistedValue: allowlisted,
     tagStatusValue: tagStatus,
     resultValue: result,
@@ -626,26 +642,29 @@ export async function processSunScan(input: {
       loyaltyFraudGuard({
         eventId: String(eventId),
         result,
-        uidHex: String(res.ok ? res.uidHex : input.piccDataHex),
+        uidHex: String(resolvedUidHex || input.piccDataHex),
         tenantId: batch.tenant_id
       }).catch(() => null);
 
-      if (res.ok && res.uidHex) {
+      if (payloadVerified && resolvedUidHex) {
         // Safe dispatch. For demo purposes we can map to the expected arg signature.
         evaluateLoyaltyForTap({
           eventId: String(eventId),
           memberId: "anonymous", // Normally we'd extract member info from the context
           program: {}, // Minimal stub to prevent errors since we're hooking it loosely
-          event: { result, uid_hex: res.uidHex }
+          event: { result, uid_hex: resolvedUidHex }
         }).catch(() => null);
       }
     }).catch(() => null);
   }
   console.info("[sun_tamper_decode]", JSON.stringify({
     bid: input.bid,
-    uid: res.ok ? res.uidHex : null,
-    read_counter: res.ok ? res.ctr : null,
-    cmac_valid: Boolean(res.ok),
+    uid: resolvedUidHex,
+    read_counter: resolvedCtr,
+    cmac_valid: cryptographicVerification,
+    supplier_payload_match: supplierPayloadMatch,
+    verification_method: cryptographicVerification ? "sun_crypto" : supplierPayloadMatch ? "supplier_payload_manifest" : "sun_crypto_failed",
+    crypto_error_reason: cryptoErrorReason,
     sdm_decryption_ok: Boolean(res.ok && res.encPlainHex),
     enc_plain_hex_length: res.ok && typeof res.encPlainHex === "string" ? res.encPlainHex.length : 0,
     tt_raw: decodedTT.raw,
@@ -679,10 +698,14 @@ export async function processSunScan(input: {
       tenant_name: (batch as { tenant_name?: string }).tenant_name || undefined,
       auth_status: authStatus,
       bid: input.bid,
-      uid: res.ok ? res.uidHex : undefined,
-      ctr: res.ok ? res.ctr : undefined,
+      uid: resolvedUidHex || undefined,
+      ctr: resolvedCtr ?? undefined,
       picc_plain_hex: res.ok ? res.piccPlainHex : undefined,
       enc_plain_hex: res.ok ? res.encPlainHex : undefined,
+      verification_method: cryptographicVerification ? "sun_crypto" : supplierPayloadMatch ? "supplier_payload_manifest" : "sun_crypto_failed",
+      supplier_payload_match: supplierPayloadMatch,
+      cryptographic_verification: cryptographicVerification,
+      crypto_error_reason: cryptoErrorReason || undefined,
       allowlisted,
       tag_status: tagStatus,
       tamper_signal: tamperSignal.raw || undefined,
@@ -710,7 +733,7 @@ export async function processSunScan(input: {
           : undefined,
       tag_tamper: {
         available: decodedTT.available,
-        verified: Boolean(res.ok),
+        verified: cryptographicVerification,
         source: tamperProfile.ttstatus_source === "none" ? tamperProfile.tamper_status_source : tamperProfile.ttstatus_source,
         raw: decodedTT.raw,
         permanent: decodedTT.permanent,

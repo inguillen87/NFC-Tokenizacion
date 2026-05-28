@@ -62,3 +62,23 @@ test("does not normalize demobodega replay or tamper risk", () => {
   assert.equal(tamper.status, 403);
   assert.equal(tamper.body.result, "TAMPER_RISK");
 });
+
+test("does not normalize demobodega SUN crypto decode failures without supplier payload match", () => {
+  const normalized = normalizeDemoBodegaSunResult({
+    bid: "DEMO-2026-02",
+    result: {
+      status: 403,
+      body: {
+        ok: false,
+        tenant: "demobodega",
+        result: "INVALID",
+        reason: "uid length invalid",
+        verification_method: "sun_crypto_failed",
+      },
+    },
+  });
+
+  assert.equal(normalized.status, 403);
+  assert.equal(normalized.body.ok, false);
+  assert.equal(normalized.body.result, "INVALID");
+});

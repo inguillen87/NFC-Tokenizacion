@@ -8,6 +8,7 @@ import { parseTagManifest } from "../../../../../lib/tag-manifest";
 import { requireTenantSunProfile } from "../../../../../lib/tenant-onboarding";
 import { ensureCarrierProfileSchema } from "../../../../../lib/commercial-runtime-schema";
 import { getCarrierProfile, normalizeCarrierProfileCode } from "../../../../../lib/carrier-profiles";
+import { upsertTagSunPayload } from "../../../../../lib/sun-payload-registry.ts";
 
 type ManifestPayload = {
   csv?: string;
@@ -71,6 +72,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
 
   let inserted = 0;
   let reactivated = 0;
+  let registeredSunPayloads = 0;
 
   for (const row of manifest.rows) {
     const rowCarrierCode = row.carrierProfileCode || batchCarrierCode;
@@ -92,6 +94,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     const current = result[0];
     if (current?.inserted) inserted += 1;
     else if (payload.activateImported) reactivated += 1;
+
+    if (current?.id && row.sunPayloadHashes) {
+      await upsertTagSunPayload({
+        tenantId: String(batch.tenant_id),
+        batchId: String(batch.id),
+        bid: row.sunPayload?.bid || bid,
+        tagId: String(current.id),
+        uidHex: row.uidHex,
+        hashes: row.sunPayloadHashes,
+        source: "supplier_manifest",
+        rawPayload: {
+          sun_payload: row.sunPayload,
+          manifest: row.raw,
+        },
+      });
+      registeredSunPayloads += 1;
+    }
 
     if (row.productName || row.sku) {
       const media = {
@@ -127,7 +146,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     INSERT INTO tenant_manifests (
       tenant_id, batch_id, bid, manifest_type, row_count, inserted_count, reactivated_count, duplicate_count, rejected_count, content_hash, import_status, errors_json, carrier_profile_code
     ) VALUES (
-      ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length}, ${inserted}, ${reactivated}, 0, 0, ${manifest.contentHash}, 'imported', '[]'::jsonb, ${batchCarrierCode}
+      ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length}, ${inserted}, ${reactivated}, 0, 0, ${manifest.contentHash}, 'imported', ${JSON.stringify({ registeredSunPayloads })}::jsonb, ${batchCarrierCode}
     )
   `;
 
@@ -138,6 +157,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     importedRows: manifest.rows.length,
     inserted,
     reactivated,
+    registeredSunPayloads,
     ignored: 0,
     duplicateUids: [],
     activated: payload.activateImported,

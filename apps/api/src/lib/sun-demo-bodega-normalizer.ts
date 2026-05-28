@@ -24,6 +24,23 @@ function hasHardDemoRisk(body: Record<string, unknown>) {
     || body.tamper_risk === true;
 }
 
+function hasCryptoDecodeFailure(body: Record<string, unknown>) {
+  const reason = String(
+    body.reason
+      || body.verdict
+      || body.code
+      || body.original_reason
+      || body.crypto_error_reason
+      || "",
+  ).toLowerCase();
+  return reason.includes("uid length invalid")
+    || reason.includes("cmac mismatch")
+    || reason.includes("picc_data bad length")
+    || reason.includes("invalid_sun_payload")
+    || reason.includes("sun_crypto_failed")
+    || body.verification_method === "sun_crypto_failed";
+}
+
 export function normalizeDemoBodegaSunResult(input: {
   bid: string;
   result: SunLikeResult;
@@ -42,6 +59,7 @@ export function normalizeDemoBodegaSunResult(input: {
 
   if (tenantSlug !== "demobodega") return input.result;
   if (hasHardDemoRisk(body)) return input.result;
+  if (hasCryptoDecodeFailure(body) && body.supplier_payload_match !== true) return input.result;
 
   const rawResult = String(body.result || body.auth_status || "").toUpperCase();
   const rawReason = String(body.reason || body.verdict || body.code || "").toLowerCase();
