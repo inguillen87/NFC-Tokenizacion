@@ -186,6 +186,28 @@ function normalizeSunProfileMismatchContract(input: unknown) {
   return contract;
 }
 
+function withContractSummaryFields(input: unknown) {
+  const contract = cloneRecord(input);
+  const status = asRecord(contract.status);
+  const tapSecurity = asRecord(contract.tapSecurity);
+
+  const statusCode = String(status.code || contract.statusCode || "").trim();
+  const statusLabel = String(status.label || contract.statusLabel || "").trim();
+  const reason = String(tapSecurity.reason || status.reason || contract.reason || "").trim();
+  const actionability = String(tapSecurity.actionability || status.actionability || contract.actionability || "").trim();
+
+  contract.statusCode = statusCode || null;
+  contract.statusLabel = statusLabel || null;
+  contract.reason = reason || null;
+  contract.actionability = actionability || null;
+  contract.tokenizationEligible =
+    typeof tapSecurity.tokenizationEligible === "boolean"
+      ? tapSecurity.tokenizationEligible
+      : Boolean(contract.tokenizationEligible);
+
+  return contract;
+}
+
 export async function insertSunDiagnostic(input: {
   trace_id?: string | null;
   tool_type: SunDiagnosticTool;
@@ -272,14 +294,16 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
     traceId: traceIdValue,
   });
   const freshExpiresAt = fresh.ok ? new Date(fresh.payload.exp * 1000).toISOString() : null;
+  const snapshotContract = fresh.ok
+    ? markFreshHandoffContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt, expiresAt: freshExpiresAt })
+    : markHistoricalSnapshotContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt });
+
   return {
     ok: true,
     diagnostic_id: diagnosticId,
     trace_id: traceIdValue,
     created_at: createdAt,
     snapshot_access: fresh.ok ? "fresh_handoff" : "historical",
-    contract: fresh.ok
-      ? markFreshHandoffContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt, expiresAt: freshExpiresAt })
-      : markHistoricalSnapshotContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt }),
+    contract: withContractSummaryFields(snapshotContract),
   };
 }
