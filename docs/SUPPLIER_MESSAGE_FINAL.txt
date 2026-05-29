@@ -8,12 +8,12 @@ Use case:
 - curved glass / neck / capsule application
 - humidity and cellar conditions
 
-Please use the **same sample batch keys already shared** and keep this exact NDEF URL format:
+Please use the agreed batch keys and keep this NDEF URL format. The dynamic fields below are placeholders, not literal zero values:
 
-https://api.inmov.ar/sun/?v=1&bid=DEMO-2026-02&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000
+https://api.nexid.lat/sun?v=1&bid=<BATCH_ID>&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>
 
 Please keep:
-- `bid` fixed as `DEMO-2026-02`
+- `bid` fixed as the assigned supplier batch ID
 - `picc_data` = dynamic PICC data
 - `enc` = dynamic encrypted SDM file data
 - `cmac` = dynamic SUN/SDM MAC

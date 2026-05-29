@@ -324,10 +324,10 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     },
     tapContext: { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
     tokenization: { status: "sandbox_ready", network: "Polygon Amoy", txHash: "0xDEMO", tokenId: "NX-DEMO-0424" },
-    tag_tamper: { available: true, status: "opened", raw: "4F" },
+    tag_tamper: { available: true, status: "opened", raw: "4F4F" },
     cta: { claimOwnership: true, registerWarranty: true, provenance: true, tokenize: true },
     troubleshooting: [],
-    technical: { raw: { piccDataPrefix: "04A7", encPrefix: "4F", cmacPrefix: "SUN" } },
+    technical: { raw: { piccDataPrefix: "04A7", encPrefix: "4F4F", cmacPrefix: "SUN" } },
   };
 }
 
@@ -392,8 +392,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const statusReason = String(result.status?.reason || "").toLowerCase();
   const productState = String(result.status?.productState || "").toUpperCase();
   const ttStatus = String(result.tag_tamper?.status || "").toLowerCase();
-  const encPlainStatusByte = String(result.status?.encPlainStatusByte || "").toUpperCase();
-  const statusByteSignal = encPlainStatusByte === "43" ? "closed" : encPlainStatusByte === "4F" ? "opened" : "unknown";
   const blockedActions = result.blockedActions || [];
   const allowedActions = result.allowedActions || [];
   const rightsPolicy = result.rightsPolicy || {};
@@ -426,8 +424,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     || productState === "VALID_OPENED"
     || productState === "VALID_OPENED_PREVIOUSLY"
     || productState === "VALID_MANUAL_OPENED"
-    || statusByteSignal === "opened"
-    || ttStatus === "opened";
+    || ttStatus === "opened"
+    || ttStatus === "opened_previously";
   const isCommercialBlocked = blockedActions.some((action) => ["claim", "save", "join", "warranty", "rewards", "tokenization"].includes(action));
   const verdictName = String(result.verdict || "").toLowerCase();
   const isTamperRisk = Boolean(trustSignals.tamperRisk)
@@ -691,10 +689,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
       : "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]";
   const statusHeadline = isSunProfileMismatch
-    ? "Producto detectado. Activacion SUN pendiente."
-    : statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED"
-    ? "Autenticidad confirmada. Sello intacto (CLOSED)."
-    : statusByteSignal === "opened" || ttStatus === "opened"
+    ? "No pudimos validar esta lectura."
+    : ttStatus === "closed" || productState === "VALID_CLOSED"
+    ? "Autenticidad confirmada. Sello intacto."
+    : ttStatus === "opened" || ttStatus === "opened_previously" || productState === "VALID_OPENED" || productState === "VALID_OPENED_PREVIOUSLY"
       ? "Producto auténtico, pero el sello fue abierto (OPENED)."
     : ttStatus === "invalid"
       ? "TagTamper no inicializado o configuración inválida."
@@ -800,8 +798,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     { id: "portal", label: "Portal", done: isFreshCommercialTap },
     { id: "club", label: "Club premium", done: Boolean(result.identity?.tenantSlug) && isFreshCommercialTap },
   ];
-  const sealOpened = statusByteSignal === "opened" || ttStatus === "opened" || productState.includes("OPENED");
-  const sealClosed = statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED";
+  const sealOpened = ttStatus === "opened" || ttStatus === "opened_previously" || productState === "VALID_OPENED" || productState === "VALID_OPENED_PREVIOUSLY" || productState === "VALID_MANUAL_OPENED";
+  const sealClosed = ttStatus === "closed" || productState === "VALID_CLOSED";
   const rawCarrierProfileCode = String(
     result.status?.carrierProfileCode ||
       result.status?.carrier_profile_code ||
@@ -1426,7 +1424,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
              <div className="sun-security-step">
                <span>04</span>
                <b>TagTamper</b>
-               <p>{sealLabel} {encPlainStatusByte ? `(${encPlainStatusByte})` : ""}</p>
+               <p>{sealLabel}</p>
              </div>
            </div>
            <div className="sun-security-footer">

@@ -66,7 +66,7 @@ type ProductState =
   | "UNKNOWN_BATCH"
   | "MALFORMED_URL";
 
-type TamperProfile = {
+export type TamperProfile = {
   chip_model: string;
   tagtamper_enabled: boolean;
   tamper_status_enabled: boolean;
@@ -88,7 +88,7 @@ type TamperProfile = {
   ttstatus_invalid_values: string[];
 };
 
-function resolveTamperProfile(raw: unknown): TamperProfile {
+export function resolveTamperProfile(raw: unknown): TamperProfile {
   const cfg = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
   const sourceRaw = String(cfg.ttstatus_source || cfg.tamper_status_source || "none").toLowerCase();
   const source = (() => {
@@ -96,15 +96,17 @@ function resolveTamperProfile(raw: unknown): TamperProfile {
     if (sourceRaw === "picc_data" || sourceRaw === "picc_data_decrypted") return "picc_data_decrypted";
     return "none";
   })() as TamperProfile["tamper_status_source"];
-  const closedRaw = Array.isArray(cfg.tamper_closed_values) ? cfg.tamper_closed_values : [];
-  const openedRaw = Array.isArray(cfg.tamper_open_values) ? cfg.tamper_open_values : [];
-  const ttClosedRaw = Array.isArray(cfg.ttstatus_closed_values) ? cfg.ttstatus_closed_values : [];
-  const ttOpenedRaw = Array.isArray(cfg.ttstatus_opened_values) ? cfg.ttstatus_opened_values : [];
-  const ttInvalidRaw = Array.isArray(cfg.ttstatus_invalid_values) ? cfg.ttstatus_invalid_values : [];
-  const closed = closedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
-  const opened = openedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
+  const normalizeValues = (values: unknown, fallback: string[]) => {
+    const rawValues = Array.isArray(values) ? values : fallback;
+    return rawValues.map((x) => String(x).trim().toUpperCase()).filter(Boolean);
+  };
+  const ttClosed = normalizeValues(cfg.ttstatus_closed_values, ["4343"]);
+  const ttOpened = normalizeValues(cfg.ttstatus_opened_values, ["4F4F", "4F43"]);
+  const ttInvalid = normalizeValues(cfg.ttstatus_invalid_values, ["4949"]);
+  const closed = normalizeValues(cfg.tamper_closed_values, ttClosed);
+  const opened = normalizeValues(cfg.tamper_open_values, ttOpened);
   const offsetRaw = Number(cfg.ttstatus_offset ?? cfg.tamper_status_offset);
-  const lengthRaw = Number(cfg.tamper_status_length);
+  const lengthRaw = Number(cfg.ttstatus_length ?? cfg.tamper_status_length);
   const unknownPolicyRaw = String(cfg.tamper_unknown_policy || "UNKNOWN").toUpperCase();
   const isTagTamperDefault = /424|tag.?tamper|tt/i.test(String(cfg.chip_model || ""));
   return {
@@ -113,7 +115,7 @@ function resolveTamperProfile(raw: unknown): TamperProfile {
     tamper_status_enabled: Boolean(cfg.tamper_status_enabled ?? cfg.ttstatus_enabled ?? false),
     tamper_status_source: source,
     tamper_status_offset: Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : null,
-    tamper_status_length: Number.isInteger(lengthRaw) && lengthRaw > 0 ? lengthRaw : 1,
+    tamper_status_length: Number.isInteger(lengthRaw) && lengthRaw > 0 ? lengthRaw : 2,
     tamper_closed_values: closed,
     tamper_open_values: opened,
     tamper_unknown_policy: (["UNKNOWN", "DO_NOT_DISPLAY"].includes(unknownPolicyRaw) ? unknownPolicyRaw : "UNKNOWN") as TamperProfile["tamper_unknown_policy"],
@@ -124,9 +126,32 @@ function resolveTamperProfile(raw: unknown): TamperProfile {
     ttstatus_length: 2,
     ttstatus_plain_or_encrypted: String(cfg.ttstatus_plain_or_encrypted || "encrypted").toLowerCase() === "plain" ? "plain" : "encrypted",
     ttstatus_notes: cfg.ttstatus_notes ? String(cfg.ttstatus_notes) : null,
-    ttstatus_closed_values: ttClosedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean),
-    ttstatus_opened_values: ttOpenedRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean),
-    ttstatus_invalid_values: ttInvalidRaw.map((x) => String(x).trim().toUpperCase()).filter(Boolean),
+    ttstatus_closed_values: ttClosed,
+    ttstatus_opened_values: ttOpened,
+    ttstatus_invalid_values: ttInvalid,
+  };
+}
+
+export function summarizeBatchSdmConfig(raw: unknown) {
+  const cfg = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
+  const profile = resolveTamperProfile(cfg);
+  return {
+    chip_model: profile.chip_model,
+    carrier_profile_code: typeof cfg.carrier_profile_code === "string" ? cfg.carrier_profile_code : null,
+    mac_input: typeof cfg.mac_input === "string" ? cfg.mac_input : null,
+    url_template: typeof cfg.url_template === "string" ? cfg.url_template : null,
+    tagtamper_enabled: profile.tagtamper_enabled,
+    tamper_status_enabled: profile.tamper_status_enabled,
+    tamper_status_source: profile.tamper_status_source,
+    tamper_status_offset: profile.tamper_status_offset,
+    tamper_status_length: profile.tamper_status_length,
+    ttstatus_enabled: profile.ttstatus_enabled,
+    ttstatus_source: profile.ttstatus_source,
+    ttstatus_offset: profile.ttstatus_offset,
+    ttstatus_length: profile.ttstatus_length,
+    ttstatus_closed_values: profile.ttstatus_closed_values,
+    ttstatus_opened_values: profile.ttstatus_opened_values,
+    ttstatus_invalid_values: profile.ttstatus_invalid_values,
   };
 }
 
@@ -525,7 +550,7 @@ export async function processSunScan(input: {
   })();
   // Backward-compatible alias used by some in-flight branches/deploys.
   const parsedTTStatus = ttstatusParsed;
-  const decodedTT = decodeTTStatus(ttstatusParsed?.raw || configuredStatusHex || tamperSignal.raw || null);
+  const decodedTT = decodeTTStatus(ttstatusParsed?.raw || null);
   const tamperConfigured = Boolean(
     tagTamperEnabled
     && (tamperProfile.ttstatus_enabled || tamperProfile.tamper_status_enabled)
@@ -538,10 +563,8 @@ export async function processSunScan(input: {
     if (ttstatusParsed?.tamper_status === "OPENED") return "OPENED" as const;
     if (ttstatusParsed?.tamper_status === "OPENED_PREVIOUSLY") return "OPENED_PREVIOUSLY" as const;
     if (ttstatusParsed?.tamper_status === "INVALID") return "INVALID" as const;
-    if (tamperConfigured && configuredStatusHex && tamperProfile.tamper_open_values.includes(configuredStatusHex)) return "OPENED" as const;
-    if (tamperConfigured && configuredStatusHex && tamperProfile.tamper_closed_values.includes(configuredStatusHex)) return "CLOSED" as const;
     if (!tamperConfigured) return "UNKNOWN" as const;
-    if (!configuredStatusHex) {
+    if (!ttstatusParsed?.raw) {
       return "UNKNOWN" as const;
     }
     return "UNKNOWN" as const;
@@ -556,9 +579,7 @@ export async function processSunScan(input: {
       ? 'VALID'
     : tamperStatus === "OPENED" || tamperStatus === "OPENED_PREVIOUSLY"
       ? tamperStatus
-    : tamperSignal.opened
-      ? 'OPENED'
-      : tamperSignal.tamper
+    : tamperSignal.tamper
         ? 'TAMPER_RISK'
       : !allowlisted
         ? 'NOT_REGISTERED'
@@ -576,15 +597,15 @@ export async function processSunScan(input: {
     : manualOpened
     ? `manual_tamper_opened:${String(manualTamper?.reason || "operator_override")}`
     : tamperStatus === "OPENED"
-    ? `tagtamper_opened:${configuredStatusHex || tamperSignal.raw || 'signal'}`
+    ? `tagtamper_opened:${ttstatusParsed?.raw || 'ttstatus'}`
     : tamperStatus === "OPENED_PREVIOUSLY"
-      ? `tagtamper_opened_previously:${ttstatusParsed?.raw || configuredStatusHex || tamperSignal.raw || 'signal'}`
+      ? `tagtamper_opened_previously:${ttstatusParsed?.raw || 'ttstatus'}`
     : requireTamperEvidence && !tamperConfigured
       ? 'tagtamper_unconfigured'
     : supplierPayloadMatch && !cryptographicVerification
       ? `supplier_payload_manifest_match:${cryptoErrorReason || "crypto_decode_failed"}`
     : tamperSignal.tamper
-      ? `tagtamper_alert:${configuredStatusHex || tamperSignal.raw || 'signal'}`
+      ? `tagtamper_alert:${tamperSignal.raw || 'signal'}`
       : null;
   const resolvedReason = !payloadVerified ? cryptoErrorReason : successReason;
   const ttStateRaw = ttstatusParsed?.product_state;
@@ -619,6 +640,13 @@ export async function processSunScan(input: {
   const resolvedTamperRisk = Boolean(tamperSignal.tamper || resolvedTamperStatus === "INVALID" || productState === "TAMPER_RISK");
 
   if (input.context?.forceResult) result = input.context.forceResult;
+
+  const verificationMethod = cryptographicVerification
+    ? "sun_crypto"
+    : supplierPayloadMatch
+      ? "supplier_payload_manifest"
+      : "sun_crypto_failed";
+  const batchSdmConfigSummary = summarizeBatchSdmConfig((batch as { sdm_config?: unknown }).sdm_config || {});
 
   const hasGeo = Number.isFinite(input.context?.lat) && Number.isFinite(input.context?.lng);
 
@@ -663,11 +691,11 @@ export async function processSunScan(input: {
     read_counter: resolvedCtr,
     cmac_valid: cryptographicVerification,
     supplier_payload_match: supplierPayloadMatch,
-    verification_method: cryptographicVerification ? "sun_crypto" : supplierPayloadMatch ? "supplier_payload_manifest" : "sun_crypto_failed",
+    verification_method: verificationMethod,
     crypto_error_reason: cryptoErrorReason,
     sdm_decryption_ok: Boolean(res.ok && res.encPlainHex),
     enc_plain_hex_length: res.ok && typeof res.encPlainHex === "string" ? res.encPlainHex.length : 0,
-    tt_raw: decodedTT.raw,
+    tt_raw: ttstatusParsed?.raw || null,
     tt_perm_hex: ttstatusParsed?.raw?.slice(0, 2) || null,
     tt_curr_hex: ttstatusParsed?.raw?.slice(2, 4) || null,
     tt_perm_status: ttstatusParsed?.perm || null,
@@ -680,15 +708,43 @@ export async function processSunScan(input: {
     product_state: productState,
     tag_tamper: {
       status: decodedTT.status,
-      raw: decodedTT.raw,
+      raw: ttstatusParsed?.raw || null,
       source: tamperProfile.ttstatus_source,
     },
   }));
 
   const publicResult = String(result || "").toUpperCase();
   const publicOk = AUTHENTIC_SCAN_RESULTS.has(publicResult);
+  const responseStatus = publicOk ? 200 : publicResult === 'REPLAY_SUSPECT' ? 409 : 403;
+  const sunDiagnostics = {
+    traceId: requestId,
+    bid: input.bid,
+    result,
+    status: responseStatus,
+    crypto_error_reason: cryptoErrorReason || null,
+    verification_method: verificationMethod,
+    cmac_valid: typeof res.cmacValid === "boolean" ? res.cmacValid : null,
+    sdm_decryption_ok: Boolean(res.ok && res.encPlainHex),
+    uid_decoded: Boolean(res.uidDecoded),
+    uid_hex: resolvedUidHex || null,
+    read_counter: resolvedCtr ?? null,
+    picc_plain_hex_prefix: typeof res.piccPlainHex === "string" ? res.piccPlainHex.slice(0, 32) : null,
+    enc_plain_hex_prefix: typeof res.encPlainHex === "string" ? res.encPlainHex.slice(0, 32) : null,
+    enc_plain_hex_length: typeof res.encPlainHex === "string" ? res.encPlainHex.length : 0,
+    tt_raw: ttstatusParsed?.raw || null,
+    tt_perm_hex: ttstatusParsed?.raw?.slice(0, 2) || null,
+    tt_curr_hex: ttstatusParsed?.raw?.slice(2, 4) || null,
+    tt_perm_status: ttstatusParsed?.perm || null,
+    tt_curr_status: ttstatusParsed?.current || null,
+    tt_status_source: tamperProfile.ttstatus_source,
+    tt_status_offset: tamperProfile.ttstatus_offset,
+    tt_status_length: tamperProfile.ttstatus_length,
+    configured_status_hex: configuredStatusHex,
+    batch_sdm_config: batchSdmConfigSummary,
+    supplier_payload_match: supplierPayloadMatch,
+  };
   return {
-    status: publicOk ? 200 : publicResult === 'REPLAY_SUSPECT' ? 409 : 403,
+    status: responseStatus,
     body: {
       ok: publicOk,
       request_id: requestId,
@@ -702,7 +758,7 @@ export async function processSunScan(input: {
       ctr: resolvedCtr ?? undefined,
       picc_plain_hex: res.ok ? res.piccPlainHex : undefined,
       enc_plain_hex: res.ok ? res.encPlainHex : undefined,
-      verification_method: cryptographicVerification ? "sun_crypto" : supplierPayloadMatch ? "supplier_payload_manifest" : "sun_crypto_failed",
+      verification_method: verificationMethod,
       supplier_payload_match: supplierPayloadMatch,
       cryptographic_verification: cryptographicVerification,
       crypto_error_reason: cryptoErrorReason || undefined,
@@ -715,7 +771,7 @@ export async function processSunScan(input: {
       tamper_configured: tamperConfigured,
       tamper_status: resolvedTamperStatus,
       tamper_source: tamperSource,
-      tamper_raw_value: configuredStatusHex || null,
+      tamper_raw_value: ttstatusParsed?.raw || null,
       tt_perm_status: ttstatusParsed?.perm || undefined,
       tt_curr_status: ttstatusParsed?.current || undefined,
       ttstatus_raw: ttstatusParsed?.raw || undefined,
@@ -735,7 +791,7 @@ export async function processSunScan(input: {
         available: decodedTT.available,
         verified: cryptographicVerification,
         source: tamperProfile.ttstatus_source === "none" ? tamperProfile.tamper_status_source : tamperProfile.ttstatus_source,
-        raw: decodedTT.raw,
+        raw: ttstatusParsed?.raw || null,
         permanent: decodedTT.permanent,
         current: decodedTT.current,
         status: decodedTT.status,
@@ -760,6 +816,8 @@ export async function processSunScan(input: {
       tamper_unknown_policy: tamperProfile.tamper_unknown_policy,
       tamper_notes: tamperProfile.tamper_notes || undefined,
       chip_model: tamperProfile.chip_model,
+      batch_sdm_config_summary: batchSdmConfigSummary,
+      sun_diagnostics: sunDiagnostics,
       reason: resolvedReason || undefined,
       event_id: eventId || undefined,
     },

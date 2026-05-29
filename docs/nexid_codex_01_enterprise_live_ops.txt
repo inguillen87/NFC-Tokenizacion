@@ -55,10 +55,10 @@ Likely files and behaviors observed in current code. Verify before using.
   - /internal/demo/simulate-tap
   - /internal/demo/scan
 
-PRODUCTION TEST URL / REPLAY FIXTURE
-Use this URL as a real SUN tap fixture and replay test case:
+SUN REPLAY FIXTURE
+Use a freshly scanned SUN URL as the replay test case. Never keep a real dynamic SUN payload in runtime docs.
 
-https://api.nexid.lat/sun?v=1&bid=DEMO-2026-02&picc_data=25EF0E894399961B811966469E73F656&enc=6F0F5204CB8268EF4E25CD65502C0C53&cmac=8F914933144FE532
+https://api.nexid.lat/sun?v=1&bid=<BATCH_ID>&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>
 
 Expected behavior:
 - It must render a premium mobile Digital Product Passport.

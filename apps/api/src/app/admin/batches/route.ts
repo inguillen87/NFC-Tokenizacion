@@ -155,7 +155,7 @@ export async function POST(req: Request) {
 
     const sdmConfig = {
       mac_input: "enc_plus_cmac_literal",
-      url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`,
+      url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`,
       ttstatus_enabled: true,
       ttstatus_source: "enc_decrypted",
       ttstatus_offset: 0,
@@ -182,7 +182,7 @@ export async function POST(req: Request) {
       batch: { ...rows[0], tenant_slug: tenant.slug, profile, requested_quantity: requestedQuantity, sku, carrier_profile_code: carrierProfileCode, carrier_label: carrierProfile.label },
       carrier: carrierProfile,
       keys: { k_meta_hex: kMetaHex, k_file_hex: kFileHex },
-      ndef_url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000`
+      ndef_url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`
     }, 201);
   } catch (error) {
     return json({ ok: false, reason: error instanceof Error ? error.message : "invalid batch payload" }, 400);

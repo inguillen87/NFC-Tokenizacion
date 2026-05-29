@@ -237,11 +237,10 @@ export function normalizePassportVertical(value: unknown): PassportVertical {
     : "generic";
 }
 
-export function mapVerdictAndRisk(input: { statusCode: string; productState: string | null; reason: string; encPlainStatusByte?: string | null }) {
+export function mapVerdictAndRisk(input: { statusCode: string; productState: string | null; reason: string }) {
   const code = String(input.statusCode || "").toUpperCase();
   const state = String(input.productState || "").toUpperCase();
   const reason = String(input.reason || "").toUpperCase();
-  const statusByte = String(input.encPlainStatusByte || "").toUpperCase();
   if (
     code === "SUN_PROFILE_MISMATCH"
     || reason.includes("UID LENGTH INVALID")
@@ -267,12 +266,11 @@ export function mapVerdictAndRisk(input: { statusCode: string; productState: str
     || state === "VALID_OPENED"
     || state === "VALID_OPENED_PREVIOUSLY"
     || state === "VALID_MANUAL_OPENED"
-    || statusByte === "4F"
     || reason.includes("OPENED")
   ) {
     return { verdict: "valid_opened" as const, riskLevel: "low" as const };
   }
-  if (code === "VALID" || code === "AUTH_OK" || state === "VALID_CLOSED" || state === "VALID_UNKNOWN_TAMPER" || statusByte === "43") {
+  if (code === "VALID" || code === "AUTH_OK" || state === "VALID_CLOSED" || state === "VALID_UNKNOWN_TAMPER") {
     return { verdict: "valid" as const, riskLevel: "none" as const };
   }
   if (code === "TENANT_SETUP_REQUIRED") return { verdict: "not_active" as const, riskLevel: "medium" as const };
@@ -286,13 +284,11 @@ export function resolveConditionState(input: {
   statusCode?: string | null;
   productState?: string | null;
   reason?: string | null;
-  encPlainStatusByte?: string | null;
 }): PassportConditionState {
   const verdict = String(input.verdict || "").toLowerCase();
   const code = String(input.statusCode || "").toUpperCase();
   const state = String(input.productState || "").toUpperCase();
   const reason = String(input.reason || "").toUpperCase();
-  const statusByte = String(input.encPlainStatusByte || "").toUpperCase();
   if (
     code === "SUN_PROFILE_MISMATCH"
     || verdict === "sun_profile_mismatch"
@@ -309,8 +305,9 @@ export function resolveConditionState(input: {
   if (verdict === "replay_suspect" || code === "REPLAY_SUSPECT" || reason.includes("REPLAY") || reason.includes("COPIED URL")) return "replay_blocked";
   if (verdict === "revoked" || code === "REVOKED") return "revoked";
   if (verdict === "tampered" || code === "TAMPER_RISK" || state === "TAMPER_RISK") return "tamper_review";
-  if (verdict === "valid_opened" || statusByte === "4F" || state.includes("OPENED") || ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(code)) return "opened_verified";
-  if (verdict === "valid" || statusByte === "43" || state === "VALID_CLOSED" || ["VALID", "AUTH_OK"].includes(code)) return "sealed";
+  if (verdict === "valid_opened" || state.includes("OPENED") || ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(code)) return "opened_verified";
+  if (state === "VALID_UNKNOWN_TAMPER") return "unknown";
+  if (verdict === "valid" || state === "VALID_CLOSED" || ["VALID", "AUTH_OK"].includes(code)) return "sealed";
   if (verdict === "not_active" || code === "NOT_ACTIVE") return "inactive";
   if (verdict === "not_registered" || code === "NOT_REGISTERED") return "unregistered";
   if (verdict === "invalid" || code === "INVALID") return "invalid";
@@ -369,7 +366,6 @@ export function resolveRightsPolicy(input: {
   statusCode?: string | null;
   productState?: string | null;
   reason?: string | null;
-  encPlainStatusByte?: string | null;
 }) {
   const vertical = normalizePassportVertical(input.vertical);
   const policy = VERTICAL_POLICIES[vertical];
@@ -405,9 +401,9 @@ export function resolveRightsPolicy(input: {
 
   const statusTitle = hardBlocked
     ? conditionState === "replay_blocked"
-      ? "Replay bloqueado"
+        ? "Replay bloqueado"
       : conditionState === "sun_profile_mismatch"
-        ? "Perfil SUN del lote no coincide"
+        ? "No pudimos validar esta lectura"
       : conditionState === "tamper_review"
         ? "Tap en revision"
         : conditionState === "setup_required"
@@ -421,11 +417,13 @@ export function resolveRightsPolicy(input: {
 
   const statusSummary = hardBlocked
     ? conditionState === "sun_profile_mismatch"
-      ? "El batch existe, pero la lectura SUN no descifra a un UID autorizado con las claves o layout cargados."
+      ? "El lote fue detectado, pero esta lectura no coincide con el perfil de seguridad cargado. Las acciones comerciales quedan bloqueadas."
       : "La trazabilidad sigue visible, pero las acciones comerciales quedan bloqueadas hasta resolver la politica de seguridad."
     : isOpened
       ? policy.openedCopy
-      : policy.sealedCopy;
+      : conditionState === "unknown"
+        ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
+        : policy.sealedCopy;
 
   return {
     vertical,
@@ -459,7 +457,7 @@ function buildRecommendedNextStep(
   tokenizationPolicy: string,
 ) {
   if (conditionState === "replay_blocked") return "Escanear fisicamente otra vez: la URL anterior queda solo como evidencia.";
-  if (conditionState === "sun_profile_mismatch") return "Corregir perfil SUN del batch o registrar payload del proveedor contra UID autorizado.";
+  if (conditionState === "sun_profile_mismatch") return "Revisar claves/layout SUN del batch antes de habilitar acciones comerciales.";
   if (conditionState === "tamper_review") return "Abrir ticket de revision antes de habilitar ownership o tokenizacion.";
   if (conditionState === "setup_required") return "Completar tenant SUN profile, manifiesto y ownership policy.";
   if (claimMode === "retailer_or_seller_attested") return "Pedir attestation del vendedor antes de transferir ownership.";

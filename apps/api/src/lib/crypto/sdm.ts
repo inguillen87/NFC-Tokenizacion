@@ -3,8 +3,31 @@ import { aes128CbcDecrypt, aes128CbcEncrypt, aesCmac, bufToHex, hexToBuf, trunca
 type NodeBuf = Buffer<ArrayBufferLike>;
 
 export type SunVerifyResult =
-  | { ok: true; uidHex: string; ctr: number; encPlainHex?: string; piccPlainHex?: string }
-  | { ok: false; reason: string };
+  | {
+      ok: true;
+      uidHex: string;
+      ctr: number;
+      encPlainHex?: string;
+      piccPlainHex?: string;
+      cmacValid: boolean;
+      sdmDecryptionOk: boolean;
+      uidDecoded: boolean;
+      expectedCmacHex: string;
+      actualCmacHex: string;
+    }
+  | {
+      ok: false;
+      reason: string;
+      uidHex?: string | null;
+      ctr?: number | null;
+      encPlainHex?: string;
+      piccPlainHex?: string;
+      cmacValid?: boolean;
+      sdmDecryptionOk?: boolean;
+      uidDecoded?: boolean;
+      expectedCmacHex?: string;
+      actualCmacHex?: string;
+    };
 
 export function verifySun(params: {
   piccDataHex: string;
@@ -14,22 +37,39 @@ export function verifySun(params: {
   kFileHex: string;
 }): SunVerifyResult {
   const zeroIV = Buffer.alloc(16, 0x00) as NodeBuf;
-  const piccEnc = hexToBuf(params.piccDataHex);
-  const enc = hexToBuf(params.encHex);
+  let piccEnc: NodeBuf;
+  let enc: NodeBuf;
+  try {
+    piccEnc = hexToBuf(params.piccDataHex);
+    enc = hexToBuf(params.encHex);
+  } catch {
+    return { ok: false, reason: "invalid hex payload", uidDecoded: false, cmacValid: false, sdmDecryptionOk: false };
+  }
 
   const kMeta = Buffer.from(params.kMetaHex, "hex") as NodeBuf;
   const kFile = Buffer.from(params.kFileHex, "hex") as NodeBuf;
 
-  if (piccEnc.length % 16 !== 0) return { ok: false, reason: "picc_data bad length" };
-  const picc = aes128CbcDecrypt(kMeta, zeroIV, piccEnc);
+  if (piccEnc.length % 16 !== 0) {
+    return { ok: false, reason: "picc_data bad length", uidDecoded: false, cmacValid: false, sdmDecryptionOk: false };
+  }
+  let picc: NodeBuf;
+  try {
+    picc = aes128CbcDecrypt(kMeta, zeroIV, piccEnc);
+  } catch {
+    return { ok: false, reason: "picc_data decrypt failed", uidDecoded: false, cmacValid: false, sdmDecryptionOk: false };
+  }
+  const piccPlainHex = bufToHex(picc);
 
   const tag = picc[0]!;
   const uidLen = tag & 0x0f;
-  if (uidLen < 4 || uidLen > 10) return { ok: false, reason: "uid length invalid" };
+  if (uidLen < 4 || uidLen > 10) {
+    return { ok: false, reason: "uid length invalid", piccPlainHex, uidDecoded: false, cmacValid: false, sdmDecryptionOk: false };
+  }
 
   const uid = picc.subarray(1, 1 + uidLen) as NodeBuf;
   const ctrBytes = picc.subarray(1 + uidLen, 1 + uidLen + 3) as NodeBuf;
   const ctr = ctrBytes[0]! + (ctrBytes[1]! << 8) + (ctrBytes[2]! << 16);
+  const uidHex = bufToHex(uid);
 
   const sv1 = Buffer.concat([Buffer.from("C33C00010080", "hex"), uid, ctrBytes]) as NodeBuf;
   const sv2 = Buffer.concat([Buffer.from("3CC300010080", "hex"), uid, ctrBytes]) as NodeBuf;
@@ -39,9 +79,22 @@ export function verifySun(params: {
   const msg = Buffer.from(params.encHex.toUpperCase() + "&cmac=", "ascii") as NodeBuf;
   const full = aesCmac(kSesMac, msg);
   const expected = truncateMac8(full);
+  const expectedCmacHex = expected.toString("hex").toUpperCase();
+  const actualCmacHex = params.cmacHex.toUpperCase();
 
-  if (expected.toString("hex").toUpperCase() !== params.cmacHex.toUpperCase()) {
-    return { ok: false, reason: "cmac mismatch" };
+  if (expectedCmacHex !== actualCmacHex) {
+    return {
+      ok: false,
+      reason: "cmac mismatch",
+      uidHex,
+      ctr,
+      piccPlainHex,
+      uidDecoded: true,
+      cmacValid: false,
+      sdmDecryptionOk: false,
+      expectedCmacHex,
+      actualCmacHex,
+    };
   }
 
   let encPlainHex: string | undefined;
@@ -50,9 +103,33 @@ export function verifySun(params: {
     const ive = aes128CbcEncrypt(kSesEnc, zeroIV, iveInput);
     const encPlain = aes128CbcDecrypt(kSesEnc, ive, enc);
     encPlainHex = bufToHex(encPlain);
+  } else {
+    return {
+      ok: false,
+      reason: "enc bad length",
+      uidHex,
+      ctr,
+      piccPlainHex,
+      uidDecoded: true,
+      cmacValid: true,
+      sdmDecryptionOk: false,
+      expectedCmacHex,
+      actualCmacHex,
+    };
   }
 
-  return { ok: true, uidHex: bufToHex(uid), ctr, encPlainHex, piccPlainHex: bufToHex(picc) };
+  return {
+    ok: true,
+    uidHex,
+    ctr,
+    encPlainHex,
+    piccPlainHex,
+    cmacValid: true,
+    sdmDecryptionOk: Boolean(encPlainHex),
+    uidDecoded: true,
+    expectedCmacHex,
+    actualCmacHex,
+  };
 }
 
 
