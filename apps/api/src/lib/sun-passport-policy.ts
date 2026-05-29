@@ -11,6 +11,7 @@ export type PassportVerdict =
   | "valid"
   | "valid_opened"
   | "replay_suspect"
+  | "sun_profile_mismatch"
   | "tampered"
   | "revoked"
   | "not_active"
@@ -21,6 +22,7 @@ export type PassportConditionState =
   | "sealed"
   | "opened_verified"
   | "tamper_review"
+  | "sun_profile_mismatch"
   | "replay_blocked"
   | "revoked"
   | "setup_required"
@@ -240,6 +242,17 @@ export function mapVerdictAndRisk(input: { statusCode: string; productState: str
   const state = String(input.productState || "").toUpperCase();
   const reason = String(input.reason || "").toUpperCase();
   const statusByte = String(input.encPlainStatusByte || "").toUpperCase();
+  if (
+    code === "SUN_PROFILE_MISMATCH"
+    || reason.includes("UID LENGTH INVALID")
+    || reason.includes("CMAC MISMATCH")
+    || reason.includes("PICC_DATA BAD LENGTH")
+    || reason.includes("INVALID_SUN_PAYLOAD")
+    || reason.includes("SUN_CRYPTO_FAILED")
+    || reason.includes("CRYPTO_DECODE_FAILED")
+  ) {
+    return { verdict: "sun_profile_mismatch" as const, riskLevel: "medium" as const };
+  }
   if (code === "REVOKED" || reason.includes("REVOKED")) return { verdict: "revoked" as const, riskLevel: "critical" as const };
   if (code === "REPLAY_SUSPECT" || state === "REPLAY_SUSPECT" || reason.includes("REPLAY") || reason.includes("COPIED URL")) {
     return { verdict: "replay_suspect" as const, riskLevel: "high" as const };
@@ -280,6 +293,18 @@ export function resolveConditionState(input: {
   const state = String(input.productState || "").toUpperCase();
   const reason = String(input.reason || "").toUpperCase();
   const statusByte = String(input.encPlainStatusByte || "").toUpperCase();
+  if (
+    code === "SUN_PROFILE_MISMATCH"
+    || verdict === "sun_profile_mismatch"
+    || reason.includes("UID LENGTH INVALID")
+    || reason.includes("CMAC MISMATCH")
+    || reason.includes("PICC_DATA BAD LENGTH")
+    || reason.includes("INVALID_SUN_PAYLOAD")
+    || reason.includes("SUN_CRYPTO_FAILED")
+    || reason.includes("CRYPTO_DECODE_FAILED")
+  ) {
+    return "sun_profile_mismatch";
+  }
   if (code === "TENANT_SETUP_REQUIRED") return "setup_required";
   if (verdict === "replay_suspect" || code === "REPLAY_SUSPECT" || reason.includes("REPLAY") || reason.includes("COPIED URL")) return "replay_blocked";
   if (verdict === "revoked" || code === "REVOKED") return "revoked";
@@ -326,6 +351,7 @@ function normalizeClaimMode(policy: VerticalPolicy, claimPolicy?: string | null)
 function resolveTokenizationPolicy(policy: VerticalPolicy, conditionState: PassportConditionState, allowed: PassportAction[]) {
   if (!allowed.includes("tokenization")) {
     if (conditionState === "replay_blocked") return "blocked_replay";
+    if (conditionState === "sun_profile_mismatch") return "blocked_sun_profile_mismatch";
     if (conditionState === "tamper_review") return "blocked_tamper_review";
     if (conditionState === "setup_required") return "blocked_tenant_setup";
     if (conditionState === "opened_verified") return "blocked_opened_policy";
@@ -349,7 +375,7 @@ export function resolveRightsPolicy(input: {
   const policy = VERTICAL_POLICIES[vertical];
   const conditionState = resolveConditionState(input);
   const claimMode = normalizeClaimMode(policy, input.claimPolicy);
-  const hardBlocked = ["replay_blocked", "tamper_review", "revoked", "setup_required", "inactive", "unregistered", "invalid"].includes(conditionState);
+  const hardBlocked = ["replay_blocked", "sun_profile_mismatch", "tamper_review", "revoked", "setup_required", "inactive", "unregistered", "invalid"].includes(conditionState);
   let allowedActions = hardBlocked
     ? PROVENANCE_ONLY
     : conditionState === "opened_verified"
@@ -380,6 +406,8 @@ export function resolveRightsPolicy(input: {
   const statusTitle = hardBlocked
     ? conditionState === "replay_blocked"
       ? "Replay bloqueado"
+      : conditionState === "sun_profile_mismatch"
+        ? "Perfil SUN del lote no coincide"
       : conditionState === "tamper_review"
         ? "Tap en revision"
         : conditionState === "setup_required"
@@ -392,7 +420,9 @@ export function resolveRightsPolicy(input: {
         : "Autenticidad verificable";
 
   const statusSummary = hardBlocked
-    ? "La trazabilidad sigue visible, pero las acciones comerciales quedan bloqueadas hasta resolver la politica de seguridad."
+    ? conditionState === "sun_profile_mismatch"
+      ? "El batch existe, pero la lectura SUN no descifra a un UID autorizado con las claves o layout cargados."
+      : "La trazabilidad sigue visible, pero las acciones comerciales quedan bloqueadas hasta resolver la politica de seguridad."
     : isOpened
       ? policy.openedCopy
       : policy.sealedCopy;
@@ -429,6 +459,7 @@ function buildRecommendedNextStep(
   tokenizationPolicy: string,
 ) {
   if (conditionState === "replay_blocked") return "Escanear fisicamente otra vez: la URL anterior queda solo como evidencia.";
+  if (conditionState === "sun_profile_mismatch") return "Corregir perfil SUN del batch o registrar payload del proveedor contra UID autorizado.";
   if (conditionState === "tamper_review") return "Abrir ticket de revision antes de habilitar ownership o tokenizacion.";
   if (conditionState === "setup_required") return "Completar tenant SUN profile, manifiesto y ownership policy.";
   if (claimMode === "retailer_or_seller_attested") return "Pedir attestation del vendedor antes de transferir ownership.";

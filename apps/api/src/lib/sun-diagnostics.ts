@@ -58,15 +58,22 @@ function cloneRecord(value: unknown): Record<string, unknown> {
 function markHistoricalSnapshotContract(input: unknown, snapshot: { id: number; traceId: string; createdAt: string | null }) {
   const contract = cloneRecord(input);
   const tapSecurity = asRecord(contract.tapSecurity);
+  const status = asRecord(contract.status);
+  const isSunProfileMismatch =
+    String(status.code || "").toUpperCase() === "SUN_PROFILE_MISMATCH" ||
+    String(tapSecurity.conditionState || "") === "sun_profile_mismatch" ||
+    String(tapSecurity.actionability || "") === "blocked_sun_profile_mismatch";
   contract.tapSecurity = {
     ...tapSecurity,
     snapshot: true,
     freshTap: false,
-    actionability: "view_only",
+    actionability: isSunProfileMismatch ? "blocked_sun_profile_mismatch" : "view_only",
     policy: "snapshot_view_only",
     tokenizationEligible: false,
     requiresFreshTapForCommercialActions: true,
-    reason: "historical_snapshot_requires_fresh_tap",
+    reason: isSunProfileMismatch
+      ? String(tapSecurity.reason || status.reason || "sun_profile_mismatch")
+      : "historical_snapshot_requires_fresh_tap",
   };
   contract.snapshot = {
     mode: "historical",
@@ -76,10 +83,9 @@ function markHistoricalSnapshotContract(input: unknown, snapshot: { id: number; 
     requiresFreshTap: true,
     commercialActions: "blocked_until_new_physical_tap",
   };
-  contract.allowedActions = uniqueStrings(contract.allowedActions).filter((action) => action === "provenance" || action === "report");
+  contract.allowedActions = uniqueStrings(contract.allowedActions, isSunProfileMismatch ? ["provenance", "report"] : []).filter((action) => action === "provenance" || action === "report");
   contract.blockedActions = uniqueStrings(contract.blockedActions, ["claim", "save", "join", "warranty", "rewards", "tokenization"]);
 
-  const status = asRecord(contract.status);
   const summary = String(status.summary || "Autenticidad visible en modo consulta.");
   contract.status = {
     ...status,
@@ -130,6 +136,53 @@ function markFreshHandoffContract(input: unknown, snapshot: { id: number; traceI
     actionability: "fresh_handoff",
     reason: status.reason || "fresh_nfc_handoff",
   };
+  return contract;
+}
+
+function isSunProfileMismatchReason(value: unknown) {
+  const reason = String(value || "").toLowerCase();
+  return (
+    reason.includes("uid length invalid") ||
+    reason.includes("cmac mismatch") ||
+    reason.includes("picc_data bad length") ||
+    reason.includes("invalid_sun_payload") ||
+    reason.includes("sun_crypto_failed") ||
+    reason.includes("crypto_decode_failed")
+  );
+}
+
+function normalizeSunProfileMismatchContract(input: unknown) {
+  const contract = cloneRecord(input);
+  const status = asRecord(contract.status);
+  const tapSecurity = asRecord(contract.tapSecurity);
+  const reason = status.reason || tapSecurity.reason || contract.reason;
+
+  if (!isSunProfileMismatchReason(reason)) return contract;
+
+  contract.status = {
+    ...status,
+    code: "SUN_PROFILE_MISMATCH",
+    tone: "warn",
+    label: "Perfil SUN del lote no coincide",
+    reason,
+    summary: "El batch existe, pero la lectura SUN no descifra a un UID autorizado con las claves o layout cargados.",
+  };
+  contract.tapSecurity = {
+    ...tapSecurity,
+    conditionState: "sun_profile_mismatch",
+    actionability: "blocked_sun_profile_mismatch",
+    tokenizationEligible: false,
+    requiresFreshTapForCommercialActions: true,
+    reason,
+  };
+  contract.troubleshooting = uniqueStrings(contract.troubleshooting, [
+    "El BID resuelve tenant y batch, pero el payload SUN no descifra a un UID autorizado.",
+    "Revisar K_META/K_FILE, perfil SDM/PICC, longitud UID y orden de campos contra el proveedor.",
+    "No habilitar ownership, garantia ni NFT hasta que el UID coincida con el manifest o se registre el payload SUN autorizado.",
+  ]);
+  contract.allowedActions = uniqueStrings(contract.allowedActions).filter((action) => action === "provenance" || action === "report");
+  contract.blockedActions = uniqueStrings(contract.blockedActions, ["claim", "save", "join", "warranty", "rewards", "tokenization"]);
+
   return contract;
 }
 
@@ -208,7 +261,7 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
   const diagnosticId = Number(row.id || numericId);
   const traceIdValue = row.trace_id || trace;
   const createdAt = row.created_at || null;
-  const contract = result.contract as Record<string, unknown>;
+  const contract = normalizeSunProfileMismatchContract(result.contract);
   const identity = asRecord(contract.identity);
   const tokenizationEventId = String(contract.eventId || identity.eventId || "").trim();
   const bid = String(identity.bid || contract.bid || "").trim();
@@ -226,7 +279,7 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
     created_at: createdAt,
     snapshot_access: fresh.ok ? "fresh_handoff" : "historical",
     contract: fresh.ok
-      ? markFreshHandoffContract(result.contract, { id: diagnosticId, traceId: traceIdValue, createdAt, expiresAt: freshExpiresAt })
-      : markHistoricalSnapshotContract(result.contract, { id: diagnosticId, traceId: traceIdValue, createdAt }),
+      ? markFreshHandoffContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt, expiresAt: freshExpiresAt })
+      : markHistoricalSnapshotContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt }),
   };
 }

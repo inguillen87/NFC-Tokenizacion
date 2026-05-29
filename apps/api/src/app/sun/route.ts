@@ -408,7 +408,22 @@ function getSunCopy(locale: SunLocale) {
   } as const;
 }
 
-function buildTroubleshooting(reason: string, bid: string) {
+function isSunProfileMismatchReason(reason: string, resultMeta?: Record<string, unknown>) {
+  const normalized = String(reason || "").toLowerCase();
+  const verificationMethod = String(resultMeta?.verification_method || "").toLowerCase();
+  const cryptoErrorReason = String(resultMeta?.crypto_error_reason || "").toLowerCase();
+  const combined = `${normalized} ${verificationMethod} ${cryptoErrorReason}`;
+  return verificationMethod === "sun_crypto_failed"
+    || combined.includes("uid length invalid")
+    || combined.includes("cmac mismatch")
+    || combined.includes("picc_data bad length")
+    || combined.includes("invalid_sun_payload")
+    || combined.includes("sun_crypto_failed")
+    || combined.includes("crypto_decode_failed")
+    || combined.includes("bad length");
+}
+
+function buildTroubleshooting(reason: string, bid: string, resultMeta?: Record<string, unknown>) {
   const normalized = reason.toLowerCase();
   if (normalized === 'sun_ok' || normalized.includes('ok')) return [];
   if (normalized.includes('unknown batch')) {
@@ -419,15 +434,30 @@ function buildTroubleshooting(reason: string, bid: string) {
     ];
   }
   if (normalized.includes('replay')) return ['El payload SUN ya fue usado anteriormente.', 'Pedí un tap real para generar nuevo contador.', 'No reutilizar URLs pegadas para validar autenticidad.'];
+  if (isSunProfileMismatchReason(reason, resultMeta)) {
+    return [
+      `El BID ${bid} existe y resuelve tenant, pero el payload SUN no descifra a ningun UID autorizado del lote.`,
+      'Revisar K_META/K_FILE, layout SDM/PICC y longitud UID configurada por el proveedor.',
+      'No habilitar ownership/NFT hasta que el UID real matchee el manifiesto o se registre payload SUN autorizado.',
+    ];
+  }
   if (normalized.includes('cmac') || normalized.includes('invalid')) return ['Posible desalineación de llaves SUN del lote.', 'Verificá K_META/K_FILE del batch.', 'Usá URL generada por tap NFC real.'];
   return ['Revisá onboarding del batch.', 'Confirmá UID importado/activo.', 'Auditar eventos y llaves en dashboard.'];
 }
 
-function resolveTrustState(status: string, reason: string, productState?: string | null, encPlainStatusByte?: string | null) {
+function resolveTrustState(status: string, reason: string, productState?: string | null, encPlainStatusByte?: string | null, resultMeta?: Record<string, unknown>) {
   const normalizedStatus = status.toUpperCase();
   const normalizedReason = reason.toLowerCase();
   const normalizedProductState = String(productState || "").toUpperCase();
   const statusByte = String(encPlainStatusByte || "").toUpperCase();
+  if (normalizedStatus === "INVALID" && isSunProfileMismatchReason(reason, resultMeta)) {
+    return {
+      code: "SUN_PROFILE_MISMATCH",
+      label: "Perfil SUN del lote no coincide",
+      summary: "El batch existe, pero la lectura SUN no descifra a un UID autorizado con las claves o layout cargados.",
+      tone: "warn" as const,
+    };
+  }
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay') || normalizedReason.includes('copied url')) {
     return { code: 'REPLAY_SUSPECT', label: 'URL reutilizada', summary: 'Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
   }
@@ -750,14 +780,14 @@ function buildPublicContract(params: {
 }) {
   const status = params.result.result || (params.result.ok ?'VALID' : 'INVALID');
   const reason = params.result.reason || 'sin_observaciones';
-  const trust = resolveTrustState(status, reason, params.result.product_state || null, params.result.enc_plain_status_byte || null);
-  const verdictRisk = mapVerdictAndRisk({ statusCode: status, productState: params.result.product_state || null, reason, encPlainStatusByte: params.result.enc_plain_status_byte || null });
-  const troubleshooting = buildTroubleshooting(reason, params.bid);
+  const resultMeta = params.result as Record<string, unknown>;
+  const trust = resolveTrustState(status, reason, params.result.product_state || null, params.result.enc_plain_status_byte || null, resultMeta);
+  const verdictRisk = mapVerdictAndRisk({ statusCode: trust.code, productState: params.result.product_state || null, reason, encPlainStatusByte: params.result.enc_plain_status_byte || null });
   const tenantResolution = resolveSunTenantProfile({ bid: params.bid, passport: params.passport, result: params.result as Record<string, unknown> });
   const setupDashboardBase = dashboardBaseUrl();
   const setupEventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
   const setupUa = summarizeUserAgent(params.tap.userAgent);
-  const resultMeta = params.result as Record<string, unknown>;
+  const troubleshooting = buildTroubleshooting(reason, params.bid, resultMeta);
   const carrierProfileCode = params.passport?.carrier_profile_code || null;
   const inferredCryptoCarrier = Boolean(resultMeta.tamper_supported || resultMeta.enc_plain_status_byte || resultMeta.tag_tamper);
   const carrierLabel = params.passport?.carrier_label
@@ -1051,6 +1081,8 @@ function buildPublicContract(params: {
     ?0
     : isVerifiedOpenedTap
       ?8
+      : trust.code === "SUN_PROFILE_MISMATCH"
+        ?50
       : trust.code === "REPLAY_SUSPECT"
         ?35
         : trust.code === "TAMPER_RISK"

@@ -435,15 +435,26 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     || statusCode === "TAMPER_RISK"
     || productState === "TAMPER_RISK"
     || verdictName === "tampered";
+  const conditionStateName = conditionState.toLowerCase();
+  const isSunProfileMismatch = statusCode === "SUN_PROFILE_MISMATCH"
+    || verdictName === "sun_profile_mismatch"
+    || ["sun_profile_mismatch", "blocked_sun_profile_mismatch"].includes(conditionStateName)
+    || statusReason.includes("uid length invalid")
+    || statusReason.includes("cmac mismatch")
+    || statusReason.includes("picc_data bad length")
+    || statusReason.includes("invalid_sun_payload")
+    || statusReason.includes("sun_crypto_failed")
+    || statusReason.includes("crypto_decode_failed");
   const hasAuthenticTone = result.status?.tone === "good" || (result.status?.tone === "warn" && isVerifiedOpenedState);
   const isTechnicallyAuthentic = result.ok !== false
     && !isReplay
     && !isTamperRisk
+    && !isSunProfileMismatch
     && (hasAuthenticTone || ["VALID", "AUTH_OK"].includes(statusCode) || isVerifiedOpenedState || verdictName === "valid" || verdictName === "valid_opened");
   const isActionableTap = isTechnicallyAuthentic && !isCommercialBlocked;
   const isFreshCommercialTap = isActionableTap && (isFreshHandoff || !isSnapshotView);
   const isValid = isTechnicallyAuthentic && !isVerifiedOpenedState && ["VALID", "AUTH_OK"].includes(statusCode);
-  const isRiskBlocked = isReplay || isTamperRisk || !isTechnicallyAuthentic;
+  const isRiskBlocked = isReplay || isTamperRisk || isSunProfileMismatch || !isTechnicallyAuthentic;
   const troubleshooting = result.troubleshooting || [];
   const canAutoOnboard = String(result.status?.reason || "").toLowerCase().includes("unknown batch") && /^DEMO-[A-Z0-9-]{3,40}$/.test(bid);
   const timelinePoints = (result.provenance?.timelineSummary || [])
@@ -636,6 +647,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
     : isVerifiedOpenedState && isTechnicallyAuthentic
       ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
+      : isSunProfileMismatch
+        ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
       : "border-rose-300/20 bg-rose-500/10 text-rose-100";
   const riskSignals = (result.provenance?.timelineSummary || []).filter((item) => {
     const verdict = String(item.result || "").toLowerCase();
@@ -661,6 +674,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "sun-status-dot--warn"
     : isValid
     ? "sun-status-dot--good"
+    : isSunProfileMismatch
+      ? "sun-status-dot--warn"
     : isReplay
       ? "sun-status-dot--replay"
       : isTamperRisk || result.status?.tone === "risk"
@@ -668,12 +683,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         : "sun-status-dot--warn";
   const pulseClass = isSnapshotView
     ? "bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.75)]"
+    : isSunProfileMismatch
+    ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
     : isRiskBlocked
     ? "bg-rose-300 shadow-[0_0_8px_rgba(253,164,175,0.8)]"
     : isVerifiedOpenedState
       ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
       : "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]";
-  const statusHeadline = statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED"
+  const statusHeadline = isSunProfileMismatch
+    ? "Batch detectado. Perfil SUN no coincide."
+    : statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED"
     ? "Autenticidad confirmada. Sello intacto (CLOSED)."
     : statusByteSignal === "opened" || ttStatus === "opened"
       ? "Producto auténtico, pero el sello fue abierto (OPENED)."
@@ -696,6 +715,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "Tap accionable"
     : isSnapshotView
     ? "Consulta segura"
+    : isSunProfileMismatch
+    ? "Batch tecnico bloqueado"
     : isRiskBlocked
     ? "Riesgo alto"
     : isVerifiedOpenedState
@@ -708,13 +729,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const displayStatusHeadline = rightsTitle || (isVerifiedOpenedState && isTechnicallyAuthentic
     ? "Producto autentico. Sello abierto registrado como lifecycle event."
     : statusHeadline);
+  const reportProblemHref = "/?contact=sales&intent=sun_mobile#contact-modal";
   const recommendedAction = isFreshCommercialTap
     ? { label: isVerifiedOpenedState ? "Apropiar ownership" : "Guardar en mi Passport", href: "#post-tap-passport", helper: rightsPolicy.recommendedNextStep || (isVerifiedOpenedState ? "El sello abierto queda registrado como evento verificado. Podes reclamar ownership, garantia, club y tokenizacion opcional." : "Autenticidad solida. Continuar activa ownership, club y marketplace.") }
     : isSnapshotView
       ? { label: "Escanear de nuevo", href: "#fresh-tap-required", helper: "Consulta segura: autenticidad y trazabilidad quedan visibles. Para ownership, club, rewards o tokenizacion se necesita otro tap fisico." }
+    : isSunProfileMismatch
+      ? { label: "Reportar batch SUN", href: reportProblemHref, helper: "El lote existe, pero UID/CMAC no coinciden con el perfil SUN cargado. La marca debe corregir claves/layout o registrar payload del proveedor." }
     : trustScore >= 65
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
-      : { label: "Reportar y reintentar tap", href: "/?contact=sales&intent=sun_mobile#contact-modal", helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
+      : { label: "Reportar y reintentar tap", href: reportProblemHref, helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
   const tenantSlug = String(result.identity?.tenantSlug || "").trim();
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
   const eventId = String(result.identity?.eventId || result.eventId || "").trim();
@@ -744,16 +768,22 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? ""
     : isSnapshotView
       ? "Consulta guardada: para reclamar ownership, sumar puntos, abrir club o tokenizar, volve a tocar fisicamente la etiqueta."
+    : isSunProfileMismatch
+      ? "El batch existe, pero UID/CMAC no coinciden con el perfil SUN cargado. No es un problema del comprador: la marca debe corregir claves/layout o registrar el payload del proveedor."
     : isReplay
       ? "Replay detectado: por seguridad necesitás un nuevo tap físico para ownership, club, garantía o tokenización."
     : "Este tap no es apto para ownership/club. Necesitás un tap válido y fresco para continuar.";
   const protectedBannerTitle = isSnapshotView
     ? "Consulta segura"
+    : isSunProfileMismatch
+      ? "Perfil SUN del lote no coincide"
     : isReplay
       ? "Replay bloqueado"
       : "Accion protegida";
   const protectedBannerCopy = isSnapshotView
     ? "Autenticidad y trazabilidad visibles. Ownership, puntos, club y tokenizacion quedan protegidos hasta un nuevo tap fisico."
+    : isSunProfileMismatch
+      ? "El lote fue detectado como DemoBodega, pero la lectura SUN no descifra a un UID autorizado. Hay que corregir claves/layout o registrar el payload fisico del proveedor."
     : isReplay
       ? "La URL/SUN ya fue usada. Conservamos la evidencia y pedimos un nuevo tap fisico para acciones comerciales."
       : "Por seguridad, este producto no puede guardarse en la coleccion ni sumar puntos con esta lectura.";
@@ -761,8 +791,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? "border-red-500/30 bg-red-950/20 text-red-100"
     : isSnapshotView
       ? "border-sky-300/25 bg-sky-500/10 text-sky-50"
+    : isSunProfileMismatch
+      ? "border-amber-300/30 bg-amber-500/10 text-amber-50"
       : "border-amber-300/25 bg-amber-500/10 text-amber-50";
-  const reportProblemHref = "/?contact=sales&intent=sun_mobile#contact-modal";
   const journeySteps = [
     { id: "scan", label: "Tap NFC", done: true },
     { id: "verify", label: "Verificación", done: Boolean(result.status?.label) },
@@ -879,7 +910,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : tokenBlocked
         ? "Mostramos la prueba de autenticidad, pero el mint queda bloqueado hasta tener un tap fresco y apto."
         : "Cuando reclamas ownership, este producto puede quedar como certificado NFT/sandbox y abrir wallet, club y marketplace.";
-  const replayDecisionText = isReplay
+  const replayDecisionText = isSunProfileMismatch
+    ? "Batch detectado, pero perfil SUN incompatible: UID/CMAC no coinciden con el lote autorizado. Se bloquean ownership, garantia, rewards y tokenizacion hasta corregir el batch."
+    : isReplay
     ? "Replay detectado: esta URL/SUN ya fue usada. Ownership, garantia, rewards y tokenizacion quedan bloqueados hasta un nuevo tap fisico."
     : isSnapshotView
       ? "Consulta segura: la prueba queda disponible para revisar y compartir. Para reclamar propiedad, sumar puntos o mintear, toca otra vez la etiqueta."
@@ -933,7 +966,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : (sealOpened || isVerifiedOpenedState)
       ? "opened"
       : "idle";
-  const trustCopy = isReplay
+  const trustCopy = isSunProfileMismatch
+    ? "Batch detectado con perfil SUN incompatible: el sistema preserva evidencia, pero bloquea permisos comerciales hasta corregir claves/layout o registrar el payload fisico."
+    : isReplay
     ? "Anti-replay activo: el tap queda como evidencia, no como permiso comercial."
     : isSnapshotView
       ? "Consulta segura: autenticidad visible y trazabilidad preservada. Las acciones comerciales requieren otro tap fisico."
@@ -992,21 +1027,27 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             ? 5
             : 0;
 
-  const friendlyStageTitle = isRiskBlocked
+  const friendlyStageTitle = isSunProfileMismatch
+    ? "Batch detectado. SUN no valido."
+    : isRiskBlocked
     ? "Necesitamos un nuevo tap fisico"
     : isSnapshotView
       ? "Consulta segura del producto"
       : isVerifiedOpenedState
         ? "Producto autentico. Sello abierto"
         : "Producto autentico";
-  const friendlyStageBody = isRiskBlocked
+  const friendlyStageBody = isSunProfileMismatch
+    ? "DemoBodega y el batch existen, pero la lectura fisica no descifra a un UID autorizado. No habilitamos reclamo ni NFT hasta corregir el perfil SUN del lote."
+    : isRiskBlocked
     ? "Vemos la prueba, pero no habilitamos reclamo, garantia ni NFT con una lectura sospechosa o repetida."
     : isSnapshotView
       ? "La autenticidad y la ruta se pueden revisar. Para guardar el producto o reclamar beneficios, toca de nuevo la etiqueta."
       : isVerifiedOpenedState
         ? "El producto es real y la apertura quedo registrada. Ahora podes asociarlo a tu cuenta y ver beneficios."
         : "La lectura es fresca. El siguiente paso es reclamarlo con email o celular para guardarlo en tu Passport.";
-  const primaryPostTapAction = hasOnChainProof && isFreshCommercialTap
+  const primaryPostTapAction = isSunProfileMismatch
+    ? { label: "Reportar batch SUN", href: reportProblemHref, tone: "risk" }
+    : hasOnChainProof && isFreshCommercialTap
     ? { label: "Ver NFT / Wallet", href: walletHref, tone: "wallet" }
     : isFreshCommercialTap
       ? { label: "Reclamar producto", href: "#post-tap-passport", tone: "claim" }
@@ -1018,8 +1059,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const simpleJourneySteps = [
     {
       label: "Producto autentico",
-      detail: isTechnicallyAuthentic ? "Verificado" : "En revision",
-      state: isTechnicallyAuthentic ? "done" : "warn",
+      detail: isSunProfileMismatch ? "Batch detectado" : isTechnicallyAuthentic ? "Verificado" : "En revision",
+      state: isSunProfileMismatch ? "warn" : isTechnicallyAuthentic ? "done" : "warn",
     },
     {
       label: "Origen visible",
@@ -1028,17 +1069,18 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     },
     {
       label: "Reclamo seguro",
-      detail: isFreshCommercialTap ? "Disponible" : "Nuevo tap",
+      detail: isSunProfileMismatch ? "Bloqueado" : isFreshCommercialTap ? "Disponible" : "Nuevo tap",
       state: isFreshCommercialTap ? "ready" : "locked",
     },
     {
       label: "NFT / beneficios",
-      detail: hasOnChainProof ? "Listo" : isFreshCommercialTap ? "Opcional" : "Protegido",
+      detail: isSunProfileMismatch ? "Bloqueado" : hasOnChainProof ? "Listo" : isFreshCommercialTap ? "Opcional" : "Protegido",
       state: hasOnChainProof ? "done" : isFreshCommercialTap ? "ready" : "locked",
     },
   ];
   const friendlyTrustFactors = [
     { label: "Tap fresco", ok: isFreshCommercialTap },
+    { label: "Perfil SUN correcto", ok: !isSunProfileMismatch },
     { label: "Chip valido", ok: isTechnicallyAuthentic },
     { label: "Sello coherente", ok: !isTamperRisk },
     { label: "Ruta razonable", ok: originToTapDistance != null },

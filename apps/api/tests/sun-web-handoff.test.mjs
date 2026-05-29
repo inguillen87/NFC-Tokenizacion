@@ -39,6 +39,9 @@ test("web SUN page can hydrate a snapshot created by the API tap route", async (
   assert.match(snapshotLibSource, /fresh_handoff/);
   assert.match(snapshotLibSource, /snapshot_view_only/);
   assert.match(snapshotLibSource, /requiresFreshTapForCommercialActions/);
+  assert.match(snapshotLibSource, /normalizeSunProfileMismatchContract/);
+  assert.match(snapshotLibSource, /markHistoricalSnapshotContract\(contract/);
+  assert.match(snapshotLibSource, /blocked_sun_profile_mismatch/);
   assert.match(freshSource, /sun_fresh_handoff/);
   assert.match(freshSource, /verifySunFreshHandoffToken/);
   assert.match(webSource, /snapshotId/);
