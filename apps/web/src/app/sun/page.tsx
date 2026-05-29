@@ -691,7 +691,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)]"
       : "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]";
   const statusHeadline = isSunProfileMismatch
-    ? "Batch detectado. Perfil SUN no coincide."
+    ? "Producto detectado. Activacion SUN pendiente."
     : statusByteSignal === "closed" || ttStatus === "closed" || productState === "VALID_CLOSED"
     ? "Autenticidad confirmada. Sello intacto (CLOSED)."
     : statusByteSignal === "opened" || ttStatus === "opened"
@@ -735,7 +735,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isSnapshotView
       ? { label: "Escanear de nuevo", href: "#fresh-tap-required", helper: "Consulta segura: autenticidad y trazabilidad quedan visibles. Para ownership, club, rewards o tokenizacion se necesita otro tap fisico." }
     : isSunProfileMismatch
-      ? { label: "Reportar batch SUN", href: reportProblemHref, helper: "El lote existe, pero UID/CMAC no coinciden con el perfil SUN cargado. La marca debe corregir claves/layout o registrar payload del proveedor." }
+      ? { label: "Avisar a soporte", href: reportProblemHref, helper: "El producto y el lote quedan visibles. Para reclamar, abrir club o tokenizar, la marca debe cargar el perfil SUN correcto o registrar el payload del proveedor." }
     : trustScore >= 65
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: reportProblemHref, helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
@@ -769,14 +769,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isSnapshotView
       ? "Consulta guardada: para reclamar ownership, sumar puntos, abrir club o tokenizar, volve a tocar fisicamente la etiqueta."
     : isSunProfileMismatch
-      ? "El batch existe, pero UID/CMAC no coinciden con el perfil SUN cargado. No es un problema del comprador: la marca debe corregir claves/layout o registrar el payload del proveedor."
+      ? "Producto, lote y bodega detectados. Las acciones premium quedan protegidas hasta que la marca cargue el perfil SUN correcto del batch o registre el payload fisico del proveedor."
     : isReplay
       ? "Replay detectado: por seguridad necesitás un nuevo tap físico para ownership, club, garantía o tokenización."
     : "Este tap no es apto para ownership/club. Necesitás un tap válido y fresco para continuar.";
   const protectedBannerTitle = isSnapshotView
     ? "Consulta segura"
     : isSunProfileMismatch
-      ? "Perfil SUN del lote no coincide"
+      ? "Producto detectado, activacion pendiente"
     : isReplay
       ? "Replay bloqueado"
       : "Accion protegida";
@@ -911,7 +911,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "Mostramos la prueba de autenticidad, pero el mint queda bloqueado hasta tener un tap fresco y apto."
         : "Cuando reclamas ownership, este producto puede quedar como certificado NFT/sandbox y abrir wallet, club y marketplace.";
   const replayDecisionText = isSunProfileMismatch
-    ? "Batch detectado, pero perfil SUN incompatible: UID/CMAC no coinciden con el lote autorizado. Se bloquean ownership, garantia, rewards y tokenizacion hasta corregir el batch."
+    ? "Producto y lote detectados. La activacion comercial queda pendiente porque el perfil SUN del batch no coincide con la lectura fisica registrada."
     : isReplay
     ? "Replay detectado: esta URL/SUN ya fue usada. Ownership, garantia, rewards y tokenizacion quedan bloqueados hasta un nuevo tap fisico."
     : isSnapshotView
@@ -967,7 +967,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "opened"
       : "idle";
   const trustCopy = isSunProfileMismatch
-    ? "Batch detectado con perfil SUN incompatible: el sistema preserva evidencia, pero bloquea permisos comerciales hasta corregir claves/layout o registrar el payload fisico."
+    ? "La prueba se conserva y el comprador ve producto, bodega, lote y trazabilidad. Reclamo, club, marketplace y NFT esperan el perfil SUN correcto o el payload fisico registrado."
     : isReplay
     ? "Anti-replay activo: el tap queda como evidencia, no como permiso comercial."
     : isSnapshotView
@@ -1027,8 +1027,53 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             ? 5
             : 0;
 
+  const tenantDisplayName = result.tenant?.name || result.product?.winery || result.tenant?.slug || result.identity?.tenantSlug || "Demo Bodega";
+  const batchDisplay = bid || result.identity?.bid || "Batch activo";
+  const productLine = [result.product?.region, result.product?.varietal || result.product?.category || verticalLabel]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .join(" · ");
+  const visibleUid = uidMasked || (uid ? `${uid.slice(0, 4)}****${uid.slice(-4)}` : "UID protegido");
+  const productFirstTone = isFreshCommercialTap
+    ? "ready"
+    : isSunProfileMismatch
+      ? "setup"
+      : isRiskBlocked
+        ? "review"
+        : "visible";
+  const productFirstStatusTitle = isFreshCommercialTap
+    ? "Producto listo para reclamar"
+    : isSunProfileMismatch
+      ? "Producto y lote identificados"
+      : isRiskBlocked
+        ? "Producto visible, acciones protegidas"
+        : "Producto autentico";
+  const productFirstStatusBody = isFreshCommercialTap
+    ? "La lectura esta fresca: podes guardar el producto, entrar al portal, activar beneficios y ver el certificado."
+    : isSunProfileMismatch
+      ? "La bodega, el producto y el batch existen. La prueba queda visible, pero reclamo, club, marketplace y NFT siguen protegidos hasta cargar el perfil SUN correcto o registrar el payload fisico del proveedor."
+      : isRiskBlocked
+        ? "Mostramos el producto y la trazabilidad disponible, pero pedimos otro tap fisico antes de habilitar acciones comerciales."
+        : "La prueba se puede compartir y revisar. Para activar beneficios sensibles, usa un tap fresco desde la etiqueta fisica.";
+  const productFirstSpecs = [
+    { label: "Tenant", value: tenantDisplayName },
+    { label: "Producto", value: productDisplayName },
+    { label: "Lote", value: batchDisplay },
+    { label: "Chip", value: carrierLabel },
+    { label: "UID", value: visibleUid },
+    { label: "Origen", value: originDisplay },
+    { label: "Tap", value: tapDisplay },
+    { label: "Distancia", value: distanceDisplay },
+  ].filter((item) => item.value);
+  const productFirstBadges = [
+    "Producto real",
+    batchDisplay,
+    carrierLabel,
+    isFreshCommercialTap ? "Acciones listas" : "Acciones protegidas",
+  ].filter(Boolean);
+
   const friendlyStageTitle = isSunProfileMismatch
-    ? "Batch detectado. SUN no valido."
+    ? "Activacion pendiente del batch"
     : isRiskBlocked
     ? "Necesitamos un nuevo tap fisico"
     : isSnapshotView
@@ -1037,7 +1082,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "Producto autentico. Sello abierto"
         : "Producto autentico";
   const friendlyStageBody = isSunProfileMismatch
-    ? "DemoBodega y el batch existen, pero la lectura fisica no descifra a un UID autorizado. No habilitamos reclamo ni NFT hasta corregir el perfil SUN del lote."
+    ? "El producto se muestra porque la bodega y el lote estan reconocidos. Para habilitar reclamo, club, marketplace o NFT falta alinear el perfil SUN del lote o registrar el payload real del proveedor."
     : isRiskBlocked
     ? "Vemos la prueba, pero no habilitamos reclamo, garantia ni NFT con una lectura sospechosa o repetida."
     : isSnapshotView
@@ -1046,7 +1091,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "El producto es real y la apertura quedo registrada. Ahora podes asociarlo a tu cuenta y ver beneficios."
         : "La lectura es fresca. El siguiente paso es reclamarlo con email o celular para guardarlo en tu Passport.";
   const primaryPostTapAction = isSunProfileMismatch
-    ? { label: "Reportar batch SUN", href: reportProblemHref, tone: "risk" }
+    ? { label: "Avisar a soporte", href: reportProblemHref, tone: "trace" }
     : hasOnChainProof && isFreshCommercialTap
     ? { label: "Ver NFT / Wallet", href: walletHref, tone: "wallet" }
     : isFreshCommercialTap
@@ -1143,9 +1188,62 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            <Link href={walletHref} className={`min-w-0 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "pointer-events-none border-white/10 bg-slate-900/60 text-slate-500"}`}>NFT</Link>
          </div>
 
+         <section className={`sun-product-first sun-product-first--${productFirstTone}`} aria-label="Producto detectado despues del tap">
+           <div className="sun-product-first__visual">
+             {productHeroImageUrl ? (
+               <img src={productHeroImageUrl} alt={`Producto real: ${productDisplayName}`} />
+             ) : (
+               <SunProductHeroStage
+                 kind={productVisualKind}
+                 productName={productDisplayName}
+                 imageUrl={productHeroImageUrl}
+                 originDisplay={originDisplay}
+                 tapDisplay={tapDisplay}
+                 distanceDisplay={distanceDisplay}
+                 state={productVisualState}
+                 originLat={wineryPoint[0]?.lat}
+                 originLng={wineryPoint[0]?.lng}
+                 tapLat={currentTapPoint[0]?.lat}
+                 tapLng={currentTapPoint[0]?.lng}
+               />
+             )}
+             <div className="sun-product-first__badges" aria-label="Datos principales del producto">
+               {productFirstBadges.map((badge, index) => (
+                 <span key={`${badge}-${index}`}>{badge}</span>
+               ))}
+             </div>
+             <div className="sun-product-first__caption">
+               <span>{tenantDisplayName}</span>
+               <h1>{productDisplayName}</h1>
+               <p>{productLine || verticalLabel}</p>
+             </div>
+           </div>
+           <div className="sun-product-first__content">
+             <p className="sun-product-first__eyebrow">Producto real</p>
+             <h2>{productFirstStatusTitle}</h2>
+             <p>{productFirstStatusBody}</p>
+             <div className="sun-product-first__specs">
+               {productFirstSpecs.map((item) => (
+                 <div key={item.label} className="sun-product-first__spec">
+                   <span>{item.label}</span>
+                   <strong>{item.value}</strong>
+                 </div>
+               ))}
+             </div>
+             <div className="sun-product-first__actions">
+               {certificateHref ? (
+                 <Link href={certificateHref}>Ver certificado</Link>
+               ) : (
+                 <a href="#geo-trace">Ver trazabilidad</a>
+               )}
+               <a href={primaryPostTapAction.href}>{primaryPostTapAction.label}</a>
+             </div>
+           </div>
+         </section>
+
          <section className={`sun-simple-guide sun-simple-guide--${primaryPostTapAction.tone}`}>
            <div className="sun-simple-guide__copy">
-             <p>Entendelo rapido</p>
+             <p>Estado del tap</p>
              <h1>{friendlyStageTitle}</h1>
              <span>{friendlyStageBody}</span>
            </div>
