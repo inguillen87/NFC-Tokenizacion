@@ -59,13 +59,18 @@ const DEMO_SDM_CONFIG = {
   tamper_status_enabled: true,
   tamper_status_source: "enc_decrypted",
   tamper_status_offset: 0,
-  tamper_status_length: 1,
-  tamper_closed_values: ["43"],
-  tamper_open_values: ["4F"],
+  tamper_status_length: 2,
+  tamper_closed_values: ["4343"],
+  tamper_open_values: ["4F4F", "4F43"],
   tamper_unknown_policy: "UNKNOWN",
-  ttstatus_enabled: false,
-  ttstatus_source: "none",
-  ttstatus_notes: "Pilot DEMO-2026-02 reads a single encrypted TagTamper status byte: 43 closed, 4F opened.",
+  ttstatus_enabled: true,
+  ttstatus_source: "enc_decrypted",
+  ttstatus_offset: 0,
+  ttstatus_length: 2,
+  ttstatus_closed_values: ["4343"],
+  ttstatus_opened_values: ["4F4F", "4F43"],
+  ttstatus_invalid_values: ["4949"],
+  ttstatus_notes: "DEMO-2026-02 reads full two-byte NTAG 424 DNA TT status from decrypted ENC: 4343 closed, 4F4F opened, 4F43 opened previously, 4949 invalid.",
   sun: {
     product: {
       name: DEMO_PRODUCT.name,
@@ -138,7 +143,13 @@ export async function seedDemoPack(options: SeedOptions = {}) {
     INSERT INTO batches (tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config)
     VALUES (${tenant.id}, ${bid}, 'active', ${metaCt}, ${fileCt}, ${JSON.stringify({ ...DEMO_SDM_CONFIG, pack: packKey })}::jsonb)
     ON CONFLICT (bid)
-    DO UPDATE SET tenant_id = EXCLUDED.tenant_id, status = 'active', meta_key_ct = EXCLUDED.meta_key_ct, file_key_ct = EXCLUDED.file_key_ct, sdm_config = EXCLUDED.sdm_config, updated_at = now()
+    DO UPDATE SET
+      tenant_id = EXCLUDED.tenant_id,
+      status = 'active',
+      meta_key_ct = COALESCE(batches.meta_key_ct, EXCLUDED.meta_key_ct),
+      file_key_ct = COALESCE(batches.file_key_ct, EXCLUDED.file_key_ct),
+      sdm_config = COALESCE(batches.sdm_config, '{}'::jsonb) || EXCLUDED.sdm_config,
+      updated_at = now()
   `;
 
   const batch = (await sql`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`)[0];
@@ -234,7 +245,7 @@ export async function seedDemoPack(options: SeedOptions = {}) {
   await sql`
     UPDATE batches
     SET carrier_profile_code = ${DEMO_CARRIER_PROFILE_CODE},
-        sdm_config = ${JSON.stringify({ ...DEMO_SDM_CONFIG, pack: packKey })}::jsonb,
+        sdm_config = COALESCE(sdm_config, '{}'::jsonb) || ${JSON.stringify({ ...DEMO_SDM_CONFIG, pack: packKey })}::jsonb,
         updated_at = now()
     WHERE id = ${batch.id}
   `;

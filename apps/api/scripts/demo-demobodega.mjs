@@ -78,13 +78,18 @@ const sdmConfig = {
   tamper_status_enabled: true,
   tamper_status_source: "enc_decrypted",
   tamper_status_offset: 0,
-  tamper_status_length: 1,
-  tamper_closed_values: ["43"],
-  tamper_open_values: ["4F"],
+  tamper_status_length: 2,
+  tamper_closed_values: ["4343"],
+  tamper_open_values: ["4F4F", "4F43"],
   tamper_unknown_policy: "UNKNOWN",
-  ttstatus_enabled: false,
-  ttstatus_source: "none",
-  ttstatus_notes: "Pilot DEMO-2026-02 reads a single encrypted TagTamper status byte: 43 closed, 4F opened.",
+  ttstatus_enabled: true,
+  ttstatus_source: "enc_decrypted",
+  ttstatus_offset: 0,
+  ttstatus_length: 2,
+  ttstatus_closed_values: ["4343"],
+  ttstatus_opened_values: ["4F4F", "4F43"],
+  ttstatus_invalid_values: ["4949"],
+  ttstatus_notes: "DEMO-2026-02 reads full two-byte NTAG 424 DNA TT status from decrypted ENC: 4343 closed, 4F4F opened, 4F43 opened previously, 4949 invalid.",
   sun: {
     product: {
       name: demoProduct.name,
@@ -344,9 +349,9 @@ VALUES (${tenant.id}, ${bid}, 'active', ${encryptKey16(metaHex)}, ${encryptKey16
 ON CONFLICT (bid) DO UPDATE SET
   tenant_id = EXCLUDED.tenant_id,
   status = 'active',
-  meta_key_ct = EXCLUDED.meta_key_ct,
-  file_key_ct = EXCLUDED.file_key_ct,
-  sdm_config = EXCLUDED.sdm_config,
+  meta_key_ct = COALESCE(batches.meta_key_ct, EXCLUDED.meta_key_ct),
+  file_key_ct = COALESCE(batches.file_key_ct, EXCLUDED.file_key_ct),
+  sdm_config = COALESCE(batches.sdm_config, '{}'::jsonb) || EXCLUDED.sdm_config,
   carrier_profile_code = EXCLUDED.carrier_profile_code,
   updated_at = now()`;
 const batch = (await sql`SELECT id, bid FROM batches WHERE bid=${bid} LIMIT 1`)[0];

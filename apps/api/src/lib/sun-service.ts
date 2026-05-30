@@ -529,7 +529,7 @@ export async function processSunScan(input: {
   const configuredStatusHex = (() => {
     if (!tamperProfile.tamper_status_enabled || tamperProfile.tamper_status_source === "none") return null;
     const offset = tamperProfile.tamper_status_offset ?? 0;
-    const len = tamperProfile.tamper_status_length ?? 1;
+    const len = tamperProfile.tamper_status_length ?? 2;
     const expectedEnd = offset * 2 + len * 2;
     if (tamperProfile.tamper_status_source === "enc_decrypted" && res.ok && typeof res.encPlainHex === "string" && res.encPlainHex.length >= expectedEnd) {
       return res.encPlainHex.slice(offset * 2, expectedEnd).toUpperCase();

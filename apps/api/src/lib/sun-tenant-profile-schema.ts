@@ -167,13 +167,18 @@ async function migrateSunTenantProfilesSchema() {
         "tamper_status_enabled":true,
         "tamper_status_source":"enc_decrypted",
         "tamper_status_offset":0,
-        "tamper_status_length":1,
-        "tamper_closed_values":["43"],
-        "tamper_open_values":["4F"],
+        "tamper_status_length":2,
+        "tamper_closed_values":["4343"],
+        "tamper_open_values":["4F4F","4F43"],
         "tamper_unknown_policy":"UNKNOWN",
-        "ttstatus_enabled":false,
-        "ttstatus_source":"none",
-        "ttstatus_notes":"Pilot DEMO-2026-02 reads a single encrypted TagTamper status byte: 43 closed, 4F opened."
+        "ttstatus_enabled":true,
+        "ttstatus_source":"enc_decrypted",
+        "ttstatus_offset":0,
+        "ttstatus_length":2,
+        "ttstatus_closed_values":["4343"],
+        "ttstatus_opened_values":["4F4F","4F43"],
+        "ttstatus_invalid_values":["4949"],
+        "ttstatus_notes":"DEMO-2026-02 reads full two-byte NTAG 424 DNA TT status from decrypted ENC: 4343 closed, 4F4F opened, 4F43 opened previously, 4949 invalid."
       }'::jsonb,
       updated_at = now()
     FROM tenants t

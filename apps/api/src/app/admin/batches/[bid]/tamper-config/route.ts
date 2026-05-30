@@ -22,6 +22,16 @@ type TamperConfigBody = {
   ttstatus_notes?: string | null;
 };
 
+const STANDARD_CLOSED_VALUES = ["4343"];
+const STANDARD_OPEN_VALUES = ["4F4F", "4F43"];
+const STANDARD_INVALID_VALUES = ["4949"];
+
+function normalizeValues(values: unknown, fallback: string[]) {
+  const source = Array.isArray(values) ? values : fallback;
+  const normalized = source.map((v) => String(v).trim().toUpperCase()).filter(Boolean);
+  return normalized.length ? normalized : fallback;
+}
+
 export async function PATCH(req: Request, context: { params: Promise<{ bid: string }> }) {
   const auth = checkAdmin(req);
   if (auth) return auth;
@@ -42,15 +52,19 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
     tamper_status_enabled: Boolean(body.tamper_status_enabled ?? body.ttstatus_enabled),
     tamper_status_source: source,
     tamper_status_offset: Number.isInteger(Number(body.ttstatus_offset ?? body.tamper_status_offset)) ? Number(body.ttstatus_offset ?? body.tamper_status_offset) : null,
-    tamper_status_length: Number.isInteger(Number(body.tamper_status_length)) ? Number(body.tamper_status_length) : 1,
-    tamper_closed_values: Array.isArray(body.tamper_closed_values) ? body.tamper_closed_values.map((v) => String(v).trim().toUpperCase()).filter(Boolean) : [],
-    tamper_open_values: Array.isArray(body.tamper_open_values) ? body.tamper_open_values.map((v) => String(v).trim().toUpperCase()).filter(Boolean) : [],
+    tamper_status_length: Number.isInteger(Number(body.tamper_status_length)) ? Number(body.tamper_status_length) : 2,
+    tamper_closed_values: normalizeValues(body.tamper_closed_values, STANDARD_CLOSED_VALUES),
+    tamper_open_values: normalizeValues(body.tamper_open_values, STANDARD_OPEN_VALUES),
+    tamper_invalid_values: STANDARD_INVALID_VALUES,
     tamper_unknown_policy: ["UNKNOWN", "DO_NOT_DISPLAY"].includes(String(body.tamper_unknown_policy || "")) ? body.tamper_unknown_policy : "UNKNOWN",
     tamper_notes: body.tamper_notes ? String(body.tamper_notes) : null,
     ttstatus_enabled: Boolean(body.ttstatus_enabled ?? body.tamper_status_enabled),
     ttstatus_source: source,
     ttstatus_offset: Number.isInteger(Number(body.ttstatus_offset ?? body.tamper_status_offset)) ? Number(body.ttstatus_offset ?? body.tamper_status_offset) : null,
     ttstatus_length: 2,
+    ttstatus_closed_values: STANDARD_CLOSED_VALUES,
+    ttstatus_opened_values: STANDARD_OPEN_VALUES,
+    ttstatus_invalid_values: STANDARD_INVALID_VALUES,
     ttstatus_plain_or_encrypted: String(body.ttstatus_plain_or_encrypted || "encrypted").toLowerCase() === "plain" ? "plain" : "encrypted",
     ttstatus_notes: body.ttstatus_notes ? String(body.ttstatus_notes) : null,
   };
