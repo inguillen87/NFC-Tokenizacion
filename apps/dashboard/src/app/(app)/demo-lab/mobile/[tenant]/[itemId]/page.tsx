@@ -150,13 +150,18 @@ export default function DemoMobileItemPage() {
       }
     };
 
-    void load();
-    const timer = window.setInterval(() => {
+    const loadWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
       void load();
-    }, 5000);
+    };
+    loadWhenVisible();
+    const onVisibilityChange = () => loadWhenVisible();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    const timer = window.setInterval(loadWhenVisible, 20000);
 
     return () => {
       active = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(timer);
     };
   }, []);

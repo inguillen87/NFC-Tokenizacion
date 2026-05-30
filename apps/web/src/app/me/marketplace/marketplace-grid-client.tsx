@@ -83,6 +83,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, string>>({});
   const [ageGateById, setAgeGateById] = useState<Record<string, boolean>>({});
+  const [requestedById, setRequestedById] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
 
@@ -120,7 +121,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   }, [items, kind, query]);
 
   async function requestToBuy(item: Listing, ageGateAcceptedOverride = false) {
-    if (!item.id || busyById[item.id]) return;
+    if (!item.id || busyById[item.id] || requestedById[item.id]) return;
     const needsAgeGate = item.age_gate_required === true;
     const ageGateAccepted = !needsAgeGate || ageGateAcceptedOverride;
     if (needsAgeGate && !ageGateAccepted) {
@@ -160,7 +161,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
       return;
     }
 
-    const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+    const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; deduplicated?: boolean } | null;
     if (res.status === 401) {
       setFeedbackById((prev) => ({ ...prev, [item.id]: "Necesitas entrar al portal para solicitar este beneficio. Te llevo al acceso consumer." }));
       setBusyById((prev) => ({ ...prev, [item.id]: false }));
@@ -184,7 +185,13 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
       return;
     }
 
-    setFeedbackById((prev) => ({ ...prev, [item.id]: "Solicitud enviada. La marca te contactara desde el portal." }));
+    setRequestedById((prev) => ({ ...prev, [item.id]: true }));
+    setFeedbackById((prev) => ({
+      ...prev,
+      [item.id]: payload?.deduplicated
+        ? "Ya tenias una solicitud activa. No duplicamos el lead."
+        : "Solicitud enviada. La marca te contactara desde el portal.",
+    }));
     setAgeGateById((prev) => ({ ...prev, [item.id]: false }));
     setBusyById((prev) => ({ ...prev, [item.id]: false }));
   }
@@ -260,7 +267,16 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
         {filteredItems.map((item, idx) => {
           const status = String(item.stock_status || item.status || "available");
           const requestDisabled = status === "out_of_stock" || item.request_to_buy_enabled === false;
-          const cta = requestDisabled ? "No disponible" : busyById[item.id] ? "Enviando..." : item.age_gate_required ? "Confirmar y solicitar" : "Solicitar compra";
+          const requestAlreadySent = requestedById[item.id] === true;
+          const cta = requestDisabled
+            ? "No disponible"
+            : requestAlreadySent
+              ? "Solicitud enviada"
+              : busyById[item.id]
+                ? "Enviando..."
+                : item.age_gate_required
+                  ? "Confirmar y solicitar"
+                  : "Solicitar compra";
           const assetProfile = resolveProductAssetProfile({
             tenantSlug: item.tenant_slug,
             brandName: brandLabel(item),
@@ -346,7 +362,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
                 ) : null}
                 <button
                   suppressHydrationWarning
-                  disabled={requestDisabled || busyById[item.id]}
+                  disabled={requestDisabled || busyById[item.id] || requestAlreadySent}
                   onClick={() => requestToBuy(item)}
                   className="mt-4 w-full rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >

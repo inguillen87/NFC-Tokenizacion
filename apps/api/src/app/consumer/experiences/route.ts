@@ -12,6 +12,7 @@ type ConsumerSession = {
   phone?: string | null;
 };
 
+const MAX_PHOTO_DATA_URL_CHARS = 2_800_000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function cleanText(value: unknown, max = 280) {
@@ -44,7 +45,7 @@ function cleanPhotoUrl(value: unknown) {
   if (!text) return "";
   if (/^https?:\/\//i.test(text)) return cleanText(text, 900);
   if (
-    text.length <= 1_700_000 &&
+    text.length <= MAX_PHOTO_DATA_URL_CHARS &&
     /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i.test(text)
   ) {
     return text;

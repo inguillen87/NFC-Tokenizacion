@@ -71,7 +71,7 @@ function blockchainExplainer(token?: NonNullable<CertificatePayload["certificate
 }
 
 async function fetchCertificate(eventId: string): Promise<CertificatePayload | null> {
-  const res = await fetch(`${productUrls.api}/public/certificates/${encodeURIComponent(eventId)}`, { cache: "no-store" }).catch(() => null);
+  const res = await fetch(`${productUrls.api}/public/certificates/${encodeURIComponent(eventId)}`, { next: { revalidate: 20 } }).catch(() => null);
   if (!res || !res.ok) return null;
   return res.json().catch(() => null);
 }
@@ -95,15 +95,15 @@ export default async function PublicCertificatePage({ params }: { params: Promis
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,.16),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,.16),transparent_34%),linear-gradient(180deg,rgba(15,23,42,.2),#070b14_72%)]" />
         <section className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-5xl items-center gap-5 lg:grid-cols-[1fr_.8fr]">
           <div className="rounded-[2rem] border border-amber-300/20 bg-amber-500/10 p-6 shadow-[0_30px_90px_rgba(0,0,0,.35)] backdrop-blur-xl">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-200">Certificado pendiente</p>
-            <h1 className="mt-3 text-4xl font-black leading-tight text-white sm:text-6xl">Este Passport todavia no esta sincronizado.</h1>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-200">Certificado no encontrado</p>
+            <h1 className="mt-3 text-4xl font-black leading-tight text-white sm:text-6xl">No encontramos el certificado #{eventId}.</h1>
             <p className="mt-4 text-sm leading-6 text-amber-50/80">
-              El link #{eventId} existe como destino publico. Cuando el evento de tap este en la API, esta misma pantalla muestra autenticidad,
-              ownership, wallet/NFT, tx de Polygon y la historia completa del producto.
+              Esto suele pasar cuando se abre un evento viejo, inexistente o una URL copiada antes de completar el tap. No te redirigimos en loop:
+              usa el ultimo producto guardado, la wallet o vuelve a tocar fisicamente la etiqueta para generar un certificado vigente.
             </p>
             <div className="mt-6 grid gap-2 sm:grid-cols-3">
-              <Link href="/demo-lab" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/15 px-4 text-sm font-black text-cyan-100">
-                Ver Demo Lab
+              <Link href="/sun" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/15 px-4 text-sm font-black text-cyan-100">
+                Tocar de nuevo
               </Link>
               <Link href="/me/products" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-500/15 px-4 text-sm font-black text-emerald-100">
                 Mis productos
@@ -115,13 +115,13 @@ export default async function PublicCertificatePage({ params }: { params: Promis
           </div>
 
           <aside className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 backdrop-blur-xl">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Que deberia pasar</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Como recuperarlo</p>
             <ol className="mt-4 space-y-3 text-sm">
               {[
-                ["1", "Tap fresco", "El chip valida autenticidad y abre este certificado."],
-                ["2", "Claim seguro", "Email/celular + reglas de ownership asocian el producto."],
-                ["3", "NFT opcional", "Si el tenant lo permite, se emite o prepara token en Polygon."],
-                ["4", "Link permanente", "El consumidor comparte certificado, wallet o marketplace."],
+                ["1", "Abrir Wallet", "Si ya reclamaste el producto, el certificado correcto aparece en Wallet."],
+                ["2", "Ver productos", "El portal lista el ultimo tap valido y evita IDs viejos."],
+                ["3", "Tap fresco", "Si venis desde una etiqueta, toca de nuevo para generar un evento vigente."],
+                ["4", "Blockchain", "Polygon solo aparece cuando la tokenizacion esta solicitada o anclada."],
               ].map(([step, title, body]) => (
                 <li key={step} className="grid grid-cols-[auto_1fr] gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                   <span className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/30 bg-cyan-500/15 text-xs font-black text-cyan-100">{step}</span>

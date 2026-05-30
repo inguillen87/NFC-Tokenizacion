@@ -11,7 +11,9 @@ type Props = {
 
 type SubmitState = "idle" | "sending" | "success" | "error";
 
-const MAX_PHOTO_BYTES = 1_200_000;
+const MAX_ORIGINAL_PHOTO_BYTES = 12_000_000;
+const MAX_COMPRESSED_DATA_URL_CHARS = 1_650_000;
+const MAX_IMAGE_DIMENSION = 1920;
 const acceptedPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const errorCopy: Record<string, string> = {
@@ -32,6 +34,55 @@ function normalizeEventId(value: unknown) {
 function getLocale() {
   if (typeof navigator === "undefined") return "es-AR";
   return navigator.language || "es-AR";
+}
+
+function readImageElement(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("image_load_failed"));
+    };
+    image.src = url;
+  });
+}
+
+async function compressPhotoFile(file: File) {
+  const source = await readImageElement(file);
+  const sourceWidth = source.naturalWidth || source.width;
+  const sourceHeight = source.naturalHeight || source.height;
+  if (!sourceWidth || !sourceHeight) throw new Error("image_size_unavailable");
+
+  let scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(sourceWidth, sourceHeight));
+  let targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+  let targetHeight = Math.max(1, Math.round(sourceHeight * scale));
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) throw new Error("canvas_unavailable");
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, targetWidth, targetHeight);
+    context.drawImage(source, 0, 0, targetWidth, targetHeight);
+
+    for (const quality of [0.86, 0.78, 0.7, 0.62]) {
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      if (dataUrl.length <= MAX_COMPRESSED_DATA_URL_CHARS) return dataUrl;
+    }
+
+    scale *= 0.78;
+    targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+    targetHeight = Math.max(1, Math.round(sourceHeight * scale));
+  }
+
+  throw new Error("image_too_large_after_compression");
 }
 
 export function VerifiedExperienceForm({ initialEventId, initialProductName, tenant }: Props) {
@@ -58,6 +109,28 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  async function processPhotoFile(file: File) {
+    setPhotoError("");
+    setPhotoFileName(`Optimizando ${file.name}...`);
+
+    try {
+      const result = await compressPhotoFile(file);
+      if (!result.startsWith("data:image/")) {
+        setPhotoError("No pudimos leer esa foto.");
+        setPhotoFileName("");
+        return;
+      }
+
+      setPhotoUrl(result);
+      setPhotoFileName(`${file.name} optimizada`);
+      setPhotoError("");
+    } catch {
+      setPhotoUrl("");
+      setPhotoFileName("");
+      setPhotoError("No pudimos optimizar esa foto. Proba con otra imagen o pegá un link.");
+    }
+  }
+
   function handlePhotoFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -67,25 +140,12 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
       return;
     }
 
-    if (file.size > MAX_PHOTO_BYTES) {
-      setPhotoError("La foto pesa demasiado. Usa una imagen de hasta 1.2 MB.");
+    if (file.size > MAX_ORIGINAL_PHOTO_BYTES) {
+      setPhotoError("La foto pesa demasiado. Usa una imagen de hasta 12 MB; la optimizamos antes de subir.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      if (!result.startsWith("data:image/")) {
-        setPhotoError("No pudimos leer esa foto.");
-        return;
-      }
-
-      setPhotoUrl(result);
-      setPhotoFileName(file.name);
-      setPhotoError("");
-    };
-    reader.onerror = () => setPhotoError("No pudimos leer esa foto.");
-    reader.readAsDataURL(file);
+    void processPhotoFile(file);
   }
 
   async function submitExperience() {
@@ -209,7 +269,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, ten
             <div className="block rounded-2xl border border-white/10 bg-slate-950/60 p-4">
               <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Foto opcional</span>
               <p className="mt-2 text-xs leading-5 text-slate-500">
-                Subi una foto real del producto. En mobile abre camara; en desktop permite elegir archivo.
+                Subi una foto real del producto. En mobile abre camara; si es HD la optimizamos antes de guardar.
               </p>
               <input
                 ref={fileInputRef}

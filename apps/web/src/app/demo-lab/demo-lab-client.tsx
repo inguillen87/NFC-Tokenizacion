@@ -343,10 +343,17 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         setStatus(error instanceof Error ? error.message : txt.controls.unavailable);
       }
     }
-    void load();
-    const id = window.setInterval(() => void load(), 20000);
+    const loadWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void load();
+    };
+    loadWhenVisible();
+    const onVisibilityChange = () => loadWhenVisible();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    const id = window.setInterval(loadWhenVisible, 20000);
     return () => {
       alive = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(id);
     };
   }, [txt.controls.adminKey, txt.controls.realFeed]);

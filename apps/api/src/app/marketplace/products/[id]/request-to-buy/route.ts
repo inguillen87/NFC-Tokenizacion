@@ -125,8 +125,56 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }, 403);
   }
 
+  const sourceRows = access.latest_verified_tap_event_id ? await sql/*sql*/`
+    SELECT e.id AS event_id, e.uid_hex, e.batch_id, b.bid
+    FROM events e
+    LEFT JOIN batches b ON b.id = e.batch_id
+    WHERE e.id = ${access.latest_verified_tap_event_id}
+    LIMIT 1
+  ` : [];
+  const source = sourceRows[0] || {};
+
+  const existingRows = await sql/*sql*/`
+    SELECT *
+    FROM marketplace_order_requests
+    WHERE consumer_id = ${consumer.id}
+      AND marketplace_product_id = ${record.id}
+      AND status IN ('requested', 'new', 'pending', 'open')
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  const existing = existingRows[0];
+  if (existing) {
+    return json({
+      ok: true,
+      deduplicated: true,
+      reason: "active_marketplace_request_exists",
+      orderRequest: existing,
+      checkout: "request_only",
+      access: checkoutAccess.mode,
+      source: {
+        event_id: existing.source_tap_event_id || null,
+        uid_hex: existing.source_uid_hex || null,
+        batch_id: existing.source_batch_id || null,
+        bid: existing.source_bid || null,
+      },
+    });
+  }
+
   const rows = await sql/*sql*/`
-    INSERT INTO marketplace_order_requests (consumer_id, tenant_id, marketplace_product_id, quantity, consumer_message, contact_json, source_tap_event_id)
+    INSERT INTO marketplace_order_requests (
+      consumer_id,
+      tenant_id,
+      marketplace_product_id,
+      quantity,
+      consumer_message,
+      contact_json,
+      source_tap_event_id,
+      source_uid_hex,
+      source_batch_id,
+      source_bid,
+      source_context_json
+    )
     VALUES (
       ${consumer.id},
       ${record.tenant_id},
@@ -134,7 +182,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ${parsed.value.quantity},
       ${parsed.value.message},
       ${JSON.stringify({ email: consumer.email, phone: consumer.phone, access_mode: checkoutAccess.mode })}::jsonb,
-      ${access.latest_verified_tap_event_id || null}
+      ${source.event_id || access.latest_verified_tap_event_id || null},
+      ${source.uid_hex || null},
+      ${source.batch_id || null},
+      ${source.bid || null},
+      ${JSON.stringify({
+        source: "post_tap_marketplace",
+        event_id: source.event_id || access.latest_verified_tap_event_id || null,
+        uid_hex: source.uid_hex || null,
+        batch_id: source.batch_id || null,
+        bid: source.bid || null,
+        access_mode: checkoutAccess.mode,
+      })}::jsonb
     )
     RETURNING *
   `;
@@ -147,11 +206,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ${record.brand_name || "Marketplace"},
       ${String(record.title || "Marketplace product")},
       ${parsed.value.quantity},
-      ${`Marketplace request: ${String(record.title || record.id)} | access=${checkoutAccess.mode}${parsed.value.message ? ` | ${parsed.value.message}` : ""}`},
+      ${`Marketplace request: ${String(record.title || record.id)} | access=${checkoutAccess.mode} | event=${String(source.event_id || access.latest_verified_tap_event_id || "n/a")} | uid=${String(source.uid_hex || "n/a")} | bid=${String(source.bid || "n/a")}${parsed.value.message ? ` | ${parsed.value.message}` : ""}`},
       'new',
       'marketplace'
     )
   `;
 
-  return json({ ok: true, orderRequest: rows[0], checkout: "request_only", access: checkoutAccess.mode });
+  return json({
+    ok: true,
+    orderRequest: rows[0],
+    checkout: "request_only",
+    access: checkoutAccess.mode,
+    source: {
+      event_id: source.event_id || access.latest_verified_tap_event_id || null,
+      uid_hex: source.uid_hex || null,
+      batch_id: source.batch_id || null,
+      bid: source.bid || null,
+    },
+  });
 }

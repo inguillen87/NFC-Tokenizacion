@@ -841,8 +841,14 @@ export async function ensureConsumerPortalSchema() {
         )
       `;
 
+      await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_uid_hex text`;
+      await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_batch_id uuid`;
+      await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_bid text`;
+      await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_context_json jsonb NOT NULL DEFAULT '{}'::jsonb`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_products_tenant ON marketplace_products(tenant_id, status)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_tenant ON marketplace_order_requests(tenant_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_consumer_product_status ON marketplace_order_requests(consumer_id, marketplace_product_id, status, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_source_tap ON marketplace_order_requests(source_tap_event_id)`;
 
       await seedDemoMarketplaceRows();
     }, () => {

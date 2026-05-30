@@ -140,7 +140,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
   `;
 
   const row = rows[0];
-  if (!row) return json({ ok: false, error: "certificate_not_found" }, 404);
+  if (!row) {
+    return json(
+      { ok: false, error: "certificate_not_found" },
+      404,
+      { "cache-control": "public, max-age=20, stale-while-revalidate=120" },
+    );
+  }
 
   const sdmConfig = readJsonObject(row.sdm_config);
   const localeData = readJsonObject(row.locale_data);
@@ -255,5 +261,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
     })),
   };
 
-  return json({ ok: true, certificate });
+  return json(
+    { ok: true, certificate },
+    200,
+    { "cache-control": "public, max-age=20, stale-while-revalidate=120" },
+  );
 }
