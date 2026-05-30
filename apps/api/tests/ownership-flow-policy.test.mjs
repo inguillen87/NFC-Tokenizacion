@@ -34,6 +34,9 @@ test("tenant mismatch devuelve false para proteger join/save/claim", () => {
   assert.equal(matchesOwnershipTenant({ eventTenantId: "tenant-a", requestedTenantId: "tenant-a" }), true);
   assert.equal(matchesOwnershipTenant({ eventTenantId: "tenant-a", requestedTenantId: "tenant-b" }), false);
   assert.equal(matchesOwnershipTenant({ eventTenantId: "tenant-a", requestedTenantId: "" }), true);
+  assert.equal(matchesOwnershipTenant({ eventTenantId: "149de2f9-c477-46db-ac2d-8870dbbe3968", eventTenantSlug: "demobodega", requestedTenantSlug: "demobodega" }), true);
+  assert.equal(matchesOwnershipTenant({ eventTenantId: "149de2f9-c477-46db-ac2d-8870dbbe3968", eventTenantSlug: "demobodega", requestedTenantId: "demobodega" }), true);
+  assert.equal(matchesOwnershipTenant({ eventTenantId: "149de2f9-c477-46db-ac2d-8870dbbe3968", eventTenantSlug: "demobodega", requestedTenantId: "wrong", requestedTenantSlug: "demobodega" }), false);
 });
 
 test("batch mismatch devuelve false para proteger join/save/claim", () => {

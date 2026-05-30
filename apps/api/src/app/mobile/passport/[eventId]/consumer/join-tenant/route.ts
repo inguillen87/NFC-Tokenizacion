@@ -11,6 +11,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   await ensureConsumerPortalSchema();
   const body = (await req.json().catch(() => ({}))) as {
     tenantId?: string;
+    tenant_id?: string;
+    tenantSlug?: string;
+    tenant_slug?: string;
+    tenant?: string;
     bid?: string;
     demoConsumer?: boolean;
     consumerMode?: string;
@@ -27,7 +31,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
       ? await getOrCreateDemoConsumer(String(body.demoConsumerEmail || body.email || body.contact || "demo.consumer@nexid.local"))
       : null);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
-  if (!matchesOwnershipTenant({ eventTenantId: event.tenant_id, requestedTenantId: body.tenantId })) {
+  if (!matchesOwnershipTenant({
+    eventTenantId: event.tenant_id,
+    eventTenantSlug: event.tenant_slug,
+    requestedTenantId: body.tenantId || body.tenant_id,
+    requestedTenantSlug: body.tenantSlug || body.tenant_slug,
+    requestedTenant: body.tenant,
+  })) {
     return json({ ok: false, error: "tenant_mismatch" }, 403);
   }
   if (!matchesOwnershipBatch({ eventBid: event.bid, requestedBid: body.bid })) return json({ ok: false, error: "tenant_batch_mismatch" }, 403);

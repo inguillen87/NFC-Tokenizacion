@@ -1,11 +1,30 @@
 export const BLOCKED_OWNERSHIP_RESULTS = new Set(["REPLAY_SUSPECT", "DUPLICATE", "INVALID", "NOT_REGISTERED", "NOT_ACTIVE", "TAMPER", "TAMPERED", "REVOKED", "BROKEN"]);
 export const CLAIMABLE_OWNERSHIP_RESULTS = new Set(["VALID", "TAP_VALID", "VALID_CLOSED", "OPENED", "VALID_OPENED", "VALID_MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"]);
 
-export function matchesOwnershipTenant(input: { eventTenantId?: string | null; requestedTenantId?: string | null }) {
-  const eventTenantId = String(input.eventTenantId || "").trim();
-  const requestedTenantId = String(input.requestedTenantId || "").trim();
-  if (!requestedTenantId) return true;
-  return eventTenantId === requestedTenantId;
+function normalizeTenantRef(value?: string | null) {
+  return String(value || "").trim().toLowerCase();
+}
+
+export function matchesOwnershipTenant(input: {
+  eventTenantId?: string | null;
+  eventTenantSlug?: string | null;
+  requestedTenantId?: string | null;
+  requestedTenantSlug?: string | null;
+  requestedTenant?: string | null;
+}) {
+  const eventRefs = [
+    normalizeTenantRef(input.eventTenantId),
+    normalizeTenantRef(input.eventTenantSlug),
+  ].filter(Boolean);
+  const requestedRefs = [
+    normalizeTenantRef(input.requestedTenantId),
+    normalizeTenantRef(input.requestedTenantSlug),
+    normalizeTenantRef(input.requestedTenant),
+  ].filter(Boolean);
+
+  if (!requestedRefs.length) return true;
+  if (!eventRefs.length) return false;
+  return requestedRefs.every((requestedRef) => eventRefs.includes(requestedRef));
 }
 
 export function matchesOwnershipBatch(input: { eventBid?: string | null; requestedBid?: string | null }) {

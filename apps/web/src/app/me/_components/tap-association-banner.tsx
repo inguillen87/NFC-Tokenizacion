@@ -112,7 +112,7 @@ export function TapAssociationBanner() {
   async function associate(action: string, contactValue?: string, sandbox = false) {
     if (!eventId) return { ok: false, results: [] as AssociationResult[] };
     const payload = {
-      ...(tenant ? { tenantId: tenant } : {}),
+      ...(tenant ? { tenantSlug: tenant } : {}),
       ...(bid ? { bid } : {}),
       ...(sandbox
         ? {
