@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { productUrls } from "@product/config";
+import { BatchSunValidator } from "../../../components/batch-sun-validator";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "../../../components/ops-command-center";
@@ -132,6 +133,7 @@ export default async function BatchesPage() {
   const realPhotoRows = assetRows.filter((item) => Boolean(item.profile?.primaryImageUrl)).length;
   const realLabelRows = assetRows.filter((item) => Boolean(item.profile?.labelImageUrl)).length;
   const modelRows = assetRows.filter((item) => Boolean(item.profile?.modelUrl)).length;
+  const defaultOpsBid = String(batchRows.find((row) => row.bid)?.bid || (tenantScope ? "" : "DEMO-2026-02"));
   const statusCounts = batchRows.reduce((acc, row) => {
     const status = String(row.status || "pending").toLowerCase();
     acc[status] = Number(acc[status] || 0) + 1;
@@ -411,6 +413,7 @@ export default async function BatchesPage() {
           <Link href="/onboarding" className="rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Abrir onboarding guiado</Link>
         </div>
       </Card>
+      <BatchSunValidator defaultBid={defaultOpsBid} canRepair={session.role === "super-admin"} />
       <QuickOnboardingPanel context="dashboard" />
       <DataTable
         title={copy.tables.batches.title}
