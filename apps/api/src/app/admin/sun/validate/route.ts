@@ -18,6 +18,7 @@ type ValidationDecisionCode =
   | "MALFORMED_URL"
   | "UNKNOWN_BATCH"
   | "INVALID"
+  | "SUN_BATCH_DUPLICATE_CONFIG"
   | "SUN_PROFILE_MISMATCH"
   | "NOT_REGISTERED"
   | "NOT_ACTIVE"
@@ -79,6 +80,16 @@ function buildValidationDecision(body: Record<string, unknown>, status: number):
     /cmac|uid length|picc_data|crypto|decrypt|sun profile|sun_crypto|bad length/.test(cryptoErrorReason.toLowerCase() || reason)
   );
 
+  if (statusCode === "SUN_BATCH_DUPLICATE_CONFIG" || resultName === "SUN_BATCH_DUPLICATE_CONFIG" || reason.includes("duplicate batch")) {
+    return {
+      code: "SUN_BATCH_DUPLICATE_CONFIG",
+      note: "Hay mas de un batch con el mismo BID. Corregir duplicados antes de validar SUN.",
+      uid_decoded: uidDecoded,
+      uid_hex: uidHex,
+      crypto_error_reason: cryptoErrorReason || null,
+      tt_raw: ttRaw,
+    };
+  }
   if (statusCode === "UNKNOWN_BATCH" || resultName === "UNKNOWN_BATCH" || reason.includes("unknown batch")) {
     return {
       code: "UNKNOWN_BATCH",

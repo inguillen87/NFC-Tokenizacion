@@ -10,13 +10,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   if (auth) return auth;
 
   const { bid } = await params;
+  const batches = await sql/*sql*/`
+    SELECT id, status, created_at
+    FROM batches
+    WHERE bid = ${bid}
+    ORDER BY created_at ASC, id ASC
+  `;
+  if (!batches[0]) return json({ ok: false, reason: "batch not found" }, 404);
+  if (batches.length > 1) {
+    return json({
+      ok: false,
+      reason: "DUPLICATE_BID",
+      message: "BID must be globally unique before revoking a batch.",
+      batches: batches.map((row) => ({ id: row.id, status: row.status || null, created_at: row.created_at || null })),
+    }, 409);
+  }
   const rows = await sql/*sql*/`
     UPDATE batches
     SET status = 'revoked'
-    WHERE bid = ${bid}
+    WHERE id = ${batches[0].id}
     RETURNING id, bid, status
   `;
 
-  if (!rows[0]) return json({ ok: false, reason: "batch not found" }, 404);
   return json({ ok: true, batch: rows[0] });
 }

@@ -126,6 +126,20 @@ export async function POST(req: Request) {
       missing: readiness.missing,
     }, 409);
   }
+  const existingRows = await sql/*sql*/`
+    SELECT id, bid, status, created_at
+    FROM batches
+    WHERE bid = ${bid}
+    LIMIT 1
+  `;
+  if (existingRows[0]) {
+    return json({
+      ok: false,
+      reason: "batch_bid_already_exists",
+      message: "BID already exists. Batch creation never overwrites encrypted keys or sdm_config; use an explicit migration/update action.",
+      batch: existingRows[0],
+    }, 409);
+  }
 
   try {
     const kMetaHex = normalizeHexKey(body.k_meta_hex, "k_meta_hex");
@@ -155,6 +169,7 @@ export async function POST(req: Request) {
 
     const sdmConfig = {
       mac_input: "enc_plus_cmac_literal",
+      mac_input_candidates: ["enc_plus_cmac_literal", "enc_only_ascii", "query_from_enc_to_cmac", "query_from_picc_data_to_cmac"],
       url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`,
       ttstatus_enabled: true,
       ttstatus_source: "enc_decrypted",
@@ -185,6 +200,13 @@ export async function POST(req: Request) {
       ndef_url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`
     }, 201);
   } catch (error) {
+    if (typeof error === "object" && error && (error as { code?: string }).code === "23505") {
+      return json({
+        ok: false,
+        reason: "batch_bid_already_exists",
+        message: "BID already exists. Batch creation never overwrites encrypted keys or sdm_config; use an explicit migration/update action.",
+      }, 409);
+    }
     return json({ ok: false, reason: error instanceof Error ? error.message : "invalid batch payload" }, 400);
   }
 }

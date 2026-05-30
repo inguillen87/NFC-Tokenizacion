@@ -242,6 +242,12 @@ export function mapVerdictAndRisk(input: { statusCode: string; productState: str
   const state = String(input.productState || "").toUpperCase();
   const reason = String(input.reason || "").toUpperCase();
   if (
+    code === "SUN_BATCH_DUPLICATE_CONFIG"
+    || state === "SUN_BATCH_DUPLICATE_CONFIG"
+  ) {
+    return { verdict: "invalid" as const, riskLevel: "critical" as const };
+  }
+  if (
     code === "SUN_PROFILE_MISMATCH"
     || reason.includes("UID LENGTH INVALID")
     || reason.includes("CMAC MISMATCH")
@@ -289,6 +295,12 @@ export function resolveConditionState(input: {
   const code = String(input.statusCode || "").toUpperCase();
   const state = String(input.productState || "").toUpperCase();
   const reason = String(input.reason || "").toUpperCase();
+  if (
+    code === "SUN_BATCH_DUPLICATE_CONFIG"
+    || state === "SUN_BATCH_DUPLICATE_CONFIG"
+  ) {
+    return "sun_profile_mismatch";
+  }
   if (
     code === "SUN_PROFILE_MISMATCH"
     || verdict === "sun_profile_mismatch"

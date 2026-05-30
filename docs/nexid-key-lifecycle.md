@@ -49,6 +49,12 @@ Standard NTAG 424 DNA TagTamper profile:
 ```json
 {
   "mac_input": "enc_plus_cmac_literal",
+  "mac_input_candidates": [
+    "enc_plus_cmac_literal",
+    "enc_only_ascii",
+    "query_from_enc_to_cmac",
+    "query_from_picc_data_to_cmac"
+  ],
   "ttstatus_enabled": true,
   "ttstatus_source": "enc_decrypted",
   "ttstatus_offset": 0,
@@ -62,6 +68,17 @@ Standard NTAG 424 DNA TagTamper profile:
 ```
 
 Business state must not be inferred from one byte. `encPlainStatusByte` is debug only. The only TagTamper source is the full two-byte `tt_raw` parsed from the configured decrypted payload offset.
+
+If a supplier APK runs `ChangeFileSet`, assume SDM offsets or `SDMMACInputOffset` may have changed until proven otherwise. In that case, use `POST /admin/sun/debug-verify` with a fresh physical `/sun` URL. The endpoint tests diagnostic CMAC input candidates and reports the matching candidate, if any. Production authenticity must still use only the selected `sdm_config.mac_input` for the batch.
+
+Supported CMAC input modes:
+
+- `enc_plus_cmac_literal`: ASCII `ENC&cmac=`
+- `enc_only_ascii`: ASCII `ENC`
+- `query_from_enc_to_cmac`: ASCII `enc=ENC&cmac=`
+- `query_from_picc_data_to_cmac`: ASCII `picc_data=PICC&enc=ENC&cmac=`
+
+If none of those candidates match, the likely causes are wrong `K_META_BATCH`, wrong `K_FILE_BATCH`, changed PICCData layout, changed file settings, or supplier programming drift. Do not inspect the UID manifest first when UID is null.
 
 ## UID manifest
 
@@ -135,14 +152,25 @@ The validator must use structured fields, not human reason text:
 
 1. Missing params -> `MALFORMED_URL`
 2. Batch not found -> `UNKNOWN_BATCH`
-3. Batch revoked -> `INVALID`
-4. SUN crypto fails before UID -> `SUN_PROFILE_MISMATCH`
-5. UID decoded but not in manifest -> `NOT_REGISTERED`
-6. UID decoded but inactive -> `NOT_ACTIVE`
-7. Replayed URL -> `REPLAY_SUSPECT`
-8. Valid plus `tt_raw = 4343` -> `VALID_CLOSED`
-9. Valid plus `tt_raw = 4F4F` -> `VALID_OPENED`
-10. Valid plus `tt_raw = 4F43` -> `VALID_OPENED_PREVIOUSLY`
-11. Valid with no TTStatus -> `VALID_UNKNOWN_TAMPER`
+3. Duplicate BID rows -> `SUN_BATCH_DUPLICATE_CONFIG`
+4. Batch revoked -> `INVALID`
+5. SUN crypto fails before UID -> `SUN_PROFILE_MISMATCH`
+6. UID decoded but not in manifest -> `NOT_REGISTERED`
+7. UID decoded but inactive -> `NOT_ACTIVE`
+8. Replayed URL -> `REPLAY_SUSPECT`
+9. Valid plus `tt_raw = 4343` -> `VALID_CLOSED`
+10. Valid plus `tt_raw = 4F4F` -> `VALID_OPENED`
+11. Valid plus `tt_raw = 4F43` -> `VALID_OPENED_PREVIOUSLY`
+12. Valid with no TTStatus -> `VALID_UNKNOWN_TAMPER`
 
 If UID is null, the problem is SUN crypto/layout, not manifest.
+
+## BID uniqueness
+
+`bid` is globally unique because `/sun` receives only `bid`, `picc_data`, `enc`, and `cmac`. The backend must never use `LIMIT 1` to silently choose between duplicate rows.
+
+Admin diagnostic:
+
+`GET /admin/batches/by-bid/:bid/debug`
+
+Returns every row for that BID, key fingerprints only, tag counts, tenant, status, and the summarized `sdm_config`. It never returns raw keys.

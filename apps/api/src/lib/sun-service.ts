@@ -1,7 +1,7 @@
 import { sql } from './db';
 import { randomUUID } from 'node:crypto';
 import { decryptKey16 } from './keys';
-import { verifySun } from './crypto/sdm';
+import { DEFAULT_SUN_MAC_INPUT_MODE, SUN_MAC_INPUT_MODES, type SunMacInputMode, verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
 import { decodeTTStatus, parseTTStatusFromDecryptedPayload } from './ttstatus';
 import { recordTapEvent } from './tap-event-service';
@@ -60,6 +60,8 @@ type ProductState =
   | "VALID_MANUAL_OPENED"
   | "TAMPER_RISK"
   | "REPLAY_SUSPECT"
+  | "SUN_PROFILE_MISMATCH"
+  | "SUN_BATCH_DUPLICATE_CONFIG"
   | "INVALID"
   | "NOT_REGISTERED"
   | "NOT_ACTIVE"
@@ -139,6 +141,9 @@ export function summarizeBatchSdmConfig(raw: unknown) {
     chip_model: profile.chip_model,
     carrier_profile_code: typeof cfg.carrier_profile_code === "string" ? cfg.carrier_profile_code : null,
     mac_input: typeof cfg.mac_input === "string" ? cfg.mac_input : null,
+    mac_input_candidates: Array.isArray(cfg.mac_input_candidates)
+      ? cfg.mac_input_candidates.map((x) => String(x)).filter(Boolean)
+      : [],
     url_template: typeof cfg.url_template === "string" ? cfg.url_template : null,
     tagtamper_enabled: profile.tagtamper_enabled,
     tamper_status_enabled: profile.tamper_status_enabled,
@@ -153,6 +158,29 @@ export function summarizeBatchSdmConfig(raw: unknown) {
     ttstatus_opened_values: profile.ttstatus_opened_values,
     ttstatus_invalid_values: profile.ttstatus_invalid_values,
   };
+}
+
+export function resolveConfiguredMacInputModes(raw: unknown): SunMacInputMode[] {
+  const cfg = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
+  const rawCandidates = Array.isArray(cfg.mac_input_candidates) ? cfg.mac_input_candidates : [];
+  const firstMode = typeof cfg.mac_input === "string" ? cfg.mac_input : DEFAULT_SUN_MAC_INPUT_MODE;
+  const supported = new Set<string>(SUN_MAC_INPUT_MODES);
+  const modes: SunMacInputMode[] = [];
+  for (const value of [firstMode, ...rawCandidates]) {
+    const mode = String(value || "").trim();
+    if (supported.has(mode) && !modes.includes(mode as SunMacInputMode)) {
+      modes.push(mode as SunMacInputMode);
+    }
+  }
+  return modes.length ? modes : [DEFAULT_SUN_MAC_INPUT_MODE];
+}
+
+export function resolveSelectedMacInputModes(raw: unknown): SunMacInputMode[] {
+  const cfg = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
+  const mode = typeof cfg.mac_input === "string" ? cfg.mac_input.trim() : DEFAULT_SUN_MAC_INPUT_MODE;
+  return SUN_MAC_INPUT_MODES.includes(mode as SunMacInputMode)
+    ? [mode as SunMacInputMode]
+    : [DEFAULT_SUN_MAC_INPUT_MODE];
 }
 
 function normalizeTamperValue(input: unknown): TamperState {
@@ -247,6 +275,8 @@ export async function processSunScan(input: {
   context?: ScanContext;
 }) {
   const scanHashes = buildSunPayloadHashes(input);
+  const requestId = input.context?.requestId || randomUUID();
+  input.context = { ...input.context, requestId };
   let replayOriginalEventId: number | null = null;
 
   async function getManualTamperOverride(uidHex: string | null) {
@@ -355,6 +385,8 @@ export async function processSunScan(input: {
       VALID_OPENED_PREVIOUSLY: "valid",
       VALID_MANUAL_OPENED: "valid",
       REPLAY_SUSPECT: "replay_suspect",
+      SUN_PROFILE_MISMATCH: "invalid",
+      SUN_BATCH_DUPLICATE_CONFIG: "invalid",
       TAMPER_RISK: "tampered",
       NOT_REGISTERED: "not_registered",
       NOT_ACTIVE: "not_active",
@@ -404,12 +436,47 @@ export async function processSunScan(input: {
   }
 
   const batchRows = await sql/*sql*/`
-    SELECT b.id, b.tenant_id, t.slug AS tenant_slug, t.name AS tenant_name, b.status, b.meta_key_ct, b.file_key_ct, b.sdm_config
+    SELECT b.id, b.tenant_id, t.slug AS tenant_slug, t.name AS tenant_name, b.status, b.meta_key_ct, b.file_key_ct, b.sdm_config, b.created_at
     FROM batches b
     LEFT JOIN tenants t ON t.id = b.tenant_id
     WHERE b.bid = ${input.bid}
-    LIMIT 1
+    ORDER BY b.created_at ASC, b.id ASC
   `;
+  if (batchRows.length > 1) {
+    const duplicateBatches = batchRows.map((row) => ({
+      id: row.id,
+      tenant_slug: row.tenant_slug || null,
+      status: row.status || null,
+      created_at: row.created_at || null,
+      batch_sdm_config: summarizeBatchSdmConfig(row.sdm_config),
+    }));
+    console.error("[sun_batch_duplicate_config]", JSON.stringify({
+      requestId,
+      bid: input.bid,
+      count: batchRows.length,
+      batches: duplicateBatches,
+    }));
+    return {
+      status: 409,
+      body: {
+        ok: false,
+        request_id: requestId,
+        reason: "duplicate batch bid configuration",
+        result: "SUN_BATCH_DUPLICATE_CONFIG",
+        auth_status: "SUN_BATCH_DUPLICATE_CONFIG",
+        product_state: "SUN_BATCH_DUPLICATE_CONFIG",
+        bid: input.bid,
+        sun_diagnostics: {
+          traceId: requestId,
+          bid: input.bid,
+          result: "SUN_BATCH_DUPLICATE_CONFIG",
+          status: 409,
+          duplicate_batches: duplicateBatches,
+          batch_sdm_config: null,
+        },
+      },
+    };
+  }
   const batch = batchRows[0];
   if (!batch) {
     await logUnassignedAttempt('unknown batch');
@@ -422,6 +489,7 @@ export async function processSunScan(input: {
 
   const kMeta = decryptKey16(batch.meta_key_ct).toString('hex').toUpperCase();
   const kFile = decryptKey16(batch.file_key_ct).toString('hex').toUpperCase();
+  const selectedMacInputModes = resolveSelectedMacInputModes((batch as { sdm_config?: unknown }).sdm_config || {});
 
   const res = verifySun({
     piccDataHex: input.piccDataHex,
@@ -429,6 +497,7 @@ export async function processSunScan(input: {
     cmacHex: input.cmacHex,
     kMetaHex: kMeta,
     kFileHex: kFile,
+    macInputModes: selectedMacInputModes,
   });
 
   const registeredPayloadMatch = res.ok
@@ -570,7 +639,7 @@ export async function processSunScan(input: {
     return "UNKNOWN" as const;
   })();
   const authStatus = !payloadVerified
-    ? 'INVALID'
+    ? 'SUN_PROFILE_MISMATCH'
     : replaySuspect
       ? 'REPLAY_SUSPECT'
     : parsedTTStatus?.product_state === "VALID_OPENED" || parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
@@ -618,7 +687,7 @@ export async function processSunScan(input: {
       : null;
   const authValid = payloadVerified && authStatus === "VALID";
   const productState: ProductState = (() => {
-    if (!payloadVerified || authStatus === "INVALID") return "INVALID";
+    if (!payloadVerified || authStatus === "SUN_PROFILE_MISMATCH") return "SUN_PROFILE_MISMATCH";
     if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT";
     if (ttState === "VALID_OPENED" || ttState === "VALID_OPENED_PREVIOUSLY") return ttState;
     if (ttState === "VALID_CLOSED") return "VALID_CLOSED";
@@ -649,9 +718,6 @@ export async function processSunScan(input: {
   const batchSdmConfigSummary = summarizeBatchSdmConfig((batch as { sdm_config?: unknown }).sdm_config || {});
 
   const hasGeo = Number.isFinite(input.context?.lat) && Number.isFinite(input.context?.lng);
-
-  const requestId = input.context?.requestId || randomUUID();
-  input.context = { ...input.context, requestId };
 
   const eventId = await insertEvent({
     uidHex: resolvedUidHex,
@@ -694,6 +760,11 @@ export async function processSunScan(input: {
     verification_method: verificationMethod,
     crypto_error_reason: cryptoErrorReason,
     sdm_decryption_ok: Boolean(res.ok && res.encPlainHex),
+    picc_layout: res.piccLayout || null,
+    selected_mac_input: res.macInputMode || null,
+    configured_mac_input_modes: selectedMacInputModes,
+    picc_candidate_count: Array.isArray(res.piccCandidates) ? res.piccCandidates.length : 0,
+    cmac_candidate_count: Array.isArray(res.cmacCandidates) ? res.cmacCandidates.length : 0,
     enc_plain_hex_length: res.ok && typeof res.encPlainHex === "string" ? res.encPlainHex.length : 0,
     tt_raw: ttstatusParsed?.raw || null,
     tt_perm_hex: ttstatusParsed?.raw?.slice(0, 2) || null,
@@ -715,7 +786,7 @@ export async function processSunScan(input: {
 
   const publicResult = String(result || "").toUpperCase();
   const publicOk = AUTHENTIC_SCAN_RESULTS.has(publicResult);
-  const responseStatus = publicOk ? 200 : publicResult === 'REPLAY_SUSPECT' ? 409 : 403;
+  const responseStatus = publicOk ? 200 : publicResult === 'REPLAY_SUSPECT' || publicResult === "SUN_BATCH_DUPLICATE_CONFIG" ? 409 : 403;
   const sunDiagnostics = {
     traceId: requestId,
     bid: input.bid,
@@ -726,8 +797,13 @@ export async function processSunScan(input: {
     cmac_valid: typeof res.cmacValid === "boolean" ? res.cmacValid : null,
     sdm_decryption_ok: Boolean(res.ok && res.encPlainHex),
     uid_decoded: Boolean(res.uidDecoded),
-    uid_hex: resolvedUidHex || null,
+    uid_hex: res.uidHex || resolvedUidHex || null,
     read_counter: resolvedCtr ?? null,
+    picc_layout: res.piccLayout || null,
+    selected_mac_input: res.macInputMode || null,
+    configured_mac_input_modes: selectedMacInputModes,
+    picc_candidate_count: Array.isArray(res.piccCandidates) ? res.piccCandidates.length : 0,
+    cmac_candidate_count: Array.isArray(res.cmacCandidates) ? res.cmacCandidates.length : 0,
     picc_plain_hex_prefix: typeof res.piccPlainHex === "string" ? res.piccPlainHex.slice(0, 32) : null,
     enc_plain_hex_prefix: typeof res.encPlainHex === "string" ? res.encPlainHex.slice(0, 32) : null,
     enc_plain_hex_length: typeof res.encPlainHex === "string" ? res.encPlainHex.length : 0,

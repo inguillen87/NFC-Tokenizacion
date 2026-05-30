@@ -12,6 +12,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
 
   const { bid } = await params;
   await ensureCarrierProfileSchema();
+  const matchingRows = await sql`
+    SELECT id, status, created_at
+    FROM batches
+    WHERE bid = ${bid}
+    ORDER BY created_at ASC, id ASC
+  `;
+  if (matchingRows.length > 1) {
+    return json({
+      ok: false,
+      reason: 'DUPLICATE_BID',
+      message: 'BID must be globally unique before reading a batch summary.',
+      batches: matchingRows.map((row) => ({ id: row.id, status: row.status || null, created_at: row.created_at || null })),
+    }, 409);
+  }
+  if (!matchingRows[0]) return json({ ok: false, reason: 'batch not found' }, 404);
+
   const rows = await sql`
     SELECT
       b.bid,
@@ -41,6 +57,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
     LIMIT 1
   `;
 
-  if (!rows[0]) return json({ ok: false, reason: 'batch not found' }, 404);
   return json({ ok: true, batch: rows[0] });
 }

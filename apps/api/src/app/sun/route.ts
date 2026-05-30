@@ -64,6 +64,8 @@ type ProductState =
   | "VALID_UNKNOWN_TAMPER"
   | "VALID_MANUAL_OPENED"
   | "REPLAY_SUSPECT"
+  | "SUN_PROFILE_MISMATCH"
+  | "SUN_BATCH_DUPLICATE_CONFIG"
   | "INVALID"
   | "UNKNOWN_BATCH"
   | "NOT_REGISTERED"
@@ -449,12 +451,24 @@ function resolveTrustState(status: string, reason: string, productState?: string
   const normalizedStatus = status.toUpperCase();
   const normalizedReason = reason.toLowerCase();
   const normalizedProductState = String(productState || "").toUpperCase();
-  if (normalizedStatus === "INVALID" && isSunProfileMismatchReason(reason, resultMeta)) {
+  if (normalizedStatus === "SUN_BATCH_DUPLICATE_CONFIG" || normalizedProductState === "SUN_BATCH_DUPLICATE_CONFIG") {
+    return {
+      code: "SUN_BATCH_DUPLICATE_CONFIG",
+      label: "Configuracion duplicada del lote",
+      summary: "Hay mas de un batch con el mismo BID. No validamos la lectura hasta corregir la configuracion del lote.",
+      tone: "risk" as const,
+    };
+  }
+  if (
+    normalizedStatus === "SUN_PROFILE_MISMATCH"
+    || normalizedProductState === "SUN_PROFILE_MISMATCH"
+    || (normalizedStatus === "INVALID" && isSunProfileMismatchReason(reason, resultMeta))
+  ) {
     return {
       code: "SUN_PROFILE_MISMATCH",
       label: "No pudimos validar esta lectura",
       summary: "El lote fue detectado, pero esta lectura no coincide con el perfil de seguridad cargado. Las acciones comerciales quedan bloqueadas.",
-      tone: "warn" as const,
+      tone: "risk" as const,
     };
   }
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay') || normalizedReason.includes('copied url')) {
@@ -2331,6 +2345,11 @@ export async function GET(req: Request): Promise<Response> {
     uidDecoded: sunDiagnostics.uid_decoded ?? null,
     uidHex: sunDiagnostics.uid_hex || null,
     readCounter: sunDiagnostics.read_counter ?? null,
+    piccLayout: sunDiagnostics.picc_layout || null,
+    selectedMacInput: sunDiagnostics.selected_mac_input || null,
+    configuredMacInputModes: sunDiagnostics.configured_mac_input_modes || null,
+    piccCandidateCount: sunDiagnostics.picc_candidate_count ?? null,
+    cmacCandidateCount: sunDiagnostics.cmac_candidate_count ?? null,
     piccPlainHexPrefix: sunDiagnostics.picc_plain_hex_prefix || null,
     encPlainHexPrefix: sunDiagnostics.enc_plain_hex_prefix || null,
     encPlainHexLength: sunDiagnostics.enc_plain_hex_length ?? null,

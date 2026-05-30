@@ -32,7 +32,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   await ensureCarrierProfileSchema();
 
   const { bid } = await params;
-  const batchRows = await sql/*sql*/`SELECT id, tenant_id, carrier_profile_code, sdm_config FROM batches WHERE bid = ${bid} LIMIT 1`;
+  const batchRows = await sql/*sql*/`
+    SELECT id, tenant_id, carrier_profile_code, sdm_config, status, created_at
+    FROM batches
+    WHERE bid = ${bid}
+    ORDER BY created_at ASC, id ASC
+  `;
+  if (batchRows.length > 1) {
+    return json({
+      ok: false,
+      reason: "DUPLICATE_BID",
+      message: "BID must be globally unique before importing a manifest.",
+      batches: batchRows.map((row) => ({ id: row.id, status: row.status || null, created_at: row.created_at || null })),
+    }, 409);
+  }
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
   const batchCarrierCode = normalizeCarrierProfileCode(batch.carrier_profile_code || batch.sdm_config?.carrier_profile_code);

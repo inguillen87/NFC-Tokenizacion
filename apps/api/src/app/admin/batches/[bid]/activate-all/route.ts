@@ -13,7 +13,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const limit = Math.max(0, Math.trunc(Number(body.limit || 0)));
 
-  const batchRows = await sql`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
+  const batchRows = await sql`
+    SELECT id, status, created_at
+    FROM batches
+    WHERE bid = ${bid}
+    ORDER BY created_at ASC, id ASC
+  `;
+  if (batchRows.length > 1) {
+    return json({
+      ok: false,
+      reason: 'DUPLICATE_BID',
+      message: 'BID must be globally unique before activating tags.',
+      batches: batchRows.map((row) => ({ id: row.id, status: row.status || null, created_at: row.created_at || null })),
+    }, 409);
+  }
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: 'batch not found' }, 404);
 

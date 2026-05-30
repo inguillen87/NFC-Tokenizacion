@@ -70,12 +70,20 @@ export async function POST(req: Request) {
   if (!bid) return json({ ok: false, reason: "batch_required" }, 400);
 
   const batchRows = await sql/*sql*/`
-    SELECT b.id, b.tenant_id, b.bid, b.status, t.slug AS tenant_slug
+    SELECT b.id, b.tenant_id, b.bid, b.status, b.created_at, t.slug AS tenant_slug
     FROM batches b
     LEFT JOIN tenants t ON t.id = b.tenant_id
     WHERE b.bid = ${bid}
-    LIMIT 1
+    ORDER BY b.created_at ASC, b.id ASC
   `;
+  if (batchRows.length > 1) {
+    return json({
+      ok: false,
+      reason: "DUPLICATE_BID",
+      message: "BID must be globally unique before binding supplier SUN payloads.",
+      batches: batchRows.map((row) => ({ id: row.id, status: row.status || null, created_at: row.created_at || null, tenant_slug: row.tenant_slug || null })),
+    }, 409);
+  }
   const batch = batchRows[0] as Record<string, unknown> | undefined;
   if (!batch) return json({ ok: false, reason: "batch_not_found" }, 404);
 

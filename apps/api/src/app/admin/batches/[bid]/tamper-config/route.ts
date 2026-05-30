@@ -69,13 +69,28 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
     ttstatus_notes: body.ttstatus_notes ? String(body.ttstatus_notes) : null,
   };
 
+  const batches = await sql/*sql*/`
+    SELECT id, status, created_at
+    FROM batches
+    WHERE bid = ${bid}
+    ORDER BY created_at ASC, id ASC
+  `;
+  if (!batches[0]) return json({ ok: false, reason: "batch not found" }, 404);
+  if (batches.length > 1) {
+    return json({
+      ok: false,
+      reason: "DUPLICATE_BID",
+      message: "BID must be globally unique before updating tamper config.",
+      batches: batches.map((row) => ({ id: row.id, status: row.status || null, created_at: row.created_at || null })),
+    }, 409);
+  }
+
   const updated = await sql/*sql*/`
     UPDATE batches
     SET sdm_config = COALESCE(sdm_config, '{}'::jsonb) || ${JSON.stringify(nextConfig)}::jsonb
-    WHERE bid = ${bid}
+    WHERE id = ${batches[0].id}
     RETURNING id, bid, sdm_config
   `;
 
-  if (!updated[0]) return json({ ok: false, reason: "batch not found" }, 404);
   return json({ ok: true, bid: updated[0].bid, tamper_config: nextConfig });
 }

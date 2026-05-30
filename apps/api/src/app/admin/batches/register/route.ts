@@ -80,6 +80,21 @@ export async function POST(req: Request) {
     }, 409);
   }
 
+  const existingRows = await sql/*sql*/`
+    SELECT id, bid, status, created_at
+    FROM batches
+    WHERE bid = ${bid}
+    LIMIT 1
+  `;
+  if (existingRows[0]) {
+    return json({
+      ok: false,
+      reason: 'batch_bid_already_exists',
+      message: 'BID already exists. Registration never overwrites encrypted keys or sdm_config; use an explicit migration/update action.',
+      batch: existingRows[0],
+    }, 409);
+  }
+
   try {
     const metaInput = firstString(body.k_meta_hex, body.k_meta_batch, body.kMetaHex);
     const fileInput = firstString(body.k_file_hex, body.k_file_batch, body.kFileHex);
@@ -120,20 +135,31 @@ export async function POST(req: Request) {
       notes: String(body.notes || '').trim() || undefined,
       source: 'supplier_wizard',
       mode,
-      url_template: `${apiOrigin}/sun?v=1&bid=${encodeURIComponent(bid)}&picc_data=...&enc=...&cmac=...`,
+      url_template: `${apiOrigin}/sun?v=1&bid=${encodeURIComponent(bid)}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`,
+      mac_input: 'enc_plus_cmac_literal',
+      mac_input_candidates: ['enc_plus_cmac_literal', 'enc_only_ascii', 'query_from_enc_to_cmac', 'query_from_picc_data_to_cmac'],
+      tagtamper_enabled: true,
+      tamper_status_enabled: true,
+      tamper_status_source: 'enc_decrypted',
+      tamper_status_offset: 0,
+      tamper_status_length: 2,
+      tamper_closed_values: ['4343'],
+      tamper_open_values: ['4F4F', '4F43'],
+      tamper_invalid_values: ['4949'],
+      tamper_unknown_policy: 'UNKNOWN',
+      ttstatus_enabled: true,
+      ttstatus_source: 'enc_decrypted',
+      ttstatus_offset: 0,
+      ttstatus_length: 2,
+      ttstatus_closed_values: ['4343'],
+      ttstatus_opened_values: ['4F4F', '4F43'],
+      ttstatus_invalid_values: ['4949'],
+      ttstatus_plain_or_encrypted: 'encrypted',
     };
 
     const rows = await sql`
       INSERT INTO batches (tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config, carrier_profile_code)
       VALUES (${tenant.id}, ${bid}, 'active', ${metaCt}, ${fileCt}, ${JSON.stringify(sdmConfig)}::jsonb, ${carrierProfileCode})
-      ON CONFLICT (bid)
-      DO UPDATE SET
-        tenant_id = EXCLUDED.tenant_id,
-        status = 'active',
-        meta_key_ct = EXCLUDED.meta_key_ct,
-        file_key_ct = EXCLUDED.file_key_ct,
-        sdm_config = EXCLUDED.sdm_config,
-        carrier_profile_code = EXCLUDED.carrier_profile_code
       RETURNING id, bid, status, created_at
     `;
 
@@ -145,6 +171,13 @@ export async function POST(req: Request) {
       ndef_url_template: sdmConfig.url_template,
     });
   } catch (error) {
+    if (typeof error === 'object' && error && (error as { code?: string }).code === '23505') {
+      return json({
+        ok: false,
+        reason: 'batch_bid_already_exists',
+        message: 'BID already exists. Registration never overwrites encrypted keys or sdm_config; use an explicit migration/update action.',
+      }, 409);
+    }
     return json({ ok: false, reason: error instanceof Error ? error.message : 'invalid payload' }, 400);
   }
 }

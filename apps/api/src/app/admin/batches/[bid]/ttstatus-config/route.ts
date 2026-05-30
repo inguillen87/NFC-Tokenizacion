@@ -7,6 +7,8 @@ import { json } from "../../../../../lib/http";
 import { summarizeBatchSdmConfig } from "../../../../../lib/sun-service";
 
 const STANDARD_TTSTATUS_CONFIG = {
+  mac_input: "enc_plus_cmac_literal",
+  mac_input_candidates: ["enc_plus_cmac_literal", "enc_only_ascii", "query_from_enc_to_cmac", "query_from_picc_data_to_cmac"],
   tagtamper_enabled: true,
   tamper_status_enabled: true,
   tamper_status_source: "enc_decrypted",
@@ -46,13 +48,27 @@ export async function POST(req: Request, context: { params: Promise<{ bid: strin
   if (!bid) return json({ ok: false, reason: "bid required" }, 400);
 
   const rows = await sql/*sql*/`
-    SELECT bid, sdm_config
+    SELECT id, bid, sdm_config, status, created_at
     FROM batches
     WHERE bid = ${bid}
-    LIMIT 1
+    ORDER BY created_at ASC, id ASC
   `;
   const batch = rows[0] as Record<string, unknown> | undefined;
   if (!batch) return json({ ok: false, reason: "batch not found", bid }, 404);
+  if (rows.length > 1) {
+    return json({
+      ok: false,
+      reason: "DUPLICATE_BID",
+      message: "BID must be globally unique because /sun only receives bid. TTStatus migration refused to avoid updating multiple key/config rows.",
+      bid,
+      batches: rows.map((row) => ({
+        id: row.id,
+        status: row.status || null,
+        created_at: row.created_at || null,
+        summary: summarizeBatchSdmConfig(row.sdm_config),
+      })),
+    }, 409);
+  }
 
   const previousConfig = asConfig(batch.sdm_config);
   const nextConfig = { ...previousConfig, ...STANDARD_TTSTATUS_CONFIG };
@@ -62,12 +78,13 @@ export async function POST(req: Request, context: { params: Promise<{ bid: strin
     UPDATE batches
     SET sdm_config = ${JSON.stringify(nextConfig)}::jsonb,
         carrier_profile_code = 'ntag424_dna_tt'
-    WHERE bid = ${bid}
-    RETURNING bid, sdm_config
+    WHERE id = ${batch.id}
+    RETURNING id, bid, sdm_config
   `;
 
   return json({
     ok: true,
+    id: updated[0]?.id || batch.id,
     bid: updated[0]?.bid || bid,
     previous_summary: summarizeBatchSdmConfig(previousConfig),
     new_summary: summarizeBatchSdmConfig(updated[0]?.sdm_config || nextConfig),

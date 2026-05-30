@@ -16,7 +16,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const raw = Array.isArray(body.uids) ? body.uids : [];
   if (!raw.length) return json({ ok: false, reason: 'uids required' }, 400);
 
-  const batchRows = await sql`SELECT id, tenant_id FROM batches WHERE bid = ${bid} LIMIT 1`;
+  const batchRows = await sql`
+    SELECT id, tenant_id, status, created_at
+    FROM batches
+    WHERE bid = ${bid}
+    ORDER BY created_at ASC, id ASC
+  `;
+  if (batchRows.length > 1) {
+    return json({
+      ok: false,
+      reason: 'DUPLICATE_BID',
+      message: 'BID must be globally unique before importing UIDs.',
+      batches: batchRows.map((row) => ({ id: row.id, status: row.status || null, created_at: row.created_at || null })),
+    }, 409);
+  }
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: 'batch not found' }, 404);
   const readiness = await requireTenantSunProfile(String(batch.tenant_id)).catch((error) => ({ ok: false, missing: (error as Error & { missing?: string[] }).missing || ['tenant_sun_profiles'] }));
