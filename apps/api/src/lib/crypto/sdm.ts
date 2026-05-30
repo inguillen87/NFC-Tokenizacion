@@ -55,6 +55,8 @@ export type SunVerifyResult =
       reason: string;
       uidHex?: string | null;
       ctr?: number | null;
+      uidCandidateHex?: string | null;
+      uidCandidateCtr?: number | null;
       encPlainHex?: string;
       piccPlainHex?: string;
       cmacValid?: boolean;
@@ -268,16 +270,18 @@ export function verifySun(params: {
   return {
     ok: false,
     reason: "cmac mismatch",
-    uidHex: firstPicc.uidHex,
-    ctr: firstPicc.ctr,
+    uidHex: null,
+    ctr: null,
+    uidCandidateHex: firstPicc.uidHex,
+    uidCandidateCtr: firstPicc.ctr,
     piccPlainHex,
-    uidDecoded: true,
+    uidDecoded: false,
     cmacValid: false,
     sdmDecryptionOk: false,
     expectedCmacHex: firstCmac?.expectedCmacHex,
     actualCmacHex,
-    piccLayout: firstPicc.layout,
-    macInputMode: firstCmac?.name ?? null,
+    piccLayout: null,
+    macInputMode: null,
     piccCandidates,
     cmacCandidates,
   };

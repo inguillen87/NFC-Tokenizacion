@@ -46,11 +46,19 @@ function debugRecommendation(input: {
   ok: boolean;
   reason: string | null;
   uidDecoded: boolean;
+  uidCandidateCount: number;
+  uidCandidateManifestMatch: boolean;
   cmacMatched: boolean;
   ttRaw: string | null;
 }) {
   if (input.duplicateBid) return "BID is duplicated. /sun cannot safely choose keys/config until duplicate rows are merged, revoked, or renamed.";
   if (!input.keysPresent) return "Batch found, but encrypted K_META/K_FILE are missing. Register batch keys before testing SUN.";
+  if (!input.ok && input.reason === "cmac mismatch" && input.uidCandidateCount > 0 && !input.cmacMatched && !input.uidCandidateManifestMatch) {
+    return "PICCData produced diagnostic UID candidates, but none match the batch manifest and none are authenticated by CMAC. Review K_META, PICCData layout, and supplier ChangeFileSet before manifest/K_FILE.";
+  }
+  if (!input.ok && input.reason === "cmac mismatch" && input.uidCandidateCount > 0 && !input.cmacMatched) {
+    return "A diagnostic UID candidate matches the manifest, but CMAC did not match any tested input. Review K_FILE, SDMMACInputOffset, MAC input mode, and supplier ChangeFileSet.";
+  }
   if (!input.ok && !input.uidDecoded) return "SUN failed before UID decode. Review K_META, PICCData layout, SDM offsets, and supplier ChangeFileSet.";
   if (!input.ok && !input.cmacMatched) return "UID candidate exists but CMAC did not match any tested input. Review K_FILE, SDMMACInputOffset, MAC input mode, and supplier ChangeFileSet.";
   if (!input.ok) return `SUN crypto failed: ${input.reason || "unknown reason"}. Review keys and SDM profile for this batch.`;
@@ -122,6 +130,8 @@ export async function POST(req: Request) {
         ok: false,
         reason: "DUPLICATE_BID",
         uidDecoded: false,
+        uidCandidateCount: 0,
+        uidCandidateManifestMatch: false,
         cmacMatched: false,
         ttRaw: null,
       }),
@@ -146,6 +156,8 @@ export async function POST(req: Request) {
         ok: false,
         reason: "missing encrypted keys",
         uidDecoded: false,
+        uidCandidateCount: 0,
+        uidCandidateManifestMatch: false,
         cmacMatched: false,
         ttRaw: null,
       }),
@@ -176,6 +188,17 @@ export async function POST(req: Request) {
   const configuredCandidateModes = resolveConfiguredMacInputModes(batch.sdm_config);
   const debugMacInputModes = Array.from(new Set([...configuredCandidateModes, ...SUN_MAC_INPUT_MODES]));
   const verification = verifySun({ kMetaHex, kFileHex, piccDataHex, encHex, cmacHex, macInputModes: debugMacInputModes });
+  const manifestRows = await sql/*sql*/`
+    SELECT UPPER(uid_hex) AS uid_hex
+    FROM tags
+    WHERE batch_id = ${batch.id}
+  `;
+  const manifestUids = new Set(manifestRows.map((row: { uid_hex?: string | null }) => String(row.uid_hex || "").toUpperCase()).filter(Boolean));
+  const piccCandidates = (verification.piccCandidates || []).map((candidate) => ({
+    ...candidate,
+    manifest_match: manifestUids.has(String(candidate.uidHex || "").toUpperCase()),
+  }));
+  const uidCandidateManifestMatch = piccCandidates.some((candidate) => candidate.manifest_match);
   const tamperProfile = resolveTamperProfile(batch.sdm_config);
   const encPlainHex = verification.encPlainHex || "";
   const ttStatus = verification.ok && encPlainHex
@@ -185,7 +208,7 @@ export async function POST(req: Request) {
       invalidValues: tamperProfile.ttstatus_invalid_values,
     })
     : null;
-  const uidDecoded = verification.uidDecoded === true || Boolean(verification.uidHex);
+  const uidDecoded = verification.ok && (verification.uidDecoded === true || Boolean(verification.uidHex));
   const reason = verification.ok ? null : verification.reason;
   const cmacMatched = Boolean(verification.cmacCandidates?.some((candidate) => candidate.match));
 
@@ -206,8 +229,10 @@ export async function POST(req: Request) {
       cmac_valid: verification.cmacValid ?? null,
       sdm_decryption_ok: verification.sdmDecryptionOk ?? null,
       uid_decoded: uidDecoded,
-      uid_hex: verification.uidHex || null,
-      read_counter: verification.ctr ?? null,
+      uid_hex: verification.ok ? verification.uidHex || null : null,
+      uid_candidate_hex: !verification.ok ? verification.uidCandidateHex || null : null,
+      uid_candidate_count: verification.piccCandidates?.length || 0,
+      read_counter: verification.ok ? verification.ctr ?? null : null,
       picc_plain_hex: verification.piccPlainHex || null,
       picc_plain_hex_prefix: verification.piccPlainHex ? verification.piccPlainHex.slice(0, 32) : null,
       enc_plain_hex: verification.encPlainHex || null,
@@ -215,12 +240,14 @@ export async function POST(req: Request) {
       enc_plain_hex_length: verification.encPlainHex ? verification.encPlainHex.length / 2 : null,
       expected_cmac_hex: verification.expectedCmacHex || null,
       actual_cmac_hex: verification.actualCmacHex || null,
-      picc_layout: verification.piccLayout || null,
-      selected_mac_input: verification.macInputMode || null,
+      picc_layout: verification.ok ? verification.piccLayout || null : null,
+      selected_mac_input: verification.ok ? verification.macInputMode || null : null,
       selected_configured_mac_input_modes: selectedMacInputModes,
       configured_candidate_mac_input_modes: configuredCandidateModes,
       debug_mac_input_modes: debugMacInputModes,
-      picc_candidates: verification.piccCandidates || [],
+      manifest_uid_count: manifestUids.size,
+      uid_candidate_manifest_match: uidCandidateManifestMatch,
+      picc_candidates: piccCandidates,
       cmac_candidates: verification.cmacCandidates || [],
       tt_raw: ttStatus?.raw || null,
       tt_perm_status: ttStatus?.perm || null,
@@ -235,6 +262,8 @@ export async function POST(req: Request) {
       ok: verification.ok,
       reason,
       uidDecoded,
+      uidCandidateCount: verification.piccCandidates?.length || 0,
+      uidCandidateManifestMatch,
       cmacMatched,
       ttRaw: ttStatus?.raw || null,
     }),
