@@ -94,21 +94,23 @@ export default async function PublicCertificatePage({ params }: { params: Promis
       <main className="min-h-screen overflow-hidden bg-[#070b14] px-4 py-8 text-slate-100">
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,.16),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,.16),transparent_34%),linear-gradient(180deg,rgba(15,23,42,.2),#070b14_72%)]" />
         <section className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-5xl items-center gap-5 lg:grid-cols-[1fr_.8fr]">
-          <div className="rounded-[2rem] border border-amber-300/20 bg-amber-500/10 p-6 shadow-[0_30px_90px_rgba(0,0,0,.35)] backdrop-blur-xl">
+          <div className="rounded-[2rem] border border-amber-300/25 bg-slate-950/88 p-6 shadow-[0_30px_90px_rgba(0,0,0,.35)] backdrop-blur-xl">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-200">Certificado no encontrado</p>
-            <h1 className="mt-3 text-4xl font-black leading-tight text-white sm:text-6xl">No encontramos el certificado #{eventId}.</h1>
-            <p className="mt-4 text-sm leading-6 text-amber-50/80">
+            <h1 className="mt-3 text-4xl font-black leading-tight text-slate-50 sm:text-6xl" style={{ color: "#f8fafc" }}>
+              No encontramos el certificado #{eventId}.
+            </h1>
+            <p className="mt-4 text-sm leading-6 text-slate-100/90">
               Esto suele pasar cuando se abre un evento viejo, inexistente o una URL copiada antes de completar el tap. No te redirigimos en loop:
               usa el ultimo producto guardado, la wallet o vuelve a tocar fisicamente la etiqueta para generar un certificado vigente.
             </p>
             <div className="mt-6 grid gap-2 sm:grid-cols-3">
-              <Link href="/sun" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-500/15 px-4 text-sm font-black text-cyan-100">
+              <Link href="/sun" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-cyan-200/40 bg-cyan-500/25 px-4 text-sm font-black text-cyan-50">
                 Tocar de nuevo
               </Link>
-              <Link href="/me/products" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-500/15 px-4 text-sm font-black text-emerald-100">
+              <Link href="/me/products" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-emerald-200/40 bg-emerald-500/25 px-4 text-sm font-black text-emerald-50">
                 Mis productos
               </Link>
-              <Link href="/me/wallet" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-violet-300/30 bg-violet-500/15 px-4 text-sm font-black text-violet-100">
+              <Link href="/me/wallet" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-violet-200/40 bg-violet-500/25 px-4 text-sm font-black text-violet-50">
                 Wallet / NFT
               </Link>
             </div>
