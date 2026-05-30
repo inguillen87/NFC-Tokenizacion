@@ -129,9 +129,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail.trim());
   const normalizedClaimContact = claimContact.trim();
   const claimContactLooksEmail = normalizedClaimContact.includes("@");
+  const claimPhoneDigits = normalizedClaimContact.replace(/\D/g, "");
   const isClaimContactValid = claimContactLooksEmail
     ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedClaimContact)
-    : normalizedClaimContact.replace(/[^\d+]/g, "").length >= 8;
+    : claimPhoneDigits.length >= 8 && claimPhoneDigits.length <= 15;
   const isClaimCodeValid = claimCode.trim().length >= 4;
   const tokenPolicy = String(rightsPolicy?.tokenizationPolicy || "").toLowerCase();
   const claimMode = String(rightsPolicy?.claimMode || "").toLowerCase();

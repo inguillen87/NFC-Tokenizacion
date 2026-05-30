@@ -5,6 +5,7 @@ import { sessionCookieHeader, verifyConsumerAuth } from "../../../../lib/consume
 import { sql } from "../../../../lib/db";
 import { ensureTenantMembership } from "../../../../lib/consumer-portal-service";
 import { ensureConsumerAuthSchema } from "../../../../lib/commercial-runtime-schema";
+import { parseConsumerContact } from "../../../../lib/consumer-contact";
 import { randomBytes, createHash } from "node:crypto";
 
 function sha(value: string) {
@@ -13,9 +14,13 @@ function sha(value: string) {
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const contact = String(body.email || body.phone || "").trim();
+  const parsedContact = parseConsumerContact(body);
   const code = String(body.code || "").trim();
-  if (!contact || !code) return new Response(JSON.stringify({ ok: false, error: "contact_and_code_required" }), { status: 400 });
+  if (!parsedContact.ok) {
+    return new Response(JSON.stringify({ ok: false, error: parsedContact.error }), { status: parsedContact.error === "contact_required" ? 400 : 422 });
+  }
+  const contact = parsedContact.contact;
+  if (!code) return new Response(JSON.stringify({ ok: false, error: "contact_and_code_required" }), { status: 400 });
 
   const normalized = contact.toLowerCase();
   const demoMode = String(process.env.DEMO_MODE || "").toLowerCase() === "true";

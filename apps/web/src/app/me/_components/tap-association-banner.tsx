@@ -25,6 +25,21 @@ function parseContactPayload(contactValue: string) {
   return value.includes("@") ? { email: value } : { phone: value };
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function isValidPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+}
+
+function isValidContact(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return trimmed.includes("@") ? isValidEmail(trimmed) : isValidPhone(trimmed);
+}
+
 function summarizeAssociation(results: AssociationResult[]) {
   const success = results.filter((item) => item.ok).map((item) => item.action);
   const blocked = results.filter((item) => !item.ok && ["tap_not_claimable", "blocked_replay", "revoked", "snapshot_blocked"].includes(String(item.error || "")));
@@ -87,6 +102,7 @@ export function TapAssociationBanner() {
   const autoStarted = useRef(false);
 
   const visible = useMemo(() => Boolean(fromTap && eventId), [fromTap, eventId]);
+  const contactIsValid = useMemo(() => isValidContact(contact), [contact]);
   const sandboxAllowed = useMemo(() => {
     const tenantValue = String(tenant || "").toLowerCase();
     const bidValue = String(bid || "").toUpperCase();
@@ -170,7 +186,10 @@ export function TapAssociationBanner() {
   }, [visible, step]);
 
   async function sendCode() {
-    if (!contact.trim()) return;
+    if (!contactIsValid) {
+      setStatus("Ingresa un email valido o un telefono con 8 a 15 digitos.");
+      return;
+    }
     setPending(true);
     setStatus("Enviando codigo...");
     try {
@@ -193,7 +212,10 @@ export function TapAssociationBanner() {
   }
 
   async function verifyAndAssociate() {
-    if (!contact.trim() || !code.trim()) return;
+    if (!contactIsValid || !code.trim()) {
+      setStatus("Revisa el contacto y el codigo.");
+      return;
+    }
     setPending(true);
     setStatus("Verificando identidad y asociando...");
     try {
@@ -257,7 +279,7 @@ export function TapAssociationBanner() {
             className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
           />
           {step === "idle" ? (
-            <button suppressHydrationWarning disabled={pending || !contact.trim()} onClick={() => void sendCode()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60">
+            <button suppressHydrationWarning disabled={pending || !contactIsValid} onClick={() => void sendCode()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60">
               Enviar codigo rapido
             </button>
           ) : (
@@ -289,6 +311,7 @@ export function TapAssociationBanner() {
           <Link href={`/me/rewards?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-sm text-violet-100">Promos</Link>
         </div>
       )}
+      {contact.trim() && !contactIsValid ? <p className="mt-2 text-xs text-amber-200">Usa un email valido o un telefono con 8 a 15 digitos.</p> : null}
       {status ? <p className="mt-2 text-xs text-slate-200">{status}</p> : null}
     </section>
   );
