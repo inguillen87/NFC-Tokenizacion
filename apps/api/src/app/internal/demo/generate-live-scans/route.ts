@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const bid = String(body.bid || 'DEMO-2026-02');
   const count = Math.min(Math.max(Number(body.count || 10), 1), 20);
   const mode = String(body.mode || 'valid');
-  const uids = ['04B7723410E2AD','04B7723410E2AE','04B7723410E2AF','04B7723410E2B0','04B7723410E2B1','04B7723410E2B2','04B7723410E2B3','04B7723410E2B4','04B7723410E2B5','04B7723410E2B6'];
+  const uids = ['0487856A0B1090','048A876A0B1090','0483846A0B1090','047F846A0B1090','047B846A0B1090','0477846A0B1090','0474856A0B1090','0470856A0B1090','0483826A0B1090','0465846A0B1090'];
 
   const results = [];
   for (let i=0;i<count;i++) {

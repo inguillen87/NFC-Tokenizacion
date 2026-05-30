@@ -5,7 +5,7 @@ import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.nexid.lat';
-const UIDS = ['04B7723410E2AD','04B7723410E2AE','04B7723410E2AF','04B7723410E2B0','04B7723410E2B1','04B7723410E2B2','04B7723410E2B3','04B7723410E2B4','04B7723410E2B5','04B7723410E2B6'];
+const UIDS = ['0487856A0B1090','048A876A0B1090','0483846A0B1090','047F846A0B1090','047B846A0B1090','0477846A0B1090','0474856A0B1090','0470856A0B1090','0483826A0B1090','0465846A0B1090'];
 
 export async function POST(req: Request) {
   const auth = checkAdmin(req);

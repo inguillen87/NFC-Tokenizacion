@@ -56,6 +56,19 @@ const state = {
   events: [] as DemoEvent[],
 };
 
+const DEMO_SUPPLIER_UIDS = [
+  "0487856A0B1090",
+  "048A876A0B1090",
+  "0483846A0B1090",
+  "047F846A0B1090",
+  "047B846A0B1090",
+  "0477846A0B1090",
+  "0474856A0B1090",
+  "0470856A0B1090",
+  "0483826A0B1090",
+  "0465846A0B1090",
+];
+
 function rand(arr: string[]) { return arr[Math.floor(Math.random() * arr.length)] || arr[0]; }
 function productByVertical(vertical: string) {
   if (vertical === "events") return "VIP Wristband";
@@ -72,7 +85,7 @@ function pushEvent(vertical = "wine", result = "VALID") {
   const ev: DemoEvent = {
     id: Date.now() + Math.floor(Math.random() * 999),
     result,
-    uid_hex: `04B7723410E2${Math.floor(Math.random() * 90 + 10)}`,
+    uid_hex: rand(DEMO_SUPPLIER_UIDS),
     city: cities[idx] || "Mendoza",
     country_code: countries[idx] || "AR",
     lat: idx % 2 ? -23.55 : -32.88,
