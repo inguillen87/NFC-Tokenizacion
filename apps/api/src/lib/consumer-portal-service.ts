@@ -173,19 +173,93 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     ...(input.trustSnapshot || {}),
   };
 
-  const ownershipRows = await sql/*sql*/`
-    INSERT INTO consumer_product_ownerships (
-      tenant_id, consumer_id, batch_id, tag_id, uid_hex, event_id, status, source, trust_snapshot
-    ) VALUES (
-      ${event.tenant_id}, ${input.consumerId}, ${tag.batch_id}, ${tag.id || null}, ${String(event.uid_hex).toUpperCase()}, ${event.id}, ${nextStatus}, ${input.source || "sun_passport"}, ${JSON.stringify(trustSnapshot)}::jsonb
-    )
-    ON CONFLICT (consumer_id, event_id)
-    DO UPDATE SET
-      status = EXCLUDED.status,
-      trust_snapshot = EXCLUDED.trust_snapshot,
-      updated_at = now()
-    RETURNING *
-  `;
+  const uidHex = String(event.uid_hex).toUpperCase();
+  const existingClaimRows = !isBlocked ? await sql/*sql*/`
+    SELECT o.*, c.email AS consumer_email
+    FROM consumer_product_ownerships o
+    LEFT JOIN consumers c ON c.id = o.consumer_id
+    WHERE o.tenant_id = ${event.tenant_id}
+      AND o.uid_hex = ${uidHex}
+      AND o.status = 'claimed'
+    ORDER BY o.updated_at DESC
+    LIMIT 1
+  ` : [];
+  const existingClaim = existingClaimRows[0];
+  const existingConsumerId = String(existingClaim?.consumer_id || "");
+  const sameConsumerClaim = existingConsumerId && existingConsumerId === String(input.consumerId);
+  const canSupersedeDemoClaim =
+    existingConsumerId &&
+    existingConsumerId !== String(input.consumerId) &&
+    String(existingClaim?.consumer_email || "").toLowerCase() === "demo.consumer@nexid.local";
+
+  if (existingClaim && !sameConsumerClaim && !canSupersedeDemoClaim) {
+    return { ok: false as const, status: 409, error: "already_claimed" as const, ownership: existingClaim };
+  }
+
+  let ownershipRows;
+  if (existingClaim && (sameConsumerClaim || canSupersedeDemoClaim)) {
+    ownershipRows = await sql/*sql*/`
+      UPDATE consumer_product_ownerships
+      SET consumer_id = ${input.consumerId},
+          batch_id = ${tag.batch_id},
+          tag_id = ${tag.id || null},
+          event_id = ${event.id},
+          status = ${nextStatus},
+          source = ${input.source || "sun_passport"},
+          trust_snapshot = ${JSON.stringify({
+            ...trustSnapshot,
+            superseded_demo_claim: canSupersedeDemoClaim,
+            previous_consumer_id: canSupersedeDemoClaim ? existingConsumerId : null,
+          })}::jsonb,
+          updated_at = now()
+      WHERE id = ${existingClaim.id}
+      RETURNING *
+    `;
+
+    if (canSupersedeDemoClaim) {
+      await sql/*sql*/`
+        UPDATE consumer_products
+        SET ownership_status = 'viewed',
+            updated_at = now()
+        WHERE consumer_id = ${existingConsumerId}
+          AND tenant_id = ${event.tenant_id}
+          AND (
+            product_passport_id = ${uidHex}
+            OR tag_id = ${tag.id || null}
+          )
+      `;
+    }
+  } else {
+    try {
+      ownershipRows = await sql/*sql*/`
+        INSERT INTO consumer_product_ownerships (
+          tenant_id, consumer_id, batch_id, tag_id, uid_hex, event_id, status, source, trust_snapshot
+        ) VALUES (
+          ${event.tenant_id}, ${input.consumerId}, ${tag.batch_id}, ${tag.id || null}, ${uidHex}, ${event.id}, ${nextStatus}, ${input.source || "sun_passport"}, ${JSON.stringify(trustSnapshot)}::jsonb
+        )
+        ON CONFLICT (consumer_id, event_id)
+        DO UPDATE SET
+          status = EXCLUDED.status,
+          trust_snapshot = EXCLUDED.trust_snapshot,
+          updated_at = now()
+        RETURNING *
+      `;
+    } catch (error) {
+      const err = error as { code?: string; constraint?: string };
+      if (err.code === "23505" && err.constraint === "uq_consumer_product_ownerships_active_uid") {
+        const claimedRows = await sql/*sql*/`
+          SELECT o.id, o.tenant_id, o.consumer_id, o.uid_hex, o.event_id, o.status, o.source, o.claimed_at, o.updated_at
+          FROM consumer_product_ownerships o
+          WHERE o.tenant_id = ${event.tenant_id}
+            AND o.uid_hex = ${uidHex}
+            AND o.status = 'claimed'
+          LIMIT 1
+        `;
+        return { ok: false as const, status: 409, error: "already_claimed" as const, ownership: claimedRows[0] || null };
+      }
+      throw error;
+    }
+  }
   const ownership = ownershipRows[0];
 
   await sql/*sql*/`
@@ -196,7 +270,7 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     WHERE consumer_id = ${input.consumerId}
       AND tenant_id = ${event.tenant_id}
       AND (
-        product_passport_id = ${String(event.uid_hex).toUpperCase()}
+        product_passport_id = ${uidHex}
         OR tag_id = ${tag.id || null}
       )
   `;
