@@ -107,7 +107,7 @@ export default async function PublicCertificatePage({ params }: { params: Promis
               <Link href="/sun" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-cyan-200/40 bg-cyan-500/25 px-4 text-sm font-black text-cyan-50" style={{ color: "#ecfeff" }}>
                 Tocar de nuevo
               </Link>
-              <Link href="/me/products" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-emerald-200/40 bg-emerald-500/25 px-4 text-sm font-black text-emerald-50" style={{ color: "#ecfdf5" }}>
+              <Link href="/me/products" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-emerald-100 px-4 text-sm font-black" style={{ background: "rgba(236,253,245,.94)", color: "#052e16" }}>
                 Mis productos
               </Link>
               <Link href="/me/wallet" className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-violet-200/40 bg-violet-500/25 px-4 text-sm font-black text-violet-50" style={{ color: "#f5f3ff" }}>
