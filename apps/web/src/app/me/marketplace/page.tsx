@@ -55,14 +55,14 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
         : "Productos, beneficios y reventa para miembros nexID, sin comprar a ciegas."}
       notificationCount={items.length}
     >
-      <section className="rounded-3xl border border-emerald-300/25 bg-slate-950 p-5 shadow-[0_24px_80px_rgba(15,23,42,.18)] sm:p-6">
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,.12)] sm:p-6">
         <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">Compra con contexto</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-50" style={{ color: "#f8fafc" }}>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Compra con contexto</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950" style={{ color: "#0f172a" }}>
               Ves producto, certificado, club y experiencias reales antes de avanzar.
             </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-100/88">
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-700">
               La marca puede publicar productos, drops, recompra o beneficios. El usuario entiende si el producto es autentico,
               de que lote viene, que club activa y que dijeron otros compradores verificados.
             </p>
@@ -73,10 +73,10 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
               ["Reputacion", rating, "Estrellas de experiencias verificadas."],
               ["Prueba social", `${proofCount}`, "Opiniones con tap, contacto o ownership."],
             ].map(([label, value, detail]) => (
-              <article key={label} className="rounded-2xl border border-white/12 bg-white/10 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">{label}</p>
-                <p className="mt-2 text-2xl font-black text-slate-50">{value}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-200/85">{detail}</p>
+              <article key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">{detail}</p>
               </article>
             ))}
           </div>
