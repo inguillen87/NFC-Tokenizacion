@@ -93,7 +93,7 @@ function copyFor(input: { locale: string; surface: string; campaign: string }): 
       title: "Autenticidade NFC para produtos premium.",
       subtitle: "Um passaporte mobile que conecta cada unidade física com confiança, origem, garantia e venda pós-compra.",
       badge: "NFC Secure",
-      proof: "Passaporte + Marketplace",
+      proof: "PASSAPORTE + MARKETPLACE",
     };
   }
   return {
@@ -101,7 +101,7 @@ function copyFor(input: { locale: string; surface: string; campaign: string }): 
     title: "Autenticidad NFC para productos premium.",
     subtitle: "Un pasaporte mobile que conecta cada unidad física con confianza, origen, garantía y ventas post-compra.",
     badge: "NFC Secure",
-    proof: "Passport + Marketplace",
+    proof: "PASAPORTE + MARKETPLACE",
   };
 }
 

@@ -112,7 +112,6 @@ export async function generateMetadata(): Promise<Metadata> {
   });
   const ogImageUrl = new URL(`/opengraph-image?${imageParams.toString()}`, siteUrl);
   const twitterImageUrl = new URL(`/twitter-image?${imageParams.toString()}`, siteUrl);
-  const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
 
   return {
     title: socialCopy.title,
@@ -175,7 +174,6 @@ export async function generateMetadata(): Promise<Metadata> {
         },
       ],
     },
-    facebook: facebookAppId ? { appId: facebookAppId } : undefined,
   };
 }
 
@@ -185,12 +183,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const themeCookie = cookieStore.get("theme")?.value;
   const theme = themeCookie === "light" ? "light" : "dark";
   const socialCopy = getSocialCopy(locale);
+  const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
 
   return (
     <html lang={locale} suppressHydrationWarning className={theme === "light" ? "theme-light" : undefined} data-theme={theme}>
       <head>
         <meta property="og:image:alt" content={socialCopy.imageAlt} />
         <meta name="twitter:image:alt" content={socialCopy.imageAlt} />
+        {facebookAppId ? <meta property="fb:app_id" content={facebookAppId} /> : null}
       </head>
       <body>
         {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}
