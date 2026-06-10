@@ -1,13 +1,3 @@
-import { Badge, Card, SectionHeading, StatusChip } from "@product/ui";
-import Link from "next/link";
-import { AdminActionForms } from "../../components/admin-action-forms";
-import { AnalyticsPanels } from "../../components/analytics-panels";
-import { DataTable } from "../../components/data-table";
-import { ModuleGrid } from "../../components/module-grid";
-import { MultirubroOpsPanel } from "../../components/multirubro-ops-panel";
-import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "../../components/ops-command-center";
-import { RealtimeOpsMonitor } from "../../components/realtime-ops-monitor";
-import { VerifiedExperiencesPanel } from "../../components/verified-experiences-panel";
 import type { TenantTapRealtimeEvent } from "../../lib/realtime-feed";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
@@ -22,6 +12,8 @@ import {
   toDemoFeedRow,
 } from "../../lib/demo-runtime-state";
 import { messages, productUrls } from "@product/config";
+import DashboardHomeClient from "../../components/dashboard-home-client";
+import { type OpsCommandStep, type OpsCommandTenantRow } from "../../components/ops-command-center";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const FALLBACK_KPIS = {
@@ -278,6 +270,7 @@ export default async function DashboardHome() {
   const session = await requireDashboardSession();
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const isTenantAdmin = session.role === "tenant-admin";
+
   const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult, analyticsDataResult] = await Promise.all([
     getOverviewRows(),
     getLiveEvents(),
@@ -285,11 +278,12 @@ export default async function DashboardHome() {
     getBatchRows(tenantScope),
     getAnalyticsData(),
   ]);
+
   const overviewRaw = overviewRawResult as Array<Record<string, unknown>>;
   const liveEvents = liveEventsResult as Array<Record<string, unknown>>;
   const tokenizationRows = tokenizationRowsResult as Array<Record<string, unknown>>;
   const batchRows = batchRowsResult as Array<Record<string, unknown>>;
-  const analyticsData = analyticsDataResult as Parameters<typeof AnalyticsPanels>[0]["data"];
+  const analyticsData = analyticsDataResult as any;
 
   const labels = locale === "en"
     ? {
@@ -325,10 +319,13 @@ export default async function DashboardHome() {
   const scopedLiveEvents = tenantScope
     ? liveEvents.filter((row: Record<string, unknown>) => tenantFromRow(row) === tenantScope)
     : liveEvents;
+
   const initialRealtimeEvents = scopedLiveEvents.map(toRealtimeEvent);
+
   const scopedTokenizationRows = tenantScope
     ? tokenizationRows.filter((row: Record<string, unknown>) => String(row.tenant_slug || "").toLowerCase() === tenantScope)
     : tokenizationRows;
+
   const scopedBatchRows = tenantScope
     ? batchRows.filter((row: Record<string, unknown>) => String(row.tenant_slug || row.tenant_id || "").toLowerCase() === tenantScope)
     : batchRows;
@@ -363,6 +360,7 @@ export default async function DashboardHome() {
   const importedTags = scopedBatchRows.reduce((sum, row) => sum + Number(row.imported_tags || row.quantity || row.qty || 0), 0);
   const activeTags = scopedBatchRows.reduce((sum, row) => sum + Number(row.active_tags || 0), 0);
   const mintedTokens = Number(tokenizationByStatus.anchored || 0) + Number(tokenizationByStatus.minted || 0);
+
   const tenantBatchCounts = new Map<string, { batches: number; tags: number }>();
   for (const row of scopedBatchRows) {
     const slug = String(row.tenant_slug || row.tenant_id || "tenant").toLowerCase();
@@ -371,6 +369,7 @@ export default async function DashboardHome() {
     current.tags += Number(row.active_tags || row.quantity || row.qty || row.requested_quantity || 0);
     tenantBatchCounts.set(slug, current);
   }
+
   const opsTenantRows: OpsCommandTenantRow[] = scopedOverviewRaw.map((row) => {
     const slug = String(row.slug || row.tenant_slug || row.tenant_id || "tenant").toLowerCase();
     const scans = Number(row.scans || 0);
@@ -387,10 +386,11 @@ export default async function DashboardHome() {
       status: resolveTenantStatus(scans, duplicates, tamper),
     };
   });
+
   const opsSteps: OpsCommandStep[] = [
     {
       label: "Tenant y reglas comerciales",
-      body: tenantScope ? "El tenant esta acotado a una marca. Revisar ownership, portal y marketplace antes de publicar." : "Superadmin ve todos los tenants y detecta quien esta listo para rollout.",
+      body: tenantScope ? "El tenant está acotado a una marca. Revisar ownership, portal y marketplace antes de publicar." : "Superadmin ve todos los tenants y detecta quién está listo para rollout.",
       status: scopedOverviewRaw.length ? "ready" : "blocked",
       owner: "Superadmin",
     },
@@ -402,205 +402,62 @@ export default async function DashboardHome() {
     },
     {
       label: "Tags importados y activos",
-      body: "Una persona no tecnica necesita ver cantidad planeada, importada, activa y pendiente sin consola.",
+      body: "Una persona no técnica necesita ver cantidad planeada, importada, activa y pendiente sin consola.",
       status: activeTags > 0 ? "ready" : importedTags > 0 ? "working" : "blocked",
       owner: "Tenant",
     },
     {
-      label: "Tap fisico + riesgo",
-      body: "Auditoria confirma taps reales, replay bajo, tamper coherente y mapa de confianza.",
+      label: "Tap físico + riesgo",
+      body: "Auditoría confirma taps reales, replay bajo, tamper coherente y mapa de confianza.",
       status: totalScans > 0 && totalDuplicates + totalTamper < Math.max(totalScans * 0.12, 3) ? "ready" : totalScans > 0 ? "working" : "blocked",
       owner: "Auditor",
     },
     {
       label: "Ownership, NFT y experiencia",
-      body: "Portal, wallet, tokenizacion y experiencias verificadas quedan como salida comercial del tap.",
+      body: "Portal, wallet, tokenización y experiencias verificadas quedan como salida comercial del tap.",
       status: mintedTokens > 0 ? "ready" : "working",
       owner: "Tenant",
     },
   ];
 
   const demoPacks = [
-    { key: "wine-secure", label: "Wine secure", tenant: "demobodega", itemId: "demo-item-001" },
-    { key: "events-basic", label: "Events basic", tenant: "demoevents", itemId: "demo-item-001" },
-    { key: "cosmetics-secure", label: "Cosmetics secure", tenant: "democosmetics", itemId: "demo-item-001" },
-    { key: "agro-secure", label: "Agro secure", tenant: "demoagro", itemId: "demo-item-001" },
-    { key: "pharma-secure", label: "Pharma secure", tenant: "demopharma", itemId: "demo-item-001" },
-    { key: "luxury-basic", label: "Luxury basic", tenant: "demoluxury", itemId: "demo-item-001" },
-    { key: "docs-presence", label: "Docs & presence", tenant: "demodocs", itemId: "demo-item-001" },
-    { key: "reseller-flow", label: "Reseller flow", tenant: "demoreseller", itemId: "demo-item-001" },
-    { key: "government-proof", label: "Government proof", tenant: "demogov", itemId: "demo-item-001" },
-    { key: "operator-qa", label: "Operator QA", tenant: "demoops", itemId: "demo-item-001" },
+    { key: "wine-secure", label: "Wine Secure 🍷", tenant: "demobodega", itemId: "demo-item-001" },
+    { key: "events-basic", label: "Events Basic 🎟️", tenant: "demoevents", itemId: "demo-item-001" },
+    { key: "cosmetics-secure", label: "Cosmetics Secure 🧴", tenant: "democosmetics", itemId: "demo-item-001" },
+    { key: "agro-secure", label: "Agro Secure 🌾", tenant: "demoagro", itemId: "demo-item-001" },
+    { key: "pharma-secure", label: "Pharma Secure 💊", tenant: "demopharma", itemId: "demo-item-001" },
+    { key: "luxury-basic", label: "Luxury Basic 💎", tenant: "demoluxury", itemId: "demo-item-001" },
+    { key: "docs-presence", label: "Docs & Presence 📄", tenant: "demodocs", itemId: "demo-item-001" },
+    { key: "reseller-flow", label: "Reseller Flow 🤝", tenant: "demoreseller", itemId: "demo-item-001" },
+    { key: "government-proof", label: "Government Proof 🏛️", tenant: "demogov", itemId: "demo-item-001" },
+    { key: "operator-qa", label: "Operator QA 🔍", tenant: "demoops", itemId: "demo-item-001" },
   ];
 
   return (
-    <main className="space-y-8">
-      <SectionHeading eyebrow={copy.nav.overview} title={copy.pages.overview.title} description={copy.pages.overview.description} />
-
-      <AnalyticsPanels kpis={kpis} extra={copy.analytics} data={analyticsData} mapMode={isTenantAdmin ? "tenant" : "global"} />
-      <MultirubroOpsPanel />
-      <OpsCommandCenter
-        mode={isTenantAdmin ? "tenant" : "global"}
-        metrics={[
-          { label: "Tenants", value: String(scopedOverviewRaw.length), detail: tenantScope ? "Scope demobodega / tenant" : "Marcas bajo operacion", tone: scopedOverviewRaw.length ? "good" : "warn" },
-          { label: "Batches", value: String(scopedBatchRows.length), detail: `${importedTags.toLocaleString("es-AR")} tags importados`, tone: scopedBatchRows.length ? "good" : "warn" },
-          { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${plannedTags.toLocaleString("es-AR")} planificados`, tone: activeTags > 0 ? "good" : "warn" },
-          { label: "Riesgo", value: `${(totalDuplicates + totalTamper).toLocaleString("es-AR")}`, detail: "Duplicados + tamper en el scope", tone: totalDuplicates + totalTamper > Math.max(totalScans * 0.12, 3) ? "risk" : totalDuplicates + totalTamper > 0 ? "warn" : "good" },
-        ]}
-        steps={opsSteps}
-        tenants={opsTenantRows}
-        funnel={[
-          { stage: "Tenants", value: scopedOverviewRaw.length },
-          { stage: "Batches", value: scopedBatchRows.length },
-          { stage: "Tags", value: activeTags },
-          { stage: "Taps", value: totalScans },
-          { stage: "NFT", value: mintedTokens },
-        ]}
-        readiness={[
-          { label: "Manifest", ready: importedTags, pending: Math.max(plannedTags - importedTags, 0) },
-          { label: "Activacion", ready: activeTags, pending: Math.max(importedTags - activeTags, 0) },
-          { label: "Riesgo", ready: Math.max(totalScans - totalDuplicates - totalTamper, 0), pending: totalDuplicates + totalTamper },
-          { label: "Token", ready: mintedTokens, pending: Math.max(scopedTokenizationRows.length - mintedTokens, 0) },
-        ]}
-      />
-      <VerifiedExperiencesPanel />
-
-      <RealtimeOpsMonitor
-        initialEvents={initialRealtimeEvents}
-        tenantScope={tenantScope}
-        mode={isTenantAdmin ? "tenant" : "global"}
-        labels={labels}
-      />
-
-      <Card className="p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Tap simulation & Polygon status</h2>
-          <Badge tone="cyan">Simulación SUN + tokenización</Badge>
-        </div>
-        <p className="mt-2 text-xs text-slate-400">Comparativa rápida de taps válidos/invalidos y estado de transacciones de tokenización en Polygon Amoy.</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Taps exitosos<br /><b className="text-base text-emerald-300">{successfulTaps}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Taps fallidos<br /><b className="text-base text-rose-300">{failedTaps}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Minted / anchored<br /><b className="text-base text-cyan-200">{Number(tokenizationByStatus.anchored || 0)}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Pending / failed<br /><b className="text-base text-amber-200">{Number(tokenizationByStatus.pending || 0) + Number(tokenizationByStatus.failed || 0)}</b></div>
-        </div>
-        <div className="mt-4 grid gap-2">
-          {scopedTokenizationRows.slice(0, 8).map((row: Record<string, unknown>) => {
-            const status = String(row.status || "unknown").toLowerCase();
-            const tone = status === "anchored" ? "good" : status === "failed" ? "risk" : status === "processing" ? "warn" : "neutral";
-            return (
-              <div key={String(row.id)} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusChip label={status} tone={tone} />
-                  <span>{String(row.bid || "-")} · {String(row.uid_hex || "-")}</span>
-                  <span className="text-slate-400">{String(row.network || "polygon-amoy")}</span>
-                </div>
-                <p className="mt-1 break-all text-slate-400">Tx: {String(row.tx_hash || "-")} · Token: {String(row.token_id || "-")}</p>
-              </div>
-            );
-          })}
-          {!scopedTokenizationRows.length ? <p className="rounded-xl border border-dashed border-white/15 bg-slate-900/40 p-3 text-xs text-slate-400">Sin requests de tokenización en el alcance actual. Podés usar el modo simulación (`POST /sun/simulate`) para poblar esta vista.</p> : null}
-        </div>
-      </Card>
-
-      {!isTenantAdmin ? <Card className="p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo express · first time flow</h2>
-          <div className="flex flex-wrap gap-2">
-            <Badge tone="cyan">CEO</Badge>
-            <Badge tone="green">Operator</Badge>
-            <Badge tone="default">Buyer</Badge>
-          </div>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
-            <p className="font-semibold text-white">1) Elegí demo pack</p>
-            <p className="mt-1">Seleccioná uno de los 10 escenarios según industria.</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
-            <p className="font-semibold text-white">2) Mostrá mobile</p>
-            <p className="mt-1">Abrí preview móvil y explicá trust state en 15 segundos.</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-300">
-            <p className="font-semibold text-white">3) Simulá operación</p>
-            <p className="mt-1">Cargá manifest, activá tags y validá URL SUN en Batch Ops.</p>
-          </div>
-        </div>
-      </Card> : null}
-
-      {!isTenantAdmin ? <Card className="p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">10 demo packs listos</h2>
-          <Link href="/demo-lab" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Open orchestrator</Link>
-        </div>
-        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-          {demoPacks.map((pack) => (
-            <div key={pack.key} className="rounded-xl border border-white/10 bg-slate-900/70 p-3">
-              <p className="text-sm font-semibold text-white">{pack.label}</p>
-              <div className="mt-2 grid gap-2">
-                <a href={`${publicMobileBase}/${pack.tenant}/${pack.itemId}?pack=${encodeURIComponent(pack.key)}&demoMode=consumer_tap`} target="_blank" rel="noreferrer" className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-slate-100">Mobile view (public)</a>
-                <Link href="/batches" className="rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-100">Manifest flow</Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card> : null}
-
-      <ModuleGrid
-        actionLabel={copy.shell.openModule}
-        modules={isTenantAdmin
-          ? [
-              { title: copy.pages.batches.title, description: copy.pages.batches.description, href: "/batches", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.tags.title, description: copy.pages.tags.description, href: "/tags", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.events.title, description: copy.pages.events.description, href: "/events", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.analytics.title, description: copy.pages.analytics.description, href: "/analytics", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.leadsTickets.title, description: copy.pages.leadsTickets.description, href: "/leads-tickets", status: copy.statuses.active, tone: "green" as const },
-            ]
-          : [
-              { title: copy.pages.tenants.title, description: copy.pages.tenants.description, href: "/tenants", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.batches.title, description: copy.pages.batches.description, href: "/batches", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.tags.title, description: copy.pages.tags.description, href: "/tags", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.events.title, description: copy.pages.events.description, href: "/events", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.resellers.title, description: copy.pages.resellers.description, href: "/resellers", status: copy.statuses.active, tone: "green" as const },
-              { title: copy.pages.apiKeys.title, description: copy.pages.apiKeys.description, href: "/api-keys", status: copy.statuses.pending, tone: "amber" as const },
-            ]}
-      />
-
-      <DataTable
-        title={copy.tables.tenants.title}
-        columns={[
-          { key: "tenant", label: copy.tables.tenants.tenant },
-          { key: "status", label: copy.tables.tenants.status },
-          { key: "riskScore", label: "Risk score" },
-          { key: "scans", label: kpis.scans },
-          { key: "duplicates", label: kpis.duplicates },
-          { key: "tamper", label: kpis.tamper },
-        ]}
-        rows={overviewRows}
-        filterKey="status"
-        loadingLabel={copy.shell.loading}
-        emptyLabel={copy.shell.empty}
-        searchPlaceholder={copy.shell.search}
-        allFilterLabel={copy.shell.all}
-        refreshLabel={copy.shell.refresh}
-        statusMap={copy.statuses}
-      />
-
-      {!isTenantAdmin ? <Card className="p-6">
-        <h2 className="text-lg font-semibold text-white">{dashboardText.roleBasedOps}</h2>
-        <p className="mt-2 text-sm text-slate-400">{copy.pages.batches.description}</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          {Object.entries(copy.roles).map(([roleKey, roleLabel]) => (
-            <div key={roleKey} className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-xs text-slate-300">
-              <p className="font-semibold uppercase tracking-[0.12em] text-cyan-200">{roleLabel}</p>
-              <p className="mt-2">{labels.roleNote}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-      : null}
-
-      {!isTenantAdmin ? <AdminActionForms copy={dashboardText.forms} roles={copy.roles} readyLabel={copy.shell.ready} currentRole={session.role} /> : null}
-    </main>
+    <DashboardHomeClient
+      session={session}
+      tenantScope={tenantScope}
+      isTenantAdmin={isTenantAdmin}
+      analyticsData={analyticsData}
+      kpis={kpis}
+      copy={copy}
+      labels={labels}
+      opsSteps={opsSteps}
+      opsTenantRows={opsTenantRows}
+      initialRealtimeEvents={initialRealtimeEvents}
+      successfulTaps={successfulTaps}
+      failedTaps={failedTaps}
+      tokenizationByStatus={tokenizationByStatus}
+      scopedTokenizationRows={scopedTokenizationRows}
+      demoPacks={demoPacks}
+      publicMobileBase={publicMobileBase}
+      overviewRows={overviewRows}
+      dashboardText={dashboardText}
+      scopedBatchRows={scopedBatchRows}
+      importedTags={importedTags}
+      activeTags={activeTags}
+      plannedTags={plannedTags}
+      mintedTokens={mintedTokens}
+    />
   );
 }
