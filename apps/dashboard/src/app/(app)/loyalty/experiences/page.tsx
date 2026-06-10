@@ -4,6 +4,7 @@ import { VerifiedExperiencesPanel } from "../../../../components/verified-experi
 import { requireDashboardSession } from "../../../../lib/session";
 import { getServerOrigin } from "../../../../lib/server-origin";
 import type { VerifiedExperienceItem } from "../../../../components/verified-experiences-panel";
+import { headers } from "next/headers";
 
 const clubControls = [
   {
@@ -34,7 +35,7 @@ const eventClubs = [
     product: "Vinos premium",
     members: "842 miembros",
     signal: "4.9 estrellas verificadas",
-    body: "Duenos y compradores comparten experiencia, apertura, guarda, reventa y recomendaciones.",
+    body: "Duenos y compradores comparten experience, apertura, guarda, reventa y recomendaciones.",
   },
   {
     name: "Beauty Passport",
@@ -61,10 +62,11 @@ type AdminExperiencesPayload = {
   };
 };
 
-async function adminGet(origin: string, path: string) {
+async function adminGet(origin: string, path: string, cookie?: string) {
   try {
     const response = await fetch(`${origin}/api/admin/${path.replace(/^\/?admin\//, "")}`, {
       cache: "no-store",
+      headers: cookie ? { cookie } : undefined,
     });
     if (!response.ok) return null;
     return response.json();
@@ -87,8 +89,9 @@ export default async function ExperiencesPage({ searchParams }: { searchParams?:
   const requestedTenant = typeof query.tenant === "string" ? query.tenant : "";
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : requestedTenant;
   const origin = await getServerOrigin();
+  const cookie = (await headers()).get("cookie") || "";
   const tenantQuery = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}&limit=50` : "?limit=50";
-  const experiencesRaw = (await adminGet(origin, `/admin/consumer-experiences${tenantQuery}`)) as AdminExperiencesPayload | null;
+  const experiencesRaw = (await adminGet(origin, `/admin/consumer-experiences${tenantQuery}`, cookie)) as AdminExperiencesPayload | null;
   const experiences = Array.isArray(experiencesRaw?.items) ? experiencesRaw.items : [];
   const pendingReviews = experiences.length
     ? experiences.slice(0, 8).map((review) => ({

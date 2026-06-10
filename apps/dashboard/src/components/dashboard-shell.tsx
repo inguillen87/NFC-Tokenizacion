@@ -8,6 +8,31 @@ import { dashboardContent } from "../lib/dashboard-content";
 import { productUrls } from "@product/config";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import { AdminNotificationBell } from "./admin-notification-bell";
+import { motion } from "framer-motion";
+import {
+  Compass,
+  LayoutDashboard,
+  Layers,
+  Cpu,
+  Activity,
+  Coins,
+  BarChart3,
+  LifeBuoy,
+  KeyRound,
+  Network,
+  Users,
+  CreditCard,
+  Award,
+  UserSquare2,
+  Gift,
+  PartyPopper,
+  Bot,
+  ShoppingBag,
+  Flame,
+  FileCheck2,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
 
 type DashboardText = typeof dashboardContent["es-AR"];
 
@@ -178,18 +203,123 @@ export function DashboardShellInner({
     ? searchableLinks.filter((entry) => entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
     : [];
 
+  const coreOpsItems = [
+    { href: "/onboarding", label: "Onboarding Setup", icon: Compass },
+    { href: "/", label: nav.overview, icon: LayoutDashboard },
+    { href: "/batches", label: nav.batches, icon: Layers },
+    { href: "/tags", label: nav.tags, icon: Cpu },
+    { href: "/events", label: nav.events, icon: Activity },
+    { href: "/tokenization", label: "Tokenization", icon: Coins },
+    { href: "/analytics", label: nav.analytics, icon: BarChart3 },
+    { href: "/leads-tickets", label: nav.leadsTickets, icon: LifeBuoy },
+  ];
+
+  if (currentRole === "super-admin" || currentRole === "reseller") {
+    coreOpsItems.unshift({ href: "/tenants", label: nav.tenants, icon: Compass });
+  }
+  if (currentRole !== "super-admin" && currentRole !== "reseller") {
+    coreOpsItems.push({ href: "/api-keys", label: nav.apiKeys, icon: KeyRound });
+  }
+
+  const globalNetworkItems = [];
+  if (currentRole === "super-admin") {
+    globalNetworkItems.push({ href: "/superadmin-network", label: "Consumer Network", icon: Network });
+    globalNetworkItems.push({ href: "/resellers", label: nav.resellers, icon: Users });
+    globalNetworkItems.push({ href: "/subscriptions", label: nav.subscriptions, icon: CreditCard });
+  }
+
+  const loyaltyNetworkItems = [];
+  if (currentRole === "tenant-admin" || currentRole === "super-admin") {
+    loyaltyNetworkItems.push({ href: "/loyalty/overview", label: "Loyalty Studio", icon: Award });
+    loyaltyNetworkItems.push({ href: "/consumer-network/overview", label: "Portal de Usuarios", icon: UserSquare2 });
+    loyaltyNetworkItems.push({ href: "/loyalty/rewards", label: "Catálogo Beneficios", icon: Gift });
+    loyaltyNetworkItems.push({ href: "/loyalty/experiences", label: "Experiencias & Eventos", icon: PartyPopper });
+    loyaltyNetworkItems.push({ href: "/loyalty/campaigns", label: "Growth & BotIA", icon: Bot });
+    loyaltyNetworkItems.push({ href: "/consumer-network/marketplace", label: "Marketplace Opt-in", icon: ShoppingBag, badge: "Web3" });
+    loyaltyNetworkItems.push({ href: "/consumer-network/offers", label: "Ofertas & Drops", icon: Flame });
+    loyaltyNetworkItems.push({ href: "/consumer-network/order-requests", label: "Order Requests", icon: FileCheck2 });
+  }
+
+  const settingsItems = [
+    { href: "/mfa", label: "MFA Security", icon: ShieldCheck }
+  ];
+  if (currentPermissions.includes("users:manage") || currentRole === "super-admin") {
+    settingsItems.unshift({ href: "/users", label: "IAM Users", icon: Users });
+  }
+
+  const renderNavLink = (item: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }) => {
+    const isActive = isActiveRoute(item.href);
+    const IconComponent = item.icon;
+    return (
+      <Link key={item.href} href={item.href} className="relative block">
+        <motion.div
+          whileHover={{ x: 4 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-xs font-black tracking-tight transition duration-200 ${
+            isActive
+              ? "border-cyan-500/35 bg-cyan-500/10 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+              : "border-transparent text-slate-400 hover:bg-white/[0.02] hover:text-white"
+          }`}
+        >
+          {isActive && (
+            <motion.div
+              layoutId="activeSidebarIndicator"
+              className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-cyan-400"
+            />
+          )}
+          <div className={`shrink-0 rounded-lg p-1.5 ${isActive ? "bg-cyan-500/20 text-cyan-300" : "bg-slate-900 text-slate-500 border border-white/5"}`}>
+            <IconComponent className="h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+            <span className={isActive ? "text-white" : "text-slate-300"}>{item.label}</span>
+            {item.badge && (
+              <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] ${
+                isActive
+                  ? "border border-cyan-300/20 bg-cyan-500/10 text-cyan-200"
+                  : "border border-white/5 bg-white/5 text-slate-400"
+              }`}>
+                {item.badge}
+              </span>
+            )}
+          </div>
+        </motion.div>
+      </Link>
+    );
+  };
+
   return (
     <div className="dashboard-shell-root flex min-h-screen flex-col bg-[#020617] text-slate-200 lg:flex-row">
-      <aside className="dashboard-sidebar border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-72 lg:p-6 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.4)]">
+      <aside className="dashboard-sidebar border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-80 lg:p-6 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.4)] flex flex-col h-screen overflow-y-auto">
         <Link href="/" className="mb-8 inline-flex items-center hover:opacity-80 transition-opacity">
           <BrandLockup size={40} variant="pulse" theme="dark" className="brand-surface-sidebar" />
         </Link>
 
         <div className="space-y-4">
-          <div className="rounded-xl border border-white/5 bg-slate-900/50 p-4 shadow-inner">
-            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-2 block">{shell.role}</label>
-            <div className="text-sm font-semibold text-white truncate">{roles[role]} · {currentLabel}</div>
-            <div className="text-[11px] text-slate-400 truncate mt-1">{currentEmail}</div>
+          {/* Grape / Winery Role Card */}
+          <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-4 shadow-xl backdrop-blur-md">
+            <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-violet-500/5 blur-2xl" />
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 text-xl border border-violet-500/20">
+                🍇
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                  {roles[role] || "Tenant Admin"}
+                </span>
+                <h3 className="mt-0.5 text-xs font-black text-white truncate">
+                  {currentLabel}
+                </h3>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400/90">
+                    Polygon Amoy
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="relative">
@@ -225,80 +355,79 @@ export function DashboardShellInner({
           ) : null}
         </div>
 
-        <nav className="mt-8 space-y-1">
-          <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Core Ops</p>
-
-          <Link href="/onboarding" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${pathname.startsWith("/onboarding") ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-            Onboarding Setup
-          </Link>
-
-          {items.map((item) => (
-            <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute(item.href) ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-              {item.label}
-            </Link>
-          ))}
-
-          {currentRole === "super-admin" ? (
-             <div className="mt-8 mb-4">
-                <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Global Network</p>
-                <Link href="/superadmin-network" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/superadmin-network") ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                  Consumer Network
-                </Link>
-             </div>
-          ) : null}
-
-          {currentRole === "tenant-admin" || currentRole === "super-admin" ? (
-            <div className="mt-8 mb-4">
-               <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Loyalty & Network</p>
-               <Link href="/loyalty/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/overview") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                 Loyalty Studio
-               </Link>
-               <Link href="/consumer-network/overview" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/consumer-network/overview") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                 Portal de Usuarios
-               </Link>
-               <Link href="/loyalty/rewards" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/rewards") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                 Catálogo Beneficios
-               </Link>
-               <Link href="/loyalty/experiences" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/experiences") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                 Experiencias & Eventos
-               </Link>
-               <Link href="/loyalty/campaigns" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/loyalty/campaigns") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                 Growth & BotIA
-               </Link>
-               <Link href="/consumer-network/marketplace" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all mt-2 ${isActiveRoute("/consumer-network/marketplace") ? "bg-violet-500/10 text-violet-300 border border-violet-500/20" : "text-violet-400 hover:bg-white/5 hover:text-violet-300"}`}>
-                 Marketplace Opt-in
-               </Link>
-               <Link href="/consumer-network/offers" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/consumer-network/offers") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                 Ofertas & Drops
-               </Link>
-               <Link href="/consumer-network/order-requests" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/consumer-network/order-requests") ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                 Order Requests
-               </Link>
+        <nav className="mt-8 space-y-6">
+          {/* Core Ops Group */}
+          <div>
+            <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Core Ops</p>
+            <div className="space-y-0.5">
+              {coreOpsItems.map(renderNavLink)}
             </div>
-          ) : null}
+          </div>
 
-          <div className="mt-8 border-t border-white/5 pt-4">
-             <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Settings</p>
-             {(currentPermissions.includes("users:manage") || currentRole === "super-admin") && (
-               <Link href="/users" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/users") ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-                 IAM Users
-               </Link>
-             )}
-             <Link href="/mfa" className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${isActiveRoute("/mfa") ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
-               MFA Security
-             </Link>
+          {/* Global Network Group */}
+          {globalNetworkItems.length > 0 && (
+            <div>
+              <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Global Network</p>
+              <div className="space-y-0.5">
+                {globalNetworkItems.map(renderNavLink)}
+              </div>
+            </div>
+          )}
+
+          {/* Loyalty & Network Group */}
+          {loyaltyNetworkItems.length > 0 && (
+            <div>
+              <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Loyalty & Network</p>
+              <div className="space-y-0.5">
+                {loyaltyNetworkItems.map(renderNavLink)}
+              </div>
+            </div>
+          )}
+
+          {/* Settings Group */}
+          <div>
+            <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Settings</p>
+            <div className="space-y-0.5">
+              {settingsItems.map(renderNavLink)}
+            </div>
           </div>
         </nav>
 
+        {/* Bottom usage stats widget for business owners */}
+        <div className="mt-8 rounded-2xl border border-white/5 bg-slate-950/60 p-4 shrink-0">
+          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+            <span>Uso de Lotes</span>
+            <span className="text-cyan-300">30%</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-900">
+            <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" style={{ width: "30%" }} />
+          </div>
+          <p className="mt-2 text-[10px] text-slate-500 leading-4 font-medium">
+            Has consumido 3 de tus 10 lotes contratados. Contacta a soporte para ampliar tu plan.
+          </p>
+        </div>
+
+        {/* Live Operations Stream Widget */}
+        <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-500/10 bg-emerald-500/5 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-emerald-400 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span>Stream Live</span>
+          </div>
+          <span className="text-[9px] opacity-70 font-bold">120 TPM</span>
+        </div>
+
         {isDemoMode ? (
-          <div className="mt-8 rounded-xl border border-cyan-500/20 bg-gradient-to-b from-cyan-950/40 to-transparent p-4 shadow-lg relative overflow-hidden">
+          <div className="mt-4 rounded-xl border border-cyan-500/20 bg-gradient-to-b from-cyan-950/40 to-transparent p-4 shadow-lg relative overflow-hidden shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/20 blur-xl rounded-full pointer-events-none" />
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400 mb-3 flex items-center gap-2">
                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                Ops Tools
             </p>
             <div className="grid gap-2">
-              <Link href="/demo-lab/encode" className="rounded-lg border border-cyan-500/30 bg-slate-950/80 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-950/50 transition-colors">URL Encoder</Link>
+              <Link href="/demo-lab/encode" className="rounded-lg border border-cyan-500/30 bg-slate-950/80 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-950/50 transition-colors text-center">URL Encoder</Link>
               <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-500/30 bg-slate-950/80 px-3 py-2 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-950/50 transition-colors flex justify-between">
                  Mobile Scan <span>↗</span>
               </a>

@@ -6,6 +6,7 @@ import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/de
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { getServerOrigin } from "../../../lib/server-origin";
+import { headers } from "next/headers";
 
 type TagRow = {
   uidHex: string;
@@ -29,10 +30,13 @@ type TagsResponse = {
   };
 };
 
-async function getTags(origin: string, params: URLSearchParams): Promise<{ data: TagsResponse; meta: DemoDataMeta }> {
+async function getTags(origin: string, params: URLSearchParams, cookie?: string): Promise<{ data: TagsResponse; meta: DemoDataMeta }> {
   const query = params.toString() ? `?${params.toString()}` : "";
   try {
-    const response = await fetch(`${origin}/api/admin/tags${query}`, { cache: "no-store" });
+    const response = await fetch(`${origin}/api/admin/tags${query}`, {
+      cache: "no-store",
+      headers: cookie ? { cookie } : undefined,
+    });
     const meta = readDemoDataMetaFromResponse(response);
     if (!response.ok) return { data: { rows: [] }, meta };
     const data = await response.json() as TagsResponse;
@@ -63,6 +67,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   const session = await requireDashboardSession();
   const origin = await getServerOrigin();
   const query = await searchParams;
+  const cookie = (await headers()).get("cookie") || "";
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : String(query.tenant || "");
   const source = session.role === "tenant-admin" ? "real" : (query.source || "all");
   const range = (query.range || "30d") as "24h" | "7d" | "30d";
@@ -81,7 +86,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   params.set("limit", String(pageSize));
   params.set("offset", String(offset));
 
-  const data = await getTags(origin, params);
+  const data = await getTags(origin, params, cookie);
   const rows = data.data.rows;
   const totals = data.data.totals || {};
   const totalRows = Number(totals.total || 0);

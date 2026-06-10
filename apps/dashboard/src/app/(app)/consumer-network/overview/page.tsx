@@ -2,11 +2,13 @@ import { SectionHeading } from "@product/ui";
 import { DataTable } from "../../../../components/data-table";
 import { requireDashboardSession } from "../../../../lib/session";
 import { getServerOrigin } from "../../../../lib/server-origin";
+import { headers } from "next/headers";
 
-async function adminGet(origin: string, path: string) {
+async function adminGet(origin: string, path: string, cookie?: string) {
   try {
     const response = await fetch(`${origin}/api/admin/${path.replace(/^\/?admin\//, "")}`, {
       cache: "no-store",
+      headers: cookie ? { cookie } : undefined,
     });
     if (!response.ok) return null;
     return response.json();
@@ -40,12 +42,13 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : requestedTenant;
   const tenantQuery = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
   const origin = await getServerOrigin();
+  const cookie = (await headers()).get("cookie") || "";
 
   const [overviewRaw, membersRaw, productsRaw, tapsRaw] = await Promise.all([
-    adminGet(origin, `/admin/consumer-network/overview${tenantQuery}`),
-    adminGet(origin, `/admin/consumer-network/members${tenantQuery}`),
-    adminGet(origin, `/admin/consumer-network/products${tenantQuery}`),
-    adminGet(origin, `/admin/consumer-network/taps${tenantQuery}`),
+    adminGet(origin, `/admin/consumer-network/overview${tenantQuery}`, cookie),
+    adminGet(origin, `/admin/consumer-network/members${tenantQuery}`, cookie),
+    adminGet(origin, `/admin/consumer-network/products${tenantQuery}`, cookie),
+    adminGet(origin, `/admin/consumer-network/taps${tenantQuery}`, cookie),
   ]);
 
   const overviewPayload = (overviewRaw || {}) as OverviewPayload;

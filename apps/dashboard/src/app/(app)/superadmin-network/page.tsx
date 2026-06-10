@@ -4,6 +4,7 @@ import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from 
 import { BlockchainHsmHealth } from "../../../components/blockchain-hsm-health";
 import { requireDashboardSession } from "../../../lib/session";
 import { getServerOrigin } from "../../../lib/server-origin";
+import { headers } from "next/headers";
 
 type TenantRow = Record<string, unknown>;
 type BatchRow = Record<string, unknown>;
@@ -26,9 +27,12 @@ type ProductAssetsPayload = {
   }>;
 };
 
-async function fetchJson<T>(origin: string, path: string, fallback: T): Promise<T> {
+async function fetchJson<T>(origin: string, path: string, fallback: T, cookie?: string): Promise<T> {
   try {
-    const response = await fetch(`${origin}${path}`, { cache: "no-store" });
+    const response = await fetch(`${origin}${path}`, {
+      cache: "no-store",
+      headers: cookie ? { cookie } : undefined,
+    });
     if (!response.ok) return fallback;
     return await response.json() as T;
   } catch {
@@ -57,15 +61,16 @@ function riskScore(scans: number, duplicates: number, tamper: number) {
 export default async function SuperadminConsumerNetworkPage() {
   const session = await requireDashboardSession();
   const origin = await getServerOrigin();
+  const cookie = (await headers()).get("cookie") || "";
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
   const assetQuery = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}&limit=80` : "?limit=80";
   const [tenants, batches, tagsPayload, experiencesPayload, productAssetsPayload] = await Promise.all([
-    fetchJson<TenantRow[]>(origin, "/api/admin/tenants?withStats=1", []),
-    fetchJson<BatchRow[]>(origin, `/api/admin/batches${query}`, []),
-    fetchJson<TagsPayload>(origin, `/api/admin/tags${query ? `${query}&` : "?"}limit=100`, { rows: [], totals: {} }),
-    fetchJson<ExperiencesPayload>(origin, `/api/admin/consumer-experiences${query}`, { items: [], moderation: {} }),
-    fetchJson<ProductAssetsPayload>(origin, `/api/admin/product-assets${assetQuery}`, { items: [] }),
+    fetchJson<TenantRow[]>(origin, "/api/admin/tenants?withStats=1", [], cookie),
+    fetchJson<BatchRow[]>(origin, `/api/admin/batches${query}`, [], cookie),
+    fetchJson<TagsPayload>(origin, `/api/admin/tags${query ? `${query}&` : "?"}limit=100`, { rows: [], totals: {} }, cookie),
+    fetchJson<ExperiencesPayload>(origin, `/api/admin/consumer-experiences${query}`, { items: [], moderation: {} }, cookie),
+    fetchJson<ProductAssetsPayload>(origin, `/api/admin/product-assets${assetQuery}`, { items: [] }, cookie),
   ]);
 
   const scopedTenants = tenantScope ? tenants.filter((row) => String(row.slug || row.tenant_slug || "").toLowerCase() === tenantScope) : tenants;

@@ -7,6 +7,8 @@ import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/de
 import { requireDashboardSession } from "../../../lib/session";
 import { getServerOrigin } from "../../../lib/server-origin";
 
+import { headers } from "next/headers";
+
 type AnalyticsPayload = {
   scope?: {
     tenant: string;
@@ -84,12 +86,14 @@ async function getAnalytics({
   source = "all",
   range = "30d",
   country = "",
+  cookie = "",
 }: {
   origin: string;
   tenantScope?: string;
   source?: "real" | "demo" | "imported" | "all";
   range?: "24h" | "7d" | "30d";
   country?: string;
+  cookie?: string;
 }): Promise<{ data: AnalyticsPayload | null; meta: DemoDataMeta }> {
   try {
     const queryParams = new URLSearchParams();
@@ -98,7 +102,10 @@ async function getAnalytics({
     if (range) queryParams.set("range", range);
     if (country) queryParams.set("country", country.toUpperCase());
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
-    const response = await fetch(`${origin}/api/admin/analytics${query}`, { cache: "no-store" });
+    const response = await fetch(`${origin}/api/admin/analytics${query}`, {
+      cache: "no-store",
+      headers: cookie ? { cookie } : undefined,
+    });
     const meta = readDemoDataMetaFromResponse(response);
     if (!response.ok) return { data: null, meta };
     return { data: await response.json(), meta };
@@ -117,12 +124,13 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const range = (query.range || "30d") as "24h" | "7d" | "30d";
   const country = (query.country || "").trim();
   const origin = await getServerOrigin();
+  const cookie = (await headers()).get("cookie") || "";
 
   const fallbackLocale = "es-AR" as const;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
   const translation = messages[locale] ?? messages[fallbackLocale];
   const kpis = translation?.dashboard?.kpis || FALLBACK_KPIS;
-  const analyticsData = await getAnalytics({ origin, tenantScope, source, range, country });
+  const analyticsData = await getAnalytics({ origin, tenantScope, source, range, country, cookie });
   const mapMode = isTenantAdmin ? "tenant" : "global";
 
   return (
