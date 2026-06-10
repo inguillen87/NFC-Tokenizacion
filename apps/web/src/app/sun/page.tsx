@@ -1656,6 +1656,99 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <p className="mt-2 text-[10px] text-slate-500">{timelineCities} ciudades reales en timeline. Si el tap no trae GPS, se usa centro de ciudad conocido para contar la ruta sin simular precision exacta.</p>
          </div>
 
+          {/* IoT Telemetry & Winery Heritage Story (Premium Redesign) */}
+          <div className="sun-sensor-story-section rounded-2xl border border-amber-500/20 bg-gradient-to-br from-slate-950 via-slate-900/90 to-slate-950 p-5 mt-4 relative overflow-hidden">
+            <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-amber-500/5 blur-xl" />
+            
+            {/* Part 1: IoT Sensor Telemetry */}
+            <div className="border-b border-white/10 pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.18em] text-amber-300 font-black">Monitoreo IoT en Tránsito</p>
+                  <h3 className="text-sm font-black text-white mt-1">Historial de Cadena de Frío</h3>
+                </div>
+                <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  ÓPTIMO (15.2°C)
+                </span>
+              </div>
+
+              {/* Sparkline chart using SVG for stability */}
+              <div className="mt-3 bg-slate-950/45 rounded-xl border border-white/5 p-3">
+                <div className="flex justify-between items-center text-[10px] text-slate-400 mb-2">
+                  <span>Mendoza (Origen)</span>
+                  <span>Puerto BA</span>
+                  <span>Tránsito Atlántico</span>
+                  <span>Miami (Destino)</span>
+                </div>
+                <div className="h-16 w-full relative">
+                  <svg className="w-full h-full" viewBox="0 0 300 60" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="sensorGrad" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {/* Area under the line */}
+                    <path 
+                      d="M0 60 Q 50 20, 100 24 T 200 18 T 300 15 L 300 60 L 0 60 Z" 
+                      fill="url(#sensorGrad)" 
+                    />
+                    {/* Temperature line */}
+                    <path 
+                      d="M0 45 Q 50 20, 100 24 T 200 18 T 300 15" 
+                      fill="none" 
+                      stroke="#f59e0b" 
+                      strokeWidth="2.5" 
+                      strokeLinecap="round"
+                    />
+                    {/* Dotted threshold line */}
+                    <line x1="0" y1="35" x2="300" y2="35" stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
+                  </svg>
+                  {/* Current floating indicator */}
+                  <div className="absolute right-4 top-1 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-black text-slate-950">
+                    15.2°C
+                  </div>
+                </div>
+                <div className="mt-2 flex justify-between text-[9px] text-slate-500">
+                  <span>Humedad: 62% (Estable)</span>
+                  <span>Choques/G-Force: 0.0g (Sin alertas)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Part 2: Terroir & Storytelling (Winery Heritage) */}
+            <div className="mt-4 space-y-3">
+              <p className="text-[9px] uppercase tracking-[0.18em] text-amber-300 font-black">Origen & Ficha Técnica</p>
+              <h3 className="text-sm font-black text-white">Notas de Cata & Maridaje</h3>
+              
+              <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                <div className="rounded-xl border border-white/5 bg-slate-950/60 p-3">
+                  <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Terroir Valle de Uco</span>
+                  <p className="mt-1 text-slate-200 font-bold">Altitud: 1,200m</p>
+                  <p className="mt-0.5 text-slate-400 leading-normal text-[10px]">
+                    Suelos aluviales que otorgan taninos elegantes y excelente acidez natural.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/5 bg-slate-950/60 p-3">
+                  <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Crianza en Barrica</span>
+                  <p className="mt-1 text-slate-200 font-bold">18 Meses de Roble</p>
+                  <p className="mt-0.5 text-slate-400 leading-normal text-[10px]">
+                    Roble francés de primer uso. Aporta notas de vainilla, chocolate negro y tabaco.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/5 bg-slate-950/50 p-3 text-[11px] leading-relaxed text-slate-300">
+                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold mb-1">Nota de Cata Malbec Premium</span>
+                "Entrada dulce y carnosa, con taninos maduros y redondos. Final persistente con toques de cacao y frutos negros."
+                <div className="mt-2 text-[10px] text-amber-200 font-semibold">
+                  🍷 Maridaje recomendado: Carne asada, cordero al horno o quesos duros curados.
+                </div>
+              </div>
+            </div>
+          </div>
+
          {/* Loyalty & Experiences Mini-app (Consumer Network) */}
           {isFreshCommercialTap && (
              <div className="sun-loyalty-panel rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-5 mt-4">

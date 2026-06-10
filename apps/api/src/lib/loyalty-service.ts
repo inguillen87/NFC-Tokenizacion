@@ -11,7 +11,7 @@ const BLOCKED_RESULTS = new Set(["REPLAY_SUSPECT", "INVALID", "NOT_ACTIVE", "NOT
 
 export async function getTapEvent(eventId: string) {
   const rows = await sql/*sql*/`
-    SELECT e.id, e.tenant_id, e.batch_id, e.uid_hex, e.result, e.reason, e.created_at, e.city, e.country_code, t.slug AS tenant_slug, b.bid
+    SELECT e.id, e.tenant_id, e.batch_id, e.uid_hex, e.result, e.reason, e.created_at, e.city, e.country_code, e.geo_lat, e.geo_lng, t.slug AS tenant_slug, b.bid
     FROM events e
     JOIN tenants t ON t.id = e.tenant_id
     LEFT JOIN batches b ON b.id = e.batch_id
