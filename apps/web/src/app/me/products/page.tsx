@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, Gift, MessageSquareText, PackageCheck, ShieldCheck, WalletCards } from "lucide-react";
+import { ExternalLink, Gift, MessageSquareText, PackageCheck, ShieldCheck, WalletCards, ArrowRight, Award, MapPin, CheckCircle2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import { formatPortalDate, ownershipTone, type ConsumerPortalProduct, type ConsumerTap } from "../_components/consumer-portal-model";
@@ -16,9 +16,9 @@ function productVisualKind(product: ConsumerPortalProduct, index: number) {
 
 function statusClasses(status: string) {
   const tone = ownershipTone(status);
-  if (tone === "success") return "border-emerald-300/30 bg-emerald-500/10 text-emerald-100";
-  if (tone === "danger") return "border-rose-300/30 bg-rose-500/10 text-rose-100";
-  return "border-cyan-300/30 bg-cyan-500/10 text-cyan-100";
+  if (tone === "success") return "border-emerald-500/35 bg-emerald-500/10 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.1)] font-black";
+  if (tone === "danger") return "border-rose-500/35 bg-rose-500/10 text-rose-300 font-black";
+  return "border-amber-500/35 bg-amber-500/10 text-amber-300 font-black";
 }
 
 function certificateHref(product: ConsumerPortalProduct) {
@@ -41,42 +41,51 @@ function experienceHref(product: ConsumerPortalProduct) {
 export default async function ProductsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
   await requireConsumerSession(buildConsumerNextPath("/me/products", params));
+  
   const [productsPayload, tapsPayload] = await Promise.all([
     fetchConsumerPath("products"),
     fetchConsumerPath("taps"),
   ]);
+  
   const products = asArray<ConsumerPortalProduct>(productsPayload);
   const taps = asArray<ConsumerTap>(tapsPayload);
   const claimed = products.filter((p) => String(p.ownership_record_status || p.ownership_status || "").toLowerCase() === "claimed").length;
   const tenants = new Set(products.map((p) => p.tenant_slug).filter(Boolean)).size;
-  const metrics: Array<{ label: string; value: number; Icon: LucideIcon }> = [
-    { label: "Productos", value: products.length, Icon: PackageCheck },
-    { label: "Claimed", value: claimed, Icon: ShieldCheck },
-    { label: "Tenants", value: tenants, Icon: Gift },
-    { label: "Taps", value: taps.length, Icon: WalletCards },
+  
+  const metrics: Array<{ label: string; value: number; Icon: LucideIcon; color: string }> = [
+    { label: "Colección Total", value: products.length, Icon: PackageCheck, color: "text-violet-400" },
+    { label: "Propiedades Registradas", value: claimed, Icon: ShieldCheck, color: "text-emerald-400" },
+    { label: "Bodegas / Tenants", value: tenants, Icon: Gift, color: "text-amber-400" },
+    { label: "Escaneos Realizados", value: taps.length, Icon: WalletCards, color: "text-cyan-400" },
   ];
 
   return (
-    <PortalShell title="Productos guardados" subtitle="Biblioteca verificable de productos que tocaste, guardaste o reclamaste en tu Passport.">
+    <PortalShell title="Productos Guardados" subtitle="Biblioteca digital verificable de botellas y productos que escaneaste, guardaste o reclamaste en tu cuenta.">
       {!products.length ? (
-        <section className="consumer-empty-state rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-6 text-sm text-cyan-50">
-          Aun no tenes productos guardados. Toca un producto NFC y elegi guardar para activar ownership, garantia, beneficios y marketplace contextual.
+        <section className="rounded-3xl border border-amber-500/20 bg-slate-950/80 p-8 text-center shadow-lg shadow-black/40">
+          <PackageCheck className="mx-auto h-12 w-12 text-slate-600 animate-pulse" />
+          <h3 className="mt-4 text-base font-black text-white">No hay productos guardados todavía</h3>
+          <p className="mt-2 text-xs leading-relaxed text-slate-400 max-w-md mx-auto">
+            Escanea una botella con etiqueta NFC nexID y presiona "Reclamar Dueño" para vincular su pasaporte original a tu cuenta.
+          </p>
         </section>
       ) : (
         <>
-          <section className="grid gap-3 md:grid-cols-4">
-            {metrics.map(({ label, value, Icon }) => (
-              <article key={label} className="consumer-metric-card rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+          {/* Top Metric Stats */}
+          <section className="grid gap-4 grid-cols-2 md:grid-cols-4">
+            {metrics.map(({ label, value, Icon, color }) => (
+              <article key={label} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 transition-all duration-300 hover:border-white/10">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{label}</p>
-                  <Icon className="h-4 w-4 text-cyan-200" aria-hidden="true" />
+                  <Icon className={`h-4.5 w-4.5 ${color}`} aria-hidden="true" />
                 </div>
-                <p className="mt-2 text-3xl font-black text-white">{value}</p>
+                <p className="mt-2 text-2xl font-black text-white">{value}</p>
               </article>
             ))}
           </section>
 
-          <section className="grid gap-4">
+          {/* Products List */}
+          <section className="grid gap-6">
             {products.map((product, idx) => {
               const status = String(product.ownership_record_status || product.ownership_status || "viewed").toLowerCase();
               const visual = productVisualKind(product, idx);
@@ -86,6 +95,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
               const hasTokenProof = Boolean(txHash && tokenStatus !== "none" && !txHash.toUpperCase().includes("DEMO"));
               const tokenExplorerHref = hasTokenProof ? `https://amoy.polygonscan.com/tx/${encodeURIComponent(txHash)}` : "";
               const certificateUrl = certificateHref(product);
+              
               const assetProfile = resolveProductAssetProfile({
                 tenantSlug: product.tenant_slug,
                 brandName: product.brand_name,
@@ -93,93 +103,168 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                 bid: product.bid,
                 imageUrl: product.image_url,
               });
+
+              // Fallback to beautiful local assets for premium look
+              let displayImg = assetProfile.primaryImageUrl;
+              if (!displayImg || displayImg.includes("pexels") || displayImg.includes("demo/")) {
+                displayImg = visual === "bottle" ? "/images/premium_magnum.png" : "/images/wine_crate.png";
+              }
+
+              const isClaimed = status === "claimed";
+
               return (
-                <article key={`${product.product_name || "product"}-${idx}`} className="consumer-product-card overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70">
-                  <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
-                    <div className="consumer-product-visual-panel relative min-h-64 border-b border-white/10 p-5 lg:border-b-0 lg:border-r">
-                      {assetProfile.primaryImageUrl ? (
-                        <img
-                          src={assetProfile.primaryImageUrl}
-                          alt={assetProfile.productName}
-                          className="absolute inset-0 h-full w-full object-contain p-8"
-                        />
-                      ) : (
-                        <div className={`consumer-product-visual consumer-product-visual--${visual}`} />
-                      )}
-                      <div className="absolute left-5 top-5 rounded-full border border-cyan-300/25 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">
-                        Passport item
+                <article key={`${product.product_name || "product"}-${idx}`} className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/80 shadow-2xl transition duration-300 hover:border-white/20">
+                  <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
+                    
+                    {/* Left: Interactive Visual Display (floating bottle mockup) */}
+                    <div className="relative min-h-64 border-b border-white/5 p-6 flex items-center justify-center bg-[linear-gradient(135deg,#0e0e11,#1a1a1f)] lg:border-b-0 lg:border-r">
+                      <img
+                        src={displayImg}
+                        alt={assetProfile.productName}
+                        className="h-48 w-auto object-contain transition duration-500 hover:scale-105 drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)]"
+                      />
+                      
+                      <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-slate-950/70 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-slate-300">
+                        Passport Item
                       </div>
-                      <span className="absolute right-5 top-5 rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100">
-                        {assetProfile.assetScore}/100 assets
+                      
+                      <span className="absolute right-4 top-4 rounded-full border border-emerald-400/20 bg-emerald-400/5 px-2 py-0.5 text-[8px] font-semibold text-emerald-300">
+                        {assetProfile.assetScore}/100 score
                       </span>
-                      <span className={`absolute bottom-5 left-5 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusClasses(status)}`}>{status}</span>
+                      
+                      <span className={`absolute bottom-4 left-4 rounded-full border px-3 py-1 text-[9px] uppercase tracking-wider ${statusClasses(status)}`}>
+                        {status}
+                      </span>
                     </div>
 
-                    <div className="p-5">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <h2 className="text-2xl font-black text-white">{product.product_name || "Producto autenticado"}</h2>
-                          <p className="mt-1 text-sm text-slate-300">{product.brand_name || "Marca"} - tenant {tenant || "n/a"}</p>
-                          <p className="mt-1 text-xs text-slate-500">BID {product.bid || "n/a"} - guardado {formatPortalDate(product.created_at)}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {certificateUrl ? (
-                            <Link href={certificateUrl} className="inline-flex items-center gap-1 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-xs font-black text-emerald-100 transition hover:bg-emerald-500/20">
-                              Certificado <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                            </Link>
-                          ) : null}
-                          <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-500/20">
-                            Beneficios
-                          </Link>
-                          <Link href={experienceHref(product)} className="inline-flex items-center gap-1 rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-xs font-black text-amber-100 transition hover:bg-amber-500/20">
-                            Experiencia <MessageSquareText className="h-3 w-3" aria-hidden="true" />
-                          </Link>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 grid gap-2 sm:grid-cols-4">
-                        {[
-                          ["1", "Autenticidad", "Tap validado contra reglas del tenant."],
-                          ["2", "Ownership", status === "claimed" ? "Producto asociado al consumidor." : "Listo para reclamar ownership."],
-                          ["3", "Marketplace", "Promos y vouchers segun marca."],
-                          ["4", "Wallet", hasTokenProof ? `Certificado ${product.tokenization_network || "Polygon"} listo.` : tokenStatus !== "none" ? `Tokenizacion ${tokenStatus}.` : "Tokenizacion opcional si aplica."],
-                        ].map(([step, title, desc]) => (
-                          <div key={step} className="rounded-2xl border border-white/10 bg-slate-900/70 p-3">
-                            <span className="grid h-7 w-7 place-items-center rounded-lg border border-cyan-300/25 bg-cyan-500/10 text-xs font-black text-cyan-100">{step}</span>
-                            <p className="mt-2 text-xs font-black text-white">{title}</p>
-                            <p className="mt-1 text-[11px] leading-4 text-slate-400">{desc}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-5 grid gap-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-xs text-slate-300 sm:grid-cols-3">
-                        <p><span className="block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Primer tap</span>#{product.first_tap_event_id || "n/a"}</p>
-                        <p><span className="block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Ultimo tap</span>{product.latest_verdict || `#${product.latest_tap_event_id || "n/a"}`} {product.latest_city ? `- ${product.latest_city}` : ""}</p>
-                        <p><span className="block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Proxima accion</span>{status === "claimed" ? "Abrir beneficios" : "Reclamar"}</p>
-                      </div>
-                      <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-xs text-cyan-50">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                    {/* Right: Technical Details & Ledger info */}
+                    <div className="p-6 flex flex-col justify-between">
+                      <div>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Certificado blockchain</p>
-                            <p className="mt-1 font-semibold text-white">
-                              {hasTokenProof ? `${product.tokenization_network || "Polygon Amoy"} - token ${product.tokenization_token_id || "pendiente"}` : tokenStatus !== "none" ? `Estado ${tokenStatus}` : "Disponible cuando el tenant active tokenizacion premium."}
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Bodega Asociada</span>
+                            <h2 className="text-xl font-black text-white tracking-tight mt-0.5">{product.product_name || "Gran Reserva"}</h2>
+                            <p className="mt-1 text-xs text-slate-400">
+                              Marca: <span className="text-slate-200 font-bold">{product.brand_name || "nexID Partner"}</span> · Tenant: <span className="font-mono text-slate-300">{tenant || "n/a"}</span>
+                            </p>
+                            <p className="mt-1 text-[10px] font-mono text-slate-500">
+                              BID {product.bid || "n/a"} · Guardado el {formatPortalDate(product.created_at)}
                             </p>
                           </div>
-                          {certificateUrl ? (
-                            <Link href={certificateUrl} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-[11px] font-black text-cyan-100">
-                              Ver certificado
+                          
+                          {/* Quick Action triggers */}
+                          <div className="flex flex-wrap gap-2 shrink-0">
+                            {certificateUrl && (
+                              <Link href={certificateUrl} className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-3.5 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-500/20 transition">
+                                Certificado <ExternalLink className="h-3.5 w-3.5" />
+                              </Link>
+                            )}
+                            <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className="rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-3.5 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20 transition">
+                              Club & Promos
                             </Link>
-                          ) : hasTokenProof ? (
-                              <a href={tokenExplorerHref} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-[11px] font-black text-emerald-100">
-                                Ver tx
-                              </a>
-                          ) : (
-                            <Link href="/me/wallet" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-black text-slate-200">
-                              Wallet
+                            <Link href={experienceHref(product)} className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3.5 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20 transition">
+                              Opiniones <MessageSquareText className="h-3.5 w-3.5" />
                             </Link>
-                          )}
+                          </div>
+                        </div>
+
+                        {/* Interactive Step-by-Step Lifecycle (Lights up dynamically based on state) */}
+                        <div className="mt-6 grid gap-3 grid-cols-2 sm:grid-cols-4">
+                          {[
+                            { 
+                              step: "1", 
+                              title: "Autenticidad", 
+                              desc: "Validación digital de procedencia.", 
+                              active: true, 
+                              color: "border-emerald-500/30 bg-emerald-500/5 text-emerald-300" 
+                            },
+                            { 
+                              step: "2", 
+                              title: "Ownership", 
+                              desc: isClaimed ? "Propiedad vinculada al Passport." : "Registrar dueño con tap físico.", 
+                              active: isClaimed, 
+                              color: isClaimed 
+                                ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-300" 
+                                : "border-amber-500/20 bg-amber-500/5 text-amber-300" 
+                            },
+                            { 
+                              step: "3", 
+                              title: "Marketplace", 
+                              desc: "Acceso a drops y catálogos de canjes.", 
+                              active: isClaimed, 
+                              color: isClaimed 
+                                ? "border-cyan-500/30 bg-cyan-500/5 text-cyan-300" 
+                                : "border-white/5 bg-slate-900/40 text-slate-500" 
+                            },
+                            { 
+                              step: "4", 
+                              title: "Wallet Web3", 
+                              desc: hasTokenProof ? "NFT acuñado en Polygon." : "Tokenización lista en red.", 
+                              active: hasTokenProof, 
+                              color: hasTokenProof 
+                                ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-300" 
+                                : tokenStatus !== "none" 
+                                ? "border-cyan-500/30 bg-cyan-500/5 text-cyan-300" 
+                                : "border-white/5 bg-slate-900/40 text-slate-500" 
+                            },
+                          ].map((item) => (
+                            <div key={item.step} className={`rounded-2xl border p-3 flex flex-col justify-between min-h-24 ${
+                              item.active ? item.color : "border-white/5 bg-slate-900/20 text-slate-500"
+                            }`}>
+                              <div className="flex items-center justify-between">
+                                <span className={`grid h-5 w-5 place-items-center rounded-lg text-[10px] font-black ${
+                                  item.active ? "bg-white/10" : "bg-white/5"
+                                }`}>{item.step}</span>
+                                {item.active && <CheckCircle2 className="h-3.5 w-3.5" />}
+                              </div>
+                              <div className="mt-2">
+                                <p className={`text-xs font-black ${item.active ? "text-white" : "text-slate-500"}`}>{item.title}</p>
+                                <p className="mt-0.5 text-[9px] leading-tight">{item.desc}</p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
+
+                      {/* Technical Info & Faucet block */}
+                      <div className="mt-5">
+                        <div className="grid gap-2 rounded-2xl border border-white/5 bg-slate-900/40 p-4 text-[10px] text-slate-400 sm:grid-cols-3">
+                          <p><span className="block uppercase tracking-wider text-slate-600 font-bold mb-0.5">Primer Escaneo</span>#{product.first_tap_event_id || "n/a"}</p>
+                          <p><span className="block uppercase tracking-wider text-slate-600 font-bold mb-0.5">Último Reportado</span>{product.latest_verdict || `#${product.latest_tap_event_id || "n/a"}`} {product.latest_city ? `- ${product.latest_city}` : ""}</p>
+                          <p><span className="block uppercase tracking-wider text-slate-600 font-bold mb-0.5">Siguiente Acción</span>{isClaimed ? "Canjear Beneficios" : "Escanear y Reclamar"}</p>
+                        </div>
+                        
+                        {/* Blockchain Proof Indicator */}
+                        <div className="mt-3 rounded-2xl border border-cyan-500/15 bg-cyan-500/5 p-4 text-xs">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-wider text-cyan-300">Certificación Criptográfica</p>
+                              <p className="mt-0.5 font-bold text-white">
+                                {hasTokenProof 
+                                  ? `Acuñado en Polygon Amoy · Token #${product.tokenization_token_id}` 
+                                  : tokenStatus !== "none" 
+                                  ? `Estado de Tokenización: ${tokenStatus}` 
+                                  : "Disponible cuando el tenant habilite la acuñación premium."}
+                              </p>
+                            </div>
+                            
+                            {certificateUrl ? (
+                              <Link href={certificateUrl} className="rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-3 py-2 text-[10px] font-black text-cyan-200 hover:bg-cyan-500/20 transition text-center shrink-0">
+                                Ver Firma Digital
+                              </Link>
+                            ) : hasTokenProof ? (
+                              <a href={tokenExplorerHref} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-[10px] font-black text-emerald-200 hover:bg-emerald-500/20 transition text-center shrink-0">
+                                Ver en Polygonscan
+                              </a>
+                            ) : (
+                              <Link href="/me/wallet" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-black text-slate-300 hover:bg-white/10 transition text-center shrink-0">
+                                Abrir Billetera
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 </article>

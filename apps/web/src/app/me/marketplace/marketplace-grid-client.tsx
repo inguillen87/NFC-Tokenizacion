@@ -225,22 +225,29 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
           ))}
         </div>
 
-        <div className="mt-4 grid gap-2 md:grid-cols-[1fr_auto]">
-          <input
-            suppressHydrationWarning
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por producto, marca o beneficio"
-            className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/40"
-          />
-          <div className="flex flex-wrap gap-2">
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+            <input
+              suppressHydrationWarning
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar beneficios, botellas o drops..."
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-white/10 bg-slate-950/60 text-sm text-white outline-none focus:border-purple-500/45 transition shadow-inner"
+            />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
             {filterOptions.map((option) => (
               <button
                 suppressHydrationWarning
                 key={option.value}
                 type="button"
                 onClick={() => setKind(option.value)}
-                className={`rounded-xl border px-3 py-2 text-xs font-semibold ${kind === option.value ? "border-cyan-300/40 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-white/5 text-slate-300"}`}
+                className={`rounded-xl border px-3.5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                  kind === option.value 
+                    ? "border-purple-500/40 bg-purple-500/15 text-purple-300 shadow-[0_4px_12px_rgba(168,85,247,0.1)]" 
+                    : "border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10"
+                }`}
               >
                 {option.label}
               </button>
@@ -287,24 +294,28 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
             imageUrl: item.imageUrl || item.image_url || item.photoUrl || item.photo_url,
             sku: item.sku,
           });
+
+          // Fallback to high-quality local files instead of Pexels placeholders
+          const visualClass = productVisualClass(item, idx);
+          let displayImg = assetProfile.primaryImageUrl;
+          if (!displayImg || displayImg.includes("pexels") || displayImg.includes("demo/")) {
+            displayImg = visualClass.includes("bottle") ? "/images/premium_magnum.png" : "/images/wine_crate.png";
+          }
+
           return (
-            <article key={item.id || `${item.title || idx}`} className="marketplace-card overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 shadow-xl shadow-black/20">
-              <div className="relative h-44 border-b border-white/10 bg-[linear-gradient(135deg,#111827,#020617)]">
-                <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-slate-950/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-200">
+            <article key={item.id || `${item.title || idx}`} className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 shadow-2xl transition duration-300 hover:scale-[1.015] hover:border-purple-500/40 hover:shadow-[0_15px_40px_rgba(168,85,247,0.12)]">
+              <div className="relative h-48 border-b border-white/5 bg-[linear-gradient(135deg,#0a0a0c,#161619)] flex items-center justify-center p-4">
+                <div className="absolute left-4 top-4 z-10 rounded-full border border-white/10 bg-slate-950/70 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-slate-300">
                   {status.replaceAll("_", " ")}
                 </div>
-                <div className="absolute right-4 top-4 rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-100">
-                  passport-linked
+                <div className="absolute right-4 top-4 z-10 rounded-full border border-emerald-400/20 bg-emerald-400/5 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-300">
+                  Passport Item
                 </div>
-                {assetProfile.primaryImageUrl ? (
-                  <img
-                    src={assetProfile.primaryImageUrl}
-                    alt={assetProfile.productName}
-                    className="absolute inset-0 h-full w-full object-contain p-5"
-                  />
-                ) : (
-                  <div className={productVisualClass(item, idx)} />
-                )}
+                <img
+                  src={displayImg}
+                  alt={assetProfile.productName}
+                  className="h-36 w-auto object-contain transition duration-500 hover:scale-105 drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
+                />
               </div>
 
               <div className="p-4">
