@@ -94,6 +94,49 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
   };
 }
 
+async function getClientMetadata() {
+  let lat: number | null = null;
+  let lng: number | null = null;
+  let acc: number | null = null;
+
+  try {
+    if (typeof window !== "undefined" && window.navigator && window.navigator.geolocation) {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        window.navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 4000,
+          maximumAge: 0,
+        });
+      });
+      lat = position.coords.latitude;
+      lng = position.coords.longitude;
+      acc = position.coords.accuracy;
+    }
+  } catch (error) {
+    console.warn("Geolocation gathering failed or denied", error);
+  }
+
+  const fingerprint = {
+    language: typeof navigator !== "undefined" ? navigator.language : "",
+    platform: typeof navigator !== "undefined" ? (navigator as any).platform || "" : "",
+    userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+    screenWidth: typeof window !== "undefined" ? window.screen?.width || 0 : 0,
+    screenHeight: typeof window !== "undefined" ? window.screen?.height || 0 : 0,
+    touchPoints: typeof navigator !== "undefined" ? navigator.maxTouchPoints || 0 : 0,
+  };
+
+  return {
+    latitude: lat,
+    longitude: lng,
+    accuracy: acc,
+    screenSize: {
+      width: typeof window !== "undefined" ? window.innerWidth || 0 : 0,
+      height: typeof window !== "undefined" ? window.innerHeight || 0 : 0,
+    },
+    deviceFingerprint: fingerprint,
+  };
+}
+
 export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid", rightsPolicy }: Props) {
   const [status, setStatus] = useState<string>("");
   const [pending, setPending] = useState(false);
@@ -380,7 +423,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     };
   }, [showTokenModal]);
 
-  function normalizeReason(data: { reason?: string; _httpStatus?: number }) {
+  function normalizeReason(data: { reason?: string; error?: string; _httpStatus?: number }) {
+    if (data.error) return data.error;
     const reason = String(data.reason || "").toLowerCase();
     if (reason.includes("consumer_auth_required")) {
       return "Para reclamar dueño o crear NFT necesitamos validar email o celular. El producto queda listo, pero no se asocia a nadie sin identidad verificada.";
@@ -414,7 +458,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     setActionStates((current) => ({ ...current, [actionKey]: "loading" }));
     setLastRequest({ path, method, actionKey });
     try {
-      const data = await call(path, method, basePayload());
+      let extraPayload: Record<string, unknown> | undefined;
+      if (actionKey === "claimOwnership") {
+        extraPayload = await getClientMetadata();
+      }
+      const data = await call(path, method, basePayload(extraPayload));
       setStatus(JSON.stringify(data));
       if (data._traceId) setLastTraceId(data._traceId);
       if ((actionKey === "claimOwnership" || actionKey === "tokenization") && requiresConsumerAuth(data)) {

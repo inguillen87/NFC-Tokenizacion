@@ -1,4 +1,4 @@
-export type AlertType = "replay_spike" | "tamper_rate" | "invalid_rate" | "geo_velocity" | "new_country_for_uid" | "suspicious_device_cluster";
+export type AlertType = "replay_spike" | "tamper_rate" | "invalid_rate" | "geo_velocity" | "new_country_for_uid" | "suspicious_device_cluster" | "suspicious_claim_attempt";
 
 export function normalizeTypeFromResult(result: string): AlertType | null {
   const r = String(result || "").toUpperCase();

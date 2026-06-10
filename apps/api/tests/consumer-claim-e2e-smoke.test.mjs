@@ -22,3 +22,14 @@ test('blocked statuses do not produce successful ownership claim response', asyn
   assert.match(portalService, /blocked_replay/);
   assert.match(portalService, /revoked/);
 });
+
+test('public claim ownership route has GPS and mobile verification safety checks', async () => {
+  const publicClaimRoute = await readFile(new URL('../src/app/public/cta/claim-ownership/route.ts', import.meta.url), 'utf8');
+  assert.match(publicClaimRoute, /getDistanceKm/);
+  assert.match(publicClaimRoute, /mobile_device_required/);
+  assert.match(publicClaimRoute, /gps_location_required/);
+  assert.match(publicClaimRoute, /location_mismatch/);
+  assert.match(publicClaimRoute, /createAlert/);
+  assert.match(publicClaimRoute, /client_gps/);
+  assert.match(publicClaimRoute, /client_device/);
+});

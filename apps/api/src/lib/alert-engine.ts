@@ -26,7 +26,7 @@ async function getRule(tenantId: string | null, type: AlertType) {
   return rows[0] || null;
 }
 
-async function createAlert(input: {
+export async function createAlert(input: {
   tenantId?: string | null;
   eventId: number;
   type: AlertType;
