@@ -11,6 +11,7 @@ import {
   type MarketplaceListing,
 } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
+import { BrandsVotingClient } from "./brands-voting-client";
 
 function statusLabel(status: string) {
   return status === "active" ? "CLUB ACTIVO" : status.toUpperCase();
@@ -286,6 +287,8 @@ export default async function BrandsPage() {
               );
             })}
           </section>
+
+          <BrandsVotingClient />
         </>
       )}
     </PortalShell>

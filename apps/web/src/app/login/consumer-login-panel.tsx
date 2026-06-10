@@ -163,16 +163,15 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
             {isTapReturn ? "Validar y asociar tap" : "Entrar al portal"}
           </button>
         )}
-        {isDemoTap ? (
-          <button
-            suppressHydrationWarning
-            disabled={pending}
-            onClick={() => void quickDemoPortal()}
-            className="rounded-xl border border-violet-300/30 bg-violet-500/15 px-3 py-2.5 text-sm font-semibold text-violet-100 disabled:opacity-60"
-          >
-            Usar consumidor sandbox demo
-          </button>
-        ) : null}
+        <button
+          suppressHydrationWarning
+          disabled={pending}
+          type="button"
+          onClick={() => void quickDemoPortal()}
+          className="rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-3 py-2.5 text-sm font-bold text-purple-300 transition disabled:opacity-60"
+        >
+          Entrar como Consumidor Demo (Un clic)
+        </button>
       </div>
       {status ? <p className="mt-2 text-xs text-slate-200">{status}</p> : null}
     </div>

@@ -186,6 +186,7 @@ export default async function HomePage() {
 
   const mobileNavItems = [
     { label: content.nav.product, href: "/" },
+    { label: "Portal Consumidor Demo", href: "/login?next=/me" },
     { label: content.nav.pricing, href: "/pricing" },
     { label: content.nav.reseller, href: "/resellers" },
     { label: content.nav.docs, href: "/docs" },
@@ -271,6 +272,11 @@ export default async function HomePage() {
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
+            <Link href="/login?next=/me" className="hidden sm:inline-flex">
+              <Button variant="secondary" className="border-purple-500/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20">
+                Portal Demo
+              </Button>
+            </Link>
             <a href={loginHref} className="inline-flex">
               <Button variant="secondary">{content.nav.cta}</Button>
             </a>

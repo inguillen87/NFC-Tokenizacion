@@ -46,37 +46,37 @@ export function PortalShell({
         </div>
       </div>
 
-      <nav className="consumer-portal-nav sticky top-0 z-50 border-b border-white/5 bg-black/50 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 md:px-8">
+      <nav className="consumer-portal-nav sticky top-0 md:top-4 z-50 mx-auto max-w-5xl md:rounded-2xl border-b md:border border-white/10 bg-slate-950/80 backdrop-blur-xl md:my-4 md:shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition-all">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6">
           <Link href="/me" className="flex items-center gap-2">
-            <BrandLockup size={44} variant="ripple" theme="dark" className="consumer-portal-brand" />
+            <BrandLockup size={40} variant="ripple" theme="dark" className="consumer-portal-brand" />
             <span className="hidden text-sm font-black tracking-tight text-white sm:block">Consumer Passport</span>
           </Link>
 
           <div className="hidden space-x-1 md:flex">
-            <Link href="/me" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Home</Link>
-            <Link href="/me/passport" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Passport</Link>
-            <Link href="/me/products" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Collection</Link>
-            <Link href="/me/brands" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Brands</Link>
-            <Link href="/me/taps" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">History</Link>
-            <Link href="/me/rewards" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Rewards</Link>
-            <Link href="/me/wallet" className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white">Wallet</Link>
-            <Link href="/me/marketplace" className="rounded-lg px-3 py-1.5 text-sm font-medium text-cyan-400 transition-colors hover:bg-cyan-950/30 hover:text-cyan-300">Marketplace</Link>
+            <Link href="/me" className="rounded-lg px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5 hover:text-white">Home</Link>
+            <Link href="/me/passport" className="rounded-lg px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5 hover:text-white">Passport</Link>
+            <Link href="/me/products" className="rounded-lg px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5 hover:text-white">Collection</Link>
+            <Link href="/me/brands" className="rounded-lg px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5 hover:text-white">Brands</Link>
+            <Link href="/me/taps" className="rounded-lg px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5 hover:text-white">History</Link>
+            <Link href="/me/rewards" className="rounded-lg px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5 hover:text-white">Rewards</Link>
+            <Link href="/me/wallet" className="rounded-lg px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5 hover:text-white">Wallet</Link>
+            <Link href="/me/marketplace" className="rounded-lg px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-cyan-400 transition hover:bg-cyan-950/30 hover:text-cyan-300">Marketplace</Link>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/me/brands" className="consumer-bell-link relative grid h-9 w-9 place-items-center rounded-full border border-cyan-300/20 bg-cyan-500/10 text-cyan-100 transition hover:bg-cyan-500/20" aria-label="Network notifications">
-              <Bell className="h-4 w-4" aria-hidden="true" />
+            <Link href="/me/brands" className="consumer-bell-link relative grid h-8 w-8 place-items-center rounded-full border border-cyan-300/20 bg-cyan-500/10 text-cyan-100 transition hover:bg-cyan-500/20" aria-label="Network notifications">
+              <Bell className="h-3.5 w-3.5" aria-hidden="true" />
               {unread ? (
-                <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white ring-2 ring-slate-950">
+                <span className="absolute -right-1 -top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[8px] font-black text-white ring-2 ring-slate-950">
                   {unread}
                 </span>
               ) : (
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-emerald-300 ring-2 ring-slate-950" />
+                <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-emerald-300 ring-2 ring-slate-950" />
               )}
             </Link>
             <ThemeToggle />
-            <Link href="/me/privacy" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs font-bold shadow-lg transition hover:bg-slate-700">US</Link>
+            <Link href="/me/privacy" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-[10px] font-bold shadow-lg transition hover:bg-slate-700">US</Link>
           </div>
         </div>
       </nav>
