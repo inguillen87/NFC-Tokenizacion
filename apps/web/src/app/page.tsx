@@ -271,7 +271,7 @@ export default async function HomePage() {
             <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
-            <a href={loginHref} className="hidden sm:inline-flex">
+            <a href={loginHref} className="inline-flex">
               <Button variant="secondary">{content.nav.cta}</Button>
             </a>
           </div>
