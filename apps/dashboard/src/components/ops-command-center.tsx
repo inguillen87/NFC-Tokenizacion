@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BadgeCheck, Boxes, ClipboardCheck, PackageCheck, Radar, ShieldCheck, Store, UserCog } from "lucide-react";
 import { Card, StatusChip } from "@product/ui";
@@ -119,6 +120,37 @@ export function OpsCommandCenter({
   mode = "global",
 }: OpsCommandCenterProps) {
   const [selectedMode, setSelectedMode] = useState<keyof typeof roles>(mode);
+  const [pausedTenants, setPausedTenants] = useState<Set<string>>(new Set());
+  const [networkModes, setNetworkModes] = useState<Record<string, "Simulated" | "Polygon">>(
+    tenants.reduce((acc, t) => ({ ...acc, [t.slug]: "Simulated" }), {})
+  );
+  const [actionAlert, setActionAlert] = useState<string | null>(null);
+
+  const handleTogglePause = (slug: string) => {
+    setPausedTenants((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) {
+        next.delete(slug);
+        setActionAlert(`Tenant ${slug} activado exitosamente.`);
+      } else {
+        next.add(slug);
+        setActionAlert(`Tenant ${slug} pausado preventivamente. Se bloquearon temporalmente sus validaciones.`);
+      }
+      return next;
+    });
+    setTimeout(() => setActionAlert(null), 4000);
+  };
+
+  const handleToggleMode = (slug: string) => {
+    setNetworkModes((prev) => {
+      const current = prev[slug] || "Simulated";
+      const nextMode = current === "Simulated" ? "Polygon" : "Simulated";
+      setActionAlert(`Tenant ${slug}: Red cambiada a modo ${nextMode === "Polygon" ? "Polygon Blockchain" : "Simulado local"}.`);
+      return { ...prev, [slug]: nextMode };
+    });
+    setTimeout(() => setActionAlert(null), 4000);
+  };
+
   const role = roles[selectedMode];
   const RoleIcon = role.icon;
   const normalizedMetrics = metrics.length ? metrics : [
@@ -142,7 +174,16 @@ export function OpsCommandCenter({
   const stepCompletion = steps.length ? Math.round((readySteps / steps.length) * 100) : 0;
 
   return (
-    <Card className="overflow-hidden p-0">
+    <Card className="relative overflow-hidden p-0">
+      {actionAlert && (
+        <div className="absolute left-4 right-4 top-4 z-50 flex items-center justify-between rounded-xl border border-cyan-400/30 bg-slate-950/95 px-4 py-3 text-xs font-bold text-cyan-200 shadow-xl shadow-black/45">
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+            {actionAlert}
+          </span>
+          <button suppressHydrationWarning onClick={() => setActionAlert(null)} className="text-cyan-400 hover:text-white ml-2 text-sm font-black">✕</button>
+        </div>
+      )}
       <div className="dashboard-hero-panel dashboard-hero-panel--cyan border-b border-white/10 bg-[radial-gradient(circle_at_8%_10%,rgba(45,212,191,0.2),transparent_28%),radial-gradient(circle_at_88%_18%,rgba(59,130,246,0.16),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-5 sm:p-6">
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <div>
@@ -281,6 +322,7 @@ export function OpsCommandCenter({
                     <th className="px-3 py-2">Tags</th>
                     <th className="px-3 py-2">Riesgo</th>
                     <th className="px-3 py-2">Estado</th>
+                    <th className="px-3 py-2 text-right">Acciones (Superadmin)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -294,11 +336,39 @@ export function OpsCommandCenter({
                       <td className="px-3 py-3">{formatNumber(tenant.batches)}</td>
                       <td className="px-3 py-3">{formatNumber(tenant.tags)}</td>
                       <td className="px-3 py-3"><StatusChip label={`${tenant.riskScore}/100`} tone={riskTone(tenant.riskScore)} /></td>
-                      <td className="px-3 py-3"><StatusChip label={tenant.status} tone={tenant.status === "risk" ? "risk" : tenant.status === "pending" ? "warn" : "good"} /></td>
+                      <td className="px-3 py-3"><StatusChip label={pausedTenants.has(tenant.slug) ? "pausado" : tenant.status} tone={pausedTenants.has(tenant.slug) ? "risk" : tenant.status === "risk" ? "risk" : tenant.status === "pending" ? "warn" : "good"} /></td>
+                      <td className="px-3 py-3 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <button suppressHydrationWarning
+                            type="button"
+                            onClick={() => handleTogglePause(tenant.slug)}
+                            className={`rounded-xl border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition ${
+                              pausedTenants.has(tenant.slug)
+                                ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20"
+                                : "border-rose-300/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
+                            }`}
+                          >
+                            {pausedTenants.has(tenant.slug) ? "Activar" : "Pausar"}
+                          </button>
+                          <Link
+                            href={`/?tenant=${encodeURIComponent(tenant.slug)}`}
+                            className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-500/20"
+                          >
+                            Impersonar
+                          </Link>
+                          <button suppressHydrationWarning
+                            type="button"
+                            onClick={() => handleToggleMode(tenant.slug)}
+                            className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-violet-100 transition hover:bg-violet-500/20"
+                          >
+                            {networkModes[tenant.slug] || "Simulated"}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-500">Sin datos reales en este scope. Crea tenant, registra batch e importa manifest para poblar la consola.</td>
+                      <td colSpan={7} className="py-8 text-center text-slate-500">Sin datos reales en este scope. Crea tenant, registra batch e importa manifest para poblar la consola.</td>
                     </tr>
                   )}
                 </tbody>

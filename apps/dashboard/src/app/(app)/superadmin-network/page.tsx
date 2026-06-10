@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, SectionHeading, StatusChip } from "@product/ui";
 import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "../../../components/ops-command-center";
+import { BlockchainHsmHealth } from "../../../components/blockchain-hsm-health";
 import { requireDashboardSession } from "../../../lib/session";
 import { getServerOrigin } from "../../../lib/server-origin";
 
@@ -163,6 +164,8 @@ export default async function SuperadminConsumerNetworkPage() {
         title="Consola global para operar tenants, resellers, auditores y clubes"
         description="Una vista ejecutiva y operativa para pasar de piloto a rollout: lotes, tags, riesgo, marketplace, experiencias verificadas y tokenizacion."
       />
+
+      <BlockchainHsmHealth />
 
       <OpsCommandCenter
         mode={session.role === "tenant-admin" ? "tenant" : "global"}

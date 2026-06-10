@@ -55,28 +55,28 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
         : "Productos, beneficios y reventa para miembros nexID, sin comprar a ciegas."}
       notificationCount={items.length}
     >
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,.12)] sm:p-6">
+      <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.4)] sm:p-6">
         <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-700">Compra con contexto</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950" style={{ color: "#0f172a" }}>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">Compra con contexto</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-white">
               Ves producto, certificado, club y experiencias reales antes de avanzar.
             </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-700">
-              La marca puede publicar productos, drops, recompra o beneficios. El usuario entiende si el producto es autentico,
-              de que lote viene, que club activa y que dijeron otros compradores verificados.
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+              La marca puede publicar productos, drops, recompra o beneficios. El usuario entiende si el producto es auténtico,
+              de qué lote viene, qué club activa y qué dijeron otros compradores verificados.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             {[
-              ["Catalogo", `${items.length}`, "Productos publicados para este contexto."],
-              ["Reputacion", rating, "Estrellas de experiencias verificadas."],
+              ["Catálogo", `${items.length}`, "Productos publicados para este contexto."],
+              ["Reputación", rating, "Estrellas de experiencias verificadas."],
               ["Prueba social", `${proofCount}`, "Opiniones con tap, contacto o ownership."],
             ].map(([label, value, detail]) => (
-              <article key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <article key={label} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
-                <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">{detail}</p>
+                <p className="mt-2 text-2xl font-black text-white">{value}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{detail}</p>
               </article>
             ))}
           </div>

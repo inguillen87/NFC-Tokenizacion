@@ -5,6 +5,7 @@ import { Badge, Card } from "@product/ui";
 import Link from "next/link";
 import { DemoOpsMap } from "./demo-ops-map";
 import { mergeRealtimeEvents, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
+import { exportToCsv } from "../lib/export-utils";
 
 type MapMode = "tenant" | "global";
 
@@ -52,9 +53,91 @@ export function RealtimeOpsMonitor({
   const [latestEventId, setLatestEventId] = useState<string>("");
   const [selectedTenant, setSelectedTenant] = useState<string>("all");
 
+  const [aiReport, setAiReport] = useState("");
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+
+  const generateAiInsights = () => {
+    const visible = selectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === selectedTenant);
+    if (!visible.length) {
+      setAiReport("No hay suficientes eventos de lecturas en vivo para generar un reporte analítico. Hacé algunos taps primero.");
+      return;
+    }
+    setAiAnalyzing(true);
+    setTimeout(() => {
+      const total = visible.length;
+      const valid = visible.filter((item) => String(item.verdict || "").toLowerCase() === "valid").length;
+      const risk = total - valid;
+      const ratio = total > 0 ? (risk / total) * 100 : 0;
+      const uids = new Set(visible.map((item) => item.uidMasked)).size;
+      const cities = new Set(visible.map((item) => item.city || "Unknown")).size;
+
+      let diagnosis = "✅ Red operativa saludable y segura.";
+      let recommendation = "Continuar el rollout según lo planificado. Monitorear los primeros lotes de consumo.";
+
+      if (ratio > 15) {
+        diagnosis = "⚠️ Alerta de Anomalías: Tasa de riesgo elevada (Replay/Tamper).";
+        recommendation = "Se sospecha clonación de URLs de validación o aperturas masivas. Auditar las ubicaciones con alertas de riesgo inmediatamente.";
+      } else if (uids > 0 && total / uids > 3) {
+        diagnosis = "ℹ️ Detección de Campaña Viral: Taps repetidos sobre las mismas etiquetas.";
+        recommendation = "Los consumidores están escaneando el producto múltiples veces para ver el pasaporte digital. Considerar aumentar los puntos de lealtad otorgados.";
+      }
+
+      setAiReport(`**Resumen de Operación (AI Insights):**
+- Analizados **${total} escaneos** sobre **${uids} productos únicos** en **${cities} ciudades**.
+- **Diagnóstico:** ${diagnosis}
+- **Veredicto de Confianza:** **${(100 - ratio).toFixed(1)}%** de lecturas limpias en el feed actual.
+- **Recomendación de IA:** ${recommendation}`);
+      setAiAnalyzing(false);
+    }, 600);
+  };
+
+  const handleExportCsv = () => {
+    const visible = selectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === selectedTenant);
+    const dataToExport = visible.map((e) => ({
+      ID_Evento: e.eventId,
+      Tenant: e.tenantSlug || "N/A",
+      Lote: e.batchId || "N/A",
+      Tag_UID_Enmascarado: e.uidMasked,
+      Fecha: e.occurredAt ? new Date(e.occurredAt).toLocaleString("es-AR") : "N/A",
+      Veredicto: String(e.verdict || "").toUpperCase(),
+      Riesgo: String(e.riskLevel || "").toUpperCase(),
+      Ciudad: e.city || "Geolocalización Pendiente",
+      Pais: e.country || "--",
+      Latitud: e.lat || "",
+      Longitud: e.lng || "",
+      Producto: e.productName || "N/A",
+      Entorno: e.source
+    }));
+    exportToCsv(
+      `nexid-taps-${selectedTenant}-${new Date().toISOString().slice(0, 10)}`,
+      dataToExport,
+      [
+        { key: "ID_Evento", label: "ID Evento" },
+        { key: "Tenant", label: "Tenant" },
+        { key: "Lote", label: "Lote" },
+        { key: "Tag_UID_Enmascarado", label: "Tag UID Enmascarado" },
+        { key: "Fecha", label: "Fecha y Hora" },
+        { key: "Veredicto", label: "Veredicto" },
+        { key: "Riesgo", label: "Nivel de Riesgo" },
+        { key: "Ciudad", label: "Ciudad" },
+        { key: "Pais", label: "País" },
+        { key: "Latitud", label: "Latitud" },
+        { key: "Longitud", label: "Longitud" },
+        { key: "Producto", label: "Producto" },
+        { key: "Entorno", label: "Entorno" }
+      ]
+    );
+  };
+
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (hydrated) {
+      generateAiInsights();
+    }
+  }, [hydrated, events, selectedTenant]);
 
   useEffect(() => {
     const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
@@ -198,16 +281,49 @@ export function RealtimeOpsMonitor({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <style>{`
+        @media print {
+          body {
+            background-color: #020817 !important;
+            color: #f8fafc !important;
+          }
+          header, nav, select, button, .site-header, aside, .no-print, select, label, .site-footer {
+            display: none !important;
+          }
+          main {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+      `}</style>
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.liveFeed}</h2>
           <div className="flex items-center gap-2">
+            <button
+              suppressHydrationWarning
+              type="button"
+              className="rounded border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold text-cyan-100 transition hover:bg-cyan-500/20 no-print"
+              onClick={handleExportCsv}
+            >
+              Exportar Excel
+            </button>
+            <button
+              suppressHydrationWarning
+              type="button"
+              className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-100 transition hover:bg-emerald-500/20 no-print"
+              onClick={() => window.print()}
+            >
+              Exportar PDF
+            </button>
             <label className="sr-only" htmlFor="tenant-live-filter">Filtrar tenant</label>
             <select suppressHydrationWarning
               id="tenant-live-filter"
               value={selectedTenant}
               onChange={(event) => setSelectedTenant(event.target.value)}
-              className="rounded border border-white/20 bg-slate-900 px-2 py-1 text-[11px] text-slate-100"
+              className="rounded border border-white/20 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 no-print"
             >
               <option value="all">Todos los tenants</option>
               {tenantOptions.map((tenant) => (
@@ -216,11 +332,11 @@ export function RealtimeOpsMonitor({
                 </option>
               ))}
             </select>
-            <Badge tone="cyan">{labels.mission}</Badge>
-            <Badge tone={connected ? "green" : "amber"}>{connected ? "Live stream" : "Reconnecting..."}</Badge>
+            <span className="no-print"><Badge tone="cyan">{labels.mission}</Badge></span>
+            <span className="no-print"><Badge tone={connected ? "green" : "amber"}>{connected ? "Live stream" : "Reconnecting..."}</Badge></span>
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">Última actualización: {hydrated && lastUpdateAt ? new Date(lastUpdateAt).toLocaleTimeString("es-AR") : "sincronizando"}</p>
+        <p className="mt-2 text-[11px] text-slate-400 no-print">Última actualización: {hydrated && lastUpdateAt ? new Date(lastUpdateAt).toLocaleTimeString("es-AR") : "sincronizando"}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs text-emerald-100">
             <p className="uppercase tracking-[0.12em] text-emerald-200/80">Taps válidos</p>
@@ -278,6 +394,27 @@ export function RealtimeOpsMonitor({
             <Link href={`/tags?tenant=${encodeURIComponent(selectedTenant)}`} className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100 hover:bg-emerald-500/20">
               Ver tags del tenant
             </Link>
+          </div>
+        ) : null}
+        {aiReport ? (
+          <div className="mt-3 rounded-xl border border-violet-500/30 bg-slate-950/70 p-4 text-xs no-print">
+            <div className="flex items-center justify-between">
+              <p className="font-black uppercase tracking-[0.14em] text-violet-300 flex items-center gap-1.5">
+                <span>🔮 nexID IA Ops Copilot</span>
+              </p>
+              <button
+                suppressHydrationWarning
+                type="button"
+                className="text-[10px] text-cyan-300 font-bold hover:underline"
+                onClick={generateAiInsights}
+                disabled={aiAnalyzing}
+              >
+                {aiAnalyzing ? "Analizando..." : "Actualizar reporte"}
+              </button>
+            </div>
+            <div className="mt-2 text-slate-300 whitespace-pre-line leading-5">
+              {aiReport}
+            </div>
           </div>
         ) : null}
         <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs">

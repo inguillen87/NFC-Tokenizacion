@@ -8,6 +8,7 @@ const navItems = [
   { href: "/analytics", label: "Analytics", description: "Fraude, scans, geo y performance operacional/comercial.", badge: "insight" },
   { href: "/resellers", label: "White-label", description: "Canal, partners y operación reseller / enterprise.", badge: "gtm" },
   { href: "/billing", label: "Plans", description: "Planes, suscripciones y expansión monetizable.", badge: "rev" },
+  { href: "/superadmin-network", label: "Superadmin Network", description: "Red global, control de tenants y auditoría de gas.", badge: "admin" },
   { href: "/demo", label: "Demo Control", description: "Entrada simple para contar el producto sin ruido técnico.", badge: "story" },
   { href: "/demo-lab", label: "Demo Lab", description: "Runbooks, pitch, mobile preview y evidencia en vivo.", badge: "live" },
 ];

@@ -1101,6 +1101,93 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">Para tags que llegan de China, usar supplier batch y pegar exactamente las llaves del proveedor.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-cyan-300/20 bg-slate-900/60 p-4 md:col-span-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">🚀 Configuración Rápida (Presets de 1-Clic)</p>
+              <p className="mt-1 text-xs text-slate-400">Seleccioná un perfil recomendado para autocompletar la seguridad y parámetros de la tag:</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <button
+                  suppressHydrationWarning
+                  type="button"
+                  className="rounded-xl border border-white/10 bg-slate-950 p-3 text-left transition hover:border-cyan-300/40"
+                  onClick={() => {
+                    setBatchMode("supplier");
+                    setCarrierProfileCode("ntag424_dna_tt");
+                    setChipModel("NTAG 424 DNA TagTamper");
+                    setSecurityProfile("NTAG424_DNA_TT_PREMIUM");
+                    setSku("wine-secure-tt");
+                    setTokenizationMode("valid_and_opened");
+                    setRequireAntiReplay(true);
+                    setKMeta("c2a462e6ab434828153d73ce440704ac");
+                    setKFile("bfce6c576540c04c840f1cfd457bf213");
+                    setStatus("Preset: Bodega/Lujo Premium (NTAG 424 DNA TT) cargado.");
+                  }}
+                >
+                  <span className="block font-bold text-white text-xs">🍷 Bodega / Lujo Premium</span>
+                  <span className="block mt-1 text-[10px] text-cyan-300">NTAG 424 DNA TT · Cifrado SUN + Tamper</span>
+                </button>
+                <button
+                  suppressHydrationWarning
+                  type="button"
+                  className="rounded-xl border border-white/10 bg-slate-950 p-3 text-left transition hover:border-cyan-300/40"
+                  onClick={() => {
+                    setBatchMode("supplier");
+                    setCarrierProfileCode("ntag424_dna");
+                    setChipModel("NTAG 424 DNA");
+                    setSecurityProfile("NTAG424_DNA_SUN");
+                    setSku("luxury-basic-secure");
+                    setTokenizationMode("valid_only");
+                    setRequireAntiReplay(true);
+                    setKMeta("c2a462e6ab434828153d73ce440704ac");
+                    setKFile("bfce6c576540c04c840f1cfd457bf213");
+                    setStatus("Preset: Autenticidad Criptográfica (NTAG 424 DNA) cargado.");
+                  }}
+                >
+                  <span className="block font-bold text-white text-xs">🛡️ Autenticidad Segura</span>
+                  <span className="block mt-1 text-[10px] text-cyan-300">NTAG 424 DNA · Cifrado SUN sin Tamper</span>
+                </button>
+                <button
+                  suppressHydrationWarning
+                  type="button"
+                  className="rounded-xl border border-white/10 bg-slate-950 p-3 text-left transition hover:border-cyan-300/40"
+                  onClick={() => {
+                    setBatchMode("internal");
+                    setCarrierProfileCode("ntag215");
+                    setChipModel("NTAG215");
+                    setSecurityProfile("NTAG215_UID_RULES");
+                    setSku("event-access-nfc");
+                    setTokenizationMode("manual");
+                    setRequireAntiReplay(false);
+                    setKMeta("");
+                    setKFile("");
+                    setStatus("Preset: Eventos / Acceso Físico (NTAG215) cargado.");
+                  }}
+                >
+                  <span className="block font-bold text-white text-xs">🎫 Eventos y Pulseras</span>
+                  <span className="block mt-1 text-[10px] text-cyan-300">NTAG215 · Serialización por UID físico</span>
+                </button>
+                <button
+                  suppressHydrationWarning
+                  type="button"
+                  className="rounded-xl border border-white/10 bg-slate-950 p-3 text-left transition hover:border-cyan-300/40"
+                  onClick={() => {
+                    setBatchMode("internal");
+                    setCarrierProfileCode("ntag213");
+                    setChipModel("NTAG213");
+                    setSecurityProfile("NTAG213_TAP_TO_WEB");
+                    setSku("marketing-nfc-tag");
+                    setTokenizationMode("manual");
+                    setRequireAntiReplay(false);
+                    setKMeta("");
+                    setKFile("");
+                    setStatus("Preset: Tap-to-Web Básico (NTAG213) cargado.");
+                  }}
+                >
+                  <span className="block font-bold text-white text-xs">📣 Campañas / Marketing</span>
+                  <span className="block mt-1 text-[10px] text-cyan-300">NTAG213 · Redirección básica a landing</span>
+                </button>
+              </div>
+            </div>
+
             <div className="rounded-2xl border border-cyan-300/20 bg-slate-950/55 p-4 md:col-span-2">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Carrier profile obligatorio</p>
               <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
