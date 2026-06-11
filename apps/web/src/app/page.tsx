@@ -301,6 +301,78 @@ export default async function HomePage() {
       <UnitEconomicsSection locale={locale} />
       <AboutInmovarSection locale={locale} />
 
+      {/* nexID Cognitive AI Engine Explainer Section */}
+      <section className="container-shell my-16">
+        <div className="relative overflow-hidden rounded-3xl border border-purple-500/25 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.15),transparent_40%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(2,6,23,0.98))] p-8 shadow-2xl md:p-10">
+          <div className="absolute -left-16 -top-16 h-36 w-36 rounded-full bg-purple-500/5 blur-3xl animate-pulse" />
+          
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] items-center">
+            <div>
+              <span className="rounded-full border border-purple-400/25 bg-purple-400/5 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-purple-300">
+                PROPRIETARY COGNITIVE SUITE
+              </span>
+              <h2 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl leading-tight">
+                Optimización de Campañas y Análisis de Comportamiento Humano con IA
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-slate-300">
+                El motor cognitivo de nexID analiza de forma automática las interacciones físicas, estimando la fidelización y engagement de cada copy comercial. Permite a los productores ingresar borradores técnicos sencillos y convertirlos en un copy de lujo de alta conversión para su club de beneficios.
+              </p>
+              
+              <div className="mt-6 space-y-4">
+                {[
+                  { title: "Estimación de Viralidad", desc: "Predice la tasa de conversión analizando triggers psicológicos y legibilidad." },
+                  { title: "Reescritura de Lujo", desc: "Mejora el texto de cata plano, inyectando terminología de sommelier y tono exclusivo." },
+                  { title: "Análisis de Comportamiento Antifraude", desc: "Evalúa coordenadas GPS e IPs para anticipar clonaciones y asegurar el inventario." }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex gap-3">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-purple-300 text-[11px] font-bold">✓</span>
+                    <div>
+                      <strong className="text-xs font-bold text-white block">{item.title}</strong>
+                      <span className="text-xs text-slate-400">{item.desc}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Visual HUD Mockup */}
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 font-mono text-[11px] text-slate-300 space-y-4 relative">
+              <div className="absolute right-4 top-4 rounded bg-purple-500/15 border border-purple-500/25 px-2 py-0.5 text-[8px] font-bold text-purple-300">
+                nexID AI Live
+              </div>
+              <div>
+                <span className="text-slate-500 block uppercase tracking-wider text-[9px] mb-1">Entrada del Productor (Borrador)</span>
+                <p className="bg-slate-900/40 p-2.5 rounded-lg border border-white/5 text-slate-400 text-xs italic">
+                  "Este vino malbec es muy rico y es barato para comprar en nuestro club."
+                </p>
+              </div>
+              <div className="flex justify-between items-center bg-purple-500/5 border border-purple-500/20 rounded-xl p-3">
+                <div>
+                  <span className="text-purple-300 block text-[9px] uppercase font-bold">Optimización Sommelier</span>
+                  <p className="text-xs font-black text-white mt-0.5 leading-tight">
+                    "Un exquisito exponente de autor. Untuoso, persistente y con taninos de seda para nuestro Club VIP."
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-[10px] text-center pt-2">
+                <div className="bg-slate-900/60 border border-white/5 p-2 rounded-lg">
+                  <span className="text-slate-500 block text-[8px]">Prestigio</span>
+                  <strong className="text-amber-400 text-xs">96%</strong>
+                </div>
+                <div className="bg-slate-900/60 border border-white/5 p-2 rounded-lg">
+                  <span className="text-slate-500 block text-[8px]">Viralidad</span>
+                  <strong className="text-purple-400 text-xs">88%</strong>
+                </div>
+                <div className="bg-slate-900/60 border border-white/5 p-2 rounded-lg">
+                  <span className="text-slate-500 block text-[8px]">Conversión</span>
+                  <strong className="text-emerald-400 text-xs">Alto (A)</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="hidden">
         <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 md:p-8">
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Canal y arquitectura comercial</p>

@@ -32,6 +32,7 @@ import {
   FileCheck2,
   ShieldCheck,
   Zap,
+  Presentation,
 } from "lucide-react";
 
 type DashboardText = typeof dashboardContent["es-AR"];
@@ -192,6 +193,7 @@ export function DashboardShellInner({
     { href: "/loyalty/rewards", label: "Catálogo Beneficios" },
     { href: "/loyalty/experiences", label: "Experiencias & Eventos" },
     { href: "/loyalty/campaigns", label: "Growth & BotIA" },
+    { href: "/investor-snapshot", label: "Investor Presentation" },
     { href: "/consumer-network/marketplace", label: "Marketplace Opt-in" },
     { href: "/consumer-network/offers", label: "Ofertas & Drops" },
     { href: "/consumer-network/order-requests", label: "Order Requests" },
@@ -235,6 +237,7 @@ export function DashboardShellInner({
     loyaltyNetworkItems.push({ href: "/loyalty/rewards", label: "Catálogo Beneficios", icon: Gift });
     loyaltyNetworkItems.push({ href: "/loyalty/experiences", label: "Experiencias & Eventos", icon: PartyPopper });
     loyaltyNetworkItems.push({ href: "/loyalty/campaigns", label: "Growth & BotIA", icon: Bot });
+    loyaltyNetworkItems.push({ href: "/investor-snapshot", label: "Investor Presentation", icon: Presentation, badge: "PDF" });
     loyaltyNetworkItems.push({ href: "/consumer-network/marketplace", label: "Marketplace Opt-in", icon: ShoppingBag, badge: "Web3" });
     loyaltyNetworkItems.push({ href: "/consumer-network/offers", label: "Ofertas & Drops", icon: Flame });
     loyaltyNetworkItems.push({ href: "/consumer-network/order-requests", label: "Order Requests", icon: FileCheck2 });

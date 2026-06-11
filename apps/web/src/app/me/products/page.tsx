@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, Gift, MessageSquareText, PackageCheck, ShieldCheck, WalletCards, ArrowRight, Award, MapPin, CheckCircle2 } from "lucide-react";
+import { ExternalLink, Gift, MessageSquareText, PackageCheck, ShieldCheck, WalletCards, ArrowRight, Award, MapPin, CheckCircle2, Sparkles, Camera } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import { formatPortalDate, ownershipTone, type ConsumerPortalProduct, type ConsumerTap } from "../_components/consumer-portal-model";
@@ -157,6 +157,14 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                             {certificateUrl && (
                               <Link href={certificateUrl} className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-3.5 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-500/20 transition">
                                 Certificado <ExternalLink className="h-3.5 w-3.5" />
+                              </Link>
+                            )}
+                            <Link href={`/me/sommelier?product=${encodeURIComponent(product.product_name || "")}&brand=${encodeURIComponent(product.brand_name || "")}`} className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/35 bg-purple-500/10 px-3.5 py-2 text-xs font-bold text-purple-200 hover:bg-purple-500/20 transition">
+                              Sommelier AI <Sparkles className="h-3.5 w-3.5" />
+                            </Link>
+                            {visual === "bottle" && (
+                              <Link href="/me/cork-analyzer" className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/35 bg-indigo-500/10 px-3.5 py-2 text-xs font-bold text-indigo-200 hover:bg-indigo-500/20 transition">
+                                Analizar Corcho <Camera className="h-3.5 w-3.5" />
                               </Link>
                             )}
                             <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className="rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-3.5 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20 transition">
