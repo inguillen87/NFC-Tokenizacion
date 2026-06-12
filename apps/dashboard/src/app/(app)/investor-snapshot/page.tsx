@@ -130,7 +130,7 @@ export default function InvestorPitchDeck() {
               { step: "1. Embotellado Físico", desc: "Se inserta un microchip NFC criptográfico nexID en el cuello de la botella o empaque.", icon: QrCode },
               { step: "2. Validación y Tap", desc: "El comprador toca el empaque con su celular y valida la procedencia al instante.", icon: Smartphone },
               { step: "3. Nube SQL Segura", desc: "La firma dinámica se verifica contra la base SQL custodiada en Render/AWS.", icon: ShieldCheck },
-              { step: "4. Web3 Opcional", desc: "Acuñación opcional on-chain (Polygon) para líneas de alta gama o colección.", icon: Sparkles }
+              { step: "4. Web3 Opcional", desc: "Registro opcional on-chain (Polygon) para generar el gemelo digital de líneas de alta gama.", icon: Sparkles }
             ].map((item, idx) => (
               <div key={idx} className="rounded-xl border border-white/5 bg-slate-900/30 p-4 text-center relative">
                 <item.icon className="w-6 h-6 text-purple-400 mx-auto mb-2" />
@@ -362,7 +362,7 @@ export default function InvestorPitchDeck() {
               { title: "NFC Smart Tag", step: "Apunta el teléfono" },
               { title: "Consumer App", step: "Reclamar Dueño" },
               { title: "Bodega CRM", step: "IA Campaign Telemetry" },
-              { title: "Polygon Ledger", step: "Acuñación NFT" }
+              { title: "Polygon Ledger", step: "Tokenización NFT" }
             ].map((item, idx) => (
               <div key={idx} className="rounded-xl border border-white/5 bg-slate-950 p-3 text-center">
                 <span className="text-[8px] uppercase text-slate-500 font-bold block">Fase {idx + 1}</span>

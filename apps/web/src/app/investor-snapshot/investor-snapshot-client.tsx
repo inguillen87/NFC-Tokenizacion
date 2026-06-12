@@ -138,7 +138,7 @@ const slides = [
     bullets: [
       "Firma Criptográfica dinámica validada contra nuestra base SQL ultra-segura (Render/AWS) por defecto.",
       "Onboarding inmediato para marcas tradicionales sin necesidad de lidiar con criptomonedas o gas fees.",
-      "Capa on-chain (Polygon Amoy) para acuñar pasaportes NFT e inmutabilidad en mercados de colección."
+      "Capa on-chain (Polygon Amoy) para generar pasaportes NFT e inmutabilidad en mercados de colección."
     ]
   },
   {
@@ -858,6 +858,11 @@ export function InvestorSnapshotClient() {
   const [minting, setMinting] = useState(false);
   const [claimedRewards, setClaimedRewards] = useState<Record<string, boolean>>({});
 
+  // Interactive bidding and marketplace states
+  const [bidsCount, setBidsCount] = useState(3);
+  const [myBidAmount, setMyBidAmount] = useState<number | null>(null);
+  const [currentBasePrice, setCurrentBasePrice] = useState(0.18);
+
   // Web Audio Synth for NFC Tap Beep & Success chime
   const playSound = (freq: number, type: "sine" | "triangle" | "sawtooth", duration: number) => {
     if (!soundEnabled) return;
@@ -919,6 +924,17 @@ export function InvestorSnapshotClient() {
     setIsMinted(false);
     setMinting(false);
     setClaimedRewards({});
+    setBidsCount(3);
+    setMyBidAmount(null);
+    setCurrentBasePrice(0.18);
+  };
+
+  const handlePlaceBid = () => {
+    const nextBid = Number((currentBasePrice + 0.01).toFixed(3));
+    setCurrentBasePrice(nextBid);
+    setBidsCount(prev => prev + 1);
+    setMyBidAmount(nextBid);
+    triggerSuccessChime();
   };
 
   const handleMintNft = () => {
@@ -1281,11 +1297,11 @@ export function InvestorSnapshotClient() {
             </div>
 
             {/* Tap Stage */}
-            <div className="w-full h-[280px] relative border border-white/5 bg-slate-950/60 rounded-2xl overflow-hidden flex items-center justify-center z-10 shadow-inner">
+            <div className="w-full h-[520px] relative border border-white/5 bg-slate-950/60 rounded-2xl overflow-hidden flex items-center justify-center z-10 shadow-inner">
               <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none" />
               
               {/* Bottle floating container */}
-              <div className="absolute left-[8%] w-[130px] h-[240px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden">
+              <div className="absolute left-[4%] w-[160px] h-[450px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/5 via-transparent to-transparent pointer-events-none" />
                 <ThreeDBottle 
                   active={simStep === "active"} 
@@ -1298,7 +1314,7 @@ export function InvestorSnapshotClient() {
                     initial={{ scale: 0.1, opacity: 1 }}
                     animate={{ scale: 5, opacity: 0 }}
                     transition={{ duration: 0.8, repeat: 1 }}
-                    className="absolute top-[32%] w-10 h-10 rounded-full border-2 border-cyan-400 bg-cyan-400/20 z-20"
+                    className="absolute top-[22%] w-10 h-10 rounded-full border-2 border-cyan-400 bg-cyan-400/20 z-20"
                   />
                 )}
               </div>
@@ -1307,126 +1323,219 @@ export function InvestorSnapshotClient() {
               <motion.div
                 animate={
                   simStep === "idle"
-                    ? { x: 75, y: -20, rotate: 10, scale: 0.95 }
+                    ? { x: 105, y: -10, rotate: 8, scale: 0.95 }
                     : simStep === "tapping"
-                    ? { x: -35, y: -45, rotate: -25, scale: 1.05 }
-                    : { x: 30, y: 0, rotate: 0, scale: 1.25 } // Centered & zoomed in active state
+                    ? { x: -20, y: -70, rotate: -20, scale: 1.02 }
+                    : { x: 45, y: 0, rotate: 0, scale: 1.1 } // Centered & zoomed in active state
                 }
                 transition={
                   simStep === "tapping"
                     ? { type: "spring", stiffness: 220, damping: 14 }
                     : { type: "spring", stiffness: 100, damping: 18 }
                 }
-                className="absolute right-[10%] w-[130px] h-[220px] border-[4px] border-slate-800 rounded-[28px] bg-slate-950 shadow-2xl z-20 flex flex-col items-center justify-between overflow-hidden shadow-cyan-500/5"
+                className="absolute right-[8%] w-[270px] h-[460px] border-[8px] border-slate-800 rounded-[40px] bg-slate-950 shadow-2xl z-20 flex flex-col items-center justify-between overflow-hidden shadow-cyan-500/5"
               >
                 {/* iPhone Bezel notch */}
-                <div className="w-16 h-3.5 bg-slate-900 rounded-b-xl absolute top-0 z-30 flex items-center justify-center">
-                  <div className="w-6 h-1 bg-slate-800 rounded-full mb-1" />
+                <div className="w-28 h-5 bg-slate-900 rounded-b-2xl absolute top-0 z-30 flex items-center justify-center">
+                  <div className="w-10 h-1 bg-slate-800 rounded-full mb-1" />
                 </div>
                 
                 {simStep === "idle" && (
-                  <div className="text-center p-3 my-auto space-y-3">
-                    <Smartphone className="w-10 h-10 mx-auto text-slate-500 animate-pulse" />
-                    <span className="text-[9px] font-black uppercase text-slate-400 block tracking-widest leading-3">Acercá para Tap</span>
+                  <div className="text-center p-4 my-auto space-y-4">
+                    <Smartphone className="w-14 h-14 mx-auto text-slate-500 animate-pulse" />
+                    <span className="text-xs font-black uppercase text-slate-400 block tracking-widest leading-none">Acercá para Tap</span>
                   </div>
                 )}
 
                 {simStep === "tapping" && (
-                  <div className="text-center p-3 my-auto">
-                    <Zap className="w-8 h-8 mx-auto text-cyan-400 animate-pulse" />
-                    <span className="text-[8px] font-black uppercase text-cyan-300 block tracking-widest mt-1">Leyendo Chip</span>
+                  <div className="text-center p-4 my-auto">
+                    <Zap className="w-12 h-12 mx-auto text-cyan-400 animate-pulse" />
+                    <span className="text-xs font-black uppercase text-cyan-300 block tracking-widest mt-2">Leyendo Chip</span>
                   </div>
                 )}
 
                 {simStep === "loading" && (
                   <div className="text-center my-auto space-y-2">
-                    <RefreshCw className="w-7 h-7 mx-auto text-purple-400 animate-spin" />
-                    <span className="text-[8px] font-mono text-slate-400 block uppercase">Verificando...</span>
+                    <RefreshCw className="w-10 h-10 mx-auto text-purple-400 animate-spin" />
+                    <span className="text-[10px] font-mono text-slate-400 block uppercase">Verificando...</span>
                   </div>
                 )}
 
                 {simStep === "active" && (
-                  <div className="w-full h-full bg-[#020617] flex flex-col justify-between p-2 pt-6 relative select-none">
+                  <div className="w-full h-full bg-[#020617] flex flex-col justify-between p-4 pt-10 relative select-none">
                     
                     {/* Status bar */}
-                    <div className="absolute top-1 left-2.5 right-2.5 flex justify-between items-center text-[5px] text-slate-500 font-mono">
+                    <div className="absolute top-1.5 left-4 right-4 flex justify-between items-center text-[8px] text-slate-500 font-mono">
                       <span>12:00</span>
-                      <div className="flex gap-1 items-center">
+                      <div className="flex gap-1.5 items-center">
                         <span>5G</span>
-                        <div className="w-2.5 h-1.5 border border-slate-600 rounded-sm bg-emerald-500" />
+                        <div className="w-3.5 h-2.5 border border-slate-600 rounded-sm bg-emerald-500" />
                       </div>
                     </div>
 
-                    <div className="text-center shrink-0">
-                      <span className="text-[7px] font-black tracking-widest text-cyan-400 block uppercase">nexID VIP PORTAL</span>
-                      <strong className="text-[8px] text-white block mt-0.5 uppercase truncate leading-none">Gran Blend 2026</strong>
+                    <div className="text-center shrink-0 border-b border-white/5 pb-2">
+                      <span className="text-[10px] font-black tracking-widest text-cyan-400 block uppercase">nexID VIP PORTAL</span>
+                      <strong className="text-[14px] text-white block mt-0.5 uppercase truncate leading-none">Gran Blend 2026</strong>
+                      <span className="text-[9px] text-slate-500 uppercase font-mono tracking-wider mt-0.5 block">Mendoza, Argentina</span>
                     </div>
 
                     {/* Sim Phone Screen Content */}
-                    <div className="flex-1 my-2 rounded bg-slate-900/60 p-2 flex flex-col justify-between text-[7.5px] leading-relaxed text-slate-300 overflow-y-auto">
+                    <div className="flex-1 my-3 rounded-lg bg-slate-900/60 p-3 flex flex-col justify-between text-xs leading-relaxed text-slate-300 overflow-y-auto">
                       {phoneTab === "validate" && (
-                        <div className="space-y-1.5 w-full text-left my-auto">
-                          <div className="flex items-center gap-1 border-b border-white/5 pb-1 mb-1 justify-center">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 filter drop-shadow-[0_0_5px_rgba(16,185,129,0.3)]" />
+                        <div className="space-y-3.5 w-full text-left my-auto">
+                          <div className="flex items-center gap-2 border-b border-white/5 pb-2 justify-center">
+                            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 filter drop-shadow-[0_0_5px_rgba(16,185,129,0.3)]" />
                             <div>
-                              <span className="text-[7px] font-black text-white uppercase block leading-none">Autenticidad SQL</span>
-                              <span className="text-[5.5px] text-emerald-400 uppercase font-bold leading-none mt-0.5 block">Verificación OK</span>
+                              <span className="text-[11px] font-black text-white uppercase block leading-none">Autenticidad SQL</span>
+                              <span className="text-[9px] text-emerald-400 uppercase font-bold leading-none mt-0.5 block">Sello Cerrado Original</span>
                             </div>
                           </div>
                           
+                          {/* Mini SVG Map */}
+                          <div className="w-full h-[75px] rounded-lg bg-slate-950/80 border border-white/5 relative p-1.5 flex flex-col justify-between">
+                            <div className="flex justify-between items-center px-1 text-[8px] text-slate-500 uppercase font-bold tracking-wider">
+                              <span>Trazabilidad de Ruta</span>
+                              <span className="text-cyan-400 animate-pulse">En Tránsito</span>
+                            </div>
+                            <svg className="w-full h-[40px]" viewBox="0 0 160 40" preserveAspectRatio="none">
+                              {/* Grid lines */}
+                              <line x1="0" y1="20" x2="160" y2="20" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+                              
+                              {/* Route Path */}
+                              <path d="M20 30 Q50 10 90 25 T140 10" fill="none" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3,3" />
+                              
+                              {/* Glowing path segment for current transit */}
+                              <path d="M20 30 Q50 10 70 17" fill="none" stroke="#f59e0b" strokeWidth="1.5" />
+                              
+                              {/* Nodes */}
+                              <circle cx="20" cy="30" r="3" fill="#f59e0b" /> {/* MDZ */}
+                              <circle cx="60" cy="18" r="3" fill="#f59e0b" /> {/* BUE */}
+                              <circle cx="100" cy="22" r="3" fill="#06b6d4" /> {/* RTM */}
+                              <circle cx="140" cy="10" r="3" fill="#06b6d4" /> {/* ZRH */}
+                              
+                              {/* Glow rings */}
+                              <circle cx="20" cy="30" r="5" fill="none" stroke="#f59e0b" strokeWidth="0.5" className="animate-pulse" />
+                              <circle cx="140" cy="10" r="5" fill="none" stroke="#06b6d4" strokeWidth="0.5" className="animate-pulse" />
+                            </svg>
+                            <div className="flex justify-between text-[6.5px] text-slate-400 font-mono leading-none px-1">
+                              <span>MDZ</span>
+                              <span>BUE</span>
+                              <span>RTM</span>
+                              <span>ZRH</span>
+                            </div>
+                          </div>
+                          
+                          {/* Live Telemetry Info ticker */}
+                          <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-md p-1.5 text-[8px] font-mono text-cyan-300 flex justify-between items-center leading-none">
+                            <span>🌡️ Temp: 14.2°C</span>
+                            <span>💧 Hum: 58%</span>
+                            <span>⚡ GPS Lock: OK</span>
+                          </div>
+                          
                           {/* Timeline steps */}
-                          <div className="space-y-1.5 relative pl-2.5 border-l border-white/10 ml-1.5 text-[5.5px] leading-tight">
+                          <div className="space-y-2 relative pl-3 border-l border-white/10 ml-2 text-[9px] leading-tight">
                             <div className="relative">
-                              <span className="absolute -left-[13px] top-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[4px] text-white">✓</span>
-                              <span className="font-bold text-slate-300 uppercase block">1. Origen Lote</span>
-                              <span className="text-slate-400 block">Registrado en AWS SQL</span>
+                              <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
+                              <span className="font-bold text-slate-300 uppercase block leading-none">1. Viñedo Origen</span>
+                              <span className="text-slate-400 block mt-0.5 leading-none">Luján de Cuyo, Mendoza · Registrado SQL</span>
                             </div>
                             
                             <div className="relative">
-                              <span className="absolute -left-[13px] top-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[4px] text-white">✓</span>
-                              <span className="font-bold text-slate-300 uppercase block">2. Logística</span>
-                              <span className="text-slate-400 block">Salida de Bodega validada</span>
+                              <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
+                              <span className="font-bold text-slate-300 uppercase block leading-none">2. Logística y Aduana</span>
+                              <span className="text-slate-400 block mt-0.5 leading-none">Despacho de puerto e ingreso en Zurich</span>
                             </div>
                             
                             <div className="relative">
-                              <span className="absolute -left-[13px] top-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[4px] text-white">✓</span>
-                              <span className="font-bold text-slate-300 uppercase block">3. TagTamper</span>
-                              <span className="text-emerald-400 font-bold block">Sellado e Intacto</span>
+                              <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
+                              <span className="font-bold text-slate-300 uppercase block leading-none">3. Sello de Seguridad</span>
+                              <span className="text-emerald-400 font-bold block mt-0.5 leading-none">TagTamper Intacto (Original)</span>
                             </div>
-                            
-                            <div className="relative">
-                              <span className="absolute -left-[13px] top-0.5 w-1.5 h-1.5 rounded-full bg-purple-500 border border-slate-950 flex items-center justify-center text-[4px] text-white">✓</span>
-                              <span className="font-bold text-slate-300 uppercase block">4. Polygon Web3</span>
-                              <span className="text-slate-400 block">Gemelo digital listo</span>
+                          </div>
+
+                          {/* Wine details card */}
+                          <div className="pt-2 border-t border-white/5 text-[9px] bg-slate-950/50 p-2 rounded-lg space-y-1.5">
+                            <div className="flex justify-between items-center text-[8px] text-slate-500 font-bold uppercase tracking-wider">
+                              <span>Ficha Enológica</span>
+                              <span className="text-amber-400">🏅 96 pts Suckling</span>
                             </div>
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[8.5px]">
+                              <div>
+                                <span className="text-slate-500 block">Varietal:</span>
+                                <span className="text-slate-200 font-bold">Malbec 100%</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block">Crianza:</span>
+                                <span className="text-slate-200 font-bold">18m Roble Fr.</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block">Critica:</span>
+                                <span className="text-slate-200 font-bold">Reserva Premium</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500 block">Servicio:</span>
+                                <span className="text-slate-200 font-bold">16°C - 18°C</span>
+                              </div>
+                            </div>
+                            <p className="text-[7.5px] text-slate-400 leading-tight italic border-t border-white/5 pt-1">
+                              "Color rubí, notas a ciruela madura, cacao y vainilla persistentes."
+                            </p>
                           </div>
                         </div>
                       )}
 
                       {phoneTab === "mint" && (
-                        <div className="space-y-1.5 w-full text-center my-auto">
+                        <div className="space-y-3.5 w-full text-center my-auto">
                           {isMinted ? (
-                            <div className="space-y-1">
-                              <Award className="w-5 h-5 mx-auto text-purple-400 filter drop-shadow-[0_0_5px_rgba(168,85,247,0.3)]" />
-                              <p className="font-black text-white text-[7.5px] uppercase">Título Web3 Acuñado</p>
-                              <p className="text-[5.5px] font-mono text-slate-400 break-all bg-slate-950 p-1 rounded">Tx: 0xbc79...2fa8</p>
+                            <div className="space-y-2.5 p-1 bg-slate-950/40 rounded-xl border border-white/5">
+                              <Award className="w-8 h-8 mx-auto text-purple-400 filter drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]" />
+                              <div>
+                                <p className="font-black text-white text-[11px] uppercase leading-none">Propiedad Digital Registrada</p>
+                                <span className="text-[8px] text-emerald-400 font-bold mt-1 block">Inmutable · Polygon Ledger</span>
+                              </div>
+                              <div className="text-[8px] font-mono text-slate-300 bg-slate-950 p-2 rounded border border-white/5 text-left space-y-1">
+                                <div className="flex justify-between">
+                                  <span>Token ID:</span>
+                                  <span className="text-purple-300">#84920</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Billetera:</span>
+                                  <span className="text-slate-400 truncate w-[100px] text-right">0x8a92...11d9</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Tx Hash:</span>
+                                  <span className="text-cyan-400 truncate w-[100px] text-right cursor-pointer hover:underline">0xbc79...2fa8</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Bloque:</span>
+                                  <span className="text-slate-400">#38104822</span>
+                                </div>
+                              </div>
+                              <span className="text-[7.5px] text-slate-500 block leading-tight">
+                                Tu certificado inmutable en la red Polygon Amoy ha sido generado con éxito.
+                              </span>
                             </div>
                           ) : (
-                            <div className="space-y-2">
-                              <Coins className="w-5 h-5 mx-auto text-purple-400" />
-                              <p className="font-bold text-[7px] text-white">¿Acuñar Gemelo Digital?</p>
+                            <div className="space-y-3 p-1">
+                              <Coins className="w-9 h-9 mx-auto text-purple-400" />
+                              <div>
+                                <p className="font-black text-[12px] text-white uppercase leading-none">Registrar en Blockchain</p>
+                                <p className="text-[9px] text-slate-400 mt-2 max-w-[190px] mx-auto leading-relaxed font-semibold">
+                                  Generá el gemelo digital de esta botella para poseer el certificado inmutable de autenticidad en el ledger de Polygon.
+                                </p>
+                              </div>
                               <button 
                                 onClick={handleMintNft}
                                 disabled={minting}
-                                className="w-full bg-purple-600 hover:bg-purple-500 text-[6.5px] text-white font-black uppercase rounded py-1 transition flex items-center justify-center gap-1"
+                                className="w-full bg-purple-600 hover:bg-purple-500 text-[10px] text-white font-black uppercase rounded-xl py-3 transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.3)] border border-purple-500/20"
                               >
                                 {minting ? (
                                   <>
-                                    <RefreshCw className="w-2.5 h-2.5 animate-spin" />
-                                    <span>Acuñando...</span>
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                    <span>Generando Gemelo...</span>
                                   </>
                                 ) : (
-                                  <span>Crear NFT</span>
+                                  <span>Crear Gemelo Digital</span>
                                 )}
                               </button>
                             </div>
@@ -1435,20 +1544,50 @@ export function InvestorSnapshotClient() {
                       )}
 
                       {phoneTab === "rewards" && (
-                        <div className="space-y-1.5 w-full text-center my-auto">
-                          <Gift className="w-5 h-5 mx-auto text-amber-400" />
-                          <p className="font-black text-white text-[7.5px] uppercase">Premios del Club</p>
-                          <div className="space-y-1 pt-1.5 border-t border-white/5">
-                            <div className="flex justify-between items-center bg-slate-950 p-1 rounded">
-                              <span className="text-slate-300 font-medium">Copa de Cata</span>
+                        <div className="space-y-3.5 w-full text-center my-auto">
+                          <Gift className="w-9 h-9 mx-auto text-amber-400" />
+                          <div>
+                            <p className="font-black text-white text-[12px] uppercase leading-none">Premios del Club VIP</p>
+                            <p className="text-[8.5px] text-slate-400 mt-1">Beneficios exclusivos para propietarios</p>
+                          </div>
+                          
+                          <div className="space-y-2.5 pt-1 border-t border-white/5 max-h-[180px] overflow-y-auto">
+                            {/* Reward 1 */}
+                            <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-white/5">
+                              <div className="text-left space-y-0.5">
+                                <span className="text-slate-200 font-bold text-[9px] block leading-none">Copa de Degustación</span>
+                                <span className="text-slate-500 text-[7px] block leading-none">Cata en Cava Mendoza</span>
+                              </div>
                               {claimedRewards["wine"] ? (
-                                <span className="text-emerald-400 font-bold uppercase text-[5.5px]">Claimed</span>
+                                <span className="text-emerald-400 font-mono font-bold uppercase text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                  CUPON-MDZ-99B
+                                </span>
                               ) : (
                                 <button 
                                   onClick={() => handleClaimReward("wine")}
-                                  className="bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded text-[5px] font-black uppercase"
+                                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 rounded text-[8px] font-black uppercase transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)]"
                                 >
-                                  Claim
+                                  Canjear
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Reward 2 */}
+                            <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-white/5">
+                              <div className="text-left space-y-0.5">
+                                <span className="text-slate-200 font-bold text-[9px] block leading-none">Tour VIP Bodega</span>
+                                <span className="text-slate-500 text-[7px] block leading-none">15% Off Reservas</span>
+                              </div>
+                              {claimedRewards["tour"] ? (
+                                <span className="text-emerald-400 font-mono font-bold uppercase text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                  TOUR-ANDES-44X
+                                </span>
+                              ) : (
+                                <button 
+                                  onClick={() => handleClaimReward("tour")}
+                                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 rounded text-[8px] font-black uppercase transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                                >
+                                  Canjear
                                 </button>
                               )}
                             </div>
@@ -1457,30 +1596,51 @@ export function InvestorSnapshotClient() {
                       )}
 
                       {phoneTab === "market" && (
-                        <div className="space-y-1.5 w-full text-center my-auto">
-                          <ShoppingBag className="w-5 h-5 mx-auto text-cyan-400" />
-                          <p className="font-black text-white text-[7.5px] uppercase">Marketplace VIP</p>
-                          <div className="pt-1 border-t border-white/5 text-left space-y-0.5 text-[6px]">
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">Floor Price:</span>
-                              <span className="text-white font-bold">0.18 ETH</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">Bids Activos:</span>
-                              <span className="text-cyan-400 font-bold">3 Ofertas</span>
-                            </div>
+                        <div className="space-y-3.5 w-full text-center my-auto">
+                          <ShoppingBag className="w-9 h-9 mx-auto text-cyan-400" />
+                          <div>
+                            <p className="font-black text-white text-[12px] uppercase leading-none">Marketplace Cava VIP</p>
+                            <p className="text-[8px] text-slate-400 mt-1">Cava de compra y venta entre coleccionistas</p>
                           </div>
+                          
+                          <div className="pt-2.5 border-t border-white/5 text-left space-y-1.5 text-[9px] font-mono bg-slate-950/40 p-2.5 rounded-lg">
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">VALOR ESTIMADO:</span>
+                              <span className="text-white font-bold">{currentBasePrice.toFixed(3)} ETH</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">OFERTAS TOTALES:</span>
+                              <span className="text-cyan-400 font-bold">{bidsCount} Ofertas</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">VARIACIÓN:</span>
+                              <span className="text-emerald-400 font-bold">+14.5% este mes</span>
+                            </div>
+                            {myBidAmount && (
+                              <div className="flex justify-between border-t border-white/5 pt-1.5 text-purple-300 font-bold">
+                                <span>TU OFERTA LIVE:</span>
+                                <span>{myBidAmount.toFixed(3)} ETH</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <button 
+                            onClick={handlePlaceBid}
+                            className="w-full bg-slate-900 border border-cyan-500/30 text-cyan-300 font-black text-[9px] uppercase py-2.5 rounded-xl hover:bg-slate-800 transition shadow-[0_0_10px_rgba(6,182,212,0.1)]"
+                          >
+                            Hacer Oferta (+0.01 ETH)
+                          </button>
                         </div>
                       )}
                     </div>
 
                     {/* Sim Phone Tabs */}
-                    <div className="grid grid-cols-4 gap-1 border-t border-white/10 pt-1.5 shrink-0">
+                    <div className="grid grid-cols-4 gap-1 border-t border-white/10 pt-2 shrink-0">
                       {[
-                        { id: "validate", label: "Val" },
-                        { id: "mint", label: "Mint" },
-                        { id: "rewards", label: "Drop" },
-                        { id: "market", label: "Shop" }
+                        { id: "validate", label: "Verificar" },
+                        { id: "mint", label: "Web3" },
+                        { id: "rewards", label: "Premios" },
+                        { id: "market", label: "Cava" }
                       ].map((item) => (
                         <button
                           key={item.id}
@@ -1488,7 +1648,7 @@ export function InvestorSnapshotClient() {
                             setPhoneTab(item.id as any);
                             triggerNfcBeep();
                           }}
-                          className={`text-[6px] font-black uppercase rounded py-1 transition ${
+                          className={`text-[9px] font-black uppercase rounded py-1.5 transition ${
                             phoneTab === item.id 
                               ? "bg-cyan-500/20 text-cyan-300" 
                               : "text-slate-500 hover:text-slate-300"
@@ -1532,7 +1692,7 @@ export function InvestorSnapshotClient() {
                 <p>💡 <strong>Cómo probar:</strong> Haz clic en <strong>Simular NFC Tap</strong>. Observa el arco de traslación del móvil y escucha el \"bip\" dinámico al conectar.</p>
               )}
               {simStep === "active" && (
-                <p>🚀 <strong>Interactúa:</strong> Navega por las pestañas del celular simulado en el centro. Intenta acuñar el NFT en Polygon o reclamar copas en el club.</p>
+                <p>🚀 <strong>Interactúa:</strong> Navega por las pestañas del celular simulado en el centro. Intenta generar el NFT en Polygon o reclamar beneficios en el club.</p>
               )}
             </div>
 
