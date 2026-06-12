@@ -122,15 +122,15 @@ export default function InvestorPitchDeck() {
     {
       id: 2,
       title: "El Ecosistema nexID",
-      tagline: "INTEGRACIÓN INTEGRAL DE HARDWARE, BLOCKCHAIN E INTELIGENCIA ARTIFICIAL",
+      tagline: "INTEGRACIÓN HÍBRIDA DE BASE SQL EN LA NUBE (AWS/RENDER) Y CAPA WEB3 OPCIONAL",
       content: (
         <div className="flex flex-col justify-between h-full py-4 space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             {[
-              { step: "1. Embotellado Físico", desc: "Se inserta un microchip NFC criptográfico nexID en el cuello de la botella.", icon: QrCode },
-              { step: "2. Validación y Tap", desc: "El comprador toca la botella con su celular y valida la procedencia al instante.", icon: Smartphone },
-              { step: "3. Título Web3 (Claim)", desc: "Se acuña un certificado digital on-chain que acredita la propiedad de la botella.", icon: ShieldCheck },
-              { step: "4. Marketing Activo", desc: "La bodega interactúa con el comprador y activa misiones de fidelidad con IA.", icon: Sparkles }
+              { step: "1. Embotellado Físico", desc: "Se inserta un microchip NFC criptográfico nexID en el cuello de la botella o empaque.", icon: QrCode },
+              { step: "2. Validación y Tap", desc: "El comprador toca el empaque con su celular y valida la procedencia al instante.", icon: Smartphone },
+              { step: "3. Nube SQL Segura", desc: "La firma dinámica se verifica contra la base SQL custodiada en Render/AWS.", icon: ShieldCheck },
+              { step: "4. Web3 Opcional", desc: "Acuñación opcional on-chain (Polygon) para líneas de alta gama o colección.", icon: Sparkles }
             ].map((item, idx) => (
               <div key={idx} className="rounded-xl border border-white/5 bg-slate-900/30 p-4 text-center relative">
                 <item.icon className="w-6 h-6 text-purple-400 mx-auto mb-2" />
@@ -146,9 +146,9 @@ export default function InvestorPitchDeck() {
           </div>
 
           <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4 text-xs text-slate-300 leading-relaxed flex items-center gap-4">
-            <span className="p-3 bg-purple-500/20 rounded-xl text-purple-300 font-black">AI + Web3</span>
+            <span className="p-3 bg-purple-500/20 rounded-xl text-purple-300 font-black">Híbrido: SQL + Web3</span>
             <p>
-              <strong>Una solución que va mucho más allá de un simple lector NFC:</strong> Vinculamos físicamente la escasez del vino con la inmutabilidad de la blockchain y la sofisticación de la Inteligencia Artificial para crear una experiencia de lujo incomparable.
+              <strong>Una arquitectura flexible de alta velocidad y máxima compatibilidad:</strong> Registramos firmas dinámicas en bases de datos SQL redundantes por defecto. Activamos la capa de Polygon Blockchain on-chain con un clic únicamente para productos de colección o trazabilidad ultra-premium.
             </p>
           </div>
         </div>

@@ -210,7 +210,7 @@ def build_pdf():
     # ----------------------------------------------------
     # SLIDE 3: El Ecosistema nexID
     # ----------------------------------------------------
-    pdf.draw_slide_base("El Ecosistema nexID", "integración de hardware, blockchain e inteligencia artificial")
+    pdf.draw_slide_base("El Ecosistema nexID", "integración híbrida de base sql en la nube (aws/render) y capa web3 opcional")
     
     # 4 Steps horizontally
     step_w = 58
@@ -218,10 +218,10 @@ def build_pdf():
     y_step = 55
     
     steps = [
-        {"num": "Fase 1", "title": "Embotellado Físico", "desc": "Se inserta un microchip criptográfico nexID NFC oculto en la cápsula de la botella."},
-        {"num": "Fase 2", "title": "Validación por Celular", "desc": "El consumidor acerca su móvil (sin descargar apps) y valida la procedencia."},
-        {"num": "Fase 3", "title": "Certificado Web3", "desc": "Se acuña un título digital de propiedad en el ledger público (Polygon NFT)."},
-        {"num": "Fase 4", "title": "Fidelidad con IA", "desc": "La bodega activa misiones VIP, catas virtuales y gobernanza en tiempo real."}
+        {"num": "Fase 1", "title": "Embotellado Físico", "desc": "Se inserta un microchip NFC criptográfico nexID en el cuello de la botella o empaque."},
+        {"num": "Fase 2", "title": "Validación y Tap", "desc": "El comprador toca el empaque con su celular y valida la procedencia al instante."},
+        {"num": "Fase 3", "title": "Nube SQL Segura", "desc": "La firma dinámica se verifica contra la base SQL custodiada en Render/AWS."},
+        {"num": "Fase 4", "title": "Web3 Opcional", "desc": "Acuñación opcional on-chain (Polygon) para líneas de alta gama o colección."}
     ]
     
     for i, step in enumerate(steps):
@@ -261,17 +261,17 @@ def build_pdf():
     pdf.set_xy(25, summary_y + 145 - 130 + 1)
     pdf.set_font("helvetica", "B", 9)
     pdf.set_text_color(2, 6, 23)
-    pdf.cell(badge_w, 14, "NFC + BLOCKCHAIN", ln=0, align="C")
+    pdf.cell(badge_w, 14, "SQL + WEB3 LAYER", ln=0, align="C")
     
     pdf.set_xy(75, summary_y + 8)
     pdf.set_font("helvetica", "B", 11)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 6, "Una experiencia interactiva que supera los escáneres estáticos tradicionales:", ln=1)
+    pdf.cell(0, 6, "Una arquitectura híbrida que maximiza velocidad, seguridad y compatibilidad:", ln=1)
     
     pdf.set_xy(75, summary_y + 15)
     pdf.set_font("helvetica", "", 9.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(195, 5, "Vinculamos físicamente la exclusividad organoléptica del vino con la inmutabilidad de la blockchain y la sofisticación de la Inteligencia Artificial. Esto nos permite asegurar la cadena de custodia original y empoderar a la marca para hablar cara a cara con sus mejores consumidores.", border=0)
+    pdf.multi_cell(195, 5, "Registramos firmas dinámicas en bases de datos SQL redundantes por defecto alojadas en Render/AWS. Activamos la capa de Polygon Blockchain on-chain con un solo clic únicamente para líneas exclusivas o coleccionables de alta gama.", border=0)
 
     # ----------------------------------------------------
     # SLIDE 4: Pilar A - Cryptographic Security

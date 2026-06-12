@@ -122,191 +122,192 @@ def build_playbook_pdf():
     pdf.multi_cell(172, 4.2, '"Mire, un QR es una fotocopia que cualquiera puede duplicar en diez mil botellas falsas. Con nexID, insertamos un microchip criptográfico. Cada toque genera una firma única en la blockchain. Su código QR es publicidad; nuestro chip es procedencia inmutable y seguridad."', border=0)
 
     # ----------------------------------------------------
-    # PAGE 2: Winery & Investor FAQs
     # ----------------------------------------------------
-    pdf.draw_page_base("2. Objeciones de Bodegas e Inversores")
+    # PAGE 2: Multi-Market Objections (Part 1)
+    # ----------------------------------------------------
+    pdf.draw_page_base("2. Objeciones por Sector Comercial")
     
-    # Subtitle Bodegueros
+    # Subtitle Bodegas & Cosmética
     pdf.set_xy(15, 28)
-    pdf.set_font("helvetica", "B", 10.5)
+    pdf.set_font("helvetica", "B", 10)
     pdf.set_text_color(251, 191, 36) # Amber
-    pdf.cell(100, 5, "A. PREGUNTAS DEL BODEGUERO (OPERATIVAS)", ln=1)
+    pdf.cell(100, 5, "A. BODEGAS Y COSMÉTICA DE LUJO (COSTOS Y OPERACIONES)", ln=1)
     
     # QA 1
     y_qa = 35
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8.5)
+    pdf.set_font("helvetica", "B", 8)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(180, 4, "¿Esto me va a encarecer demasiado el costo por botella?", ln=1)
+    pdf.cell(180, 4, "¿Esto me va a encarecer mucho el costo por botella o empaque premium?", ln=1)
     pdf.set_xy(15, y_qa + 4.5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(180, 4, "El chip representa menos del 1.5% del valor en botellas premium de gama media-alta. A cambio, obtienes inmunidad total a la falsificación y un canal de datos directo al consumidor final (DTC) que reduce costos de distribuidores.", border=0)
+    pdf.multi_cell(180, 4, "Representa centavos de dólar por unidad (<1.5% en gama alta). Además, al operar sobre base SQL segura en servidores premium de Render/AWS por defecto, no hay gas fees ni transacciones on-chain obligatorias para tu línea estándar.", border=0)
 
     # QA 2
-    y_qa = 58
+    y_qa = 56
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8.5)
+    pdf.set_font("helvetica", "B", 8)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(180, 4, "¿Va a ralentizar mi línea de embotellado y etiquetado industrial?", ln=1)
+    pdf.cell(180, 4, "¿Me va a ralentizar la línea de envasado o empaque industrial?", ln=1)
     pdf.set_xy(15, y_qa + 4.5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(180, 4, "No. Los microchips se entregan pre-programados en rollos autoadhesivos estándar (inlays) que se aplican automáticamente detrás de las contraetiquetas o cápsulas sin detener la maquinaria ni ralentizar el embotellado.", border=0)
+    pdf.multi_cell(180, 4, "No. Los chips se entregan en rollos autoadhesivos estándar (inlays) que se aplican automáticamente debajo de la etiqueta o el cierre sin detener la maquinaria ni perder velocidad de producción.", border=0)
 
     # QA 3
-    y_qa = 81
+    y_qa = 77
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8.5)
+    pdf.set_font("helvetica", "B", 8)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(180, 4, "Mi público consumidor es gente mayor, ¿van a usar esta tecnología?", ln=1)
+    pdf.cell(180, 4, "En cosmética, ¿cómo evito que rellenen envases de perfumes o cremas?", ln=1)
     pdf.set_xy(15, y_qa + 4.5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(180, 4, "El cliente solo acerca su móvil (exactamente igual a como paga con Apple o Google Pay) y el Portal VIP se abre en 0.5s de manera nativa sin descargar ninguna aplicación. La cava digital y gobernanza les otorgan un estatus premium.", border=0)
+    pdf.multi_cell(180, 4, "nexID integra sensores TagTamper en el cierre. Al abrir la tapa o atomizador, el filamento del chip se rompe físicamente. El sistema registra permanentemente en el servidor SQL la apertura del envase original.", border=0)
 
     # Divider Line
     pdf.set_fill_color(30, 41, 59)
-    pdf.rect(15, 108, 180, 0.4, "F")
+    pdf.rect(15, 102, 180, 0.4, "F")
 
-    # Subtitle Investors
-    pdf.set_xy(15, 114)
-    pdf.set_font("helvetica", "B", 10.5)
-    pdf.set_text_color(168, 85, 247) # Purple
-    pdf.cell(100, 5, "B. PREGUNTAS DE INVERSORES (NEGOCIO)", ln=1)
+    # Subtitle Pharma & Agro
+    pdf.set_xy(15, 108)
+    pdf.set_font("helvetica", "B", 10)
+    pdf.set_text_color(16, 185, 129) # Green
+    pdf.cell(100, 5, "B. FARMACÉUTICA Y AGROPECUARIO (TRAZABILIDAD Y MERCADO NEGRO)", ln=1)
 
     # QA 4
-    y_qa = 121
+    y_qa = 115
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8.5)
+    pdf.set_font("helvetica", "B", 8)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(180, 4, "¿Cuál es la barrera de entrada (Moat) frente a otros proveedores?", ln=1)
+    pdf.cell(180, 4, "¿Qué ventaja tiene sobre el código de barras que exige la regulación farmacéutica?", ln=1)
     pdf.set_xy(15, y_qa + 4.5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(180, 4, "Cualquiera compra chips, pero el software y la integración criptográfica son propietarios de nexID. Cada tap se valida en nuestro servidor mediante firmas dinámicas con claves encriptadas en KMS. Si usan chips clonados genéricos, la validación falla.", border=0)
+    pdf.multi_cell(180, 4, "El código de barras es estático y fácilmente clonable por fotocopiadoras en cajas falsificadas. El microchip nexID genera firmas criptográficas dinámicas validadas contra la nube de Render/AWS en tiempo real.", border=0)
 
     # QA 5
-    y_qa = 144
+    y_qa = 136
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8.5)
+    pdf.set_font("helvetica", "B", 8)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(180, 4, "¿Por qué usar Blockchain en lugar de bases SQL tradicionales?", ln=1)
+    pdf.cell(180, 4, "En el agro, ¿qué valor aporta un chip en bolsas de semillas o bidones agroquímicos?", ln=1)
     pdf.set_xy(15, y_qa + 4.5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(180, 4, "Una base centralizada SQL es vulnerable a hackeos internos o alteración de datos. El Polygon smart contract garantiza que la transferencia de propiedad sea inmutable, auditable y segura en mercados secundarios de subastas y coleccionistas.", border=0)
+    pdf.multi_cell(180, 4, "El mercado negro de semillas adulteradas y agroquímicos diluidos genera pérdidas millonarias. El chip nexID certifica el origen del criadero o laboratorio oficial directamente en el campo mediante un tap con el celular.", border=0)
+
+    # ----------------------------------------------------
+    # PAGE 3: Events, Investors & Live Demo Flow
+    # ----------------------------------------------------
+    pdf.draw_page_base("3. Eventos, Inversores & Demo en Vivo")
+    
+    # Subtitle Events & Investors
+    pdf.set_xy(15, 28)
+    pdf.set_font("helvetica", "B", 10)
+    pdf.set_text_color(6, 182, 212) # Cyan
+    pdf.cell(100, 5, "C. EVENTOS VIP Y TECNOLOGÍA HÍBRIDA", ln=1)
 
     # QA 6
-    y_qa = 167
-    pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8.5)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(180, 4, "¿Cómo funciona el escalamiento del modelo de ingresos?", ln=1)
-    pdf.set_xy(15, y_qa + 4.5)
-    pdf.set_font("helvetica", "", 8)
-    pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(180, 4, "Híbrido altamente escalable: margen por volumen en tags criptográficos + cobro recurrente SaaS mensual para las bodegas por el CRM, el nexID Cognitive AI Engine, geolocalización antifraude en tiempo real y gobernanza interactiva.", border=0)
-
-    # ----------------------------------------------------
-    # PAGE 3: Consumer FAQs & Live Demo Flow
-    # ----------------------------------------------------
-    pdf.draw_page_base("3. FAQs del Consumidor & Demo en Vivo")
-    
-    # Subtitle Consumers
-    pdf.set_xy(15, 28)
-    pdf.set_font("helvetica", "B", 10.5)
-    pdf.set_text_color(6, 182, 212) # Cyan
-    pdf.cell(100, 5, "C. PREGUNTAS DEL CONSUMIDOR (EXPERIENCIA)", ln=1)
-
-    # QA 7
     y_qa = 35
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8.5)
+    pdf.set_font("helvetica", "B", 8)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(180, 4, "¿Tengo que instalar alguna app o registrarme obligatoriamente?", ln=1)
+    pdf.cell(180, 4, "Los códigos QR de las entradas se revenden y duplican. ¿Cómo lo soluciona nexID?", ln=1)
     pdf.set_xy(15, y_qa + 4.5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(180, 4, "No. El escaneo funciona de forma nativa en tu navegador web. El registro es 100% opcional y solo es necesario si deseas reclamar la propiedad del vino en tu cava digital 3D personal o participar de las misiones y gobernanza de la bodega.", border=0)
+    pdf.multi_cell(180, 4, "Reemplazamos el QR digital por pulseras o credenciales VIP físicas inteligentes con chip NFC. Cada acceso requiere un tap físico imposible de duplicar que valida la firma digital en milisegundos en Render.", border=0)
+
+    # QA 7
+    y_qa = 56
+    pdf.set_xy(15, y_qa)
+    pdf.set_font("helvetica", "B", 8)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(180, 4, "¿Por qué ofrecer solución híbrida (SQL + Blockchain Opcional) en el SaaS?", ln=1)
+    pdf.set_xy(15, y_qa + 4.5)
+    pdf.set_font("helvetica", "", 7.5)
+    pdf.set_text_color(156, 163, 175)
+    pdf.multi_cell(180, 4, "Porque elimina barreras: onboarding inmediato con base SQL segura en AWS/Render por defecto. Si el cliente lanza una línea premium y desea inmutabilidad on-chain (Polygon), activa la capa Web3 como un add-on.", border=0)
 
     # QA 8
-    y_qa = 58
+    y_qa = 77
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8.5)
+    pdf.set_font("helvetica", "B", 8)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(180, 4, "¿Esta etiqueta inteligente consume batería o es perjudicial?", ln=1)
+    pdf.cell(180, 4, "¿Cómo se garantiza la seguridad de la base SQL si es centralizada?", ln=1)
     pdf.set_xy(15, y_qa + 4.5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(180, 4, "No, el chip es pasivo (no emite ondas constantemente ni tiene baterías). Solo se activa durante una milésima de segundo cuando recibe energía electromagnética del celular por inducción. Es 100% inocuo para el vino y tu salud.", border=0)
+    pdf.multi_cell(180, 4, "Las firmas dinámicas SUN se validan con claves maestras encriptadas en KMS. Incluso si un hacker vulnera el servidor SQL centralizado, no puede generar firmas dinámicas falsas de chips físicos sin las claves maestras.", border=0)
 
     # Divider Line
     pdf.set_fill_color(30, 41, 59)
-    pdf.rect(15, 85, 180, 0.4, "F")
+    pdf.rect(15, 102, 180, 0.4, "F")
 
     # Subtitle Demo Flow
-    pdf.set_xy(15, 92)
-    pdf.set_font("helvetica", "B", 10.5)
+    pdf.set_xy(15, 108)
+    pdf.set_font("helvetica", "B", 10)
     pdf.set_text_color(168, 85, 247) # Purple
     pdf.cell(100, 5, "D. EL \"AS BAJO LA MANGA\": TU DEMO EN VIVO EN 3 PASOS", ln=1)
 
     # Step 1
-    y_qa = 100
+    y_qa = 115
     pdf.set_fill_color(168, 85, 247)
     pdf.rect(15, y_qa, 5, 5, "F")
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8)
+    pdf.set_font("helvetica", "B", 7.5)
     pdf.set_text_color(2, 6, 23)
     pdf.cell(5, 5, "1", ln=0, align="C")
     
     pdf.set_xy(23, y_qa)
-    pdf.set_font("helvetica", "B", 9)
+    pdf.set_font("helvetica", "B", 8.5)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(150, 5, "Hackear el QR común en frente de ellos", ln=1)
     
     pdf.set_xy(23, y_qa + 5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(172, 4, "Lleva una botella de vino común con un QR impreso. Escanealo en vivo, saca una foto de ese código QR con tu móvil y escanealo desde la pantalla del teléfono. Explicales: 'Miren, acabo de clonar y duplicar su botella en un segundo. Cualquiera puede hacerlo'.", border=0)
+    pdf.multi_cell(172, 4, "Lleva una botella o empaque común con un QR. Escanealo, sácale una foto y haz que escaneen la foto. Explícales: 'Miren qué fácil es duplicar su marca en un segundo. Cualquiera puede hacerlo'.", border=0)
 
     # Step 2
-    y_qa = 125
+    y_qa = 138
     pdf.set_fill_color(6, 182, 212)
     pdf.rect(15, y_qa, 5, 5, "F")
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8)
+    pdf.set_font("helvetica", "B", 7.5)
     pdf.set_text_color(2, 6, 23)
     pdf.cell(5, 5, "2", ln=0, align="C")
     
     pdf.set_xy(23, y_qa)
-    pdf.set_font("helvetica", "B", 9)
+    pdf.set_font("helvetica", "B", 8.5)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(150, 5, "El Tap Criptográfico nexID", ln=1)
     
     pdf.set_xy(23, y_qa + 5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(172, 4, "Haz que apoyen su propio celular en tu botella con chip nexID. La pantalla abrirá inmediatamente el Portal del Consumidor en 3D. Explícales que el chip generó una firma cifrada dinámica de un solo uso que es imposible fotocopiar o clonar.", border=0)
+    pdf.multi_cell(172, 4, "Haz que apoyen su celular en tu empaque con chip nexID. Se abrirá de inmediato su Portal VIP. Explícales que el chip generó una firma cifrada dinámica de un solo uso imposible de fotocopiar o clonar.", border=0)
 
     # Step 3
-    y_qa = 150
+    y_qa = 161
     pdf.set_fill_color(16, 185, 129)
     pdf.rect(15, y_qa, 5, 5, "F")
     pdf.set_xy(15, y_qa)
-    pdf.set_font("helvetica", "B", 8)
+    pdf.set_font("helvetica", "B", 7.5)
     pdf.set_text_color(2, 6, 23)
     pdf.cell(5, 5, "3", ln=0, align="C")
     
     pdf.set_xy(23, y_qa)
-    pdf.set_font("helvetica", "B", 9)
+    pdf.set_font("helvetica", "B", 8.5)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(150, 5, "Cerrar la venta con el CRM en vivo", ln=1)
     
     pdf.set_xy(23, y_qa + 5)
-    pdf.set_font("helvetica", "", 8)
+    pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(172, 4, "Abre tu notebook con el CRM de nexID en tiempo real. Muéstrales cómo el tap que acaban de hacer apareció en el mapa operativo al instante con geolocalización correcta, score de riesgo 0% y la firma del lote auditada on-chain en el Ledger.", border=0)
+    pdf.multi_cell(172, 4, "Abre tu notebook con el CRM de nexID. Muéstrales cómo el tap que acaban de hacer apareció en el mapa operativo de Render en tiempo real, validando la firma criptográfica y la procedencia.", border=0)
 
     # Output file
     base_path = "c:/Users/guill/OneDrive/Documentos/GitHub/NFC-Tokenizacion"
