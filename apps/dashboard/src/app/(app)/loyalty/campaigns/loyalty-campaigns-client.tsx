@@ -99,6 +99,22 @@ export default function LoyaltyCampaignsClient() {
   const [showOptimizedResult, setShowOptimizedResult] = useState(false);
   const [selectedTone, setSelectedTone] = useState<"sommelier" | "vip-club" | "modern-web3">("sommelier");
   const [appliedImprovements, setAppliedImprovements] = useState<ImprovementApplied[]>([]);
+  const [selectedModel, setSelectedModel] = useState("Qwen/Qwen2.5-7B-Instruct");
+
+  // Custom Hugging Face Token state loaded from localStorage
+  const [hfTokenInput, setHfTokenInput] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("hf_api_token") || "";
+    }
+    return "";
+  });
+
+  const handleSaveToken = (val: string) => {
+    setHfTokenInput(val);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("hf_api_token", val);
+    }
+  };
 
   const [analysis, setAnalysis] = useState<AnalysisResult>({
     prestigeScore: 0,
@@ -334,7 +350,12 @@ export default function LoyaltyCampaignsClient() {
       const response = await fetch("/api/cognitive-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: draftText, tone: selectedTone }),
+        body: JSON.stringify({ 
+          text: draftText, 
+          tone: selectedTone,
+          customToken: hfTokenInput,
+          model: selectedModel
+        }),
       });
 
       if (!response.ok) {
@@ -629,6 +650,61 @@ export default function LoyaltyCampaignsClient() {
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-white">Redacción de Campaña</h3>
                   <p className="text-xs text-slate-400">Escribí tu propuesta comercial técnica y analizala en tiempo real.</p>
+                </div>
+
+                {/* Hugging Face Settings Card */}
+                <div className="rounded-xl border border-purple-500/20 bg-purple-950/5 p-4 space-y-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                      🤗 Configuración Hugging Face API
+                    </span>
+                    <span className={`text-[8.5px] font-bold px-2 py-0.5 rounded font-mono ${hfTokenInput ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400 animate-pulse"}`}>
+                      {hfTokenInput ? "LLM LIVE CONECTADO" : "HEURÍSTICAS LOCALES"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-normal">
+                    Pega tu Hugging Face API Token (gratuito) para habilitar reescrituras reales en la nube con modelos instructores (ej. Qwen/Gemma). Si no tienes token, la plataforma usará el motor de heurísticas premium local.
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="hf_..."
+                      value={hfTokenInput}
+                      onChange={(e) => handleSaveToken(e.target.value)}
+                      className="flex-1 bg-slate-950/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500 transition-colors font-mono"
+                    />
+                    {hfTokenInput && (
+                      <button
+                        onClick={() => handleSaveToken("")}
+                        className="text-[10px] px-2.5 py-1.5 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition font-bold"
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Model Selector below the token input */}
+                  <div className="space-y-1.5 pt-1 border-t border-white/5">
+                    <label className="block text-[8px] font-bold uppercase tracking-wider text-slate-400">
+                      Modelo LLM Hugging Face
+                    </label>
+                    <div className="flex flex-col gap-1.5 md:flex-row md:items-center">
+                      <select
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                        className="bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-200 outline-none focus:border-purple-500 transition-colors cursor-pointer w-full"
+                      >
+                        <option value="Qwen/Qwen2.5-7B-Instruct">Qwen 2.5 7B Instruct (Recomendado)</option>
+                        <option value="google/gemma-2-9b-it">Gemma 2 9B Instruct (Creativo)</option>
+                        <option value="meta-llama/Llama-3-8b-instruct">Llama 3 8B Instruct (Comercial)</option>
+                        <option value="mistralai/Mistral-7B-Instruct-v0.3">Mistral 7B Instruct (Estándar)</option>
+                      </select>
+                      
+                      <span className="text-[7.5px] text-slate-550 leading-normal font-mono uppercase bg-white/5 px-2 py-1 rounded w-fit shrink-0">
+                        {selectedModel.split("/")[0]} Engine
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-3">

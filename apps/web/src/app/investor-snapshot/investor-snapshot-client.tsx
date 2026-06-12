@@ -30,7 +30,8 @@ import {
   RefreshCw,
   Gift,
   HelpCircle as HelpIcon,
-  BookOpen
+  BookOpen,
+  Settings
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@product/ui";
@@ -189,7 +190,7 @@ const slides = [
 ];
 
 // Three.js 3D Bottle Component with WebGL procedural modeling, glass shaders and mouse rotation
-export function ThreeDBottle({ active, tapping }: { active: boolean; tapping: boolean }) {
+export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boolean; tapping: boolean; labelImageUrl?: string | null }) {
   const mountRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -247,6 +248,7 @@ export function ThreeDBottle({ active, tapping }: { active: boolean; tapping: bo
     // Shoulder curve
     points.push(new THREE.Vector2(1.75, 6.8));
     points.push(new THREE.Vector2(1.5, 7.5));
+    points.push(new THREE.Vector2(1.5, 7.5));
     points.push(new THREE.Vector2(1.1, 8.2));
     points.push(new THREE.Vector2(0.7, 8.8));
     points.push(new THREE.Vector2(0.55, 9.3));
@@ -287,10 +289,22 @@ export function ThreeDBottle({ active, tapping }: { active: boolean; tapping: bo
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext("2d");
-    if (ctx) {
-      // Background: Matte dark charcoal
-      ctx.fillStyle = "#09090b";
-      ctx.fillRect(0, 0, 512, 512);
+
+    const drawLabel = (bgImage?: HTMLImageElement) => {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, 512, 512);
+      
+      if (bgImage) {
+        // Draw generated image
+        ctx.drawImage(bgImage, 0, 0, 512, 512);
+        // Vignette overlay
+        ctx.fillStyle = "rgba(9, 9, 11, 0.45)";
+        ctx.fillRect(0, 0, 512, 512);
+      } else {
+        // Background: Matte dark charcoal
+        ctx.fillStyle = "#09090b";
+        ctx.fillRect(0, 0, 512, 512);
+      }
       
       // Golden borders
       ctx.strokeStyle = "#e2b857";
@@ -340,9 +354,23 @@ export function ThreeDBottle({ active, tapping }: { active: boolean; tapping: bo
       ctx.fillStyle = "#6b7280";
       ctx.font = "14px monospace";
       ctx.fillText("NFC SECURE TAG: 04:A5:8C:12", 256, 440);
-    }
+    };
     
     const labelTexture = new THREE.CanvasTexture(canvas);
+
+    if (labelImageUrl) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = labelImageUrl;
+      img.onload = () => {
+        drawLabel(img);
+        labelTexture.needsUpdate = true;
+      };
+    } else {
+      drawLabel();
+      labelTexture.needsUpdate = true;
+    }
+    
     const labelMaterial = new THREE.MeshStandardMaterial({
       map: labelTexture,
       roughness: 0.6,
@@ -457,7 +485,8 @@ export function ThreeDBottle({ active, tapping }: { active: boolean; tapping: bo
       animationFrameId = requestAnimationFrame(animate);
     };
     
-    animate();
+    const animateRef = animate;
+    animateRef();
     
     // Resize handler
     const handleResize = () => {
@@ -493,7 +522,7 @@ export function ThreeDBottle({ active, tapping }: { active: boolean; tapping: bo
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("resize", handleResize);
     };
-  }, [active, tapping]);
+  }, [active, tapping, labelImageUrl]);
   
   return (
     <div ref={mountRef} className="w-full h-full relative cursor-grab active:cursor-grabbing" />
@@ -853,10 +882,101 @@ export function InvestorSnapshotClient() {
 
   // Phone Simulator states
   const [simStep, setSimStep] = useState<"idle" | "tapping" | "loading" | "active">("idle");
-  const [phoneTab, setPhoneTab] = useState<"validate" | "mint" | "rewards" | "market">("validate");
+  const [phoneTab, setPhoneTab] = useState<"validate" | "mint" | "rewards" | "market" | "chat" | "ai-label">("validate");
   const [isMinted, setIsMinted] = useState(false);
   const [minting, setMinting] = useState(false);
   const [claimedRewards, setClaimedRewards] = useState<Record<string, boolean>>({});
+
+  // Custom AI label states
+  const [customLabelUrl, setCustomLabelUrl] = useState<string | null>(null);
+  const [labelPrompt, setLabelPrompt] = useState("");
+  const [generatingLabel, setGeneratingLabel] = useState(false);
+  const [labelGenError, setLabelGenError] = useState<string | null>(null);
+
+  // Phone Sommelier Chat states
+  const [phoneChatMessages, setPhoneChatMessages] = useState<Array<{ sender: "user" | "bot"; text: string }>>([
+    { sender: "bot", text: "¡Hola! Soy tu Sommelier AI nexID. ¿En qué comida o cata te puedo asesorar hoy?" }
+  ]);
+  const [phoneChatInput, setPhoneChatInput] = useState("");
+  const [phoneChatTyping, setPhoneChatTyping] = useState(false);
+
+  // Hugging Face config states
+  const [showHfySettings, setShowHfySettings] = useState(false);
+  const [hfTokenInput, setHfTokenInput] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("hf_api_token") || "";
+    }
+    return "";
+  });
+
+  const handleGenerateLabel = async (promptText: string) => {
+    if (!promptText.trim()) return;
+    setGeneratingLabel(true);
+    setLabelGenError(null);
+    triggerNfcBeep();
+
+    try {
+      const response = await fetch("/api/generate-label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: promptText,
+          customToken: hfTokenInput,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate label");
+      }
+
+      const data = await response.json();
+      if (!data.imageUrl) {
+        throw new Error("No image URL returned from API");
+      }
+      setCustomLabelUrl(data.imageUrl);
+      triggerSuccessChime();
+    } catch (err: any) {
+      console.warn("Hugging Face Image Generation failed, falling back to local canvas pattern:", err);
+      setLabelGenError(err.message || "Error al conectar con Hugging Face");
+      
+      // Local premium Malbec gradient pattern fallback
+      setTimeout(() => {
+        const localCanvas = document.createElement("canvas");
+        localCanvas.width = 512;
+        localCanvas.height = 512;
+        const localCtx = localCanvas.getContext("2d");
+        if (localCtx) {
+          const grad = localCtx.createLinearGradient(0, 0, 512, 512);
+          grad.addColorStop(0, "#4a121a"); // Deep Malbec Red
+          grad.addColorStop(0.5, "#180408"); // Grape Black
+          grad.addColorStop(1, "#6b21a8"); // Web3 Purple
+          localCtx.fillStyle = grad;
+          localCtx.fillRect(0, 0, 512, 512);
+          
+          localCtx.strokeStyle = "rgba(226, 184, 87, 0.2)";
+          localCtx.lineWidth = 1;
+          for (let i = 0; i < 9; i++) {
+            localCtx.beginPath();
+            localCtx.arc(256, 256, 40 + i * 20, 0, Math.PI * 2);
+            localCtx.stroke();
+          }
+          
+          setCustomLabelUrl(localCanvas.toDataURL("image/jpeg"));
+          triggerSuccessChime();
+        }
+      }, 1200);
+    } finally {
+      setGeneratingLabel(false);
+    }
+  };
+
+  const handleSaveToken = (val: string) => {
+    setHfTokenInput(val);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("hf_api_token", val);
+    }
+  };
 
   // Interactive bidding and marketplace states
   const [bidsCount, setBidsCount] = useState(3);
@@ -927,6 +1047,14 @@ export function InvestorSnapshotClient() {
     setBidsCount(3);
     setMyBidAmount(null);
     setCurrentBasePrice(0.18);
+    setPhoneChatMessages([
+      { sender: "bot", text: "¡Hola! Soy tu Sommelier AI nexID. ¿En qué comida o cata te puedo asesorar hoy?" }
+    ]);
+    setPhoneChatInput("");
+    setPhoneChatTyping(false);
+    setCustomLabelUrl(null);
+    setLabelPrompt("");
+    setLabelGenError(null);
   };
 
   const handlePlaceBid = () => {
@@ -935,6 +1063,57 @@ export function InvestorSnapshotClient() {
     setBidsCount(prev => prev + 1);
     setMyBidAmount(nextBid);
     triggerSuccessChime();
+  };
+
+  const handleSendPhoneMessage = async (msgText: string) => {
+    if (!msgText.trim()) return;
+    
+    const userMsg = { sender: "user" as const, text: msgText };
+    setPhoneChatMessages(prev => [...prev, userMsg]);
+    setPhoneChatInput("");
+    setPhoneChatTyping(true);
+    triggerNfcBeep();
+    
+    try {
+      const response = await fetch("/api/cognitive-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: msgText,
+          tone: "sommelier-chat",
+          customToken: hfTokenInput
+        })
+      });
+      
+      if (!response.ok) throw new Error("API call failed");
+      const data = await response.json();
+      
+      setPhoneChatMessages(prev => [...prev, { sender: "bot", text: data.optimizedText }]);
+      triggerSuccessChime();
+    } catch (err) {
+      console.warn("Hugging Face API failed or token not set, using enological local parser:", err);
+      
+      // Local Sommelier Chat Fallback
+      setTimeout(() => {
+        const q = msgText.toLowerCase();
+        let reply = "Como Sommelier AI de nexID, te confirmo que este Gran Blend 2026 es 100% auténtico. ¿Te gustaría saber de su maridaje o notas de cata?";
+        
+        if (q.includes("maridaje") || q.includes("comida") || q.includes("comer") || q.includes("marida")) {
+          reply = "Este Gran Blend 2026 de Luján de Cuyo marida de forma excepcional con carnes rojas a la brasa, empanadas criollas y quesos duros maduros. Servir a 17°C.";
+        } else if (q.includes("cata") || q.includes("notas") || q.includes("sabor") || q.includes("olor") || q.includes("aroma")) {
+          reply = "En copa presenta un color rojo rubí profundo con reflejos violáceos. En nariz sobresalen notas a ciruelas negras, vainilla y chocolate amargo de la madera.";
+        } else if (q.includes("origen") || q.includes("mendoza") || q.includes("viñedo") || q.includes("donde")) {
+          reply = "Las uvas provienen de un viñedo exclusivo a 1.100 msnm en Luján de Cuyo, Mendoza. La amplitud térmica del desierto aporta frescura y concentración única.";
+        } else if (q.includes("blockchain") || q.includes("token") || q.includes("nft") || q.includes("web3")) {
+          reply = "Cada botella posee un gemelo digital registrado en Polygon Amoy. Esto certifica que el lote es original y te permite reclamar beneficios y airdrops.";
+        }
+        
+        setPhoneChatMessages(prev => [...prev, { sender: "bot", text: reply }]);
+        triggerSuccessChime();
+      }, 1200);
+    } finally {
+      setPhoneChatTyping(false);
+    }
   };
 
   const handleMintNft = () => {
@@ -1290,11 +1469,53 @@ export function InvestorSnapshotClient() {
                 <button
                   onClick={() => setSoundEnabled(!soundEnabled)}
                   className="p-1.5 rounded-lg border border-white/10 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                  title="Activar/Desactivar Audio"
                 >
                   {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
                 </button>
+                <button
+                  onClick={() => setShowHfySettings(!showHfySettings)}
+                  className={`p-1.5 rounded-lg border transition ${showHfySettings ? "border-purple-500/50 bg-purple-500/10 text-purple-300 shadow-md" : "border-white/10 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-850"}`}
+                  title="Configurar Hugging Face API"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
+
+            {/* Collapsible Hugging Face Settings Card */}
+            {showHfySettings && (
+              <div className="w-full mb-4 p-4 rounded-2xl border border-purple-500/25 bg-purple-950/10 text-slate-300 space-y-2.5 z-10 shadow-lg relative">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                    🤗 Configuración Hugging Face API
+                  </span>
+                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded font-mono ${hfTokenInput ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}>
+                    {hfTokenInput ? "LLM LIVE CONECTADO" : "HEURÍSTICAS LOCALES"}
+                  </span>
+                </div>
+                <p className="text-[9px] text-slate-400 leading-normal">
+                  Pega tu API Token de Hugging Face (gratuito) para habilitar respuestas reales mediante el modelo Qwen en la pestaña AI Chat. Si se deja en blanco, la demo usará heurísticas enológicas locales.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    placeholder="hf_..."
+                    value={hfTokenInput}
+                    onChange={(e) => handleSaveToken(e.target.value)}
+                    className="flex-1 bg-slate-950/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500 transition-colors font-mono"
+                  />
+                  {hfTokenInput && (
+                    <button
+                      onClick={() => handleSaveToken("")}
+                      className="text-[10px] px-2.5 py-1.5 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition font-bold"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Tap Stage */}
             <div className="w-full h-[520px] relative border border-white/5 bg-slate-950/60 rounded-2xl overflow-hidden flex items-center justify-center z-10 shadow-inner">
@@ -1306,6 +1527,7 @@ export function InvestorSnapshotClient() {
                 <ThreeDBottle 
                   active={simStep === "active"} 
                   tapping={simStep === "tapping" || simStep === "loading"} 
+                  labelImageUrl={customLabelUrl}
                 />
                 
                 {/* Contact Ripple point */}
@@ -1632,15 +1854,153 @@ export function InvestorSnapshotClient() {
                           </button>
                         </div>
                       )}
+
+                      {phoneTab === "ai-label" && (
+                        <div className="space-y-3 w-full text-left my-auto">
+                          <div className="text-center">
+                            <Sparkles className="w-7 h-7 mx-auto text-amber-400 animate-pulse" />
+                            <p className="font-black text-white text-[11px] uppercase leading-none mt-1.5">Diseño de Etiqueta AI</p>
+                            <p className="text-[8px] text-slate-450 mt-1">Generá arte enológica exclusiva con Hugging Face</p>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-mono text-slate-400 uppercase">Prompt Creativo:</label>
+                            <textarea
+                              value={labelPrompt}
+                              onChange={(e) => setLabelPrompt(e.target.value)}
+                              placeholder="Ej: Un fénix dorado volando sobre viñas de Mendoza, estilo art decó..."
+                              rows={2}
+                              className="w-full bg-slate-950/80 border border-white/10 rounded-md p-1.5 text-[8.5px] text-white outline-none focus:border-cyan-500 transition-colors resize-none leading-normal"
+                            />
+                          </div>
+
+                          {/* Quick suggestions/presets */}
+                          <div className="space-y-1">
+                            <span className="text-[7.5px] font-mono text-slate-500 uppercase block">Estilos sugeridos:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {[
+                                { name: "🍷 Cyberpunk", prompt: "A futuristic glowing violet vineyard at night, cyberpunk neon lights, synthwave aesthetic, 8k" },
+                                { name: "🦁 Art Decó", prompt: "A minimalist golden lion head emblem on a deep black background, luxury art deco style, golden geometric lines" },
+                                { name: "🍂 Barroco", prompt: "Detailed baroque style oil painting of grape harvesting, dark wine cellars, warm chiaroscuro lighting" },
+                                { name: "✨ Abstract", prompt: "Luxury abstract organic shapes in burgundy and gold foil, fluid silk texture, premium design" }
+                              ].map((item, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setLabelPrompt(item.prompt)}
+                                  className="text-[7.5px] bg-slate-950 hover:bg-slate-900 border border-white/5 rounded px-1 py-0.5 text-slate-450 transition"
+                                >
+                                  {item.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {labelGenError && (
+                            <p className="text-[7px] text-amber-400 font-semibold italic bg-amber-500/5 p-1 rounded border border-amber-500/10">
+                              ⚠️ {labelGenError}. Usando patrón de cava de contingencia.
+                            </p>
+                          )}
+
+                          <button
+                            onClick={() => handleGenerateLabel(labelPrompt)}
+                            disabled={generatingLabel || !labelPrompt.trim()}
+                            className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-black text-[9px] uppercase py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)] border border-amber-400/20"
+                          >
+                            {generatingLabel ? (
+                              <>
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                <span>Generando con HF...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Cpu className="w-3.5 h-3.5" />
+                                <span>Generar e Instalar</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {phoneTab === "chat" && (
+                        <div className="flex flex-col h-full justify-between">
+                          {/* Chat Messages */}
+                          <div className="flex-1 space-y-2 overflow-y-auto mb-2 pr-1 max-h-[160px] text-[8.5px] leading-tight text-left">
+                            {phoneChatMessages.map((msg, idx) => (
+                              <div 
+                                key={idx} 
+                                className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+                              >
+                                <div className={`rounded-lg p-2 max-w-[85%] ${
+                                  msg.sender === "user" 
+                                    ? "bg-purple-600/35 border border-purple-500/20 text-white rounded-tr-none" 
+                                    : "bg-slate-950/70 border border-white/5 text-amber-300 rounded-tl-none"
+                                }`}>
+                                  {msg.text}
+                                </div>
+                              </div>
+                            ))}
+                            {phoneChatTyping && (
+                              <div className="flex justify-start">
+                                <div className="rounded-lg p-2 bg-slate-950/70 border border-white/5 text-slate-500 rounded-tl-none animate-pulse">
+                                  Sommelier AI escribiendo...
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Chat Prompts */}
+                          <div className="flex flex-wrap gap-1 mb-2 pt-1 border-t border-white/5 justify-center">
+                            {[
+                              { label: "🍷 Maridaje", q: "¿Con qué comida marida este blend?" },
+                              { label: "🍇 Notas de Cata", q: "¿Cuáles son sus notas de cata?" },
+                              { label: "🏔️ Origen", q: "¿Cuál es el origen de este viñedo?" }
+                            ].map((prompt, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => handleSendPhoneMessage(prompt.q)}
+                                className="text-[7.5px] bg-slate-950 border border-white/5 rounded px-1.5 py-0.5 text-slate-450 hover:text-white transition"
+                              >
+                                {prompt.label}
+                              </button>
+                            ))}
+                          </div>
+                          
+                          {/* Chat Input */}
+                          <form 
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleSendPhoneMessage(phoneChatInput);
+                            }}
+                            className="flex gap-1 border-t border-white/5 pt-2"
+                          >
+                            <input
+                              type="text"
+                              value={phoneChatInput}
+                              onChange={(e) => setPhoneChatInput(e.target.value)}
+                              placeholder="Preguntale al Sommelier..."
+                              className="flex-1 bg-slate-950/80 border border-white/10 rounded-md px-2 py-1 text-[8.5px] text-white outline-none focus:border-cyan-500 transition-colors"
+                            />
+                            <button
+                              type="submit"
+                              className="bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded px-2 py-1 text-[8.5px] font-black uppercase transition-all"
+                            >
+                              Enviar
+                            </button>
+                          </form>
+                        </div>
+                      )}
                     </div>
 
                     {/* Sim Phone Tabs */}
-                    <div className="grid grid-cols-4 gap-1 border-t border-white/10 pt-2 shrink-0">
+                    <div className="grid grid-cols-6 gap-0.5 border-t border-white/10 pt-2 shrink-0">
                       {[
-                        { id: "validate", label: "Verificar" },
+                        { id: "validate", label: "Sello" },
                         { id: "mint", label: "Web3" },
                         { id: "rewards", label: "Premios" },
-                        { id: "market", label: "Cava" }
+                        { id: "market", label: "Cava" },
+                        { id: "ai-label", label: "Diseño" },
+                        { id: "chat", label: "Chat" }
                       ].map((item) => (
                         <button
                           key={item.id}
@@ -1648,10 +2008,10 @@ export function InvestorSnapshotClient() {
                             setPhoneTab(item.id as any);
                             triggerNfcBeep();
                           }}
-                          className={`text-[9px] font-black uppercase rounded py-1.5 transition ${
+                          className={`text-[8.5px] font-black uppercase rounded py-1 transition ${
                             phoneTab === item.id 
                               ? "bg-cyan-500/20 text-cyan-300" 
-                              : "text-slate-500 hover:text-slate-300"
+                              : "text-slate-500 hover:text-slate-355"
                           }`}
                         >
                           {item.label}
