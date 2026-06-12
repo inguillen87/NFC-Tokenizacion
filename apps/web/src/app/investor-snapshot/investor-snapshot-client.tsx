@@ -184,13 +184,12 @@ const slides = [
     bullets: [
       "1. Hackear QR: Demostrar cómo se clona un QR fotocopiándolo desde una pantalla.",
       "2. Tap NFC: Acercar el móvil a una botella con chip nexID y abrir el Portal VIP sin instalar apps.",
-      "3. Live CRM: Mostrar en la notebook cómo el tap apareció en vivo en el mapa del panel."
+      "3. Live CRM: Mostrar en la notebook cómo el tap apareció en vivo en el panel de control de nexID."
     ]
   }
 ];
 
-// Three.js 3D Bottle Component with WebGL procedural modeling, glass shaders and mouse rotation
-export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boolean; tapping: boolean; labelImageUrl?: string | null }) {
+export function ThreeDProduct({ active, tapping, labelImageUrl, industry, chipModel }: { active: boolean; tapping: boolean; labelImageUrl?: string | null; industry: string; chipModel: string }) {
   const mountRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -231,60 +230,209 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
     rimLight.position.set(0, 10, -8);
     scene.add(rimLight);
 
-    // Glowing hotspot light on neck
+    // Dynamic Hotspot coordinates and neck lighting
+    let hotspotY = 11.0;
+    let hotspotX = 0;
+    let hotspotZ = 0;
+    
+    if (industry === "cosmetica") {
+      hotspotY = 4.65;
+    } else if (industry === "agro") {
+      hotspotX = 0.8;
+      hotspotY = 5.15;
+    } else if (industry === "pharma") {
+      hotspotY = 4.45;
+    } else if (industry === "eventos") {
+      hotspotY = 2.2;
+      hotspotZ = 0.06;
+    }
+
     const hotspotLight = new THREE.PointLight(0x06b6d4, 0, 8);
-    hotspotLight.position.set(0, 11, 0);
+    hotspotLight.position.set(hotspotX, hotspotY, hotspotZ);
     scene.add(hotspotLight);
     
-    // Bottle Geometry (using LatheGeometry for wine bottle shape)
-    const points = [];
-    // Bottom flat face
-    points.push(new THREE.Vector2(0, 0));
-    points.push(new THREE.Vector2(1.7, 0));
-    points.push(new THREE.Vector2(1.8, 0.1));
-    // Main body
-    points.push(new THREE.Vector2(1.85, 0.4));
-    points.push(new THREE.Vector2(1.85, 6.0));
-    // Shoulder curve
-    points.push(new THREE.Vector2(1.75, 6.8));
-    points.push(new THREE.Vector2(1.5, 7.5));
-    points.push(new THREE.Vector2(1.5, 7.5));
-    points.push(new THREE.Vector2(1.1, 8.2));
-    points.push(new THREE.Vector2(0.7, 8.8));
-    points.push(new THREE.Vector2(0.55, 9.3));
-    // Neck
-    points.push(new THREE.Vector2(0.55, 12.0));
-    // Collar/Lip at top
-    points.push(new THREE.Vector2(0.65, 12.1));
-    points.push(new THREE.Vector2(0.65, 12.4));
-    points.push(new THREE.Vector2(0.5, 12.5));
-    // Inner lip (to close the bottle shape)
-    points.push(new THREE.Vector2(0, 12.5));
+    // Main Product Group
+    const productGroup = new THREE.Group();
+    scene.add(productGroup);
     
-    const bottleGeometry = new THREE.LatheGeometry(points, 32);
+    let mainGeometry: THREE.BufferGeometry | null = null;
+    let mainMaterial: THREE.Material | null = null;
+    let labelGeometry: THREE.BufferGeometry | null = null;
+    let labelX = 0;
+    let labelY = 0;
+    let labelZ = 0;
+    let labelRotationY = 0;
+
+    // Build Morphing Geometries
+    if (industry === "cosmetica") {
+      // Rectangular glass perfume bottle
+      mainGeometry = new THREE.BoxGeometry(3, 4.5, 1.8);
+      mainMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        roughness: 0.05,
+        metalness: 0.1,
+        transmission: 0.95,
+        thickness: 0.8,
+        ior: 1.5,
+        clearcoat: 1.0,
+      });
+      const perfumeBody = new THREE.Mesh(mainGeometry, mainMaterial);
+      perfumeBody.position.y = 2.25;
+      productGroup.add(perfumeBody);
+      
+      // Golden collar
+      const collarGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.5, 16);
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: 0xe2b857,
+        roughness: 0.2,
+        metalness: 0.9,
+      });
+      const collar = new THREE.Mesh(collarGeo, goldMat);
+      collar.position.set(0, 4.6, 0);
+      productGroup.add(collar);
+      
+      // Spray cap
+      const capGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.7, 16);
+      const cap = new THREE.Mesh(capGeo, goldMat);
+      cap.position.set(0, 5.2, 0);
+      productGroup.add(cap);
+      
+      labelGeometry = new THREE.PlaneGeometry(2.4, 2.8);
+      labelY = 2.25;
+      labelZ = 0.91;
+      
+    } else if (industry === "agro") {
+      // Stout plastic chemical canister
+      mainGeometry = new THREE.BoxGeometry(3.6, 5.0, 2.6);
+      mainMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xe2e8f0, // Industrial matte white/gray plastic
+        roughness: 0.4,
+        metalness: 0.05,
+        clearcoat: 0.1,
+      });
+      const canisterBody = new THREE.Mesh(mainGeometry, mainMaterial);
+      canisterBody.position.y = 2.5;
+      productGroup.add(canisterBody);
+      
+      // Offset colored cap
+      const capGeo = new THREE.CylinderGeometry(0.65, 0.65, 0.5, 16);
+      const capMat = new THREE.MeshStandardMaterial({
+        color: 0xd97706, // Orange cap
+        roughness: 0.5,
+        metalness: 0.1,
+      });
+      const cap = new THREE.Mesh(capGeo, capMat);
+      cap.position.set(0.8, 5.15, 0);
+      productGroup.add(cap);
+      
+      // Handle
+      const handleGeo = new THREE.BoxGeometry(0.4, 1.8, 0.8);
+      const handle = new THREE.Mesh(handleGeo, mainMaterial);
+      handle.position.set(-0.8, 5.2, 0);
+      productGroup.add(handle);
+      
+      labelGeometry = new THREE.PlaneGeometry(3.0, 3.4);
+      labelY = 2.5;
+      labelZ = 1.31;
+      
+    } else if (industry === "pharma") {
+      // Amber glass medicine bottle
+      mainGeometry = new THREE.CylinderGeometry(1.4, 1.4, 4.2, 32);
+      mainMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x451a03, // Amber glass
+        roughness: 0.08,
+        metalness: 0.1,
+        transmission: 0.65,
+        thickness: 0.6,
+        ior: 1.5,
+        clearcoat: 0.8,
+      });
+      const pharmaBody = new THREE.Mesh(mainGeometry, mainMaterial);
+      pharmaBody.position.y = 2.1;
+      productGroup.add(pharmaBody);
+      
+      // White plastic child safety cap
+      const capGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.7, 32);
+      const capMat = new THREE.MeshStandardMaterial({
+        color: 0xf8fafc,
+        roughness: 0.6,
+        metalness: 0.1,
+      });
+      const cap = new THREE.Mesh(capGeo, capMat);
+      cap.position.set(0, 4.45, 0);
+      productGroup.add(cap);
+      
+      labelGeometry = new THREE.CylinderGeometry(1.41, 1.41, 2.8, 32, 1, true);
+      labelY = 2.1;
+      
+    } else if (industry === "eventos") {
+      // VIP Pass Smart Card
+      mainGeometry = new THREE.BoxGeometry(4.4, 3.0, 0.08);
+      mainMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x111827, // Matte carbon fiber card
+        roughness: 0.15,
+        metalness: 0.95,
+        clearcoat: 1.0,
+      });
+      const cardBody = new THREE.Mesh(mainGeometry, mainMaterial);
+      cardBody.position.y = 2.2;
+      productGroup.add(cardBody);
+      
+      // Gold circuit chip inlay
+      const plateGeo = new THREE.BoxGeometry(0.8, 0.8, 0.02);
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: 0xe2b857,
+        roughness: 0.1,
+        metalness: 0.9,
+      });
+      const plate = new THREE.Mesh(plateGeo, goldMat);
+      plate.position.set(-1.4, 2.2, 0.05);
+      productGroup.add(plate);
+      
+      labelGeometry = new THREE.PlaneGeometry(4.2, 2.8);
+      labelY = 2.2;
+      labelZ = 0.045;
+      
+    } else {
+      // Default: Wine Bottle
+      const points = [];
+      points.push(new THREE.Vector2(0, 0));
+      points.push(new THREE.Vector2(1.7, 0));
+      points.push(new THREE.Vector2(1.8, 0.1));
+      points.push(new THREE.Vector2(1.85, 0.4));
+      points.push(new THREE.Vector2(1.85, 6.0));
+      points.push(new THREE.Vector2(1.75, 6.8));
+      points.push(new THREE.Vector2(1.5, 7.5));
+      points.push(new THREE.Vector2(1.5, 7.5));
+      points.push(new THREE.Vector2(1.1, 8.2));
+      points.push(new THREE.Vector2(0.7, 8.8));
+      points.push(new THREE.Vector2(0.55, 9.3));
+      points.push(new THREE.Vector2(0.55, 12.0));
+      points.push(new THREE.Vector2(0.65, 12.1));
+      points.push(new THREE.Vector2(0.65, 12.4));
+      points.push(new THREE.Vector2(0.5, 12.5));
+      points.push(new THREE.Vector2(0, 12.5));
+      
+      mainGeometry = new THREE.LatheGeometry(points, 32);
+      mainMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x061e0e,
+        roughness: 0.04,
+        metalness: 0.1,
+        transmission: 0.8,
+        thickness: 0.9,
+        ior: 1.5,
+        clearcoat: 1.0,
+      });
+      
+      const bottleMesh = new THREE.Mesh(mainGeometry, mainMaterial);
+      bottleMesh.position.y = 0.2;
+      productGroup.add(bottleMesh);
+      
+      labelGeometry = new THREE.CylinderGeometry(1.86, 1.86, 3.8, 32, 1, true);
+      labelY = 3.6;
+    }
     
-    // Glass Material
-    const glassMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x061e0e, // dark premium forest green
-      roughness: 0.04,
-      metalness: 0.1,
-      transmission: 0.8, // Transparent glass
-      thickness: 0.9,
-      ior: 1.5,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.02,
-      specularIntensity: 1.0,
-      envMapIntensity: 1.0,
-    });
-    
-    const bottleMesh = new THREE.Mesh(bottleGeometry, glassMaterial);
-    bottleMesh.position.y = 0.2;
-    scene.add(bottleMesh);
-    
-    // Label geometry (Cylinder wrapped around bottle body)
-    const labelGeometry = new THREE.CylinderGeometry(1.86, 1.86, 3.8, 32, 1, true);
-    
-    // Procedural Label Texture Canvas
+    // Label Canvas
     const canvas = document.createElement("canvas");
     canvas.width = 512;
     canvas.height = 512;
@@ -295,13 +443,10 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
       ctx.clearRect(0, 0, 512, 512);
       
       if (bgImage) {
-        // Draw generated image
         ctx.drawImage(bgImage, 0, 0, 512, 512);
-        // Vignette overlay
-        ctx.fillStyle = "rgba(9, 9, 11, 0.45)";
+        ctx.fillStyle = "rgba(9, 9, 11, 0.55)";
         ctx.fillRect(0, 0, 512, 512);
       } else {
-        // Background: Matte dark charcoal
         ctx.fillStyle = "#09090b";
         ctx.fillRect(0, 0, 512, 512);
       }
@@ -313,15 +458,40 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
       ctx.lineWidth = 2;
       ctx.strokeRect(30, 30, 452, 452);
       
+      // Tailored Label content based on selected industry
+      let title = "N E X I D";
+      let subtitle = "Gran Blend Seleccionado";
+      let detail1 = "ORIGEN: MENDOZA, ARGENTINA";
+      let chipName = chipModel === "tamper" ? "NTAG 424 DNA TT" : chipModel === "dna" ? "NTAG 424 DNA" : "NTAG 215";
+      let detail2 = `NFC CHIP: ${chipName}`;
+      
+      if (industry === "cosmetica") {
+        title = "N E X I D   A U R A";
+        subtitle = "Eau de Parfum Premium";
+        detail1 = "ORIGEN: GRASSE / BS. AS.";
+      } else if (industry === "agro") {
+        title = "N E X I D   A G R O";
+        subtitle = "Semillas Fiscalizadas Lote #4";
+        detail1 = "ORIGEN: PAMPA HÚMEDA, ARG.";
+      } else if (industry === "pharma") {
+        title = "N E X I D   P H A R M A";
+        subtitle = "Medicina de Alta Complejidad";
+        detail1 = "ORIGEN: LAB ZURICH / SUIZA";
+      } else if (industry === "eventos") {
+        title = "N E X I D   P A S S";
+        subtitle = "Global Business Summit 2026";
+        detail1 = "LUGAR: PREDIO VIP ACCESOS";
+      }
+      
       // Text
       ctx.fillStyle = "#ffffff";
       ctx.font = "900 32px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("N E X I D", 256, 100);
+      ctx.fillText(title, 256, 100);
       
       ctx.fillStyle = "#e2b857";
       ctx.font = "italic 700 24px Georgia, serif";
-      ctx.fillText("Gran Blend Seleccionado", 256, 160);
+      ctx.fillText(subtitle, 256, 160);
       
       ctx.fillStyle = "#a1a1aa";
       ctx.font = "600 16px monospace";
@@ -350,10 +520,10 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
       // Details
       ctx.fillStyle = "#e2b857";
       ctx.font = "bold 16px sans-serif";
-      ctx.fillText("ORIGEN: MENDOZA, ARGENTINA", 256, 410);
+      ctx.fillText(detail1, 256, 410);
       ctx.fillStyle = "#6b7280";
       ctx.font = "14px monospace";
-      ctx.fillText("NFC SECURE TAG: 04:A5:8C:12", 256, 440);
+      ctx.fillText(detail2, 256, 440);
     };
     
     const labelTexture = new THREE.CanvasTexture(canvas);
@@ -378,11 +548,14 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
       bumpScale: 0.05,
     });
     
-    const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
-    labelMesh.position.set(0, 3.4, 0); // aligned to middle of bottle body
-    bottleMesh.add(labelMesh);
+    if (labelGeometry) {
+      const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
+      labelMesh.position.set(labelX, labelY, labelZ);
+      labelMesh.rotation.y = labelRotationY;
+      productGroup.add(labelMesh);
+    }
     
-    // NFC Chip hotspot torus at neck
+    // NFC Chip hotspot torus
     const hotspotGeometry = new THREE.TorusGeometry(0.6, 0.08, 16, 64);
     const hotspotMaterial = new THREE.MeshBasicMaterial({
       color: 0x06b6d4,
@@ -390,9 +563,15 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
       opacity: 0.7,
     });
     const hotspotMesh = new THREE.Mesh(hotspotGeometry, hotspotMaterial);
-    hotspotMesh.rotation.x = Math.PI / 2;
-    hotspotMesh.position.set(0, 11.0, 0);
-    bottleMesh.add(hotspotMesh);
+    
+    // Rotate events card hotspot to lay flat against the face, otherwise standard collar
+    if (industry === "eventos") {
+      hotspotMesh.position.set(hotspotX, hotspotY, hotspotZ);
+    } else {
+      hotspotMesh.rotation.x = Math.PI / 2;
+      hotspotMesh.position.set(hotspotX, hotspotY, hotspotZ);
+    }
+    productGroup.add(hotspotMesh);
     
     // Animation loop variables
     let animationFrameId: number;
@@ -417,21 +596,21 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
     const onMouseUp = () => {
       isDragging = false;
     };
-
+ 
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 1) {
         isDragging = true;
         previousMouseX = e.touches[0].clientX;
       }
     };
-
+ 
     const onTouchMove = (e: TouchEvent) => {
       if (!isDragging || e.touches.length !== 1) return;
       const deltaX = e.touches[0].clientX - previousMouseX;
       targetRotationY += deltaX * 0.015;
       previousMouseX = e.touches[0].clientX;
     };
-
+ 
     const onTouchEnd = () => {
       isDragging = false;
     };
@@ -455,10 +634,10 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
       
       // Smooth interpolation for rotation
       currentRotationY += (targetRotationY - currentRotationY) * 0.1;
-      bottleMesh.rotation.y = currentRotationY;
+      productGroup.rotation.y = currentRotationY;
       
       // Floating motion
-      bottleMesh.position.y = 0.2 + Math.sin(elapsedTime * 1.5) * 0.15;
+      productGroup.position.y = Math.sin(elapsedTime * 1.5) * 0.15;
       
       // Handle active state - spin and shine
       if (active) {
@@ -506,9 +685,10 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
         container.removeChild(renderer.domElement);
       }
       renderer.dispose();
-      bottleGeometry.dispose();
-      glassMaterial.dispose();
-      labelGeometry.dispose();
+      
+      if (mainGeometry) mainGeometry.dispose();
+      if (mainMaterial) mainMaterial.dispose();
+      if (labelGeometry) labelGeometry.dispose();
       labelMaterial.dispose();
       labelTexture.dispose();
       hotspotGeometry.dispose();
@@ -522,7 +702,7 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("resize", handleResize);
     };
-  }, [active, tapping, labelImageUrl]);
+  }, [active, tapping, labelImageUrl, industry, chipModel]);
   
   return (
     <div ref={mountRef} className="w-full h-full relative cursor-grab active:cursor-grabbing" />
@@ -530,48 +710,138 @@ export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boole
 }
 
 // Industry ROI presets data structure
-interface IndustryPreset {
+export interface IndustryPreset {
   name: string;
   label: string;
   volume: number;
   fraudRate: number;
   icon: string;
   price: number;
+  defaultChip: "tamper" | "dna" | "ntag";
+  defaultChipCost: number;
 }
 
-const INDUSTRY_PRESETS: IndustryPreset[] = [
-  { name: "bodegas", label: "Bodegas Premium", volume: 150000, fraudRate: 4.2, icon: "🍷", price: 45 },
-  { name: "cosmetica", label: "Cosmética de Lujo", volume: 300000, fraudRate: 5.5, icon: "💄", price: 75 },
-  { name: "agro", label: "Agro Premium", volume: 80000, fraudRate: 6.8, icon: "🌾", price: 60 },
-  { name: "pharma", label: "Farmacéutica (Alto Costo)", volume: 50000, fraudRate: 3.5, icon: "🧪", price: 120 },
-  { name: "eventos", label: "Eventos & Tickets VIP", volume: 25000, fraudRate: 8.5, icon: "🎫", price: 50 },
+export const INDUSTRY_PRESETS: IndustryPreset[] = [
+  { name: "bodegas", label: "Bodegas Premium", volume: 150000, fraudRate: 4.2, icon: "🍷", price: 45, defaultChip: "tamper", defaultChipCost: 1.00 },
+  { name: "cosmetica", label: "Cosmética de Lujo", volume: 300000, fraudRate: 5.5, icon: "💄", price: 75, defaultChip: "tamper", defaultChipCost: 1.00 },
+  { name: "agro", label: "Agro Premium", volume: 80000, fraudRate: 6.8, icon: "🌾", price: 60, defaultChip: "dna", defaultChipCost: 0.80 },
+  { name: "pharma", label: "Farmacéutica (Alto Costo)", volume: 50000, fraudRate: 3.5, icon: "🧪", price: 120, defaultChip: "tamper", defaultChipCost: 1.00 },
+  { name: "eventos", label: "Eventos & Tickets VIP", volume: 25000, fraudRate: 8.5, icon: "🎫", price: 50, defaultChip: "ntag", defaultChipCost: 0.50 },
 ];
 
-// Interactive ROI & Financial Impact Calculator Component
-export function RoiCalculator() {
-  const [selectedPreset, setSelectedPreset] = useState<string>("bodegas");
-  const [volume, setVolume] = useState<number>(150000);
-  const [fraudRate, setFraudRate] = useState<number>(4.2);
-  const [retailPrice, setRetailPrice] = useState<number>(45);
+// Backward-compatible wrapper for demo-lab
+export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boolean; tapping: boolean; labelImageUrl?: string | null }) {
+  return <ThreeDProduct active={active} tapping={tapping} labelImageUrl={labelImageUrl} industry="bodegas" chipModel="tamper" />;
+}
 
-  const applyPreset = (presetName: string) => {
-    const preset = INDUSTRY_PRESETS.find(p => p.name === presetName);
-    if (preset) {
-      setSelectedPreset(presetName);
-      setVolume(preset.volume);
-      setFraudRate(preset.fraudRate);
-      setRetailPrice(preset.price);
-    }
+// Interactive ROI & Financial Impact Calculator Component
+interface RoiCalculatorProps {
+  selectedPreset: string;
+  setSelectedPreset: (v: string) => void;
+  volume: number;
+  setVolume: (v: number) => void;
+  fraudRate: number;
+  setFraudRate: (v: number) => void;
+  retailPrice: number;
+  setRetailPrice: (v: number) => void;
+  selectedChipModel: "tamper" | "dna" | "ntag";
+  setSelectedChipModel: (v: "tamper" | "dna" | "ntag") => void;
+  chipCost: number;
+  setChipCost: (v: number) => void;
+  resellPrice: number;
+  setResellPrice: (v: number) => void;
+  businessProfile: "direct" | "reseller";
+  setBusinessProfile: (v: "direct" | "reseller") => void;
+  exportRegion: "latam" | "europe_usa" | "asia" | "grey_market";
+  setExportRegion: (v: "latam" | "europe_usa" | "asia" | "grey_market") => void;
+}
+
+const REGION_CITATIONS = {
+  latam: {
+    source: "CAME (Cámara Argentina de la Mediana Empresa)",
+    text: "El comercio ilegal y la falsificación en el Mercosur generan pérdidas del 8.5% anual en valor minorista para marcas de consumo de autor.",
+    rate: 6.5
+  },
+  europe_usa: {
+    source: "OIV (Organización Internacional de la Viña y el Vino)",
+    text: "El fraude en vinos premium y destilados finos en canales de exportación tradicionales oscila históricamente entre el 4% y el 6%.",
+    rate: 4.2
+  },
+  asia: {
+    source: "APEC / WIPO (World Intellectual Property Org)",
+    text: "En mercados emergentes de Asia-Pacífico, la adulteración física de envases originales de cosmética y agroquímicos supera el 10% por falta de sellado serializado.",
+    rate: 10.0
+  },
+  grey_market: {
+    source: "ICC (International Chamber of Commerce)",
+    text: "El mercado gris y los desvíos de carga no autorizados a través de portales de ecommerce informales drenan hasta un 12% del margen de la marca.",
+    rate: 12.0
+  }
+};
+
+export function RoiCalculator({
+  selectedPreset,
+  setSelectedPreset,
+  volume,
+  setVolume,
+  fraudRate,
+  setFraudRate,
+  retailPrice,
+  setRetailPrice,
+  selectedChipModel,
+  setSelectedChipModel,
+  chipCost,
+  setChipCost,
+  resellPrice,
+  setResellPrice,
+  businessProfile,
+  setBusinessProfile,
+  exportRegion,
+  setExportRegion
+}: RoiCalculatorProps) {
+
+  const handleChipModelChange = (model: "tamper" | "dna" | "ntag") => {
+    setSelectedChipModel(model);
+    let baseCost = 1.00;
+    if (model === "dna") baseCost = 0.80;
+    else if (model === "ntag") baseCost = 0.50;
+    setChipCost(baseCost);
+    setResellPrice(baseCost * 1.5);
   };
 
+  const handleRegionChange = (region: "latam" | "europe_usa" | "asia" | "grey_market") => {
+    setExportRegion(region);
+    setFraudRate(REGION_CITATIONS[region].rate);
+  };
+
+  // Tiered SaaS Billing calculation (from User Feedback)
+  // Base rate: $0.05 / bottle per month. Decrements by $0.01 per bottle every 5,000 monthly bottles (min $0.01 cap).
+  // Minimum monthly volume to work is 1000 bottles/month. Maximum monthly SaaS fee is capped at $1000/month.
+  const rawMonthlyVolume = volume / 12;
+  const monthlyVolume = Math.max(1000, rawMonthlyVolume); // 1000 bottles/month minimum
+  const pricePerBottle = Math.max(0.01, 0.05 - Math.floor(Math.max(0, monthlyVolume - 5000) / 5000) * 0.01);
+  const nexIdSaaSMonthly = Math.min(1000, monthlyVolume * pricePerBottle); // Capped at $1000/month
+  const nexIdSaaSYearly = nexIdSaaSMonthly * 12;
+
+  // Direct B2B calculations
   const grossLoss = volume * retailPrice * (fraudRate / 100);
   const preventedFraud = grossLoss * 0.98; // 98% efficiency
-  const nexIdChipsCost = volume * 0.35; // $0.35 per tag
-  const nexIdSaaSYearly = 2400; // $199/month
-  const totalNexIdCost = nexIdChipsCost + nexIdSaaSYearly;
-  
-  const netSavings = preventedFraud - totalNexIdCost;
-  const roiMultiplier = totalNexIdCost > 0 ? (netSavings / totalNexIdCost) : 0;
+  const nexIdChipsCost = volume * chipCost;
+  const totalDirectCost = nexIdChipsCost + nexIdSaaSYearly;
+  const directNetSavings = preventedFraud - totalDirectCost;
+
+  // Reseller B2B2B calculations
+  const hardwareCostToReseller = volume * chipCost;
+  const hardwareRevenueFromClient = volume * resellPrice;
+  const hardwareProfit = hardwareRevenueFromClient - hardwareCostToReseller;
+  const saasReferralCommission = nexIdSaaSYearly * 0.20; // 20% setup & ongoing SaaS referral commission
+  const totalResellerProfit = hardwareProfit + saasReferralCommission;
+
+  // Output mappings based on business profile
+  const isReseller = businessProfile === "reseller";
+  const finalInvestment = isReseller ? hardwareCostToReseller : totalDirectCost;
+  const finalNetGain = isReseller ? totalResellerProfit : directNetSavings;
+  const roiMultiplier = finalInvestment > 0 ? (finalNetGain / finalInvestment) : 0;
   const dtcClients = Math.round(volume * 0.35); // 35% scan rate
 
   return (
@@ -592,22 +862,28 @@ export function RoiCalculator() {
             </p>
           </div>
           
-          {/* Preset Buttons */}
-          <div className="flex flex-wrap gap-1 bg-slate-900/80 p-1 rounded-xl border border-white/10 shrink-0">
-            {INDUSTRY_PRESETS.map((preset) => (
-              <button
-                key={preset.name}
-                onClick={() => applyPreset(preset.name)}
-                className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
-                  selectedPreset === preset.name
-                    ? "bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-300 shadow-lg"
-                    : "text-slate-400 hover:text-white border border-transparent"
-                }`}
-              >
-                <span className="mr-1">{preset.icon}</span>
-                {preset.label.split(" ")[0]}
-              </button>
-            ))}
+          {/* Business Profile Selection */}
+          <div className="flex gap-2 bg-slate-900/80 p-1 rounded-xl border border-white/10 shrink-0">
+            <button
+              onClick={() => setBusinessProfile("direct")}
+              className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                !isReseller
+                  ? "bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 shadow-lg"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Marca Directa (B2B)
+            </button>
+            <button
+              onClick={() => setBusinessProfile("reseller")}
+              className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                isReseller
+                  ? "bg-purple-500/20 border border-purple-500/30 text-purple-300 shadow-lg"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Revendedor / Imprenta (B2B2B)
+            </button>
           </div>
         </div>
 
@@ -615,21 +891,50 @@ export function RoiCalculator() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Left Column: Sliders */}
-          <div className="lg:col-span-4 space-y-6 bg-slate-900/30 p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
-            <div className="space-y-6">
+          <div className="lg:col-span-4 space-y-5 bg-slate-900/30 p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
+            <div className="space-y-4">
               <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-white/5 pb-2">
                 Ajustar Variables de Marca
               </h3>
               
+              {/* Chip Model Dropdown */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-mono text-slate-400 uppercase block">Modelo de Chip NFC:</label>
+                <select
+                  value={selectedChipModel}
+                  onChange={(e) => handleChipModelChange(e.target.value as any)}
+                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-cyan-500 transition-colors"
+                >
+                  <option value="tamper">NTAG 424 DNA TagTamper ($1.00 base)</option>
+                  <option value="dna">NTAG 424 DNA ($0.80 base)</option>
+                  <option value="ntag">NTAG 215 ($0.50 base)</option>
+                </select>
+              </div>
+
+              {/* Region Selector Dropdown */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-mono text-slate-400 uppercase block">Región de Exportación:</label>
+                <select
+                  value={exportRegion}
+                  onChange={(e) => handleRegionChange(e.target.value as any)}
+                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-cyan-500 transition-colors"
+                >
+                  <option value="europe_usa">Europa / EE.UU. (OIV: ~4.2% fraude)</option>
+                  <option value="latam">Mendoza / Mercosur (CAME: ~6.5% fraude)</option>
+                  <option value="asia">Asia / Pacífico (APEC: ~10% fraude)</option>
+                  <option value="grey_market">Mercado Gris Global (ICC: ~12% desvío)</option>
+                </select>
+              </div>
+
               {/* Slider 1: Volume */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-400 uppercase">Producción Anual</span>
+                  <span className="text-slate-400 uppercase">Volumen Anual</span>
                   <span className="text-white font-mono">{volume.toLocaleString()} uds</span>
                 </div>
                 <input
                   type="range"
-                  min="10000"
+                  min="12000"
                   max="1500000"
                   step="10000"
                   value={volume}
@@ -640,21 +945,21 @@ export function RoiCalculator() {
                   className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-cyan-400"
                 />
                 <div className="flex justify-between text-[8px] text-slate-500 font-mono">
-                  <span>10K</span>
+                  <span>12K (Mín 1K/mes)</span>
                   <span>1.5M</span>
                 </div>
               </div>
 
-              {/* Slider 2: Fraud Rate */}
-              <div className="space-y-2">
+              {/* Slider 2: Fraud Rate (Only visible or editable for direct) */}
+              <div className="space-y-1">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-400 uppercase">Fraude / Pérdida</span>
+                  <span className="text-slate-400 uppercase">Tasa de Fraude / Pérdida</span>
                   <span className="text-rose-400 font-mono">{fraudRate.toFixed(1)}% línea</span>
                 </div>
                 <input
                   type="range"
                   min="0.5"
-                  max="15.0"
+                  max="20.0"
                   step="0.1"
                   value={fraudRate}
                   onChange={(e) => {
@@ -665,14 +970,14 @@ export function RoiCalculator() {
                 />
                 <div className="flex justify-between text-[8px] text-slate-500 font-mono">
                   <span>0.5%</span>
-                  <span>15%</span>
+                  <span>20%</span>
                 </div>
               </div>
 
               {/* Slider 3: Price */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-400 uppercase">Precio Unitario</span>
+                  <span className="text-slate-400 uppercase">Precio de Venta Producto</span>
                   <span className="text-cyan-400 font-mono">${retailPrice} USD</span>
                 </div>
                 <input
@@ -692,174 +997,270 @@ export function RoiCalculator() {
                   <span>$300</span>
                 </div>
               </div>
+
+              {/* Slider 4: Chip Cost */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-400 uppercase">Costo Base del Chip</span>
+                  <span className="text-amber-400 font-mono">${chipCost.toFixed(2)} USD</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.10"
+                  max="2.00"
+                  step="0.05"
+                  value={chipCost}
+                  onChange={(e) => setChipCost(Number(e.target.value))}
+                  className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                />
+                <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                  <span>$0.10</span>
+                  <span>$2.00</span>
+                </div>
+              </div>
+
+              {/* Slider 5: Resell Price (Reseller only) */}
+              {isReseller && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs font-bold">
+                    <span className="text-slate-400 uppercase">Precio Reventa del Chip</span>
+                    <span className="text-purple-400 font-mono">${resellPrice.toFixed(2)} USD</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={chipCost + 0.05}
+                    max="3.00"
+                    step="0.05"
+                    value={resellPrice}
+                    onChange={(e) => setResellPrice(Number(e.target.value))}
+                    className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-purple-400"
+                  />
+                  <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                    <span>${(chipCost + 0.05).toFixed(2)}</span>
+                    <span>$3.00</span>
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Cost breakdown */}
-            <div className="pt-4 border-t border-white/5 space-y-1.5 text-[9px] text-slate-400 leading-none font-mono">
+            <div className="pt-3 border-t border-white/5 space-y-1.5 text-[9px] text-slate-400 leading-none font-mono">
               <div className="flex justify-between">
-                <span>Costo del Chip NFC:</span>
-                <span className="text-slate-200">$0.35 USD / unidad</span>
+                <span>Volumen Mensual Promedio:</span>
+                <span className="text-slate-200">{Math.round(monthlyVolume).toLocaleString()} uds/mes</span>
               </div>
               <div className="flex justify-between">
-                <span>Costo Base SaaS Anual:</span>
-                <span className="text-slate-200">$2,400 USD ($199/mes)</span>
+                <span>Precio SaaS/unidad:</span>
+                <span className="text-emerald-400 font-bold">${pricePerBottle.toFixed(3)} USD/mes</span>
               </div>
-              <div className="flex justify-between border-t border-white/5 pt-2 text-xs font-bold leading-none">
-                <span>Inversión Anual Total:</span>
-                <span className="text-white">${totalNexIdCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+              <div className="flex justify-between">
+                <span>Suscripción SaaS:</span>
+                <span className="text-slate-200">${Math.round(nexIdSaaSMonthly).toLocaleString()} USD/mes (${Math.round(nexIdSaaSYearly).toLocaleString()}/año)</span>
               </div>
+              
+              {!isReseller ? (
+                <>
+                  <div className="flex justify-between">
+                    <span>Inversión en Chips:</span>
+                    <span className="text-slate-200">${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/5 pt-2 text-xs font-bold leading-none">
+                    <span>Inversión Anual Total:</span>
+                    <span className="text-white">${finalInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between">
+                    <span>Costo Compra Chips:</span>
+                    <span className="text-slate-200">${hardwareCostToReseller.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Reventa Chips a Cliente:</span>
+                    <span className="text-slate-200">${hardwareRevenueFromClient.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/5 pt-2 text-xs font-bold leading-none">
+                    <span>Inversión Anual (Chips):</span>
+                    <span className="text-white">${finalInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
           {/* Right Column: Graphs */}
-          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* Card 1: Comparative bar chart */}
-            <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px]">
-              <div>
-                <span className="text-[9px] font-black uppercase text-slate-500 block">Pérdida vs Ahorro</span>
-                <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Mapeo de Capital</h4>
-              </div>
+          <div className="lg:col-span-8 flex flex-col justify-between gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
               
-              {/* SVG Bar Chart */}
-              <div className="h-[160px] flex items-end justify-around relative pt-4">
-                <div className="absolute inset-x-0 bottom-0 h-[120px] border-b border-white/5 pointer-events-none" />
-                <div className="absolute inset-x-0 bottom-[60px] h-0 border-b border-dashed border-white/5 pointer-events-none" />
-                
-                {/* Bar 1: Loss */}
-                <div className="flex flex-col items-center w-[40px] z-10 group">
-                  <div className="text-[9px] font-mono font-bold text-rose-400 mb-1 leading-none group-hover:scale-105 transition-transform">
-                    -${grossLoss >= 1000000 ? `${(grossLoss/1000000).toFixed(1)}M` : `${Math.round(grossLoss/1000)}k`}
-                  </div>
-                  <motion.div
-                    className="w-full bg-gradient-to-t from-rose-600 to-rose-400 rounded-t-lg shadow-[0_0_15px_rgba(239,68,68,0.2)]"
-                    initial={{ height: 0 }}
-                    animate={{ height: Math.min(120, (grossLoss / Math.max(grossLoss, netSavings)) * 120) || 5 }}
-                    transition={{ type: "spring", stiffness: 85, damping: 15 }}
-                  />
-                  <span className="text-[8px] font-black text-slate-500 uppercase mt-2">Pérdida</span>
-                </div>
-                
-                {/* Bar 2: Net Savings */}
-                <div className="flex flex-col items-center w-[40px] z-10 group">
-                  <div className="text-[9px] font-mono font-bold text-emerald-400 mb-1 leading-none group-hover:scale-105 transition-transform">
-                    +${netSavings >= 1000000 ? `${(netSavings/1000000).toFixed(1)}M` : `${Math.round(netSavings/1000)}k`}
-                  </div>
-                  <motion.div
-                    className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-lg shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                    initial={{ height: 0 }}
-                    animate={{ height: Math.min(120, (netSavings / Math.max(grossLoss, netSavings)) * 120) || 5 }}
-                    transition={{ type: "spring", stiffness: 85, damping: 15 }}
-                  />
-                  <span className="text-[8px] font-black text-slate-500 uppercase mt-2">Ahorro Neto</span>
-                </div>
-              </div>
-              
-              <p className="text-[9px] text-slate-400 text-center italic leading-tight">
-                *Evita rellenado, copias y fugas del mercado gris al 98%.
-              </p>
-            </div>
-
-            {/* Card 2: Cumulative Area Chart (DTC Client growth) */}
-            <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px]">
-              <div>
-                <span className="text-[9px] font-black uppercase text-slate-500 block">Clientes Conectados DTC</span>
-                <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Fidelización Directa</h4>
-              </div>
-              
-              {/* Dynamic SVG Line/Area graph */}
-              <div className="h-[140px] w-full relative pt-4 overflow-hidden">
-                <svg className="w-full h-full" viewBox="0 0 100 60" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.45" />
-                      <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Grid Lines */}
-                  <line x1="0" y1="15" x2="100" y2="15" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
-                  <line x1="0" y1="35" x2="100" y2="35" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
-                  <line x1="0" y1="55" x2="100" y2="55" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
-                  
-                  {/* Gradient area */}
-                  <path
-                    d="M0 60 L10 50 L30 42 L60 28 L100 10 L100 60 Z"
-                    fill="url(#areaGrad)"
-                  />
-                  
-                  {/* Glowing line */}
-                  <motion.path
-                    d="M0 60 L10 50 L30 42 L60 28 L100 10"
-                    fill="none"
-                    stroke="#06b6d4"
-                    strokeWidth="2"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
-                  />
-                  
-                  {/* Nodes */}
-                  <circle cx="100" cy="10" r="2" fill="#ffffff" />
-                  <circle cx="100" cy="10" r="4" fill="none" stroke="#06b6d4" strokeWidth="1" className="animate-ping origin-center" style={{ transformBox: "fill-box", transformOrigin: "center" }} />
-                </svg>
-                
-                {/* Year indicators */}
-                <div className="flex justify-between text-[8px] text-slate-500 font-mono mt-1 px-1">
-                  <span>Año 1</span>
-                  <span>Año 3</span>
-                  <span>Año 5</span>
-                </div>
-              </div>
-              
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-end">
-                  <span className="text-[10px] text-slate-400">Nuevos Clientes:</span>
-                  <span className="text-xs font-black text-white font-mono">{dtcClients.toLocaleString()} /año</span>
-                </div>
-                <div className="w-full bg-slate-950 h-1 rounded overflow-hidden">
-                  <div className="bg-cyan-400 h-full w-[35%]" />
-                </div>
-                <span className="text-[8px] text-slate-500 block leading-tight">
-                  Tasa de contacto directo post-compra del 35% de lecturas.
-                </span>
-              </div>
-            </div>
-
-            {/* Card 3: ROI Multiplier Card */}
-            <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px] text-center relative overflow-hidden group hover:border-cyan-500/20 transition duration-300">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full filter blur-[40px] pointer-events-none" />
-              
-              <div>
-                <span className="text-[9px] font-black uppercase text-slate-500 block">Eficiencia de Inversión</span>
-                <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Multiplicador ROI</h4>
-              </div>
-              
-              {/* Gold Multiplier Circle */}
-              <div className="my-auto py-2">
-                <div className="w-28 h-28 rounded-full border-4 border-amber-400/20 bg-amber-500/5 flex flex-col items-center justify-center mx-auto relative shadow-[0_0_30px_rgba(245,158,11,0.05)] group-hover:scale-105 group-hover:border-amber-400/40 transition duration-300">
-                  <div className="absolute inset-0 rounded-full border border-dashed border-amber-400/30 animate-spin" style={{ animationDuration: "35s" }} />
-                  
-                  <span className="text-[8px] font-bold text-amber-300 uppercase tracking-widest leading-none">Múltiplo</span>
-                  <span className="text-3xl font-black text-white font-mono mt-0.5 tracking-tighter">
-                    {roiMultiplier.toFixed(1)}x
+              {/* Card 1: Comparative bar chart */}
+              <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px]">
+                <div>
+                  <span className="text-[9px] font-black uppercase text-slate-500 block">
+                    {!isReseller ? "Pérdida vs Ahorro" : "Costo vs Ingresos"}
                   </span>
-                  <span className="text-[8px] text-emerald-400 font-bold uppercase mt-0.5">Retorno Neto</span>
+                  <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Mapeo de Capital</h4>
+                </div>
+                
+                {/* SVG Bar Chart */}
+                <div className="h-[160px] flex items-end justify-around relative pt-4">
+                  <div className="absolute inset-x-0 bottom-0 h-[120px] border-b border-white/5 pointer-events-none" />
+                  <div className="absolute inset-x-0 bottom-[60px] h-0 border-b border-dashed border-white/5 pointer-events-none" />
+                  
+                  {/* Bar 1: Loss / Cost */}
+                  <div className="flex flex-col items-center w-[40px] z-10 group">
+                    <div className="text-[9px] font-mono font-bold text-rose-400 mb-1 leading-none group-hover:scale-105 transition-transform">
+                      -${(!isReseller ? grossLoss : hardwareCostToReseller) >= 1000000 
+                        ? `${((!isReseller ? grossLoss : hardwareCostToReseller)/1000000).toFixed(1)}M` 
+                        : `${Math.round((!isReseller ? grossLoss : hardwareCostToReseller)/1000)}k`}
+                    </div>
+                    <motion.div
+                      className="w-full bg-gradient-to-t from-rose-600 to-rose-400 rounded-t-lg shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                      initial={{ height: 0 }}
+                      animate={{ height: Math.min(120, ((!isReseller ? grossLoss : hardwareCostToReseller) / Math.max(!isReseller ? grossLoss : hardwareCostToReseller, finalNetGain)) * 120) || 5 }}
+                      transition={{ type: "spring", stiffness: 85, damping: 15 }}
+                    />
+                    <span className="text-[8px] font-black text-slate-500 uppercase mt-2">
+                      {!isReseller ? "Pérdida" : "Compra"}
+                    </span>
+                  </div>
+                  
+                  {/* Bar 2: Net Savings / Reseller Profit */}
+                  <div className="flex flex-col items-center w-[40px] z-10 group">
+                    <div className="text-[9px] font-mono font-bold text-emerald-400 mb-1 leading-none group-hover:scale-105 transition-transform">
+                      +${finalNetGain >= 1000000 
+                        ? `${(finalNetGain/1000000).toFixed(1)}M` 
+                        : `${Math.round(finalNetGain/1000)}k`}
+                    </div>
+                    <motion.div
+                      className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-lg shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                      initial={{ height: 0 }}
+                      animate={{ height: Math.min(120, (finalNetGain / Math.max(!isReseller ? grossLoss : hardwareCostToReseller, finalNetGain)) * 120) || 5 }}
+                      transition={{ type: "spring", stiffness: 85, damping: 15 }}
+                    />
+                    <span className="text-[8px] font-black text-slate-500 uppercase mt-2">
+                      {!isReseller ? "Ahorro Neto" : "Ganancia"}
+                    </span>
+                  </div>
+                </div>
+                
+                <p className="text-[9px] text-slate-400 text-center italic leading-tight">
+                  {!isReseller 
+                    ? "*Evita rellenado, copias y fugas al 98%." 
+                    : "*SaaS setup ref + comisión de hardware."}
+                </p>
+              </div>
+
+              {/* Card 2: Cumulative Area Chart (DTC Client growth) */}
+              <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px]">
+                <div>
+                  <span className="text-[9px] font-black uppercase text-slate-500 block">Clientes Conectados DTC</span>
+                  <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Fidelización Directa</h4>
+                </div>
+                
+                {/* Dynamic SVG Line/Area graph */}
+                <div className="h-[140px] w-full relative pt-4 overflow-hidden">
+                  <svg className="w-full h-full" viewBox="0 0 100 60" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.45" />
+                        <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    
+                    {/* Grid Lines */}
+                    <line x1="0" y1="15" x2="100" y2="15" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+                    <line x1="0" y1="35" x2="100" y2="35" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+                    <line x1="0" y1="55" x2="100" y2="55" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+                    
+                    {/* Gradient area */}
+                    <path
+                      d="M0 60 L10 50 L30 42 L60 28 L100 10 L100 60 Z"
+                      fill="url(#areaGrad)"
+                    />
+                    
+                    {/* Glowing line */}
+                    <motion.path
+                      d="M0 60 L10 50 L30 42 L60 28 L100 10"
+                      fill="none"
+                      stroke="#06b6d4"
+                      strokeWidth="2"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                    />
+                    
+                    {/* Nodes */}
+                    <circle cx="100" cy="10" r="2" fill="#ffffff" />
+                    <circle cx="100" cy="10" r="4" fill="none" stroke="#06b6d4" strokeWidth="1" className="animate-ping origin-center" style={{ transformBox: "fill-box", transformOrigin: "center" }} />
+                  </svg>
+                  
+                  {/* Year indicators */}
+                  <div className="flex justify-between text-[8px] text-slate-500 font-mono mt-1 px-1">
+                    <span>Año 1</span>
+                    <span>Año 3</span>
+                    <span>Año 5</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-end">
+                    <span className="text-[10px] text-slate-400">Nuevos Clientes:</span>
+                    <span className="text-xs font-black text-white font-mono">{dtcClients.toLocaleString()} /año</span>
+                  </div>
+                  <div className="w-full bg-slate-950 h-1 rounded overflow-hidden">
+                    <div className="bg-cyan-400 h-full w-[35%]" />
+                  </div>
+                  <span className="text-[8px] text-slate-500 block leading-tight">
+                    Tasa de contacto directo post-compra del 35% de lecturas.
+                  </span>
                 </div>
               </div>
-              
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
-                  <span>Inversión:</span>
-                  <span className="text-slate-200 font-bold">${totalNexIdCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+
+              {/* Card 3: ROI Multiplier Card */}
+              <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px] text-center relative overflow-hidden group hover:border-cyan-500/20 transition duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full filter blur-[40px] pointer-events-none" />
+                
+                <div>
+                  <span className="text-[9px] font-black uppercase text-slate-500 block">Eficiencia de Inversión</span>
+                  <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Multiplicador ROI</h4>
                 </div>
-                <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
-                  <span>Ganancia Neta:</span>
-                  <span className="text-emerald-400 font-bold">${netSavings.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                
+                {/* Gold Multiplier Circle */}
+                <div className="my-auto py-2">
+                  <div className="w-28 h-28 rounded-full border-4 border-amber-400/20 bg-amber-500/5 flex flex-col items-center justify-center mx-auto relative shadow-[0_0_30px_rgba(245,158,11,0.05)] group-hover:scale-105 group-hover:border-amber-400/40 transition duration-300">
+                    <div className="absolute inset-0 rounded-full border border-dashed border-amber-400/30 animate-spin" style={{ animationDuration: "35s" }} />
+                    
+                    <span className="text-[8px] font-bold text-amber-300 uppercase tracking-widest leading-none">Múltiplo</span>
+                    <span className="text-3xl font-black text-white font-mono mt-0.5 tracking-tighter">
+                      {roiMultiplier.toFixed(1)}x
+                    </span>
+                    <span className="text-[8px] text-emerald-400 font-bold uppercase mt-0.5">Retorno Neto</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
+                    <span>{!isReseller ? "Inversión:" : "Costo Compra:"}</span>
+                    <span className="text-slate-200 font-bold">${finalInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
+                    <span>{!isReseller ? "Ahorro Neto:" : "Ganancia Neta:"}</span>
+                    <span className="text-emerald-400 font-bold">${finalNetGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                  </div>
                 </div>
               </div>
             </div>
 
+            {/* Citations Card */}
+            <div className="w-full p-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 text-slate-300 text-[10px] leading-relaxed flex flex-col md:flex-row gap-3 items-start md:items-center">
+              <span className="text-cyan-400 text-xs font-mono font-black shrink-0 border border-cyan-400/30 px-1.5 py-0.5 rounded bg-cyan-400/10">
+                INFO REGIONAL
+              </span>
+              <div>
+                <strong className="text-white block uppercase tracking-wide text-[9px]">{REGION_CITATIONS[exportRegion].source}</strong>
+                <span className="text-slate-400 italic">"{REGION_CITATIONS[exportRegion].text}"</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -880,34 +1281,95 @@ export function InvestorSnapshotClient() {
   const [tiltY, setTiltY] = useState(0);
   const tiltRef = useRef<HTMLDivElement>(null);
 
+  // Lifted Multimercado Industry Selector states
+  const [selectedIndustry, setSelectedIndustry] = useState<string>("bodegas");
+  const [selectedChipModel, setSelectedChipModel] = useState<"tamper" | "dna" | "ntag">("tamper");
+  const [volume, setVolume] = useState<number>(150000);
+  const [fraudRate, setFraudRate] = useState<number>(4.0);
+  const [retailPrice, setRetailPrice] = useState<number>(45);
+  const [chipCost, setChipCost] = useState<number>(1.00);
+  const [resellPrice, setResellPrice] = useState<number>(1.50);
+  const [businessProfile, setBusinessProfile] = useState<"direct" | "reseller">("direct");
+  const [exportRegion, setExportRegion] = useState<"latam" | "europe_usa" | "asia" | "grey_market">("latam");
+
   // Phone Simulator states
   const [simStep, setSimStep] = useState<"idle" | "tapping" | "loading" | "active">("idle");
-  const [phoneTab, setPhoneTab] = useState<"validate" | "mint" | "rewards" | "market" | "chat" | "ai-label">("validate");
+  const [phoneTab, setPhoneTab] = useState<"validate" | "mint" | "rewards" | "market" | "chat">("validate");
   const [isMinted, setIsMinted] = useState(false);
   const [minting, setMinting] = useState(false);
   const [claimedRewards, setClaimedRewards] = useState<Record<string, boolean>>({});
 
-  // Custom AI label states
+  // Custom AI label states (Demo Preventa Customizer)
   const [customLabelUrl, setCustomLabelUrl] = useState<string | null>(null);
   const [labelPrompt, setLabelPrompt] = useState("");
   const [generatingLabel, setGeneratingLabel] = useState(false);
   const [labelGenError, setLabelGenError] = useState<string | null>(null);
+  const [showAiCustomizer, setShowAiCustomizer] = useState(false);
 
-  // Phone Sommelier Chat states
+  // Phone Assistant Chat states
   const [phoneChatMessages, setPhoneChatMessages] = useState<Array<{ sender: "user" | "bot"; text: string }>>([
-    { sender: "bot", text: "¡Hola! Soy tu Sommelier AI nexID. ¿En qué comida o cata te puedo asesorar hoy?" }
+    { sender: "bot", text: "¡Hola! Soy tu Sommelier AI de Cava. ¿En qué varietal o cata te puedo asesorar hoy?" }
   ]);
   const [phoneChatInput, setPhoneChatInput] = useState("");
   const [phoneChatTyping, setPhoneChatTyping] = useState(false);
 
   // Hugging Face config states
   const [showHfySettings, setShowHfySettings] = useState(false);
-  const [hfTokenInput, setHfTokenInput] = useState(() => {
+  const [hfTokenInput, setHfTokenInput] = useState("");
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("hf_api_token") || "";
+      const storedToken = localStorage.getItem("hf_api_token");
+      if (storedToken) {
+        setHfTokenInput(storedToken);
+      }
     }
-    return "";
-  });
+  }, []);
+
+  const getIndustryDefaultChat = (ind: string) => {
+    if (ind === "cosmetica") {
+      return [{ sender: "bot" as const, text: "¡Hola! Soy tu Asistente de Estilo Aura. ¿En qué fragancia te puedo asesorar hoy?" }];
+    } else if (ind === "agro") {
+      return [{ sender: "bot" as const, text: "¡Hola! Soy tu Inspector de Lotes nexID. ¿Qué consulta de trazabilidad tenés sobre el lote?" }];
+    } else if (ind === "pharma") {
+      return [{ sender: "bot" as const, text: "¡Hola! Soy tu Asistente Validante Médico. ¿Qué lote o medicamento deseas verificar hoy?" }];
+    } else if (ind === "eventos") {
+      return [{ sender: "bot" as const, text: "¡Hola! Soy tu Coordinador de Accesos. ¿Qué duda tenés sobre tu VIP Pass?" }];
+    } else {
+      return [{ sender: "bot" as const, text: "¡Hola! Soy tu Sommelier AI de Cava. ¿En qué varietal o cata te puedo asesorar hoy?" }];
+    }
+  };
+
+  // Synchronize preset inputs
+  const applyIndustryPreset = (industryName: string) => {
+    const preset = INDUSTRY_PRESETS.find(p => p.name === industryName);
+    if (preset) {
+      setSelectedIndustry(industryName);
+      setVolume(preset.volume);
+      setFraudRate(preset.fraudRate);
+      setRetailPrice(preset.price);
+      setSelectedChipModel(preset.defaultChip);
+      setChipCost(preset.defaultChipCost);
+      setResellPrice(preset.defaultChipCost * 1.5);
+      
+      if (industryName === "eventos") {
+        setExportRegion("latam");
+      } else if (industryName === "bodegas" || industryName === "cosmetica") {
+        setExportRegion("europe_usa");
+      } else if (industryName === "agro") {
+        setExportRegion("latam");
+      } else {
+        setExportRegion("europe_usa");
+      }
+    }
+  };
+
+  useEffect(() => {
+    setPhoneChatMessages(getIndustryDefaultChat(selectedIndustry));
+    setCustomLabelUrl(null);
+    setLabelPrompt("");
+    setLabelGenError(null);
+  }, [selectedIndustry]);
 
   const handleGenerateLabel = async (promptText: string) => {
     if (!promptText.trim()) return;
@@ -1047,14 +1509,22 @@ export function InvestorSnapshotClient() {
     setBidsCount(3);
     setMyBidAmount(null);
     setCurrentBasePrice(0.18);
-    setPhoneChatMessages([
-      { sender: "bot", text: "¡Hola! Soy tu Sommelier AI nexID. ¿En qué comida o cata te puedo asesorar hoy?" }
-    ]);
     setPhoneChatInput("");
     setPhoneChatTyping(false);
     setCustomLabelUrl(null);
     setLabelPrompt("");
     setLabelGenError(null);
+    setSelectedIndustry("bodegas");
+    setSelectedChipModel("tamper");
+    setVolume(150000);
+    setFraudRate(4.0);
+    setRetailPrice(45);
+    setChipCost(1.00);
+    setResellPrice(1.50);
+    setBusinessProfile("direct");
+    setExportRegion("latam");
+    setShowAiCustomizer(false);
+    setPhoneChatMessages(getIndustryDefaultChat("bodegas"));
   };
 
   const handlePlaceBid = () => {
@@ -1517,17 +1987,120 @@ export function InvestorSnapshotClient() {
               </div>
             )}
 
+            {/* Industry Preset Selector Tabs */}
+            <div className="flex flex-wrap gap-1 bg-slate-900/60 p-1 rounded-xl border border-white/5 mb-4 shrink-0 z-10">
+              {INDUSTRY_PRESETS.map((preset) => (
+                <button
+                  key={preset.name}
+                  onClick={() => applyIndustryPreset(preset.name)}
+                  className={`flex-1 min-w-[70px] py-2 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${
+                    selectedIndustry === preset.name
+                      ? "bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-300 shadow-lg"
+                      : "text-slate-400 hover:text-white border border-transparent"
+                  }`}
+                >
+                  <span>{preset.icon}</span>
+                  <span>{preset.label.split(" ")[0]}</span>
+                </button>
+              ))}
+            </div>
+
             {/* Tap Stage */}
             <div className="w-full h-[520px] relative border border-white/5 bg-slate-950/60 rounded-2xl overflow-hidden flex items-center justify-center z-10 shadow-inner">
               <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none" />
+
+              {/* nexID AI Studio (Administrative B2B Customizer) */}
+              {simStep !== "tapping" && (
+                <div className="absolute right-4 top-4 bottom-4 w-[220px] bg-slate-950/95 border border-white/10 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-md z-20 shadow-2xl">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 border-b border-white/5 pb-2">
+                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                      <div>
+                        <span className="text-[10px] font-black text-white uppercase tracking-wider block leading-none">nexID AI Studio</span>
+                        <span className="text-[7px] text-slate-500 uppercase tracking-widest block mt-0.5">Preventa Customizer</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-mono text-slate-400 uppercase">Diseño de Etiqueta / Arte:</label>
+                      <textarea
+                        value={labelPrompt}
+                        onChange={(e) => setLabelPrompt(e.target.value)}
+                        placeholder={
+                          selectedIndustry === "bodegas"
+                            ? "Ej: Un fénix dorado volando sobre viñas de Mendoza, estilo art decó..."
+                            : selectedIndustry === "cosmetica"
+                            ? "Ej: Flores silvestres y rocío matutino sobre vidrio dorado, abstracto..."
+                            : selectedIndustry === "agro"
+                            ? "Ej: Hojas de maíz digitalizadas de neón verde sobre fondo oscuro..."
+                            : selectedIndustry === "pharma"
+                            ? "Ej: Moléculas flotantes en tonos azules y plateados, estilo laboratorio..."
+                            : "Ej: Un pase VIP holográfico con estrellas doradas y patrón geométrico..."
+                        }
+                        rows={3}
+                        className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[9px] text-white outline-none focus:border-cyan-500 transition-colors resize-none leading-normal font-sans"
+                      />
+                    </div>
+
+                    {/* Styles list */}
+                    <div className="space-y-1">
+                      <span className="text-[7.5px] font-mono text-slate-500 uppercase block">Estilos Sugeridos:</span>
+                      <div className="grid grid-cols-2 gap-1">
+                        {[
+                          { name: "⚡ Cyberpunk", prompt: "A futuristic glowing neon cyber design with holographic elements, 8k" },
+                          { name: "👑 Art Decó", prompt: "A minimalist luxury design with golden geometric lines, art deco style" },
+                          { name: "🍂 Clásico", prompt: "A vintage traditional premium style, elegant texture, high resolution" },
+                          { name: "✨ Abstracto", prompt: "Luxury abstract organic shapes with gold foil, premium modern aesthetic" }
+                        ].map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setLabelPrompt(item.prompt)}
+                            className="text-[7.5px] bg-slate-900 hover:bg-slate-850 border border-white/5 rounded py-1 text-slate-450 text-center transition truncate"
+                            title={item.prompt}
+                          >
+                            {item.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {labelGenError && (
+                      <p className="text-[7px] text-amber-400 font-semibold italic bg-amber-500/5 p-1.5 rounded border border-amber-500/10 leading-normal">
+                        ⚠️ {labelGenError}. Usando patrón de cava de contingencia.
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handleGenerateLabel(labelPrompt)}
+                    disabled={generatingLabel || !labelPrompt.trim()}
+                    className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-black text-[9.5px] uppercase py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.15)] border border-amber-400/20 mt-2"
+                  >
+                    {generatingLabel ? (
+                      <>
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        <span>Diseñando Arte...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Cpu className="w-3.5 h-3.5" />
+                        <span>Generar Arte AI</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
               
               {/* Bottle floating container */}
               <div className="absolute left-[4%] w-[160px] h-[450px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/5 via-transparent to-transparent pointer-events-none" />
-                <ThreeDBottle 
+                <ThreeDProduct 
                   active={simStep === "active"} 
                   tapping={simStep === "tapping" || simStep === "loading"} 
                   labelImageUrl={customLabelUrl}
+                  industry={selectedIndustry}
+                  chipModel={selectedChipModel}
                 />
                 
                 {/* Contact Ripple point */}
@@ -1855,72 +2428,7 @@ export function InvestorSnapshotClient() {
                         </div>
                       )}
 
-                      {phoneTab === "ai-label" && (
-                        <div className="space-y-3 w-full text-left my-auto">
-                          <div className="text-center">
-                            <Sparkles className="w-7 h-7 mx-auto text-amber-400 animate-pulse" />
-                            <p className="font-black text-white text-[11px] uppercase leading-none mt-1.5">Diseño de Etiqueta AI</p>
-                            <p className="text-[8px] text-slate-450 mt-1">Generá arte enológica exclusiva con Hugging Face</p>
-                          </div>
 
-                          <div className="space-y-1">
-                            <label className="text-[8px] font-mono text-slate-400 uppercase">Prompt Creativo:</label>
-                            <textarea
-                              value={labelPrompt}
-                              onChange={(e) => setLabelPrompt(e.target.value)}
-                              placeholder="Ej: Un fénix dorado volando sobre viñas de Mendoza, estilo art decó..."
-                              rows={2}
-                              className="w-full bg-slate-950/80 border border-white/10 rounded-md p-1.5 text-[8.5px] text-white outline-none focus:border-cyan-500 transition-colors resize-none leading-normal"
-                            />
-                          </div>
-
-                          {/* Quick suggestions/presets */}
-                          <div className="space-y-1">
-                            <span className="text-[7.5px] font-mono text-slate-500 uppercase block">Estilos sugeridos:</span>
-                            <div className="flex flex-wrap gap-1">
-                              {[
-                                { name: "🍷 Cyberpunk", prompt: "A futuristic glowing violet vineyard at night, cyberpunk neon lights, synthwave aesthetic, 8k" },
-                                { name: "🦁 Art Decó", prompt: "A minimalist golden lion head emblem on a deep black background, luxury art deco style, golden geometric lines" },
-                                { name: "🍂 Barroco", prompt: "Detailed baroque style oil painting of grape harvesting, dark wine cellars, warm chiaroscuro lighting" },
-                                { name: "✨ Abstract", prompt: "Luxury abstract organic shapes in burgundy and gold foil, fluid silk texture, premium design" }
-                              ].map((item, idx) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => setLabelPrompt(item.prompt)}
-                                  className="text-[7.5px] bg-slate-950 hover:bg-slate-900 border border-white/5 rounded px-1 py-0.5 text-slate-450 transition"
-                                >
-                                  {item.name}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {labelGenError && (
-                            <p className="text-[7px] text-amber-400 font-semibold italic bg-amber-500/5 p-1 rounded border border-amber-500/10">
-                              ⚠️ {labelGenError}. Usando patrón de cava de contingencia.
-                            </p>
-                          )}
-
-                          <button
-                            onClick={() => handleGenerateLabel(labelPrompt)}
-                            disabled={generatingLabel || !labelPrompt.trim()}
-                            className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-black text-[9px] uppercase py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)] border border-amber-400/20"
-                          >
-                            {generatingLabel ? (
-                              <>
-                                <RefreshCw className="w-3 h-3 animate-spin" />
-                                <span>Generando con HF...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Cpu className="w-3.5 h-3.5" />
-                                <span>Generar e Instalar</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
 
                       {phoneTab === "chat" && (
                         <div className="flex flex-col h-full justify-between">
@@ -1993,13 +2501,12 @@ export function InvestorSnapshotClient() {
                     </div>
 
                     {/* Sim Phone Tabs */}
-                    <div className="grid grid-cols-6 gap-0.5 border-t border-white/10 pt-2 shrink-0">
+                    <div className="grid grid-cols-5 gap-0.5 border-t border-white/10 pt-2 shrink-0">
                       {[
                         { id: "validate", label: "Sello" },
                         { id: "mint", label: "Web3" },
                         { id: "rewards", label: "Premios" },
                         { id: "market", label: "Cava" },
-                        { id: "ai-label", label: "Diseño" },
                         { id: "chat", label: "Chat" }
                       ].map((item) => (
                         <button
@@ -2061,7 +2568,26 @@ export function InvestorSnapshotClient() {
       </div>
 
       {/* Interactive ROI Calculator Section */}
-      <RoiCalculator />
+      <RoiCalculator 
+        selectedPreset={selectedIndustry}
+        setSelectedPreset={applyIndustryPreset}
+        volume={volume}
+        setVolume={setVolume}
+        fraudRate={fraudRate}
+        setFraudRate={setFraudRate}
+        retailPrice={retailPrice}
+        setRetailPrice={setRetailPrice}
+        selectedChipModel={selectedChipModel}
+        setSelectedChipModel={setSelectedChipModel}
+        chipCost={chipCost}
+        setChipCost={setChipCost}
+        resellPrice={resellPrice}
+        setResellPrice={setResellPrice}
+        businessProfile={businessProfile}
+        setBusinessProfile={setBusinessProfile}
+        exportRegion={exportRegion}
+        setExportRegion={setExportRegion}
+      />
 
       {/* Slide 6 VIP metal card parallax feature overlay (Premium aesthetic showcase) */}
       <section className="rounded-3xl border border-white/10 bg-slate-950 p-8 lg:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">

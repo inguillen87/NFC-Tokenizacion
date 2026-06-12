@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     // Prioritize the custom token provided by the user in the UI, then environment variables
     const hfToken = customToken || process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY;
     if (!hfToken) {
-      return NextResponse.json({ error: "Hugging Face token not configured" }, { status: 500 });
+      return NextResponse.json({ error: "Hugging Face token not configured" }, { status: 400 });
     }
 
     // List of models to try. We prioritize FLUX.1-schnell for fast preview generation,
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     }
 
     if (!imageBuffer) {
-      return NextResponse.json({ error: `Hugging Face Image Generation failed: ${errorMsg}` }, { status: 500 });
+      return NextResponse.json({ error: `Hugging Face Image Generation failed: ${errorMsg}` }, { status: 502 });
     }
 
     // Convert binary buffer to base64 data URL
