@@ -6,6 +6,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Printer, 
+  Download,
   Cpu, 
   ShieldCheck, 
   Award, 
@@ -428,7 +429,7 @@ export default function InvestorPitchDeck() {
             Pitch Deck Interactivo <span className="text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2.5 py-0.5 rounded-full font-black uppercase">Presentación</span>
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Presentación interactiva para inversores. Presioná Imprimir para exportarla directamente a PDF apaisado.
+            Presentación interactiva para inversores. Descargá el PDF premium pre-diseñado o imprimí las diapositivas.
           </p>
         </div>
 
@@ -439,7 +440,16 @@ export default function InvestorPitchDeck() {
             className="gap-2 text-xs py-1.5 border border-cyan-500/30 hover:border-cyan-500/60"
           >
             <Printer className="w-3.5 h-3.5 text-cyan-400" />
-            Imprimir / Guardar PDF
+            Imprimir Diapositivas
+          </Button>
+
+          <Button 
+            onClick={() => window.open("/nexid_pitch_deck.pdf", "_blank")} 
+            variant="primary"
+            className="gap-2 text-xs py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold border border-cyan-500/30"
+          >
+            <Download className="w-3.5 h-3.5 text-white" />
+            Descargar PDF
           </Button>
         </div>
       </header>

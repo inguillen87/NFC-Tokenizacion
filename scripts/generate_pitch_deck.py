@@ -54,6 +54,39 @@ def build_pdf():
     img_crate = os.path.join(base_path, "apps/web/public/images/wine_crate.png")
     img_tasting = os.path.join(base_path, "apps/web/public/images/wine_tasting.png")
 
+    # Dynamic cropping to prevent image distortion (stretch) in PDF layout
+    img_magnum_pdf = img_magnum
+    if os.path.exists(img_magnum):
+        try:
+            from PIL import Image
+            img = Image.open(img_magnum)
+            w, h = img.size
+            target_w = int(h * (26.0 / 73.0)) # ~364 pixels
+            left = (w - target_w) // 2
+            right = left + target_w
+            cropped_path = os.path.join(base_path, "apps/web/public/images/premium_magnum_cropped.png")
+            img.crop((left, 0, right, h)).save(cropped_path)
+            img_magnum_pdf = cropped_path
+            print(f"SUCCESS: Cropped magnum dynamically to 26:73 aspect ratio at {cropped_path}")
+        except Exception as e:
+            print(f"Error cropping magnum image: {e}")
+
+    img_tasting_pdf = img_tasting
+    if os.path.exists(img_tasting):
+        try:
+            from PIL import Image
+            img = Image.open(img_tasting)
+            w, h = img.size
+            target_w = int(h * (107.0 / 130.0)) # ~842 pixels
+            left = (w - target_w) // 2
+            right = left + target_w
+            cropped_path = os.path.join(base_path, "apps/web/public/images/wine_tasting_cropped.png")
+            img.crop((left, 0, right, h)).save(cropped_path)
+            img_tasting_pdf = cropped_path
+            print(f"SUCCESS: Cropped tasting dynamically to 107:130 aspect ratio at {cropped_path}")
+        except Exception as e:
+            print(f"Error cropping tasting image: {e}")
+
     # ----------------------------------------------------
     # SLIDE 1: Cover Page
     # ----------------------------------------------------
@@ -115,13 +148,13 @@ def build_pdf():
     pdf.cell(48, 6, "MATERIAL DE INVERSIÓN VIP", ln=0, align="C")
 
     # Image Showcase
-    if os.path.exists(img_tasting):
+    if os.path.exists(img_tasting_pdf):
         # Draw nice thin border for the image
         img_x, img_y, img_w, img_h = 175, 40, 107, 130
         pdf.set_draw_color(168, 85, 247)
         pdf.set_line_width(0.4)
         pdf.rect(img_x - 1, img_y - 1, img_w + 2, img_h + 2, "D")
-        pdf.image(img_tasting, img_x, img_y, img_w, img_h)
+        pdf.image(img_tasting_pdf, img_x, img_y, img_w, img_h)
 
     # Slide 1 Footer
     pdf.set_xy(15, 195)
@@ -515,9 +548,9 @@ def build_pdf():
     pdf.rect(x_right + 10, y_right + 38, int(102 * 0.42), 2.5, "F")
 
     # Image Product
-    if os.path.exists(img_magnum):
+    if os.path.exists(img_magnum_pdf):
         # Center the magnum image at the bottom of the card
-        pdf.image(img_magnum, x_right + 48, y_right + 48, 26, 73)
+        pdf.image(img_magnum_pdf, x_right + 48, y_right + 48, 26, 73)
         
         # Draw dynamic validation HUD
         hud_x = x_right + 8
@@ -694,13 +727,27 @@ def build_pdf():
         pdf.cell(crate_w - 10, 5, "Imagen real de nuestro Kit de Colección Verificado", ln=0, align="C")
 
     # Output file
+    # 1. Output to docs/
     output_dir = os.path.join(base_path, "docs")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        
     output_pdf_path = os.path.join(output_dir, "nexid_pitch_deck.pdf")
     pdf.output(output_pdf_path)
     print(f"SUCCESS: Pitch deck PDF successfully generated at {output_pdf_path}")
+    
+    # 2. Output to apps/dashboard/public/
+    dashboard_public = os.path.join(base_path, "apps/dashboard/public")
+    if os.path.exists(dashboard_public):
+        dashboard_pdf = os.path.join(dashboard_public, "nexid_pitch_deck.pdf")
+        pdf.output(dashboard_pdf)
+        print(f"SUCCESS: Pitch deck PDF successfully copied to {dashboard_pdf}")
+        
+    # 3. Output to apps/web/public/
+    web_public = os.path.join(base_path, "apps/web/public")
+    if os.path.exists(web_public):
+        web_pdf = os.path.join(web_public, "nexid_pitch_deck.pdf")
+        pdf.output(web_pdf)
+        print(f"SUCCESS: Pitch deck PDF successfully copied to {web_pdf}")
 
 if __name__ == "__main__":
     build_pdf()
