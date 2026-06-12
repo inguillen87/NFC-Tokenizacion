@@ -325,62 +325,96 @@ export default function LoyaltyCampaignsClient() {
     }
   };
 
-  // Re-writer premium (Sommelier translator)
-  function handleOptimizeText() {
+  // Re-writer premium (Sommelier translator using Hugging Face + Local Fallback)
+  async function handleOptimizeText() {
     if (!draftText.trim()) return;
     setIsOptimizing(true);
 
-    setTimeout(() => {
-      const replacements = TONE_DICTIONARIES[selectedTone];
-      const foundImprovements: ImprovementApplied[] = [];
-
-      // Split words keeping spaces and punctuation
-      let words = draftText.split(/(\s+|[,.!?;:()])/);
-      let enhancedWords = words.map(w => {
-        const lower = w.toLowerCase().trim();
-        if (replacements[lower]) {
-          const options = replacements[lower];
-          const selected = options[Math.floor(Math.random() * options.length)];
-          
-          if (!foundImprovements.some(imp => imp.from === lower)) {
-            foundImprovements.push({ from: lower, to: selected });
-          }
-
-          if (w.charAt(0) === w.charAt(0).toUpperCase() && w.length > 1) {
-            return selected.charAt(0).toUpperCase() + selected.slice(1);
-          }
-          return selected;
-        }
-        return w;
+    try {
+      const response = await fetch("/api/cognitive-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: draftText, tone: selectedTone }),
       });
 
-      let optimized = enhancedWords.join("");
-
-      // Ensure premium framing is set
-      const clean = optimized.toLowerCase();
-      const hasPremiumHook = clean.includes("vip") || clean.includes("exclusiv") || clean.includes("colección") || clean.includes("terroir") || clean.includes("cofradía") || clean.includes("chain") || clean.includes("token");
-      if (!hasPremiumHook) {
-        if (selectedTone === "modern-web3") {
-          optimized = `Gemelo digital verificado nexID: ${optimized} — Registrado inmutablemente on-chain.`;
-        } else {
-          optimized = `Una propuesta de valor exclusivo nexID: ${optimized} — Reservado para miembros de nuestra Cofradía Privada.`;
-        }
+      if (!response.ok) {
+        throw new Error("API rewrite failed");
       }
 
-      const hasCTA = clean.includes("autentic") || clean.includes("escan") || clean.includes("sumar") || clean.includes("adquirir") || clean.includes("particip") || clean.includes("claim") || clean.includes("reclamar");
-      if (!hasCTA) {
-        if (selectedTone === "modern-web3") {
-          optimized += " Escaneá el chip criptográfico NFC nexID para reclamar la propiedad de tu activo líquido.";
-        } else {
-          optimized += " Escaneá el chip NFC nexID para activar este beneficio único.";
-        }
+      const data = await response.json();
+      if (!data.optimizedText) {
+        throw new Error("No text returned from API");
       }
+
+      // Calculate matching improvements by comparing original words with result
+      const foundImprovements: ImprovementApplied[] = [];
+      const replacements = TONE_DICTIONARIES[selectedTone];
+      Object.keys(replacements).forEach(key => {
+        if (draftText.toLowerCase().includes(key) && data.optimizedText.toLowerCase().includes(replacements[key][0].toLowerCase())) {
+          foundImprovements.push({ from: key, to: replacements[key][0] });
+        }
+      });
 
       setAppliedImprovements(foundImprovements);
-      setOptimizedText(optimized);
+      setOptimizedText(data.optimizedText);
       setShowOptimizedResult(true);
       setIsOptimizing(false);
-    }, 1000);
+    } catch (err) {
+      console.warn("Hugging Face API failed or not configured, using premium local heuristics fallback:", err);
+      
+      // Local Heuristic Fallback
+      setTimeout(() => {
+        const replacements = TONE_DICTIONARIES[selectedTone];
+        const foundImprovements: ImprovementApplied[] = [];
+
+        // Split words keeping spaces and punctuation
+        let words = draftText.split(/(\s+|[,.!?;:()])/);
+        let enhancedWords = words.map(w => {
+          const lower = w.toLowerCase().trim();
+          if (replacements[lower]) {
+            const options = replacements[lower];
+            const selected = options[Math.floor(Math.random() * options.length)];
+            
+            if (!foundImprovements.some(imp => imp.from === lower)) {
+              foundImprovements.push({ from: lower, to: selected });
+            }
+
+            if (w.charAt(0) === w.charAt(0).toUpperCase() && w.length > 1) {
+              return selected.charAt(0).toUpperCase() + selected.slice(1);
+            }
+            return selected;
+          }
+          return w;
+        });
+
+        let optimized = enhancedWords.join("");
+
+        // Ensure premium framing is set
+        const clean = optimized.toLowerCase();
+        const hasPremiumHook = clean.includes("vip") || clean.includes("exclusiv") || clean.includes("colección") || clean.includes("terroir") || clean.includes("cofradía") || clean.includes("chain") || clean.includes("token");
+        if (!hasPremiumHook) {
+          if (selectedTone === "modern-web3") {
+            optimized = `Gemelo digital verificado nexID: ${optimized} — Registrado inmutablemente on-chain.`;
+          } else {
+            optimized = `Una propuesta de valor exclusivo nexID: ${optimized} — Reservado para miembros de nuestra Cofradía Privada.`;
+          }
+        }
+
+        const hasCTA = clean.includes("autentic") || clean.includes("escan") || clean.includes("sumar") || clean.includes("adquirir") || clean.includes("particip") || clean.includes("claim") || clean.includes("reclamar");
+        if (!hasCTA) {
+          if (selectedTone === "modern-web3") {
+            optimized += " Escaneá el chip criptográfico NFC nexID para reclamar la propiedad de tu activo líquido.";
+          } else {
+            optimized += " Escaneá el chip NFC nexID para activar este beneficio único.";
+          }
+        }
+
+        setAppliedImprovements(foundImprovements);
+        setOptimizedText(optimized);
+        setShowOptimizedResult(true);
+        setIsOptimizing(false);
+      }, 1000);
+    }
   }
 
   // Create Campaign from current draft
