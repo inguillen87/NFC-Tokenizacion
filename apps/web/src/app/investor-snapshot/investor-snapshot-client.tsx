@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import * as THREE from "three";
 import { 
   Sparkles, 
   ChevronLeft, 
@@ -186,6 +187,657 @@ const slides = [
     ]
   }
 ];
+
+// Three.js 3D Bottle Component with WebGL procedural modeling, glass shaders and mouse rotation
+export function ThreeDBottle({ active, tapping }: { active: boolean; tapping: boolean }) {
+  const mountRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (typeof window === "undefined" || !mountRef.current) return;
+    
+    const container = mountRef.current;
+    const width = container.clientWidth || 130;
+    const height = container.clientHeight || 240;
+    
+    // Scene
+    const scene = new THREE.Scene();
+    
+    // Camera
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    camera.position.set(0, 6.2, 20);
+    camera.lookAt(0, 5.8, 0);
+    
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+    
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+    scene.add(ambientLight);
+    
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    mainLight.position.set(6, 12, 10);
+    scene.add(mainLight);
+    
+    const fillLight = new THREE.DirectionalLight(0x06b6d4, 0.75); // Cyan fill
+    fillLight.position.set(-6, 5, -5);
+    scene.add(fillLight);
+    
+    const rimLight = new THREE.DirectionalLight(0x8b5cf6, 0.9); // Purple rim
+    rimLight.position.set(0, 10, -8);
+    scene.add(rimLight);
+
+    // Glowing hotspot light on neck
+    const hotspotLight = new THREE.PointLight(0x06b6d4, 0, 8);
+    hotspotLight.position.set(0, 11, 0);
+    scene.add(hotspotLight);
+    
+    // Bottle Geometry (using LatheGeometry for wine bottle shape)
+    const points = [];
+    // Bottom flat face
+    points.push(new THREE.Vector2(0, 0));
+    points.push(new THREE.Vector2(1.7, 0));
+    points.push(new THREE.Vector2(1.8, 0.1));
+    // Main body
+    points.push(new THREE.Vector2(1.85, 0.4));
+    points.push(new THREE.Vector2(1.85, 6.0));
+    // Shoulder curve
+    points.push(new THREE.Vector2(1.75, 6.8));
+    points.push(new THREE.Vector2(1.5, 7.5));
+    points.push(new THREE.Vector2(1.1, 8.2));
+    points.push(new THREE.Vector2(0.7, 8.8));
+    points.push(new THREE.Vector2(0.55, 9.3));
+    // Neck
+    points.push(new THREE.Vector2(0.55, 12.0));
+    // Collar/Lip at top
+    points.push(new THREE.Vector2(0.65, 12.1));
+    points.push(new THREE.Vector2(0.65, 12.4));
+    points.push(new THREE.Vector2(0.5, 12.5));
+    // Inner lip (to close the bottle shape)
+    points.push(new THREE.Vector2(0, 12.5));
+    
+    const bottleGeometry = new THREE.LatheGeometry(points, 32);
+    
+    // Glass Material
+    const glassMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x061e0e, // dark premium forest green
+      roughness: 0.04,
+      metalness: 0.1,
+      transmission: 0.8, // Transparent glass
+      thickness: 0.9,
+      ior: 1.5,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.02,
+      specularIntensity: 1.0,
+      envMapIntensity: 1.0,
+    });
+    
+    const bottleMesh = new THREE.Mesh(bottleGeometry, glassMaterial);
+    bottleMesh.position.y = 0.2;
+    scene.add(bottleMesh);
+    
+    // Label geometry (Cylinder wrapped around bottle body)
+    const labelGeometry = new THREE.CylinderGeometry(1.86, 1.86, 3.8, 32, 1, true);
+    
+    // Procedural Label Texture Canvas
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      // Background: Matte dark charcoal
+      ctx.fillStyle = "#09090b";
+      ctx.fillRect(0, 0, 512, 512);
+      
+      // Golden borders
+      ctx.strokeStyle = "#e2b857";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(20, 20, 472, 472);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(30, 30, 452, 452);
+      
+      // Text
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 32px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("N E X I D", 256, 100);
+      
+      ctx.fillStyle = "#e2b857";
+      ctx.font = "italic 700 24px Georgia, serif";
+      ctx.fillText("Gran Blend Seleccionado", 256, 160);
+      
+      ctx.fillStyle = "#a1a1aa";
+      ctx.font = "600 16px monospace";
+      ctx.fillText("SQL SECURE CORE & POLYGON WEB3", 256, 220);
+      
+      // Shield logo in gold
+      ctx.strokeStyle = "#e2b857";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(256, 260);
+      ctx.lineTo(300, 280);
+      ctx.lineTo(290, 330);
+      ctx.quadraticCurveTo(256, 370, 256, 370);
+      ctx.quadraticCurveTo(222, 330, 222, 330);
+      ctx.lineTo(212, 280);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = "#e2b857";
+      ctx.fill();
+      
+      // n inside shield
+      ctx.fillStyle = "#000000";
+      ctx.font = "900 28px sans-serif";
+      ctx.fillText("N", 256, 320);
+      
+      // Details
+      ctx.fillStyle = "#e2b857";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText("ORIGEN: MENDOZA, ARGENTINA", 256, 410);
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "14px monospace";
+      ctx.fillText("NFC SECURE TAG: 04:A5:8C:12", 256, 440);
+    }
+    
+    const labelTexture = new THREE.CanvasTexture(canvas);
+    const labelMaterial = new THREE.MeshStandardMaterial({
+      map: labelTexture,
+      roughness: 0.6,
+      metalness: 0.1,
+      bumpScale: 0.05,
+    });
+    
+    const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
+    labelMesh.position.set(0, 3.4, 0); // aligned to middle of bottle body
+    bottleMesh.add(labelMesh);
+    
+    // NFC Chip hotspot torus at neck
+    const hotspotGeometry = new THREE.TorusGeometry(0.6, 0.08, 16, 64);
+    const hotspotMaterial = new THREE.MeshBasicMaterial({
+      color: 0x06b6d4,
+      transparent: true,
+      opacity: 0.7,
+    });
+    const hotspotMesh = new THREE.Mesh(hotspotGeometry, hotspotMaterial);
+    hotspotMesh.rotation.x = Math.PI / 2;
+    hotspotMesh.position.set(0, 11.0, 0);
+    bottleMesh.add(hotspotMesh);
+    
+    // Animation loop variables
+    let animationFrameId: number;
+    let targetRotationY = 0;
+    let currentRotationY = 0;
+    let isDragging = false;
+    let previousMouseX = 0;
+    
+    // Drag rotation controls
+    const onMouseDown = (e: MouseEvent) => {
+      isDragging = true;
+      previousMouseX = e.clientX;
+    };
+    
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - previousMouseX;
+      targetRotationY += deltaX * 0.015;
+      previousMouseX = e.clientX;
+    };
+    
+    const onMouseUp = () => {
+      isDragging = false;
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        isDragging = true;
+        previousMouseX = e.touches[0].clientX;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDragging || e.touches.length !== 1) return;
+      const deltaX = e.touches[0].clientX - previousMouseX;
+      targetRotationY += deltaX * 0.015;
+      previousMouseX = e.touches[0].clientX;
+    };
+
+    const onTouchEnd = () => {
+      isDragging = false;
+    };
+    
+    container.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    container.addEventListener("touchstart", onTouchStart);
+    window.addEventListener("touchmove", onTouchMove);
+    window.addEventListener("touchend", onTouchEnd);
+    
+    let clock = new THREE.Clock();
+    
+    const animate = () => {
+      const elapsedTime = clock.getElapsedTime();
+      
+      // Auto-rotation when not dragging
+      if (!isDragging) {
+        targetRotationY += 0.003;
+      }
+      
+      // Smooth interpolation for rotation
+      currentRotationY += (targetRotationY - currentRotationY) * 0.1;
+      bottleMesh.rotation.y = currentRotationY;
+      
+      // Floating motion
+      bottleMesh.position.y = 0.2 + Math.sin(elapsedTime * 1.5) * 0.15;
+      
+      // Handle active state - spin and shine
+      if (active) {
+        hotspotMaterial.color.setHex(0xa855f7); // Purple success
+        hotspotMesh.scale.setScalar(1 + Math.sin(elapsedTime * 6) * 0.15);
+        hotspotMaterial.opacity = 0.9;
+        hotspotLight.intensity = 2.0 + Math.sin(elapsedTime * 10) * 0.5;
+      } else if (tapping) {
+        // Blink light rapidly
+        hotspotMaterial.color.setHex(0x06b6d4); // Cyan read
+        const speed = Math.sin(elapsedTime * 25) > 0 ? 1 : 0;
+        hotspotMaterial.opacity = speed * 0.8 + 0.1;
+        hotspotLight.intensity = speed * 2.5;
+        hotspotMesh.scale.setScalar(1 + speed * 0.25);
+      } else {
+        // Idle heartbeat glow
+        hotspotMaterial.color.setHex(0x06b6d4); // Cyan idle
+        hotspotMaterial.opacity = 0.4 + Math.sin(elapsedTime * 3) * 0.25;
+        hotspotLight.intensity = 0.4 + Math.sin(elapsedTime * 3) * 0.25;
+        hotspotMesh.scale.setScalar(1 + Math.sin(elapsedTime * 3) * 0.08);
+      }
+      
+      renderer.render(scene, camera);
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    animate();
+    
+    // Resize handler
+    const handleResize = () => {
+      const w = container.clientWidth || 130;
+      const h = container.clientHeight || 240;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    
+    window.addEventListener("resize", handleResize);
+    
+    // Clean up
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+      bottleGeometry.dispose();
+      glassMaterial.dispose();
+      labelGeometry.dispose();
+      labelMaterial.dispose();
+      labelTexture.dispose();
+      hotspotGeometry.dispose();
+      hotspotMaterial.dispose();
+      
+      container.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      container.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [active, tapping]);
+  
+  return (
+    <div ref={mountRef} className="w-full h-full relative cursor-grab active:cursor-grabbing" />
+  );
+}
+
+// Industry ROI presets data structure
+interface IndustryPreset {
+  name: string;
+  label: string;
+  volume: number;
+  fraudRate: number;
+  icon: string;
+  price: number;
+}
+
+const INDUSTRY_PRESETS: IndustryPreset[] = [
+  { name: "bodegas", label: "Bodegas Premium", volume: 150000, fraudRate: 4.2, icon: "🍷", price: 45 },
+  { name: "cosmetica", label: "Cosmética de Lujo", volume: 300000, fraudRate: 5.5, icon: "💄", price: 75 },
+  { name: "agro", label: "Agro Premium", volume: 80000, fraudRate: 6.8, icon: "🌾", price: 60 },
+  { name: "pharma", label: "Farmacéutica (Alto Costo)", volume: 50000, fraudRate: 3.5, icon: "🧪", price: 120 },
+  { name: "eventos", label: "Eventos & Tickets VIP", volume: 25000, fraudRate: 8.5, icon: "🎫", price: 50 },
+];
+
+// Interactive ROI & Financial Impact Calculator Component
+export function RoiCalculator() {
+  const [selectedPreset, setSelectedPreset] = useState<string>("bodegas");
+  const [volume, setVolume] = useState<number>(150000);
+  const [fraudRate, setFraudRate] = useState<number>(4.2);
+  const [retailPrice, setRetailPrice] = useState<number>(45);
+
+  const applyPreset = (presetName: string) => {
+    const preset = INDUSTRY_PRESETS.find(p => p.name === presetName);
+    if (preset) {
+      setSelectedPreset(presetName);
+      setVolume(preset.volume);
+      setFraudRate(preset.fraudRate);
+      setRetailPrice(preset.price);
+    }
+  };
+
+  const grossLoss = volume * retailPrice * (fraudRate / 100);
+  const preventedFraud = grossLoss * 0.98; // 98% efficiency
+  const nexIdChipsCost = volume * 0.35; // $0.35 per tag
+  const nexIdSaaSYearly = 2400; // $199/month
+  const totalNexIdCost = nexIdChipsCost + nexIdSaaSYearly;
+  
+  const netSavings = preventedFraud - totalNexIdCost;
+  const roiMultiplier = totalNexIdCost > 0 ? (netSavings / totalNexIdCost) : 0;
+  const dtcClients = Math.round(volume * 0.35); // 35% scan rate
+
+  return (
+    <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-8 lg:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+      <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full filter blur-[100px] pointer-events-none" />
+      
+      <div className="space-y-8">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 border-b border-white/5 pb-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-cyan-300">
+              ⚡ Simulador Financiero B2B
+            </div>
+            <h2 className="text-2xl lg:text-3xl font-black text-white uppercase tracking-tight leading-none">
+              Ahorro por Pérdidas y Retorno de Inversión (ROI)
+            </h2>
+            <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+              Descubre cuánto dinero pierde tu marca por fraude y reventa del mercado gris, y cómo la arquitectura híbrida de nexID (SQL + Web3) recupera ese margen con un ROI masivo.
+            </p>
+          </div>
+          
+          {/* Preset Buttons */}
+          <div className="flex flex-wrap gap-1 bg-slate-900/80 p-1 rounded-xl border border-white/10 shrink-0">
+            {INDUSTRY_PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                onClick={() => applyPreset(preset.name)}
+                className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                  selectedPreset === preset.name
+                    ? "bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-300 shadow-lg"
+                    : "text-slate-400 hover:text-white border border-transparent"
+                }`}
+              >
+                <span className="mr-1">{preset.icon}</span>
+                {preset.label.split(" ")[0]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Sliders + Graph Split */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          
+          {/* Left Column: Sliders */}
+          <div className="lg:col-span-4 space-y-6 bg-slate-900/30 p-6 rounded-2xl border border-white/5 flex flex-col justify-between">
+            <div className="space-y-6">
+              <h3 className="text-xs font-black text-white uppercase tracking-widest border-b border-white/5 pb-2">
+                Ajustar Variables de Marca
+              </h3>
+              
+              {/* Slider 1: Volume */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-400 uppercase">Producción Anual</span>
+                  <span className="text-white font-mono">{volume.toLocaleString()} uds</span>
+                </div>
+                <input
+                  type="range"
+                  min="10000"
+                  max="1500000"
+                  step="10000"
+                  value={volume}
+                  onChange={(e) => {
+                    setVolume(Number(e.target.value));
+                    setSelectedPreset(""); // custom
+                  }}
+                  className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                />
+                <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                  <span>10K</span>
+                  <span>1.5M</span>
+                </div>
+              </div>
+
+              {/* Slider 2: Fraud Rate */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-400 uppercase">Fraude / Pérdida</span>
+                  <span className="text-rose-400 font-mono">{fraudRate.toFixed(1)}% línea</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="15.0"
+                  step="0.1"
+                  value={fraudRate}
+                  onChange={(e) => {
+                    setFraudRate(Number(e.target.value));
+                    setSelectedPreset(""); // custom
+                  }}
+                  className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-rose-400"
+                />
+                <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                  <span>0.5%</span>
+                  <span>15%</span>
+                </div>
+              </div>
+
+              {/* Slider 3: Price */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-400 uppercase">Precio Unitario</span>
+                  <span className="text-cyan-400 font-mono">${retailPrice} USD</span>
+                </div>
+                <input
+                  type="range"
+                  min="15"
+                  max="300"
+                  step="5"
+                  value={retailPrice}
+                  onChange={(e) => {
+                    setRetailPrice(Number(e.target.value));
+                    setSelectedPreset(""); // custom
+                  }}
+                  className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                />
+                <div className="flex justify-between text-[8px] text-slate-500 font-mono">
+                  <span>$15</span>
+                  <span>$300</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Cost breakdown */}
+            <div className="pt-4 border-t border-white/5 space-y-1.5 text-[9px] text-slate-400 leading-none font-mono">
+              <div className="flex justify-between">
+                <span>Costo del Chip NFC:</span>
+                <span className="text-slate-200">$0.35 USD / unidad</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Costo Base SaaS Anual:</span>
+                <span className="text-slate-200">$2,400 USD ($199/mes)</span>
+              </div>
+              <div className="flex justify-between border-t border-white/5 pt-2 text-xs font-bold leading-none">
+                <span>Inversión Anual Total:</span>
+                <span className="text-white">${totalNexIdCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Graphs */}
+          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Card 1: Comparative bar chart */}
+            <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px]">
+              <div>
+                <span className="text-[9px] font-black uppercase text-slate-500 block">Pérdida vs Ahorro</span>
+                <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Mapeo de Capital</h4>
+              </div>
+              
+              {/* SVG Bar Chart */}
+              <div className="h-[160px] flex items-end justify-around relative pt-4">
+                <div className="absolute inset-x-0 bottom-0 h-[120px] border-b border-white/5 pointer-events-none" />
+                <div className="absolute inset-x-0 bottom-[60px] h-0 border-b border-dashed border-white/5 pointer-events-none" />
+                
+                {/* Bar 1: Loss */}
+                <div className="flex flex-col items-center w-[40px] z-10 group">
+                  <div className="text-[9px] font-mono font-bold text-rose-400 mb-1 leading-none group-hover:scale-105 transition-transform">
+                    -${grossLoss >= 1000000 ? `${(grossLoss/1000000).toFixed(1)}M` : `${Math.round(grossLoss/1000)}k`}
+                  </div>
+                  <motion.div
+                    className="w-full bg-gradient-to-t from-rose-600 to-rose-400 rounded-t-lg shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                    initial={{ height: 0 }}
+                    animate={{ height: Math.min(120, (grossLoss / Math.max(grossLoss, netSavings)) * 120) || 5 }}
+                    transition={{ type: "spring", stiffness: 85, damping: 15 }}
+                  />
+                  <span className="text-[8px] font-black text-slate-500 uppercase mt-2">Pérdida</span>
+                </div>
+                
+                {/* Bar 2: Net Savings */}
+                <div className="flex flex-col items-center w-[40px] z-10 group">
+                  <div className="text-[9px] font-mono font-bold text-emerald-400 mb-1 leading-none group-hover:scale-105 transition-transform">
+                    +${netSavings >= 1000000 ? `${(netSavings/1000000).toFixed(1)}M` : `${Math.round(netSavings/1000)}k`}
+                  </div>
+                  <motion.div
+                    className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-lg shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                    initial={{ height: 0 }}
+                    animate={{ height: Math.min(120, (netSavings / Math.max(grossLoss, netSavings)) * 120) || 5 }}
+                    transition={{ type: "spring", stiffness: 85, damping: 15 }}
+                  />
+                  <span className="text-[8px] font-black text-slate-500 uppercase mt-2">Ahorro Neto</span>
+                </div>
+              </div>
+              
+              <p className="text-[9px] text-slate-400 text-center italic leading-tight">
+                *Evita rellenado, copias y fugas del mercado gris al 98%.
+              </p>
+            </div>
+
+            {/* Card 2: Cumulative Area Chart (DTC Client growth) */}
+            <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px]">
+              <div>
+                <span className="text-[9px] font-black uppercase text-slate-500 block">Clientes Conectados DTC</span>
+                <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Fidelización Directa</h4>
+              </div>
+              
+              {/* Dynamic SVG Line/Area graph */}
+              <div className="h-[140px] w-full relative pt-4 overflow-hidden">
+                <svg className="w-full h-full" viewBox="0 0 100 60" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.45" />
+                      <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Grid Lines */}
+                  <line x1="0" y1="15" x2="100" y2="15" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+                  <line x1="0" y1="35" x2="100" y2="35" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+                  <line x1="0" y1="55" x2="100" y2="55" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+                  
+                  {/* Gradient area */}
+                  <path
+                    d="M0 60 L10 50 L30 42 L60 28 L100 10 L100 60 Z"
+                    fill="url(#areaGrad)"
+                  />
+                  
+                  {/* Glowing line */}
+                  <motion.path
+                    d="M0 60 L10 50 L30 42 L60 28 L100 10"
+                    fill="none"
+                    stroke="#06b6d4"
+                    strokeWidth="2"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                  />
+                  
+                  {/* Nodes */}
+                  <circle cx="100" cy="10" r="2" fill="#ffffff" />
+                  <circle cx="100" cy="10" r="4" fill="none" stroke="#06b6d4" strokeWidth="1" className="animate-ping origin-center" style={{ transformBox: "fill-box", transformOrigin: "center" }} />
+                </svg>
+                
+                {/* Year indicators */}
+                <div className="flex justify-between text-[8px] text-slate-500 font-mono mt-1 px-1">
+                  <span>Año 1</span>
+                  <span>Año 3</span>
+                  <span>Año 5</span>
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-end">
+                  <span className="text-[10px] text-slate-400">Nuevos Clientes:</span>
+                  <span className="text-xs font-black text-white font-mono">{dtcClients.toLocaleString()} /año</span>
+                </div>
+                <div className="w-full bg-slate-950 h-1 rounded overflow-hidden">
+                  <div className="bg-cyan-400 h-full w-[35%]" />
+                </div>
+                <span className="text-[8px] text-slate-500 block leading-tight">
+                  Tasa de contacto directo post-compra del 35% de lecturas.
+                </span>
+              </div>
+            </div>
+
+            {/* Card 3: ROI Multiplier Card */}
+            <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px] text-center relative overflow-hidden group hover:border-cyan-500/20 transition duration-300">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full filter blur-[40px] pointer-events-none" />
+              
+              <div>
+                <span className="text-[9px] font-black uppercase text-slate-500 block">Eficiencia de Inversión</span>
+                <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Multiplicador ROI</h4>
+              </div>
+              
+              {/* Gold Multiplier Circle */}
+              <div className="my-auto py-2">
+                <div className="w-28 h-28 rounded-full border-4 border-amber-400/20 bg-amber-500/5 flex flex-col items-center justify-center mx-auto relative shadow-[0_0_30px_rgba(245,158,11,0.05)] group-hover:scale-105 group-hover:border-amber-400/40 transition duration-300">
+                  <div className="absolute inset-0 rounded-full border border-dashed border-amber-400/30 animate-spin" style={{ animationDuration: "35s" }} />
+                  
+                  <span className="text-[8px] font-bold text-amber-300 uppercase tracking-widest leading-none">Múltiplo</span>
+                  <span className="text-3xl font-black text-white font-mono mt-0.5 tracking-tighter">
+                    {roiMultiplier.toFixed(1)}x
+                  </span>
+                  <span className="text-[8px] text-emerald-400 font-bold uppercase mt-0.5">Retorno Neto</span>
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
+                  <span>Inversión:</span>
+                  <span className="text-slate-200 font-bold">${totalNexIdCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                </div>
+                <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
+                  <span>Ganancia Neta:</span>
+                  <span className="text-emerald-400 font-bold">${netSavings.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
 
 export function InvestorSnapshotClient() {
   const [activeTab, setActiveTab] = useState<"slides" | "playbook" | "downloads">("slides");
@@ -635,12 +1287,9 @@ export function InvestorSnapshotClient() {
               {/* Bottle floating container */}
               <div className="absolute left-[8%] w-[130px] h-[240px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/5 via-transparent to-transparent pointer-events-none" />
-                <motion.img 
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  src="/images/premium_magnum_cropped.png" 
-                  alt="Vino premium nexID" 
-                  className="h-[210px] w-auto object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.8)] z-10"
+                <ThreeDBottle 
+                  active={simStep === "active"} 
+                  tapping={simStep === "tapping" || simStep === "loading"} 
                 />
                 
                 {/* Contact Ripple point */}
@@ -649,7 +1298,7 @@ export function InvestorSnapshotClient() {
                     initial={{ scale: 0.1, opacity: 1 }}
                     animate={{ scale: 5, opacity: 0 }}
                     transition={{ duration: 0.8, repeat: 1 }}
-                    className="absolute top-[32%] w-10 h-10 rounded-full border-2 border-cyan-400 bg-cyan-400/20 z-15"
+                    className="absolute top-[32%] w-10 h-10 rounded-full border-2 border-cyan-400 bg-cyan-400/20 z-20"
                   />
                 )}
               </div>
@@ -716,20 +1365,39 @@ export function InvestorSnapshotClient() {
                     {/* Sim Phone Screen Content */}
                     <div className="flex-1 my-2 rounded bg-slate-900/60 p-2 flex flex-col justify-between text-[7.5px] leading-relaxed text-slate-300 overflow-y-auto">
                       {phoneTab === "validate" && (
-                        <div className="space-y-1.5 w-full text-center my-auto">
-                          <CheckCircle2 className="w-5 h-5 mx-auto text-emerald-400 filter drop-shadow-[0_0_5px_rgba(16,185,129,0.3)]" />
-                          <div>
-                            <p className="font-black text-white text-[8px] uppercase">Procedencia Válida</p>
-                            <p className="text-[6px] text-emerald-400 font-bold uppercase mt-0.5">Sello Cerrado Original</p>
-                          </div>
-                          <div className="pt-1.5 border-t border-white/5 grid grid-cols-2 gap-1 text-left text-[6px]">
+                        <div className="space-y-1.5 w-full text-left my-auto">
+                          <div className="flex items-center gap-1 border-b border-white/5 pb-1 mb-1 justify-center">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 filter drop-shadow-[0_0_5px_rgba(16,185,129,0.3)]" />
                             <div>
-                              <span className="text-slate-500 block">HOSTING</span>
-                              <span className="text-slate-300 font-bold">AWS/Render SQL</span>
+                              <span className="text-[7px] font-black text-white uppercase block leading-none">Autenticidad SQL</span>
+                              <span className="text-[5.5px] text-emerald-400 uppercase font-bold leading-none mt-0.5 block">Verificación OK</span>
                             </div>
-                            <div>
-                              <span className="text-slate-500 block">RIESGO</span>
-                              <span className="text-emerald-400 font-bold">0% Seguro</span>
+                          </div>
+                          
+                          {/* Timeline steps */}
+                          <div className="space-y-1.5 relative pl-2.5 border-l border-white/10 ml-1.5 text-[5.5px] leading-tight">
+                            <div className="relative">
+                              <span className="absolute -left-[13px] top-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[4px] text-white">✓</span>
+                              <span className="font-bold text-slate-300 uppercase block">1. Origen Lote</span>
+                              <span className="text-slate-400 block">Registrado en AWS SQL</span>
+                            </div>
+                            
+                            <div className="relative">
+                              <span className="absolute -left-[13px] top-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[4px] text-white">✓</span>
+                              <span className="font-bold text-slate-300 uppercase block">2. Logística</span>
+                              <span className="text-slate-400 block">Salida de Bodega validada</span>
+                            </div>
+                            
+                            <div className="relative">
+                              <span className="absolute -left-[13px] top-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[4px] text-white">✓</span>
+                              <span className="font-bold text-slate-300 uppercase block">3. TagTamper</span>
+                              <span className="text-emerald-400 font-bold block">Sellado e Intacto</span>
+                            </div>
+                            
+                            <div className="relative">
+                              <span className="absolute -left-[13px] top-0.5 w-1.5 h-1.5 rounded-full bg-purple-500 border border-slate-950 flex items-center justify-center text-[4px] text-white">✓</span>
+                              <span className="font-bold text-slate-300 uppercase block">4. Polygon Web3</span>
+                              <span className="text-slate-400 block">Gemelo digital listo</span>
                             </div>
                           </div>
                         </div>
@@ -870,8 +1538,10 @@ export function InvestorSnapshotClient() {
 
           </div>
         </div>
-
       </div>
+
+      {/* Interactive ROI Calculator Section */}
+      <RoiCalculator />
 
       {/* Slide 6 VIP metal card parallax feature overlay (Premium aesthetic showcase) */}
       <section className="rounded-3xl border border-white/10 bg-slate-950 p-8 lg:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
