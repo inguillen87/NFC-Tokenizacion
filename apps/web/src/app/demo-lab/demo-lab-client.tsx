@@ -7,6 +7,7 @@ import type { AppLocale } from "@product/config";
 import { WorldMapRealtime } from "@product/ui";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
 import { InstitutionalVideoPanel } from "../../components/institutional-video-panel";
+import { ThreeDBottle } from "../investor-snapshot/investor-snapshot-client";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -588,6 +589,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
                   product={activeVertical.product}
                   beat={beat}
                   badge={realProductBadge}
+                  simulating={simulating}
                 />
                 <span className="demo-lab-tap-chip">SUN</span>
                 <span className="demo-lab-tap-wave" />
@@ -1393,6 +1395,7 @@ function DemoPremiumProductScene({
   title,
   stat,
   variant,
+  simulating,
 }: {
   vertical: Vertical;
   product: string;
@@ -1401,6 +1404,7 @@ function DemoPremiumProductScene({
   title?: string;
   stat?: string;
   variant: DemoRealProductVariant;
+  simulating?: boolean;
 }) {
   const asset = demoLabRealAssets[vertical];
   const meta = getPremiumSceneMeta(vertical, beat, badge, stat);
@@ -1417,7 +1421,13 @@ function DemoPremiumProductScene({
       <span className="demo-lab-premium-scene__floor" aria-hidden="true" />
 
       <figure className="demo-lab-premium-scene__media" data-credit={asset.credit} aria-hidden="true">
-        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        {vertical === "wine" ? (
+          <div className="w-full h-[225px] relative overflow-hidden rounded-2xl bg-slate-950/20 border border-white/5 shadow-inner">
+            <ThreeDBottle active={beat === 1 || beat === 3} tapping={!!simulating} />
+          </div>
+        ) : (
+          <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        )}
         <figcaption>
           <span>{meta.family}</span>
           <strong>{product}</strong>
@@ -1610,13 +1620,15 @@ function DemoLabProductThreeStage({
   product,
   beat,
   badge,
+  simulating,
 }: {
   vertical: Vertical;
   product: string;
   beat: Beat;
   badge: string;
+  simulating: boolean;
 }) {
-  return <DemoPremiumProductScene vertical={vertical} product={product} badge={badge} beat={beat} variant="stage" />;
+  return <DemoPremiumProductScene vertical={vertical} product={product} badge={badge} beat={beat} variant="stage" simulating={simulating} />;
 }
 
 function isEventAccessVertical(vertical: Vertical) {
