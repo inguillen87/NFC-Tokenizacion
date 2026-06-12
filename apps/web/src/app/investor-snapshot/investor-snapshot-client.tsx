@@ -39,24 +39,66 @@ import { Button } from "@product/ui";
 // Multi-market FAQs object
 const faqCategories = [
   {
-    id: "bodega-cosmetica",
-    label: "Bodegas & Cosmética",
-    icon: ShieldCheck,
+    id: "bodegas",
+    label: "Bodegas",
+    icon: Award,
     items: [
       {
-        q: "¿Esto me va a encarecer mucho el costo por botella o empaque premium?",
-        a: "El microchip criptográfico representa centavos de dólar por unidad (menos del 1.5% en botellas o perfumes premium). Además, al operar sobre una base de datos SQL híbrida en servidores premium de Render y AWS por defecto, no hay costos de gas fees ni transacciones de blockchain obligatorias para tu línea estándar.",
-        ctx: "A cambio de este mínimo costo, eliminas el fraude y adquieres un canal de datos directo al consumidor final (DTC) que te ahorra miles de dólares en intermediarios de marketing."
+        q: "¿El chip NFC nexID encarece el costo unitario por botella y reduce mi margen en líneas de volumen? ¿Realmente lo necesito?",
+        a: "Seamos totalmente directos: sí. En líneas de volumen de gama media o baja, un costo adicional de 1.00 USD por botella (en chip NTAG/TagTamper) destruye el margen comercial. Esta tecnología no es para consumo masivo local. Sin embargo, en tus líneas de exportación y alta gama, no adoptarla es un riesgo existencial: la Unión Europea está implementando el Pasaporte Digital de Productos (DPP bajo la ley ESPR) y EE.UU. endurece la trazabilidad con la FDA FSMA 204. Las bodegas que sigan usando etiquetas de papel tradicionales quedarán fuera del mercado internacional. Ser los innovadores que lideran esta transición en LATAM no es un costo de embalaje: es la llave de entrada obligatoria al mercado de exportación global, permitiéndote además cobrar un sobreprecio por la autenticidad certificada.",
+        ctx: "Ser el primer exportador de tu región en cumplir digitalmente con las normativas de la UE te posiciona como socio estratégico preferente frente a los importadores europeos, quienes prefieren bodegas con trazabilidad de origen 100% automatizada."
       },
       {
-        q: "¿Me va a ralentizar la línea de empaque industrial o embotellado?",
-        a: "No. Los chips se entregan en formato inlay autoadhesivo (rollos industriales estándar). Tus máquinas etiquetadoras automáticas los aplican debajo de la contraetiqueta o bajo el sello del empaque de forma integrada y sin perder milésimas de velocidad.",
-        ctx: "La implementación es totalmente transparente para el gerente de operaciones tanto en embotelladoras como en líneas de envasado cosmético."
+        q: "¿Qué pasa si un falsificador inyecta vino barato con una jeringa ultra-fina a través del corcho sin tocar la cápsula ni el chip? ¿El sistema no da un falso positivo de autenticidad?",
+        a: "Es una verdad incómoda: un ataque quirúrgico con micro-jeringa directo al corcho sin alterar la cápsula exterior no puede ser detectado físicamente por un sensor electrónico, ya que el chip no mide la composición química del líquido en tiempo real. Cualquiera que te diga lo contrario te está mintiendo. Sin embargo, nexID neutraliza el fraude a escala comercial: primero, porque rellenar artesanalmente botella por botella con jeringa es económicamente inviable para el crimen organizado a gran escala; segundo, porque el circuito TagTamper detecta cualquier rotura física al girar la cápsula; y tercero, si la botella viaja al mercado gris, nuestra telemetría de geolocalización detecta escaneos anómalos (por ejemplo, el mismo chip leído en Londres y Shanghái a la vez), alertando a tu equipo de inmediato.",
+        ctx: "La seguridad perfecta no existe, pero nexID eleva tanto la barrera de entrada y el costo para el falsificador que el fraude deja de ser rentable, protegiendo la reputación y la prima de precio de tu marca en mercados internacionales de alta gama."
       },
       {
-        q: "En cosmética, ¿cómo evito que rellenen mis envases originales de perfume o cremas?",
-        a: "nexID utiliza circuitos micro-electrónicos TagTamper integrados en el cierre. Al abrir la tapa o atomizador, el filamento del chip se rompe físicamente. El sistema registra permanentemente en el servidor SQL que el sello fue violado.",
-        ctx: "Si alguien escanea un perfume rellenado, el sistema advertirá inmediatamente al comprador que el envase original ya fue abierto, destruyendo el mercado negro de adulteraciones."
+        q: "¿La integración del chip en la línea de producción va a ralentizar mi embotellado automatizado o requerir nueva maquinaria costosa?",
+        a: "Cualquier cambio en la línea física de embotellado genera fricción inicial y es incómodo para el equipo de operaciones. Sí, al principio requiere calibración. Pero no es necesario rediseñar tu maquinaria: trabajamos en conjunto con las imprentas de etiquetas para integrar el inlay NFC directamente en la etiqueta autoadhesiva o cápsula antes de que llegue a tu bodega. Esto significa que la botella se etiqueta al mismo ritmo de siempre. La única adición es el arco de lectura/aprovisionamiento al final de la línea para registrar los chips en la base de datos, lo cual se automatiza con nuestros SDKs industriales.",
+        ctx: "Un proceso automatizado y certificado bajo estándares internacionales de trazabilidad digital reduce los tiempos de aduana e inspección en los puertos de destino, ya que la documentación de origen está vinculada criptográficamente al chip."
+      },
+      {
+        q: "¿Qué pasa si los servidores de nexID se caen y el consumidor en Europa escanea la botella y da error? ¿No daña eso la reputación de mi bodega?",
+        a: "Sí, absolutamente. Si un consumidor premium en un restaurante exclusivo escanea el vino y el sistema no responde, la experiencia de marca es un fracaso total. Es un riesgo real en cualquier infraestructura digital. Para evitar esto, en nexID implementamos redundancia geográfica múltiple en la nube (AWS y Render) con copias de seguridad locales y CDN perimetral. Además, cada chip nexID posee una firma criptográfica offline estática pregrabada. Si el servidor no está accesible, la app web realiza una validación criptográfica local en el dispositivo del cliente garantizando que el chip es auténtico, incluso sin conexión a internet.",
+        ctx: "La resiliencia tecnológica es parte de nuestro acuerdo de nivel de servicio (SLA) para B2B. Ser pioneros en implementar trazabilidad digital de contingencia demuestra el nivel de profesionalismo de tu bodega ante los distribuidores de todo el mundo."
+      },
+      {
+        q: "¿Qué pasa si un falsificador simplemente despega la etiqueta con el chip (sin material VOID) y la pega en una botella falsa? ¿Cómo justifica nexID la inversión en este escenario?",
+        a: "Es una objeción crítica. Si el material no es auto-destructivo (VOID), despegarlo intacto es sumamente difícil: el adhesivo acrílico de alta cohesión sobre vidrio curvo rompe el filamento ultrafino de aluminio de la antena NFC en el 90% de los intentos, dejando el chip inoperativo (un chip muerto equivale a alerta de fraude). Pero supongamos que logran despegarlo intacto. nexID lo resuelve cruzando telemetría en la nube: comparamos los despachos de aduana oficiales con las lecturas en destino. Si el lote fue exportado a Londres y se registra un escaneo en un bar de San Pablo, el backend emite una alerta de mercado gris. Además, el chip está asociado a una botella única. Si el falsificador clona la etiqueta física pero usa el mismo chip, al segundo cliente que escanee esa botella le aparecerá una advertencia de 'Esta botella ya fue consumida y registrada en Cava Digital anteriormente'.",
+        ctx: "La base de datos de exportaciones sincroniza las lecturas de aduana con las del consumidor final en tiempo real. Así, la bodega sabe exactamente qué porcentaje del lote llegó al destino correcto y detecta desvíos de canal sin depender exclusivamente de la seguridad física del envase."
+      }
+    ]
+  },
+  {
+    id: "cosmetica",
+    label: "Cosmética",
+    icon: Sparkles,
+    items: [
+      {
+        q: "¿El adhesivo o la antena NFC pueden reaccionar químicamente con mi perfume o crema en caso de micro-fugas, arruinando la fórmula?",
+        a: "Es una preocupación crítica y totalmente válida de los directores de control de calidad. Las fragancias y cosméticos de lujo contienen disolventes y aceites esenciales que pueden degradar adhesivos comunes y provocar la liberación de compuestos químicos no deseados. Por eso, en nexID no pegamos chips genéricos de bajo costo en el interior del envase. Diseñamos inlays externos ultra-delgados que se aplican bajo la etiqueta frontal o en la base exterior del frasco, o bien integrados herméticamente en la tapa plástica o de aleación de aluminio. Además, todos nuestros adhesivos acrílicos son inertes y cumplen con las normativas internacionales de seguridad y la regulación REACH de la Unión Europea.",
+        ctx: "El estricto cumplimiento de la normativa REACH y ANMAT asegura que la incorporación de la tecnología no interfiera con la homologación dermatológica o química de tus productos en ningún país del mundo."
+      },
+      {
+        q: "¿Colocar un microchip NFC no arruinará el diseño visual minimalista e impecable de mis envases de cosmética de lujo?",
+        a: "Un chip visible o un relieve tosco destruye el atractivo visual y la sofisticación que vende la cosmética de lujo. Si colocáramos etiquetas gruesas con chips estándar, tus diseñadores rechazarían el proyecto de inmediato. La respuesta es la invisibilidad: nuestros inlays nexID tienen un grosor de solo 150 micras (más delgado que un cabello humano) y se laminan de forma imperceptible debajo del papel texturado, de algodón o metalizado de tus etiquetas. Para botellas de vidrio serigrafiadas sin etiquetas, inyectamos la antena directamente en la estructura interna de la tapa o el difusor, haciéndola invisible a la vista pero activa al tacto.",
+        ctx: "La elegancia no se negocia. La tecnología nexID actúa como una capa de seguridad y marketing invisible que solo cobra vida cuando el cliente decide interactuar con ella."
+      },
+      {
+        q: "En cosmética, ¿cómo evito que un falsificador compre mis envases vacíos originales, los rellene con producto falso y los revenda con el chip original marcando 'auténtico'?",
+        a: "Esta es la mayor vulnerabilidad en el mercado secundario de perfumes y cremas premium. Si el chip sigue activo, el sistema dirá que es original. nexID aborda este problema con honestidad técnica mediante la tecnología TagTamper: un micro-filamento conductor que recorre el cierre del frasco o el sello del atomizador. En el momento en que el consumidor presiona el atomizador por primera vez o desenrosca la tapa para usar el producto, el filamento físico se rompe mecánicamente. El chip sigue funcionando para marketing, pero el estado cambia permanentemente en nuestra base de datos a 'abierto/consumido'. Si alguien intenta rellenarlo y revenderlo, cualquier escaneo posterior alertará al comprador de que el envase ya fue abierto y violado.",
+        ctx: "Esto destruye el mercado negro de rellenado de perfumes de lujo en origen, protegiendo tu marca y asegurando al consumidor final que está pagando por la fórmula original sin alteraciones."
+      },
+      {
+        q: "¿Cómo justifico la inversión en chips NFC frente a mis accionistas cuando existen alternativas de trazabilidad mucho más económicas como los códigos QR?",
+        a: "Si solo buscas marcar una casilla de trazabilidad básica para el mercado local, un código QR estático es más barato. Pero si tu objetivo es exportar y competir globalmente, el QR es un peligro: cualquiera lo puede fotocopiar y duplicar en miles de envases falsos en el extranjero. Además, la Unión Europea avanza firmemente hacia la obligatoriedad del Pasaporte Digital de Producto (DPP) para cosméticos, exigiendo registrar la circularidad y la cadena de suministro de forma inmutable. Con nexID, no solo cumples con estas leyes internacionales antes que tus competidores de LATAM, sino que conviertes el envase físico en un portal interactivo directo al consumidor (D2C) para compras recurrentes con un solo toque, aumentando la lealtad y el valor del ciclo de vida del cliente (LTV).",
+        ctx: "El retorno de la inversión (ROI) no proviene solo de la prevención de la falsificación, sino de la eficiencia regulatoria internacional y de la creación de un nuevo canal digital de ventas recurrentes sin intermediarios."
+      },
+      {
+        q: "En cosméticos, si un falsificador despega la etiqueta del perfume original para pegarla en un frasco clonado, ¿cómo detectamos el fraude si no usamos adhesivos VOID?",
+        a: "La realidad es que las antenas NFC grabadas en aluminio sobre sustratos delgados de papel son físicamente frágiles. Al intentar remover la etiqueta con pegamento industrial, el estiramiento corta las micro-pistas del circuito integrado, destruyéndolo. Pero si el falsificador es extremadamente minucioso y logra transferirlo intacto, el sistema de telemetría de nexID lo detecta por comportamiento. Registramos el historial de escaneo y la geolocalización. Si un frasco vendido en Buenos Aires es escaneado repetidamente en San Pablo, o si reporta lecturas múltiples incongruentes, el sistema bloquea el token del chip y marca el producto como 'Bajo Sospecha'. No compites solo con adhesivos; compites con inteligencia de datos centralizada.",
+        ctx: "Al contrastar la base de datos de despachos a distribuidores autorizados con las coordenadas GPS del cliente final que escanea el perfume, nexID identifica de inmediato la fuga al mercado gris o la reutilización del chip."
       }
     ]
   },
@@ -1272,8 +1314,8 @@ export function RoiCalculator({
 export function InvestorSnapshotClient() {
   const [activeTab, setActiveTab] = useState<"slides" | "playbook" | "downloads">("slides");
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [openFaq, setOpenFaq] = useState<string | null>("bodega-cosmetica-0");
-  const [faqCatFilter, setFaqCatFilter] = useState("bodega-cosmetica");
+  const [openFaq, setOpenFaq] = useState<string | null>("bodegas-0");
+  const [faqCatFilter, setFaqCatFilter] = useState("bodegas");
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Mouse tilt states for 3D card parallax
@@ -1788,7 +1830,7 @@ export function InvestorSnapshotClient() {
                 className="space-y-6 flex-1 flex flex-col justify-between"
               >
                 {/* FAQ categories grid selector */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                   {faqCategories.map((cat) => {
                     const CatIcon = cat.icon;
                     const isSelected = faqCatFilter === cat.id;
