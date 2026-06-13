@@ -1108,6 +1108,18 @@ export function RoiCalculator({
     if (qId.startsWith("custom:")) {
       const userQuestion = qId.substring(7).toLowerCase();
       
+      if (userQuestion.includes("gris") || userQuestion.includes("grey") || userQuestion.includes("mercado gris") || userQuestion.includes("desvio") || userQuestion.includes("desvío")) {
+        return `El **Mercado Gris** (o distribución paralela) ocurre cuando tus productos originales son desviados fuera del canal de venta autorizado por la marca (por ejemplo, para ser vendidos en otro país o a través de plataformas online informales) aprovechando el arbitraje de precios.
+
+¿Por qué es dañino para tu marca?
+1. **Canibalización de precios**: Destruye la estructura de precios de tus distribuidores oficiales locales, desincentivando su inversión comercial.
+2. **Pérdida de trazabilidad**: Al salir del canal oficial, no sabes dónde ni en qué condiciones de almacenamiento (temperatura, luz) se encuentra el producto.
+3. **Riesgo de falsificación**: Facilita que intermediarios deshonestos mezclen botellas falsificadas con el stock original desviado.
+
+¿Cómo lo soluciona nexID?
+Al incorporar chips NFC inmutables con firma criptográfica en el tapón, nexID asocia cada botella a un destino de exportación específico. Si una botella configurada para el mercado de "Mendoza / Mercosur" es escaneada por un consumidor final en "Londres / Europa", el sistema detecta de inmediato la anomalía geográfica y envía una alerta en tiempo real a tu CRM con la ubicación exacta. Esto te permite identificar con precisión qué distribuidor está rompiendo el acuerdo de exclusividad de canal.`;
+      }
+      
       if (userQuestion.includes("2.87") || userQuestion.includes("ahorra") || userQuestion.includes("perdida") || userQuestion.includes("pérdida") || userQuestion.includes("cómo se calcula") || userQuestion.includes("calcula") || userQuestion.includes("formula") || userQuestion.includes("fórmula")) {
         const lossVal = (retailPrice * (fraudRate / 100)).toFixed(2);
         const preventedVal = (retailPrice * (fraudRate / 100) * 0.98).toFixed(2);
