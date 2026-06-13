@@ -1706,40 +1706,34 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
             <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 space-y-4">
               <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider">Métricas de Amortización</span>
               
-              <div className="space-y-3.5">
+              <div className="space-y-3">
                 {/* Metric 1 */}
-                <div className="border-b border-white/5 pb-2.5">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-[10px] text-slate-400">Costo de Chips (Consumible):</span>
-                    <span className="text-sm font-black text-white font-mono">${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
-                  </div>
-                  <p className="text-[8px] text-slate-500 mt-0.5 leading-none">
+                <div className="bg-slate-950/50 border border-white/5 rounded-xl p-3 shadow-inner">
+                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Costo de Chips (Consumible)</span>
+                  <div className="text-xl font-black text-white font-mono mt-1">${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</div>
+                  <p className="text-[8px] text-slate-500 mt-1 leading-normal">
                     *Gasto operativo anual. Chips nuevos no reutilizables por lote.
                   </p>
                 </div>
 
                 {/* Metric 2 */}
-                <div className="border-b border-white/5 pb-2.5">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-[10px] text-slate-400">Ratio de Cobertura Unitario:</span>
-                    <span className="text-sm font-black text-emerald-400 font-mono">
-                      {(chipCost > 0 ? ((retailPrice * (fraudRate / 100) * 0.98) / chipCost) : 0).toFixed(1)}x
-                    </span>
+                <div className="bg-slate-950/50 border border-white/5 rounded-xl p-3 shadow-inner">
+                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Ratio de Cobertura Unitario</span>
+                  <div className="text-xl font-black text-emerald-400 font-mono mt-1">
+                    {(chipCost > 0 ? ((retailPrice * (fraudRate / 100) * 0.98) / chipCost) : 0).toFixed(1)}x
                   </div>
-                  <p className="text-[8px] text-slate-500 mt-0.5 leading-none">
-                    Cada chip evita en promedio {(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD de pérdida.
+                  <p className="text-[8px] text-slate-500 mt-1 leading-normal">
+                    Cada chip evita en promedio ${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD de pérdida.
                   </p>
                 </div>
 
                 {/* Metric 3 */}
-                <div>
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-[10px] text-slate-400">Amortización por Lote:</span>
-                    <span className="text-sm font-black text-amber-400 font-mono">
-                      {preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365).toFixed(1) : "0"} días
-                    </span>
+                <div className="bg-slate-950/50 border border-white/5 rounded-xl p-3 shadow-inner">
+                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Amortización por Lote</span>
+                  <div className="text-xl font-black text-amber-400 font-mono mt-1">
+                    {preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365).toFixed(1) : "0"} días
                   </div>
-                  <p className="text-[8px] text-slate-500 mt-0.5 leading-none">
+                  <p className="text-[8px] text-slate-500 mt-1 leading-normal">
                     Tiempo para recuperar la inversión de hardware del lote de producción.
                   </p>
                 </div>
