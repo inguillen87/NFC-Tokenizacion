@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Badge, Card, StatusChip } from "@product/ui";
+import React, { useMemo, useState } from "react";
+import { Badge, Card } from "@product/ui";
 import { DataTable } from "../../../components/data-table";
 import {
   Inbox,
@@ -11,10 +11,12 @@ import {
   Calendar,
   Sparkles,
   Search,
-  Filter,
-  CheckCircle,
-  Clock,
-  Compass
+  Compass,
+  Bot,
+  BrainCircuit,
+  Radio,
+  Network,
+  Tags
 } from "lucide-react";
 
 interface Lead {
@@ -55,6 +57,40 @@ interface Order {
   status: string;
   created_at: string;
 }
+
+type AiQuery = {
+  id: string;
+  contact: string;
+  vertical: string;
+  company: string;
+  query: string;
+  answer: string;
+  tag: string;
+  created_at: string;
+  status: string;
+};
+
+const AI_QUERY_HIGHLIGHTS = [
+  "Sephora",
+  "Catena Zapata",
+  "Juleriaque",
+  "Rutini",
+  "Pergamino",
+  "Santa Fe",
+  "Aura",
+  "Sommelier",
+  "nexID",
+  "NFT",
+  "B2B",
+  "Latam"
+];
+
+const AI_QUERY_CATEGORY_FALLBACKS = [
+  "Venta Directa/Cruzada",
+  "Soporte Tecnico",
+  "Convenios / Alianzas",
+  "Uso de Producto"
+];
 
 const DEFAULT_AI_QUERIES = [
   {
@@ -125,6 +161,32 @@ const DEFAULT_AI_QUERIES = [
   }
 ];
 
+function normalizeAiQueryCategory(tag: string, query: string, answer: string) {
+  const text = `${tag} ${query} ${answer}`.toLowerCase();
+  if (/venta|cruzada|compra|marida|cupon|descuento|stock|club/.test(text)) return "Venta Directa/Cruzada";
+  if (/soporte|tecnico|dosis|lluvia|resiste|aplicacion|calidad|uso/.test(text)) return "Soporte Tecnico";
+  if (/convenio|alianza|distribu|cadena|sephora|catena|rutini|cooperativa|partner/.test(text)) return "Convenios / Alianzas";
+  if (/producto|piel|fragancia|lote|origen|autentic|recomend/.test(text)) return "Uso de Producto";
+  return tag || "General";
+}
+
+function renderHighlightedText(text: string) {
+  if (!text) return "-";
+  const escapedTerms = AI_QUERY_HIGHLIGHTS.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const regex = new RegExp(`(${escapedTerms.join("|")})`, "gi");
+  const parts = text.split(regex);
+  return parts.map((part, index) => {
+    const match = AI_QUERY_HIGHLIGHTS.some((term) => term.toLowerCase() === part.toLowerCase());
+    return match ? (
+      <mark key={`${part}-${index}`} className="rounded-md bg-cyan-400/15 px-1 py-0.5 font-black text-cyan-100 ring-1 ring-cyan-300/20">
+        {part}
+      </mark>
+    ) : (
+      <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>
+    );
+  });
+}
+
 interface LeadsTicketsClientProps {
   initialLeads: Lead[];
   initialTickets: Ticket[];
@@ -158,9 +220,9 @@ export default function LeadsTicketsClient({
     return (match?.[1] || tenant_slug || "").toLowerCase();
   };
 
-  const parsedDbQueries = initialLeads
+  const parsedDbQueries = useMemo<AiQuery[]>(() => initialLeads
     .filter(l => {
-      const isAiSource = l.source === "sales_chat_widget" || l.source === "assistant" || String(l.notes).includes("assistant");
+      const isAiSource = l.source === "sales_chat_widget" || l.source === "assistant" || String(l.notes).toLowerCase().includes("assistant");
       if (!isAiSource) return false;
       if (tenantScope) {
         const slug = leadTenant(l.message || "", l.notes || "", l.vertical || "");
@@ -182,9 +244,9 @@ export default function LeadsTicketsClient({
         created_at: l.created_at.slice(0, 10),
         status: "RESPONDIDO"
       };
-    });
+    }), [initialLeads, tenantScope]);
 
-  const allAiQueries = [
+  const allAiQueries = useMemo<AiQuery[]>(() => [
     ...DEFAULT_AI_QUERIES.filter(q => {
       if (tenantScope) {
         const matchesScope =
@@ -194,9 +256,35 @@ export default function LeadsTicketsClient({
         return matchesScope;
       }
       return true;
-    }),
+    }).map((query) => ({ ...query, status: String(query.status || "RESPONDIDO") })),
     ...parsedDbQueries
-  ];
+  ], [parsedDbQueries, tenantScope]);
+
+  const filteredAiQueries = useMemo(() => allAiQueries.filter(q => {
+    const searchStr = `${q.contact || ""} ${q.company || ""} ${q.query || ""} ${q.answer || ""} ${q.tag || ""}`.toLowerCase();
+    return searchStr.includes(searchTerm.toLowerCase());
+  }), [allAiQueries, searchTerm]);
+
+  const aiCategoryStats = useMemo(() => {
+    const counts = filteredAiQueries.reduce<Record<string, number>>((acc, item) => {
+      const category = normalizeAiQueryCategory(item.tag, item.query, item.answer);
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {});
+    AI_QUERY_CATEGORY_FALLBACKS.forEach((category) => {
+      counts[category] = counts[category] || 0;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([category, count]) => ({
+        category,
+        count,
+        pct: filteredAiQueries.length ? Math.round((count / filteredAiQueries.length) * 100) : 0
+      }));
+  }, [filteredAiQueries]);
+
+  const aiLiveCount = filteredAiQueries.filter((query) => /respondido|procesando|live|nuevo/i.test(query.status)).length;
 
   // Pipeline count computations
   const pipelineStages = [
@@ -504,6 +592,133 @@ export default function LeadsTicketsClient({
         )}
 
         {activeTab === "ai_queries" && (
+          <div className="space-y-5">
+            <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+              <Card className="relative overflow-hidden border-cyan-300/20 bg-slate-950/85 p-5">
+                <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.16),transparent_62%)]" />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div>
+                    <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-200">
+                      <Radio className="h-4 w-4 text-cyan-300" />
+                      {labels.liveQueries}
+                    </p>
+                    <p className="mt-3 text-4xl font-black text-white">{aiLiveCount}</p>
+                    <p className="mt-1 max-w-md text-xs leading-relaxed text-slate-400">
+                      Preguntas capturadas desde Sommelier, Aura, Inspector y asistentes web. La bandeja se alimenta de leads assistant, sales_chat_widget y notas de modo asistente.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-75" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-300" />
+                    </span>
+                    {labels.liveBeacon}
+                  </div>
+                </div>
+                <div className="relative mt-5 grid grid-cols-3 gap-2">
+                  {[
+                    { label: labels.queryRadar, value: filteredAiQueries.length, icon: BrainCircuit },
+                    { label: "DB", value: parsedDbQueries.length, icon: Network },
+                    { label: "Demo", value: Math.max(0, allAiQueries.length - parsedDbQueries.length), icon: Bot }
+                  ].map((metric) => (
+                    <div key={metric.label} className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                      <metric.icon className="mb-2 h-4 w-4 text-cyan-300" />
+                      <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{metric.label}</p>
+                      <p className="mt-1 text-lg font-black text-white">{metric.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <Card className="p-5">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-200">
+                    <Tags className="h-4 w-4 text-amber-300" />
+                    {labels.intentDistribution}
+                  </h2>
+                  <Badge tone="cyan">{labels.aiQueries}</Badge>
+                </div>
+                <div className="space-y-3">
+                  {aiCategoryStats.map((item) => (
+                    <div key={item.category} className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-bold text-slate-200">{item.category}</span>
+                        <span className="font-mono text-slate-400">{item.count} / {item.pct}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full border border-white/5 bg-slate-900">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-violet-400 to-amber-300 shadow-[0_0_18px_rgba(34,211,238,0.22)]"
+                          style={{ width: `${item.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            <Card className="overflow-hidden p-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-950/75 px-5 py-4">
+                <div>
+                  <h2 className="text-sm font-black text-white">{labels.aiQueriesTitle}</h2>
+                  <p className="mt-1 text-xs text-slate-400">{labels.assistantLedger}</p>
+                </div>
+                <Badge tone="cyan">{filteredAiQueries.length} registros</Badge>
+              </div>
+
+              <div className="hidden grid-cols-[0.75fr_1.15fr_1.2fr_0.45fr] gap-4 border-b border-white/10 bg-slate-900/45 px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 lg:grid">
+                <span>Cliente</span>
+                <span>Consulta</span>
+                <span>{labels.generatedAnswer}</span>
+                <span>Estado</span>
+              </div>
+
+              <div className="divide-y divide-white/10">
+                {filteredAiQueries.length ? filteredAiQueries.map((item) => {
+                  const category = normalizeAiQueryCategory(item.tag, item.query, item.answer);
+                  return (
+                    <article key={item.id} className="grid gap-4 px-5 py-4 transition-colors hover:bg-cyan-400/[0.035] lg:grid-cols-[0.75fr_1.15fr_1.2fr_0.45fr]">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-white">{item.company || "-"}</p>
+                        <p className="mt-1 truncate text-xs text-slate-400">{item.contact}</p>
+                        <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{item.created_at}</p>
+                      </div>
+
+                      <div className="rounded-xl border border-cyan-300/15 bg-cyan-400/5 p-3">
+                        <p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">{labels.category}: {category}</p>
+                        <p className="text-sm leading-relaxed text-slate-100">{item.query}</p>
+                      </div>
+
+                      <div className="rounded-xl border border-violet-300/15 bg-violet-400/5 p-3">
+                        <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-violet-200">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          {labels.aiAnswerHeader}
+                        </p>
+                        <p className="text-sm leading-relaxed text-slate-100">{renderHighlightedText(item.answer)}</p>
+                      </div>
+
+                      <div className="flex flex-col items-start gap-2 lg:items-end">
+                        <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-200">
+                          {item.status}
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                          {item.vertical}
+                        </span>
+                      </div>
+                    </article>
+                  );
+                }) : (
+                  <div className="px-5 py-12 text-center">
+                    <Bot className="mx-auto h-8 w-8 text-slate-600" />
+                    <p className="mt-3 text-sm font-bold text-slate-300">{labels.noQueries}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {false && activeTab === "ai_queries" && (
           <DataTable
             title={labels.aiQueriesTitle}
             columns={[

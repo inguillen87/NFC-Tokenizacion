@@ -133,18 +133,18 @@ const faqCategories = [
   },
   {
     id: "inversores",
-    label: "Inversores & SQL Híbrido",
+    label: "Inversores y Trazabilidad Híbrida",
     icon: Coins,
     items: [
       {
-        q: "¿Por qué ofrecer una solución híbrida (SQL + Blockchain Opcional)?",
-        a: "Muchos clientes B2B tradicionales le temen a la Web3, gas fees y billeteras digitales. Al ofrecer por defecto una arquitectura SQL segura hospedada en AWS y Render, logramos un onboarding inmediato y sin fricciones.",
-        ctx: "Si un cliente final lanza una línea ultra-premium o de colección y desea inmutabilidad total para el mercado de subastas, activamos la capa de Polygon on-chain como un add-on premium facturado en el plan SaaS."
+        q: "¿Por qué ofrecer una solución híbrida (Servidor Seguro + Blockchain Opcional)?",
+        a: "Muchos clientes tradicionales le temen a las tecnologías criptográficas complejas y a las billeteras digitales. Al ofrecer por defecto una base de datos segura hospedada en la nube, logramos un registro e integración inmediatos y sin fricciones.",
+        ctx: "Si una marca lanza una edición especial y desea máxima inmutabilidad para el mercado de reventa o coleccionistas, activamos la capa digital descentralizada como un servicio de valor agregado premium."
       },
       {
-        q: "¿Cómo garantizan la seguridad de la base de datos SQL si es centralizada?",
-        a: "La seguridad no depende de la base de datos, sino de la criptografía del chip. Cada tap dinámico genera una firma SUN que solo puede ser descifrada por claves maestras almacenadas en un KMS/HSM de nivel bancario.",
-        ctx: "Incluso si un hacker vulnera el servidor SQL, no puede generar firmas dinámicas falsas de chips físicos porque no posee las claves criptográficas maestras."
+        q: "¿Cómo garantizan la seguridad de la base de datos si es centralizada?",
+        a: "La seguridad del sistema no depende del servidor, sino de la criptografía de firma única de cada chip físico. Cada lectura genera una firma de seguridad dinámica que solo puede ser descifrada por nuestras claves criptográficas maestras.",
+        ctx: "Incluso ante una intrusión en el servidor de base de datos, un atacante no puede generar firmas dinámicas falsas de chips físicos porque no posee las claves maestras de cifrado."
       },
       {
         q: "¿Cómo escala el modelo SaaS en Render y AWS?",
@@ -162,8 +162,8 @@ const slides = [
     tagline: "Propiedad Digital y Autenticidad Física",
     bullets: [
       "nexID convierte productos físicos en activos verificables, trazables y operables.",
-      "Arquitectura Híbrida: base SQL segura por defecto para onboarding fácil, con capa blockchain-ready opcional.",
-      "Monetización escalable mediante hardware, setup industrial, SaaS recurrente y licencias API."
+      "Arquitectura Híbrida: base de datos segura por defecto para una integración sencilla, con opción de activar tecnología blockchain.",
+      "Monetización escalable mediante hardware, integración en fábrica, suscripción mensual y licencias del sistema."
     ]
   },
   {
@@ -177,11 +177,11 @@ const slides = [
   },
   {
     title: "3) La Solución Híbrida",
-    tagline: "SQL en Nube Segura + Web3 Opt-in",
+    tagline: "Servidor en Nube Segura + Propiedad Digital",
     bullets: [
-      "Firma Criptográfica dinámica validada contra nuestra base SQL ultra-segura (Render/AWS) por defecto.",
-      "Onboarding inmediato para marcas tradicionales sin necesidad de lidiar con criptomonedas o gas fees.",
-      "Capa on-chain (Polygon Amoy) para generar pasaportes NFT e inmutabilidad en mercados de colección."
+      "Firma criptográfica dinámica validada contra nuestro servidor en la nube ultra-seguro por defecto.",
+      "Integración inmediata para marcas tradicionales sin necesidad de lidiar con criptomonedas o costos de transacción de red.",
+      "Registro descentralizado opcional para generar certificados digitales de propiedad y garantizar inmutabilidad."
     ]
   },
   {
@@ -537,7 +537,7 @@ export function ThreeDProduct({ active, tapping, labelImageUrl, industry, chipMo
       
       ctx.fillStyle = "#a1a1aa";
       ctx.font = "600 16px monospace";
-      ctx.fillText("SQL SECURE CORE & POLYGON WEB3", 256, 220);
+      ctx.fillText("SERVIDOR SEGURO Y REGISTRO DIGITAL", 256, 220);
       
       // Shield logo in gold
       ctx.strokeStyle = "#e2b857";
@@ -798,12 +798,12 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
   bodegas: {
     productName: "Gran Blend 2026",
     location: "Mendoza, Argentina",
-    authText: "Autenticidad SQL",
+    authText: "Autenticidad de Origen",
     selloText: "Sello Cerrado Original",
     nodes: ["MDZ", "BUE", "RTM", "ZRH"],
     iot: ["🌡️ Temp: 14.2°C", "💧 Hum: 58%", "⚡ GPS Lock: OK"],
     steps: [
-      { title: "1. Viñedo Origen", desc: "Luján de Cuyo, Mendoza · Registrado SQL" },
+      { title: "1. Viñedo Origen", desc: "Luján de Cuyo, Mendoza · Registrado en Origen" },
       { title: "2. Logística y Aduana", desc: "Despacho de puerto e ingreso en Zurich" },
       { title: "3. Sello de Seguridad", desc: "TagTamper Intacto (Original)" }
     ],
@@ -1097,6 +1097,47 @@ export function RoiCalculator({
   const roiMultiplier = finalInvestment > 0 ? (finalNetGain / finalInvestment) : 0;
   const dtcClients = Math.round(volume * 0.35); // 35% scan rate
 
+  const [activeQuestion, setActiveQuestion] = useState("");
+  const [aiThinking, setAiThinking] = useState(false);
+
+  const getAiAnswer = (qId: string) => {
+    const regionName = exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global';
+    const regionSource = REGION_CITATIONS[exportRegion]?.source || "Fuentes Globales";
+    
+    switch (qId) {
+      case "non-reusable":
+        return `Para garantizar la autenticidad física de cada botella o envase, nexID asocia criptográficamente un identificador único (UID) a la firma de hardware del chip NFC. Si los chips fueran reutilizables, un falsificador podría extraer el chip de una botella original consumida e insertarlo en una botella rellenada, burlando al sistema. Al usar chips consumibles no reutilizables adheridos al tapón o al sello de seguridad, la apertura destruye físicamente el sensor o invalida el estado en el registro seguro, haciendo imposible el rellenado ilegal o mercado gris. Esto es lo que permite una eficiencia del 98% en la prevención de fraude y pérdidas.`;
+      
+      case "tagtamper-cost":
+        const extraInvestment = volume * 1.00;
+        const baseInvestment = volume * 0.50;
+        const diffCost = extraInvestment - baseInvestment;
+        const additionalLoss = volume * retailPrice * (fraudRate / 100) * 0.38;
+        return `¡Totalmente rentable! Con tus parámetros actuales (Volumen: ${volume.toLocaleString()} uds, Precio: $${retailPrice} USD, Tasa de Pérdida: ${fraudRate.toFixed(1)}%), el uso de un chip premium como el NTAG 424 DNA TagTamper ($1.00) representa una inversión en chips de $${extraInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD, mientras que un chip estándar de $0.50 costaría $${baseInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD. Si bien ahorras $${diffCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD en el hardware, al no contar con detección física de apertura, la eficiencia de protección cae drásticamente del 98% a menos del 60%. Esto significa que la marca perdería más de $${additionalLoss.toLocaleString(undefined, {maximumFractionDigits:0})} USD anuales debido a fraudes y reventas que el chip básico no puede detectar. El chip TagTamper se paga solo protegiendo tu reputación y evitando fugas de canal.`;
+      
+      case "payback-period":
+        const monthlyChips = Math.round(nexIdChipsCost / 12);
+        const monthlyGain = Math.round(finalNetGain / 12);
+        const paybackDays = preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365) : 0;
+        const coverageRatio = chipCost > 0 ? ((retailPrice * (fraudRate / 100) * 0.98) / chipCost) : 0;
+        return `Dado que los chips son un insumo físico consumible por lote y no un activo fijo, la recuperación del dinero invertido se mide sobre la velocidad de venta y la detención de pérdidas de ese mismo lote. Con tus parámetros, la inversión anual en chips es de $${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD ($${monthlyChips.toLocaleString(undefined, {maximumFractionDigits:0})} USD/mes) y tu ahorro neto anual proyectado es de $${finalNetGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD ($${monthlyGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD/mes). Esto significa que recuperas la inversión total en chips de cada lote en los primeros ${paybackDays.toFixed(1)} días de ventas de dicho lote. A nivel unitario, cada chip que cuesta $${chipCost.toFixed(2)} USD evita una pérdida estimada de $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD. ¡Un ratio de cobertura unitaria de ${coverageRatio.toFixed(1)}x!`;
+      
+      case "region-influence":
+        return `La región seleccionada (${regionName}) posee una tasa de pérdida/fraude estimada del ${fraudRate.toFixed(1)}% según reportes de ${regionSource}. Con un precio de venta de $${retailPrice} USD por unidad, esto significa que tu marca pierde un promedio de $${(retailPrice * (fraudRate / 100)).toFixed(2)} USD por cada botella producida antes de implementar nexID. En regiones con alta incidencia de falsificación, el retorno de inversión del sistema se dispara a un multiplicador de ${roiMultiplier.toFixed(1)}x. En zonas con menor tasa de fraude, el ROI se mantiene sumamente atractivo porque nexID no solo previene fraude, sino que conecta de manera directa al ${Math.round(volume * 0.35).toLocaleString()} clientes (35% de lecturas estimadas) a tu canal directo DTC, abriendo nuevas oportunidades de venta recurrente.`;
+      
+      default:
+        return "";
+    }
+  };
+
+  const handleQuestionSelect = (qId: string) => {
+    setAiThinking(true);
+    setActiveQuestion(qId);
+    setTimeout(() => {
+      setAiThinking(false);
+    }, 650);
+  };
+
   return (
     <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-8 lg:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
       <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full filter blur-[100px] pointer-events-none" />
@@ -1111,7 +1152,7 @@ export function RoiCalculator({
               Ahorro por Pérdidas y Retorno de Inversión (ROI)
             </h2>
             <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-              Descubre cuánto dinero pierde tu marca por fraude y reventa del mercado gris, y cómo la arquitectura híbrida de nexID (SQL + Web3) recupera ese margen con un ROI masivo.
+              Descubre cuánto dinero pierde tu marca por fraude y reventa del mercado gris, y cómo la arquitectura híbrida de nexID (Servidor Seguro + Registro Digital) recupera ese margen con un retorno de inversión masivo.
             </p>
           </div>
           
@@ -1512,6 +1553,159 @@ export function RoiCalculator({
               <div>
                 <strong className="text-white block uppercase tracking-wide text-[9px]">{REGION_CITATIONS[exportRegion].source}</strong>
                 <span className="text-slate-400 italic">"{REGION_CITATIONS[exportRegion].text}"</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ========================================== */}
+        {/* nexID AI Intelligent Diagnostic Report Card */}
+        {/* ========================================== */}
+        <div className="mt-8 pt-8 border-t border-white/5 space-y-6 relative">
+          <div className="absolute top-0 left-1/4 w-72 h-72 bg-cyan-500/5 rounded-full filter blur-[80px] pointer-events-none" />
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                </span>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                  <Bot className="w-4 h-4 text-cyan-400 animate-pulse" /> Diagnóstico Financiero nexID AI
+                </h3>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-normal">
+                Estudio predictivo de retorno y amortización de inversión en hardware criptográfico. Actualizado en tiempo real.
+              </p>
+            </div>
+            
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-slate-950/60 px-2.5 py-1 text-[9px] font-mono text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Modelo Cognitivo v4.2 Activo
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+            {/* Col 1: Metrics summary */}
+            <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 space-y-4">
+              <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider">Métricas de Amortización</span>
+              
+              <div className="space-y-3.5">
+                {/* Metric 1 */}
+                <div className="border-b border-white/5 pb-2.5">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[10px] text-slate-400">Costo de Chips (Consumible):</span>
+                    <span className="text-sm font-black text-white font-mono">${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                  </div>
+                  <p className="text-[8px] text-slate-500 mt-0.5 leading-none">
+                    *Gasto operativo anual. Chips nuevos no reutilizables por lote.
+                  </p>
+                </div>
+
+                {/* Metric 2 */}
+                <div className="border-b border-white/5 pb-2.5">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[10px] text-slate-400">Ratio de Cobertura Unitario:</span>
+                    <span className="text-sm font-black text-emerald-400 font-mono">
+                      {(chipCost > 0 ? ((retailPrice * (fraudRate / 100) * 0.98) / chipCost) : 0).toFixed(1)}x
+                    </span>
+                  </div>
+                  <p className="text-[8px] text-slate-500 mt-0.5 leading-none">
+                    Cada chip evita en promedio {(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD de pérdida.
+                  </p>
+                </div>
+
+                {/* Metric 3 */}
+                <div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[10px] text-slate-400">Amortización por Lote:</span>
+                    <span className="text-sm font-black text-amber-400 font-mono">
+                      {preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365).toFixed(1) : "0"} días
+                    </span>
+                  </div>
+                  <p className="text-[8px] text-slate-500 mt-0.5 leading-none">
+                    Tiempo para recuperar la inversión de hardware del lote de producción.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Col 2: Dynamic AI Insight paragraph */}
+            <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 space-y-3 h-full min-h-[190px] flex flex-col justify-between">
+              <div>
+                <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider">Recomendación Estratégica</span>
+                <p className="text-xs text-slate-300 leading-relaxed mt-2.5">
+                  {fraudRate > 8.0 ? (
+                    `⚠️ La tasa de fraude detectada en ${exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global'} (${fraudRate.toFixed(1)}%) representa una fuga crítica de capital. Es imperativo utilizar chips premium NTAG 424 DNA con detección de apertura (TagTamper) para neutralizar desvíos y evitar que botellas rellenadas destruyan la reputación premium de la marca.`
+                  ) : roiMultiplier > 2.5 ? (
+                    `⚡ Tu modelo de negocio muestra una viabilidad excepcional. Con un ROI proyectado de ${roiMultiplier.toFixed(1)}x, el diferencial entre el costo de chip ($${chipCost.toFixed(2)}) y el precio de venta ($${retailPrice} USD) absorbe holgadamente el gasto operativo. Recomendamos iniciar el piloto comercial de inmediato.`
+                  ) : (
+                    `📈 Con un multiplicador de retorno de ${roiMultiplier.toFixed(1)}x, la implementación de nexID se justifica plenamente. Además de prevenir pérdidas físicas, la activación de canales de interacción directa con el consumidor (estimamos ${Math.round(volume * 0.35).toLocaleString()} escaneos anuales) compensará con creces el costo del hardware a través de fidelización y recompra directa.`
+                  )}
+                </p>
+              </div>
+              <div className="text-[8px] text-cyan-400 font-mono flex items-center gap-1 border-t border-white/5 pt-2.5">
+                <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></span>
+                Recomendación adaptada a tus variables financieras actuales.
+              </div>
+            </div>
+
+            {/* Col 3: Interactive Q&A simulator */}
+            <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 space-y-4">
+              <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider">Preguntas al Asistente IA</span>
+              
+              <div className="space-y-1.5">
+                {[
+                  { id: "non-reusable", q: "¿Por qué cada lote requiere chips nuevos?" },
+                  { id: "tagtamper-cost", q: "¿Es rentable TagTamper ($1.00) vs Estándar ($0.50)?" },
+                  { id: "payback-period", q: "¿Cómo se calcula la recuperación de inversión?" },
+                  { id: "region-influence", q: "¿Por qué influye la tasa de fraude regional?" }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleQuestionSelect(item.id)}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold transition-all border ${
+                      activeQuestion === item.id 
+                        ? "bg-cyan-500/10 border-cyan-500/35 text-cyan-300"
+                        : "bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-200"
+                    }`}
+                  >
+                    {item.q}
+                  </button>
+                ))}
+              </div>
+
+              {/* Chat answer display area */}
+              <div className="mt-3 p-3.5 rounded-xl bg-slate-950/80 border border-white/5 min-h-[120px] flex flex-col justify-center">
+                {activeQuestion === "" ? (
+                  <p className="text-[9.5px] text-slate-500 italic text-center leading-normal">
+                    Selecciona una pregunta arriba para ver el análisis de la inteligencia artificial.
+                  </p>
+                ) : aiThinking ? (
+                  <div className="flex flex-col items-center justify-center space-y-2 py-4">
+                    <div className="flex space-x-1">
+                      <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span className="text-[8px] font-mono text-cyan-400/80 tracking-widest uppercase">AI analizando datos...</span>
+                  </div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-1.5"
+                  >
+                    <div className="text-[8px] font-mono text-cyan-400 uppercase tracking-widest font-black leading-none">
+                      Respuesta nexID AI:
+                    </div>
+                    <p className="text-[9.5px] text-slate-300 leading-relaxed font-normal">
+                      {getAiAnswer(activeQuestion)}
+                    </p>
+                  </motion.div>
+                )}
               </div>
             </div>
           </div>
@@ -2338,7 +2532,7 @@ export function InvestorSnapshotClient() {
             nexID: Ecosistema Híbrido
           </h1>
           <p className="text-sm lg:text-base text-slate-400 max-w-3xl leading-relaxed">
-            Una plataforma de trazabilidad de alto rendimiento. SQL centralizado seguro en Render/AWS por defecto, con capa Polygon Web3 opcional para colecciones exclusivas.
+            Una plataforma de trazabilidad de alto rendimiento. Base de datos centralizada segura por defecto, con opción de registro digital para colecciones exclusivas.
           </p>
         </div>
 
@@ -2462,9 +2656,9 @@ export function InvestorSnapshotClient() {
                 {/* Additional Pitch Metrics Widget */}
                 <div className="grid grid-cols-3 gap-4">
                   {[
-                    { title: "Arquitectura", value: "Capa Híbrida", desc: "SQL default + Web3 opt-in" },
+                    { title: "Arquitectura", value: "Capa Híbrida", desc: "Nube default + Registro Digital" },
                     { title: "Soporte Nube", value: "AWS / Render", desc: "Redundancia multinodo" },
-                    { title: "Costo por Unidad", value: "Centavos USD", desc: "<1.5% del valor retail" }
+                    { title: "Costo por Unidad", value: "Centavos USD", desc: "<1.5% del valor minorista" }
                   ].map((item, idx) => (
                     <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/10 hover:bg-slate-900/30 p-4 text-center transition duration-200">
                       <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">{item.title}</span>
@@ -2847,7 +3041,10 @@ export function InvestorSnapshotClient() {
                                 <defs>
                                   {/* Grid pattern */}
                                   <pattern id="phone-map-grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                                    <path d="M 10 0 H 0 V 10" fill="none" stroke="rgba(6,182,212,0.04)" strokeWidth="0.5" />
+                                    <path d="M 10 0 H 0 V 10" fill="none" stroke="rgba(6,182,212,0.08)" strokeWidth="0.45" />
+                                  </pattern>
+                                  <pattern id="phone-map-grid-fine" width="4" height="4" patternUnits="userSpaceOnUse">
+                                    <path d="M 4 0 H 0 V 4" fill="none" stroke="rgba(148,163,184,0.035)" strokeWidth="0.35" />
                                   </pattern>
                                   {/* Radar Sweep Gradient */}
                                   <linearGradient id="phone-radar-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -2855,6 +3052,16 @@ export function InvestorSnapshotClient() {
                                     <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.12" />
                                     <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
                                   </linearGradient>
+                                  <linearGradient id="phone-route-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.9" />
+                                    <stop offset="48%" stopColor="#22d3ee" stopOpacity="0.95" />
+                                    <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.82" />
+                                  </linearGradient>
+                                  <radialGradient id="phone-comet-gradient" cx="40%" cy="40%" r="70%">
+                                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                                    <stop offset="45%" stopColor="#22d3ee" stopOpacity="0.88" />
+                                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+                                  </radialGradient>
                                   {/* Soft Glow Filter */}
                                   <filter id="phone-soft-glow" x="-20%" y="-20%" width="140%" height="140%">
                                     <feGaussianBlur stdDeviation="1.5" result="blur" />
@@ -2867,31 +3074,64 @@ export function InvestorSnapshotClient() {
 
                                 {/* Background Grid */}
                                 <rect width="160" height="40" fill="url(#phone-map-grid)" />
+                                <rect width="160" height="40" fill="url(#phone-map-grid-fine)" opacity="0.8" />
 
                                 {/* Radar Sweep Bar */}
                                 <rect width="40" height="40" fill="url(#phone-radar-gradient)">
                                   <animate attributeName="x" values="-40;160" dur="2.5s" repeatCount="indefinite" />
                                 </rect>
 
+                                <g transform="translate(86 20)" opacity="0.42">
+                                  <circle r="17" fill="none" stroke="#22d3ee" strokeWidth="0.4" strokeDasharray="2 4" />
+                                  <line x1="-22" x2="22" y1="0" y2="0" stroke="#22d3ee" strokeWidth="0.35" />
+                                  <line x1="0" x2="0" y1="-22" y2="22" stroke="#22d3ee" strokeWidth="0.35" />
+                                  <g>
+                                    <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="4s" repeatCount="indefinite" />
+                                    <line x1="0" y1="0" x2="21" y2="0" stroke="#67e8f9" strokeWidth="0.7" strokeLinecap="round" opacity="0.85" />
+                                  </g>
+                                </g>
+
                                 {/* Grid lines */}
                                 <line x1="0" y1="20" x2="160" y2="20" stroke="rgba(255,255,255,0.02)" strokeWidth="0.5" />
+                                <line x1="80" y1="0" x2="80" y2="40" stroke="rgba(255,255,255,0.025)" strokeWidth="0.5" />
                                 
                                 {/* Route Path */}
-                                <path id="sim-phone-path" d="M20 30 Q50 10 90 25 T140 10" fill="none" stroke="#06b6d4" strokeWidth="1.2" strokeDasharray="3,3" opacity="0.6" />
+                                <path id="sim-phone-path" d="M20 30 Q50 10 90 25 T140 10" fill="none" stroke="url(#phone-route-gradient)" strokeWidth="1.35" strokeDasharray="3,3" opacity="0.86">
+                                  <animate attributeName="stroke-dashoffset" values="0;-36" dur="2.4s" repeatCount="indefinite" />
+                                </path>
                                 
                                 {/* Glowing path segment for current transit */}
-                                <path d="M20 30 Q50 10 70 17" fill="none" stroke="#f59e0b" strokeWidth="1.5" filter="url(#phone-soft-glow)" />
+                                <path d="M20 30 Q50 10 70 17" fill="none" stroke="#f59e0b" strokeWidth="1.8" filter="url(#phone-soft-glow)" opacity="0.78">
+                                  <animate attributeName="opacity" values="0.32;0.86;0.32" dur="2.2s" repeatCount="indefinite" />
+                                </path>
                                 
                                 {/* Animated Comet/Particle gliding along the route path */}
-                                <circle r="2.2" fill="#22d3ee" filter="url(#phone-soft-glow)">
+                                <circle r="4.4" fill="url(#phone-comet-gradient)" filter="url(#phone-soft-glow)">
                                   <animateMotion dur="3.5s" repeatCount="indefinite">
+                                    <mpath href="#sim-phone-path" />
+                                  </animateMotion>
+                                </circle>
+                                <circle r="1.8" fill="#f59e0b" opacity="0.5">
+                                  <animateMotion dur="3.5s" begin="-0.18s" repeatCount="indefinite">
+                                    <mpath href="#sim-phone-path" />
+                                  </animateMotion>
+                                </circle>
+                                <circle r="1.2" fill="#a78bfa" opacity="0.45">
+                                  <animateMotion dur="3.5s" begin="-0.34s" repeatCount="indefinite">
                                     <mpath href="#sim-phone-path" />
                                   </animateMotion>
                                 </circle>
 
                                 {/* Intermediate Nodes */}
-                                <circle cx="60" cy="18" r="2.5" fill="#f59e0b" />
-                                <circle cx="100" cy="22" r="2.5" fill="#06b6d4" />
+                                {[{ x: 60, y: 18, c: "#f59e0b" }, { x: 100, y: 22, c: "#06b6d4" }].map((node, nodeIdx) => (
+                                  <g key={`phone-relay-${nodeIdx}`}>
+                                    <circle cx={node.x} cy={node.y} r="2.5" fill={node.c} />
+                                    <circle cx={node.x} cy={node.y} r="3" fill="none" stroke={node.c} strokeWidth="0.65">
+                                      <animate attributeName="r" values="3;8;3" dur="2.2s" begin={`${nodeIdx * 0.55}s`} repeatCount="indefinite" />
+                                      <animate attributeName="opacity" values="0.72;0;0.72" dur="2.2s" begin={`${nodeIdx * 0.55}s`} repeatCount="indefinite" />
+                                    </circle>
+                                  </g>
+                                ))}
                                 
                                 {/* Pulse rings for Origin */}
                                 <circle cx="20" cy="30" r="3" fill="#f59e0b" />
@@ -2906,6 +3146,13 @@ export function InvestorSnapshotClient() {
                                   <animate attributeName="r" values="3;9" dur="1.8s" repeatCount="indefinite" />
                                   <animate attributeName="opacity" values="1;0" dur="1.8s" repeatCount="indefinite" />
                                 </circle>
+                                {[{ x: 36, y: 11, dx: 13, dy: 7, c: "#22d3ee" }, { x: 121, y: 29, dx: -16, dy: -5, c: "#a78bfa" }, { x: 74, y: 33, dx: 10, dy: -12, c: "#34d399" }].map((particle, pidx) => (
+                                  <circle key={`phone-particle-${pidx}`} cx={particle.x} cy={particle.y} r="1.05" fill={particle.c} opacity="0.28">
+                                    <animate attributeName="cx" values={`${particle.x};${particle.x + particle.dx};${particle.x}`} dur={`${3.1 + pidx * 0.6}s`} begin={`${pidx * 0.4}s`} repeatCount="indefinite" />
+                                    <animate attributeName="cy" values={`${particle.y};${particle.y + particle.dy};${particle.y}`} dur={`${3.1 + pidx * 0.6}s`} begin={`${pidx * 0.4}s`} repeatCount="indefinite" />
+                                    <animate attributeName="opacity" values="0.08;0.64;0.08" dur={`${3.1 + pidx * 0.6}s`} begin={`${pidx * 0.4}s`} repeatCount="indefinite" />
+                                  </circle>
+                                ))}
                               </svg>
                               <div className="flex justify-between text-[6.5px] text-slate-400 font-mono leading-none px-1">
                                 <span>{simData.nodes[0]}</span>

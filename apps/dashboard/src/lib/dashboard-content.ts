@@ -78,6 +78,19 @@ type DashboardContent = {
     geoDistribution: string;
     geoDistributionDelta: string;
   };
+  crmAi: {
+    aiQueries: string;
+    aiQueriesTitle: string;
+    liveBeacon: string;
+    aiAnswerHeader: string;
+    queryRadar: string;
+    liveQueries: string;
+    intentDistribution: string;
+    assistantLedger: string;
+    generatedAnswer: string;
+    category: string;
+    noQueries: string;
+  };
   roles: Record<UserRole, string>;
   statuses: Record<string, string>;
 };
@@ -140,6 +153,19 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       geoDistribution: "Distribución geo",
       geoDistributionDelta: "heatmap live",
     },
+    crmAi: {
+      aiQueries: "Consultas IA",
+      aiQueriesTitle: "Feed de Consultas de Clientes por IA",
+      liveBeacon: "En vivo",
+      aiAnswerHeader: "Respuesta Cognitiva IA",
+      queryRadar: "Radar de consultas",
+      liveQueries: "Consultas en vivo",
+      intentDistribution: "Distribucion por intencion",
+      assistantLedger: "Ledger de asistentes",
+      generatedAnswer: "Respuesta generada",
+      category: "Categoria",
+      noQueries: "No hay consultas registradas",
+    },
     roles: { "super-admin": "Super Admin", "tenant-admin": "Tenant Admin", reseller: "Reseller", viewer: "Viewer" },
     statuses: { active: "Activo", pending: "Pendiente", revoked: "Revocado", healthy: "Sano", risk: "Riesgo", draft: "Borrador", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "No registrado", NOT_ACTIVE: "No activo", REPLAY_SUSPECT: "Replay sospechoso", VALID: "Válido" },
   },
@@ -193,6 +219,19 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       geoDistribution: "Distribuição geo",
       geoDistributionDelta: "heatmap live",
     },
+    crmAi: {
+      aiQueries: "Consultas IA",
+      aiQueriesTitle: "Feed de Consultas de Clientes por IA",
+      liveBeacon: "Ao vivo",
+      aiAnswerHeader: "Resposta Cognitiva IA",
+      queryRadar: "Radar de consultas",
+      liveQueries: "Consultas ao vivo",
+      intentDistribution: "Distribuicao por intencao",
+      assistantLedger: "Ledger de assistentes",
+      generatedAnswer: "Resposta gerada",
+      category: "Categoria",
+      noQueries: "Nao ha consultas registradas",
+    },
     roles: { "super-admin": "Super Admin", "tenant-admin": "Tenant Admin", reseller: "Reseller", viewer: "Viewer" },
     statuses: { active: "Ativo", pending: "Pendente", revoked: "Revogado", healthy: "Saudável", risk: "Risco", draft: "Rascunho", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "Não registrado", NOT_ACTIVE: "Não ativo", REPLAY_SUSPECT: "Replay suspeito", VALID: "Válido" },
   },
@@ -245,6 +284,19 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       resellerPerformanceDelta: "Channel MRR",
       geoDistribution: "Geo distribution",
       geoDistributionDelta: "live heatmap",
+    },
+    crmAi: {
+      aiQueries: "AI Customer Queries",
+      aiQueriesTitle: "AI Customer Live Queries Feed",
+      liveBeacon: "Live",
+      aiAnswerHeader: "AI Cognitive Response",
+      queryRadar: "Query radar",
+      liveQueries: "Live queries",
+      intentDistribution: "Intent distribution",
+      assistantLedger: "Assistant ledger",
+      generatedAnswer: "Generated answer",
+      category: "Category",
+      noQueries: "No AI queries registered",
     },
     roles: { "super-admin": "Super Admin", "tenant-admin": "Tenant Admin", reseller: "Reseller", viewer: "Viewer" },
     statuses: { active: "Active", pending: "Pending", revoked: "Revoked", healthy: "Healthy", risk: "Risk", draft: "Draft", valid: "Valid", duplicate: "Duplicate", tamper: "Tamper", INVALID: "Invalid", NOT_REGISTERED: "Not registered", NOT_ACTIVE: "Not active", REPLAY_SUSPECT: "Replay suspect", VALID: "Valid" },

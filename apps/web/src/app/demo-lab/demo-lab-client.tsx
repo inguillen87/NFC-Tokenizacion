@@ -2185,12 +2185,25 @@ function MobileOutcome({
             <pattern id="demo-phone-map-grid" width="10" height="10" patternUnits="userSpaceOnUse">
               <path d="M 10 0 H 0 V 10" fill="none" stroke="rgba(6,182,212,0.04)" strokeWidth="0.5" />
             </pattern>
+            <pattern id="demo-phone-map-grid-fine" width="2" height="2" patternUnits="userSpaceOnUse">
+              <path d="M 2 0 H 0 V 2" fill="none" stroke="rgba(6,182,212,0.015)" strokeWidth="0.25" />
+            </pattern>
             {/* Radar Sweep Gradient */}
             <linearGradient id="demo-phone-radar-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#06b6d4" stopOpacity="0" />
               <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.12" />
               <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
             </linearGradient>
+            <linearGradient id="demo-phone-route-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.95" />
+              <stop offset="48%" stopColor="#22d3ee" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.82" />
+            </linearGradient>
+            <radialGradient id="demo-phone-comet-gradient" cx="40%" cy="40%" r="70%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+              <stop offset="45%" stopColor="#22d3ee" stopOpacity="0.88" />
+              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+            </radialGradient>
             {/* Soft Glow Filter */}
             <filter id="demo-phone-soft-glow" x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="1.5" result="blur" />
@@ -2203,31 +2216,68 @@ function MobileOutcome({
 
           {/* Background Grid */}
           <rect width="160" height="40" fill="url(#demo-phone-map-grid)" />
+          <rect width="160" height="40" fill="url(#demo-phone-map-grid-fine)" opacity="0.8" />
 
           {/* Radar Sweep Bar */}
           <rect width="40" height="40" fill="url(#demo-phone-radar-gradient)">
             <animate attributeName="x" values="-40;160" dur="2.5s" repeatCount="indefinite" />
           </rect>
 
+          {/* Sincronización Circular HUD */}
+          <g transform="translate(86 20)" opacity="0.42">
+            <circle r="17" fill="none" stroke="#22d3ee" strokeWidth="0.4" strokeDasharray="2 4" />
+            <line x1="-22" x2="22" y1="0" y2="0" stroke="#22d3ee" strokeWidth="0.35" />
+            <line x1="0" x2="0" y1="-22" y2="22" stroke="#22d3ee" strokeWidth="0.35" />
+            <g>
+              <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="4s" repeatCount="indefinite" />
+              <line x1="0" y1="0" x2="21" y2="0" stroke="#67e8f9" strokeWidth="0.7" strokeLinecap="round" opacity="0.85" />
+            </g>
+          </g>
+
           {/* Grid lines */}
           <line x1="0" y1="20" x2="160" y2="20" stroke="rgba(255,255,255,0.02)" strokeWidth="0.5" />
+          <line x1="80" y1="0" x2="80" y2="40" stroke="rgba(255,255,255,0.025)" strokeWidth="0.5" />
           
           {/* Route Path */}
-          <path id="demo-sim-phone-path" d="M20 30 Q50 10 90 25 T140 10" fill="none" stroke="#06b6d4" strokeWidth="1.2" strokeDasharray="3,3" opacity="0.6" />
+          <path id="demo-sim-phone-path" d="M20 30 Q50 10 90 25 T140 10" fill="none" stroke="url(#demo-phone-route-gradient)" strokeWidth="1.35" strokeDasharray="3,3" opacity="0.86">
+            <animate attributeName="stroke-dashoffset" values="0;-36" dur="2.4s" repeatCount="indefinite" />
+          </path>
           
           {/* Glowing path segment for current transit */}
-          <path d="M20 30 Q50 10 70 17" fill="none" stroke="#f59e0b" strokeWidth="1.5" filter="url(#demo-phone-soft-glow)" />
+          <path d="M20 30 Q50 10 70 17" fill="none" stroke="#f59e0b" strokeWidth="1.8" filter="url(#demo-phone-soft-glow)" opacity="0.78">
+            <animate attributeName="opacity" values="0.32;0.86;0.32" dur="2.2s" repeatCount="indefinite" />
+          </path>
           
           {/* Animated Comet/Particle gliding along the route path */}
-          <circle r="2.2" fill="#22d3ee" filter="url(#demo-phone-soft-glow)">
+          <circle r="4.4" fill="url(#demo-phone-comet-gradient)" filter="url(#demo-phone-soft-glow)">
             <animateMotion dur="3.5s" repeatCount="indefinite">
               <mpath href="#demo-sim-phone-path" />
             </animateMotion>
           </circle>
+          <circle r="1.8" fill="#f59e0b" opacity="0.5">
+            <animateMotion dur="3.5s" begin="-0.18s" repeatCount="indefinite">
+              <mpath href="#demo-sim-phone-path" />
+            </animateMotion>
+          </circle>
+          <circle r="1.2" fill="#a78bfa" opacity="0.45">
+            <animateMotion dur="3.5s" begin="-0.34s" repeatCount="indefinite">
+              <mpath href="#demo-sim-phone-path" />
+            </animateMotion>
+          </circle>
 
-          {/* Intermediate Nodes */}
-          <circle cx="60" cy="18" r="2.5" fill="#f59e0b" />
-          <circle cx="100" cy="22" r="2.5" fill="#06b6d4" />
+          {/* Intermediate Nodes with expanding circles */}
+          {[
+            { x: 60, y: 18, c: "#f59e0b" },
+            { x: 100, y: 22, c: "#06b6d4" }
+          ].map((node, nodeIdx) => (
+            <g key={`demo-phone-relay-${nodeIdx}`}>
+              <circle cx={node.x} cy={node.y} r="2.5" fill={node.c} />
+              <circle cx={node.x} cy={node.y} r="3" fill="none" stroke={node.c} strokeWidth="0.65">
+                <animate attributeName="r" values="3;8;3" dur="2.2s" begin={`${nodeIdx * 0.55}s`} repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.72;0;0.72" dur="2.2s" begin={`${nodeIdx * 0.55}s`} repeatCount="indefinite" />
+              </circle>
+            </g>
+          ))}
           
           {/* Pulse rings for Origin */}
           <circle cx="20" cy="30" r="3" fill="#f59e0b" />
@@ -2242,6 +2292,19 @@ function MobileOutcome({
             <animate attributeName="r" values="3;9" dur="1.8s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="1;0" dur="1.8s" repeatCount="indefinite" />
           </circle>
+
+          {/* Ambient micro telemetry dots */}
+          {[
+            { x: 36, y: 11, dx: 13, dy: 7, c: "#22d3ee" },
+            { x: 121, y: 29, dx: -16, dy: -5, c: "#a78bfa" },
+            { x: 74, y: 33, dx: 10, dy: -12, c: "#34d399" }
+          ].map((particle, pidx) => (
+            <circle key={`demo-phone-particle-${pidx}`} cx={particle.x} cy={particle.y} r="1.05" fill={particle.c} opacity="0.28">
+              <animate attributeName="cx" values={`${particle.x};${particle.x + particle.dx};${particle.x}`} dur={`${3.1 + pidx * 0.6}s`} begin={`${pidx * 0.4}s`} repeatCount="indefinite" />
+              <animate attributeName="cy" values={`${particle.y};${particle.y + particle.dy};${particle.y}`} dur={`${3.1 + pidx * 0.6}s`} begin={`${pidx * 0.4}s`} repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.08;0.64;0.08" dur={`${3.1 + pidx * 0.6}s`} begin={`${pidx * 0.4}s`} repeatCount="indefinite" />
+            </circle>
+          ))}
         </svg>
         <div className="flex justify-between text-[6.5px] text-slate-400 font-mono leading-none px-1">
           <span>Valle de Uco</span>

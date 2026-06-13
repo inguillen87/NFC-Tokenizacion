@@ -58,7 +58,7 @@ export default async function LeadsTicketsPage({
   const scopedTickets = tenantScope ? ticketsArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ticketsArray;
   const scopedOrders = tenantScope ? ordersArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ordersArray;
 
-  const labels = locale === "en"
+  const baseLabels = locale === "en"
     ? {
         leads: "Prospects",
         tickets: "Tickets",
@@ -72,10 +72,6 @@ export default async function LeadsTicketsPage({
         crmLite: "CRM-lite consolidated",
         opportunities: "Commercial opportunities",
         why: "Why this view matters",
-        aiQueries: "AI Customer Queries",
-        aiQueriesTitle: "AI Customer Live Queries Feed",
-        liveBeacon: "Live",
-        aiAnswerHeader: "AI Cognitive Response"
       }
     : locale === "pt-BR"
       ? {
@@ -91,10 +87,6 @@ export default async function LeadsTicketsPage({
           crmLite: "CRM-lite consolidado",
           opportunities: "Oportunidades comerciais",
           why: "Por que esta vista importa",
-          aiQueries: "Consultas IA",
-          aiQueriesTitle: "Feed de Consultas de Clientes por IA",
-          liveBeacon: "Ao Vivo",
-          aiAnswerHeader: "Resposta Cognitiva IA"
         }
       : {
           leads: "Prospectos",
@@ -109,11 +101,8 @@ export default async function LeadsTicketsPage({
           crmLite: "CRM-lite consolidado",
           opportunities: "Oportunidades comerciales",
           why: "Por que esta vista importa",
-          aiQueries: "Consultas IA",
-          aiQueriesTitle: "Feed de Consultas de Clientes por IA",
-          liveBeacon: "En Vivo",
-          aiAnswerHeader: "Respuesta Cognitiva IA"
         };
+  const labels = { ...baseLabels, ...copy.crmAi };
 
   const ctaOpportunities = leadsArray
     .map((lead) => {

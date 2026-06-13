@@ -182,6 +182,17 @@ const CITY_LIGHTS: Array<{ lat: number; lng: number; opacity: number }> = [
   { lat: -33.8, lng: 151.2, opacity: 0.46 },
 ];
 
+const NETWORK_TELEMETRY_PARTICLES = [
+  { lat: -28.1, lng: -72.4, dx: 18, dy: -10, tone: "cyan", dur: 6.4, delay: 0.1 },
+  { lat: -18.2, lng: -51.8, dx: -16, dy: 9, tone: "emerald", dur: 7.2, delay: 1.3 },
+  { lat: 12.8, lng: -66.6, dx: 14, dy: 13, tone: "violet", dur: 8.1, delay: 2.2 },
+  { lat: 34.6, lng: -33.0, dx: -22, dy: -8, tone: "cyan", dur: 6.8, delay: 0.8 },
+  { lat: 45.2, lng: 32.5, dx: 20, dy: 10, tone: "violet", dur: 7.8, delay: 2.9 },
+  { lat: 20.4, lng: 71.2, dx: -14, dy: -13, tone: "amber", dur: 8.6, delay: 1.7 },
+  { lat: -7.2, lng: 35.4, dx: 16, dy: -9, tone: "emerald", dur: 7.4, delay: 3.1 },
+  { lat: -28.6, lng: 117.8, dx: -20, dy: 7, tone: "cyan", dur: 8.4, delay: 2.5 },
+];
+
 const MAP_PLACE_LABELS = [
   { label: "ARGENTINA", lat: -38.4, lng: -64.2, tone: "country" },
   { label: "BRASIL", lat: -10.6, lng: -53.1, tone: "country" },
@@ -309,6 +320,19 @@ function routeColor(tone?: VectorMapRoute["tone"]) {
   if (tone === "warn") return "#fb7185";
   if (tone === "success") return "#34d399";
   return "#67e8f9";
+}
+
+function routeGradientKey(tone?: VectorMapRoute["tone"]) {
+  if (tone === "warn") return "warn";
+  if (tone === "success") return "success";
+  return "info";
+}
+
+function telemetryColor(tone: string) {
+  if (tone === "emerald") return "#34d399";
+  if (tone === "violet") return "#a78bfa";
+  if (tone === "amber") return "#f59e0b";
+  return "#22d3ee";
 }
 
 function evidenceStyle(tone?: VectorMapEvidenceTone) {
@@ -488,6 +512,36 @@ export function PremiumVectorMap({
             <stop offset="48%" stopColor="#67e8f9" stopOpacity="0.34" />
             <stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
           </linearGradient>
+          <linearGradient id={`${idPrefix}-route-gradient-info`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.18" />
+            <stop offset="45%" stopColor="#67e8f9" stopOpacity="0.98" />
+            <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.72" />
+          </linearGradient>
+          <linearGradient id={`${idPrefix}-route-gradient-warn`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.22" />
+            <stop offset="48%" stopColor="#f59e0b" stopOpacity="0.96" />
+            <stop offset="100%" stopColor="#fb7185" stopOpacity="0.86" />
+          </linearGradient>
+          <linearGradient id={`${idPrefix}-route-gradient-success`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#34d399" stopOpacity="0.38" />
+            <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.92" />
+            <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.74" />
+          </linearGradient>
+          <radialGradient id={`${idPrefix}-comet-info`} cx="42%" cy="38%" r="72%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.96" />
+            <stop offset="42%" stopColor="#67e8f9" stopOpacity="0.88" />
+            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id={`${idPrefix}-comet-warn`} cx="42%" cy="38%" r="72%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.98" />
+            <stop offset="44%" stopColor="#f59e0b" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#fb7185" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id={`${idPrefix}-comet-success`} cx="42%" cy="38%" r="72%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.98" />
+            <stop offset="44%" stopColor="#34d399" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+          </radialGradient>
           <linearGradient id={`${idPrefix}-land`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="var(--nexid-vector-land-1, #0f766e)" stopOpacity="var(--nexid-vector-land-opacity-1, 0.34)" />
             <stop offset="52%" stopColor="var(--nexid-vector-land-2, #0e7490)" stopOpacity="var(--nexid-vector-land-opacity-2, 0.24)" />
@@ -716,6 +770,52 @@ export function PremiumVectorMap({
           })}
         </g>
 
+        <g opacity={chrome === "minimal" ? "0.16" : density === "route" ? "0.52" : "0.7"}>
+          {NETWORK_TELEMETRY_PARTICLES.map((particle, index) => {
+            const dot = project(particle.lat, particle.lng);
+            const color = telemetryColor(particle.tone);
+            return (
+              <g key={`network-telemetry-${index}`} transform={`translate(${dot.x.toFixed(1)} ${dot.y.toFixed(1)})`}>
+                <circle r="2.4" fill={color} opacity="0.18" filter={`url(#${idPrefix}-soft-glow)`}>
+                  <animateTransform
+                    attributeName="transform"
+                    type="translate"
+                    values={`0 0; ${particle.dx} ${particle.dy}; 0 0`}
+                    dur={`${particle.dur}s`}
+                    begin={`${particle.delay}s`}
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="0.05;0.72;0.05"
+                    dur={`${particle.dur}s`}
+                    begin={`${particle.delay}s`}
+                    repeatCount="indefinite"
+                  />
+                </circle>
+                <line
+                  x1={-particle.dx * 0.32}
+                  y1={-particle.dy * 0.32}
+                  x2="0"
+                  y2="0"
+                  stroke={color}
+                  strokeWidth="1"
+                  strokeLinecap="round"
+                  opacity="0.28"
+                >
+                  <animate
+                    attributeName="opacity"
+                    values="0;0.42;0"
+                    dur={`${particle.dur}s`}
+                    begin={`${particle.delay}s`}
+                    repeatCount="indefinite"
+                  />
+                </line>
+              </g>
+            );
+          })}
+        </g>
+
         <g opacity={density === "route" ? "0.95" : "0.76"}>
           {visiblePoints.map((point) => {
             const dot = project(point.lat, point.lng);
@@ -745,6 +845,9 @@ export function PremiumVectorMap({
           {visibleRoutes.map((route, index) => {
             const d = routePath(route);
             const color = routeColor(route.tone);
+            const gradientKey = routeGradientKey(route.tone);
+            const gradientStroke = `url(#${idPrefix}-route-gradient-${gradientKey})`;
+            const cometFill = `url(#${idPrefix}-comet-${gradientKey})`;
             const speed = route.tone === "warn" ? "2.1s" : "3.2s";
             const from = project(route.fromLat, route.fromLng);
             const to = project(route.toLat, route.toLng);
@@ -755,12 +858,22 @@ export function PremiumVectorMap({
               <g key={route.id}>
                 <path d={d} fill="none" stroke={routeHaloColor} strokeWidth={route.tone === "warn" ? "12" : "10"} strokeLinecap="round" opacity={routeHaloOpacity} />
                 <path d={d} fill="none" stroke={color} strokeWidth={route.tone === "warn" ? "4.6" : "3.8"} strokeLinecap="round" opacity="0.16" filter={`url(#${idPrefix}-soft-glow)`} />
-                <path d={d} fill="none" stroke={color} strokeWidth={route.tone === "warn" ? "2.8" : "2.2"} strokeLinecap="round" strokeDasharray="10 14" opacity="0.94" filter={`url(#${idPrefix}-soft-glow)`}>
+                <path d={d} fill="none" stroke={gradientStroke} strokeWidth={route.tone === "warn" ? "3.2" : "2.5"} strokeLinecap="round" strokeDasharray="10 14" opacity="0.96" filter={`url(#${idPrefix}-soft-glow)`}>
                   <animate attributeName="stroke-dashoffset" values="0;-72" dur={speed} repeatCount="indefinite" />
                 </path>
-                <circle r={route.tone === "warn" ? "4.5" : "3.6"} fill={color} opacity={index > 9 ? "0.4" : "0.82"}>
-                  <animateMotion dur={route.tone === "warn" ? "4.2s" : "5.5s"} repeatCount="indefinite" path={d} />
-                </circle>
+                <g opacity={index > 9 ? "0.42" : "0.92"} filter={`url(#${idPrefix}-soft-glow)`}>
+                  <circle r={route.tone === "warn" ? "7.5" : "6.2"} fill={cometFill} opacity="0.95">
+                    <animateMotion dur={route.tone === "warn" ? "4.2s" : "5.5s"} repeatCount="indefinite" path={d} />
+                  </circle>
+                  <circle r={route.tone === "warn" ? "3.6" : "2.8"} fill={color} opacity="0.62">
+                    <animateMotion
+                      dur={route.tone === "warn" ? "4.2s" : "5.5s"}
+                      begin={route.tone === "warn" ? "-0.22s" : "-0.32s"}
+                      repeatCount="indefinite"
+                      path={d}
+                    />
+                  </circle>
+                </g>
                 {label && chrome !== "minimal" ? (
                   <g transform={`translate(${labelX.toFixed(1)} ${labelY.toFixed(1)})`} opacity={index > 6 ? "0.68" : "0.92"}>
                     <rect x="-58" y="-14" width="116" height="27" rx="13.5" fill={labelPanelFill} stroke={color} strokeOpacity={labelPanelStrokeOpacity} />
@@ -792,32 +905,79 @@ export function PremiumVectorMap({
                 onKeyDown={(event) => handlePointKey(event, point)}
                 style={{ cursor: onPointSelect ? "pointer" : "default" }}
               >
-                <circle cx={dot.x} cy={dot.y} r={radius + 10} fill="none" stroke={color} strokeWidth="2" opacity={selected ? "0.58" : "0.28"}>
-                  <animate attributeName="r" values={`${radius + 5};${radius + 18};${radius + 5}`} dur={selected ? "2.1s" : "3.4s"} repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.75;0.12;0.75" dur={selected ? "2.1s" : "3.4s"} repeatCount="indefinite" />
-                </circle>
+                {[0, 1, 2].map((ring) => (
+                  <circle
+                    key={`ripple-${point.id}-${ring}`}
+                    cx={dot.x}
+                    cy={dot.y}
+                    r={radius + 8 + ring * 4}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={selected ? "1.8" : "1.2"}
+                    opacity={selected ? "0.54" : "0.2"}
+                  >
+                    <animate
+                      attributeName="r"
+                      values={`${radius + 4};${radius + 18 + ring * 7};${radius + 4}`}
+                      dur={selected ? "2.2s" : "3.8s"}
+                      begin={`${ring * 0.42}s`}
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      values={selected ? "0.72;0.06;0.72" : "0.32;0.03;0.32"}
+                      dur={selected ? "2.2s" : "3.8s"}
+                      begin={`${ring * 0.42}s`}
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                ))}
                 <circle cx={dot.x} cy={dot.y} r={radius + 3} fill={pointCenterFill} stroke={color} strokeWidth="1.2" />
                 <circle cx={dot.x} cy={dot.y} r={radius} fill={color} stroke="#f8fafc" strokeWidth={selected ? "3" : "2"} filter={`url(#${idPrefix}-soft-glow)`} />
                 
-                {/* Radar Crosshair for Selected Point */}
                 {selected && (
                   <g transform={`translate(${dot.x} ${dot.y})`} className="pointer-events-none">
-                    {/* Rotating outer radar crosshair */}
-                    <circle r={radius + 15} fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="3 4" opacity="0.8">
+                    <circle r={radius + 24} fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="2 7" opacity="0.82">
                       <animateTransform
                         attributeName="transform"
                         type="rotate"
                         from="0"
                         to="360"
-                        dur="6s"
+                        dur="7.5s"
                         repeatCount="indefinite"
                       />
                     </circle>
-                    {/* Tick lines */}
-                    <line x1={-(radius + 20)} y1="0" x2={-(radius + 11)} y2="0" stroke={color} strokeWidth="1" opacity="0.85" />
-                    <line x1={radius + 11} y1="0" x2={radius + 20} y2="0" stroke={color} strokeWidth="1" opacity="0.85" />
-                    <line x1="0" y1={-(radius + 20)} x2="0" y2={-(radius + 11)} stroke={color} strokeWidth="1" opacity="0.85" />
-                    <line x1="0" y1={radius + 11} x2="0" y2={radius + 20} stroke={color} strokeWidth="1" opacity="0.85" />
+                    <g opacity="0.86">
+                      <animateTransform
+                        attributeName="transform"
+                        type="rotate"
+                        from="0"
+                        to="-360"
+                        dur="4.8s"
+                        repeatCount="indefinite"
+                      />
+                      <line x1={-(radius + 30)} y1="0" x2={-(radius + 13)} y2="0" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+                      <line x1={radius + 13} y1="0" x2={radius + 30} y2="0" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+                      <line x1="0" y1={-(radius + 30)} x2="0" y2={-(radius + 13)} stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+                      <line x1="0" y1={radius + 13} x2="0" y2={radius + 30} stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+                      <path
+                        d={`M ${-(radius + 19)} ${-(radius + 19)} h 9 M ${-(radius + 19)} ${-(radius + 19)} v 9 M ${radius + 19} ${-(radius + 19)} h -9 M ${radius + 19} ${-(radius + 19)} v 9 M ${-(radius + 19)} ${radius + 19} h 9 M ${-(radius + 19)} ${radius + 19} v -9 M ${radius + 19} ${radius + 19} h -9 M ${radius + 19} ${radius + 19} v -9`}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="1.1"
+                        strokeLinecap="round"
+                      />
+                    </g>
+                    <circle r={radius + 34} fill="none" stroke={color} strokeWidth="0.6" strokeDasharray="1 12" opacity="0.5">
+                      <animateTransform
+                        attributeName="transform"
+                        type="rotate"
+                        from="0"
+                        to="360"
+                        dur="12s"
+                        repeatCount="indefinite"
+                      />
+                    </circle>
                   </g>
                 )}
 
