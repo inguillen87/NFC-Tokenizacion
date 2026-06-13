@@ -65,7 +65,7 @@ const faqCategories = [
       },
       {
         q: "¿Qué pasa si un falsificador simplemente despega la etiqueta con el chip (sin material VOID) y la pega en una botella falsa? ¿Cómo justifica nexID la inversión en este escenario?",
-        a: "Es una objeción crítica. Si el material no es auto-destructivo (VOID), despegarlo intacto es sumamente difícil: el adhesivo acrílico de alta cohesión sobre vidrio curvo rompe el filamento ultrafino de aluminio de la antena NFC en el 90% de los intentos, dejando el chip inoperativo (un chip muerto equivale a alerta de fraude). Pero supongamos que logran despegarlo intacto. nexID lo resuelve cruzando telemetría en la nube: comparamos los despachos de aduana oficiales con las lecturas en destino. Si el lote fue exportado a Londres y se registra un escaneo en un bar de San Pablo, el backend emite una alerta de mercado gris. Además, el chip está asociado a una botella única. Si el falsificador clona la etiqueta física pero usa el mismo chip, al segundo cliente que escanee esa botella le aparecerá una advertencia de 'Esta botella ya fue consumida y registrada en Cava Digital anteriormente'.",
+        a: "Es una objeción crítica. Si el material no es auto-destructivo (VOID), despegarlo intacto es sumamente difícil: el adhesivo acrílico de alta cohesión sobre vidrio curvo rompe el filamento de aluminio de la antena NFC en el 90% de los intentos, dejando el chip inoperativo. Pero si buscas seguridad física total, ofrecemos como opcional de setup etiquetas con adhesivo destructible de transferencia o tipo 'tatuaje' (VOID Tamper-Evident), que se pueden solicitar fácilmente a proveedores globales. Aunque incrementan levemente el costo unitario, al intentar despegarlas dejan un patrón de residuo físico 'tatuado' en el vidrio que evidencia visualmente la manipulación y destruye la antena. Si optas por tags estándar sin VOID, nexID lo resuelve cruzando telemetría en la nube: comparamos despachos oficiales con lecturas geográficas en destino, alertando de inmediato ante cualquier desvío de canal o intento de reutilización.",
         ctx: "La base de datos de exportaciones sincroniza las lecturas de aduana con las del consumidor final en tiempo real. Así, la bodega sabe exactamente qué porcentaje del lote llegó al destino correcto y detecta desvíos de canal sin depender exclusivamente de la seguridad física del envase."
       }
     ]
@@ -97,7 +97,7 @@ const faqCategories = [
       },
       {
         q: "En cosméticos, si un falsificador despega la etiqueta del perfume original para pegarla en un frasco clonado, ¿cómo detectamos el fraude si no usamos adhesivos VOID?",
-        a: "La realidad es que las antenas NFC grabadas en aluminio sobre sustratos delgados de papel son físicamente frágiles. Al intentar remover la etiqueta con pegamento industrial, el estiramiento corta las micro-pistas del circuito integrado, destruyéndolo. Pero si el falsificador es extremadamente minucioso y logra transferirlo intacto, el sistema de telemetría de nexID lo detecta por comportamiento. Registramos el historial de escaneo y la geolocalización. Si un frasco vendido en Buenos Aires es escaneado repetidamente en San Pablo, o si reporta lecturas múltiples incongruentes, el sistema bloquea el token del chip y marca el producto como 'Bajo Sospecha'. No compites solo con adhesivos; compites con inteligencia de datos centralizada.",
+        a: "Las antenas NFC de papel son extremadamente frágiles y se cortan al despegar el pegamento. Pero si buscas protección física total, existen etiquetas de transferencia de adhesivo o tipo 'tatuaje' (VOID) que se consiguen fácilmente con proveedores globales. Al intentar despegarlas, la antena metálica y el diseño se fragmentan y quedan parcialmente pegados ('tatuados') en el frasco de vidrio, haciendo imposible su reutilización. Si prefieres tags más económicos sin VOID, nuestro motor de telemetría detecta comportamientos incongruentes en la nube (como escaneos duplicados o geolocalizaciones imposibles de un mismo chip en dos países distintos), marcando de inmediato el envase como sospechoso en la base de datos centralizada.",
         ctx: "Al contrastar la base de datos de despachos a distribuidores autorizados con las coordenadas GPS del cliente final que escanea el perfume, nexID identifica de inmediato la fuga al mercado gris o la reutilización del chip."
       }
     ]
@@ -771,6 +771,217 @@ export const INDUSTRY_PRESETS: IndustryPreset[] = [
   { name: "eventos", label: "Eventos & Tickets VIP", volume: 25000, fraudRate: 8.5, icon: "🎫", price: 50, defaultChip: "ntag", defaultChipCost: 0.50 },
 ];
 
+export const INDUSTRY_SIM_DETAILS: Record<string, {
+  productName: string;
+  location: string;
+  authText: string;
+  selloText: string;
+  nodes: string[];
+  iot: string[];
+  steps: Array<{ title: string; desc: string }>;
+  detailsTitle: string;
+  detailsTagline: string;
+  detailsGrid: Array<{ label: string; val: string }>;
+  detailsQuote: string;
+  mintTitle: string;
+  mintDesc: string;
+  mintSuccess: string;
+  reward1Title: string;
+  reward1Sub: string;
+  reward2Title: string;
+  reward2Sub: string;
+  marketTitle: string;
+  marketDesc: string;
+  tabLabels: string[];
+  chatPrompts: Array<{ label: string; q: string }>;
+}> = {
+  bodegas: {
+    productName: "Gran Blend 2026",
+    location: "Mendoza, Argentina",
+    authText: "Autenticidad SQL",
+    selloText: "Sello Cerrado Original",
+    nodes: ["MDZ", "BUE", "RTM", "ZRH"],
+    iot: ["🌡️ Temp: 14.2°C", "💧 Hum: 58%", "⚡ GPS Lock: OK"],
+    steps: [
+      { title: "1. Viñedo Origen", desc: "Luján de Cuyo, Mendoza · Registrado SQL" },
+      { title: "2. Logística y Aduana", desc: "Despacho de puerto e ingreso en Zurich" },
+      { title: "3. Sello de Seguridad", desc: "TagTamper Intacto (Original)" }
+    ],
+    detailsTitle: "Ficha Enológica",
+    detailsTagline: "🏅 96 pts Suckling",
+    detailsGrid: [
+      { label: "Varietal:", val: "Malbec 100%" },
+      { label: "Crianza:", val: "18m Roble Fr." },
+      { label: "Crítica:", val: "Reserva Premium" },
+      { label: "Servicio:", val: "16°C - 18°C" }
+    ],
+    detailsQuote: '"Color rubí, notas a ciruela madura, cacao y vainilla persistentes."',
+    mintTitle: "Registrar en Blockchain",
+    mintDesc: "Generá el gemelo digital de esta botella para poseer el certificado inmutable de autenticidad en el ledger de Polygon.",
+    mintSuccess: "Tu certificado inmutable en la red Polygon Amoy ha sido generado con éxito.",
+    reward1Title: "Copa de Degustación",
+    reward1Sub: "Cata en Cava Mendoza",
+    reward2Title: "Tour VIP Bodega",
+    reward2Sub: "15% Off Reservas",
+    marketTitle: "Marketplace Cava VIP",
+    marketDesc: "Cava de compra y venta entre coleccionistas",
+    tabLabels: ["Sello", "Web3", "Premios", "Cava", "Chat"],
+    chatPrompts: [
+      { label: "🍷 Maridaje", q: "¿Con qué comida marida este blend?" },
+      { label: "🍇 Notas de Cata", q: "¿Cuáles son sus notas de cata?" },
+      { label: "🏔️ Origen", q: "¿Cuál es el origen de este viñedo?" }
+    ]
+  },
+  cosmetica: {
+    productName: "Elysian Elixir Perfume",
+    location: "Grasse, Francia / Latam",
+    authText: "Autenticidad REACH",
+    selloText: "Fórmula Inalterada",
+    nodes: ["GSE", "PAR", "BUE", "SCL"],
+    iot: ["🌡️ Temp: 18.5°C", "☀️ UV Index: 0.0", "⚡ Sello: Hermético"],
+    steps: [
+      { title: "1. Esencia Origen", desc: "Flores de Jazmín, Grasse · Lote Acreditado" },
+      { title: "2. Importación y Fraccionado", desc: "Aduana de Buenos Aires e ingreso a planta" },
+      { title: "3. Sello de Apertura", desc: "TagTamper Activo e Intacto" }
+    ],
+    detailsTitle: "Ficha de Fragancia",
+    detailsTagline: "✨ Extracto de Parfum",
+    detailsGrid: [
+      { label: "Familia:", val: "Floral Oriental" },
+      { label: "Concentración:", val: "30% Aceites Es." },
+      { label: "Nariz:", val: "M. Guerlain" },
+      { label: "Volumen:", val: "100 ml" }
+    ],
+    detailsQuote: '"Notas de salida de jazmín y azafrán, con fondo de cedro y ámbar gris."',
+    mintTitle: "Certificado de Lujo NFT",
+    mintDesc: "Registrá la autenticidad y propiedad única de tu frasco de perfume en el registro descentralizado de Polygon.",
+    mintSuccess: "Tu certificado de autenticidad y propiedad de lujo ha sido minteado en Polygon.",
+    reward1Title: "Masterclass de Perfumería",
+    reward1Sub: "Acceso digital exclusivo",
+    reward2Title: "Muestra Exclusiva",
+    reward2Sub: "Lanzamientos 2027 gratis",
+    marketTitle: "Colección Fragance VIP",
+    marketDesc: "Intercambio exclusivo de frascos numerados",
+    tabLabels: ["Sello", "Web3", "Regalos", "Club", "Chat"],
+    chatPrompts: [
+      { label: "💄 Fragancia", q: "¿Cuáles son las notas olfativas de este perfume?" },
+      { label: "✨ Cuidado", q: "¿Es seguro para pieles sensibles?" },
+      { label: "🇫🇷 Origen", q: "¿De dónde proviene la esencia?" }
+    ]
+  },
+  agro: {
+    productName: "BioGuard Max 500",
+    location: "Lote Fitosanitario",
+    authText: "Autenticidad Agro",
+    selloText: "Fórmula Fitosanitaria Pura",
+    nodes: ["LAB", "ROS", "PER", "SLP"],
+    iot: ["🌡️ Temp: 22.1°C", "📊 Presión: 1.0atm", "⚡ Sello: Sellado"],
+    steps: [
+      { title: "1. Síntesis de Lote", desc: "Laboratorio Central de Biotecnología · Certificado" },
+      { title: "2. Despacho a Planta", desc: "Puerto Rosario y despacho a Distribuidor Pergamino" },
+      { title: "3. Integridad de Bidón", desc: "TagTamper intacto sin micro-filtraciones" }
+    ],
+    detailsTitle: "Ficha Fitosanitaria",
+    detailsTagline: "🌾 Certificación SENASA",
+    detailsGrid: [
+      { label: "Compuesto:", val: "Bio-Fungicida" },
+      { label: "Pureza:", val: "99.8% Activo" },
+      { label: "Vencimiento:", val: "Diciembre 2028" },
+      { label: "Aplicación:", val: "Foliar Directa" }
+    ],
+    detailsQuote: '"Producto orgánico de amplio espectro para cereales y oleaginosas premium."',
+    mintTitle: "Tokenización Fitosanitaria",
+    mintDesc: "Registrá la huella de carbono y trazabilidad de este lote agroquímico en el ledger público de Polygon.",
+    mintSuccess: "Pasaporte digital del lote fitosanitario registrado en la red Polygon.",
+    reward1Title: "Asesoramiento Agrónomo",
+    reward1Sub: "Consulta técnica live",
+    reward2Title: "Descuento Reabastecimiento",
+    reward2Sub: "10% en tu próximo pedido",
+    marketTitle: "Trazabilidad de Lotes",
+    marketDesc: "Trazabilidad de carbono y transferencia de lotes",
+    tabLabels: ["Sello", "Web3", "Beneficios", "Lotes", "Chat"],
+    chatPrompts: [
+      { label: "🌾 Dosificación", q: "¿Cuál es la dosis recomendada por hectárea?" },
+      { label: "🚜 Aplicación", q: "¿En qué condiciones climáticas se debe aplicar?" },
+      { label: "🧪 Fitosanitario", q: "¿Qué hongos o plagas controla?" }
+    ]
+  },
+  pharma: {
+    productName: "OncoCure Forte 100mg",
+    location: "Cadena de Frío Monitoreada",
+    authText: "Autenticidad FDA / EMA",
+    selloText: "Cadena de Frío Intacta",
+    nodes: ["FRA", "BUE", "HOS", "PAC"],
+    iot: ["🌡️ Temp: 4.8°C (Rango OK)", "💧 Hum: 45%", "❄️ Alerta Frío: Ninguna"],
+    steps: [
+      { title: "1. Síntesis Alemana", desc: "Planta Central Frankfurt · Cripto-Sello Generado" },
+      { title: "2. Arribo Ezeiza", desc: "Ingreso a depósito refrigerado aduanero · Acreditado" },
+      { title: "3. Monitoreo de Sello", desc: "TagTamper intacto y verificado en la app" }
+    ],
+    detailsTitle: "Ficha del Medicamento",
+    detailsTagline: "🧪 Receta Archivada",
+    detailsGrid: [
+      { label: "Principio A.:", val: "Inmunoterapia" },
+      { label: "Concentración:", val: "100 mg / Vial" },
+      { label: "Temperatura:", val: "2°C - 8°C Const." },
+      { label: "Lote ID:", val: "ON-88392-A" }
+    ],
+    detailsQuote: '"Medicamento oncológico de alta especialidad. No exponer a la luz directa del sol."',
+    mintTitle: "Pasaporte de Salud Cripto",
+    mintDesc: "Generá el certificado inmutable de cumplimiento de la cadena de frío y autenticidad del medicamento para el paciente.",
+    mintSuccess: "Pasaporte médico registrado y verificado en la blockchain Polygon.",
+    reward1Title: "Soporte al Paciente",
+    reward1Sub: "Línea médica 24/7 VIP",
+    reward2Title: "Rebaja Deducible",
+    reward2Sub: "Verificar con prepaga",
+    marketTitle: "Registro de Cadena de Frío",
+    marketDesc: "Portal de verificación y auditoría médica de lotes",
+    tabLabels: ["Sello", "Web3", "Auditoría", "Historial", "Chat"],
+    chatPrompts: [
+      { label: "❄️ Cadena de Frío", q: "¿Cuál fue el registro histórico de temperatura?" },
+      { label: "🇩🇪 Procedencia", q: "¿Dónde se fabricó este lote?" },
+      { label: "🛡️ Normativas", q: "¿Cumple con regulaciones FDA o EMA?" }
+    ]
+  },
+  eventos: {
+    productName: "VIP Global Summit 2026",
+    location: "Buenos Aires, Argentina",
+    authText: "Acreditación Digital",
+    selloText: "Pase Activo y Válido",
+    nodes: ["SIST", "PROD", "ENTR", "VIP"],
+    iot: ["⏱️ Hora: 19:30", "📍 Sector: VIP Front Row", "🔑 Acceso: Permitido"],
+    steps: [
+      { title: "1. Ticket Generado", desc: "Acreditación digital centralizada nexID" },
+      { title: "2. Envío Credencial", desc: "Asignación de chip NTAG a pulsera física" },
+      { title: "3. Primer Acceso Puerta", desc: "Validado en lector táctil inteligente" }
+    ],
+    detailsTitle: "Detalles del Pase",
+    detailsTagline: "🎫 Acceso Full Access",
+    detailsGrid: [
+      { label: "Categoría:", val: "VIP Founders" },
+      { label: "Ubicación:", val: "Fila 1 a 3" },
+      { label: "Catering:", val: "Premium Incluido" },
+      { label: "Beneficios:", val: "Afterparty Pass" }
+    ],
+    detailsQuote: '"Válido para todas las conferencias magistrales, workshops y cocktail de networking."',
+    mintTitle: "Mint Ticket a NFT Coleccionable",
+    mintDesc: "Convertí tu credencial física en un ticket NFT digital inmutable de colección (POAP) en la blockchain.",
+    mintSuccess: "POAP NFT Coleccionable emitido con éxito en la red Polygon.",
+    reward1Title: "Acceso Afterparty",
+    reward1Sub: "Cocktail de Cierre VIP",
+    reward2Title: "Preventa Summit 2027",
+    reward2Sub: "50% Off precio Lanzamiento",
+    marketTitle: "Marketplace de Entradas",
+    marketDesc: "Canal seguro de transferencia P2P de pases",
+    tabLabels: ["Ingreso", "Ticket", "Premios", "Market", "Chat"],
+    chatPrompts: [
+      { label: "🔑 Mis Accesos", q: "¿Qué áreas me permite ingresar este VIP Pass?" },
+      { label: "🥂 Catering", q: "¿Qué incluye el catering Founders?" },
+      { label: "⏱️ Horarios", q: "¿Cuál es la agenda de charlas y afterparty?" }
+    ]
+  }
+};
+
 // Backward-compatible wrapper for demo-lab
 export function ThreeDBottle({ active, tapping, labelImageUrl }: { active: boolean; tapping: boolean; labelImageUrl?: string | null }) {
   return <ThreeDProduct active={active} tapping={tapping} labelImageUrl={labelImageUrl} industry="bodegas" chipModel="tamper" />;
@@ -1311,6 +1522,164 @@ export function RoiCalculator({
   );
 }
 
+const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; answer: string; timestamp: string; tag: string; status: "respondido" | "procesando" }>> = {
+  bodegas: [
+    {
+      id: "q-b1",
+      query: "Tengo una cena con carne asada y quiero quedar bien. ¿Este blend de Mendoza va bien o me recomiendan el Cabernet Sauvignon de su bodega?",
+      answer: "Sí, este Gran Blend 2026 marida de forma excepcional con carnes rojas a la brasa. Si querés una alternativa más estructurada, nuestro Cabernet Sauvignon Reserva es una excelente opción. Además, por convenio, podés adquirirlo con 15% off en el club.",
+      timestamp: "19:42:10",
+      tag: "Venta Directa",
+      status: "respondido"
+    },
+    {
+      id: "q-b2",
+      query: "¿Tienen convenios o alianzas con otras bodegas como Catena Zapata o Rutini para visitas guiadas en Luján de Cuyo?",
+      answer: "Sí, formamos parte de la Alianza de Cavas Premium de Mendoza. Al presentar tu ticket NFT de nexID, accedés a un 20% de descuento en el tour enológico de Bodega Catena Zapata.",
+      timestamp: "19:15:30",
+      tag: "Alianza B2B",
+      status: "respondido"
+    },
+    {
+      id: "q-b3",
+      query: "¿Se puede guardar esta botella en cava por más de 8 años o ya está lista para consumo?",
+      answer: "Este lote tiene un potencial de guarda de hasta 10 años en condiciones óptimas (14°C - 16°C, sin luz). Sin embargo, la cosecha actual está en su momento óptimo de maduración para consumo inmediato.",
+      timestamp: "18:02:45",
+      tag: "Enología",
+      status: "respondido"
+    }
+  ],
+  cosmetica: [
+    {
+      id: "q-c1",
+      query: "¿Qué otros productos parecidos recomiendan si tengo piel extremadamente seca y sensible?",
+      answer: "Para piel seca, recomendamos complementar Elysian Elixir con nuestra Crema Facial Hidratante Aura con ácido hialurónico. El escaneo de este frasco te otorga un cupón de 10% de descuento para esa compra.",
+      timestamp: "19:50:22",
+      tag: "Venta Cruzada",
+      status: "respondido"
+    },
+    {
+      id: "q-c2",
+      query: "¿Tienen convenios de distribución o alianzas exclusivas con cadenas como Sephora o Juleriaque en Latam?",
+      answer: "¡Exacto! Juleriaque es nuestro distribuidor oficial en Latam. Escaneando el chip en cualquier sucursal física, podés acumular el doble de puntos de fidelidad en tu pasaporte digital nexID.",
+      timestamp: "18:22:12",
+      tag: "Distribución",
+      status: "respondido"
+    },
+    {
+      id: "q-c3",
+      query: "¿Los componentes y esencias que usan para el fijador cumplen con normativas veganas y libres de crueldad?",
+      answer: "Absolutamente. Elysian Elixir está certificado como Cruelty-Free y 100% Vegano. Todos los ingredientes cumplen con el estándar REACH europeo de seguridad dermatológica.",
+      timestamp: "17:40:05",
+      tag: "Sostenibilidad",
+      status: "respondido"
+    }
+  ],
+  agro: [
+    {
+      id: "q-a1",
+      query: "Si llueve en unas dos horas, ¿el BioGuard Max 500 resiste el lavado o pierdo la aplicación en el cultivo?",
+      answer: "BioGuard Max posee un agente adherente de rápida absorción que se fija en la cutícula foliar en solo 45 minutos. Si la lluvia es menor a 15mm transcurrida una hora, el activo mantiene un 92% de efectividad.",
+      timestamp: "19:33:04",
+      tag: "Soporte Técnico",
+      status: "respondido"
+    },
+    {
+      id: "q-a2",
+      query: "¿Tienen convenios con cooperativas locales en Pergamino o Santa Fe para compras a granel de este lote?",
+      answer: "Sí, tenemos convenios de distribución directa con la Cooperativa Agrícola de Pergamino y la AFA en Santa Fe. Podes transferir tu token de lote digital directamente a sus cuentas para retirar mercadería.",
+      timestamp: "19:10:15",
+      tag: "B2B Lead",
+      status: "respondido"
+    },
+    {
+      id: "q-a3",
+      query: "¿Qué dosis por hectárea recomiendan para un ataque severo de roya en soja?",
+      answer: "Para ataques severos detectados (más del 20% de incidencia foliar), sugerimos aplicar 1.8 litros por hectárea, preferentemente en horas de baja radiación solar (mañana o atardecer).",
+      timestamp: "18:14:50",
+      tag: "Uso de Producto",
+      status: "respondido"
+    }
+  ],
+  pharma: [
+    {
+      id: "q-p1",
+      query: "Tengo un resfrío fuerte con fiebre. ¿Este medicamento OncoCure es compatible con analgésicos comunes como el paracetamol?",
+      answer: "⚠️ ATENCIÓN: OncoCure es una terapia oncológica de alta especialidad y NO debe usarse para resfríos comunes. Si estás bajo tratamiento con OncoCure, la toma de paracetamol debe ser supervisada por tu médico oncólogo debido a la carga hepática.",
+      timestamp: "19:48:19",
+      tag: "Médico",
+      status: "respondido"
+    },
+    {
+      id: "q-p2",
+      query: "¿Tienen alianza o convenio con laboratorios internacionales para asegurar la entrega si hay falta de stock local?",
+      answer: "Sí, formamos parte de la red de suministro de emergencia con laboratorios de Frankfurt y Basilea. Al verificar la autenticidad con tu chip nexID, el sistema reserva stock prioritario en aduana en caso de quiebre de inventario.",
+      timestamp: "19:05:32",
+      tag: "Cadena de Suministro",
+      status: "respondido"
+    },
+    {
+      id: "q-p3",
+      query: "¿Este lote ON-88392-A cuenta con cobertura y convenios directos de prepagas como OSDE o Swiss Medical?",
+      answer: "Sí, OncoCure está incluido en el plan de oncología especial al 100% de cobertura para afiliados de OSDE (Planes 310 en adelante) y Swiss Medical, previa validación del pasaporte digital de cadena de frío.",
+      timestamp: "17:55:40",
+      tag: "Descuento VIP",
+      status: "respondido"
+    }
+  ],
+  eventos: [
+    {
+      id: "q-e1",
+      query: "¿Este VIP Pass me da acceso a la zona de networking con los speakers principales durante el afterparty de cierre?",
+      answer: "Sí, los pases VIP Founders tienen acceso exclusivo al cocktail de cierre en el sector VIP Lounge, donde podrás realizar networking directo con los oradores y sponsors del Summit.",
+      timestamp: "19:51:02",
+      tag: "Acceso VIP",
+      status: "respondido"
+    },
+    {
+      id: "q-e2",
+      query: "¿Tienen convenios de alojamiento o tarifas corporativas con hoteles cercanos para asistentes que viajamos desde el interior?",
+      answer: "Sí, tenemos tarifas preferenciales (15% de descuento) en el Hotel Hilton y el Sheraton Buenos Aires. Podés reclamar tu código de descuento en la pestaña 'Premios' tras verificar tu credencial física.",
+      timestamp: "19:20:40",
+      tag: "Logística",
+      status: "respondido"
+    },
+    {
+      id: "q-e3",
+      query: "¿El catering premium Founders de la tarde incluye opciones libres de gluten (apto celíacos) y opciones veganas?",
+      answer: "Absolutamente. Contamos con una isla exclusiva de catering certificado Sin TACC y opciones veganas gourmet durante todo el evento. Informale a los camareros de tu rango VIP Founders.",
+      timestamp: "18:44:15",
+      tag: "Servicios",
+      status: "respondido"
+    }
+  ]
+};
+
+const detectTag = (query: string, industry: string): string => {
+  const q = query.toLowerCase();
+  if (industry === "bodegas") {
+    if (q.includes("cena") || q.includes("comida") || q.includes("marida") || q.includes("comer") || q.includes("llevar") || q.includes("quedar bien") || q.includes("precio") || q.includes("comprar")) return "Venta Directa";
+    if (q.includes("convenio") || q.includes("alianza") || q.includes("catena") || q.includes("rutini") || q.includes("socios")) return "Alianza B2B";
+    return "Enología";
+  } else if (industry === "cosmetica") {
+    if (q.includes("parecido") || q.includes("crema") || q.includes("otro") || q.includes("rutina") || q.includes("combinar")) return "Venta Cruzada";
+    if (q.includes("convenio") || q.includes("distrib") || q.includes("sephora") || q.includes("juleriaque") || q.includes("tienda")) return "Distribución";
+    return "Sostenibilidad";
+  } else if (industry === "agro") {
+    if (q.includes("lluvia") || q.includes("viento") || q.includes("clima") || q.includes("lavado")) return "Soporte Técnico";
+    if (q.includes("convenio") || q.includes("cooperativa") || q.includes("pergamino") || q.includes("compras") || q.includes("granel")) return "B2B Lead";
+    return "Uso de Producto";
+  } else if (industry === "pharma") {
+    if (q.includes("resfrio") || q.includes("gripe") || q.includes("tos") || q.includes("tomar") || q.includes("dosis") || q.includes("medico") || q.includes("paracetamol")) return "Médico";
+    if (q.includes("laboratorio") || q.includes("falta") || q.includes("stock") || q.includes("entrega")) return "Cadena de Suministro";
+    return "Descuento VIP";
+  } else {
+    if (q.includes("orador") || q.includes("vip") || q.includes("networking") || q.includes("charla") || q.includes("entrar")) return "Acceso VIP";
+    if (q.includes("hotel") || q.includes("alojamiento") || q.includes("viaje") || q.includes("donde")) return "Logística";
+    return "Servicios";
+  }
+};
+
 export function InvestorSnapshotClient() {
   const [activeTab, setActiveTab] = useState<"slides" | "playbook" | "downloads">("slides");
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -1354,6 +1723,11 @@ export function InvestorSnapshotClient() {
   ]);
   const [phoneChatInput, setPhoneChatInput] = useState("");
   const [phoneChatTyping, setPhoneChatTyping] = useState(false);
+
+  // CRM B2B Real-time Queries states
+  const [studioTab, setStudioTab] = useState<"designer" | "crm">("designer");
+  const [crmQueries, setCrmQueries] = useState<Array<{ id: string; query: string; answer: string; timestamp: string; tag: string; status: "respondido" | "procesando" }>>([]);
+  const [unreadCrmCount, setUnreadCrmCount] = useState(0);
 
   // Hugging Face config states
   const [showHfySettings, setShowHfySettings] = useState(false);
@@ -1411,6 +1785,8 @@ export function InvestorSnapshotClient() {
     setCustomLabelUrl(null);
     setLabelPrompt("");
     setLabelGenError(null);
+    setCrmQueries(DEFAULT_CRM_QUERIES[selectedIndustry] || []);
+    setUnreadCrmCount(0);
   }, [selectedIndustry]);
 
   const handleGenerateLabel = async (promptText: string) => {
@@ -1585,6 +1961,25 @@ export function InvestorSnapshotClient() {
     setPhoneChatInput("");
     setPhoneChatTyping(true);
     triggerNfcBeep();
+
+    // Create a new CRM query entry in real-time
+    const newQueryId = `q-user-${Math.random().toString(36).substr(2, 9)}`;
+    const timeStr = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const tag = detectTag(msgText, selectedIndustry);
+    
+    const newCrmEntry = {
+      id: newQueryId,
+      query: msgText,
+      answer: "Procesando respuesta por Cognitive AI...",
+      timestamp: timeStr,
+      tag: tag,
+      status: "procesando" as const
+    };
+    
+    setCrmQueries(prev => [newCrmEntry, ...prev]);
+    if (studioTab !== "crm") {
+      setUnreadCrmCount(prev => prev + 1);
+    }
     
     try {
       const response = await fetch("/api/cognitive-ai", {
@@ -1593,6 +1988,7 @@ export function InvestorSnapshotClient() {
         body: JSON.stringify({
           text: msgText,
           tone: "sommelier-chat",
+          industry: selectedIndustry,
           customToken: hfTokenInput
         })
       });
@@ -1601,26 +1997,85 @@ export function InvestorSnapshotClient() {
       const data = await response.json();
       
       setPhoneChatMessages(prev => [...prev, { sender: "bot", text: data.optimizedText }]);
+      setCrmQueries(prev => prev.map(q => q.id === newQueryId ? { ...q, answer: data.optimizedText, status: "respondido" } : q));
       triggerSuccessChime();
     } catch (err) {
-      console.warn("Hugging Face API failed or token not set, using enological local parser:", err);
+      console.warn("Hugging Face API failed or token not set, using local parser:", err);
       
-      // Local Sommelier Chat Fallback
+      // Local Industry Chat Fallback
       setTimeout(() => {
         const q = msgText.toLowerCase();
-        let reply = "Como Sommelier AI de nexID, te confirmo que este Gran Blend 2026 es 100% auténtico. ¿Te gustaría saber de su maridaje o notas de cata?";
+        let reply = "";
         
-        if (q.includes("maridaje") || q.includes("comida") || q.includes("comer") || q.includes("marida")) {
-          reply = "Este Gran Blend 2026 de Luján de Cuyo marida de forma excepcional con carnes rojas a la brasa, empanadas criollas y quesos duros maduros. Servir a 17°C.";
-        } else if (q.includes("cata") || q.includes("notas") || q.includes("sabor") || q.includes("olor") || q.includes("aroma")) {
-          reply = "En copa presenta un color rojo rubí profundo con reflejos violáceos. En nariz sobresalen notas a ciruelas negras, vainilla y chocolate amargo de la madera.";
-        } else if (q.includes("origen") || q.includes("mendoza") || q.includes("viñedo") || q.includes("donde")) {
-          reply = "Las uvas provienen de un viñedo exclusivo a 1.100 msnm en Luján de Cuyo, Mendoza. La amplitud térmica del desierto aporta frescura y concentración única.";
-        } else if (q.includes("blockchain") || q.includes("token") || q.includes("nft") || q.includes("web3")) {
-          reply = "Cada botella posee un gemelo digital registrado en Polygon Amoy. Esto certifica que el lote es original y te permite reclamar beneficios y airdrops.";
+        if (selectedIndustry === "cosmetica") {
+          reply = "Como tu Asistente Aura, te confirmo que Elysian Elixir es 100% original. ¿Quieres consultar sobre las notas olfativas o el cuidado?";
+          if (q.includes("nota") || q.includes("aroma") || q.includes("olfativa") || q.includes("olor")) {
+            reply = "Elysian Elixir abre con flores de jazmín y azafrán, corazón de ámbar gris y fondo de madera de cedro. Una concentración premium del 30%.";
+          } else if (q.includes("cuidado") || q.includes("piel") || q.includes("crema") || q.includes("sensible")) {
+            reply = "Nuestros productos son hipoalergénicos e integran principios activos orgánicos con resistencia química testada ante REACH.";
+          } else if (q.includes("origen") || q.includes("grasse") || q.includes("donde")) {
+            reply = "La esencia se produce en Grasse, Francia, y se fracciona bajo estrictos estándares en laboratorios locales acreditados.";
+          } else if (q.includes("parecido") || q.includes("crema") || q.includes("otro") || q.includes("rutina") || q.includes("combinar")) {
+            reply = "Para piel extremadamente seca, recomendamos complementar tu rutina con nuestra crema regeneradora Aura. Sephora (nuestro aliado de distribución) tiene stock disponible y obtienes 15% off.";
+          } else if (q.includes("convenio") || q.includes("distrib") || q.includes("sephora") || q.includes("juleriaque") || q.includes("tienda")) {
+            reply = "Contamos con convenios exclusivos de distribución con Juleriaque y Sephora en toda la región. Podrás canjear puntos de fidelidad en cualquiera de sus locales.";
+          }
+        } else if (selectedIndustry === "agro") {
+          reply = "Como tu Inspector Técnico BioGuard, confirmo que este lote fitosanitario es original. ¿Quieres consultar dosis o el origen?";
+          if (q.includes("dosis") || q.includes("aplicar") || q.includes("uso") || q.includes("hectarea")) {
+            reply = "BioGuard Max se aplica de forma foliar directa diluyendo 1.5 litros por hectárea en condiciones de viento menor a 10km/h.";
+          } else if (q.includes("origen") || q.includes("lote") || q.includes("rosario")) {
+            reply = "Este lote fitosanitario fue sintetizado en laboratorio y despachado desde el puerto de Rosario hacia Pergamino, certificado por SENASA.";
+          } else if (q.includes("plaga") || q.includes("hongo") || q.includes("enfermedad")) {
+            reply = "Controla hongos de suelo y de hoja de amplio espectro, con degradación biodegradable en 14 días sin residuos químicos.";
+          } else if (q.includes("lluvia") || q.includes("viento") || q.includes("clima") || q.includes("lavado")) {
+            reply = "BioGuard Max 500 incluye polímeros adherentes que resisten el lavado por lluvia transcurridos 45 minutos de la aplicación foliar.";
+          } else if (q.includes("convenio") || q.includes("cooperativa") || q.includes("pergamino") || q.includes("compras") || q.includes("granel")) {
+            reply = "Tenemos convenios vigentes con la Cooperativa Agrícola de Pergamino y la AFA para entregas a granel con facturación unificada.";
+          }
+        } else if (selectedIndustry === "pharma") {
+          reply = "Como tu Asistente Validante, confirmo la autenticidad y cadena de frío de OncoCure. ¿Quieres auditar la temperatura o el lote?";
+          if (q.includes("temperatura") || q.includes("frio") || q.includes("grados") || q.includes("cadena")) {
+            reply = "La temperatura histórica se mantuvo constante en 4.8°C (Rango exigido: 2°C a 8°C). No se registran alertas de desviación térmica.";
+          } else if (q.includes("lote") || q.includes("origen") || q.includes("frankfurt")) {
+            reply = "Lote ON-88392-A sintetizado en Frankfurt, Alemania, e ingresado por Ezeiza con habilitación aduanera y certificado del Ministerio de Salud.";
+          } else if (q.includes("seguridad") || q.includes("fda") || q.includes("ema")) {
+            reply = "Cumple con las normativas FDA/EMA de serialización y sellado inteligente TagTamper contra falsificación de medicamentos de alto costo.";
+          } else if (q.includes("resfrio") || q.includes("gripe") || q.includes("tos") || q.includes("tomar") || q.includes("dosis") || q.includes("medico") || q.includes("paracetamol")) {
+            reply = "⚠️ ALERTA: OncoCure es una inmunoterapia oncológica. Para resfríos, sugerimos usar paracetamol o antigripales certificados de laboratorios de nuestra red.";
+          } else if (q.includes("convenio") || q.includes("prepaga") || q.includes("cobertura") || q.includes("osde")) {
+            reply = "Este lote cuenta con cobertura del 100% de la cartilla oncológica para afiliados de OSDE (planes 310 en adelante) y Swiss Medical.";
+          }
+        } else if (selectedIndustry === "eventos") {
+          reply = "Como tu Coordinador de Accesos, te confirmo que este VIP Pass es 100% auténtico. ¿Quieres consultar accesos o el catering?";
+          if (q.includes("acceso") || q.includes("sector") || q.includes("entrar") || q.includes("donde")) {
+            reply = "Tu credencial otorga acceso al Sector VIP Front Row, charlas plenarias y VIP Lounge. Solo debes hacer tap en los molinetes.";
+          } else if (q.includes("catering") || q.includes("comida") || q.includes("bebida")) {
+            reply = "El catering premium Founders está incluido de 12:00 a 18:00, con cocktail y barra libre en el afterparty de cierre.";
+          } else if (q.includes("agenda") || q.includes("charla") || q.includes("horario")) {
+            reply = "La acreditación inicia a las 09:00. Las charlas principales comienzan a las 10:00 y el cocktail de networking a las 18:30.";
+          } else if (q.includes("hotel") || q.includes("alojamiento") || q.includes("viaje")) {
+            reply = "Contamos con convenios y tarifas corporativas en el Hotel Hilton y el Sheraton Buenos Aires para todos los asistentes del Summit.";
+          }
+        } else {
+          reply = "Como Sommelier AI de nexID, te confirmo que este Gran Blend 2026 es 100% auténtico. ¿Te gustaría saber de su maridaje o notas de cata?";
+          if (q.includes("maridaje") || q.includes("comida") || q.includes("comer") || q.includes("marida")) {
+            reply = "Este Gran Blend 2026 de Luján de Cuyo marida de forma excepcional con carnes rojas a la brasa, empanadas criollas y quesos duros maduros. Servir a 17°C.";
+          } else if (q.includes("cata") || q.includes("notas") || q.includes("sabor") || q.includes("olor") || q.includes("aroma")) {
+            reply = "En copa presenta un color rojo rubí profundo con reflejos violáceos. En nariz sobresalen notas a ciruelas negras, vainilla y chocolate amargo de la madera.";
+          } else if (q.includes("origen") || q.includes("mendoza") || q.includes("viñedo") || q.includes("donde")) {
+            reply = "Las uvas provienen de un viñedo exclusivo a 1.100 msnm en Luján de Cuyo, Mendoza. La amplitud térmica del desierto aporta frescura y concentración única.";
+          } else if (q.includes("blockchain") || q.includes("token") || q.includes("nft") || q.includes("web3")) {
+            reply = "Cada botella posee un gemelo digital registrado en Polygon Amoy. Esto certifica que el lote es original y te permite reclamar beneficios y airdrops.";
+          } else if (q.includes("cena") || q.includes("quedar bien") || q.includes("llevar") || q.includes("impresionar")) {
+            reply = "Para una cena especial, este Gran Blend 2026 es la elección perfecta para quedar bien. Si buscas complementar, tenemos convenio con Catena Zapata para su Malbec premium.";
+          } else if (q.includes("convenio") || q.includes("alianza") || q.includes("catena") || q.includes("rutini")) {
+            reply = "Contamos con una alianza con la red de bodegas de Luján de Cuyo, incluyendo preventas exclusivas cruzadas con Catena Zapata y Rutini.";
+          }
         }
         
         setPhoneChatMessages(prev => [...prev, { sender: "bot", text: reply }]);
+        setCrmQueries(prev => prev.map(q => q.id === newQueryId ? { ...q, answer: reply, status: "respondido" } : q));
         triggerSuccessChime();
       }, 1200);
     } finally {
@@ -2054,83 +2509,187 @@ export function InvestorSnapshotClient() {
               {/* nexID AI Studio (Administrative B2B Customizer) */}
               {simStep !== "tapping" && (
                 <div className="absolute right-4 top-4 bottom-4 w-[220px] bg-slate-950/95 border border-white/10 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-md z-20 shadow-2xl">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-1.5 border-b border-white/5 pb-2">
-                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-                      <div>
-                        <span className="text-[10px] font-black text-white uppercase tracking-wider block leading-none">nexID AI Studio</span>
-                        <span className="text-[7px] text-slate-500 uppercase tracking-widest block mt-0.5">Preventa Customizer</span>
+                  <div className="flex flex-col h-full justify-between">
+                    <div className="space-y-3 flex flex-col flex-1 overflow-hidden">
+                      <div className="flex items-center gap-1.5 border-b border-white/5 pb-2">
+                        <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                        <div>
+                          <span className="text-[10px] font-black text-white uppercase tracking-wider block leading-none">nexID AI Studio</span>
+                          <span className="text-[7px] text-slate-500 uppercase tracking-widest block mt-0.5">Control Panel</span>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-mono text-slate-400 uppercase">Diseño de Etiqueta / Arte:</label>
-                      <textarea
-                        value={labelPrompt}
-                        onChange={(e) => setLabelPrompt(e.target.value)}
-                        placeholder={
-                          selectedIndustry === "bodegas"
-                            ? "Ej: Un fénix dorado volando sobre viñas de Mendoza, estilo art decó..."
-                            : selectedIndustry === "cosmetica"
-                            ? "Ej: Flores silvestres y rocío matutino sobre vidrio dorado, abstracto..."
-                            : selectedIndustry === "agro"
-                            ? "Ej: Hojas de maíz digitalizadas de neón verde sobre fondo oscuro..."
-                            : selectedIndustry === "pharma"
-                            ? "Ej: Moléculas flotantes en tonos azules y plateados, estilo laboratorio..."
-                            : "Ej: Un pase VIP holográfico con estrellas doradas y patrón geométrico..."
-                        }
-                        rows={3}
-                        className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[9px] text-white outline-none focus:border-cyan-500 transition-colors resize-none leading-normal font-sans"
-                      />
-                    </div>
 
-                    {/* Styles list */}
-                    <div className="space-y-1">
-                      <span className="text-[7.5px] font-mono text-slate-500 uppercase block">Estilos Sugeridos:</span>
-                      <div className="grid grid-cols-2 gap-1">
-                        {[
-                          { name: "⚡ Cyberpunk", prompt: "A futuristic glowing neon cyber design with holographic elements, 8k" },
-                          { name: "👑 Art Decó", prompt: "A minimalist luxury design with golden geometric lines, art deco style" },
-                          { name: "🍂 Clásico", prompt: "A vintage traditional premium style, elegant texture, high resolution" },
-                          { name: "✨ Abstracto", prompt: "Luxury abstract organic shapes with gold foil, premium modern aesthetic" }
-                        ].map((item, idx) => (
+                      {/* CRM vs. Diseñador Tabs */}
+                      <div className="flex gap-1 bg-slate-900 p-0.5 rounded-lg border border-white/5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStudioTab("designer");
+                            setUnreadCrmCount(0);
+                          }}
+                          className={`flex-1 py-1 rounded-md text-[7.5px] font-black uppercase tracking-wider transition ${
+                            studioTab === "designer" 
+                              ? "bg-slate-950 text-amber-400 border border-white/5" 
+                              : "text-slate-500 hover:text-slate-300"
+                          }`}
+                        >
+                          🎨 Arte AI
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStudioTab("crm");
+                            setUnreadCrmCount(0);
+                          }}
+                          className={`flex-1 py-1 rounded-md text-[7.5px] font-black uppercase tracking-wider transition relative ${
+                            studioTab === "crm" 
+                              ? "bg-slate-950 text-cyan-400 border border-white/5" 
+                              : "text-slate-500 hover:text-slate-300"
+                          }`}
+                        >
+                          📊 CRM Consultas
+                          {unreadCrmCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                            </span>
+                          )}
+                        </button>
+                      </div>
+
+                      {studioTab === "designer" ? (
+                        <div className="space-y-3 flex-1 flex flex-col justify-between overflow-y-auto pr-1">
+                          <div className="space-y-3">
+                            <div className="space-y-1">
+                              <label className="text-[8px] font-mono text-slate-400 uppercase">Diseño de Etiqueta / Arte:</label>
+                              <textarea
+                                value={labelPrompt}
+                                onChange={(e) => setLabelPrompt(e.target.value)}
+                                placeholder={
+                                  selectedIndustry === "bodegas"
+                                    ? "Ej: Un fénix dorado volando sobre viñas de Mendoza, estilo art decó..."
+                                    : selectedIndustry === "cosmetica"
+                                    ? "Ej: Flores silvestres y rocío matutino sobre vidrio dorado, abstracto..."
+                                    : selectedIndustry === "agro"
+                                    ? "Ej: Hojas de maíz digitalizadas de neón verde sobre fondo oscuro..."
+                                    : selectedIndustry === "pharma"
+                                    ? "Ej: Moléculas flotantes en tonos azules y plateados, estilo laboratorio..."
+                                    : "Ej: Un pase VIP holográfico con estrellas doradas y patrón geométrico..."
+                                }
+                                rows={3}
+                                className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[9px] text-white outline-none focus:border-cyan-500 transition-colors resize-none leading-normal font-sans"
+                              />
+                            </div>
+
+                            {/* Styles list */}
+                            <div className="space-y-1">
+                              <span className="text-[7.5px] font-mono text-slate-500 uppercase block">Estilos Sugeridos:</span>
+                              <div className="grid grid-cols-2 gap-1">
+                                {[
+                                  { name: "⚡ Cyberpunk", prompt: "A futuristic glowing neon cyber design with holographic elements, 8k" },
+                                  { name: "👑 Art Decó", prompt: "A minimalist luxury design with golden geometric lines, art deco style" },
+                                  { name: "🍂 Clásico", prompt: "A vintage traditional premium style, elegant texture, high resolution" },
+                                  { name: "✨ Abstracto", prompt: "Luxury abstract organic shapes with gold foil, premium modern aesthetic" }
+                                ].map((item, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setLabelPrompt(item.prompt)}
+                                    className="text-[7.5px] bg-slate-900 hover:bg-slate-850 border border-white/5 rounded py-1 text-slate-450 text-center transition truncate"
+                                    title={item.prompt}
+                                  >
+                                    {item.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {labelGenError && (
+                              <p className="text-[7px] text-amber-400 font-semibold italic bg-amber-500/5 p-1.5 rounded border border-amber-500/10 leading-normal">
+                                ⚠️ {labelGenError}. Usando patrón de cava de contingencia.
+                              </p>
+                            )}
+                          </div>
+
                           <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setLabelPrompt(item.prompt)}
-                            className="text-[7.5px] bg-slate-900 hover:bg-slate-850 border border-white/5 rounded py-1 text-slate-450 text-center transition truncate"
-                            title={item.prompt}
+                            onClick={() => handleGenerateLabel(labelPrompt)}
+                            disabled={generatingLabel || !labelPrompt.trim()}
+                            className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-black text-[9.5px] uppercase py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.15)] border border-amber-400/20 mt-2 shrink-0"
                           >
-                            {item.name}
+                            {generatingLabel ? (
+                              <>
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                <span>Diseñando Arte...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Cpu className="w-3.5 h-3.5" />
+                                <span>Generar Arte AI</span>
+                              </>
+                            )}
                           </button>
-                        ))}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col justify-between flex-1 overflow-hidden mt-1">
+                          <div className="space-y-2 flex-1 overflow-y-auto pr-1 max-h-[310px] scrollbar-thin scrollbar-thumb-slate-850">
+                            <div className="flex justify-between items-center text-[7.5px] font-mono text-slate-500 uppercase tracking-wider border-b border-white/5 pb-1">
+                              <span>Feed de Consultas</span>
+                              <span className="text-cyan-400 font-bold animate-pulse flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-455"></span>
+                                En Vivo
+                              </span>
+                            </div>
+
+                            {crmQueries.length === 0 ? (
+                              <div className="text-center py-12 text-slate-500 text-[8px] italic leading-normal">
+                                Ninguna consulta registrada.<br />
+                                Usa el chat del celular simulado para enviar una pregunta.
+                              </div>
+                            ) : (
+                              crmQueries.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="bg-slate-900/70 border border-white/5 rounded-lg p-2 space-y-1 text-[8.5px] hover:border-slate-800 transition"
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <span className={`px-1 rounded-[3px] text-[6.5px] font-mono font-bold leading-none py-0.5 border ${
+                                      item.tag === "Venta Directa" || item.tag === "Venta Cruzada"
+                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                        : item.tag === "Alianza B2B" || item.tag === "Distribución" || item.tag === "B2B Lead"
+                                        ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                                        : item.tag === "Médico" || item.tag === "Soporte Técnico" || item.tag === "Acceso VIP"
+                                        ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                                        : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                    }`}>
+                                      {item.tag}
+                                    </span>
+                                    <span className="text-[7px] text-slate-500 font-mono">{item.timestamp}</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-slate-350 font-semibold leading-snug">
+                                      💬 {item.query}
+                                    </p>
+                                    <div className="pl-1.5 border-l border-cyan-500/20 text-slate-400 text-[8px] leading-snug space-y-0.5">
+                                      <span className="text-cyan-400 font-bold block text-[7px] uppercase tracking-wider">nexID AI Engine:</span>
+                                      {item.status === "procesando" ? (
+                                        <span className="text-cyan-400/70 italic animate-pulse block">Procesando respuesta cognitiva...</span>
+                                      ) : (
+                                        <span className="block">{item.answer}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                          
+                          <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-lg p-2 text-[7.5px] text-slate-400 leading-normal mt-2 shrink-0">
+                            💡 <strong>CRM B2B Telemetry:</strong> Almacena al instante lo que tus clientes preguntan al escanear, cruzando convenios de recompra y alianzas de marca en vivo.
+                          </div>
+                        </div>
+                      )}
                     </div>
-
-                    {labelGenError && (
-                      <p className="text-[7px] text-amber-400 font-semibold italic bg-amber-500/5 p-1.5 rounded border border-amber-500/10 leading-normal">
-                        ⚠️ {labelGenError}. Usando patrón de cava de contingencia.
-                      </p>
-                    )}
                   </div>
-
-                  <button
-                    onClick={() => handleGenerateLabel(labelPrompt)}
-                    disabled={generatingLabel || !labelPrompt.trim()}
-                    className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-black text-[9.5px] uppercase py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.15)] border border-amber-400/20 mt-2"
-                  >
-                    {generatingLabel ? (
-                      <>
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                        <span>Diseñando Arte...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Cpu className="w-3.5 h-3.5" />
-                        <span>Generar Arte AI</span>
-                      </>
-                    )}
-                  </button>
                 </div>
               )}
               
@@ -2198,377 +2757,370 @@ export function InvestorSnapshotClient() {
                   </div>
                 )}
 
-                {simStep === "active" && (
-                  <div className="w-full h-full bg-[#020617] flex flex-col justify-between p-4 pt-10 relative select-none">
-                    
-                    {/* Status bar */}
-                    <div className="absolute top-1.5 left-4 right-4 flex justify-between items-center text-[8px] text-slate-500 font-mono">
-                      <span>12:00</span>
-                      <div className="flex gap-1.5 items-center">
-                        <span>5G</span>
-                        <div className="w-3.5 h-2.5 border border-slate-600 rounded-sm bg-emerald-500" />
+                {simStep === "active" && (() => {
+                  const simData = INDUSTRY_SIM_DETAILS[selectedIndustry] || INDUSTRY_SIM_DETAILS.bodegas;
+                  return (
+                    <div className="w-full h-full bg-[#020617] flex flex-col justify-between p-4 pt-10 relative select-none">
+                      
+                      {/* Status bar */}
+                      <div className="absolute top-1.5 left-4 right-4 flex justify-between items-center text-[8px] text-slate-500 font-mono">
+                        <span>12:00</span>
+                        <div className="flex gap-1.5 items-center">
+                          <span>5G</span>
+                          <div className="w-3.5 h-2.5 border border-slate-600 rounded-sm bg-emerald-500" />
+                        </div>
+                      </div>
+
+                      <div className="text-center shrink-0 border-b border-white/5 pb-2">
+                        <span className="text-[10px] font-black tracking-widest text-cyan-400 block uppercase">nexID VIP PORTAL</span>
+                        <strong className="text-[14px] text-white block mt-0.5 uppercase truncate leading-none">{simData.productName}</strong>
+                        <span className="text-[9px] text-slate-500 uppercase font-mono tracking-wider mt-0.5 block">{simData.location}</span>
+                      </div>
+
+                      {/* Sim Phone Screen Content */}
+                      <div className="flex-1 my-3 rounded-lg bg-slate-900/60 p-3 flex flex-col justify-between text-xs leading-relaxed text-slate-300 overflow-y-auto">
+                        {phoneTab === "validate" && (
+                          <div className="space-y-3.5 w-full text-left my-auto">
+                            <div className="flex items-center gap-2 border-b border-white/5 pb-2 justify-center">
+                              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 filter drop-shadow-[0_0_5px_rgba(16,185,129,0.3)]" />
+                              <div>
+                                <span className="text-[11px] font-black text-white uppercase block leading-none">{simData.authText}</span>
+                                <span className="text-[9px] text-emerald-400 uppercase font-bold leading-none mt-0.5 block">{simData.selloText}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Mini SVG Map */}
+                            <div className="w-full h-[75px] rounded-lg bg-slate-950/80 border border-white/5 relative p-1.5 flex flex-col justify-between">
+                              <div className="flex justify-between items-center px-1 text-[8px] text-slate-500 uppercase font-bold tracking-wider">
+                                <span>Trazabilidad de Ruta</span>
+                                <span className="text-cyan-400 animate-pulse">En Tránsito</span>
+                              </div>
+                              <svg className="w-full h-[40px]" viewBox="0 0 160 40" preserveAspectRatio="none">
+                                {/* Grid lines */}
+                                <line x1="0" y1="20" x2="160" y2="20" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+                                
+                                {/* Route Path */}
+                                <path d="M20 30 Q50 10 90 25 T140 10" fill="none" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3,3" />
+                                
+                                {/* Glowing path segment for current transit */}
+                                <path d="M20 30 Q50 10 70 17" fill="none" stroke="#f59e0b" strokeWidth="1.5" />
+                                
+                                {/* Nodes */}
+                                <circle cx="20" cy="30" r="3" fill="#f59e0b" />
+                                <circle cx="60" cy="18" r="3" fill="#f59e0b" />
+                                <circle cx="100" cy="22" r="3" fill="#06b6d4" />
+                                <circle cx="140" cy="10" r="3" fill="#06b6d4" />
+                                
+                                {/* Glow rings */}
+                                <circle cx="20" cy="30" r="5" fill="none" stroke="#f59e0b" strokeWidth="0.5" className="animate-pulse" />
+                                <circle cx="140" cy="10" r="5" fill="none" stroke="#06b6d4" strokeWidth="0.5" className="animate-pulse" />
+                              </svg>
+                              <div className="flex justify-between text-[6.5px] text-slate-400 font-mono leading-none px-1">
+                                <span>{simData.nodes[0]}</span>
+                                <span>{simData.nodes[1]}</span>
+                                <span>{simData.nodes[2]}</span>
+                                <span>{simData.nodes[3]}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Live Telemetry Info ticker */}
+                            <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-md p-1.5 text-[8px] font-mono text-cyan-300 flex justify-between items-center leading-none">
+                              <span>{simData.iot[0]}</span>
+                              <span>{simData.iot[1]}</span>
+                              <span>{simData.iot[2]}</span>
+                            </div>
+                            
+                            {/* Timeline steps */}
+                            <div className="space-y-2 relative pl-3 border-l border-white/10 ml-2 text-[9px] leading-tight">
+                              <div className="relative">
+                                <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
+                                <span className="font-bold text-slate-300 uppercase block leading-none">{simData.steps[0].title}</span>
+                                <span className="text-slate-400 block mt-0.5 leading-none">{simData.steps[0].desc}</span>
+                              </div>
+                              
+                              <div className="relative">
+                                <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
+                                <span className="font-bold text-slate-300 uppercase block leading-none">{simData.steps[1].title}</span>
+                                <span className="text-slate-400 block mt-0.5 leading-none">{simData.steps[1].desc}</span>
+                              </div>
+                              
+                              <div className="relative">
+                                <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
+                                <span className="font-bold text-slate-300 uppercase block leading-none">{simData.steps[2].title}</span>
+                                <span className="text-emerald-400 font-bold block mt-0.5 leading-none">{simData.steps[2].desc}</span>
+                              </div>
+                            </div>
+
+                            {/* Details card */}
+                            <div className="pt-2 border-t border-white/5 text-[9px] bg-slate-950/50 p-2 rounded-lg space-y-1.5">
+                              <div className="flex justify-between items-center text-[8px] text-slate-500 font-bold uppercase tracking-wider">
+                                <span>{simData.detailsTitle}</span>
+                                <span className="text-amber-400">{simData.detailsTagline}</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[8.5px]">
+                                {simData.detailsGrid.map((gridItem, gidx) => (
+                                  <div key={gidx}>
+                                    <span className="text-slate-500 block">{gridItem.label}</span>
+                                    <span className="text-slate-200 font-bold">{gridItem.val}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-[7.5px] text-slate-400 leading-tight italic border-t border-white/5 pt-1">
+                                {simData.detailsQuote}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {phoneTab === "mint" && (
+                          <div className="space-y-3.5 w-full text-center my-auto">
+                            {isMinted ? (
+                              <div className="space-y-2.5 p-1 bg-slate-950/40 rounded-xl border border-white/5">
+                                <Award className="w-8 h-8 mx-auto text-purple-400 filter drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]" />
+                                <div>
+                                  <p className="font-black text-white text-[11px] uppercase leading-none">Propiedad Digital Registrada</p>
+                                  <span className="text-[8px] text-emerald-400 font-bold mt-1 block">Inmutable · Polygon Ledger</span>
+                                </div>
+                                <div className="text-[8px] font-mono text-slate-300 bg-slate-950 p-2 rounded border border-white/5 text-left space-y-1">
+                                  <div className="flex justify-between">
+                                    <span>Token ID:</span>
+                                    <span className="text-purple-300">#84920</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Billetera:</span>
+                                    <span className="text-slate-400 truncate w-[100px] text-right">0x8a92...11d9</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Tx Hash:</span>
+                                    <span className="text-cyan-400 truncate w-[100px] text-right cursor-pointer hover:underline">0xbc79...2fa8</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Bloque:</span>
+                                    <span className="text-slate-400">#38104822</span>
+                                  </div>
+                                </div>
+                                <span className="text-[7.5px] text-slate-500 block leading-tight">
+                                  {simData.mintSuccess}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="space-y-3 p-1">
+                                <Coins className="w-9 h-9 mx-auto text-purple-400" />
+                                <div>
+                                  <p className="font-black text-[12px] text-white uppercase leading-none">{simData.mintTitle}</p>
+                                  <p className="text-[9px] text-slate-400 mt-2 max-w-[190px] mx-auto leading-relaxed font-semibold">
+                                    {simData.mintDesc}
+                                  </p>
+                                </div>
+                                <button 
+                                  onClick={handleMintNft}
+                                  disabled={minting}
+                                  className="w-full bg-purple-600 hover:bg-purple-500 text-[10px] text-white font-black uppercase rounded-xl py-3 transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.3)] border border-purple-500/20"
+                                >
+                                  {minting ? (
+                                    <>
+                                      <RefreshCw className="w-4 h-4 animate-spin" />
+                                      <span>Generando Gemelo...</span>
+                                    </>
+                                  ) : (
+                                    <span>Crear Gemelo Digital</span>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {phoneTab === "rewards" && (
+                          <div className="space-y-3.5 w-full text-center my-auto">
+                            <Gift className="w-9 h-9 mx-auto text-amber-400" />
+                            <div>
+                              <p className="font-black text-white text-[12px] uppercase leading-none">Premios del Club VIP</p>
+                              <p className="text-[8.5px] text-slate-400 mt-1">Beneficios exclusivos para propietarios</p>
+                            </div>
+                            
+                            <div className="space-y-2.5 pt-1 border-t border-white/5 max-h-[180px] overflow-y-auto">
+                              {/* Reward 1 */}
+                              <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-white/5">
+                                <div className="text-left space-y-0.5">
+                                  <span className="text-slate-200 font-bold text-[9px] block leading-none">{simData.reward1Title}</span>
+                                  <span className="text-slate-500 text-[7px] block leading-none">{simData.reward1Sub}</span>
+                                </div>
+                                {claimedRewards["wine"] ? (
+                                  <span className="text-emerald-400 font-mono font-bold uppercase text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                    CUPON-MDZ-99B
+                                  </span>
+                                ) : (
+                                  <button 
+                                    onClick={() => handleClaimReward("wine")}
+                                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 rounded text-[8px] font-black uppercase transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                                  >
+                                    Canjear
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Reward 2 */}
+                              <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-white/5">
+                                <div className="text-left space-y-0.5">
+                                  <span className="text-slate-200 font-bold text-[9px] block leading-none">{simData.reward2Title}</span>
+                                  <span className="text-slate-500 text-[7px] block leading-none">{simData.reward2Sub}</span>
+                                </div>
+                                {claimedRewards["tour"] ? (
+                                  <span className="text-emerald-400 font-mono font-bold uppercase text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                    TOUR-ANDES-44X
+                                  </span>
+                                ) : (
+                                  <button 
+                                    onClick={() => handleClaimReward("tour")}
+                                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 rounded text-[8px] font-black uppercase transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                                  >
+                                    Canjear
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {phoneTab === "market" && (
+                          <div className="space-y-3.5 w-full text-center my-auto">
+                            <ShoppingBag className="w-9 h-9 mx-auto text-cyan-400" />
+                            <div>
+                              <p className="font-black text-white text-[12px] uppercase leading-none">{simData.marketTitle}</p>
+                              <p className="text-[8px] text-slate-400 mt-1">{simData.marketDesc}</p>
+                            </div>
+                            
+                            <div className="pt-2.5 border-t border-white/5 text-left space-y-1.5 text-[9px] font-mono bg-slate-950/40 p-2.5 rounded-lg">
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">VALOR ESTIMADO:</span>
+                                <span className="text-white font-bold">{currentBasePrice.toFixed(3)} ETH</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">OFERTAS TOTALES:</span>
+                                <span className="text-cyan-400 font-bold">{bidsCount} Ofertas</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-500">VARIACIÓN:</span>
+                                <span className="text-emerald-400 font-bold">+14.5% este mes</span>
+                              </div>
+                              {myBidAmount && (
+                                <div className="flex justify-between border-t border-white/5 pt-1.5 text-purple-300 font-bold">
+                                  <span>TU OFERTA LIVE:</span>
+                                  <span>{myBidAmount.toFixed(3)} ETH</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <button 
+                              onClick={handlePlaceBid}
+                              className="w-full bg-slate-900 border border-cyan-500/30 text-cyan-300 font-black text-[9px] uppercase py-2.5 rounded-xl hover:bg-slate-800 transition shadow-[0_0_10px_rgba(6,182,212,0.1)]"
+                            >
+                              Hacer Oferta (+0.01 ETH)
+                            </button>
+                          </div>
+                        )}
+
+
+
+                        {phoneTab === "chat" && (
+                          <div className="flex flex-col h-full justify-between">
+                            {/* Chat Messages */}
+                            <div className="flex-1 space-y-2 overflow-y-auto mb-2 pr-1 max-h-[160px] text-[8.5px] leading-tight text-left">
+                              {phoneChatMessages.map((msg, idx) => (
+                                <div 
+                                  key={idx} 
+                                  className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+                                >
+                                  <div className={`rounded-lg p-2 max-w-[85%] ${
+                                    msg.sender === "user" 
+                                      ? "bg-purple-600/35 border border-purple-500/20 text-white rounded-tr-none" 
+                                      : "bg-slate-950/70 border border-white/5 text-amber-300 rounded-tl-none"
+                                  }`}>
+                                    {msg.text}
+                                  </div>
+                                </div>
+                              ))}
+                              {phoneChatTyping && (
+                                <div className="flex justify-start">
+                                  <div className="rounded-lg p-2 bg-slate-950/70 border border-white/5 text-slate-500 rounded-tl-none animate-pulse">
+                                    {selectedIndustry === "bodegas" ? "Sommelier AI escribiendo..." : selectedIndustry === "cosmetica" ? "Aura AI escribiendo..." : selectedIndustry === "agro" ? "Inspector AI escribiendo..." : selectedIndustry === "pharma" ? "Validador AI escribiendo..." : "Coordinador AI escribiendo..."}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Chat Prompts */}
+                            <div className="flex flex-wrap gap-1 mb-2 pt-1 border-t border-white/5 justify-center">
+                              {simData.chatPrompts.map((prompt, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleSendPhoneMessage(prompt.q)}
+                                  className="text-[7.5px] bg-slate-950 border border-white/5 rounded px-1.5 py-0.5 text-slate-450 hover:text-white transition"
+                                >
+                                  {prompt.label}
+                                </button>
+                              ))}
+                            </div>
+                            
+                            {/* Chat Input */}
+                            <form 
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                handleSendPhoneMessage(phoneChatInput);
+                              }}
+                              className="flex gap-1 border-t border-white/5 pt-2"
+                            >
+                              <input
+                                type="text"
+                                value={phoneChatInput}
+                                onChange={(e) => setPhoneChatInput(e.target.value)}
+                                placeholder={
+                                  selectedIndustry === "bodegas" ? "Preguntale al Sommelier..." :
+                                  selectedIndustry === "cosmetica" ? "Preguntale a Aura..." :
+                                  selectedIndustry === "agro" ? "Preguntale al Inspector..." :
+                                  selectedIndustry === "pharma" ? "Preguntale al Validador..." :
+                                  "Preguntale al Coordinador..."
+                                }
+                                className="flex-1 bg-slate-950/80 border border-white/10 rounded-md px-2 py-1 text-[8.5px] text-white outline-none focus:border-cyan-500 transition-colors"
+                              />
+                              <button
+                                type="submit"
+                                className="bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded px-2 py-1 text-[8.5px] font-black uppercase transition-all"
+                              >
+                                Enviar
+                              </button>
+                            </form>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Sim Phone Tabs */}
+                      <div className="grid grid-cols-5 gap-0.5 border-t border-white/10 pt-2 shrink-0">
+                        {simData.tabLabels.map((label, lidx) => {
+                          const tabIds = ["validate", "mint", "rewards", "market", "chat"] as const;
+                          const tid = tabIds[lidx];
+                          return (
+                            <button
+                              key={tid}
+                              onClick={() => {
+                                setPhoneTab(tid);
+                                triggerNfcBeep();
+                              }}
+                              className={`text-[8.5px] font-black uppercase rounded py-1 transition ${
+                                phoneTab === tid 
+                                  ? "bg-cyan-500/20 text-cyan-300" 
+                                  : "text-slate-500 hover:text-slate-355"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-
-                    <div className="text-center shrink-0 border-b border-white/5 pb-2">
-                      <span className="text-[10px] font-black tracking-widest text-cyan-400 block uppercase">nexID VIP PORTAL</span>
-                      <strong className="text-[14px] text-white block mt-0.5 uppercase truncate leading-none">Gran Blend 2026</strong>
-                      <span className="text-[9px] text-slate-500 uppercase font-mono tracking-wider mt-0.5 block">Mendoza, Argentina</span>
-                    </div>
-
-                    {/* Sim Phone Screen Content */}
-                    <div className="flex-1 my-3 rounded-lg bg-slate-900/60 p-3 flex flex-col justify-between text-xs leading-relaxed text-slate-300 overflow-y-auto">
-                      {phoneTab === "validate" && (
-                        <div className="space-y-3.5 w-full text-left my-auto">
-                          <div className="flex items-center gap-2 border-b border-white/5 pb-2 justify-center">
-                            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 filter drop-shadow-[0_0_5px_rgba(16,185,129,0.3)]" />
-                            <div>
-                              <span className="text-[11px] font-black text-white uppercase block leading-none">Autenticidad SQL</span>
-                              <span className="text-[9px] text-emerald-400 uppercase font-bold leading-none mt-0.5 block">Sello Cerrado Original</span>
-                            </div>
-                          </div>
-                          
-                          {/* Mini SVG Map */}
-                          <div className="w-full h-[75px] rounded-lg bg-slate-950/80 border border-white/5 relative p-1.5 flex flex-col justify-between">
-                            <div className="flex justify-between items-center px-1 text-[8px] text-slate-500 uppercase font-bold tracking-wider">
-                              <span>Trazabilidad de Ruta</span>
-                              <span className="text-cyan-400 animate-pulse">En Tránsito</span>
-                            </div>
-                            <svg className="w-full h-[40px]" viewBox="0 0 160 40" preserveAspectRatio="none">
-                              {/* Grid lines */}
-                              <line x1="0" y1="20" x2="160" y2="20" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
-                              
-                              {/* Route Path */}
-                              <path d="M20 30 Q50 10 90 25 T140 10" fill="none" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3,3" />
-                              
-                              {/* Glowing path segment for current transit */}
-                              <path d="M20 30 Q50 10 70 17" fill="none" stroke="#f59e0b" strokeWidth="1.5" />
-                              
-                              {/* Nodes */}
-                              <circle cx="20" cy="30" r="3" fill="#f59e0b" /> {/* MDZ */}
-                              <circle cx="60" cy="18" r="3" fill="#f59e0b" /> {/* BUE */}
-                              <circle cx="100" cy="22" r="3" fill="#06b6d4" /> {/* RTM */}
-                              <circle cx="140" cy="10" r="3" fill="#06b6d4" /> {/* ZRH */}
-                              
-                              {/* Glow rings */}
-                              <circle cx="20" cy="30" r="5" fill="none" stroke="#f59e0b" strokeWidth="0.5" className="animate-pulse" />
-                              <circle cx="140" cy="10" r="5" fill="none" stroke="#06b6d4" strokeWidth="0.5" className="animate-pulse" />
-                            </svg>
-                            <div className="flex justify-between text-[6.5px] text-slate-400 font-mono leading-none px-1">
-                              <span>MDZ</span>
-                              <span>BUE</span>
-                              <span>RTM</span>
-                              <span>ZRH</span>
-                            </div>
-                          </div>
-                          
-                          {/* Live Telemetry Info ticker */}
-                          <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-md p-1.5 text-[8px] font-mono text-cyan-300 flex justify-between items-center leading-none">
-                            <span>🌡️ Temp: 14.2°C</span>
-                            <span>💧 Hum: 58%</span>
-                            <span>⚡ GPS Lock: OK</span>
-                          </div>
-                          
-                          {/* Timeline steps */}
-                          <div className="space-y-2 relative pl-3 border-l border-white/10 ml-2 text-[9px] leading-tight">
-                            <div className="relative">
-                              <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
-                              <span className="font-bold text-slate-300 uppercase block leading-none">1. Viñedo Origen</span>
-                              <span className="text-slate-400 block mt-0.5 leading-none">Luján de Cuyo, Mendoza · Registrado SQL</span>
-                            </div>
-                            
-                            <div className="relative">
-                              <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
-                              <span className="font-bold text-slate-300 uppercase block leading-none">2. Logística y Aduana</span>
-                              <span className="text-slate-400 block mt-0.5 leading-none">Despacho de puerto e ingreso en Zurich</span>
-                            </div>
-                            
-                            <div className="relative">
-                              <span className="absolute -left-[16.5px] top-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-950 flex items-center justify-center text-[6px] text-white font-bold">✓</span>
-                              <span className="font-bold text-slate-300 uppercase block leading-none">3. Sello de Seguridad</span>
-                              <span className="text-emerald-400 font-bold block mt-0.5 leading-none">TagTamper Intacto (Original)</span>
-                            </div>
-                          </div>
-
-                          {/* Wine details card */}
-                          <div className="pt-2 border-t border-white/5 text-[9px] bg-slate-950/50 p-2 rounded-lg space-y-1.5">
-                            <div className="flex justify-between items-center text-[8px] text-slate-500 font-bold uppercase tracking-wider">
-                              <span>Ficha Enológica</span>
-                              <span className="text-amber-400">🏅 96 pts Suckling</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[8.5px]">
-                              <div>
-                                <span className="text-slate-500 block">Varietal:</span>
-                                <span className="text-slate-200 font-bold">Malbec 100%</span>
-                              </div>
-                              <div>
-                                <span className="text-slate-500 block">Crianza:</span>
-                                <span className="text-slate-200 font-bold">18m Roble Fr.</span>
-                              </div>
-                              <div>
-                                <span className="text-slate-500 block">Critica:</span>
-                                <span className="text-slate-200 font-bold">Reserva Premium</span>
-                              </div>
-                              <div>
-                                <span className="text-slate-500 block">Servicio:</span>
-                                <span className="text-slate-200 font-bold">16°C - 18°C</span>
-                              </div>
-                            </div>
-                            <p className="text-[7.5px] text-slate-400 leading-tight italic border-t border-white/5 pt-1">
-                              "Color rubí, notas a ciruela madura, cacao y vainilla persistentes."
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {phoneTab === "mint" && (
-                        <div className="space-y-3.5 w-full text-center my-auto">
-                          {isMinted ? (
-                            <div className="space-y-2.5 p-1 bg-slate-950/40 rounded-xl border border-white/5">
-                              <Award className="w-8 h-8 mx-auto text-purple-400 filter drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]" />
-                              <div>
-                                <p className="font-black text-white text-[11px] uppercase leading-none">Propiedad Digital Registrada</p>
-                                <span className="text-[8px] text-emerald-400 font-bold mt-1 block">Inmutable · Polygon Ledger</span>
-                              </div>
-                              <div className="text-[8px] font-mono text-slate-300 bg-slate-950 p-2 rounded border border-white/5 text-left space-y-1">
-                                <div className="flex justify-between">
-                                  <span>Token ID:</span>
-                                  <span className="text-purple-300">#84920</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Billetera:</span>
-                                  <span className="text-slate-400 truncate w-[100px] text-right">0x8a92...11d9</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Tx Hash:</span>
-                                  <span className="text-cyan-400 truncate w-[100px] text-right cursor-pointer hover:underline">0xbc79...2fa8</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Bloque:</span>
-                                  <span className="text-slate-400">#38104822</span>
-                                </div>
-                              </div>
-                              <span className="text-[7.5px] text-slate-500 block leading-tight">
-                                Tu certificado inmutable en la red Polygon Amoy ha sido generado con éxito.
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="space-y-3 p-1">
-                              <Coins className="w-9 h-9 mx-auto text-purple-400" />
-                              <div>
-                                <p className="font-black text-[12px] text-white uppercase leading-none">Registrar en Blockchain</p>
-                                <p className="text-[9px] text-slate-400 mt-2 max-w-[190px] mx-auto leading-relaxed font-semibold">
-                                  Generá el gemelo digital de esta botella para poseer el certificado inmutable de autenticidad en el ledger de Polygon.
-                                </p>
-                              </div>
-                              <button 
-                                onClick={handleMintNft}
-                                disabled={minting}
-                                className="w-full bg-purple-600 hover:bg-purple-500 text-[10px] text-white font-black uppercase rounded-xl py-3 transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.3)] border border-purple-500/20"
-                              >
-                                {minting ? (
-                                  <>
-                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                    <span>Generando Gemelo...</span>
-                                  </>
-                                ) : (
-                                  <span>Crear Gemelo Digital</span>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {phoneTab === "rewards" && (
-                        <div className="space-y-3.5 w-full text-center my-auto">
-                          <Gift className="w-9 h-9 mx-auto text-amber-400" />
-                          <div>
-                            <p className="font-black text-white text-[12px] uppercase leading-none">Premios del Club VIP</p>
-                            <p className="text-[8.5px] text-slate-400 mt-1">Beneficios exclusivos para propietarios</p>
-                          </div>
-                          
-                          <div className="space-y-2.5 pt-1 border-t border-white/5 max-h-[180px] overflow-y-auto">
-                            {/* Reward 1 */}
-                            <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-white/5">
-                              <div className="text-left space-y-0.5">
-                                <span className="text-slate-200 font-bold text-[9px] block leading-none">Copa de Degustación</span>
-                                <span className="text-slate-500 text-[7px] block leading-none">Cata en Cava Mendoza</span>
-                              </div>
-                              {claimedRewards["wine"] ? (
-                                <span className="text-emerald-400 font-mono font-bold uppercase text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                  CUPON-MDZ-99B
-                                </span>
-                              ) : (
-                                <button 
-                                  onClick={() => handleClaimReward("wine")}
-                                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 rounded text-[8px] font-black uppercase transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)]"
-                                >
-                                  Canjear
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Reward 2 */}
-                            <div className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-white/5">
-                              <div className="text-left space-y-0.5">
-                                <span className="text-slate-200 font-bold text-[9px] block leading-none">Tour VIP Bodega</span>
-                                <span className="text-slate-500 text-[7px] block leading-none">15% Off Reservas</span>
-                              </div>
-                              {claimedRewards["tour"] ? (
-                                <span className="text-emerald-400 font-mono font-bold uppercase text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                  TOUR-ANDES-44X
-                                </span>
-                              ) : (
-                                <button 
-                                  onClick={() => handleClaimReward("tour")}
-                                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 rounded text-[8px] font-black uppercase transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)]"
-                                >
-                                  Canjear
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {phoneTab === "market" && (
-                        <div className="space-y-3.5 w-full text-center my-auto">
-                          <ShoppingBag className="w-9 h-9 mx-auto text-cyan-400" />
-                          <div>
-                            <p className="font-black text-white text-[12px] uppercase leading-none">Marketplace Cava VIP</p>
-                            <p className="text-[8px] text-slate-400 mt-1">Cava de compra y venta entre coleccionistas</p>
-                          </div>
-                          
-                          <div className="pt-2.5 border-t border-white/5 text-left space-y-1.5 text-[9px] font-mono bg-slate-950/40 p-2.5 rounded-lg">
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">VALOR ESTIMADO:</span>
-                              <span className="text-white font-bold">{currentBasePrice.toFixed(3)} ETH</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">OFERTAS TOTALES:</span>
-                              <span className="text-cyan-400 font-bold">{bidsCount} Ofertas</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-500">VARIACIÓN:</span>
-                              <span className="text-emerald-400 font-bold">+14.5% este mes</span>
-                            </div>
-                            {myBidAmount && (
-                              <div className="flex justify-between border-t border-white/5 pt-1.5 text-purple-300 font-bold">
-                                <span>TU OFERTA LIVE:</span>
-                                <span>{myBidAmount.toFixed(3)} ETH</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <button 
-                            onClick={handlePlaceBid}
-                            className="w-full bg-slate-900 border border-cyan-500/30 text-cyan-300 font-black text-[9px] uppercase py-2.5 rounded-xl hover:bg-slate-800 transition shadow-[0_0_10px_rgba(6,182,212,0.1)]"
-                          >
-                            Hacer Oferta (+0.01 ETH)
-                          </button>
-                        </div>
-                      )}
-
-
-
-                      {phoneTab === "chat" && (
-                        <div className="flex flex-col h-full justify-between">
-                          {/* Chat Messages */}
-                          <div className="flex-1 space-y-2 overflow-y-auto mb-2 pr-1 max-h-[160px] text-[8.5px] leading-tight text-left">
-                            {phoneChatMessages.map((msg, idx) => (
-                              <div 
-                                key={idx} 
-                                className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-                              >
-                                <div className={`rounded-lg p-2 max-w-[85%] ${
-                                  msg.sender === "user" 
-                                    ? "bg-purple-600/35 border border-purple-500/20 text-white rounded-tr-none" 
-                                    : "bg-slate-950/70 border border-white/5 text-amber-300 rounded-tl-none"
-                                }`}>
-                                  {msg.text}
-                                </div>
-                              </div>
-                            ))}
-                            {phoneChatTyping && (
-                              <div className="flex justify-start">
-                                <div className="rounded-lg p-2 bg-slate-950/70 border border-white/5 text-slate-500 rounded-tl-none animate-pulse">
-                                  Sommelier AI escribiendo...
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Chat Prompts */}
-                          <div className="flex flex-wrap gap-1 mb-2 pt-1 border-t border-white/5 justify-center">
-                            {[
-                              { label: "🍷 Maridaje", q: "¿Con qué comida marida este blend?" },
-                              { label: "🍇 Notas de Cata", q: "¿Cuáles son sus notas de cata?" },
-                              { label: "🏔️ Origen", q: "¿Cuál es el origen de este viñedo?" }
-                            ].map((prompt, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => handleSendPhoneMessage(prompt.q)}
-                                className="text-[7.5px] bg-slate-950 border border-white/5 rounded px-1.5 py-0.5 text-slate-450 hover:text-white transition"
-                              >
-                                {prompt.label}
-                              </button>
-                            ))}
-                          </div>
-                          
-                          {/* Chat Input */}
-                          <form 
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              handleSendPhoneMessage(phoneChatInput);
-                            }}
-                            className="flex gap-1 border-t border-white/5 pt-2"
-                          >
-                            <input
-                              type="text"
-                              value={phoneChatInput}
-                              onChange={(e) => setPhoneChatInput(e.target.value)}
-                              placeholder="Preguntale al Sommelier..."
-                              className="flex-1 bg-slate-950/80 border border-white/10 rounded-md px-2 py-1 text-[8.5px] text-white outline-none focus:border-cyan-500 transition-colors"
-                            />
-                            <button
-                              type="submit"
-                              className="bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded px-2 py-1 text-[8.5px] font-black uppercase transition-all"
-                            >
-                              Enviar
-                            </button>
-                          </form>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Sim Phone Tabs */}
-                    <div className="grid grid-cols-5 gap-0.5 border-t border-white/10 pt-2 shrink-0">
-                      {[
-                        { id: "validate", label: "Sello" },
-                        { id: "mint", label: "Web3" },
-                        { id: "rewards", label: "Premios" },
-                        { id: "market", label: "Cava" },
-                        { id: "chat", label: "Chat" }
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            setPhoneTab(item.id as any);
-                            triggerNfcBeep();
-                          }}
-                          className={`text-[8.5px] font-black uppercase rounded py-1 transition ${
-                            phoneTab === item.id 
-                              ? "bg-cyan-500/20 text-cyan-300" 
-                              : "text-slate-500 hover:text-slate-355"
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </motion.div>
             </div>
 
