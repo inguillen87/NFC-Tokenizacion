@@ -1099,11 +1099,51 @@ export function RoiCalculator({
 
   const [activeQuestion, setActiveQuestion] = useState("");
   const [aiThinking, setAiThinking] = useState(false);
+  const [customQuery, setCustomQuery] = useState("");
 
   const getAiAnswer = (qId: string) => {
     const regionName = exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global';
     const regionSource = REGION_CITATIONS[exportRegion]?.source || "Fuentes Globales";
     
+    if (qId.startsWith("custom:")) {
+      const userQuestion = qId.substring(7).toLowerCase();
+      
+      if (userQuestion.includes("2.87") || userQuestion.includes("ahorra") || userQuestion.includes("perdida") || userQuestion.includes("pérdida") || userQuestion.includes("cómo se calcula") || userQuestion.includes("calcula") || userQuestion.includes("formula") || userQuestion.includes("fórmula")) {
+        const lossVal = (retailPrice * (fraudRate / 100)).toFixed(2);
+        const preventedVal = (retailPrice * (fraudRate / 100) * 0.98).toFixed(2);
+        return `El ahorro de $${preventedVal} USD (que se aproxima a $2.87 USD en la configuración que viste en pantalla) por cada chip individual se calcula de forma transparente con la siguiente fórmula:
+
+Ahorro Unitario = Precio del Producto ($${retailPrice}.00 USD) × Tasa de Fraude de la Región (${fraudRate.toFixed(1)}%) × Eficiencia de nexID (98%).
+
+Es decir: $${retailPrice}.00 × ${(fraudRate / 100).toFixed(3)} × 0.98 = $${preventedVal} USD.
+
+Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fabricada debido a falsificaciones o mercado gris. Al colocar un chip de $${chipCost.toFixed(2)} USD en el tapón, logras evitar $${preventedVal} USD de esa pérdida de inmediato. Esto significa que recuperas el costo de cada chip ${(chipCost > 0 ? (retailPrice * (fraudRate / 100) * 0.98 / chipCost) : 0).toFixed(1)} veces al vender tu producto. ¡Es una amortización directa e inmediata por botella!`;
+      }
+      
+      if (userQuestion.includes("reutili") || userQuestion.includes("nuevo") || userQuestion.includes("lote") || userQuestion.includes("consumible")) {
+        return `Para garantizar la autenticidad física de cada botella o envase, nexID asocia criptográficamente un identificador único (UID) a la firma de hardware del chip NFC. Si los chips fueran reutilizables, un falsificador podría extraer el chip de una botella original consumida e insertarlo en una botella rellenada, burlando al sistema. Al usar chips consumibles no reutilizables adheridos al tapón o al sello de seguridad, la apertura destruye físicamente el sensor o invalida el estado en el registro seguro, haciendo imposible el rellenado ilegal o mercado gris. Esto es lo que permite una eficiencia del 98% en la prevención de fraude y pérdidas.`;
+      }
+      
+      if (userQuestion.includes("costo") || userQuestion.includes("precio") || userQuestion.includes("invert") || userQuestion.includes("plata") || userQuestion.includes("dinero") || userQuestion.includes("inversión")) {
+        return `Tu inversión anual estimada es de $${finalInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD (que incluye $${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD en chips y $${nexIdSaaSYearly.toLocaleString(undefined, {maximumFractionDigits:0})} USD de suscripción SaaS). Dado que el precio de venta de tu producto es de $${retailPrice} USD y previenes pérdidas por $${preventedFraud.toLocaleString(undefined, {maximumFractionDigits:0})} USD anuales, cada botella que produce tu marca ahorra en promedio $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD frente al fraude de la región ${exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global'}. El costo del chip se recupera con creces, rindiendo un retorno neto anual de $${finalNetGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD.`;
+      }
+      
+      if (userQuestion.includes("tiempo") || userQuestion.includes("recuper") || userQuestion.includes("mes") || userQuestion.includes("dia") || userQuestion.includes("amorti")) {
+        const paybackDays = preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365) : 0;
+        return `El tiempo estimado de recuperación de la inversión de hardware (chips) es de ${paybackDays.toFixed(1)} días de ventas de cada lote. Dado que vendes aproximadamente ${Math.round(volume / 12).toLocaleString()} unidades al mes, el costo mensual de chips es de $${Math.round(nexIdChipsCost / 12).toLocaleString()} USD. Con un ahorro preventivo neto de $${Math.round(finalNetGain / 12).toLocaleString()} USD/mes, la inversión en chips del lote de cada mes se amortiza en los primeros días del ciclo de ventas de ese mismo lote. No es un costo hundido de infraestructura, sino un insumo que se autofinancia de inmediato.`;
+      }
+      
+      if (userQuestion.includes("blockchain") || userQuestion.includes("web3") || userQuestion.includes("nft") || userQuestion.includes("seguridad") || userQuestion.includes("seguro") || userQuestion.includes("nube")) {
+        return `La arquitectura de nexID utiliza un modelo híbrido en el que la firma digital de los chips NFC se valida contra nuestro servidor seguro en la nube. Opcionalmente, para marcas que exportan y requieren certificar de forma pública el lote, se genera un pasaporte digital (NFT) en la red Polygon. Esto garantiza que ningún actor de la cadena logística o de distribución pueda alterar el historial del producto, ya que cada toque del consumidor se registra de forma inmutable, dando control completo e inmediato al propietario de la marca.`;
+      }
+
+      if (userQuestion.includes("ayuda") || userQuestion.includes("como") || userQuestion.includes("plataforma") || userQuestion.includes("que es") || userQuestion.includes("explic")) {
+        return `Esta plataforma ayuda al empresario y a su equipo de ventas a calcular el Retorno de Inversión (ROI) real antes de comprar hardware. Al mover los controles de volumen, precio y tasa de fraude, nuestro sistema calcula instantáneamente el impacto financiero de nexID. Como consultor financiero IA, te recomiendo configurar tu volumen de ventas real y precio minorista para demostrarle a tu directorio cómo cada chip evita pérdidas y genera un canal directo de contacto (DTC) con el 35% de tus compradores.`;
+      }
+      
+      return `Interesante pregunta sobre tu marca. Con tus variables actuales (volumen de ${volume.toLocaleString()} unidades y precio de $${retailPrice} USD), cada chip de $${chipCost.toFixed(2)} USD te protege de una pérdida de $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD por botella. Esto genera un ahorro neto de $${finalNetGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD anuales. ¿Deseas que profundicemos en cómo la tasa de fraude del ${fraudRate}% de tu región influye en este resultado o cómo calcular la amortización por lote?`;
+    }
+
     switch (qId) {
       case "non-reusable":
         return `Para garantizar la autenticidad física de cada botella o envase, nexID asocia criptográficamente un identificador único (UID) a la firma de hardware del chip NFC. Si los chips fueran reutilizables, un falsificador podría extraer el chip de una botella original consumida e insertarlo en una botella rellenada, burlando al sistema. Al usar chips consumibles no reutilizables adheridos al tapón o al sello de seguridad, la apertura destruye físicamente el sensor o invalida el estado en el registro seguro, haciendo imposible el rellenado ilegal o mercado gris. Esto es lo que permite una eficiencia del 98% en la prevención de fraude y pérdidas.`;
@@ -1136,6 +1176,20 @@ export function RoiCalculator({
     setTimeout(() => {
       setAiThinking(false);
     }, 650);
+  };
+
+  const handleCustomQuerySubmit = () => {
+    if (!customQuery.trim()) return;
+    setAiThinking(true);
+    const query = customQuery.toLowerCase();
+    
+    let foundId = `custom:${customQuery}`;
+    
+    setActiveQuestion(foundId);
+    setCustomQuery("");
+    setTimeout(() => {
+      setAiThinking(false);
+    }, 850);
   };
 
   return (
@@ -1652,28 +1706,54 @@ export function RoiCalculator({
             </div>
 
             {/* Col 3: Interactive Q&A simulator */}
-            <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 space-y-4">
-              <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider">Preguntas al Asistente IA</span>
-              
-              <div className="space-y-1.5">
-                {[
-                  { id: "non-reusable", q: "¿Por qué cada lote requiere chips nuevos?" },
-                  { id: "tagtamper-cost", q: "¿Es rentable TagTamper ($1.00) vs Estándar ($0.50)?" },
-                  { id: "payback-period", q: "¿Cómo se calcula la recuperación de inversión?" },
-                  { id: "region-influence", q: "¿Por qué influye la tasa de fraude regional?" }
-                ].map((item) => (
+            <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 space-y-4 flex flex-col justify-between min-h-[310px]">
+              <div>
+                <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider mb-2.5">Preguntas al Asistente IA</span>
+                
+                {/* Custom Open-ended query input field */}
+                <div className="flex gap-1.5 mb-3">
+                  <input
+                    type="text"
+                    placeholder="Escribe tu pregunta personalizada..."
+                    value={customQuery}
+                    onChange={(e) => setCustomQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && customQuery.trim()) {
+                        handleCustomQuerySubmit();
+                      }
+                    }}
+                    className="flex-1 bg-slate-950/60 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] text-white placeholder-slate-500 outline-none focus:border-cyan-500/40 transition-colors"
+                  />
                   <button
-                    key={item.id}
-                    onClick={() => handleQuestionSelect(item.id)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold transition-all border ${
-                      activeQuestion === item.id 
-                        ? "bg-cyan-500/10 border-cyan-500/35 text-cyan-300"
-                        : "bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-200"
-                    }`}
+                    onClick={handleCustomQuerySubmit}
+                    disabled={!customQuery.trim() || aiThinking}
+                    className="bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 rounded-xl px-2.5 py-1.5 text-[10px] font-bold hover:bg-cyan-500/35 disabled:opacity-40 transition-all shrink-0"
                   >
-                    {item.q}
+                    Consultar
                   </button>
-                ))}
+                </div>
+
+                <span className="text-[8px] font-bold uppercase text-slate-600 block mb-1.5 tracking-wide">Sugerencias predefinidas:</span>
+                <div className="space-y-1.5">
+                  {[
+                    { id: "non-reusable", q: "¿Por qué cada lote requiere chips nuevos?" },
+                    { id: "tagtamper-cost", q: "¿Es rentable TagTamper ($1.00) vs Estándar ($0.50)?" },
+                    { id: "payback-period", q: "¿Cómo se calcula la recuperación de inversión?" },
+                    { id: "region-influence", q: "¿Por qué influye la tasa de fraude regional?" }
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => handleQuestionSelect(item.id)}
+                      className={`w-full text-left px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all border ${
+                        activeQuestion === item.id 
+                          ? "bg-cyan-500/10 border-cyan-500/35 text-cyan-300"
+                          : "bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-200"
+                      }`}
+                    >
+                      {item.q}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Chat answer display area */}
