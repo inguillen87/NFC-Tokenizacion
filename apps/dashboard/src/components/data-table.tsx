@@ -98,7 +98,7 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
               {filtered.map((row, idx) => (
                 <tr key={`${idx}-${row[columns[0].key]}`} className="border-b border-white/5">
                   {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3 text-slate-200">
+                    <td key={col.key} className="px-4 py-3 text-slate-200 whitespace-pre-line max-w-[480px]">
                       {col.key === filterKey ? (
                         <Badge tone={resolveTone(row[col.key])}>
                           {statusMap?.[row[col.key]] ?? row[col.key]}

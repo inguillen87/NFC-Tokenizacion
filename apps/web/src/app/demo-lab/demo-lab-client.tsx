@@ -2170,6 +2170,87 @@ function MobileOutcome({
         <p className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-[11px] font-bold text-cyan-100">{scenario.chain}</p>
       </div>
 
+      {/* Mini SVG Map */}
+      <div className="w-full h-[75px] rounded-lg bg-slate-950/90 border border-cyan-500/10 relative p-1.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)] my-3 text-left">
+        <div className="flex justify-between items-center px-1 text-[7.5px] text-slate-500 uppercase font-black tracking-wider z-10">
+          <span>Trazabilidad de Ruta</span>
+          <span className="text-cyan-400 animate-pulse flex items-center gap-1">
+            <span className="w-1 h-1 rounded-full bg-cyan-400 animate-ping" />
+            En Tránsito Live
+          </span>
+        </div>
+        <svg className="w-full h-[40px] relative z-10" viewBox="0 0 160 40" preserveAspectRatio="none">
+          <defs>
+            {/* Grid pattern */}
+            <pattern id="demo-phone-map-grid" width="10" height="10" patternUnits="userSpaceOnUse">
+              <path d="M 10 0 H 0 V 10" fill="none" stroke="rgba(6,182,212,0.04)" strokeWidth="0.5" />
+            </pattern>
+            {/* Radar Sweep Gradient */}
+            <linearGradient id="demo-phone-radar-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#06b6d4" stopOpacity="0" />
+              <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+            </linearGradient>
+            {/* Soft Glow Filter */}
+            <filter id="demo-phone-soft-glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="1.5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Background Grid */}
+          <rect width="160" height="40" fill="url(#demo-phone-map-grid)" />
+
+          {/* Radar Sweep Bar */}
+          <rect width="40" height="40" fill="url(#demo-phone-radar-gradient)">
+            <animate attributeName="x" values="-40;160" dur="2.5s" repeatCount="indefinite" />
+          </rect>
+
+          {/* Grid lines */}
+          <line x1="0" y1="20" x2="160" y2="20" stroke="rgba(255,255,255,0.02)" strokeWidth="0.5" />
+          
+          {/* Route Path */}
+          <path id="demo-sim-phone-path" d="M20 30 Q50 10 90 25 T140 10" fill="none" stroke="#06b6d4" strokeWidth="1.2" strokeDasharray="3,3" opacity="0.6" />
+          
+          {/* Glowing path segment for current transit */}
+          <path d="M20 30 Q50 10 70 17" fill="none" stroke="#f59e0b" strokeWidth="1.5" filter="url(#demo-phone-soft-glow)" />
+          
+          {/* Animated Comet/Particle gliding along the route path */}
+          <circle r="2.2" fill="#22d3ee" filter="url(#demo-phone-soft-glow)">
+            <animateMotion dur="3.5s" repeatCount="indefinite">
+              <mpath href="#demo-sim-phone-path" />
+            </animateMotion>
+          </circle>
+
+          {/* Intermediate Nodes */}
+          <circle cx="60" cy="18" r="2.5" fill="#f59e0b" />
+          <circle cx="100" cy="22" r="2.5" fill="#06b6d4" />
+          
+          {/* Pulse rings for Origin */}
+          <circle cx="20" cy="30" r="3" fill="#f59e0b" />
+          <circle cx="20" cy="30" r="3" fill="none" stroke="#f59e0b" strokeWidth="0.8">
+            <animate attributeName="r" values="3;9" dur="1.8s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="1;0" dur="1.8s" repeatCount="indefinite" />
+          </circle>
+
+          {/* Pulse rings for Destination */}
+          <circle cx="140" cy="10" r="3" fill="#06b6d4" />
+          <circle cx="140" cy="10" r="3" fill="none" stroke="#06b6d4" strokeWidth="0.8">
+            <animate attributeName="r" values="3;9" dur="1.8s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="1;0" dur="1.8s" repeatCount="indefinite" />
+          </circle>
+        </svg>
+        <div className="flex justify-between text-[6.5px] text-slate-400 font-mono leading-none px-1">
+          <span>Valle de Uco</span>
+          <span>Mendoza QA</span>
+          <span>Tránsito</span>
+          <span>{destination.city}</span>
+        </div>
+      </div>
+
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <InfoCell label={txt.controls.origin} value={LOCATIONS.origin.city} />
         <InfoCell label={txt.controls.currentTap} value={destination.city} />

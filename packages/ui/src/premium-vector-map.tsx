@@ -473,6 +473,11 @@ export function PremiumVectorMap({
         data-nexid-pmtiles-url={trustMapSource.pmtilesUrl || undefined}
       >
         <defs>
+          <linearGradient id={`${idPrefix}-radar-gradient`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#22d3ee" stopOpacity="0" />
+            <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+          </linearGradient>
           <linearGradient id={`${idPrefix}-ocean`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="var(--nexid-vector-ocean-1, #061d32)" />
             <stop offset="46%" stopColor="var(--nexid-vector-ocean-2, #071523)" />
@@ -525,6 +530,11 @@ export function PremiumVectorMap({
 
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-ocean)`} />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-trace-wash)`} />
+        
+        {/* Radar global scanning sweep */}
+        <rect width={WIDTH} height={HEIGHT} fill={`url(#${idPrefix}-radar-gradient)`} className="pointer-events-none" opacity="0.12">
+          <animate attributeName="x" values={`-${WIDTH};${WIDTH}`} dur="6s" repeatCount="indefinite" />
+        </rect>
         {mapTiles.length ? (
           <g opacity={density === "route" ? "1" : "0.98"}>
             {mapTiles.map((tile) => (
@@ -788,6 +798,29 @@ export function PremiumVectorMap({
                 </circle>
                 <circle cx={dot.x} cy={dot.y} r={radius + 3} fill={pointCenterFill} stroke={color} strokeWidth="1.2" />
                 <circle cx={dot.x} cy={dot.y} r={radius} fill={color} stroke="#f8fafc" strokeWidth={selected ? "3" : "2"} filter={`url(#${idPrefix}-soft-glow)`} />
+                
+                {/* Radar Crosshair for Selected Point */}
+                {selected && (
+                  <g transform={`translate(${dot.x} ${dot.y})`} className="pointer-events-none">
+                    {/* Rotating outer radar crosshair */}
+                    <circle r={radius + 15} fill="none" stroke={color} strokeWidth="0.8" strokeDasharray="3 4" opacity="0.8">
+                      <animateTransform
+                        attributeName="transform"
+                        type="rotate"
+                        from="0"
+                        to="360"
+                        dur="6s"
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+                    {/* Tick lines */}
+                    <line x1={-(radius + 20)} y1="0" x2={-(radius + 11)} y2="0" stroke={color} strokeWidth="1" opacity="0.85" />
+                    <line x1={radius + 11} y1="0" x2={radius + 20} y2="0" stroke={color} strokeWidth="1" opacity="0.85" />
+                    <line x1="0" y1={-(radius + 20)} x2="0" y2={-(radius + 11)} stroke={color} strokeWidth="1" opacity="0.85" />
+                    <line x1="0" y1={radius + 11} x2="0" y2={radius + 20} stroke={color} strokeWidth="1" opacity="0.85" />
+                  </g>
+                )}
+
                 {shouldLabel ? (
                   <g transform={`translate(${dot.x + 16} ${dot.y - 18})`}>
                     <rect x="0" y="-18" width={Math.max(70, Math.min(155, point.label.length * 8 + 24))} height="28" rx="14" fill={labelPanelFill} stroke={color} strokeOpacity={labelPanelStrokeOpacity} />

@@ -32,6 +32,7 @@ interface Lead {
   created_at: string;
   email?: string;
   phone?: string;
+  role_interest?: string;
 }
 
 interface Ticket {
@@ -54,6 +55,75 @@ interface Order {
   status: string;
   created_at: string;
 }
+
+const DEFAULT_AI_QUERIES = [
+  {
+    id: "q-b1",
+    contact: "juan.perez@cava.com",
+    vertical: "wine",
+    company: "Restaurante El Faro",
+    query: "Tengo una cena con carne asada y quiero quedar bien. ¿Este blend de Mendoza va bien o me recomiendan el Cabernet Sauvignon de su bodega?",
+    answer: "Sí, este Gran Blend 2026 marida de forma excepcional con carnes rojas a la brasa. Si querés una alternativa más estructurada, nuestro Cabernet Sauvignon Reserva es una excelente opción. Además, por convenio, podés adquirirlo con 15% off en el club.",
+    tag: "Venta Directa",
+    created_at: "2026-06-13",
+    status: "RESPONDIDO"
+  },
+  {
+    id: "q-b2",
+    contact: "marta.gomez@vinos.cl",
+    vertical: "wine",
+    company: "Distribuidora Los Andes",
+    query: "¿Tienen convenios o alianzas con otras bodegas como Catena Zapata o Rutini para visitas guiadas en Luján de Cuyo?",
+    answer: "Sí, formamos parte de la Alianza de Cavas Premium de Mendoza. Al presentar tu ticket NFT de nexID, accedés a un 20% de descuento en el tour enológico de Bodega Catena Zapata.",
+    tag: "Alianza B2B",
+    created_at: "2026-06-13",
+    status: "RESPONDIDO"
+  },
+  {
+    id: "q-c1",
+    contact: "sofia.beauty@gmail.com",
+    vertical: "cosmetics",
+    company: "Estética Integral",
+    query: "¿Qué otros productos parecidos recomiendan si tengo piel extremadamente seca y sensible?",
+    answer: "Para piel seca, recomendamos complementar Elysian Elixir con nuestra Crema Facial Hidratante Aura con ácido hialurónico. El escaneo de este frasco te otorga un cupón de 10% de descuento para esa compra.",
+    tag: "Venta Cruzada",
+    created_at: "2026-06-13",
+    status: "RESPONDIDO"
+  },
+  {
+    id: "q-c2",
+    contact: "compras@juleriaque.com.ar",
+    vertical: "cosmetics",
+    company: "Perfumerías Juleriaque",
+    query: "¿Tienen convenios de distribución o alianzas exclusivas con cadenas como Sephora o Juleriaque en Latam?",
+    answer: "¡Exacto! Juleriaque es nuestro distribuidor oficial en Latam. Escaneando el chip en cualquier sucursal física, podés acumular el doble de puntos de fidelidad en tu pasaporte digital nexID.",
+    tag: "Distribución",
+    created_at: "2026-06-13",
+    status: "RESPONDIDO"
+  },
+  {
+    id: "q-a1",
+    contact: "ing.agro@pergamino.com",
+    vertical: "agro",
+    company: "Establecimiento Don Luis",
+    query: "Si llueve en unas dos horas, ¿el BioGuard Max 500 resiste el lavado o pierdo la aplicación en el cultivo?",
+    answer: "BioGuard Max posee un agente adherente de rápida absorción que se fija en la cutícula foliar en solo 45 minutos. Si la lluvia es menor a 15mm transcurrida una hora, el activo mantiene un 92% de efectividad.",
+    tag: "Soporte Técnico",
+    created_at: "2026-06-13",
+    status: "RESPONDIDO"
+  },
+  {
+    id: "q-a2",
+    contact: "cooperativa@pergamino.org",
+    vertical: "agro",
+    company: "Cooperativa Agrícola Pergamino",
+    query: "¿Tienen convenios con cooperativas locales en Pergamino o Santa Fe para compras a granel de este lote?",
+    answer: "Sí, tenemos convenios de distribución directa con la Cooperativa Agrícola de Pergamino y la AFA en Santa Fe. Podes transferir tu token de lote digital directamente a sus cuentas para retirar mercadería.",
+    tag: "B2B Lead",
+    created_at: "2026-06-13",
+    status: "RESPONDIDO"
+  }
+];
 
 interface LeadsTicketsClientProps {
   initialLeads: Lead[];
@@ -78,8 +148,55 @@ export default function LeadsTicketsClient({
   copy,
   labels
 }: LeadsTicketsClientProps) {
-  const [activeTab, setActiveTab] = useState<"opportunities" | "prospects" | "tickets" | "orders">("opportunities");
+  const [activeTab, setActiveTab] = useState<"opportunities" | "prospects" | "tickets" | "orders" | "ai_queries">("opportunities");
   const [searchTerm, setSearchTerm] = useState("");
+
+  const leadTenant = (message: string, notes: string, tenant_slug: string) => {
+    const text = `${message || ""} ${notes || ""}`;
+    const pattern = /(?:\[|\b|\|\s*)tenant=([^\]\|\s]+)/i;
+    const match = text.match(pattern);
+    return (match?.[1] || tenant_slug || "").toLowerCase();
+  };
+
+  const parsedDbQueries = initialLeads
+    .filter(l => {
+      const isAiSource = l.source === "sales_chat_widget" || l.source === "assistant" || String(l.notes).includes("assistant");
+      if (!isAiSource) return false;
+      if (tenantScope) {
+        const slug = leadTenant(l.message || "", l.notes || "", l.vertical || "");
+        return slug === tenantScope;
+      }
+      return true;
+    })
+    .map((l, index) => {
+      const cleanNotes = String(l.notes || "");
+      const answer = cleanNotes.replace("assistant_mode=web_widget", "").trim() || "Respuesta automática procesada por nexID AI.";
+      return {
+        id: l.id || `q-db-${index}`,
+        contact: l.contact || l.email || l.phone || "-",
+        vertical: l.vertical || "other",
+        company: l.company || "-",
+        query: l.message || "Consulta general",
+        answer: answer,
+        tag: String(l.role_interest || "General").toUpperCase(),
+        created_at: l.created_at.slice(0, 10),
+        status: "RESPONDIDO"
+      };
+    });
+
+  const allAiQueries = [
+    ...DEFAULT_AI_QUERIES.filter(q => {
+      if (tenantScope) {
+        const matchesScope =
+          (tenantScope === "bodegas" && q.vertical === "wine") ||
+          (tenantScope === "cosmetica" && q.vertical === "cosmetics") ||
+          (tenantScope === "agro" && q.vertical === "agro");
+        return matchesScope;
+      }
+      return true;
+    }),
+    ...parsedDbQueries
+  ];
 
   // Pipeline count computations
   const pipelineStages = [
@@ -231,6 +348,9 @@ export default function LeadsTicketsClient({
           <button onClick={() => setActiveTab("orders")} className={tabClass("orders")}>
             Órdenes / Muestras ({initialOrders.length})
           </button>
+          <button onClick={() => setActiveTab("ai_queries")} className={tabClass("ai_queries")}>
+            {labels.aiQueries} ({allAiQueries.length})
+          </button>
         </div>
 
         <div className="relative w-full md:w-64">
@@ -376,6 +496,40 @@ export default function LeadsTicketsClient({
             filterKey="status"
             loadingLabel={copy.shell.loading}
             emptyLabel="No hay pedidos de muestras registrados"
+            searchPlaceholder="Filtrar..."
+            allFilterLabel={copy.shell.all}
+            refreshLabel={copy.shell.refresh}
+            statusMap={copy.statuses}
+          />
+        )}
+
+        {activeTab === "ai_queries" && (
+          <DataTable
+            title={labels.aiQueriesTitle}
+            columns={[
+              { key: "created_at", label: "Fecha" },
+              { key: "contact", label: "Contacto" },
+              { key: "company", label: "Empresa" },
+              { key: "query", label: "Consulta / Pregunta" },
+              { key: "tag", label: "Categoría" },
+              { key: "status", label: "Estado" }
+            ]}
+            rows={allAiQueries
+              .filter(q => {
+                const searchStr = `${q.contact || ""} ${q.company || ""} ${q.query || ""} ${q.tag || ""}`.toLowerCase();
+                return searchStr.includes(searchTerm.toLowerCase());
+              })
+              .map((item) => ({
+                created_at: item.created_at,
+                contact: item.contact,
+                company: item.company,
+                query: `💬 ${item.query}\n\n🤖 ${labels.aiAnswerHeader}:\n${item.answer}`,
+                tag: item.tag,
+                status: item.status,
+              }))}
+            filterKey="status"
+            loadingLabel={copy.shell.loading}
+            emptyLabel="No hay consultas registradas"
             searchPlaceholder="Filtrar..."
             allFilterLabel={copy.shell.all}
             refreshLabel={copy.shell.refresh}
