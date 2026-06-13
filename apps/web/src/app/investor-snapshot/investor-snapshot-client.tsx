@@ -2707,11 +2707,19 @@ export function InvestorSnapshotClient() {
               <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none" />
 
               {/* nexID AI Studio (Administrative B2B Customizer) */}
-              {!isMobile && simStep !== "tapping" && (
-                <div className="absolute right-4 top-4 bottom-4 w-[220px] bg-slate-950/95 border border-white/10 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-md z-20 shadow-2xl">
-                  {renderAiStudio()}
-                </div>
-              )}
+              <AnimatePresence>
+                {!isMobile && simStep === "active" && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ type: "spring", stiffness: 120, damping: 15 }}
+                    className="absolute right-4 top-4 bottom-4 w-[220px] bg-slate-950/95 border border-white/10 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-md z-20 shadow-2xl"
+                  >
+                    {renderAiStudio()}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
               {/* Bottle floating container */}
               <div className={
@@ -3194,11 +3202,19 @@ export function InvestorSnapshotClient() {
             </div>
 
             {/* Responsive Mobile nexID AI Studio */}
-            {isMobile && simStep !== "tapping" && (
-              <div className="w-full bg-slate-950/95 border border-white/10 rounded-2xl p-4 shadow-2xl mt-4 relative backdrop-blur-md min-h-[360px]">
-                {renderAiStudio()}
-              </div>
-            )}
+            <AnimatePresence>
+              {isMobile && simStep === "active" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full bg-slate-950/95 border border-white/10 rounded-2xl p-4 shadow-2xl mt-4 relative backdrop-blur-md min-h-[360px]"
+                >
+                  {renderAiStudio()}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
           </div>
         </div>
