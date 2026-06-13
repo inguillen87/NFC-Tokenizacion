@@ -1702,50 +1702,50 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                   <Bot className="w-4 h-4 text-cyan-400 animate-pulse" /> Diagnóstico Financiero nexID AI
                 </h3>
               </div>
-              <p className="text-[10px] text-slate-400 leading-normal">
+              <p className="text-xs lg:text-sm text-slate-300 leading-normal">
                 Estudio predictivo de retorno y amortización de inversión en hardware criptográfico. Actualizado en tiempo real.
               </p>
             </div>
             
-            <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-slate-950/60 px-2.5 py-1 text-[9px] font-mono text-slate-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-1.5 text-xs font-mono text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Modelo Cognitivo v4.2 Activo
             </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
             {/* Col 1: Metrics summary */}
-            <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 space-y-4">
-              <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider">Métricas de Amortización</span>
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 space-y-4">
+              <span className="text-xs lg:text-sm font-black uppercase text-slate-400 block tracking-wider">Métricas de Amortización</span>
               
               <div className="space-y-3">
                 {/* Metric 1 */}
-                <div className="bg-slate-950/50 border border-white/5 rounded-xl p-3 shadow-inner">
-                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Costo de Chips (Consumible)</span>
-                  <div className="text-xl font-black text-white font-mono mt-1">${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</div>
-                  <p className="text-[8px] text-slate-500 mt-1 leading-normal">
+                <div className="bg-slate-950/50 border border-white/10 rounded-xl p-4 shadow-inner">
+                  <span className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wide">Costo de Chips (Consumible)</span>
+                  <div className="text-2xl font-black text-white font-mono mt-1">${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</div>
+                  <p className="text-xs text-slate-400 mt-1.5 leading-normal">
                     *Gasto operativo anual. Chips nuevos no reutilizables por lote.
                   </p>
                 </div>
 
                 {/* Metric 2 */}
-                <div className="bg-slate-950/50 border border-white/5 rounded-xl p-3 shadow-inner">
-                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Ratio de Cobertura Unitario</span>
-                  <div className="text-xl font-black text-emerald-400 font-mono mt-1">
+                <div className="bg-slate-950/50 border border-white/10 rounded-xl p-4 shadow-inner">
+                  <span className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wide">Ratio de Cobertura Unitario</span>
+                  <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
                     {(chipCost > 0 ? ((retailPrice * (fraudRate / 100) * 0.98) / chipCost) : 0).toFixed(1)}x
                   </div>
-                  <p className="text-[8px] text-slate-500 mt-1 leading-normal">
+                  <p className="text-xs text-slate-400 mt-1.5 leading-normal">
                     Cada chip evita en promedio ${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD de pérdida.
                   </p>
                 </div>
 
                 {/* Metric 3 */}
-                <div className="bg-slate-950/50 border border-white/5 rounded-xl p-3 shadow-inner">
-                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wide">Amortización por Lote</span>
-                  <div className="text-xl font-black text-amber-400 font-mono mt-1">
+                <div className="bg-slate-950/50 border border-white/10 rounded-xl p-4 shadow-inner">
+                  <span className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wide">Amortización por Lote</span>
+                  <div className="text-2xl font-black text-amber-400 font-mono mt-1">
                     {preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365).toFixed(1) : "0"} días
                   </div>
-                  <p className="text-[8px] text-slate-500 mt-1 leading-normal">
+                  <p className="text-xs text-slate-400 mt-1.5 leading-normal">
                     Tiempo para recuperar la inversión de hardware del lote de producción.
                   </p>
                 </div>
@@ -1753,10 +1753,10 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
             </div>
 
             {/* Col 2: Dynamic AI Insight paragraph */}
-            <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 space-y-3 h-full min-h-[190px] flex flex-col justify-between">
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 space-y-4 h-full min-h-[190px] flex flex-col justify-between">
               <div>
-                <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider">Recomendación Estratégica</span>
-                <p className="text-xs text-slate-300 leading-relaxed mt-2.5">
+                <span className="text-xs lg:text-sm font-black uppercase text-slate-400 block tracking-wider">Recomendación Estratégica</span>
+                <p className="text-sm lg:text-base text-slate-200 leading-relaxed mt-2.5 font-medium">
                   {fraudRate > 8.0 ? (
                     `⚠️ La tasa de fraude detectada en ${exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global'} (${fraudRate.toFixed(1)}%) representa una fuga crítica de capital. Es imperativo utilizar chips premium NTAG 424 DNA con detección de apertura (TagTamper) para neutralizar desvíos y evitar que botellas rellenadas destruyan la reputación premium de la marca.`
                   ) : roiMultiplier > 2.5 ? (
@@ -1766,19 +1766,19 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                   )}
                 </p>
               </div>
-              <div className="text-[8px] text-cyan-400 font-mono flex items-center gap-1 border-t border-white/5 pt-2.5">
-                <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></span>
+              <div className="text-xs text-cyan-300 font-mono flex items-center gap-1.5 border-t border-white/10 pt-3">
+                <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
                 Recomendación adaptada a tus variables financieras actuales.
               </div>
             </div>
 
             {/* Col 3: Interactive Q&A simulator */}
-            <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-5 space-y-4 flex flex-col justify-between min-h-[310px]">
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 space-y-4 flex flex-col justify-between min-h-[310px]">
               <div>
-                <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider mb-2.5">Preguntas al Asistente IA</span>
+                <span className="text-xs lg:text-sm font-black uppercase text-slate-400 block tracking-wider mb-2.5">Preguntas al Asistente IA</span>
                 
                 {/* Custom Open-ended query input field */}
-                <div className="flex gap-1.5 mb-3">
+                <div className="flex gap-2 mb-3">
                   <input
                     type="text"
                     placeholder="Escribe tu pregunta personalizada..."
@@ -1789,19 +1789,19 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                         handleCustomQuerySubmit();
                       }
                     }}
-                    className="flex-1 bg-slate-950/60 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] text-white placeholder-slate-500 outline-none focus:border-cyan-500/40 transition-colors"
+                    className="flex-1 bg-slate-950/60 border border-white/10 rounded-xl px-3 py-2 text-xs lg:text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-500/40 transition-colors"
                   />
                   <button
                     onClick={handleCustomQuerySubmit}
                     disabled={!customQuery.trim() || aiThinking}
-                    className="bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 rounded-xl px-2.5 py-1.5 text-[10px] font-bold hover:bg-cyan-500/35 disabled:opacity-40 transition-all shrink-0"
+                    className="bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 rounded-xl px-3 py-2 text-xs lg:text-sm font-bold hover:bg-cyan-500/35 disabled:opacity-40 transition-all shrink-0"
                   >
                     Consultar
                   </button>
                 </div>
 
-                <span className="text-[8px] font-bold uppercase text-slate-600 block mb-1.5 tracking-wide">Sugerencias predefinidas:</span>
-                <div className="space-y-1.5">
+                <span className="text-[10px] lg:text-xs font-bold uppercase text-slate-400 block mb-1.5 tracking-wide">Sugerencias predefinidas:</span>
+                <div className="space-y-2">
                   {[
                     { id: "non-reusable", q: "¿Por qué cada lote requiere chips nuevos?" },
                     { id: "tagtamper-cost", q: "¿Es rentable TagTamper ($1.00) vs Estándar ($0.50)?" },
@@ -1811,10 +1811,10 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                     <button
                       key={item.id}
                       onClick={() => handleQuestionSelect(item.id)}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg text-[9px] font-bold transition-all border ${
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs lg:text-sm font-bold transition-all border ${
                         activeQuestion === item.id 
                           ? "bg-cyan-500/10 border-cyan-500/35 text-cyan-300"
-                          : "bg-slate-950/40 border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-200"
+                          : "bg-slate-950/40 border-white/5 text-slate-300 hover:border-white/10 hover:text-slate-200"
                       }`}
                     >
                       {item.q}
@@ -1824,31 +1824,31 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
               </div>
 
               {/* Chat answer display area */}
-              <div className="mt-3 p-3.5 rounded-xl bg-slate-950/80 border border-white/5 min-h-[120px] flex flex-col justify-center">
+              <div className="mt-3 p-4 rounded-xl bg-slate-950/80 border border-white/10 min-h-[120px] flex flex-col justify-center">
                 {activeQuestion === "" ? (
-                  <p className="text-[9.5px] text-slate-500 italic text-center leading-normal">
+                  <p className="text-xs lg:text-sm text-slate-400 italic text-center leading-normal">
                     Selecciona una pregunta arriba para ver el análisis de la inteligencia artificial.
                   </p>
                 ) : aiThinking ? (
                   <div className="flex flex-col items-center justify-center space-y-2 py-4">
-                    <div className="flex space-x-1">
-                      <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="flex space-x-1.5">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <span className="text-[8px] font-mono text-cyan-400/80 tracking-widest uppercase">AI analizando datos...</span>
+                    <span className="text-[10px] lg:text-xs font-mono text-cyan-400/80 tracking-widest uppercase">AI analizando datos...</span>
                   </div>
                 ) : (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.25 }}
-                    className="space-y-1.5"
+                    className="space-y-2"
                   >
-                    <div className="text-[8px] font-mono text-cyan-400 uppercase tracking-widest font-black leading-none">
+                    <div className="text-[10px] lg:text-xs font-mono text-cyan-400 uppercase tracking-widest font-black leading-none">
                       Respuesta nexID AI:
                     </div>
-                    <p className="text-[9.5px] text-slate-300 leading-relaxed font-normal">
+                    <p className="text-xs lg:text-sm text-slate-200 leading-relaxed font-normal">
                       {getAiAnswer(activeQuestion)}
                     </p>
                   </motion.div>
@@ -3684,31 +3684,45 @@ export function InvestorSnapshotClient() {
         setExportRegion={setExportRegion}
       />
 
-      {/* Slide 6 VIP metal card parallax feature overlay (Premium aesthetic showcase) */}
-      <section className="rounded-3xl border border-white/10 bg-slate-950 p-8 lg:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full filter blur-[100px] pointer-events-none" />
+      {/* Slide 6 VIP metal card parallax feature overlay (Premium aesthetic showcase & Innovar LATAM Ecosistema) */}
+      <section className="rounded-3xl border border-white/10 bg-slate-950 p-8 lg:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md space-y-10">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/5 rounded-full filter blur-[120px] pointer-events-none" />
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-          <div className="space-y-4">
-            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-cyan-400 block">Prestigio de Marca & Estatus</span>
-            <h2 className="text-2xl lg:text-3xl font-black text-white uppercase tracking-tight">Membresías Metálicas Premium</h2>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Consumir un producto verificado por nexID otorga puntos y sube el rango del usuario en la cava digital. Los inversores adoran este incentivo de lealtad porque impulsa la recurrencia comercial B2C sin intermediarios.
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-7 space-y-4">
+            <span className="text-xs font-black uppercase tracking-[0.25em] text-cyan-400 block">Fidelización, Gamificación y Ecosistema Digital</span>
+            <h2 className="text-2xl lg:text-3xl font-black text-white uppercase tracking-tight">Tarjeta VIP Gold: Fidelización Activa desde el Chip NFC</h2>
+            
+            <div className="space-y-3 text-sm lg:text-base text-slate-300 leading-relaxed">
+              <p>
+                <strong>¿Para qué sirve esta tarjeta Gold digital?</strong> Si hoy vendés únicamente a través de Instagram, dependés de responder mensajes directos y de interacciones manuales. Al incorporar el chip NFC de nexID, cada botella se convierte en un punto de contacto automatizado.
+              </p>
+              <p>
+                Al escanear el chip con su celular, el consumidor no solo verifica la autenticidad del producto, sino que activa de inmediato su <strong>Pasaporte de Fidelidad</strong>. Suma puntos automáticamente y sube de rango en la cava digital. Esto desbloquea beneficios exclusivos, catas privadas o prioridad en preventas de cosechas limitadas, impulsando una <strong>recurrencia de compra directa B2C de +24%</strong> sin depender de comisiones de distribuidores.
+              </p>
+              <p className="border-l-2 border-cyan-500/40 pl-3 italic text-slate-400 text-xs lg:text-sm">
+                No vendés solo un producto físico; vendés una membresía y estatus dentro de tu comunidad.
+              </p>
+            </div>
+            
             <div className="flex gap-4 pt-2">
-              <div className="bg-slate-900/60 p-4 rounded-xl border border-white/5">
-                <span className="text-[8px] text-slate-500 block uppercase font-bold">Rango Gold</span>
+              <div className="bg-slate-900/60 p-4 rounded-xl border border-white/10">
+                <span className="text-[10px] text-slate-400 block uppercase font-bold">Rango en la Cava</span>
                 <span className="text-base text-amber-400 font-black">Cofradía Activa</span>
               </div>
-              <div className="bg-slate-900/60 p-4 rounded-xl border border-white/5">
-                <span className="text-[8px] text-slate-500 block uppercase font-bold">Retención</span>
+              <div className="bg-slate-900/60 p-4 rounded-xl border border-white/10">
+                <span className="text-[10px] text-slate-400 block uppercase font-bold">Retención B2C</span>
                 <span className="text-base text-purple-400 font-black">+24% Recurrencia</span>
+              </div>
+              <div className="bg-slate-900/60 p-4 rounded-xl border border-white/10">
+                <span className="text-[10px] text-slate-400 block uppercase font-bold">Canal Directo</span>
+                <span className="text-base text-cyan-400 font-black">Escaneo Directo</span>
               </div>
             </div>
           </div>
 
           {/* Interactive VIP metal card mockup */}
-          <div className="flex justify-center">
+          <div className="lg:col-span-5 flex flex-col items-center justify-center space-y-4">
             <motion.div 
               whileHover={{ rotateY: 15, rotateX: -10 }}
               transition={{ type: "spring", stiffness: 150, damping: 15 }}
@@ -3719,7 +3733,7 @@ export function InvestorSnapshotClient() {
               
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-[7px] font-bold text-amber-300 uppercase tracking-widest block">NEXID PRESTIGE</span>
+                  <span className="text-[8px] font-bold text-amber-300 uppercase tracking-widest block">NEXID PRESTIGE</span>
                   <span className="text-sm font-black text-white uppercase tracking-tight mt-1 block">VIP GOLD MEMBER</span>
                 </div>
                 <div className="w-8 h-8 rounded bg-gradient-to-tr from-amber-400 to-amber-200 border border-amber-300/30 flex items-center justify-center text-slate-950 font-black text-sm">
@@ -3729,12 +3743,93 @@ export function InvestorSnapshotClient() {
 
               <div className="flex justify-between items-end">
                 <div className="space-y-1">
-                  <span className="text-[6px] text-slate-400 block uppercase">Propietario de Lote</span>
+                  <span className="text-[8px] text-slate-400 block uppercase">Propietario de Lote</span>
                   <span className="text-xs text-white font-mono leading-none">04:A5:8C:12:F3:60</span>
                 </div>
-                <span className="text-[10px] font-bold text-amber-400/90 tracking-wider">MENDOZA 2026</span>
+                <span className="text-xs font-bold text-amber-400/90 tracking-wider">MENDOZA 2026</span>
               </div>
             </motion.div>
+            <span className="text-xs text-slate-500 font-mono">Vista interactiva de la credencial digital del cliente</span>
+          </div>
+        </div>
+
+        {/* Separator line */}
+        <div className="h-px bg-white/10 w-full" />
+
+        {/* Innovar LATAM ecosystem services section */}
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <span className="text-xs font-black uppercase tracking-[0.25em] text-cyan-400 block">Tu socio tecnológico estratégico</span>
+            <h3 className="text-xl lg:text-2xl font-black text-white uppercase tracking-tight">Desarrollamos toda tu línea de valor digital</h3>
+            <p className="text-sm lg:text-base text-slate-300 max-w-4xl">
+              Para que tu chip NFC no sea una herramienta aislada en un negocio que solo tiene Instagram, desde <strong>Innovar LATAM</strong> creamos e integramos todo el ecosistema digital de tu marca. Conectamos el mundo físico del chip con plataformas de software robustas de primer nivel.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Service 1 */}
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">
+                  🛍️
+                </div>
+                <h4 className="text-sm lg:text-base font-bold text-white uppercase">Tienda Online Premium</h4>
+                <p className="text-xs lg:text-sm text-slate-400 leading-relaxed">
+                  Pasá de la venta manual en Instagram a un e-commerce autogestionado con catálogo inteligente. Integración directa de inventario de lotes protegidos por nexID.
+                </p>
+              </div>
+              <a href="#ecommerce" className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 font-bold">
+                Conocer Tiendas Intelitech &rarr;
+              </a>
+            </div>
+
+            {/* Service 2 */}
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">
+                  💬
+                </div>
+                <h4 className="text-sm lg:text-base font-bold text-white uppercase">WhatsApp Business Inteligente</h4>
+                <p className="text-xs lg:text-sm text-slate-400 leading-relaxed">
+                  Chatbot IA que automatiza la atención. Entiende consultas de clientes, toma y procesa pedidos directamente, deriva reclamos de envíos y responde preguntas frecuentes 24/7.
+                </p>
+              </div>
+              <a href="#whatsapp" className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 font-bold">
+                Ver Módulo Conversacional &rarr;
+              </a>
+            </div>
+
+            {/* Service 3 */}
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">
+                  💳
+                </div>
+                <h4 className="text-sm lg:text-base font-bold text-white uppercase">Cobros, Pagos y Señas</h4>
+                <p className="text-xs lg:text-sm text-slate-400 leading-relaxed">
+                  Sistema seguro de transacciones. Cobrá membresías recurrentes a tu club, permití señar botellas de cosechas exclusivas antes de embotellar, y enviá links de cobro automatizados.
+                </p>
+              </div>
+              <a href="#pagos" className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 font-bold">
+                Explorar Soluciones Financieras &rarr;
+              </a>
+            </div>
+
+            {/* Service 4 */}
+            <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 font-bold">
+                  🌐
+                </div>
+                <h4 className="text-sm lg:text-base font-bold text-white uppercase">Plataformas Web Integradas</h4>
+                <p className="text-xs lg:text-sm text-slate-400 leading-relaxed">
+                  Paneles interactivos para el consumidor final y tableros operativos de trazabilidad para tu equipo de logística. Tecnología robusta de Innovar LATAM.
+                </p>
+              </div>
+              <a href="#plataformas" className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 font-bold">
+                Ver Trazabilidad &rarr;
+              </a>
+            </div>
           </div>
         </div>
       </section>
