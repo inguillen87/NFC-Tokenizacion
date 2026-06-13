@@ -5,6 +5,7 @@ import "./globals.css";
 import { resolveLocale } from "@product/config";
 import { HelpBot } from "@product/ui";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
+import { PwaSetup } from "../components/pwa-setup";
 
 const extensionConsoleShieldScript = `
 (() => {
@@ -81,6 +82,12 @@ export async function generateMetadata(): Promise<Metadata> {
     title: localizedTitle,
     description: "Multi-tenant operations dashboard",
     metadataBase: new URL(process.env.NEXT_PUBLIC_DASHBOARD_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.nexid.lat"),
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "nexID Control",
+    },
     icons: {
       icon: [
         { url: "/logo-mark.svg", type: "image/svg+xml" },
@@ -114,6 +121,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body suppressHydrationWarning>
         {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}
         <MisconfigurationBanner />
+        <PwaSetup />
         {children}
         <HelpBot locale={locale} mode="support" />
       </body>

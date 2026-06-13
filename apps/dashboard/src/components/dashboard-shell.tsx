@@ -34,6 +34,8 @@ import {
   Zap,
   Presentation,
   BookOpen,
+  Menu,
+  X,
 } from "lucide-react";
 
 type DashboardText = typeof dashboardContent["es-AR"];
@@ -120,6 +122,11 @@ export function DashboardShellInner({
   const [loggingOut, setLoggingOut] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const { mode, setMode } = useAudienceMode();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -295,10 +302,28 @@ export function DashboardShellInner({
 
   return (
     <div className="dashboard-shell-root flex min-h-screen flex-col bg-[#020617] text-slate-200 lg:flex-row">
-      <aside className="dashboard-sidebar border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-80 lg:p-6 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.4)] flex flex-col h-screen overflow-y-auto">
-        <Link href="/" className="mb-8 inline-flex items-center hover:opacity-80 transition-opacity">
-          <BrandLockup size={40} variant="pulse" theme="dark" className="brand-surface-sidebar" />
-        </Link>
+      {/* Backdrop for mobile sidebar drawer */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      <aside className={`dashboard-sidebar border-r border-white/5 bg-slate-950/80 p-4 backdrop-blur-xl lg:w-80 lg:p-6 z-50 shadow-[4px_0_24px_rgba(0,0,0,0.4)] flex flex-col h-screen overflow-y-auto transition-transform duration-300 fixed inset-y-0 left-0 w-72 lg:static lg:translate-x-0 ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <div className="flex items-center justify-between mb-8 shrink-0">
+          <Link href="/" className="inline-flex items-center hover:opacity-80 transition-opacity">
+            <BrandLockup size={40} variant="pulse" theme="dark" className="brand-surface-sidebar" />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg border border-white/10 bg-slate-900/50 text-slate-400 hover:text-white"
+            aria-label="Close navigation menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         <div className="space-y-4">
           {/* Grape / Winery Role Card */}
@@ -445,12 +470,22 @@ export function DashboardShellInner({
       <div className="dashboard-main min-w-0 flex-1 bg-slate-950/50">
         <header className="dashboard-header sticky top-0 z-30 border-b border-white/5 bg-slate-950/80 px-4 py-4 backdrop-blur-xl lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400 mb-1">
-                 <BrandDot size={6} variant="pulse" theme="dark" />
-                 {subtitle}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-xl border border-white/10 bg-slate-900/50 text-slate-305 hover:text-white"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400 mb-1">
+                   <BrandDot size={6} variant="pulse" theme="dark" />
+                   {subtitle}
+                </div>
+                <h1 className="text-xl font-bold text-white tracking-tight">{title}</h1>
               </div>
-              <h1 className="text-xl font-bold text-white tracking-tight">{title}</h1>
             </div>
             <div className="flex items-center gap-3">
               <AdminNotificationBell />

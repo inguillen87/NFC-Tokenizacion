@@ -1729,6 +1729,19 @@ export function InvestorSnapshotClient() {
   const [crmQueries, setCrmQueries] = useState<Array<{ id: string; query: string; answer: string; timestamp: string; tag: string; status: "respondido" | "procesando" }>>([]);
   const [unreadCrmCount, setUnreadCrmCount] = useState(0);
 
+  // Mobile responsiveness and PWA state
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // Hugging Face config states
   const [showHfySettings, setShowHfySettings] = useState(false);
   const [hfTokenInput, setHfTokenInput] = useState("");
@@ -1788,6 +1801,193 @@ export function InvestorSnapshotClient() {
     setCrmQueries(DEFAULT_CRM_QUERIES[selectedIndustry] || []);
     setUnreadCrmCount(0);
   }, [selectedIndustry]);
+
+  const renderAiStudio = () => {
+    return (
+      <div className="flex flex-col h-full justify-between">
+        <div className="space-y-3 flex flex-col flex-1 overflow-hidden">
+          <div className="flex items-center gap-1.5 border-b border-white/5 pb-2">
+            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+            <div>
+              <span className="text-[10px] font-black text-white uppercase tracking-wider block leading-none">nexID AI Studio</span>
+              <span className="text-[7px] text-slate-500 uppercase tracking-widest block mt-0.5">Control Panel</span>
+            </div>
+          </div>
+
+          {/* CRM vs. Diseñador Tabs */}
+          <div className="flex gap-1 bg-slate-900 p-0.5 rounded-lg border border-white/5">
+            <button
+              type="button"
+              onClick={() => {
+                setStudioTab("designer");
+                setUnreadCrmCount(0);
+              }}
+              className={`flex-1 py-1 rounded-md text-[7.5px] font-black uppercase tracking-wider transition ${
+                studioTab === "designer" 
+                  ? "bg-slate-950 text-amber-400 border border-white/5" 
+                  : "text-slate-500 hover:text-slate-350"
+              }`}
+            >
+              🎨 Arte AI
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStudioTab("crm");
+                setUnreadCrmCount(0);
+              }}
+              className={`flex-1 py-1 rounded-md text-[7.5px] font-black uppercase tracking-wider transition relative ${
+                studioTab === "crm" 
+                  ? "bg-slate-950 text-cyan-400 border border-white/5" 
+                  : "text-slate-500 hover:text-slate-350"
+              }`}
+            >
+              📊 CRM Consultas
+              {unreadCrmCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-450 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                </span>
+              )}
+            </button>
+          </div>
+
+          {studioTab === "designer" ? (
+            <div className="space-y-3 flex-1 flex flex-col justify-between overflow-y-auto pr-1">
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[8px] font-mono text-slate-400 uppercase block">Diseño de Etiqueta / Arte:</label>
+                  <textarea
+                    value={labelPrompt}
+                    onChange={(e) => setLabelPrompt(e.target.value)}
+                    placeholder={
+                      selectedIndustry === "bodegas"
+                        ? "Ej: Un fénix dorado volando sobre viñas de Mendoza, estilo art decó..."
+                        : selectedIndustry === "cosmetica"
+                        ? "Ej: Flores silvestres y rocío matutino sobre vidrio dorado, abstracto..."
+                        : selectedIndustry === "agro"
+                        ? "Ej: Hojas de maíz digitalizadas de neón verde sobre fondo oscuro..."
+                        : selectedIndustry === "pharma"
+                        ? "Ej: Moléculas flotantes en tonos azules y plateados, estilo laboratorio..."
+                        : "Ej: Un pase VIP holográfico con estrellas doradas y patrón geométrico..."
+                    }
+                    rows={3}
+                    className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[9px] text-white outline-none focus:border-cyan-500 transition-colors resize-none leading-normal font-sans"
+                  />
+                </div>
+
+                {/* Styles list */}
+                <div className="space-y-1">
+                  <span className="text-[7.5px] font-mono text-slate-500 uppercase block">Estilos Sugeridos:</span>
+                  <div className="grid grid-cols-2 gap-1">
+                    {[
+                      { name: "⚡ Cyberpunk", prompt: "A futuristic glowing neon cyber design with holographic elements, 8k" },
+                      { name: "👑 Art Decó", prompt: "A minimalist luxury design with golden geometric lines, art deco style" },
+                      { name: "🍂 Clásico", prompt: "A vintage traditional premium style, elegant texture, high resolution" },
+                      { name: "✨ Abstracto", prompt: "Luxury abstract organic shapes with gold foil, premium modern aesthetic" }
+                    ].map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setLabelPrompt(item.prompt)}
+                        className="text-[7.5px] bg-slate-900 hover:bg-slate-850 border border-white/5 rounded py-1 text-slate-450 text-center transition truncate"
+                        title={item.prompt}
+                      >
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {labelGenError && (
+                  <p className="text-[7px] text-amber-400 font-semibold italic bg-amber-500/5 p-1.5 rounded border border-amber-500/10 leading-normal">
+                    ⚠️ {labelGenError}. Usando patrón de cava de contingencia.
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleGenerateLabel(labelPrompt)}
+                disabled={generatingLabel || !labelPrompt.trim()}
+                className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-black text-[9.5px] uppercase py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.15)] border border-amber-400/20 mt-2 shrink-0 animate-fade-in"
+              >
+                {generatingLabel ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Diseñando Arte...</span>
+                  </>
+                ) : (
+                  <>
+                    <Cpu className="w-3.5 h-3.5" />
+                    <span>Generar Arte AI</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col justify-between flex-1 overflow-hidden mt-1">
+              <div className="space-y-2 flex-1 overflow-y-auto pr-1 max-h-[310px] scrollbar-thin scrollbar-thumb-slate-850">
+                <div className="flex justify-between items-center text-[7.5px] font-mono text-slate-500 uppercase tracking-wider border-b border-white/5 pb-1">
+                  <span>Feed de Consultas</span>
+                  <span className="text-cyan-400 font-bold animate-pulse flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-455 animate-pulse"></span>
+                    En Vivo
+                  </span>
+                </div>
+
+                {crmQueries.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500 text-[8px] italic leading-normal">
+                    Ninguna consulta registrada.<br />
+                    Usa el chat del celular simulado para enviar una pregunta.
+                  </div>
+                ) : (
+                  crmQueries.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-slate-900/70 border border-white/5 rounded-lg p-2 space-y-1 text-[8.5px] hover:border-slate-800 transition"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className={`px-1 rounded-[3px] text-[6.5px] font-mono font-bold leading-none py-0.5 border ${
+                          item.tag === "Venta Directa" || item.tag === "Venta Cruzada"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : item.tag === "Alianza B2B" || item.tag === "Distribución" || item.tag === "B2B Lead"
+                            ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                            : item.tag === "Médico" || item.tag === "Soporte Técnico" || item.tag === "Acceso VIP"
+                            ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                            : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                        }`}>
+                          {item.tag}
+                        </span>
+                        <span className="text-[7px] text-slate-550 font-mono">{item.timestamp}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-slate-350 font-semibold leading-snug">
+                          💬 {item.query}
+                        </p>
+                        <div className="pl-1.5 border-l border-cyan-500/20 text-slate-400 text-[8px] leading-snug space-y-0.5">
+                          <span className="text-cyan-400 font-bold block text-[7px] uppercase tracking-wider">nexID AI Engine:</span>
+                          {item.status === "procesando" ? (
+                            <span className="text-cyan-400/70 italic animate-pulse block">Procesando respuesta cognitiva...</span>
+                          ) : (
+                            <span className="block">{item.answer}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              
+              <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-lg p-2 text-[7.5px] text-slate-400 leading-normal mt-2 shrink-0">
+                💡 <strong>CRM B2B Telemetry:</strong> Almacena al instante lo que tus clientes preguntan al escanear, cruzando convenios de recompra y alianzas de marca en vivo.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const handleGenerateLabel = async (promptText: string) => {
     if (!promptText.trim()) return;
@@ -2507,194 +2707,20 @@ export function InvestorSnapshotClient() {
               <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:14px_14px] pointer-events-none" />
 
               {/* nexID AI Studio (Administrative B2B Customizer) */}
-              {simStep !== "tapping" && (
+              {!isMobile && simStep !== "tapping" && (
                 <div className="absolute right-4 top-4 bottom-4 w-[220px] bg-slate-950/95 border border-white/10 rounded-2xl p-4 flex flex-col justify-between backdrop-blur-md z-20 shadow-2xl">
-                  <div className="flex flex-col h-full justify-between">
-                    <div className="space-y-3 flex flex-col flex-1 overflow-hidden">
-                      <div className="flex items-center gap-1.5 border-b border-white/5 pb-2">
-                        <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-                        <div>
-                          <span className="text-[10px] font-black text-white uppercase tracking-wider block leading-none">nexID AI Studio</span>
-                          <span className="text-[7px] text-slate-500 uppercase tracking-widest block mt-0.5">Control Panel</span>
-                        </div>
-                      </div>
-
-                      {/* CRM vs. Diseñador Tabs */}
-                      <div className="flex gap-1 bg-slate-900 p-0.5 rounded-lg border border-white/5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setStudioTab("designer");
-                            setUnreadCrmCount(0);
-                          }}
-                          className={`flex-1 py-1 rounded-md text-[7.5px] font-black uppercase tracking-wider transition ${
-                            studioTab === "designer" 
-                              ? "bg-slate-950 text-amber-400 border border-white/5" 
-                              : "text-slate-500 hover:text-slate-300"
-                          }`}
-                        >
-                          🎨 Arte AI
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setStudioTab("crm");
-                            setUnreadCrmCount(0);
-                          }}
-                          className={`flex-1 py-1 rounded-md text-[7.5px] font-black uppercase tracking-wider transition relative ${
-                            studioTab === "crm" 
-                              ? "bg-slate-950 text-cyan-400 border border-white/5" 
-                              : "text-slate-500 hover:text-slate-300"
-                          }`}
-                        >
-                          📊 CRM Consultas
-                          {unreadCrmCount > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                            </span>
-                          )}
-                        </button>
-                      </div>
-
-                      {studioTab === "designer" ? (
-                        <div className="space-y-3 flex-1 flex flex-col justify-between overflow-y-auto pr-1">
-                          <div className="space-y-3">
-                            <div className="space-y-1">
-                              <label className="text-[8px] font-mono text-slate-400 uppercase">Diseño de Etiqueta / Arte:</label>
-                              <textarea
-                                value={labelPrompt}
-                                onChange={(e) => setLabelPrompt(e.target.value)}
-                                placeholder={
-                                  selectedIndustry === "bodegas"
-                                    ? "Ej: Un fénix dorado volando sobre viñas de Mendoza, estilo art decó..."
-                                    : selectedIndustry === "cosmetica"
-                                    ? "Ej: Flores silvestres y rocío matutino sobre vidrio dorado, abstracto..."
-                                    : selectedIndustry === "agro"
-                                    ? "Ej: Hojas de maíz digitalizadas de neón verde sobre fondo oscuro..."
-                                    : selectedIndustry === "pharma"
-                                    ? "Ej: Moléculas flotantes en tonos azules y plateados, estilo laboratorio..."
-                                    : "Ej: Un pase VIP holográfico con estrellas doradas y patrón geométrico..."
-                                }
-                                rows={3}
-                                className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[9px] text-white outline-none focus:border-cyan-500 transition-colors resize-none leading-normal font-sans"
-                              />
-                            </div>
-
-                            {/* Styles list */}
-                            <div className="space-y-1">
-                              <span className="text-[7.5px] font-mono text-slate-500 uppercase block">Estilos Sugeridos:</span>
-                              <div className="grid grid-cols-2 gap-1">
-                                {[
-                                  { name: "⚡ Cyberpunk", prompt: "A futuristic glowing neon cyber design with holographic elements, 8k" },
-                                  { name: "👑 Art Decó", prompt: "A minimalist luxury design with golden geometric lines, art deco style" },
-                                  { name: "🍂 Clásico", prompt: "A vintage traditional premium style, elegant texture, high resolution" },
-                                  { name: "✨ Abstracto", prompt: "Luxury abstract organic shapes with gold foil, premium modern aesthetic" }
-                                ].map((item, idx) => (
-                                  <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => setLabelPrompt(item.prompt)}
-                                    className="text-[7.5px] bg-slate-900 hover:bg-slate-850 border border-white/5 rounded py-1 text-slate-450 text-center transition truncate"
-                                    title={item.prompt}
-                                  >
-                                    {item.name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            {labelGenError && (
-                              <p className="text-[7px] text-amber-400 font-semibold italic bg-amber-500/5 p-1.5 rounded border border-amber-500/10 leading-normal">
-                                ⚠️ {labelGenError}. Usando patrón de cava de contingencia.
-                              </p>
-                            )}
-                          </div>
-
-                          <button
-                            onClick={() => handleGenerateLabel(labelPrompt)}
-                            disabled={generatingLabel || !labelPrompt.trim()}
-                            className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-black text-[9.5px] uppercase py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.15)] border border-amber-400/20 mt-2 shrink-0"
-                          >
-                            {generatingLabel ? (
-                              <>
-                                <RefreshCw className="w-3 h-3 animate-spin" />
-                                <span>Diseñando Arte...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Cpu className="w-3.5 h-3.5" />
-                                <span>Generar Arte AI</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col justify-between flex-1 overflow-hidden mt-1">
-                          <div className="space-y-2 flex-1 overflow-y-auto pr-1 max-h-[310px] scrollbar-thin scrollbar-thumb-slate-850">
-                            <div className="flex justify-between items-center text-[7.5px] font-mono text-slate-500 uppercase tracking-wider border-b border-white/5 pb-1">
-                              <span>Feed de Consultas</span>
-                              <span className="text-cyan-400 font-bold animate-pulse flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-455"></span>
-                                En Vivo
-                              </span>
-                            </div>
-
-                            {crmQueries.length === 0 ? (
-                              <div className="text-center py-12 text-slate-500 text-[8px] italic leading-normal">
-                                Ninguna consulta registrada.<br />
-                                Usa el chat del celular simulado para enviar una pregunta.
-                              </div>
-                            ) : (
-                              crmQueries.map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="bg-slate-900/70 border border-white/5 rounded-lg p-2 space-y-1 text-[8.5px] hover:border-slate-800 transition"
-                                >
-                                  <div className="flex justify-between items-center">
-                                    <span className={`px-1 rounded-[3px] text-[6.5px] font-mono font-bold leading-none py-0.5 border ${
-                                      item.tag === "Venta Directa" || item.tag === "Venta Cruzada"
-                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                        : item.tag === "Alianza B2B" || item.tag === "Distribución" || item.tag === "B2B Lead"
-                                        ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                                        : item.tag === "Médico" || item.tag === "Soporte Técnico" || item.tag === "Acceso VIP"
-                                        ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                                        : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                                    }`}>
-                                      {item.tag}
-                                    </span>
-                                    <span className="text-[7px] text-slate-500 font-mono">{item.timestamp}</span>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-slate-350 font-semibold leading-snug">
-                                      💬 {item.query}
-                                    </p>
-                                    <div className="pl-1.5 border-l border-cyan-500/20 text-slate-400 text-[8px] leading-snug space-y-0.5">
-                                      <span className="text-cyan-400 font-bold block text-[7px] uppercase tracking-wider">nexID AI Engine:</span>
-                                      {item.status === "procesando" ? (
-                                        <span className="text-cyan-400/70 italic animate-pulse block">Procesando respuesta cognitiva...</span>
-                                      ) : (
-                                        <span className="block">{item.answer}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                          
-                          <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-lg p-2 text-[7.5px] text-slate-400 leading-normal mt-2 shrink-0">
-                            💡 <strong>CRM B2B Telemetry:</strong> Almacena al instante lo que tus clientes preguntan al escanear, cruzando convenios de recompra y alianzas de marca en vivo.
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  {renderAiStudio()}
                 </div>
               )}
               
               {/* Bottle floating container */}
-              <div className="absolute left-[4%] w-[160px] h-[450px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden">
+              <div className={
+                isMobile
+                  ? simStep === "active"
+                    ? "absolute top-2 left-4 w-[60px] h-[90px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-xl opacity-20 pointer-events-none transition-all duration-300 z-10"
+                    : "absolute top-4 left-1/2 -translate-x-1/2 w-[140px] h-[220px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-sm transition-all duration-300 z-10"
+                  : "absolute left-[4%] w-[160px] h-[450px] flex items-center justify-center bg-white/[0.01] border border-white/5 rounded-3xl backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] overflow-hidden transition-all duration-300"
+              }>
                 <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/5 via-transparent to-transparent pointer-events-none" />
                 <ThreeDProduct 
                   active={simStep === "active"} 
@@ -2710,7 +2736,11 @@ export function InvestorSnapshotClient() {
                     initial={{ scale: 0.1, opacity: 1 }}
                     animate={{ scale: 5, opacity: 0 }}
                     transition={{ duration: 0.8, repeat: 1 }}
-                    className="absolute top-[22%] w-10 h-10 rounded-full border-2 border-cyan-400 bg-cyan-400/20 z-20"
+                    className={
+                      isMobile 
+                        ? "absolute top-[35%] w-6 h-6 rounded-full border-2 border-cyan-400 bg-cyan-400/20 z-20"
+                        : "absolute top-[22%] w-10 h-10 rounded-full border-2 border-cyan-400 bg-cyan-400/20 z-20"
+                    }
                   />
                 )}
               </div>
@@ -2718,7 +2748,13 @@ export function InvestorSnapshotClient() {
               {/* Simulated iPhone Frame */}
               <motion.div
                 animate={
-                  simStep === "idle"
+                  isMobile
+                    ? simStep === "idle"
+                      ? { x: 0, y: 110, rotate: 0, scale: 0.85 }
+                      : simStep === "tapping"
+                      ? { x: 0, y: -40, rotate: 0, scale: 0.95 }
+                      : { x: 0, y: 0, rotate: 0, scale: 1.05 } // Centered on mobile
+                    : simStep === "idle"
                     ? { x: 105, y: -10, rotate: 8, scale: 0.95 }
                     : simStep === "tapping"
                     ? { x: -20, y: -70, rotate: -20, scale: 1.02 }
@@ -3156,6 +3192,13 @@ export function InvestorSnapshotClient() {
                 <p>🚀 <strong>Interactúa:</strong> Navega por las pestañas del celular simulado en el centro. Intenta generar el NFT en Polygon o reclamar beneficios en el club.</p>
               )}
             </div>
+
+            {/* Responsive Mobile nexID AI Studio */}
+            {isMobile && simStep !== "tapping" && (
+              <div className="w-full bg-slate-950/95 border border-white/10 rounded-2xl p-4 shadow-2xl mt-4 relative backdrop-blur-md min-h-[360px]">
+                {renderAiStudio()}
+              </div>
+            )}
 
           </div>
         </div>

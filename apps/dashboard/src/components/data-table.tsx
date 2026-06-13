@@ -89,7 +89,7 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
       {!isPending && filtered.length === 0 ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
 
       {!isPending && filtered.length > 0 ? (
-        <div className="data-table-shell overflow-hidden rounded-2xl border border-white/10">
+        <div className="data-table-shell overflow-x-auto rounded-2xl border border-white/10">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-white/10 bg-slate-950/60 text-slate-400">
               <tr>{columns.map((col) => <th key={col.key} className="px-4 py-3">{col.label}</th>)}</tr>
