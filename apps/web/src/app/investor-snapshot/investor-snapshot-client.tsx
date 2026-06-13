@@ -1276,13 +1276,25 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
 
               {/* Slider 1: Volume */}
               <div className="space-y-1">
-                <div className="flex justify-between text-xs font-bold">
+                <div className="flex justify-between items-center text-xs font-bold">
                   <span className="text-slate-400 uppercase">Volumen Anual</span>
-                  <span className="text-white font-mono">{volume.toLocaleString()} uds</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={volume}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setVolume(val);
+                        setSelectedPreset(""); // custom
+                      }}
+                      className="w-[85px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-white text-xs outline-none focus:border-cyan-500/50"
+                    />
+                    <span className="text-slate-400 font-mono text-[9px]">uds</span>
+                  </div>
                 </div>
                 <input
                   type="range"
-                  min="12000"
+                  min="10000"
                   max="1500000"
                   step="10000"
                   value={volume}
@@ -1293,16 +1305,29 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                   className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-cyan-400"
                 />
                 <div className="flex justify-between text-[8px] text-slate-500 font-mono">
-                  <span>12K (Mín 1K/mes)</span>
+                  <span>10K (Mín 1K/mes)</span>
                   <span>1.5M</span>
                 </div>
               </div>
 
               {/* Slider 2: Fraud Rate (Only visible or editable for direct) */}
               <div className="space-y-1">
-                <div className="flex justify-between text-xs font-bold">
+                <div className="flex justify-between items-center text-xs font-bold">
                   <span className="text-slate-400 uppercase">Tasa de Fraude / Pérdida</span>
-                  <span className="text-rose-400 font-mono">{fraudRate.toFixed(1)}% línea</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={fraudRate}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setFraudRate(val);
+                        setSelectedPreset(""); // custom
+                      }}
+                      className="w-[50px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-rose-400 text-xs outline-none focus:border-rose-500/50"
+                    />
+                    <span className="text-rose-400 font-mono text-[9px]">%</span>
+                  </div>
                 </div>
                 <input
                   type="range"
@@ -1324,9 +1349,22 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
 
               {/* Slider 3: Price */}
               <div className="space-y-1">
-                <div className="flex justify-between text-xs font-bold">
+                <div className="flex justify-between items-center text-xs font-bold">
                   <span className="text-slate-400 uppercase">Precio de Venta Producto</span>
-                  <span className="text-cyan-400 font-mono">${retailPrice} USD</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-cyan-400 font-mono text-[9px]">$</span>
+                    <input
+                      type="number"
+                      value={retailPrice}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setRetailPrice(val);
+                        setSelectedPreset(""); // custom
+                      }}
+                      className="w-[50px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-cyan-400 text-xs outline-none focus:border-cyan-500/50"
+                    />
+                    <span className="text-cyan-400 font-mono text-[9px]">USD</span>
+                  </div>
                 </div>
                 <input
                   type="range"
@@ -1348,9 +1386,22 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
 
               {/* Slider 4: Chip Cost */}
               <div className="space-y-1">
-                <div className="flex justify-between text-xs font-bold">
+                <div className="flex justify-between items-center text-xs font-bold">
                   <span className="text-slate-400 uppercase">Costo Base del Chip</span>
-                  <span className="text-amber-400 font-mono">${chipCost.toFixed(2)} USD</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-amber-400 font-mono text-[9px]">$</span>
+                    <input
+                      type="number"
+                      step="0.05"
+                      value={chipCost}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setChipCost(val);
+                      }}
+                      className="w-[60px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-amber-400 text-xs outline-none focus:border-amber-500/50"
+                    />
+                    <span className="text-amber-400 font-mono text-[9px]">USD</span>
+                  </div>
                 </div>
                 <input
                   type="range"
@@ -1370,9 +1421,19 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
               {/* Slider 5: Resell Price (Reseller only) */}
               {isReseller && (
                 <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold">
+                  <div className="flex justify-between items-center text-xs font-bold">
                     <span className="text-slate-400 uppercase">Precio Reventa del Chip</span>
-                    <span className="text-purple-400 font-mono">${resellPrice.toFixed(2)} USD</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-purple-400 font-mono text-[9px]">$</span>
+                      <input
+                        type="number"
+                        step="0.05"
+                        value={resellPrice}
+                        onChange={(e) => setResellPrice(Number(e.target.value))}
+                        className="w-[60px] bg-slate-950/80 border border-white/10 rounded px-1.5 py-0.5 text-right font-mono text-purple-400 text-xs outline-none focus:border-purple-500/50"
+                      />
+                      <span className="text-purple-400 font-mono text-[9px]">USD</span>
+                    </div>
                   </div>
                   <input
                     type="range"
