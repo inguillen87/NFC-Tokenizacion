@@ -16,10 +16,14 @@ function ensureAbsoluteHttps(url: string, label: string) {
   } catch {
     throw new Error(`[nexID][config] ${label} must be a valid absolute URL. Received: ${url}`);
   }
-  if (parsed.protocol !== "https:" && process.env.NODE_ENV === "production") {
+  
+  const isProdDeploy = process.env.NODE_ENV === "production" && process.env.VERCEL === "1";
+  const allowLocal = process.env.NEXT_PUBLIC_ALLOW_LOCAL_URLS_IN_PROD === "true" || !isProdDeploy;
+
+  if (parsed.protocol !== "https:" && process.env.NODE_ENV === "production" && !allowLocal) {
     throw new Error(`[nexID][config] ${label} must use https in production. Received: ${url}`);
   }
-  if (LOCAL_HOST_PATTERN.test(parsed.hostname) && process.env.NODE_ENV === "production") {
+  if (LOCAL_HOST_PATTERN.test(parsed.hostname) && process.env.NODE_ENV === "production" && !allowLocal) {
     throw new Error(`[nexID][config] ${label} cannot point to localhost in production. Received: ${url}`);
   }
   return parsed.origin;
