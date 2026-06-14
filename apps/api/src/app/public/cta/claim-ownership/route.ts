@@ -7,6 +7,7 @@ import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
 import { getTapEvent } from "../../../../lib/loyalty-service";
 import { createAlert } from "../../../../lib/alert-engine";
+import { sql } from "../../../../lib/db";
 
 function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371; // Radius of the Earth in km
@@ -160,6 +161,45 @@ export async function POST(req: Request) {
     const receiptFileName = typeof body.receiptFileName === "string" ? body.receiptFileName : null;
     const receiptFileData = typeof body.receiptFileData === "string" ? body.receiptFileData : null;
 
+    // Mercado Gris check
+    let isGrayMarket = false;
+    let targetCountry: string | null = null;
+    const scanCountry = event.country_code ? String(event.country_code).trim().toUpperCase() : null;
+
+    if (event.batch_id) {
+      const batchRows = await sql`
+        SELECT sdm_config 
+        FROM batches 
+        WHERE id = ${event.batch_id}
+        LIMIT 1
+      `;
+      const sdmConfig = batchRows[0]?.sdm_config as Record<string, any> | undefined;
+      const rawTarget = sdmConfig?.target_country || sdmConfig?.target_market || sdmConfig?.export_market;
+      if (typeof rawTarget === "string" && rawTarget.trim()) {
+        targetCountry = rawTarget.trim().toUpperCase();
+        if (scanCountry && scanCountry !== targetCountry) {
+          isGrayMarket = true;
+        }
+      }
+    }
+
+    if (isGrayMarket && event.tenant_id) {
+      await createAlert({
+        tenantId: event.tenant_id,
+        eventId: Number(eventId),
+        type: "suspicious_claim_attempt",
+        severity: "high",
+        title: "Sospecha de Mercado Gris (Desvío de Distribución)",
+        details: {
+          reason: "gray_market_detected",
+          scan_country: scanCountry,
+          target_country: targetCountry,
+          uid_hex: uid,
+          bid,
+        },
+      }).catch((err) => console.error("Failed to trigger gray market alert", err));
+    }
+
     const claim = await claimOwnershipForConsumer({
       consumerId: consumer.id,
       eventId,
@@ -188,6 +228,11 @@ export async function POST(req: Request) {
           file_name: receiptFileName,
           // Guardamos un extracto seguro del base64 en la base de datos
           file_preview: receiptFileData ? receiptFileData.slice(0, 1000) + "..." : null,
+        },
+        gray_market: {
+          detected: isGrayMarket,
+          scan_country: scanCountry,
+          target_country: targetCountry,
         },
       },
     });

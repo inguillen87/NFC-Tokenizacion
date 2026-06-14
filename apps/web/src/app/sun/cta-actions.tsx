@@ -730,6 +730,9 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             
             <p className="text-[11px] text-slate-300">
               Para garantizar que sos el dueño legítimo antes de habilitar la tokenización NFT, subí tu ticket y completá los datos.
+              <span className="block mt-1 text-[10px] text-cyan-300/90 font-medium">
+                🔒 Tu ubicación GPS y número de contacto actúan como llaves de seguridad cruzadas. Esto ayuda a la marca a auditar desvíos y proteger el canal oficial contra el mercado gris.
+              </span>
             </p>
 
             <div className="grid gap-3 sm:grid-cols-2">
