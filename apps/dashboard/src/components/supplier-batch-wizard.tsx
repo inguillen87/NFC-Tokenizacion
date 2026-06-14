@@ -489,6 +489,20 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [kMeta, setKMeta] = useState("");
   const [kFile, setKFile] = useState("");
 
+  const [winery, setWinery] = useState("");
+  const [grapeVarietal, setGrapeVarietal] = useState("");
+  const [vintage, setVintage] = useState("");
+  const [region, setRegion] = useState("");
+  const [targetCountry, setTargetCountry] = useState("");
+
+  useEffect(() => {
+    if (!winery && tenantName) setWinery(tenantName);
+  }, [tenantName]);
+
+  useEffect(() => {
+    if (!region && originLabel) setRegion(originLabel);
+  }, [originLabel]);
+
   const [manifestMode, setManifestMode] = useState<ManifestMode>("paste");
   const [manifestText, setManifestText] = useState("");
   const [manifestFileName, setManifestFileName] = useState("");
@@ -815,6 +829,14 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           carrier_profile_code: carrierProfileCode,
           carrier_label: selectedCarrier?.label,
           carrier_tier: selectedCarrier?.tier,
+          product_name: productLabel.trim() || undefined,
+          sku: sku.trim() || undefined,
+          winery: winery.trim() || undefined,
+          region: region.trim() || undefined,
+          grape_varietal: grapeVarietal.trim() || undefined,
+          vintage: vintage.trim() || undefined,
+          target_country: targetCountry.trim().toUpperCase() || undefined,
+          target_market: targetCountry.trim().toUpperCase() || undefined,
         },
       }),
     });
@@ -1222,6 +1244,18 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
             <Field label="Cantidad planificada" value={quantity} onChange={setQuantity} placeholder="10000" />
             <Field label="K_META hex" value={kMeta} onChange={setKMeta} placeholder="32 hex chars" secret />
             <Field label="K_FILE hex" value={kFile} onChange={setKFile} placeholder="32 hex chars" secret />
+            <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4 md:col-span-2 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">
+                Especificaciones del Vino / Lote (Opcional - Aplica por defecto a todo el lote)
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                <Field label="Winery / Bodega" value={winery} onChange={setWinery} placeholder="Ej: Catena Zapata" />
+                <Field label="Región / Cava" value={region} onChange={setRegion} placeholder="Ej: Valle de Uco, Mendoza" />
+                <Field label="Varietal" value={grapeVarietal} onChange={setGrapeVarietal} placeholder="Ej: Malbec" />
+                <Field label="Añada / Vintage" value={vintage} onChange={setVintage} placeholder="Ej: 2022" />
+                <Field label="Destino de Exportación" value={targetCountry} onChange={setTargetCountry} placeholder="Ej: ES (España), US, AR" />
+              </div>
+            </div>
             <textarea suppressHydrationWarning className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white md:col-span-2" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notas operativas: proveedor, orden de compra, shipment, responsable..." />
           </div>
         </div>
