@@ -44,7 +44,7 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
     ]);
   }, [productName, brandName]);
 
-  const handleSendMessage = (textToSend: string) => {
+  const handleSendMessage = async (textToSend: string) => {
     if (!textToSend.trim()) return;
 
     const userMsg: ChatMessage = {
@@ -56,8 +56,28 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
     setMessages(prev => [...prev, userMsg]);
     setIsTyping(true);
 
-    // Dynamic sommelier response based on keywords
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/cognitive-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: `Vino: ${productName}. Bodega: ${brandName}. Pregunta del cliente: ${textToSend}`,
+          tone: "sommelier-chat"
+        })
+      });
+
+      if (!res.ok) throw new Error("API failed");
+      const data = await res.json();
+      if (!data?.optimizedText) throw new Error("Empty AI response");
+
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        sender: "sommelier",
+        text: data.optimizedText
+      }]);
+    } catch (err) {
+      console.warn("AI Sommelier fallback to rule-based cata:", err);
+      // Dynamic sommelier response based on keywords
       let replyText = `Como tu Sommelier Virtual de nexID, te confirmo que la etiqueta "${productName}" posee una tipicidad excepcional propia de su terroir. Te recomiendo descorcharla unos 20 minutos antes de tomar para que exprese todo su abanico de aromas.`;
       const clean = textToSend.toLowerCase();
 
@@ -76,8 +96,9 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
         sender: "sommelier",
         text: replyText
       }]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   const onSubmit = (e: React.FormEvent) => {

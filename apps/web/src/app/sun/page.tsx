@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ExternalLink, ShieldCheck, Store, WalletCards } from "lucide-react";
+import { ExternalLink, ShieldCheck, Store, WalletCards, AlertTriangle } from "lucide-react";
 import { CtaActions } from "./cta-actions";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { OnboardDemoButton } from "./onboard-demo-button";
 import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
+import { QREngagementSuite } from "./qr-engagement-suite";
 import { productUrls } from "@product/config";
 import { BrandLockup, DeviceSignatureBadge, EmptyState, GlobalOpsMap, KeyValueSpec, ThemeToggle, TimelineRail } from "@product/ui";
 import type { GlobalOpsPoint, GlobalOpsRoute } from "@product/ui";
@@ -349,6 +350,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SunPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
+  const isQrScan = params.qr === "1" || params.channel === "qr";
   const query = new URLSearchParams();
   ["v", "bid", "picc_data", "enc", "cmac"].forEach((key) => {
     const value = params[key];
@@ -363,18 +365,58 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? params.fresh_token.trim()
       : "";
   const resolvedApiBase = apiBase(params);
-  const snapshotResult = snapshotId && snapshotTrace
-    ? await fetch(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`, { cache: "no-store" })
-      .then((res) => res.ok ? res.json() : null)
-      .then((payload) => payload?.contract || null)
-      .catch(() => null) as SunContract | null
-    : null;
-  const isDemoPreview = query.toString().length === 0 && !snapshotId;
-  const response = snapshotResult ? null : await fetch(`${resolvedApiBase}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
-  const parsedResult = response?.ok
-    ? await response.json().catch(() => null) as SunContract | null
-    : null;
-  const result = snapshotResult || parsedResult || sunFallbackResult(params, isDemoPreview);
+
+  let result: SunContract;
+  let snapshotResult: SunContract | null = null;
+  let isDemoPreview = false;
+
+  if (isQrScan) {
+    const requestedProduct = readParam(params, "product") || readParam(params, "productName") || "Gran Reserva Malbec";
+    const requestedWinery = readParam(params, "winery") || readParam(params, "brand") || "Demo Bodega";
+    const requestedTenant = readParam(params, "tenant") || "demobodega";
+    result = {
+      ok: true,
+      status: {
+        code: "QR_UNVERIFIED",
+        label: "Escaneado por QR (No verificado)",
+        tone: "warn",
+        summary: "Este producto fue escaneado mediante un código QR estándar. La autenticidad física no puede ser garantizada.",
+        reason: "qr_unverified",
+        productState: "NOT_REGISTERED",
+        tamperSupported: false,
+      },
+      identity: {
+        bid: "QR-SCAN",
+        uid: null,
+        scanCount: 1,
+        tenantSlug: requestedTenant,
+      },
+      product: {
+        name: requestedProduct,
+        winery: requestedWinery,
+        region: "Mendoza, Argentina",
+        varietal: "N/A",
+      },
+      provenance: { origin: "Mendoza, Argentina", timelineSummary: [] },
+      tapContext: undefined,
+      tag_tamper: { available: false, status: "not_available" },
+      cta: { claimOwnership: false, registerWarranty: false, provenance: false, tokenize: false },
+      troubleshooting: [],
+    };
+  } else {
+    snapshotResult = snapshotId && snapshotTrace
+      ? await fetch(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`, { cache: "no-store" })
+        .then((res) => res.ok ? res.json() : null)
+        .then((payload) => payload?.contract || null)
+        .catch(() => null) as SunContract | null
+      : null;
+    isDemoPreview = query.toString().length === 0 && !snapshotId;
+    const response = snapshotResult ? null : await fetch(`${resolvedApiBase}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
+    const parsedResult = response?.ok
+      ? await response.json().catch(() => null) as SunContract | null
+      : null;
+    result = snapshotResult || parsedResult || sunFallbackResult(params, isDemoPreview);
+  }
 
   // Proactively fetch loyalty overview if we know the tenant
   let loyaltyData = null;
@@ -1271,12 +1313,22 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            </div>
          </section>
 
-         {isSnapshotView ? (
-           <div id="fresh-tap-required" className="rounded-2xl border border-sky-300/25 bg-sky-500/10 p-3 text-xs leading-5 text-sky-100">
-             <p className="font-semibold">Consulta segura del tap</p>
-             <p className="mt-1 text-sky-100/80">Esta vista sirve para demostrar autenticidad y trazabilidad sin exponer acciones sensibles. Para ownership, puntos, marketplace o tokenizacion, toca fisicamente la etiqueta y usa el nuevo tap fresco.</p>
-           </div>
-         ) : null}
+         {isQrScan ? (
+            <div className="rounded-2xl border border-amber-500/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.08)_0%,rgba(245,158,11,0.02)_100%)] p-4 text-xs leading-relaxed text-amber-200 flex gap-3 items-start shadow-md mb-2">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
+              <div>
+                <p className="font-black uppercase tracking-wider text-amber-300">Autenticidad Física No Verificada</p>
+                <p className="mt-1 text-[11px] text-amber-100/80 leading-normal">
+                  Este producto fue escaneado mediante un código QR estándar en papel. Los códigos QR pueden ser duplicados o fotocopiados fácilmente. Para obtener certificados reales de propiedad digital y trazabilidad blindada anti-fraude, busca el sello <strong>NFC nexID</strong> en botellas premium.
+                </p>
+              </div>
+            </div>
+          ) : isSnapshotView ? (
+            <div id="fresh-tap-required" className="rounded-2xl border border-sky-300/25 bg-sky-500/10 p-3 text-xs leading-5 text-sky-100">
+              <p className="font-semibold">Consulta segura del tap</p>
+              <p className="mt-1 text-sky-100/80">Esta vista sirve para demostrar autenticidad y trazabilidad sin exponer acciones sensibles. Para ownership, puntos, marketplace o tokenizacion, toca fisicamente la etiqueta y usa el nuevo tap fresco.</p>
+            </div>
+          ) : null}
 
          {/* Hero Product Card */}
          <div className="sun-passport-card sun-passport-hero rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
@@ -1348,6 +1400,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </div>
             </div>
          </div>
+
+         {isQrScan ? (
+            <QREngagementSuite 
+              wineryName={result.product?.winery || "Bodega Premium"} 
+              productName={productDisplayName} 
+            />
+          ) : null}
 
          <section className="sun-asset-bank-card rounded-2xl border border-cyan-300/15 bg-slate-900/60 p-4">
            <div className="sun-asset-bank-card__head">
