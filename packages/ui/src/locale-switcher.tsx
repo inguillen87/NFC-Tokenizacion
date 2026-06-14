@@ -31,7 +31,14 @@ export function LocaleSwitcher({ value, options }: { value: string; options: str
         }}
       >
         {options.map((item) => (
-          <option key={item} value={item}>{labels[item] || item}</option>
+          <option
+            key={item}
+            value={item}
+            className="bg-slate-950 text-slate-200 dark:bg-slate-950 dark:text-slate-200"
+            style={{ backgroundColor: "#070b14", color: "#cbd5e1" }}
+          >
+            {labels[item] || item}
+          </option>
         ))}
       </select>
     </label>

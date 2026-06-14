@@ -15,10 +15,10 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
   return (
     <main className="auth-surface relative min-h-screen overflow-hidden bg-slate-950">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(6,182,212,.2),transparent_30%),radial-gradient(circle_at_88%_82%,rgba(99,102,241,.16),transparent_34%)]" />
-      <div className="container-shell relative z-10 grid min-h-screen items-center py-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
-        <section className="order-2 mt-6 lg:order-1 lg:mt-0">
-          <div className="w-full py-4"><BackLink /></div>
-          <Card className="auth-card w-full max-w-xl border border-white/10 bg-slate-900/70 p-6 md:p-8">
+      <div className="relative z-10 w-full max-w-[430px] mx-auto min-h-screen flex flex-col justify-center py-8 px-3 gap-4">
+        <section className="w-full">
+          <div className="w-full py-2"><BackLink /></div>
+          <Card className="auth-card w-full border border-white/10 bg-slate-900/70 p-6">
             <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2">
               <BrandMark size={32} variant="ripple" theme="dark" />
               <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">Access center</p>
@@ -45,17 +45,17 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
           </Card>
         </section>
 
-        <section className="auth-info-panel order-1 rounded-3xl border border-white/10 bg-slate-900/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,.45)] lg:order-2 lg:p-7">
+        <section className="auth-info-panel rounded-2xl border border-white/10 bg-slate-900/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,.45)]">
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{isTapReturn ? "Continuar desde el tap" : "Portal premium + marketplace"}</p>
-          <h2 className="mt-2 text-2xl font-semibold text-white">
+          <h2 className="mt-2 text-xl font-semibold text-white">
             {isTapReturn ? "Valida tu contacto y el producto queda asociado a tu Passport." : "Una sola plataforma para autenticacion, trazabilidad y fidelizacion."}
           </h2>
-          <div className="mt-5 grid gap-3 text-sm text-slate-200">
+          <div className="mt-4 grid gap-2.5 text-xs text-slate-200">
             <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Tap valido - Passport del consumidor + ownership + wallet/NFT.</div>
             <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Marketplace por tenant con catalogo editable para beneficios, experiencias y productos.</div>
             <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Panel enterprise para eventos, pharma, agro y cosmetica con monitoreo geografico y anti-fraude.</div>
           </div>
-          <div className="mt-5 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4 text-xs text-cyan-100">
+          <div className="mt-4 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-[11px] text-cyan-100">
             Security stack: QR + NTAG215 + NTAG424 DNA TT, con modo blockchain-ready cuando hay ROI de negocio.
           </div>
         </section>

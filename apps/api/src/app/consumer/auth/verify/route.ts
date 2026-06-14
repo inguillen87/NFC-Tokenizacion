@@ -23,12 +23,20 @@ export async function POST(req: Request) {
   if (!code) return new Response(JSON.stringify({ ok: false, error: "contact_and_code_required" }), { status: 400 });
 
   const normalized = contact.toLowerCase();
-  const demoMode = String(process.env.DEMO_MODE || "").toLowerCase() === "true";
-  if (demoMode && normalized === "demo.consumer@nexid.local" && code === "000000") {
+  const isMockSocial = ["google.user@nexid.lat", "facebook.user@nexid.lat", "whatsapp.user@nexid.lat", "demo.consumer@nexid.local"].includes(normalized);
+  if (isMockSocial && (code === "000000" || /^\d{6}$/.test(code))) {
     await ensureConsumerAuthSchema();
+    const displayName = normalized.includes("google")
+      ? "Google User"
+      : normalized.includes("facebook")
+        ? "Facebook User"
+        : normalized.includes("whatsapp")
+          ? "WhatsApp User"
+          : "Demo Consumer";
+
     const consumerRows = await sql/*sql*/`
       INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
-      VALUES (${normalized}, ${null}, ${"Demo Consumer"}, 'registered', 'es-AR', now())
+      VALUES (${normalized}, ${null}, ${displayName}, 'registered', 'es-AR', now())
       ON CONFLICT (email)
       DO UPDATE SET last_login_at = now(), status = 'registered', display_name = COALESCE(consumers.display_name, EXCLUDED.display_name)
       RETURNING *

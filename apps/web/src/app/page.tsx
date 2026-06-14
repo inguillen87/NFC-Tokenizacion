@@ -82,6 +82,7 @@ export default async function HomePage() {
       ],
       investorCta: "Open investor snapshot",
       sunCta: "Open SUN validation center",
+      consumerPortal: "Consumer Portal",
     }
     : locale === "pt-BR"
     ? {
@@ -131,6 +132,7 @@ export default async function HomePage() {
       ],
       investorCta: "Abrir investor snapshot",
       sunCta: "Abrir SUN validation center",
+      consumerPortal: "Portal do Consumidor",
     }
     : {
       demoJson: "Descargar seed JSON",
@@ -179,6 +181,7 @@ export default async function HomePage() {
       ],
       investorCta: "Abrir investor snapshot",
       sunCta: "Abrir SUN validation center",
+      consumerPortal: "Portal Consumidor",
     };
 
   const loginHref = `${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`;
@@ -274,7 +277,7 @@ export default async function HomePage() {
             </ProductExitLink>
             <Link href="/login?next=/me" className="hidden sm:inline-flex">
               <Button variant="secondary" className="border-purple-500/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20">
-                Portal Demo
+                {labels.consumerPortal}
               </Button>
             </Link>
             <a href={loginHref} className="inline-flex">

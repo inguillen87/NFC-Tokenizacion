@@ -1201,7 +1201,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       {/* Dynamic Background */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
 
-      <div className="sun-mobile-shell w-full max-w-[430px] min-w-0 z-10 space-y-4 px-3 lg:max-w-6xl lg:px-6">
+      <div className="sun-mobile-shell w-full max-w-[430px] min-w-0 z-10 space-y-4 px-3 mx-auto">
          {/* Trust Header */}
          <div className="sun-topbar flex items-center justify-between px-2 mb-2">
             <div className="sun-passport-brand flex items-center gap-2">

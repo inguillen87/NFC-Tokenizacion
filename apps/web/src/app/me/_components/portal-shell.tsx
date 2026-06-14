@@ -46,7 +46,7 @@ export function PortalShell({
         </div>
       </div>
 
-      <nav className="consumer-portal-nav sticky top-0 md:top-4 z-50 mx-auto max-w-5xl md:rounded-2xl border-b md:border border-white/10 bg-slate-950/80 backdrop-blur-xl md:my-4 md:shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition-all">
+      <nav className="consumer-portal-nav sticky top-0 md:top-4 z-50 mx-auto max-w-[430px] md:rounded-2xl border-b md:border border-white/10 bg-slate-950/80 backdrop-blur-xl md:my-4 md:shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition-all">
         <div className="flex items-center justify-between px-4 py-3 md:px-6">
           <Link href="/me" className="flex items-center gap-2">
             <BrandLockup size={40} variant="ripple" theme="dark" className="consumer-portal-brand" />
@@ -81,7 +81,7 @@ export function PortalShell({
         </div>
       </nav>
 
-      <main className="relative mx-auto max-w-5xl space-y-8 px-4 py-8 pb-32 md:px-8 md:py-12 md:pb-12">
+      <main className="relative mx-auto max-w-[430px] space-y-8 px-4 py-8 pb-32 md:px-8 md:py-12 md:pb-12">
         <header className="consumer-portal-hero relative z-10 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/55 p-5 md:p-7">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300">nexID consumer network</p>
           <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">{title}</h1>
