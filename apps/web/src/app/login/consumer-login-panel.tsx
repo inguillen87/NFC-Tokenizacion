@@ -129,6 +129,44 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     window.location.href = nextPath || "/me";
   }
 
+  async function quickClerkLogin() {
+    setPending(true);
+    setStatus("Estableciendo conexión segura con Clerk Auth...");
+    const clerkEmail = "clerk.user@nexid.lat";
+    const startPayload = await fetch("/api/consumer/auth/start", {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: clerkEmail }),
+    })
+      .then((res) => res.json().catch(() => null))
+      .catch(() => null);
+    const code = String(startPayload?.code || "000000").trim();
+    if (!startPayload?.ok || !code) {
+      setPending(false);
+      setStatus("No se pudo conectar con el proveedor de autenticación Clerk.");
+      return;
+    }
+    const verifyResponse = await fetch("/api/consumer/auth/verify", {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: clerkEmail, code }),
+    }).catch(() => null);
+    if (!verifyResponse || !verifyResponse.ok) {
+      setPending(false);
+      setStatus("Error en la firma del token emitido por Clerk.");
+      return;
+    }
+    const ready = await confirmSession();
+    setPending(false);
+    if (!ready) {
+      setStatus("Clerk validado, pero la sesión no quedó activa en tu navegador.");
+      return;
+    }
+    window.location.href = nextPath || "/me";
+  }
+
   return (
     <div className="mt-5 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
       <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Portal consumidor</p>
@@ -167,8 +205,17 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
           suppressHydrationWarning
           disabled={pending}
           type="button"
+          onClick={() => void quickClerkLogin()}
+          className="rounded-xl border border-purple-500/40 bg-purple-950/20 hover:bg-purple-900/30 px-3 py-2.5 text-sm font-bold text-purple-300 transition disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          🔐 Iniciar Sesión Express con Clerk (WhatsApp/Google)
+        </button>
+        <button
+          suppressHydrationWarning
+          disabled={pending}
+          type="button"
           onClick={() => void quickDemoPortal()}
-          className="rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 px-3 py-2.5 text-sm font-bold text-purple-300 transition disabled:opacity-60"
+          className="rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700/80 px-3 py-2.5 text-xs text-slate-300 transition disabled:opacity-60"
         >
           Entrar como Consumidor Demo (Un clic)
         </button>

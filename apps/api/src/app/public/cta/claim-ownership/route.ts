@@ -153,6 +153,13 @@ export async function POST(req: Request) {
   await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (consumer && eventId) {
+    const receiptDate = typeof body.receiptDate === "string" ? body.receiptDate : null;
+    const receiptTime = typeof body.receiptTime === "string" ? body.receiptTime : null;
+    const receiptPrice = typeof body.receiptPrice === "number" ? body.receiptPrice : null;
+    const receiptEstablishment = typeof body.receiptEstablishment === "string" ? body.receiptEstablishment : null;
+    const receiptFileName = typeof body.receiptFileName === "string" ? body.receiptFileName : null;
+    const receiptFileData = typeof body.receiptFileData === "string" ? body.receiptFileData : null;
+
     const claim = await claimOwnershipForConsumer({
       consumerId: consumer.id,
       eventId,
@@ -171,6 +178,16 @@ export async function POST(req: Request) {
         client_device: {
           screen_size: body.screenSize,
           device_fingerprint: body.deviceFingerprint,
+        },
+        // Guardamos los datos de comprobante para auditoría y verificación NFT
+        receipt_details: {
+          date: receiptDate,
+          time: receiptTime,
+          price: receiptPrice,
+          establishment: receiptEstablishment,
+          file_name: receiptFileName,
+          // Guardamos un extracto seguro del base64 en la base de datos
+          file_preview: receiptFileData ? receiptFileData.slice(0, 1000) + "..." : null,
         },
       },
     });
