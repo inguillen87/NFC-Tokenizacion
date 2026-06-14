@@ -15,7 +15,6 @@ const DEMO_CONSUMER_EMAIL = "demo.consumer@nexid.local";
 function sha(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
-
 function pickIp(raw: string | null | undefined) {
   const first = String(raw || "").split(",")[0]?.trim();
   return first || "unknown";
@@ -32,6 +31,13 @@ function consumeRate(map: Map<string, { count: number; resetAt: number }>, key: 
   current.count += 1;
   map.set(key, current);
   return true;
+}
+
+function normalizePhone(contact: string) {
+  const trimmed = contact.trim();
+  const digits = trimmed.replace(/[^\d]/g, "");
+  if (trimmed.startsWith("+")) return `+${digits}`;
+  return digits.length >= 10 ? `+${digits}` : digits;
 }
 
 function audit(event: string, payload: Record<string, unknown>) {
@@ -121,6 +127,28 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
 
   try {
     await resolveConsumerOtpProvider().sendOtp({ contact, code, ttlMinutes: expiresMinutes });
+
+    // Check for 2FA second factor to send OTP in parallel
+    const normalized = contact.trim().toLowerCase();
+    const isMail = contact.includes("@");
+    let secondaryContact: string | null = null;
+    if (isMail) {
+      const rows = await sql/*sql*/`SELECT phone FROM consumers WHERE email = ${normalized} LIMIT 1`;
+      secondaryContact = rows[0]?.phone || null;
+    } else {
+      const phone = normalizePhone(contact);
+      const rows = await sql/*sql*/`SELECT email FROM consumers WHERE phone = ${phone} LIMIT 1`;
+      secondaryContact = rows[0]?.email || null;
+    }
+
+    if (secondaryContact) {
+      try {
+        await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes });
+        audit("consumer_auth_2fa_sent", { contact, secondaryContact });
+      } catch (err) {
+        audit("consumer_auth_2fa_send_fail", { contact, secondaryContact, error: String(err) });
+      }
+    }
   } catch (error) {
     const reason = normalizeOtpDeliveryError(error);
     audit("consumer_auth_delivery_fail", { contact, ip, mode: process.env.CONSUMER_AUTH_MODE || "demo", reason });

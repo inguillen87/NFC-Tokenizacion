@@ -20,7 +20,7 @@ import {
 
 type MePayload = {
   ok?: boolean;
-  consumer?: { email?: string | null; display_name?: string | null; passport_status?: string | null; preferred_locale?: string | null };
+  consumer?: { email?: string | null; display_name?: string | null; passport_status?: string | null; preferred_locale?: string | null; status?: string | null };
   stats?: { products?: number; taps?: number; memberships?: number; unread?: number; rewards?: number };
 };
 type Product = {
@@ -157,7 +157,11 @@ export default async function MePage({ searchParams }: { searchParams?: Promise<
             <div className="h-8 w-px bg-white/5" />
             <div>
               <span className="block text-[9px] uppercase tracking-wider text-slate-500">Estatus de Cuenta</span>
-              <span className="text-emerald-400 font-bold">VERIFICADA</span>
+              {me?.consumer?.status === "verified" ? (
+                <span className="text-emerald-400 font-bold">VERIFICADA (2FA)</span>
+              ) : (
+                <span className="text-amber-400 font-bold">REGISTRADA (Simple)</span>
+              )}
             </div>
           </div>
         </section>
@@ -212,6 +216,26 @@ export default async function MePage({ searchParams }: { searchParams?: Promise<
           </div>
         </section>
       </div>
+
+      {/* 2FA Incentive Banner */}
+      {me?.consumer?.status !== "verified" && (
+        <div className="rounded-3xl border border-amber-500/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.07)_0%,rgba(194,65,12,0.03)_100%)] p-5 flex flex-col md:flex-row items-center justify-between gap-5 transition hover:border-amber-500/35 shadow-lg">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <ShieldCheck className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <div>
+              <h4 className="text-base font-black text-white tracking-tight">¡Duplicá tu seguridad y ganá +100 puntos de regalo!</h4>
+              <p className="mt-1 text-xs text-slate-300 leading-relaxed max-w-2xl">
+                Asociá tu cuenta con Doble Factor (Email + WhatsApp). Te regalamos 100 puntos de bienvenida automáticos para canjear en todos los clubes de bodegas donde participes.
+              </p>
+            </div>
+          </div>
+          <Link href="/me/security" className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 px-5 py-3 text-xs font-black text-slate-950 transition uppercase tracking-wider shrink-0 shadow-md">
+            Verificar 2FA ahora
+          </Link>
+        </div>
+      )}
 
       {/* Interactive Stepper Navigation (Journey) */}
       <section className="grid gap-4 sm:grid-cols-4">

@@ -76,6 +76,9 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
                 <Link href="/demo-lab" className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
                   {demoCta}
                 </Link>
+                <Link href="/login?next=/me" className="rounded-xl border border-purple-500/35 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-300 transition hover:bg-purple-500/20">
+                  {isEn ? "Consumer Portal" : isBr ? "Portal do Consumidor" : "Portal Consumidor"}
+                </Link>
               </div>
             </div>
             <HeroScene locale={locale as any} />
@@ -89,6 +92,9 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
             <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-6 py-3.5 text-sm font-semibold text-emerald-100 transition-all hover:bg-emerald-500/20">
               {meetingCta}
             </a>
+            <Link href="/login?next=/me" className="inline-flex items-center justify-center rounded-xl border border-purple-500/35 bg-purple-500/10 px-6 py-3.5 text-sm font-bold text-purple-300 transition-all hover:scale-105 hover:bg-purple-500/20">
+              {isEn ? "Consumer Portal (Passport)" : isBr ? "Portal do Consumidor" : "Portal Consumidor (Passport/NFT)"}
+            </Link>
             <Link href="/docs" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
               {secondaryCta}
             </Link>

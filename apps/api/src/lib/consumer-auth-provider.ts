@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 export type OtpDeliveryPayload = {
   contact: string;
   code: string;
@@ -34,18 +36,67 @@ function maskContact(contact: string) {
   return `${phone.slice(0, 4)}***${phone.slice(-3)}`;
 }
 
-function otpText(code: string, ttlMinutes: number) {
-  return `Tu codigo nexID es ${code}. Vence en ${ttlMinutes} minutos. No lo compartas. Se usa para reclamar ownership, Passport, wallet y NFT del producto.`;
+function getWebUrl() {
+  const envUrl = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || process.env.VERCEL_URL;
+  if (!envUrl) return "https://nexid.lat";
+  const trimmed = envUrl.trim();
+  if (trimmed.startsWith("http")) return trimmed.replace(/\/$/, "");
+  return `https://${trimmed}`;
 }
 
-function otpHtml(code: string, ttlMinutes: number) {
+function verificationLink(contact: string, code: string) {
+  const base = getWebUrl();
+  return `${base}/login?autoverify=1&contact=${encodeURIComponent(contact)}&code=${code}`;
+}
+
+function otpText(contact: string, code: string, ttlMinutes: number) {
+  const link = verificationLink(contact, code);
+  return `Tu codigo nexID es ${code}. Vence en ${ttlMinutes} minutos. Ingresa automaticamente haciendo clic aca: ${link}`;
+}
+
+function otpHtml(contact: string, code: string, ttlMinutes: number) {
+  const link = verificationLink(contact, code);
   return `
-    <div style="font-family:Inter,Arial,sans-serif;background:#06111f;color:#f8fafc;padding:24px;border-radius:16px">
-      <p style="margin:0 0 8px;color:#67e8f9;text-transform:uppercase;letter-spacing:.18em;font-size:12px">nexID owner claim</p>
-      <h1 style="margin:0 0 16px;font-size:24px">Codigo de verificacion</h1>
-      <p style="font-size:16px;line-height:1.5;color:#cbd5e1">Usa este codigo para asociar el producto fisico a tu Passport, wallet y NFT.</p>
-      <div style="margin:20px 0;padding:16px;border:1px solid rgba(103,232,249,.35);border-radius:12px;background:#020617;font-size:32px;font-weight:800;letter-spacing:.18em;text-align:center">${code}</div>
-      <p style="font-size:14px;color:#94a3b8">Vence en ${ttlMinutes} minutos. No lo compartas con nadie.</p>
+    <div style="font-family:'Inter', Arial, sans-serif; background-color:#020617; color:#f8fafc; padding:40px 20px; text-align:center;">
+      <div style="max-width:500px; margin:0 auto; background-color:#0b1329; border:1px solid rgba(6,182,212,0.15); border-radius:24px; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.4); text-align:left;">
+        <!-- Top branding banner -->
+        <div style="background:linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding:32px 20px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.05);">
+          <div style="font-size:28px; font-weight:900; letter-spacing:-0.03em; color:#ffffff; margin:0 0 8px;">
+            nex<span style="color:#06b6d4; font-weight:800;">ID</span>
+          </div>
+          <p style="margin:0; font-size:11px; text-transform:uppercase; letter-spacing:0.25em; color:#67e8f9; font-weight:700;">Global Authenticity Passport</p>
+        </div>
+        
+        <!-- Content body -->
+        <div style="padding:40px 32px;">
+          <h2 style="margin:0 0 12px; font-size:22px; font-weight:800; color:#ffffff; text-align:center;">¡Te damos la bienvenida!</h2>
+          <p style="margin:0 0 24px; font-size:14px; line-height:1.6; color:#94a3b8; text-align:center;">
+            Estás a un paso de acceder a tu pasaporte digital de autenticidad, registrar la propiedad de tus productos premium y sumar puntos de fidelización exclusiva.
+          </p>
+          
+          <div style="background-color:#020617; border:1px solid rgba(6,182,212,0.25); border-radius:16px; padding:24px; text-align:center; margin-bottom:28px; box-shadow:inset 0 2px 8px rgba(0,0,0,0.5);">
+            <p style="margin:0 0 8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.15em; color:#94a3b8;">Código de acceso temporal</p>
+            <div style="font-size:36px; font-weight:900; letter-spacing:0.18em; color:#67e8f9; margin:0;">${code}</div>
+            <p style="margin:8px 0 0; font-size:11px; color:#64748b;">Válido por ${ttlMinutes} minutos</p>
+          </div>
+          
+          <div style="text-align:center; margin-bottom:28px;">
+            <a href="${link}" style="display:inline-block; width:100%; box-sizing:border-box; background:linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color:#020617; font-size:14px; font-weight:800; text-decoration:none; text-transform:uppercase; letter-spacing:0.08em; padding:16px 24px; border-radius:14px; transition:all 0.2s; box-shadow:0 8px 20px rgba(6,182,212,0.25);">
+              Ingresar automáticamente
+            </a>
+            <p style="margin:8px 0 0; font-size:11px; color:#64748b;">(Acceso seguro de un solo clic sin contraseñas)</p>
+          </div>
+          
+          <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:20px; font-size:12px; line-height:1.6; color:#64748b; text-align:center;">
+            Este correo fue enviado de forma segura para validar tu identidad. Si no solicitaste este acceso, podés ignorar este mensaje de forma segura.
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color:#080e1e; padding:20px; text-align:center; border-top:1px solid rgba(255,255,255,0.05);">
+          <p style="margin:0; font-size:11px; color:#475569;">© ${new Date().getFullYear()} nexID. Todos los derechos reservados.</p>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -81,8 +132,8 @@ class ResendEmailOtpProvider implements ConsumerOtpProvider {
         from,
         to: [payload.contact],
         subject: "Tu codigo nexID",
-        text: otpText(payload.code, payload.ttlMinutes),
-        html: otpHtml(payload.code, payload.ttlMinutes),
+        text: otpText(payload.contact, payload.code, payload.ttlMinutes),
+        html: otpHtml(payload.contact, payload.code, payload.ttlMinutes),
         ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     });
@@ -90,6 +141,48 @@ class ResendEmailOtpProvider implements ConsumerOtpProvider {
     return { ok: true };
   }
 }
+
+class SmtpOtpProvider implements ConsumerOtpProvider {
+  async sendOtp(payload: OtpDeliveryPayload): Promise<{ ok: true }> {
+    if (!isEmail(payload.contact)) throw new Error("email_contact_required");
+    const host = env("SMTP_HOST") || "mail.privateemail.com";
+    const port = Number(env("SMTP_PORT") || "465");
+    const user = env("SMTP_USER");
+    const pass = env("SMTP_PASSWORD");
+    const from = env("SMTP_FROM_EMAIL") || env("CONSUMER_AUTH_FROM_EMAIL") || user;
+
+    if (!user || !pass) {
+      throw new Error("smtp_credentials_missing");
+    }
+
+    const secure = env("SMTP_SECURE") === "false" ? false : port === 465 || env("SMTP_SECURE") === "true";
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: {
+        user,
+        pass,
+      },
+    });
+
+    try {
+      await transporter.sendMail({
+        from,
+        to: payload.contact,
+        subject: "Tu código nexID",
+        text: otpText(payload.contact, payload.code, payload.ttlMinutes),
+        html: otpHtml(payload.contact, payload.code, payload.ttlMinutes),
+      });
+    } catch (error) {
+      throw new Error(`smtp_delivery_failed:${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    return { ok: true };
+  }
+}
+
 
 class TwilioOtpProvider implements ConsumerOtpProvider {
   constructor(private readonly channel: TwilioChannel) {}
@@ -109,7 +202,7 @@ class TwilioOtpProvider implements ConsumerOtpProvider {
     const to = this.channel === "whatsapp" ? `whatsapp:${toPhone}` : toPhone;
     const body = new URLSearchParams();
     body.set("To", to);
-    body.set("Body", otpText(payload.code, payload.ttlMinutes));
+    body.set("Body", otpText(payload.contact, payload.code, payload.ttlMinutes));
     if (messagingServiceSid) {
       body.set("MessagingServiceSid", messagingServiceSid);
     } else {
@@ -131,12 +224,18 @@ class TwilioOtpProvider implements ConsumerOtpProvider {
 }
 
 class SmartOtpProvider implements ConsumerOtpProvider {
-  private readonly email = new ResendEmailOtpProvider();
+  private readonly resend = new ResendEmailOtpProvider();
+  private readonly smtp = new SmtpOtpProvider();
   private readonly sms = new TwilioOtpProvider("sms");
   private readonly whatsapp = new TwilioOtpProvider("whatsapp");
 
   async sendOtp(payload: OtpDeliveryPayload): Promise<{ ok: true }> {
-    if (isEmail(payload.contact)) return this.email.sendOtp(payload);
+    if (isEmail(payload.contact)) {
+      if (env("SMTP_USER") && env("SMTP_PASSWORD")) {
+        return this.smtp.sendOtp(payload);
+      }
+      return this.resend.sendOtp(payload);
+    }
     const channel = env("CONSUMER_PHONE_OTP_CHANNEL").toLowerCase();
     if (channel === "whatsapp") return this.whatsapp.sendOtp(payload);
     return this.sms.sendOtp(payload);
@@ -158,12 +257,16 @@ class NoopExternalOtpProvider implements ConsumerOtpProvider {
 
 export function resolveConsumerOtpProvider() {
   const mode = env("CONSUMER_AUTH_MODE").toLowerCase() || "demo";
-  if (mode === "email" || mode === "resend") return new ResendEmailOtpProvider();
+  if (mode === "smtp") return new SmtpOtpProvider();
+  if (mode === "email" || mode === "resend") {
+    if (env("SMTP_USER") && env("SMTP_PASSWORD")) return new SmtpOtpProvider();
+    return new ResendEmailOtpProvider();
+  }
   if (mode === "sms" || mode === "twilio") return new TwilioOtpProvider("sms");
   if (mode === "whatsapp" || mode === "twilio_whatsapp") return new TwilioOtpProvider("whatsapp");
   if (mode === "smart" || mode === "production") return new SmartOtpProvider();
   if (mode === "provider") {
-    if (env("RESEND_API_KEY") || env("TWILIO_ACCOUNT_SID")) return new SmartOtpProvider();
+    if (env("RESEND_API_KEY") || env("TWILIO_ACCOUNT_SID") || (env("SMTP_USER") && env("SMTP_PASSWORD"))) return new SmartOtpProvider();
     return new NoopExternalOtpProvider();
   }
   return new DemoOtpProvider();
