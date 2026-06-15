@@ -3,6 +3,7 @@ import { dashboardContent } from "../../lib/dashboard-content";
 import { DashboardShell } from "../../components/dashboard-shell";
 import { requireDashboardSession } from "../../lib/session";
 import { SessionHeartbeat } from "../../components/session-heartbeat";
+import { OnboardingSetupWizard } from "../../components/onboarding-setup-wizard";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { locale, locales, t } = await getDashboardI18n();
@@ -23,7 +24,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       currentLabel={session.label}
       currentPermissions={session.permissions}
     >
-      <><SessionHeartbeat />{children}</>
+      <>
+        <SessionHeartbeat />
+        {children}
+        {session.setupCompleted === false && session.role === "tenant-admin" && (
+          <OnboardingSetupWizard session={session} />
+        )}
+      </>
     </DashboardShell>
   );
 }

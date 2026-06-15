@@ -34,6 +34,7 @@ export type SessionRecord = {
   mfaVerified: boolean;
   expiresAt: string;
   rotatedCookieValue: string | null;
+  setupCompleted: boolean;
 };
 
 export function normalizeRole(role: string): "super-admin" | "tenant-admin" | "reseller" | "viewer" {
@@ -163,7 +164,7 @@ export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthU
       COALESCE(json_agg(DISTINCT rp.resource || ':' || rp.action) FILTER (WHERE rp.id IS NOT NULL), '[]'::json) AS permissions,
       EXISTS (SELECT 1 FROM user_mfa_factors umf WHERE umf.user_id = u.id) AS mfa_enabled
     FROM users u
-    JOIN password_credentials pc ON pc.user_id = u.id
+    LEFT JOIN password_credentials pc ON pc.user_id = u.id
     LEFT JOIN memberships m ON m.user_id = u.id
     LEFT JOIN resource_permissions rp ON rp.user_id = u.id
     WHERE lower(u.email) = ${email}
@@ -220,10 +221,12 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
   const rows = await sql/*sql*/`
     SELECT s.id, s.user_id, s.session_token_hash, s.role::text AS role, s.tenant_id, s.permissions, s.mfa_verified, s.expires_at, s.last_seen_at, s.revoked_at,
       tn.slug AS tenant_slug,
-      u.email, COALESCE(u.full_name, split_part(u.email, '@', 1)) AS label
+      u.email, COALESCE(u.full_name, split_part(u.email, '@', 1)) AS label,
+      COALESCE((tsp.metadata->>'setup_completed')::boolean, true) AS setup_completed
     FROM auth_sessions s
     JOIN users u ON u.id = s.user_id
     LEFT JOIN tenants tn ON tn.id = s.tenant_id
+    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = s.tenant_id
     WHERE s.id = ${parsed.sessionId}::uuid
     LIMIT 1
   `;
@@ -257,6 +260,7 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
     mfaVerified: Boolean(session.mfa_verified),
     rotatedCookieValue,
     expiresAt: String(session.expires_at),
+    setupCompleted: Boolean(session.setup_completed),
   };
 }
 

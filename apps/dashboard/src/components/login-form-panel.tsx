@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@product/ui";
+import { SignInButton } from "@clerk/nextjs";
 import type { AccessProfile } from "../lib/access-profiles";
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
   inviteLabel: string;
   profiles: AccessProfile[];
   demoLoginAllowed: boolean;
+  clerkEnabled?: boolean;
 };
 
 type DemoRole = "super-admin" | "tenant-admin" | "viewer";
@@ -57,6 +59,7 @@ export function LoginFormPanel({
   inviteLabel,
   profiles,
   demoLoginAllowed,
+  clerkEnabled,
 }: Props) {
   const LOGIN_TIMEOUT_MS = 10_000;
   const firstAvailable = profiles.find((profile) => profile.available) || profiles[0];
@@ -226,6 +229,21 @@ export function LoginFormPanel({
           Los presets solo completan email/password. El 1-click demo sigue disponible para preview, QA y reuniones comerciales.
         </p>
       ) : null}
+
+      {clerkEnabled && (
+        <div className="mt-4 grid gap-3">
+          <SignInButton mode="modal">
+            <button type="button" className="flex items-center justify-center gap-3 w-full rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 font-semibold text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] hover:border-cyan-200 hover:bg-cyan-400/20 transition">
+              <span>🔐 Ingresar con Google o Facebook</span>
+            </button>
+          </SignInButton>
+          <div className="flex items-center gap-2 px-2 py-1">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">o con credenciales locales</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 grid gap-3">
         <div className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">

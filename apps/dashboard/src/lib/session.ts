@@ -18,6 +18,7 @@ export type DashboardSession = {
   mfaVerified: boolean;
   rotatedCookieValue?: string | null;
   expiresAt?: string;
+  setupCompleted?: boolean;
 };
 
 function demoFallbackSession(): DashboardSession {
@@ -30,6 +31,7 @@ function demoFallbackSession(): DashboardSession {
     label: "tenant-admin demo",
     permissions: ["*"],
     mfaVerified: true,
+    setupCompleted: true,
   };
 }
 
@@ -58,6 +60,7 @@ function parseDemoToken(token: string): DashboardSession | null {
       label: `${role} demo`,
       permissions: ["*"],
       mfaVerified: true,
+      setupCompleted: true,
     };
   } catch {
     return null;
@@ -83,23 +86,92 @@ export async function getDashboardSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
   const snapshot = parseSnapshot(cookieStore.get(DASHBOARD_SESSION_SNAPSHOT_COOKIE)?.value);
-  if (!token) {
-    if (process.env.ENABLE_PUBLIC_DEMO_SESSION === "1") return demoFallbackSession();
-    return null;
+
+  if (token) {
+    const demoSession = parseDemoToken(token);
+    if (demoSession) return demoSession;
+    if (token.startsWith("demo.")) return snapshot || demoFallbackSession();
+
+    const res = await fetch(`${API_BASE}/auth/session`, {
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json().catch(() => null) as { ok?: boolean; session?: DashboardSession } | null;
+      if (data?.ok && data.session) {
+        return data.session;
+      }
+    }
+    if (snapshot) return snapshot;
   }
-  const demoSession = parseDemoToken(token);
-  if (demoSession) return demoSession;
-  if (token.startsWith("demo.")) return snapshot || demoFallbackSession();
-  const res = await fetch(`${API_BASE}/auth/session`, {
-    headers: { authorization: `Bearer ${token}` },
-    cache: "no-store",
-  }).catch(() => null);
-  if (!res) return snapshot;
-  if (res.status === 401 || res.status === 403) return snapshot || null;
-  if (!res.ok) return snapshot;
-  const data = await res.json().catch(() => null) as { ok?: boolean; session?: DashboardSession } | null;
-  if (!data?.ok || !data.session) return snapshot;
-  return data.session;
+
+  // Clerk auto-sync check on session miss
+  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    try {
+      const { auth, currentUser } = await import("@clerk/nextjs/server");
+      const clerkAuth = await auth();
+      if (clerkAuth.userId) {
+        const clerkUser = await currentUser();
+        if (clerkUser) {
+          const email = clerkUser.emailAddresses[0]?.emailAddress;
+          const fullName = clerkUser.fullName || `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
+          const externalUserId = clerkUser.id;
+
+          const syncRes = await fetch(`${API_BASE}/auth/clerk-sync`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${process.env.ADMIN_API_KEY || ""}`,
+            },
+            body: JSON.stringify({ email, fullName, externalUserId }),
+          }).catch(() => null);
+
+          if (syncRes && syncRes.ok) {
+            const syncData = await syncRes.json().catch(() => null) as { ok?: boolean; email?: string; role?: string; label?: string; permissions?: string[]; sessionToken?: string; expiresAt?: string; tenantId?: string; tenantSlug?: string; profile?: { metadata?: { setup_completed?: boolean } } } | null;
+            if (syncData?.ok && syncData.sessionToken) {
+              const setupCompleted = syncData.profile?.metadata?.setup_completed !== false;
+              const sessionPayload: DashboardSession = {
+                id: syncData.sessionToken.split(".")[0],
+                email: syncData.email || email,
+                role: (syncData.role || "tenant-admin") as any,
+                tenantId: syncData.tenantId || null,
+                tenantSlug: syncData.tenantSlug || null,
+                label: syncData.label || fullName,
+                permissions: syncData.permissions || [],
+                mfaVerified: false,
+                setupCompleted,
+                expiresAt: syncData.expiresAt,
+              };
+
+              cookieStore.set(DASHBOARD_SESSION_COOKIE, syncData.sessionToken, {
+                httpOnly: true,
+                sameSite: "lax",
+                secure: process.env.NODE_ENV === "production",
+                path: "/",
+                maxAge: 60 * 60 * 12,
+              });
+
+              cookieStore.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, Buffer.from(JSON.stringify(sessionPayload)).toString("base64url"), {
+                httpOnly: true,
+                sameSite: "lax",
+                secure: process.env.NODE_ENV === "production",
+                path: "/",
+                maxAge: 60 * 60 * 12,
+              });
+
+              return sessionPayload;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Clerk session resolution failed:", err);
+    }
+  }
+
+  if (process.env.ENABLE_PUBLIC_DEMO_SESSION === "1") return demoFallbackSession();
+  return null;
 }
 
 export async function requireDashboardSession(permission?: string) {

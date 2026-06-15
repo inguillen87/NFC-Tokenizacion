@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 import { resolveLocale } from "@product/config";
 import { HelpBot } from "@product/ui";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
@@ -115,6 +116,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const locale = resolveLocale(cookieStore.get("locale")?.value);
   const themeCookie = cookieStore.get("theme")?.value;
   const theme = themeCookie === "light" ? "light" : "dark";
+  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "";
 
   return (
     <html lang={locale} suppressHydrationWarning className={theme === "light" ? "theme-light" : undefined} data-theme={theme}>
@@ -122,7 +124,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}
         <MisconfigurationBanner />
         <PwaSetup />
-        {children}
+        {clerkKey ? (
+          <ClerkProvider publishableKey={clerkKey}>
+            {children}
+          </ClerkProvider>
+        ) : (
+          children
+        )}
         <HelpBot locale={locale} mode="support" />
       </body>
     </html>

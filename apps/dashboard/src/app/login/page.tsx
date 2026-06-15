@@ -82,6 +82,7 @@ export default async function LoginPage() {
               inviteLabel={copy.auth.inviteTitle}
               profiles={profiles}
               demoLoginAllowed={demoLoginAllowed}
+              clerkEnabled={Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)}
             />
           </div>
         </Card>

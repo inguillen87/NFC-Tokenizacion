@@ -16,11 +16,23 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({})) as { email?: string; role?: string; tenantSlug?: string | null; permissions?: string[]; fullName?: string };
   const email = String(body.email || '').trim().toLowerCase();
   const fullName = String(body.fullName || '').trim() || null;
-  const role = String(body.role || 'viewer').replace('-', '_');
+  let role = String(body.role || 'viewer').replace('-', '_');
   if (!email) return json({ ok: false, reason: 'email required' }, 400);
 
-  const tenantSlug = body.tenantSlug ? String(body.tenantSlug).trim().toLowerCase() : null;
-  const tenantId = tenantSlug ? (await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`)[0]?.id || null : null;
+  if (session.role !== 'super-admin') {
+    if (role === 'super_admin') {
+      role = 'tenant_admin';
+    }
+  }
+
+  let tenantId = null;
+  if (session.role === 'super-admin') {
+    const tenantSlug = body.tenantSlug ? String(body.tenantSlug).trim().toLowerCase() : null;
+    tenantId = tenantSlug ? (await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`)[0]?.id || null : null;
+  } else {
+    tenantId = session.tenantId;
+  }
+
   const permissions = Array.isArray(body.permissions) && body.permissions.length
     ? body.permissions.map((item) => String(item))
     : ['events:read', 'analytics:read'];
