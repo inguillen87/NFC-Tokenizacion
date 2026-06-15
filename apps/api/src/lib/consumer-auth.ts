@@ -125,29 +125,41 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
     VALUES (${contact}, ${sha(code)}, now() + (${expiresMinutes} || ' minutes')::interval, 0, ${OTP_MAX_ATTEMPTS}, null, ${sha(ip)})
   `;
 
+  const normalized = contact.trim().toLowerCase();
+  const isMockSocial = [
+    "google.user@nexid.lat",
+    "facebook.user@nexid.lat",
+    "whatsapp.user@nexid.lat",
+    "clerk.user@nexid.lat",
+    "demo.consumer@nexid.local"
+  ].includes(normalized);
+
   try {
-    await resolveConsumerOtpProvider().sendOtp({ contact, code, ttlMinutes: expiresMinutes });
+    if (!isMockSocial) {
+      await resolveConsumerOtpProvider().sendOtp({ contact, code, ttlMinutes: expiresMinutes });
 
-    // Check for 2FA second factor to send OTP in parallel
-    const normalized = contact.trim().toLowerCase();
-    const isMail = contact.includes("@");
-    let secondaryContact: string | null = null;
-    if (isMail) {
-      const rows = await sql/*sql*/`SELECT phone FROM consumers WHERE email = ${normalized} LIMIT 1`;
-      secondaryContact = rows[0]?.phone || null;
-    } else {
-      const phone = normalizePhone(contact);
-      const rows = await sql/*sql*/`SELECT email FROM consumers WHERE phone = ${phone} LIMIT 1`;
-      secondaryContact = rows[0]?.email || null;
-    }
-
-    if (secondaryContact) {
-      try {
-        await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes });
-        audit("consumer_auth_2fa_sent", { contact, secondaryContact });
-      } catch (err) {
-        audit("consumer_auth_2fa_send_fail", { contact, secondaryContact, error: String(err) });
+      // Check for 2FA second factor to send OTP in parallel
+      const isMail = contact.includes("@");
+      let secondaryContact: string | null = null;
+      if (isMail) {
+        const rows = await sql/*sql*/`SELECT phone FROM consumers WHERE email = ${normalized} LIMIT 1`;
+        secondaryContact = rows[0]?.phone || null;
+      } else {
+        const phone = normalizePhone(contact);
+        const rows = await sql/*sql*/`SELECT email FROM consumers WHERE phone = ${phone} LIMIT 1`;
+        secondaryContact = rows[0]?.email || null;
       }
+
+      if (secondaryContact) {
+        try {
+          await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes });
+          audit("consumer_auth_2fa_sent", { contact, secondaryContact });
+        } catch (err) {
+          audit("consumer_auth_2fa_send_fail", { contact, secondaryContact, error: String(err) });
+        }
+      }
+    } else {
+      audit("consumer_auth_mock_social_start", { contact, ip });
     }
   } catch (error) {
     const reason = normalizeOtpDeliveryError(error);

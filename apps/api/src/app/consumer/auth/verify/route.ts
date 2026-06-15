@@ -23,7 +23,13 @@ export async function POST(req: Request) {
   if (!code) return new Response(JSON.stringify({ ok: false, error: "contact_and_code_required" }), { status: 400 });
 
   const normalized = contact.toLowerCase();
-  const isMockSocial = ["google.user@nexid.lat", "facebook.user@nexid.lat", "whatsapp.user@nexid.lat", "demo.consumer@nexid.local"].includes(normalized);
+  const isMockSocial = [
+    "google.user@nexid.lat",
+    "facebook.user@nexid.lat",
+    "whatsapp.user@nexid.lat",
+    "clerk.user@nexid.lat",
+    "demo.consumer@nexid.local"
+  ].includes(normalized);
   if (isMockSocial && (code === "000000" || /^\d{6}$/.test(code))) {
     await ensureConsumerAuthSchema();
     const displayName = normalized.includes("google")
@@ -32,7 +38,9 @@ export async function POST(req: Request) {
         ? "Facebook User"
         : normalized.includes("whatsapp")
           ? "WhatsApp User"
-          : "Demo Consumer";
+          : normalized.includes("clerk")
+            ? "Clerk User"
+            : "Demo Consumer";
 
     const consumerRows = await sql/*sql*/`
       INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
