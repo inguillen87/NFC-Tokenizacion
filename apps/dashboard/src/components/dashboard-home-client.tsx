@@ -91,7 +91,7 @@ export default function DashboardHomeClient({
       <nav className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5 backdrop-blur-xl sticky top-[72px] z-40">
         <button onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
           <LayoutDashboard className="h-4 w-4" />
-          Resumen Ejecutivo
+          {isTenantAdmin ? "Analitica CRM" : "Resumen Ejecutivo"}
         </button>
         <button onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
           <Cpu className="h-4 w-4" />
@@ -99,7 +99,7 @@ export default function DashboardHomeClient({
         </button>
         <button onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
           <Trophy className="h-4 w-4" />
-          Marketing & Loyalty
+          {isTenantAdmin ? "Clientes & Loyalty" : "Marketing & Loyalty"}
         </button>
         {!isTenantAdmin && (
           <button onClick={() => setActiveTab("demo")} className={tabClass("demo")}>
@@ -215,7 +215,7 @@ export default function DashboardHomeClient({
         {/* MARKETING & LOYALTY TAB */}
         {activeTab === "loyalty" && (
           <div className="space-y-8">
-            <MultirubroOpsPanel />
+            {!isTenantAdmin ? <MultirubroOpsPanel /> : null}
             <VerifiedExperiencesPanel />
             
             {/* Quick access grid for marketing features */}

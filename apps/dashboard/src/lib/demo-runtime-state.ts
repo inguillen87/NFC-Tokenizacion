@@ -30,11 +30,11 @@ const runtimeKey = Symbol.for("nexid.dashboard.demoRuntimeState");
 
 const demoCities = [
   { city: "Mendoza", country_code: "AR", lat: -32.8895, lng: -68.8458 },
+  { city: "Valle de Uco", country_code: "AR", lat: -33.3667, lng: -69.15 },
   { city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816 },
-  { city: "Zurich", country_code: "CH", lat: 47.3769, lng: 8.5417 },
-  { city: "Sao Paulo", country_code: "BR", lat: -23.5505, lng: -46.6333 },
-  { city: "Miami", country_code: "US", lat: 25.7617, lng: -80.1918 },
-  { city: "Santiago", country_code: "CL", lat: -33.4489, lng: -70.6693 },
+  { city: "San Martin", country_code: "AR", lat: -34.5744, lng: -58.5358 },
+  { city: "Cordoba", country_code: "AR", lat: -31.4201, lng: -64.1888 },
+  { city: "Rosario", country_code: "AR", lat: -32.9442, lng: -60.6505 },
 ];
 
 function getState(): DashboardDemoState {
@@ -80,10 +80,9 @@ function riskFor(result: string, risk: unknown) {
 }
 
 function productByVertical(vertical: string) {
-  if (vertical === "events") return "Brazalete VIP evento";
-  if (vertical === "cosmetics") return "Frasco crema alta gama";
-  if (vertical === "agro") return "Semillas certificadas";
-  if (vertical === "pharma") return "Caja pharma segura";
+  if (vertical === "cabernet") return "Cabernet Franc Reserva 2022";
+  if (vertical === "chardonnay") return "Chardonnay de Altura 2023";
+  if (vertical === "pinot") return "Pinot Noir Reserva 2022";
   return "Gran Reserva Malbec";
 }
 
@@ -125,7 +124,7 @@ export function recordDashboardDemoEvent(input: Partial<DashboardDemoEvent> = {}
 
 export function generateDashboardDemoEvents(count = 8) {
   const results = ["VALID", "VALID", "VALID", "CLAIMED", "REPLAY_SUSPECT", "TAMPER"];
-  const verticals = ["wine", "wine", "events", "cosmetics", "agro"];
+  const verticals = ["wine", "cabernet", "chardonnay", "pinot", "wine"];
   const events: DashboardDemoEvent[] = [];
   const bounded = Math.min(Math.max(Number(count) || 8, 1), 40);
   for (let index = 0; index < bounded; index += 1) {

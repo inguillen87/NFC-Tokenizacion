@@ -165,6 +165,7 @@ export function DashboardShellInner({
   const role = (currentRole as keyof typeof roles) || "tenant-admin";
   const forbidden = (pathname === "/tenants" && currentRole === "tenant-admin") || (pathname.startsWith("/superadmin") && currentRole !== "super-admin");
   const isDemoMode = currentLabel.toLowerCase().includes("demo") || currentEmail.includes("demo");
+  const canShowSandboxTools = isDemoMode && currentRole !== "tenant-admin";
   const canAccessDemoLab = currentPermissions.includes("demo:run") || currentRole === "super-admin" || isDemoMode;
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -178,11 +179,13 @@ export function DashboardShellInner({
   const quick = { faq: "FAQ", stack: "Tech Stack", glossary: "Glossary", docs: "Docs" };
   const publicMobile = `${productUrls.web}/sun/simulate`;
 
-  const audienceCopy = mode === "buyer"
-    ? { tone: "default" as const, label: "Enterprise Buyer Preview" }
-    : mode === "ceo"
-    ? { tone: "cyan" as const, label: "CEO Mode" }
-    : { tone: "amber" as const, label: "Operator Console" };
+  const audienceCopy = currentRole === "tenant-admin"
+    ? { tone: "cyan" as const, label: "Tenant CRM" }
+    : mode === "buyer"
+      ? { tone: "default" as const, label: "Enterprise Buyer Preview" }
+      : mode === "ceo"
+        ? { tone: "cyan" as const, label: "CEO Mode" }
+        : { tone: "amber" as const, label: "Operator Console" };
 
   const mobileQuickLinks = [
     { href: "/", label: nav.overview },
@@ -450,7 +453,7 @@ export function DashboardShellInner({
           <span className="text-[9px] opacity-70 font-bold">120 TPM</span>
         </div>
 
-        {isDemoMode ? (
+        {canShowSandboxTools ? (
           <div className="mt-4 rounded-xl border border-cyan-500/20 bg-gradient-to-b from-cyan-950/40 to-transparent p-4 shadow-lg relative overflow-hidden shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/20 blur-xl rounded-full pointer-events-none" />
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400 mb-3 flex items-center gap-2">
@@ -504,7 +507,7 @@ export function DashboardShellInner({
               </button>
             </div>
           </div>
-          {isDemoMode ? (
+          {canShowSandboxTools ? (
             <div className="mt-4 rounded-xl border border-cyan-500/30 bg-cyan-950/30 px-4 py-3 flex items-center justify-between shadow-inner backdrop-blur-sm">
                <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded bg-cyan-500/20 flex items-center justify-center text-cyan-400 border border-cyan-500/30">🧪</div>

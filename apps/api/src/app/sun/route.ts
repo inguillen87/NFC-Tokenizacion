@@ -19,6 +19,7 @@ import { getRequestMeta } from '../../lib/request-meta';
 import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
 import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
 import { eventShareUid } from '../../lib/public-cta-target';
+import { recordTapEvent } from '../../lib/tap-event-service';
 import crypto from "node:crypto";
 
 const RATE_LIMIT_MAX_IP = Number(process.env.SUN_RATE_LIMIT_IP_PER_MIN || 120);
@@ -538,6 +539,288 @@ function safeDecode(value: string | null) {
   } catch {
     return value;
   }
+}
+
+function jsonObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function firstParam(url: URL, keys: string[], fallback = "") {
+  for (const key of keys) {
+    const value = String(url.searchParams.get(key) || "").trim();
+    if (value) return value;
+  }
+  return fallback;
+}
+
+function parseCoordinate(value: string | null, fallback: number) {
+  const parsed = Number(value || "");
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function browserFromUserAgent(ua: string) {
+  const text = ua.toLowerCase();
+  if (text.includes("edg")) return "Edge";
+  if (text.includes("crios") || text.includes("chrome")) return "Chrome";
+  if (text.includes("fxios") || text.includes("firefox")) return "Firefox";
+  if (text.includes("samsungbrowser")) return "Samsung Internet";
+  if (text.includes("safari")) return "Safari";
+  return "Unknown";
+}
+
+function platformFromUserAgent(ua: string) {
+  const text = ua.toLowerCase();
+  if (text.includes("iphone") || text.includes("ipad")) return "iOS";
+  if (text.includes("android")) return "Android";
+  if (text.includes("windows")) return "Windows";
+  if (text.includes("mac os") || text.includes("macintosh")) return "macOS";
+  if (text.includes("linux")) return "Linux";
+  return "Unknown";
+}
+
+async function resolveQrTenantBatch(url: URL) {
+  const tenantSlug = firstParam(url, ["tenant", "tenantSlug", "tenant_slug"], "demobodega").toLowerCase();
+  const requestedBid = firstParam(url, ["bid", "batch", "batchId"]);
+  const rows = await sql/*sql*/`
+    SELECT
+      tn.id::text AS tenant_id,
+      tn.slug AS tenant_slug,
+      tn.name AS tenant_name,
+      b.id::text AS batch_id,
+      b.bid,
+      b.sdm_config
+    FROM tenants tn
+    LEFT JOIN LATERAL (
+      SELECT id, bid, sdm_config, created_at
+      FROM batches b
+      WHERE b.tenant_id = tn.id
+        AND b.status = 'active'
+        AND (${requestedBid} = '' OR b.bid = ${requestedBid})
+      ORDER BY CASE WHEN b.bid = ${requestedBid} THEN 0 ELSE 1 END, b.created_at DESC
+      LIMIT 1
+    ) b ON TRUE
+    WHERE tn.slug = ${tenantSlug}
+    LIMIT 1
+  `;
+  return rows[0] as {
+    tenant_id?: string | null;
+    tenant_slug?: string | null;
+    tenant_name?: string | null;
+    batch_id?: string | null;
+    bid?: string | null;
+    sdm_config?: Record<string, unknown> | null;
+  } | undefined;
+}
+
+async function logQrAttempt(input: {
+  bid: string;
+  reason: string;
+  ip: string | null;
+  userAgent: string;
+  city: string | null;
+  country: string | null;
+  lat: number | null;
+  lng: number | null;
+  rawQuery: Record<string, string>;
+  meta: Record<string, unknown>;
+}) {
+  await sql/*sql*/`
+    CREATE TABLE IF NOT EXISTS sun_scan_attempts (
+      id bigserial PRIMARY KEY,
+      bid text NOT NULL,
+      result text NOT NULL,
+      reason text,
+      ip inet,
+      user_agent text,
+      geo_city text,
+      geo_country text,
+      geo_lat double precision,
+      geo_lng double precision,
+      source text NOT NULL DEFAULT 'real',
+      raw_query jsonb,
+      meta jsonb NOT NULL DEFAULT '{}'::jsonb,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql/*sql*/`
+    INSERT INTO sun_scan_attempts (
+      bid, result, reason, ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, source, raw_query, meta
+    ) VALUES (
+      ${input.bid || "QR-UNKNOWN"},
+      'QR_SCAN',
+      ${input.reason},
+      ${input.ip},
+      ${input.userAgent},
+      ${input.city},
+      ${input.country},
+      ${input.lat},
+      ${input.lng},
+      'real',
+      ${JSON.stringify(input.rawQuery)}::jsonb,
+      ${JSON.stringify(input.meta)}::jsonb
+    )
+  `;
+}
+
+async function handleQrScan(input: {
+  req: Request;
+  url: URL;
+  traceId: string;
+  ip: string | null;
+  userAgent: string;
+  geoCity: string | null;
+  geoCountry: string | null;
+  geoLat: number;
+  geoLng: number;
+}) {
+  const requestedProduct = firstParam(input.url, ["product", "productName", "name"], "Gran Reserva Malbec");
+  const requestedWinery = firstParam(input.url, ["winery", "brand"], "Demo Bodega");
+  const requestedRegion = firstParam(input.url, ["region", "origin"], "Mendoza, Argentina");
+  const browserLat = parseCoordinate(input.url.searchParams.get("lat") || input.url.searchParams.get("gps_lat"), input.geoLat);
+  const browserLng = parseCoordinate(input.url.searchParams.get("lng") || input.url.searchParams.get("gps_lng"), input.geoLng);
+  const hasGeo = Number.isFinite(browserLat) && Number.isFinite(browserLng);
+  const tenantBatch = await resolveQrTenantBatch(input.url).catch(() => undefined);
+  const sdmConfig = jsonObject(tenantBatch?.sdm_config);
+  const bid = String(tenantBatch?.bid || firstParam(input.url, ["bid"], "QR-SCAN"));
+  const tenantSlug = String(tenantBatch?.tenant_slug || firstParam(input.url, ["tenant", "tenantSlug", "tenant_slug"], "demobodega"));
+  const tenantName = String(tenantBatch?.tenant_name || requestedWinery || tenantSlug);
+  const rawQuery = Object.fromEntries(input.url.searchParams.entries());
+  const deviceMeta = {
+    userAgent: input.userAgent,
+    platform: platformFromUserAgent(input.userAgent),
+    browser: browserFromUserAgent(input.userAgent),
+    mobile: /mobile|iphone|android|ipad/i.test(input.userAgent),
+    language: input.req.headers.get("accept-language") || null,
+    timezone: firstParam(input.url, ["timezone", "tz"]),
+  };
+  const meta = {
+    trace_id: input.traceId,
+    channel: "qr",
+    qr: true,
+    product: { name: requestedProduct, winery: requestedWinery, region: requestedRegion },
+    sun_context: { client: deviceMeta },
+  };
+
+  const eventId = tenantBatch?.batch_id
+    ? await recordTapEvent({
+      tenantId: tenantBatch.tenant_id || null,
+      tenantSlug,
+      batchId: tenantBatch.batch_id,
+      bid,
+      uidHex: firstParam(input.url, ["uid", "uidHex", "uid_hex"]) || null,
+      source: "real",
+      eventType: "PROVENANCE_VIEWED",
+      verdict: "valid",
+      riskLevel: "low",
+      cmacOk: null,
+      allowlisted: null,
+      tagStatus: null,
+      userAgent: input.userAgent,
+      city: input.geoCity,
+      countryCode: input.geoCountry,
+      lat: hasGeo ? browserLat : null,
+      lng: hasGeo ? browserLng : null,
+      geoPrecision: hasGeo ? "ip" : "none",
+      productName: requestedProduct,
+      reason: "qr_scan",
+      meta,
+      traceId: input.traceId,
+      ip: input.ip,
+      geoCity: input.geoCity,
+      geoCountry: input.geoCountry,
+      deviceLabel: deviceMeta.platform,
+      rawQuery,
+    })
+    : null;
+
+  if (!eventId) {
+    await logQrAttempt({
+      bid,
+      reason: tenantBatch?.batch_id ? "qr_event_insert_failed" : "qr_batch_not_found",
+      ip: input.ip,
+      userAgent: input.userAgent,
+      city: input.geoCity,
+      country: input.geoCountry,
+      lat: hasGeo ? browserLat : null,
+      lng: hasGeo ? browserLng : null,
+      rawQuery,
+      meta,
+    }).catch(() => null);
+  }
+
+  const contract = {
+    ok: true,
+    eventId: eventId ? String(eventId) : null,
+    status: {
+      code: "QR_SCAN",
+      label: "QR / SDK engagement",
+      tone: "warn",
+      summary: "Canal de bajo costo para ficha, CRM, analitica, leads y fidelizacion. No reemplaza la autenticacion criptografica NFC ni activa propiedad automaticamente.",
+      reason: "qr_scan",
+      productState: "QR_UNVERIFIED",
+      tamperSupported: false,
+      carrierProfileCode: "qr_basic",
+      carrierLabel: "QR / SDK",
+    },
+    identity: {
+      bid,
+      uid: null,
+      uidMasked: null,
+      eventId: eventId ? String(eventId) : null,
+      tenantSlug,
+      tenantId: tenantBatch?.tenant_id || null,
+      scanCount: 1,
+    },
+    tenant: {
+      id: tenantBatch?.tenant_id || null,
+      slug: tenantSlug,
+      name: tenantName,
+      vertical: String(sdmConfig.vertical || "wine"),
+      productLabel: "vino",
+      clubName: String(sdmConfig.club_name || "Club Demo Bodega"),
+      tokenizationMode: "nfc_only",
+    },
+    product: {
+      name: requestedProduct,
+      winery: requestedWinery,
+      region: requestedRegion,
+      varietal: firstParam(input.url, ["varietal"], "N/A"),
+      vintage: firstParam(input.url, ["vintage"]),
+      category: "Vino",
+      vertical: "vino",
+    },
+    provenance: {
+      origin: requestedRegion,
+      firstVerified: { at: null, city: null, country: null },
+      lastVerifiedLocation: { at: new Date().toISOString(), city: input.geoCity, country: input.geoCountry, result: "QR_SCAN" },
+      timelineSummary: [{
+        at: new Date().toISOString(),
+        result: "QR_SCAN",
+        city: input.geoCity || "Unknown",
+        country: input.geoCountry || "--",
+        device: `${deviceMeta.platform} - ${deviceMeta.browser}`,
+        lat: hasGeo ? browserLat : null,
+        lng: hasGeo ? browserLng : null,
+      }],
+    },
+    tapContext: { city: input.geoCity, country: input.geoCountry, lat: hasGeo ? browserLat : null, lng: hasGeo ? browserLng : null },
+    tag_tamper: { available: false, status: "not_available", raw: null },
+    cta: { claimOwnership: false, registerWarranty: false, provenance: true, tokenize: false },
+    allowedActions: ["lead", "feedback", "sommelier"],
+    blockedActions: ["ownership", "tokenization", "warranty"],
+    trustSignals: { antiReplay: false, tamperRisk: false, tamperStatus: "not_available", tamperSupported: false, lastEventResult: "QR_SCAN" },
+    tapSecurity: { replayDetected: false, freshTap: false, tokenizationEligible: false, policy: "qr_unverified", actionability: "content_and_crm_only", requiresFreshTapForCommercialActions: true },
+    troubleshooting: ["Para titularidad, garantia o NFT, toca fisicamente el chip NFC seguro."],
+    technical: { carrierProfileCode: "qr_basic", carrierLabel: "QR / SDK", raw: undefined },
+  };
+
+  const response = json(contract, 200);
+  response.headers.set("x-nexid-trace-id", input.traceId);
+  response.headers.set("x-request-id", input.traceId);
+  if (eventId) response.headers.set("x-nexid-event-id", String(eventId));
+  return response;
 }
 
 async function getPassportSnapshot(bid: string, uid: string | undefined): Promise<PassportSnapshot> {
@@ -2067,6 +2350,7 @@ export async function GET(req: Request): Promise<Response> {
   const picc_data = url.searchParams.get('picc_data') || '';
   const enc = url.searchParams.get('enc') || '';
   const cmac = url.searchParams.get('cmac') || '';
+  const isQrScan = url.searchParams.get("qr") === "1" || String(url.searchParams.get("channel") || "").toLowerCase() === "qr";
 
   const ua = req.headers.get('user-agent') || '';
   const ip = meta.ip;
@@ -2088,6 +2372,9 @@ export async function GET(req: Request): Promise<Response> {
   ]);
   if (ipRate.limited || bidRate.limited || payloadRate.limited) {
     return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  }
+  if (isQrScan) {
+    return handleQrScan({ req, url, traceId, ip, userAgent: ua, geoCity, geoCountry, geoLat, geoLng });
   }
   if (!bid || !picc_data || !enc || !cmac) return json({ ok: false, reason: 'missing params', need: ['bid', 'picc_data', 'enc', 'cmac'] }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
   if (!BID_RE.test(bid)) return json({ ok: false, reason: 'invalid bid format' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });

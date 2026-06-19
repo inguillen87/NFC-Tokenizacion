@@ -115,10 +115,10 @@ export function TapClientExperience({ result }: { result: any }) {
                      <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-900/20 to-transparent p-5 text-center shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition-colors">
                         <div className="absolute inset-0 bg-cyan-500/5 group-hover:bg-cyan-500/10 transition-colors" />
                         <div className="relative z-10">
-                           <h3 className="text-sm font-bold text-white mb-2">Ownership & Garantía</h3>
-                           <p className="text-[11px] text-cyan-200/70 mb-4 leading-relaxed">Registrá la titularidad de este producto en la red de consumidores para asegurar su garantía y sumar puntos.</p>
+                            <h3 className="text-sm font-bold text-white mb-2">Comprador verificado</h3>
+                            <p className="text-[11px] text-cyan-200/70 mb-4 leading-relaxed">Verifica contacto y comprobante antes de activar garantia, beneficios o propiedad. Leer el QR o tocar la etiqueta no transfiere ownership automaticamente.</p>
                            <a href="/me" className="block w-full py-3.5 rounded-xl bg-white text-slate-900 text-sm font-bold shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform hover:scale-[1.02] active:scale-95">
-                              Reclamar Producto
+                               Verificar compra
                            </a>
                         </div>
                      </div>

@@ -6,12 +6,22 @@ import { getDashboardDemoEvents, toDemoRealtimeEvent } from "../../../../../lib/
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
-function fallbackStream(message: string, requestId: string, limit = 8) {
+function fallbackStream(
+  message: string,
+  requestId: string,
+  limit = 8,
+  options: { includeDemoRows?: boolean; tenant?: string } = {},
+) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
       const pushSnapshot = () => {
-        const rows = getDashboardDemoEvents(limit).map(toDemoRealtimeEvent);
+        const tenant = String(options.tenant || "").toLowerCase();
+        const rows = options.includeDemoRows
+          ? getDashboardDemoEvents(limit)
+            .filter((row) => !tenant || row.tenant_slug === tenant)
+            .map(toDemoRealtimeEvent)
+          : [];
         controller.enqueue(encoder.encode(`event: snapshot\ndata: ${JSON.stringify({ rows })}\n\n`));
       };
       pushSnapshot();
@@ -46,6 +56,7 @@ export async function GET(request: Request) {
   const requestId = request.headers.get("x-request-id") || request.headers.get("x-nexid-request-id") || randomUUID();
   const limit = Math.min(Math.max(Number(incoming.searchParams.get("limit") || 8), 1), 50);
   const forceSandbox = ["1", "true", "sandbox"].includes(String(incoming.searchParams.get("sandbox") || incoming.searchParams.get("demoFallback") || "").toLowerCase());
+  const requestedTenant = String(incoming.searchParams.get("tenant") || "").trim().toLowerCase();
   incoming.searchParams.forEach((value, key) => upstream.searchParams.set(key, value));
 
   const token = String(process.env.ADMIN_API_KEY || "").trim();
@@ -62,12 +73,14 @@ export async function GET(request: Request) {
           : "";
   const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 
-  if (forceSandbox && (!isProduction || Boolean(scopedRole))) {
-    return fallbackStream("dashboard demo sandbox stream", requestId, limit);
+  const tenant = requestedTenant || String(session?.tenantSlug || "").trim().toLowerCase();
+
+  if (forceSandbox && (!isProduction || Boolean(scopedRole)) && scopedRole !== "tenant_admin") {
+    return fallbackStream("dashboard demo sandbox stream", requestId, limit, { includeDemoRows: true, tenant });
   }
 
-  if (requireScopedAdminAuth && !scopedRole) return fallbackStream("Scoped admin auth required", requestId, limit);
-  if (!token && !scopedRole) return fallbackStream("ADMIN_API_KEY missing in dashboard environment", requestId, limit);
+  if (requireScopedAdminAuth && !scopedRole) return fallbackStream("Scoped admin auth required", requestId, limit, { tenant });
+  if (!token && !scopedRole) return fallbackStream("ADMIN_API_KEY missing in dashboard environment", requestId, limit, { tenant });
 
   const response = await fetch(upstream.toString(), {
     headers: {
@@ -82,7 +95,7 @@ export async function GET(request: Request) {
   }).catch(() => null);
 
   if (!response?.ok || !response.body) {
-    return fallbackStream(`upstream stream unavailable (${response?.status || 503})`, requestId, limit);
+    return fallbackStream(`upstream stream unavailable (${response?.status || 503})`, requestId, limit, { tenant });
   }
 
   return new Response(response.body, {

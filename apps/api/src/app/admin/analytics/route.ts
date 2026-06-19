@@ -77,6 +77,35 @@ async function ensureAnalyticsEventsSchema() {
       await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS geo_lng double precision`;
       await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS lat double precision`;
       await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS lng double precision`;
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS product_passports (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid REFERENCES tenants(id) ON DELETE CASCADE,
+          batch_id uuid REFERENCES batches(id) ON DELETE SET NULL,
+          tag_id uuid REFERENCES tags(id) ON DELETE SET NULL,
+          product_name text,
+          winery_name text,
+          region text,
+          vintage text,
+          winery_lat double precision,
+          winery_lng double precision,
+          winery_address text,
+          provenance_text text,
+          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS product_name text`;
+      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS winery_name text`;
+      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS region text`;
+      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS vintage text`;
+      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS winery_lat double precision`;
+      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS winery_lng double precision`;
+      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS winery_address text`;
+      await sql/*sql*/`ALTER TABLE product_passports ADD COLUMN IF NOT EXISTS provenance_text text`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_product_passports_tag ON product_passports(tag_id)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_product_passports_tenant ON product_passports(tenant_id)`;
     })().catch((error) => {
       analyticsEventsSchemaReady = null;
       throw error;

@@ -113,7 +113,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     const rows = [
       { id: "evt-demo-001", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", created_at: new Date().toISOString(), city: "Mendoza", country_code: "AR", lat: -32.8895, lng: -68.8458, bid: "DEMO-2026-02", tenant_slug: "demobodega" },
       { id: "evt-demo-002", result: "VALID", reason: "sun_ok", uid_hex: "04B1C2D3E4", created_at: new Date().toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "DEMO-2026-02", tenant_slug: "demobodega" },
-      { id: "evt-demo-003", result: "INVALID", reason: "replay_detected", uid_hex: "04F1E2D3C4", created_at: new Date().toISOString(), city: "São Paulo", country_code: "BR", lat: -23.5505, lng: -46.6333, bid: "EVENT-2026-01", tenant_slug: "demoevents" },
+      { id: "evt-demo-003", result: "INVALID", reason: "replay_detected", uid_hex: "04F1E2D3C4", created_at: new Date().toISOString(), city: "Rosario", country_code: "AR", lat: -32.9442, lng: -60.6505, bid: "EVENT-2026-01", tenant_slug: "demoevents" },
     ];
     const allRows = [...runtimeRows, ...rows];
     const filtered = tenantFilter ? allRows.filter((row) => row.tenant_slug === tenantFilter) : allRows;
@@ -143,10 +143,10 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     });
     const baseCities = [
       { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458, scans: 218, risk: 3.5, lastSeen: new Date(now - 12 * 60 * 1000).toISOString() },
-      { city: "Zurich", country: "CH", lat: 47.3769, lng: 8.5417, scans: 52, risk: 1.2, lastSeen: new Date(now - 9 * 60 * 1000).toISOString() },
       { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816, scans: 133, risk: 5.6, lastSeen: new Date(now - 42 * 60 * 1000).toISOString() },
       { city: "Córdoba", country: "AR", lat: -31.4167, lng: -64.1833, scans: 50, risk: 4.1, lastSeen: new Date(now - 5 * 60 * 60 * 1000).toISOString() },
-      { city: "São Paulo", country: "BR", lat: -23.5505, lng: -46.6333, scans: 38, risk: 13.8, lastSeen: new Date(now - 2 * 60 * 60 * 1000).toISOString() },
+      { city: "Santiago", country: "CL", lat: -33.4489, lng: -70.6693, scans: 52, risk: 2.2, lastSeen: new Date(now - 9 * 60 * 1000).toISOString() },
+      { city: "San Martin", country: "AR", lat: -34.5744, lng: -58.5358, scans: 38, risk: 2.8, lastSeen: new Date(now - 2 * 60 * 60 * 1000).toISOString() },
       { city: "Montevideo", country: "UY", lat: -34.9011, lng: -56.1645, scans: 31, risk: 3.1, lastSeen: new Date(now - 7 * 60 * 60 * 1000).toISOString() },
     ];
     const mergedCities = mergeDemoGeoPoints(baseCities, runtimeGeoPoints).map((point) => ({
@@ -155,9 +155,9 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     }));
     const baseGeoPoints = [
       { city: "Mendoza", country: "AR", scans: 218, risk: 3.5, lat: -32.8895, lng: -68.8458 },
-      { city: "Zurich", country: "CH", scans: 52, risk: 1.2, lat: 47.3769, lng: 8.5417 },
       { city: "Buenos Aires", country: "AR", scans: 133, risk: 5.6, lat: -34.6037, lng: -58.3816 },
-      { city: "São Paulo", country: "BR", scans: 38, risk: 13.8, lat: -23.5505, lng: -46.6333 },
+      { city: "Santiago", country: "CL", scans: 52, risk: 2.2, lat: -33.4489, lng: -70.6693 },
+      { city: "San Martin", country: "AR", scans: 38, risk: 2.8, lat: -34.5744, lng: -58.5358 },
     ];
     const mergedGeoPoints = mergeDemoGeoPoints(baseGeoPoints, runtimeGeoPoints);
 
@@ -177,9 +177,8 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       },
       geography: {
         countries: [
-          { country: "AR", scans: 401, risk: 6.1 },
-          { country: "CH", scans: 52, risk: 1.2 },
-          { country: "BR", scans: 62, risk: 11.8 },
+          { country: "AR", scans: 463, risk: 4.9 },
+          { country: "CL", scans: 52, risk: 2.2 },
           { country: "UY", scans: 49, risk: 4.9 },
         ],
         cities: mergedCities,
@@ -188,13 +187,13 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
         os: [{ label: "iOS", count: 262 }, { label: "Android", count: 218 }, { label: "Desktop", count: 32 }],
         browser: [{ label: "Safari", count: 238 }, { label: "Chrome", count: 201 }, { label: "Samsung Internet", count: 48 }, { label: "Edge", count: 25 }],
         deviceType: [{ label: "mobile", count: 465 }, { label: "desktop", count: 32 }, { label: "tablet", count: 15 }],
-        timezones: [{ label: "America/Argentina/Mendoza", count: 290 }, { label: "Europe/Zurich", count: 52 }, { label: "America/Argentina/Buenos_Aires", count: 121 }, { label: "America/Sao_Paulo", count: 68 }],
+        timezones: [{ label: "America/Argentina/Mendoza", count: 290 }, { label: "America/Santiago", count: 52 }, { label: "America/Argentina/Buenos_Aires", count: 121 }, { label: "America/Montevideo", count: 68 }],
         mobileShare: 90.8,
       },
       feed: [
         ...runtimeEvents.slice(0, 12).map(toDemoFeedRow),
-        { id: 9012, uidHex: "04A1B2C3D4", bid: "DEMO-2026-02", result: "ok", city: "Zurich", country: "CH", device: "iPhone 15 Pro - wine club tap", createdAt: new Date(now - 8 * 60 * 1000).toISOString() },
-        { id: 9011, uidHex: "04F1E2D3C4", bid: "DEMO-2026-02", result: "replay", city: "São Paulo", country: "BR", device: "Android Pixel 9", createdAt: new Date(now - 25 * 60 * 1000).toISOString() },
+        { id: 9012, uidHex: "04A1B2C3D4", bid: "DEMO-2026-02", result: "ok", city: "Buenos Aires", country: "AR", device: "iPhone 15 Pro - wine club tap", createdAt: new Date(now - 8 * 60 * 1000).toISOString() },
+        { id: 9011, uidHex: "04F1E2D3C4", bid: "DEMO-2026-02", result: "replay", city: "San Martin", country: "AR", device: "Android Pixel 9", createdAt: new Date(now - 25 * 60 * 1000).toISOString() },
       ],
       trend: mergedTrend,
       batchStatus: [{ name: "active", value: 4 }, { name: "paused", value: 1 }, { name: "revoked", value: 0 }],
@@ -212,7 +211,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           origin: { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458 },
           current: latestRuntimeEvent
             ? { city: latestRuntimeEvent.city, country: latestRuntimeEvent.country_code, lat: latestRuntimeEvent.lat, lng: latestRuntimeEvent.lng }
-            : { city: "Zurich", country: "CH", lat: 47.3769, lng: 8.5417 },
+            : { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
           lastDevice: latestRuntimeEvent?.device || "iPhone 15 Pro",
         },
       ],
@@ -227,8 +226,8 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           scanCount: 41 + runtimeSummary.scans,
           firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(),
           lastSeenAt: latestRuntimeEvent?.created_at || new Date(now - 9 * 60 * 1000).toISOString(),
-          lastVerifiedCity: latestRuntimeEvent?.city || "Zurich",
-          lastVerifiedCountry: latestRuntimeEvent?.country_code || "CH",
+          lastVerifiedCity: latestRuntimeEvent?.city || "Buenos Aires",
+          lastVerifiedCountry: latestRuntimeEvent?.country_code || "AR",
           tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" },
         },
       ],
@@ -265,7 +264,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           product: { name: "Gran Reserva Malbec", winery: "Demo Bodega", region: "Valle de Uco", vintage: "2022" },
           status: { tag: "active", lastResult: "ok" },
           scans: { count: 41, firstSeenAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(Date.now() - 9 * 60 * 1000).toISOString() },
-          lastVerifiedLocation: { city: "Zurich", country: "CH" },
+          lastVerifiedLocation: { city: "Buenos Aires", country: "AR" },
           tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" },
         },
       ],
@@ -363,7 +362,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
         {
           uidHex: "04A1B2C3D4",
           fromCountry: "AR",
-          toCountry: "CH",
+          toCountry: "CL",
           fromAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
           toAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
           severity: "critical",
@@ -428,7 +427,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
         provenance: {
           origin: { harvestYear: "2022", barrelMonths: 12, temperatureStorage: 16 },
           firstVerified: { at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), city: "Mendoza", country: "AR" },
-          lastVerified: { at: new Date(Date.now() - 9 * 60 * 1000).toISOString(), result: "ok", city: "Zurich", country: "CH", deviceLabel: "iPhone 15 Pro" },
+          lastVerified: { at: new Date(Date.now() - 9 * 60 * 1000).toISOString(), result: "ok", city: "Buenos Aires", country: "AR", deviceLabel: "iPhone 15 Pro" },
         },
         tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" },
       },
@@ -439,8 +438,8 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           result: "ok",
           reason: "sun_ok",
           source: "real",
-          location: { city: "Zurich", country: "CH", lat: 47.3769, lng: 8.5417 },
-          device: { label: "iPhone 15 Pro", os: "iOS", browser: "Safari", deviceType: "mobile", timezone: "Europe/Zurich" },
+          location: { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
+          device: { label: "iPhone 15 Pro", os: "iOS", browser: "Safari", deviceType: "mobile", timezone: "America/Argentina/Buenos_Aires" },
         },
       ],
     });
@@ -672,7 +671,7 @@ async function forward(req: Request, path: string[]) {
     );
   }
 
-  if (allowDemoFallbackForRequest && forceSandbox) {
+  if (allowDemoFallbackForRequest && forceSandbox && scopedRole !== "tenant_admin") {
     console.info("[admin_proxy_demo_fallback]", JSON.stringify({ method: req.method, path: normalizedPath, scopedRole: scopedRole || "none" }));
     return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
@@ -702,7 +701,7 @@ async function forward(req: Request, path: string[]) {
     return unavailable(`Admin upstream error (${response.status}).`);
   }
 
-  if (!response.ok && allowDemoFallbackForRequest && forceSandbox) {
+  if (!response.ok && allowDemoFallbackForRequest && forceSandbox && scopedRole !== "tenant_admin") {
     return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
 

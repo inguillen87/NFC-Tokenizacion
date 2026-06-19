@@ -197,42 +197,42 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     { label: "Tap fisico fresco", state: canExecute ? "OK" : "Requerido" },
     { label: "Email o celular", state: claimAuthStarted ? "Codigo enviado" : "Pendiente" },
     { label: "Ticket / POS", state: claimMode.includes("purchase") || claimMode.includes("review") ? "Revisable" : "Opcional" },
-    { label: "NFT / wallet", state: "Despues del claim" },
+    { label: "NFT / wallet", state: "Despues de validar compra" },
   ];
   const primaryCtaLabel = !canExecute
     ? "Necesito un nuevo tap fisico"
     : claimAuthStarted
       ? "Confirmar codigo"
-      : "Reclamar producto";
+      : "Activar comprador verificado";
   const primaryCtaHelp = !canExecute
-    ? "Por seguridad, este link solo muestra la prueba. Para guardar, vender, transferir o mintear, toca la etiqueta otra vez."
-    : "Validamos tu contacto y asociamos este producto a tu Passport antes de abrir wallet, NFT o marketplace.";
+    ? "Por seguridad, este link solo muestra la prueba. Para garantia, wallet o tokenizacion, toca la etiqueta otra vez."
+    : "Validamos contacto y prueba de compra antes de activar garantia, wallet, NFT o marketplace.";
   const tokenSubtitle = tokenPolicy === "issuer_transfer"
     ? "Tokenizacion por transferencia del issuer: requiere prueba documental antes del mint."
     : tokenPolicy === "lot_anchor"
       ? "Ancla de lote: tokeniza trazabilidad y lifecycle sin prometer ownership individual."
       : tokenPolicy === "manual_review"
         ? "Solicitud a revision: el tenant aprueba antes de mintear en Polygon."
-        : "Disponible despues de reclamar dueño: UID hasheado, salt privado y proof Polygon.";
+        : "Disponible despues de validar comprador: UID hasheado, salt privado y proof Polygon.";
   const gatedCopy = tapState === "blocked"
-    ? "Ownership, garantia y tokenizacion quedan protegidos hasta tener un tap fisico valido y fresco."
+    ? "Propiedad, garantia y tokenizacion quedan protegidas hasta tener un tap fisico valido y fresco."
     : policySummary || (tapState === "opened"
-      ? "Sello abierto verificado: se habilita ownership, garantia, provenance y tokenizacion como lifecycle event."
-      : "Tap fresco verificado: listo para ownership, garantia, provenance y tokenizacion.");
+      ? "Sello abierto verificado: se habilitan garantia, provenance y tokenizacion segun politica de marca."
+      : "Tap fresco verificado: listo para ficha publica y opciones de comprador verificadas.");
   const tokenModalCopy = tokenPolicy === "issuer_transfer"
-    ? "El token se solicita como transferencia del issuer: no se mintea ownership publico sin proof of purchase o autorizacion."
+    ? "El token se solicita como transferencia del issuer: no se mintea propiedad publica sin prueba de compra o autorizacion."
     : tokenPolicy === "lot_anchor"
       ? "El token ancla un lote, origen y lifecycle. No convierte automaticamente cada unidad fisica en propiedad individual."
       : tokenPolicy === "manual_review"
         ? "La solicitud queda en revision comercial antes de mintear. Es ideal para pharma, cosmetica o casos con riesgo regulatorio."
         : tapState === "opened"
-    ? "El token ancla la apertura verificada, ownership y provenance sin exponer el UID crudo."
-    : "El token ancla ownership, provenance y garantia sin exponer el UID crudo.";
+    ? "El token ancla la apertura verificada, propiedad y provenance sin exponer el UID crudo."
+    : "El token ancla propiedad, provenance y garantia sin exponer el UID crudo.";
   const actionMeta: Record<string, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
     claimOwnership: {
-      title: "Reclamar dueño",
-      subtitle: "Valida identidad, vincula tenant y deja ownership durable en Passport.",
-      icon: "OWN",
+      title: "Validar comprador",
+      subtitle: "Valida identidad y prueba de compra antes de activar propiedad o garantia.",
+      icon: "BUY",
       path: "/api/public-cta/claim-ownership",
       method: "POST",
       tone: "border-indigo-300/40 bg-indigo-500/10 text-indigo-100 transition hover:bg-indigo-500/20",
@@ -263,7 +263,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     }
   };
   const successCopy: Record<ActionKey, string> = {
-    claimOwnership: "Ownership registrado en tu nexID Passport.",
+    claimOwnership: "Comprador verificado y registro asociado al tenant.",
     registerWarranty: "Garantia registrada para postventa y lifecycle.",
     provenance: "Provenance consultada correctamente.",
     tokenization: "Tokenizacion registrada: si Polygon no confirma en el acto queda en reintento operativo.",
@@ -451,13 +451,13 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     if (data.error) return data.error;
     const reason = String(data.reason || "").toLowerCase();
     if (reason.includes("consumer_auth_required")) {
-      return "Para reclamar dueño o crear NFT necesitamos validar email o celular. El producto queda listo, pero no se asocia a nadie sin identidad verificada.";
+      return "Para activar comprador o crear NFT necesitamos validar email o celular. El producto queda visible, pero no se asocia a nadie sin identidad verificada.";
     }
     if (reason.includes("ownership_claim_required")) {
-      return "Primero reclama el producto como dueño verificado. Despues se habilita la solicitud NFT y la conexion de wallet.";
+      return "Primero valida comprador con prueba de compra. Despues se habilita la solicitud NFT y la conexion de wallet.";
     }
     if (reason.includes("fresh") || reason.includes("physical") || reason.includes("expired")) {
-      return "Para ownership, garantia o tokenizacion necesitamos un tap fisico nuevo. Volve a tocar la etiqueta NFC.";
+      return "Para propiedad, garantia o tokenizacion necesitamos un tap fisico nuevo. Volve a tocar la etiqueta NFC.";
     }
     if (reason.includes("share") || reason.includes("token")) {
       return "Acción no disponible en este enlace. Abrí el SUN desde un link firmado o escaneá nuevamente.";
@@ -471,7 +471,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const trigger = async (path: string, method: "POST" | "GET", actionKey: ActionKey) => {
     if (actionStates[actionKey] === "loading") return;
     if (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey)) {
-      setActionError("Este tap no habilita ownership, garantia ni tokenizacion. Escanea nuevamente la etiqueta fisica.");
+      setActionError("Este tap no habilita propiedad, garantia ni tokenizacion. Escanea nuevamente la etiqueta fisica.");
       setActionStates((current) => ({ ...current, [actionKey]: "error" }));
       return;
     }
@@ -602,10 +602,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       setClaimAuthMessage(data.code
         ? `Codigo demo enviado: ${String(data.code)}`
         : channel === "email"
-          ? "Codigo enviado por email. Ingresalo para asociar este producto a tu Passport."
+          ? "Codigo enviado por email. Ingresalo para continuar como comprador verificado."
           : channel === "whatsapp"
-            ? "Codigo enviado por WhatsApp. Ingresalo para asociar este producto a tu Passport."
-            : "Codigo enviado por SMS. Ingresalo para asociar este producto a tu Passport.");
+            ? "Codigo enviado por WhatsApp. Ingresalo para continuar como comprador verificado."
+            : "Codigo enviado por SMS. Ingresalo para continuar como comprador verificado.");
     } catch (error) {
       setClaimAuthError(normalizeClaimAuthError(error));
     } finally {
@@ -641,7 +641,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       }
       
       setShowReceiptForm(true);
-      setLastActionMessage("Autenticación express con Clerk completada. Por favor subí tu comprobante para completar el registro de dueño.");
+      setLastActionMessage("Autenticacion express con Clerk completada. Subi tu comprobante para completar comprador verificado.");
     } catch (error) {
       setClaimAuthError("Error en Clerk: " + normalizeClaimAuthError(error));
     } finally {
@@ -673,7 +673,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       }
       
       setShowReceiptForm(true);
-      setLastActionMessage("Identidad verificada. Por favor subí tu comprobante de compra para completar el reclamo.");
+      setLastActionMessage("Identidad verificada. Subi tu comprobante de compra para completar comprador verificado.");
     } catch (error) {
       setClaimAuthError(normalizeClaimAuthError(error));
     } finally {
@@ -688,7 +688,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
 
   function handlePrimaryClaimAction() {
     if (!canExecute) {
-      setActionError("Para reclamar este producto necesitamos un tap fisico nuevo desde la etiqueta NFC.");
+      setActionError("Para activar comprador, garantia o propiedad necesitamos un tap fisico nuevo desde la etiqueta NFC.");
       return;
     }
     if (claimAuthStarted) {
@@ -706,7 +706,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     <div className="sun-public-cta mt-4 space-y-2">
       {rightsPolicy ? (
         <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-2 text-[11px] text-cyan-100">
-          Politica: ownership {labelPolicy(rightsPolicy.claimMode)} · token {labelPolicy(rightsPolicy.tokenizationPolicy)} · marketplace {labelPolicy(rightsPolicy.marketplaceMode)}
+          Politica: propiedad {labelPolicy(rightsPolicy.claimMode)} · token {labelPolicy(rightsPolicy.tokenizationPolicy)} · marketplace {labelPolicy(rightsPolicy.marketplaceMode)}
         </div>
       ) : null}
       
@@ -715,7 +715,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Reclamo Seguro y Verificación</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Comprador verificado</p>
                 <h3 className="text-sm font-black text-white">Comprobante de Compra (Ticket/Factura)</h3>
               </div>
               <button
@@ -729,7 +729,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             </div>
             
             <p className="text-[11px] text-slate-300">
-              Para garantizar que sos el dueño legítimo antes de habilitar la tokenización NFT, subí tu ticket y completá los datos.
+              Para validar que compraste el producto antes de habilitar garantia, propiedad o tokenizacion NFT, subi tu ticket y completa los datos.
               <span className="block mt-1 text-[10px] text-cyan-300/90 font-medium">
                 🔒 Tu ubicación GPS y número de contacto actúan como llaves de seguridad cruzadas. Esto ayuda a la marca a auditar desvíos y proteger el canal oficial contra el mercado gris.
               </span>
@@ -835,7 +835,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
               onClick={() => void trigger("/api/public-cta/claim-ownership", "POST", "claimOwnership")}
               className="mt-3 w-full rounded-xl border border-emerald-300/35 bg-emerald-400 px-4 py-3 text-xs font-black text-slate-950 shadow-[0_16px_40px_rgba(16,185,129,0.22)] hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 transition"
             >
-              {pending ? "Procesando Reclamo..." : "✓ Confirmar Compra e Inscribir Propiedad"}
+              {pending ? "Procesando validacion..." : "Confirmar compra y activar beneficios"}
             </button>
             {!receiptFileData || !receiptEstablishment.trim() || !receiptDate || !receiptPrice ? (
               <p className="text-[10px] text-amber-300 text-center">
@@ -848,9 +848,9 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-80">Tu producto, tu cuenta</p>
-                <h3 className="mt-1 text-sm font-black text-white">Reclamo seguro con Comprobante</h3>
+                <h3 className="mt-1 text-sm font-black text-white">Alta segura de comprador</h3>
                 <p className="mt-1 text-[11px] leading-5 opacity-85">
-                  El tap físico prueba que tenés la botella. Tu WhatsApp verificado y el comprobante de compra garantizan la propiedad legal antes de mintear el NFT.
+                  El tap físico prueba acceso al producto. Contacto verificado y comprobante de compra habilitan garantia, beneficios o propiedad segun politica de la marca.
                 </p>
               </div>
               <div className="shrink-0 rounded-xl border border-white/15 bg-slate-950/50 px-3 py-2 text-right">
@@ -929,10 +929,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         <div className="rounded-2xl border border-cyan-300/25 bg-slate-950/80 p-3 text-xs text-slate-200">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Alta rapida de dueño</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Alta de comprador verificado</p>
               <h3 className="mt-1 text-sm font-black text-white">Valida tu WhatsApp o Email</h3>
               <p className="mt-1 text-[11px] leading-5 text-slate-300">
-                Al verificar tu número o correo (actuando como tu DNI único), vinculamos esta botella a tu Pasaporte nexID de forma permanente y segura.
+                Al verificar tu numero o correo, continuamos el alta de comprador. La botella no se asocia a propiedad sin comprobante o politica de marca.
               </p>
             </div>
             <button suppressHydrationWarning type="button" onClick={() => setClaimAuthOpen(false)} className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-slate-200">
@@ -1008,7 +1008,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           <p id="sun-token-modal-title" className="font-semibold text-emerald-100">Blockchain-ready · tokenización opcional</p>
           <p className="mt-1 text-slate-300">{tokenModalCopy}</p>
           <ul className="mt-2 list-disc pl-4 text-[11px] text-slate-300">
-            <li>Uso enterprise: provenance anclable, warranty ledger y ownership transfer.</li>
+            <li>Uso enterprise: provenance anclable, warranty ledger y transferencia de propiedad validada.</li>
             <li>Infra opcional: smart contracts / blockchain solo cuando hay ROI claro.</li>
             <li>Se mantiene el core: autenticidad, trazabilidad y anti-fraude.</li>
           </ul>

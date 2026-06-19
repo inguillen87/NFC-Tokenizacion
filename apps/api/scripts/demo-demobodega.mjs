@@ -481,10 +481,9 @@ await sql`
 
 const catalog = [
   { title: 'Gran Reserva Malbec', vertical: 'winery', category: 'wine', age_gate_required: true },
-  { title: 'Demo Perfume', vertical: 'perfume', category: 'fragrance', age_gate_required: false },
-  { title: 'Demo Beauty', vertical: 'cosmetics', category: 'beauty', age_gate_required: false },
-  { title: 'Demo Premium Event', vertical: 'events', category: 'ticketing', age_gate_required: false },
-  { title: 'Demo Luxury Retail', vertical: 'luxury', category: 'retail', age_gate_required: false },
+  { title: 'Cabernet Franc Reserva 2022', vertical: 'winery', category: 'wine', age_gate_required: true },
+  { title: 'Chardonnay de Altura 2023', vertical: 'winery', category: 'wine', age_gate_required: true },
+  { title: 'Malbec Icono 2020', vertical: 'winery', category: 'wine', age_gate_required: true },
 ];
 for (const item of catalog) {
   await sql`
@@ -504,10 +503,11 @@ const hasEvents = await sql`SELECT COUNT(*)::int AS count FROM events WHERE batc
 if ((hasEvents[0]?.count || 0) === 0) {
   const cities = [
     { city: 'Mendoza', country: 'AR', lat: -32.8895, lng: -68.8458 },
+    { city: 'Valle de Uco', country: 'AR', lat: -33.3667, lng: -69.15 },
     { city: 'Buenos Aires', country: 'AR', lat: -34.6037, lng: -58.3816 },
-    { city: 'São Paulo', country: 'BR', lat: -23.5505, lng: -46.6333 },
-    { city: 'New York', country: 'US', lat: 40.7128, lng: -74.006 },
-    { city: 'Madrid', country: 'ES', lat: 40.4168, lng: -3.7038 },
+    { city: 'San Martin', country: 'AR', lat: -34.5744, lng: -58.5358 },
+    { city: 'Cordoba', country: 'AR', lat: -31.4201, lng: -64.1888 },
+    { city: 'Rosario', country: 'AR', lat: -32.9442, lng: -60.6505 },
   ];
   const verdicts = [
     { result: 'VALID', eventType: 'TAP_VALID', verdict: 'valid', risk: 'none' },

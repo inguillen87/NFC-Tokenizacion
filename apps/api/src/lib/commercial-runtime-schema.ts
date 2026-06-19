@@ -10,6 +10,7 @@ let orderRequestsSchemaReady: Promise<void> | null = null;
 let alertsSchemaReady: Promise<void> | null = null;
 let enterpriseIamSchemaReady: Promise<void> | null = null;
 let carrierProfilesSchemaReady: Promise<void> | null = null;
+let sdkSchemaReady: Promise<void> | null = null;
 
 async function ensureUuidExtensions() {
   await sql/*sql*/`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
@@ -132,6 +133,8 @@ export async function ensureLeadsSchema() {
           message text,
           notes text,
           assigned_to text,
+          tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL,
+          meta jsonb NOT NULL DEFAULT '{}'::jsonb,
           created_at timestamptz NOT NULL DEFAULT now()
         )
       `;
@@ -141,8 +144,11 @@ export async function ensureLeadsSchema() {
       await sql/*sql*/`ALTER TABLE leads ADD COLUMN IF NOT EXISTS role_interest text`;
       await sql/*sql*/`ALTER TABLE leads ADD COLUMN IF NOT EXISTS estimated_volume text`;
       await sql/*sql*/`ALTER TABLE leads ADD COLUMN IF NOT EXISTS message text`;
+      await sql/*sql*/`ALTER TABLE leads ADD COLUMN IF NOT EXISTS tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL`;
+      await sql/*sql*/`ALTER TABLE leads ADD COLUMN IF NOT EXISTS meta jsonb NOT NULL DEFAULT '{}'::jsonb`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_leads_source_created_at ON leads(source, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_leads_status_created_at ON leads(status, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_leads_tenant_created_at ON leads(tenant_id, created_at DESC)`;
     }, () => {
       leadsSchemaReady = null;
     });
@@ -337,6 +343,95 @@ export async function ensureCarrierProfileSchema() {
     });
   }
   return carrierProfilesSchemaReady;
+}
+
+export async function ensureSdkSchema() {
+  if (!sdkSchemaReady) {
+    sdkSchemaReady = cacheSchemaInit(async () => {
+      await ensureUuidExtensions();
+      await ensureLeadsSchema();
+      await ensureCarrierProfileSchema();
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS tenant_api_keys (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          name text NOT NULL DEFAULT 'SDK key',
+          key_prefix text NOT NULL,
+          key_hash text NOT NULL UNIQUE,
+          scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products"]'::jsonb,
+          status text NOT NULL DEFAULT 'active',
+          last_used_at timestamptz,
+          expires_at timestamptz,
+          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS tenant_id uuid REFERENCES tenants(id) ON DELETE CASCADE`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'SDK key'`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS key_prefix text NOT NULL DEFAULT 'legacy'`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS key_hash text`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products"]'::jsonb`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active'`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS last_used_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS expires_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_tenant_api_keys_hash ON tenant_api_keys(key_hash) WHERE key_hash IS NOT NULL`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tenant_api_keys_tenant_status ON tenant_api_keys(tenant_id, status)`;
+
+      await sql/*sql*/`ALTER TABLE batches ADD COLUMN IF NOT EXISTS active_for_claim boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE batches ADD COLUMN IF NOT EXISTS claim_pin_required boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE batches ADD COLUMN IF NOT EXISTS hash_pin text`;
+      await sql/*sql*/`ALTER TABLE tags ADD COLUMN IF NOT EXISTS active_for_claim boolean`;
+      await sql/*sql*/`ALTER TABLE tags ADD COLUMN IF NOT EXISTS claim_pin_required boolean`;
+      await sql/*sql*/`ALTER TABLE tags ADD COLUMN IF NOT EXISTS hash_pin text`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_batches_claim_activation ON batches(tenant_id, bid, active_for_claim)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tags_claim_activation ON tags(batch_id, uid_hex, active_for_claim)`;
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS sdk_claim_requests (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          api_key_id uuid REFERENCES tenant_api_keys(id) ON DELETE SET NULL,
+          lead_id uuid REFERENCES leads(id) ON DELETE SET NULL,
+          batch_id uuid REFERENCES batches(id) ON DELETE SET NULL,
+          tag_id uuid REFERENCES tags(id) ON DELETE SET NULL,
+          bid text NOT NULL,
+          uid_hex text,
+          contact text NOT NULL,
+          name text,
+          claim_status text NOT NULL DEFAULT 'pending_verification',
+          pin_validated boolean NOT NULL DEFAULT false,
+          active_for_claim boolean NOT NULL DEFAULT false,
+          carrier_profile_code text,
+          token_id text,
+          tx_hash text,
+          meta jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS api_key_id uuid REFERENCES tenant_api_keys(id) ON DELETE SET NULL`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS lead_id uuid REFERENCES leads(id) ON DELETE SET NULL`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES batches(id) ON DELETE SET NULL`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS tag_id uuid REFERENCES tags(id) ON DELETE SET NULL`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS claim_status text NOT NULL DEFAULT 'pending_verification'`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS pin_validated boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS active_for_claim boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS token_id text`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS tx_hash text`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS meta jsonb NOT NULL DEFAULT '{}'::jsonb`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_claim_requests_tenant_created ON sdk_claim_requests(tenant_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_claim_requests_bid_uid ON sdk_claim_requests(bid, uid_hex)`;
+    }, () => {
+      sdkSchemaReady = null;
+    });
+  }
+  return sdkSchemaReady;
 }
 
 export async function ensureAlertsSchema() {

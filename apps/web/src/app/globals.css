@@ -2239,6 +2239,9 @@ html.theme-light .animate-card-shift:hover {
   position: sticky;
   top: calc(max(0.5rem, env(safe-area-inset-top)) + 4.2rem);
   z-index: 32;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
   border-radius: 1rem;
 }
 
@@ -11720,7 +11723,7 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
 }
 
 .demo-lab-product-stage .event-bracelet-demo::before {
-  content: "VIP";
+  content: "ACCESO";
   position: absolute;
   left: 50%;
   top: 50%;
@@ -11763,7 +11766,7 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
 }
 
 .demo-lab-product-stage .party-ticket-demo::before {
-  content: "FIESTA VIP";
+  content: "ENTRADA";
   position: absolute;
   left: 1.25rem;
   top: 1.3rem;
@@ -13957,7 +13960,7 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
 .nexid-motion-glyph--seeds .nexid-motion-glyph-label::before { content: "SEMILLAS"; }
 .nexid-motion-glyph--cream .nexid-motion-glyph-label::before { content: "CREMA"; }
 .nexid-motion-glyph--perfume .nexid-motion-glyph-label::before { content: "PERFUME"; color: #f8fafc; }
-.nexid-motion-glyph--bracelet .nexid-motion-glyph-label::before { content: "VIP"; color: #ecfeff; }
+.nexid-motion-glyph--bracelet .nexid-motion-glyph-label::before { content: "ACCESO"; color: #ecfeff; }
 .nexid-motion-glyph--ticket .nexid-motion-glyph-label::before { content: "FIESTA"; color: #fff7ed; }
 
 .nexid-motion-glyph-seal {

@@ -122,7 +122,7 @@ function verticalLabel(kind: AssetVisualKind) {
 }
 
 function defaultProductName(kind: AssetVisualKind) {
-  if (kind === "bracelet") return "Brazalete VIP evento";
+  if (kind === "bracelet") return "Brazalete de evento";
   if (kind === "ticket") return "Entrada verificada";
   if (kind === "creamJar") return "Set dermocosmetico premium";
   if (kind === "creamTube") return "Set skincare premium";

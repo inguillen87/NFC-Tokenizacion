@@ -72,6 +72,24 @@ function isMissingRelation(error: unknown) {
   return code === "42P01" || /relation .* does not exist|does not exist/i.test(message);
 }
 
+function asRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+async function resolveTenantId(input: { tenantId: string; tenantSlug: string }) {
+  if (input.tenantId) return input.tenantId;
+  if (!input.tenantSlug) return null;
+  const rows = await sql/*sql*/`
+    SELECT id::text AS id
+    FROM tenants
+    WHERE slug = ${input.tenantSlug}
+    LIMIT 1
+  `;
+  return rows[0]?.id ? String(rows[0].id) : null;
+}
+
 function publishLead(lead: Record<string, unknown>, context: { contact: string; company: string; source: string }) {
   publishRealtimeEvent({
     event_type: "lead.created",
@@ -154,9 +172,37 @@ export async function POST(req: Request) {
   const volume = Number(body.volume || 0);
   const source = clean(body.source) || "public";
   const message = clean(body.message);
+  const tenantSlug = clean(body.tenantSlug || body.tenant_slug || body.tenant);
+  const tenantIdInput = clean(body.tenantId || body.tenant_id);
+  const eventId = clean(body.eventId || body.event_id);
+  const bid = clean(body.bid);
+  const uidHex = clean(body.uidHex || body.uid_hex);
+  const productName = clean(body.productName || body.product_name);
+  const gender = clean(body.gender);
+  const occasion = clean(body.occasion);
   const contact = clean(body.contact) || [email, phone, name].filter(Boolean).join(" | ");
   const tagType = clean(body.tag_type) || (vertical === "events" ? "basic" : "secure");
+  const baseMeta = asRecord(body.meta);
+  const meta = {
+    ...baseMeta,
+    tenantSlug: tenantSlug || baseMeta.tenantSlug || null,
+    eventId: eventId || baseMeta.eventId || null,
+    bid: bid || baseMeta.bid || null,
+    uidHex: uidHex || baseMeta.uidHex || null,
+    productName: productName || baseMeta.productName || null,
+    gender: gender || baseMeta.gender || null,
+    occasion: occasion || baseMeta.occasion || null,
+    gps: asRecord(body.gps || baseMeta.gps),
+    device: asRecord(body.device || baseMeta.device),
+    engagement: asRecord(body.engagement || baseMeta.engagement),
+  };
   const notes = clean(body.notes) || [
+    tenantSlug ? `tenant=${tenantSlug}` : "",
+    eventId ? `event=${eventId}` : "",
+    bid ? `bid=${bid}` : "",
+    productName ? `product=${productName}` : "",
+    gender ? `gender=${gender}` : "",
+    occasion ? `occasion=${occasion}` : "",
     roleInterest ? `role=${roleInterest}` : "",
     message ? `message=${message}` : "",
     estimatedVolume ? `estimated_volume=${estimatedVolume}` : "",
@@ -188,10 +234,13 @@ export async function POST(req: Request) {
     return json({ ok: true, lead, ticket, delivery, compatibilityMode }, 201);
   }
 
+  await ensureCrmOpsSchema();
+  const tenantId = await resolveTenantId({ tenantId: tenantIdInput, tenantSlug }).catch(() => null);
+
   async function insertFullLead() {
     return sql/*sql*/`
-      INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes)
-      VALUES (${locale}, ${contact}, ${name}, ${email}, ${phone}, ${company}, ${country}, ${vertical}, ${roleInterest}, ${estimatedVolume}, ${tagType}, ${volume}, ${source}, 'new', ${message}, ${notes})
+      INSERT INTO leads (locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes, tenant_id, meta)
+      VALUES (${locale}, ${contact}, ${name}, ${email}, ${phone}, ${company}, ${country}, ${vertical}, ${roleInterest}, ${estimatedVolume}, ${tagType}, ${volume}, ${source}, 'new', ${message}, ${notes}, ${tenantId}, ${JSON.stringify(meta)}::jsonb)
       RETURNING *
     `;
   }
@@ -204,7 +253,6 @@ export async function POST(req: Request) {
     `;
   }
 
-  await ensureCrmOpsSchema();
   try {
     const rows = await insertFullLead();
     return finishLead(rows[0] as Record<string, unknown>);

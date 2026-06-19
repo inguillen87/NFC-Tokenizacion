@@ -12,7 +12,15 @@ interface ChatMessage {
   text: string;
 }
 
-export function QREngagementSuite({ wineryName, productName }: { wineryName: string; productName: string }) {
+type QREngagementSuiteProps = {
+  wineryName: string;
+  productName: string;
+  tenantSlug?: string | null;
+  eventId?: string | null;
+  bid?: string | null;
+};
+
+export function QREngagementSuite({ wineryName, productName, tenantSlug = "demobodega", eventId = null, bid = null }: QREngagementSuiteProps) {
   const [activeTab, setActiveTab] = useState<EngagementTab>("sommelier");
   
   // Sommelier Chat State
@@ -34,7 +42,76 @@ export function QREngagementSuite({ wineryName, productName }: { wineryName: str
   // Sorteo State
   const [contact, setContact] = useState("");
   const [name, setName] = useState("");
+  const [occasion, setOccasion] = useState("regalo");
+  const [gender, setGender] = useState("prefiero_no_decir");
   const [raffleSubmitted, setRaffleSubmitted] = useState(false);
+  const [submittingLead, setSubmittingLead] = useState(false);
+
+  const getDeviceMeta = () => ({
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    platform: navigator.platform,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    mobile: /mobile|iphone|android|ipad/i.test(navigator.userAgent),
+  });
+
+  const getGps = () => new Promise<Record<string, unknown>>((resolve) => {
+    if (!navigator.geolocation) return resolve({});
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        source: "browser",
+      }),
+      () => resolve({}),
+      { enableHighAccuracy: false, timeout: 1800, maximumAge: 10 * 60 * 1000 },
+    );
+  });
+
+  const submitLead = async (payload: {
+    source: string;
+    contact: string;
+    name?: string;
+    message?: string;
+    roleInterest?: string;
+    rating?: number;
+    extra?: Record<string, unknown>;
+  }, quiet = false) => {
+    if (!quiet) setSubmittingLead(true);
+    try {
+      const gps = await getGps();
+      await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locale: "es-AR",
+          contact: payload.contact,
+          name: payload.name || "",
+          company: wineryName,
+          vertical: "wine",
+          role_interest: payload.roleInterest || "qr_engagement",
+          source: payload.source,
+          message: payload.message || "",
+          tenantSlug,
+          eventId,
+          bid,
+          productName,
+          gender,
+          occasion,
+          gps,
+          device: getDeviceMeta(),
+          engagement: {
+            type: payload.source,
+            rating: payload.rating || null,
+            ...payload.extra,
+          },
+        }),
+      });
+    } finally {
+      if (!quiet) setSubmittingLead(false);
+    }
+  };
 
   // Initialize welcome message for Sommelier
   useEffect(() => {
@@ -58,6 +135,13 @@ export function QREngagementSuite({ wineryName, productName }: { wineryName: str
 
     setMessages(prev => [...prev, userMsg]);
     setIsTyping(true);
+    void submitLead({
+      source: "qr_sommelier",
+      contact: "anonymous_qr_sommelier",
+      message: textToSend,
+      roleInterest: "sommelier_ai_question",
+      extra: { question: textToSend },
+    }, true);
 
     try {
       const res = await fetch("/api/cognitive-ai", {
@@ -385,11 +469,21 @@ export function QREngagementSuite({ wineryName, productName }: { wineryName: str
                 </div>
 
                 <button
-                  disabled={rating === 0}
-                  onClick={() => setFeedbackSubmitted(true)}
+                  disabled={rating === 0 || submittingLead}
+                  onClick={async () => {
+                    await submitLead({
+                      source: "qr_feedback",
+                      contact: "anonymous_qr_feedback",
+                      message: comment,
+                      roleInterest: "wine_feedback",
+                      rating,
+                      extra: { comment },
+                    });
+                    setFeedbackSubmitted(true);
+                  }}
                   className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider transition disabled:opacity-50"
                 >
-                  Enviar Feedback de Trazabilidad
+                  {submittingLead ? "Guardando..." : "Enviar Feedback de Trazabilidad"}
                 </button>
               </div>
             ) : (
@@ -454,14 +548,52 @@ export function QREngagementSuite({ wineryName, productName }: { wineryName: str
                       className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none transition"
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Ocasion</label>
+                      <select
+                        value={occasion}
+                        onChange={(e) => setOccasion(e.target.value)}
+                        className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs text-slate-100 focus:border-amber-500 focus:outline-none transition"
+                      >
+                        <option value="regalo">Regalo</option>
+                        <option value="fiesta">Fiesta</option>
+                        <option value="consumo_personal">Tomarlo en casa</option>
+                        <option value="festejo_especial">Festejo especial</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Genero</label>
+                      <select
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value)}
+                        className="block w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-xs text-slate-100 focus:border-amber-500 focus:outline-none transition"
+                      >
+                        <option value="prefiero_no_decir">Prefiero no decir</option>
+                        <option value="mujer">Mujer</option>
+                        <option value="hombre">Hombre</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 <button
-                  disabled={!name.trim() || !contact.trim()}
-                  onClick={() => setRaffleSubmitted(true)}
+                  disabled={!name.trim() || !contact.trim() || submittingLead}
+                  onClick={async () => {
+                    await submitLead({
+                      source: "qr_raffle",
+                      contact,
+                      name,
+                      message: `Sorteo QR ${productName}`,
+                      roleInterest: "raffle",
+                      extra: { raffle: "monthly_winery_box" },
+                    });
+                    setRaffleSubmitted(true);
+                  }}
                   className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider transition disabled:opacity-50"
                 >
-                  Registrarme al Sorteo
+                  {submittingLead ? "Registrando..." : "Registrarme al Sorteo"}
                 </button>
               </div>
             ) : (

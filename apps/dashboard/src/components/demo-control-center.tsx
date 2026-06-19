@@ -40,7 +40,7 @@ export function DemoControlCenter() {
           const responses = await Promise.all(DEMO_SUPPLIER_UIDS.map((uidHex) => post("/scan", { bid: "DEMO-2026-02", uidHex, action: "verify", city: "Mendoza", countryCode: "AR" })));
           setOutput(JSON.stringify(responses, null, 2));
         }}>Simulate 10 live scans</button>
-        <button suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-900 p-3 text-left text-sm text-white" onClick={async () => setOutput(JSON.stringify(await post("/scan", { bid: "DEMO-2026-02", uidHex: DEMO_SUPPLIER_UIDS[0], action: "retail_scan", city: "Sao Paulo", countryCode: "BR" }), null, 2))}>Simulate replay attack</button>
+        <button suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-900 p-3 text-left text-sm text-white" onClick={async () => setOutput(JSON.stringify(await post("/scan", { bid: "DEMO-2026-02", uidHex: DEMO_SUPPLIER_UIDS[0], action: "retail_scan", city: "San Martin", countryCode: "AR" }), null, 2))}>Simulate replay attack</button>
         <button suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-900 p-3 text-left text-sm text-white" onClick={async () => setOutput(JSON.stringify(await post("/scan", { bid: "DEMO-2026-02", uidHex: DEMO_SUPPLIER_UIDS[9], action: "uncork", city: "Mendoza", countryCode: "AR" }), null, 2))}>Simulate tamper alert</button>
         <a href="/analytics" className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">Open live map</a>
         <a href={productUrls.web} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">Open mobile preview</a>

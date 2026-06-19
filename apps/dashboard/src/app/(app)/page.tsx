@@ -25,18 +25,16 @@ const FALLBACK_KPIS = {
 
 function demoOverviewRows() {
   return [
-    { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", scans: 512, duplicates: 8, tamper: 2, created_at: new Date().toISOString() },
-    { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", scans: 148, duplicates: 2, tamper: 0, created_at: new Date().toISOString() },
-    { id: "demo-tenant-003", slug: "democosmetics", name: "Demo Cosmetics", scans: 96, duplicates: 1, tamper: 1, created_at: new Date().toISOString() },
+    { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", scans: 61, duplicates: 1, tamper: 0, created_at: new Date().toISOString() },
   ];
 }
 
 function demoLiveEventRows() {
   return [
     ...getDashboardDemoEvents(18).map(toDemoAdminEventRow),
-    { id: "home-demo-001", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(), city: "Zurich", country_code: "CH", lat: 47.3769, lng: 8.5417, bid: "DEMO-2026-02", tenant_slug: "demobodega", product_name: "Gran Reserva Malbec", source: "demo" },
+    { id: "home-demo-001", result: "VALID", reason: "sun_ok", uid_hex: "0474856A0B1090", created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(), city: "San Martin", country_code: "AR", lat: -34.5744, lng: -58.5358, bid: "DEMO-2026-02", tenant_slug: "demobodega", product_name: "Cabernet Franc Reserva 2022", source: "demo" },
     { id: "home-demo-002", result: "CLAIMED", reason: "ownership_claimed", uid_hex: "04A1B2C3D5", created_at: new Date(Date.now() - 18 * 60 * 1000).toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "DEMO-2026-02", tenant_slug: "demobodega", product_name: "Gran Reserva Malbec", source: "demo" },
-    { id: "home-demo-003", result: "REPLAY_SUSPECT", reason: "replay_detected", uid_hex: "04F1E2D3C4", created_at: new Date(Date.now() - 32 * 60 * 1000).toISOString(), city: "Sao Paulo", country_code: "BR", lat: -23.5505, lng: -46.6333, bid: "EVENT-2026-01", tenant_slug: "demoevents", product_name: "Brazalete VIP evento", source: "demo" },
+    { id: "home-demo-003", result: "REPLAY_SUSPECT", reason: "replay_detected", uid_hex: "0487856A0B1090", created_at: new Date(Date.now() - 32 * 60 * 1000).toISOString(), city: "Cordoba", country_code: "AR", lat: -31.4201, lng: -64.1888, bid: "DEMO-2026-02", tenant_slug: "demobodega", product_name: "Reserva Malbec 2022", source: "demo" },
   ];
 }
 
@@ -49,9 +47,7 @@ function demoTokenizationRows() {
 
 function demoBatchRows() {
   return [
-    { bid: "DEMO-2026-02", tenant_slug: "demobodega", tenant_id: "demobodega", status: "active", qty: 120, requested_quantity: 120, imported_tags: 118, active_tags: 110, type: "NTAG 424 DNA TT" },
-    { bid: "EVENTS-2026-01", tenant_slug: "demoevents", tenant_id: "demoevents", status: "active", qty: 80, requested_quantity: 80, imported_tags: 76, active_tags: 72, type: "NTAG215" },
-    { bid: "COS-2026-01", tenant_slug: "democosmetics", tenant_id: "democosmetics", status: "qa", qty: 60, requested_quantity: 60, imported_tags: 54, active_tags: 48, type: "NTAG 424 DNA" },
+    { bid: "DEMO-2026-02", tenant_slug: "demobodega", tenant_id: "demobodega", status: "active", qty: 10, requested_quantity: 10, imported_tags: 10, active_tags: 10, type: "NTAG 424 DNA TT" },
   ];
 }
 
@@ -77,9 +73,9 @@ function demoAnalyticsData() {
       invalidRate: Number((((duplicates + tamper) / scans) * 100).toFixed(1)),
       duplicates,
       tamper,
-      activeBatches: 3,
-      activeTenants: 3,
-      geoRegions: 5,
+      activeBatches: 1,
+      activeTenants: 1,
+      geoRegions: 4,
       resellerPerformance: 88,
       riskScore: 7.4,
     },
@@ -87,15 +83,13 @@ function demoAnalyticsData() {
     batchStatus: [{ name: "active", value: 3 }, { name: "qa", value: 1 }, { name: "revoked", value: 0 }],
     geoPoints: mergeDemoGeoPoints([
       { city: "Mendoza", country: "AR", scans: 218, risk: 3.5, lat: -32.8895, lng: -68.8458 },
-      { city: "Zurich", country: "CH", scans: 54, risk: 1.2, lat: 47.3769, lng: 8.5417 },
+      { city: "San Martin", country: "AR", scans: 54, risk: 1.2, lat: -34.5744, lng: -58.5358 },
       { city: "Buenos Aires", country: "AR", scans: 133, risk: 5.6, lat: -34.6037, lng: -58.3816 },
-      { city: "Sao Paulo", country: "BR", scans: 38, risk: 13.8, lat: -23.5505, lng: -46.6333 },
+      { city: "Cordoba", country: "AR", scans: 38, risk: 13.8, lat: -31.4201, lng: -64.1888 },
     ], runtimeGeoPoints),
     geography: {
       countries: [
-        { country: "AR", scans: 401, risk: 6.1 },
-        { country: "CH", scans: 54, risk: 1.2 },
-        { country: "BR", scans: 38, risk: 13.8 },
+        { country: "AR", scans: 493, risk: 6.4 },
       ],
       cities: [
         ...runtimeGeoPoints.map((point) => ({
@@ -108,29 +102,29 @@ function demoAnalyticsData() {
           lastSeen: runtimeEvents.find((event) => event.city === point.city && event.country_code === point.country)?.created_at || new Date(now).toISOString(),
         })),
         { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458, scans: 218, risk: 3.5, lastSeen: new Date(now - 12 * 60 * 1000).toISOString() },
-        { city: "Zurich", country: "CH", lat: 47.3769, lng: 8.5417, scans: 54, risk: 1.2, lastSeen: new Date(now - 8 * 60 * 1000).toISOString() },
+        { city: "San Martin", country: "AR", lat: -34.5744, lng: -58.5358, scans: 54, risk: 1.2, lastSeen: new Date(now - 8 * 60 * 1000).toISOString() },
         { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816, scans: 133, risk: 5.6, lastSeen: new Date(now - 18 * 60 * 1000).toISOString() },
-        { city: "Sao Paulo", country: "BR", lat: -23.5505, lng: -46.6333, scans: 38, risk: 13.8, lastSeen: new Date(now - 25 * 60 * 1000).toISOString() },
+        { city: "Cordoba", country: "AR", lat: -31.4201, lng: -64.1888, scans: 38, risk: 13.8, lastSeen: new Date(now - 25 * 60 * 1000).toISOString() },
       ],
     },
     devices: {
       os: [{ label: "iOS", count: 320 }, { label: "Android", count: 228 }],
       browser: [{ label: "Safari", count: 290 }, { label: "Chrome", count: 250 }],
       deviceType: [{ label: "mobile", count: 520 }, { label: "desktop", count: 28 }],
-      timezones: [{ label: "America/Argentina/Mendoza", count: 310 }, { label: "Europe/Zurich", count: 54 }],
+      timezones: [{ label: "America/Argentina/Mendoza", count: 310 }, { label: "America/Argentina/Buenos_Aires", count: 183 }],
       mobileShare: 94.9,
     },
     feed: [
       ...runtimeEvents.slice(0, 12).map((event) => ({ ...toDemoFeedRow(event), id: 100000 + event.sequence })),
-      { id: 9012, uidHex: "04A1B2C3D4", bid: "DEMO-2026-02", result: "ok", city: "Zurich", country: "CH", device: "iPhone 15 Pro", createdAt: new Date(now - 8 * 60 * 1000).toISOString() },
-      { id: 9011, uidHex: "04F1E2D3C4", bid: "EVENTS-2026-01", result: "replay", city: "Sao Paulo", country: "BR", device: "Android Pixel 9", createdAt: new Date(now - 25 * 60 * 1000).toISOString() },
+      { id: 9012, uidHex: "0474856A0B1090", bid: "DEMO-2026-02", result: "ok", city: "San Martin", country: "AR", device: "Android NFC", createdAt: new Date(now - 8 * 60 * 1000).toISOString() },
+      { id: 9011, uidHex: "0487856A0B1090", bid: "DEMO-2026-02", result: "replay", city: "Cordoba", country: "AR", device: "Android Pixel 9", createdAt: new Date(now - 25 * 60 * 1000).toISOString() },
     ],
     deviceSignals: [
       { device: "iPhone 15 Pro", scans: 114, countries: 3, validRate: 95.6, risk: 2.9 },
       { device: "Samsung Galaxy S24", scans: 90, countries: 3, validRate: 88.1, risk: 8.7 },
     ],
     products: [
-      { uidHex: "04A1B2C3D4", bid: "DEMO-2026-02", productName: "Gran Reserva Malbec", winery: "Demo Bodega", region: "Valle de Uco", vintage: "2022", scanCount: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), lastVerifiedCity: "Zurich", lastVerifiedCountry: "CH", tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" } },
+      { uidHex: "0474856A0B1090", bid: "DEMO-2026-02", productName: "Cabernet Franc Reserva 2022", winery: "Demo Bodega", region: "Valle de Uco", vintage: "2022", scanCount: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), lastVerifiedCity: "San Martin", lastVerifiedCountry: "AR", tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" } },
     ],
     tagJourney: [
       ...runtimeEvents.slice(0, 8).map((event) => ({
@@ -142,22 +136,43 @@ function demoAnalyticsData() {
         current: { city: event.city, country: event.country_code, lat: event.lat, lng: event.lng },
         lastDevice: event.device,
       })),
-      { uid: "04A1B2C3D4", taps: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), origin: { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458 }, current: { city: "Zurich", country: "CH", lat: 47.3769, lng: 8.5417 }, lastDevice: "iPhone 15 Pro" },
+      { uid: "0474856A0B1090", taps: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), origin: { city: "Valle de Uco", country: "AR", lat: -33.3667, lng: -69.15 }, current: { city: "San Martin", country: "AR", lat: -34.5744, lng: -58.5358 }, lastDevice: "Android NFC" },
     ],
   };
 }
 
-async function getAnalyticsData() {
+function emptyAnalyticsData(tenant = "unknown", reason = "Analytics upstream unavailable") {
+  return {
+    ok: false,
+    reason,
+    dataSource: "production",
+    scope: { tenant, source: "unavailable", range: "30d", country: "all" },
+    kpis: { scans: 0, validRate: 0, invalidRate: 0, duplicates: 0, tamper: 0, activeBatches: 0, activeTenants: tenant && tenant !== "unknown" ? 1 : 0, geoRegions: 0, resellerPerformance: 0, riskScore: 0 },
+    trend: [],
+    batchStatus: [],
+    geoPoints: [],
+    geography: { countries: [], cities: [] },
+    devices: { os: [], browser: [], deviceType: [], timezones: [], mobileShare: 0 },
+    feed: [],
+    deviceSignals: [],
+    products: [],
+    tagJourney: [],
+  };
+}
+
+async function getAnalyticsData(tenantScope = "") {
   try {
-    const response = await fetch(`${API_BASE}/admin/analytics?range=30d`, {
+    const query = new URLSearchParams({ range: "30d" });
+    if (tenantScope) query.set("tenant", tenantScope);
+    const response = await fetch(`${API_BASE}/admin/analytics?${query.toString()}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
-    if (!response.ok) return demoAnalyticsData();
+    if (!response.ok) return tenantScope ? emptyAnalyticsData(tenantScope, `Admin upstream error (${response.status})`) : demoAnalyticsData();
     const payload = await response.json().catch(() => null);
-    return payload?.kpis ? payload : demoAnalyticsData();
+    return payload?.kpis ? payload : tenantScope ? emptyAnalyticsData(tenantScope, "Invalid analytics payload") : demoAnalyticsData();
   } catch {
-    return demoAnalyticsData();
+    return tenantScope ? emptyAnalyticsData(tenantScope, "Admin upstream unreachable") : demoAnalyticsData();
   }
 }
 
@@ -174,9 +189,11 @@ async function getOverviewRows() {
   }
 }
 
-async function getLiveEvents() {
+async function getLiveEvents(tenantScope = "") {
   try {
-    const response = await fetch(`${API_BASE}/admin/events?limit=18`, {
+    const query = new URLSearchParams({ limit: "18" });
+    if (tenantScope) query.set("tenant", tenantScope);
+    const response = await fetch(`${API_BASE}/admin/events?${query.toString()}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
@@ -190,9 +207,11 @@ async function getLiveEvents() {
   }
 }
 
-async function getTokenizationRows() {
+async function getTokenizationRows(tenantScope = "") {
   try {
-    const response = await fetch(`${API_BASE}/admin/tokenization/requests?limit=30`, {
+    const query = new URLSearchParams({ limit: "30" });
+    if (tenantScope) query.set("tenant", tenantScope);
+    const response = await fetch(`${API_BASE}/admin/tokenization/requests?${query.toString()}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
@@ -273,10 +292,10 @@ export default async function DashboardHome() {
 
   const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult, analyticsDataResult] = await Promise.all([
     getOverviewRows(),
-    getLiveEvents(),
-    getTokenizationRows(),
+    getLiveEvents(tenantScope),
+    getTokenizationRows(tenantScope),
     getBatchRows(tenantScope),
-    getAnalyticsData(),
+    getAnalyticsData(tenantScope),
   ]);
 
   const overviewRaw = overviewRawResult as Array<Record<string, unknown>>;
@@ -421,16 +440,7 @@ export default async function DashboardHome() {
   ];
 
   const demoPacks = [
-    { key: "wine-secure", label: "Wine Secure 🍷", tenant: "demobodega", itemId: "demo-item-001" },
-    { key: "events-basic", label: "Events Basic 🎟️", tenant: "demoevents", itemId: "demo-item-001" },
-    { key: "cosmetics-secure", label: "Cosmetics Secure 🧴", tenant: "democosmetics", itemId: "demo-item-001" },
-    { key: "agro-secure", label: "Agro Secure 🌾", tenant: "demoagro", itemId: "demo-item-001" },
-    { key: "pharma-secure", label: "Pharma Secure 💊", tenant: "demopharma", itemId: "demo-item-001" },
-    { key: "luxury-basic", label: "Luxury Basic 💎", tenant: "demoluxury", itemId: "demo-item-001" },
-    { key: "docs-presence", label: "Docs & Presence 📄", tenant: "demodocs", itemId: "demo-item-001" },
-    { key: "reseller-flow", label: "Reseller Flow 🤝", tenant: "demoreseller", itemId: "demo-item-001" },
-    { key: "government-proof", label: "Government Proof 🏛️", tenant: "demogov", itemId: "demo-item-001" },
-    { key: "operator-qa", label: "Operator QA 🔍", tenant: "demoops", itemId: "demo-item-001" },
+    { key: "wine-secure", label: "Demo Bodega", tenant: "demobodega", itemId: "demo-item-001" },
   ];
 
   return (

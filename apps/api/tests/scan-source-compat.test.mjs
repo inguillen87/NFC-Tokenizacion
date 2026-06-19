@@ -29,3 +29,10 @@ test('runtime SQL paths do not hard-cast to custom enum types that may be missin
     }
   }
 });
+
+test('qr scans keep channel in reason/meta instead of tag_status enum', () => {
+  const content = read('apps/api/src/app/sun/route.ts');
+  assert.equal(content.includes('tagStatus: "qr_scan"'), false);
+  assert.equal(content.includes('reason: "qr_scan"'), true);
+  assert.equal(content.includes('channel: "qr"'), true);
+});

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { ExternalLink, ShieldCheck, Store, WalletCards, AlertTriangle } from "lucide-react";
 import { CtaActions } from "./cta-actions";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
@@ -224,7 +225,7 @@ function demoProductFromParams(params: Record<string, string | string[] | undefi
     return { name: requestedProduct || "Prenda premium conectada", vertical: "moda", category: "Indumentaria" };
   }
   if (/(bracelet|brazalete|pulsera|evento|event|vip access)/i.test(text)) {
-    return { name: requestedProduct || "Brazalete VIP evento", vertical: "eventos", category: "Acceso fisico" };
+    return { name: requestedProduct || "Acceso verificado", vertical: "eventos", category: "Acceso fisico" };
   }
   if (/(ticket|entrada|pass|qr)/i.test(text)) {
     return { name: requestedProduct || "Entrada certificada", vertical: "eventos", category: "Ticket NFC" };
@@ -374,14 +375,35 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     const requestedProduct = readParam(params, "product") || readParam(params, "productName") || "Gran Reserva Malbec";
     const requestedWinery = readParam(params, "winery") || readParam(params, "brand") || "Demo Bodega";
     const requestedTenant = readParam(params, "tenant") || "demobodega";
-    result = {
+    const incomingHeaders = await headers();
+    const qrQuery = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (typeof value === "string" && value.trim()) qrQuery.set(key, value.trim());
+    });
+    qrQuery.set("qr", "1");
+    if (!qrQuery.get("tenant")) qrQuery.set("tenant", requestedTenant);
+    if (!qrQuery.get("product")) qrQuery.set("product", requestedProduct);
+    if (!qrQuery.get("winery")) qrQuery.set("winery", requestedWinery);
+    const forwardedHeaders = new Headers();
+    forwardedHeaders.set("accept", "application/json");
+    ["user-agent", "accept-language", "x-forwarded-for", "x-real-ip", "x-vercel-ip-city", "x-vercel-ip-country", "x-vercel-ip-latitude", "x-vercel-ip-longitude"].forEach((key) => {
+      const value = incomingHeaders.get(key);
+      if (value) forwardedHeaders.set(key, value);
+    });
+    const apiQrResult = await fetch(`${resolvedApiBase}/sun?${qrQuery.toString()}`, {
+      headers: forwardedHeaders,
+      cache: "no-store",
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .catch(() => null) as SunContract | null;
+    result = apiQrResult || {
       ok: true,
       status: {
         code: "QR_UNVERIFIED",
-        label: "Escaneado por QR (No verificado)",
+        label: "QR / SDK engagement",
         tone: "warn",
-        summary: "Este producto fue escaneado mediante un código QR estándar. La autenticidad física no puede ser garantizada.",
-        reason: "qr_unverified",
+        summary: "Canal de bajo costo para ficha, CRM, analitica, leads y fidelizacion. No es prueba criptografica NFC ni activa propiedad automaticamente.",
+        reason: "qr_sdk_engagement",
         productState: "NOT_REGISTERED",
         tamperSupported: false,
       },
@@ -681,7 +703,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     toLabel: index === mapRoutes.length - 1 ? tapDisplay : undefined,
     productName: route.label || mapProductName,
   }));
-  const livePillLabel = isFreshHandoff ? "Tap fisico activo" : isSnapshotView ? "Consulta segura" : "Tap SUN";
+  const livePillLabel = isQrScan ? "QR / SDK" : isFreshHandoff ? "Tap fisico activo" : isSnapshotView ? "Consulta segura" : "Tap SUN";
 
   const securityTone = isValid
     ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
@@ -751,7 +773,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             : result.status?.tone === "risk"
               ? "Se detectaron señales de riesgo"
               : "Validación en revisión";
-  const displayRiskLevelLabel = isFreshHandoff
+  const displayRiskLevelLabel = isQrScan
+    ? "Engagement QR"
+    : isFreshHandoff
     ? "Tap accionable"
     : isSnapshotView
     ? "Consulta segura"
@@ -766,16 +790,18 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         : trustScore >= 65
           ? "Riesgo moderado"
           : "Riesgo alto";
-  const displayStatusHeadline = rightsTitle || (isVerifiedOpenedState && isTechnicallyAuthentic
+  const displayStatusHeadline = isQrScan
+    ? "Ficha publica QR / SDK"
+    : rightsTitle || (isVerifiedOpenedState && isTechnicallyAuthentic
     ? "Producto autentico. Sello abierto registrado como lifecycle event."
     : statusHeadline);
   const reportProblemHref = "/?contact=sales&intent=sun_mobile#contact-modal";
   const recommendedAction = isFreshCommercialTap
-    ? { label: isVerifiedOpenedState ? "Apropiar ownership" : "Guardar en mi Passport", href: "#post-tap-passport", helper: rightsPolicy.recommendedNextStep || (isVerifiedOpenedState ? "El sello abierto queda registrado como evento verificado. Podes reclamar ownership, garantia, club y tokenizacion opcional." : "Autenticidad solida. Continuar activa ownership, club y marketplace.") }
+    ? { label: "Ver ficha y opciones", href: "#consumer-choice", helper: rightsPolicy.recommendedNextStep || "No hace falta registrarse para leer la ficha. Contacto, club, garantia y propiedad son pasos opt-in separados." }
     : isSnapshotView
-      ? { label: "Escanear de nuevo", href: "#fresh-tap-required", helper: "Consulta segura: autenticidad y trazabilidad quedan visibles. Para ownership, club, rewards o tokenizacion se necesita otro tap fisico." }
+      ? { label: "Ver ficha", href: "#product-info", helper: "Consulta segura: autenticidad y trazabilidad quedan visibles. Acciones sensibles requieren otro tap fisico." }
     : isSunProfileMismatch
-      ? { label: "Avisar a soporte", href: reportProblemHref, helper: "El producto y el lote quedan visibles. Para reclamar, abrir club o tokenizar, la marca debe cargar el perfil SUN correcto o registrar el payload del proveedor." }
+      ? { label: "Avisar a soporte", href: reportProblemHref, helper: "El producto y el lote quedan visibles. Garantia, club o tokenizacion esperan el perfil SUN correcto o el payload del proveedor." }
     : trustScore >= 65
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: reportProblemHref, helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
@@ -797,22 +823,22 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   if (eventId) tapParams.set("eventId", eventId);
   const tapQuery = tapParams.toString();
   const withTapQuery = (path: string, action: string) => `${path}${path.includes("?") ? "&" : "?"}${tapQuery}&action=${encodeURIComponent(action)}`;
-  const portalHref = localizeHref(result.cta?.portalUrl) || withTapQuery("/me", "portal");
   const registerHref = localizeHref(result.cta?.registerUrl) || withTapQuery("/me", "register");
-  const productsHref = withTapQuery("/me/products", "save-product");
   const walletHref = withTapQuery("/me/wallet", "wallet");
   const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");
   const tapMarketplaceHref = localizeHref(result.cta?.marketplaceUrl) || withTapQuery(marketplaceHref, "marketplace");
-  const certificateHref = /^\d+$/.test(eventId) ? `/certificado/${encodeURIComponent(eventId)}` : "";
-  const blockedTapReason = isFreshCommercialTap
+  const certificateHref = !isQrScan && /^\d+$/.test(eventId) ? `/certificado/${encodeURIComponent(eventId)}` : "";
+  const blockedTapReason = isQrScan
+    ? "QR informativo: podes leer, consultar al sommelier o dejar contacto. Garantia, wallet, NFT y propiedad requieren compra validada o NFC seguro."
+    : isFreshCommercialTap
     ? ""
     : isSnapshotView
-      ? "Consulta guardada: para reclamar ownership, sumar puntos, abrir club o tokenizar, volve a tocar fisicamente la etiqueta."
+      ? "Consulta guardada: ficha y trazabilidad visibles. Beneficios sensibles requieren un nuevo tap fisico."
     : isSunProfileMismatch
       ? "Producto, lote y bodega detectados. Las acciones premium quedan protegidas hasta que la marca cargue el perfil SUN correcto del batch o registre el payload fisico del proveedor."
     : isReplay
-      ? "Replay detectado: por seguridad necesitás un nuevo tap físico para ownership, club, garantía o tokenización."
-    : "Este tap no es apto para ownership/club. Necesitás un tap válido y fresco para continuar.";
+      ? "Replay detectado: por seguridad necesitas un nuevo tap fisico para garantia, club o tokenizacion."
+    : "Este tap no habilita acciones sensibles. Necesitas un tap valido y fresco para continuar.";
   const protectedBannerTitle = isSnapshotView
     ? "Consulta segura"
     : isSunProfileMismatch
@@ -821,7 +847,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "Replay bloqueado"
       : "Accion protegida";
   const protectedBannerCopy = isSnapshotView
-    ? "Autenticidad y trazabilidad visibles. Ownership, puntos, club y tokenizacion quedan protegidos hasta un nuevo tap fisico."
+    ? "Autenticidad y trazabilidad visibles. Puntos, club, garantia y tokenizacion quedan protegidos hasta un nuevo tap fisico."
     : isSunProfileMismatch
       ? "El lote fue detectado como DemoBodega, pero la lectura SUN no descifra a un UID autorizado. Hay que corregir claves/layout o registrar el payload fisico del proveedor."
     : isReplay
@@ -837,8 +863,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const journeySteps = [
     { id: "scan", label: "Tap NFC", done: true },
     { id: "verify", label: "Verificación", done: Boolean(result.status?.label) },
-    { id: "portal", label: "Portal", done: isFreshCommercialTap },
-    { id: "club", label: "Club premium", done: Boolean(result.identity?.tenantSlug) && isFreshCommercialTap },
+    { id: "ficha", label: "Ficha", done: true },
+    { id: "optin", label: "Opt-in", done: false },
   ];
   const sealOpened = ttStatus === "opened" || ttStatus === "opened_previously" || productState === "VALID_OPENED" || productState === "VALID_OPENED_PREVIOUSLY" || productState === "VALID_MANUAL_OPENED";
   const sealClosed = ttStatus === "closed" || productState === "VALID_CLOSED";
@@ -862,8 +888,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ntag424_dna: "NTAG 424 DNA",
     ntag424_dna_tt: "NTAG 424 DNA TT",
   };
-  const carrierLabel =
-    result.status?.carrierLabel ||
+  const carrierLabel = isQrScan
+    ? "QR / SDK"
+    : result.status?.carrierLabel ||
     result.status?.carrier_label ||
     result.identity?.carrierLabel ||
     result.identity?.carrier_label ||
@@ -877,13 +904,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : result.technical?.raw
         ? "NTAG 424 DNA"
         : "QR / NFC");
-  const isCryptoCarrier =
+  const isCryptoCarrier = !isQrScan && (
     rawCarrierProfileCode === "ntag424_dna" ||
     rawCarrierProfileCode === "ntag424_dna_tt" ||
-    (!rawCarrierProfileCode && Boolean(result.technical?.raw || result.status?.tamperSupported || result.tag_tamper?.available));
-  const isTamperCarrier =
+    (!rawCarrierProfileCode && Boolean(result.technical?.raw || result.status?.tamperSupported || result.tag_tamper?.available))
+  );
+  const isTamperCarrier = !isQrScan && (
     rawCarrierProfileCode === "ntag424_dna_tt" ||
-    (!rawCarrierProfileCode && Boolean(result.status?.tamperSupported || result.tag_tamper?.available));
+    (!rawCarrierProfileCode && Boolean(result.status?.tamperSupported || result.tag_tamper?.available))
+  );
   const rawCarrierConsumerCopy = (
     result.status?.carrierConsumerCopy ||
     result.status?.carrier_consumer_copy ||
@@ -944,24 +973,24 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "NFT protegido por politica"
         : "NFT listo para activar";
   const nftDisplayCopy = hasOnChainProof
-    ? "El producto ya tiene una prueba on-chain asociada. Desde tu Passport podes guardar ownership, wallet y beneficios del tenant."
+    ? "El producto ya tiene una prueba on-chain asociada. Beneficios, wallet o propiedad se activan solo con flujo opt-in."
     : tokenPending
       ? "La solicitud quedo guardada. El minter de Polygon puede completar el anclaje sin que el consumidor pierda el recorrido."
       : tokenBlocked
         ? "Mostramos la prueba de autenticidad, pero el mint queda bloqueado hasta tener un tap fresco y apto."
-        : "Cuando reclamas ownership, este producto puede quedar como certificado NFT/sandbox y abrir wallet, club y marketplace.";
+        : "Si la marca lo habilita y el comprador valida la compra, el producto puede sumar certificado NFT/sandbox, wallet, club o marketplace.";
   const replayDecisionText = isSunProfileMismatch
     ? "Producto y lote detectados. La activacion comercial queda pendiente porque el perfil SUN del batch no coincide con la lectura fisica registrada."
     : isReplay
-    ? "Replay detectado: esta URL/SUN ya fue usada. Ownership, garantia, rewards y tokenizacion quedan bloqueados hasta un nuevo tap fisico."
+    ? "Replay detectado: esta URL/SUN ya fue usada. Garantia, rewards y tokenizacion quedan bloqueados hasta un nuevo tap fisico."
     : isSnapshotView
-      ? "Consulta segura: la prueba queda disponible para revisar y compartir. Para reclamar propiedad, sumar puntos o mintear, toca otra vez la etiqueta."
+      ? "Consulta segura: la prueba queda disponible para revisar y compartir. Para sumar puntos, activar garantia o mintear, toca otra vez la etiqueta."
     : isValid
       ? rightsSummary || (isCryptoCarrier
         ? "Lectura fresca: UID, contador SUN y CMAC pasan la politica anti-replay."
         : "Lectura fresca: identidad registrada y trazabilidad declarada por plataforma.")
       : isVerifiedOpenedState && isTechnicallyAuthentic
-        ? rightsSummary || "Sello abierto verificado: la apertura queda registrada como lifecycle event y conserva ownership, garantia, provenance y tokenizacion opcional."
+        ? rightsSummary || "Sello abierto verificado: la apertura queda registrada como lifecycle event y conserva garantia, provenance y tokenizacion opcional segun politica de marca."
         : rightsSummary || "Lectura revisable: la prueba tecnica se conserva, pero las acciones comerciales quedan protegidas.";
   const tokenEvidenceLabel = hasOnChainProof
     ? `On-chain ${tokenNetwork}`
@@ -1007,20 +1036,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? "opened"
       : "idle";
   const trustCopy = isSunProfileMismatch
-    ? "La prueba se conserva y el comprador ve producto, bodega, lote y trazabilidad. Reclamo, club, marketplace y NFT esperan el perfil SUN correcto o el payload fisico registrado."
+    ? "La prueba se conserva y cualquier lector ve producto, bodega, lote y trazabilidad. Garantia, club, marketplace y NFT esperan el perfil SUN correcto o el payload fisico registrado."
     : isReplay
     ? "Anti-replay activo: el tap queda como evidencia, no como permiso comercial."
     : isSnapshotView
       ? "Consulta segura: autenticidad visible y trazabilidad preservada. Las acciones comerciales requieren otro tap fisico."
     : isFreshHandoff
-      ? "Lectura fisica recien validada: podés reclamar ownership, club, garantia y tokenizacion opcional mientras el handoff sigue fresco."
+      ? "Lectura fisica recien validada: ficha publica, ruta y opciones opt-in disponibles mientras el handoff sigue fresco."
     : isVerifiedOpenedState && isTechnicallyAuthentic
       ? "Apertura verificada: el sello cambio de estado, pero la identidad SUN sigue siendo valida y accionable."
     : isFreshCommercialTap
       ? "Lectura fresca, identidad consistente y lote activo."
     : trustScore >= 65
-      ? "Lectura revisable: conviene mirar ruta y estado del sello antes de apropiar."
-      : "Lectura de riesgo: no habilitamos ownership hasta repetir el tap.";
+      ? "Lectura revisable: conviene mirar ruta y estado del sello antes de activar beneficios."
+      : "Lectura de riesgo: no habilitamos acciones sensibles hasta repetir el tap.";
   const effectiveTrustCopy = !isReplay && !isSnapshotView && rightsSummary ? rightsSummary : trustCopy;
   const rightsModeCards = [
     { label: "Rubro", value: verticalLabel },
@@ -1029,7 +1058,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     { label: "Marketplace", value: marketplaceModeLabel },
   ];
   const rightsRequirementsPreview = rightsRequirements.slice(0, 4);
-  const handoffCopy = isFreshHandoff
+  const handoffCopy = isQrScan
+    ? "Ficha QR: contenido y CRM, sin propiedad automatica."
+    : isFreshHandoff
     ? "Tap fisico fresco: acciones habilitadas con prueba SUN y token temporal."
     : isSnapshotView
     ? "Consulta segura: prueba visible, acciones comerciales bloqueadas."
@@ -1074,24 +1105,30 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     .filter(Boolean)
     .join(" · ");
   const visibleUid = uidMasked || (uid ? `${uid.slice(0, 4)}****${uid.slice(-4)}` : "UID protegido");
-  const productFirstTone = isFreshCommercialTap
+  const productFirstTone = isQrScan
+    ? "visible"
+    : isFreshCommercialTap
     ? "ready"
     : isSunProfileMismatch
       ? "setup"
       : isRiskBlocked
         ? "review"
         : "visible";
-  const productFirstStatusTitle = isFreshCommercialTap
-    ? "Producto listo para reclamar"
+  const productFirstStatusTitle = isQrScan
+    ? "Ficha QR del producto"
+    : isFreshCommercialTap
+    ? "Ficha del producto lista"
     : isSunProfileMismatch
       ? "Producto y lote identificados"
       : isRiskBlocked
         ? "Producto visible, acciones protegidas"
         : "Producto autentico";
-  const productFirstStatusBody = isFreshCommercialTap
-    ? "La lectura esta fresca: podes guardar el producto, entrar al portal, activar beneficios y ver el certificado."
+  const productFirstStatusBody = isQrScan
+    ? "Canal de bajo costo para informar, captar leads, medir interes y activar fidelizacion. No prueba autenticidad criptografica NFC ni activa propiedad automaticamente."
+    : isFreshCommercialTap
+    ? "La lectura esta fresca: podes ver producto, bodega, lote, ruta y certificado sin registrarte. Contacto, club o garantia son opt-in."
     : isSunProfileMismatch
-      ? "La bodega, el producto y el batch existen. La prueba queda visible, pero reclamo, club, marketplace y NFT siguen protegidos hasta cargar el perfil SUN correcto o registrar el payload fisico del proveedor."
+      ? "La bodega, el producto y el batch existen. La prueba queda visible, pero club, garantia, marketplace y NFT siguen protegidos hasta cargar el perfil SUN correcto o registrar el payload fisico del proveedor."
       : isRiskBlocked
         ? "Mostramos el producto y la trazabilidad disponible, pero pedimos otro tap fisico antes de habilitar acciones comerciales."
         : "La prueba se puede compartir y revisar. Para activar beneficios sensibles, usa un tap fresco desde la etiqueta fisica.";
@@ -1099,20 +1136,22 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     { label: "Tenant", value: tenantDisplayName },
     { label: "Producto", value: productDisplayName },
     { label: "Lote", value: batchDisplay },
-    { label: "Chip", value: carrierLabel },
+    { label: isQrScan ? "Canal" : "Chip", value: carrierLabel },
     { label: "UID", value: visibleUid },
     { label: "Origen", value: originDisplay },
     { label: "Tap", value: tapDisplay },
     { label: "Distancia", value: distanceDisplay },
   ].filter((item) => item.value);
   const productFirstBadges = [
-    "Producto real",
+    isQrScan ? "Ficha QR" : "Producto real",
     batchDisplay,
     carrierLabel,
-    isFreshCommercialTap ? "Acciones listas" : "Acciones protegidas",
+    isQrScan ? "Sin propiedad automatica" : isFreshCommercialTap ? "Ficha abierta" : "Acciones protegidas",
   ].filter(Boolean);
 
-  const friendlyStageTitle = isSunProfileMismatch
+  const friendlyStageTitle = isQrScan
+    ? "Ficha publica del producto"
+    : isSunProfileMismatch
     ? "Activacion pendiente del batch"
     : isRiskBlocked
     ? "Necesitamos un nuevo tap fisico"
@@ -1121,21 +1160,23 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : isVerifiedOpenedState
         ? "Producto autentico. Sello abierto"
         : "Producto autentico";
-  const friendlyStageBody = isSunProfileMismatch
-    ? "El producto se muestra porque la bodega y el lote estan reconocidos. Para habilitar reclamo, club, marketplace o NFT falta alinear el perfil SUN del lote o registrar el payload real del proveedor."
+  const friendlyStageBody = isQrScan
+    ? "El QR permite leer informacion, hablar con el sommelier IA, dejar feedback o contacto opcional. Garantia, wallet, NFT y propiedad exigen compra validada o tap NFC seguro."
+    : isSunProfileMismatch
+    ? "El producto se muestra porque la bodega y el lote estan reconocidos. Para habilitar club, garantia, marketplace o NFT falta alinear el perfil SUN del lote o registrar el payload real del proveedor."
     : isRiskBlocked
-    ? "Vemos la prueba, pero no habilitamos reclamo, garantia ni NFT con una lectura sospechosa o repetida."
+    ? "Vemos la prueba, pero no habilitamos garantia, club ni NFT con una lectura sospechosa o repetida."
     : isSnapshotView
-      ? "La autenticidad y la ruta se pueden revisar. Para guardar el producto o reclamar beneficios, toca de nuevo la etiqueta."
+      ? "La autenticidad y la ruta se pueden revisar. Para activar beneficios sensibles, toca de nuevo la etiqueta."
       : isVerifiedOpenedState
-        ? "El producto es real y la apertura quedo registrada. Ahora podes asociarlo a tu cuenta y ver beneficios."
-        : "La lectura es fresca. El siguiente paso es reclamarlo con email o celular para guardarlo en tu Passport.";
-  const primaryPostTapAction = isSunProfileMismatch
+        ? "El producto es real y la apertura quedo registrada. Podés leer la ficha; asociarlo a una cuenta es opcional y separado."
+        : "La lectura es fresca. Primero lees la ficha; si queres, despues dejas contacto o acreditas compra.";
+  const primaryPostTapAction = isQrScan
+    ? { label: "Abrir sommelier IA", href: "#qr-engagement", tone: "trace" }
+    : isSunProfileMismatch
     ? { label: "Avisar a soporte", href: reportProblemHref, tone: "trace" }
-    : hasOnChainProof && isFreshCommercialTap
-    ? { label: "Ver NFT / Wallet", href: walletHref, tone: "wallet" }
     : isFreshCommercialTap
-      ? { label: "Reclamar producto", href: "#post-tap-passport", tone: "claim" }
+      ? { label: "Ver opciones del producto", href: "#consumer-choice", tone: "trace" }
       : isSnapshotView
         ? { label: "Hacer nuevo tap fisico", href: "#fresh-tap-required", tone: "fresh" }
         : isRiskBlocked
@@ -1143,34 +1184,43 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           : { label: "Ver ruta de confianza", href: "#geo-trace", tone: "trace" };
   const simpleJourneySteps = [
     {
-      label: "Producto autentico",
-      detail: isSunProfileMismatch ? "Batch detectado" : isTechnicallyAuthentic ? "Verificado" : "En revision",
-      state: isSunProfileMismatch ? "warn" : isTechnicallyAuthentic ? "done" : "warn",
+      label: isQrScan ? "Producto informado" : "Producto autentico",
+      detail: isQrScan ? "QR / SDK" : isSunProfileMismatch ? "Batch detectado" : isTechnicallyAuthentic ? "Verificado" : "En revision",
+      state: isQrScan ? "done" : isSunProfileMismatch ? "warn" : isTechnicallyAuthentic ? "done" : "warn",
     },
     {
-      label: "Origen visible",
+      label: isQrScan ? "Origen declarado" : "Origen visible",
       detail: originToTapDistance != null ? distanceDisplay : "Sin geo",
       state: originToTapDistance != null ? "done" : "warn",
     },
     {
-      label: "Reclamo seguro",
-      detail: isSunProfileMismatch ? "Bloqueado" : isFreshCommercialTap ? "Disponible" : "Nuevo tap",
-      state: isFreshCommercialTap ? "ready" : "locked",
+      label: "Contacto opcional",
+      detail: isQrScan ? "Opt-in" : isFreshCommercialTap ? "Disponible" : "Nuevo tap",
+      state: isQrScan ? "ready" : isFreshCommercialTap ? "ready" : "locked",
     },
     {
-      label: "NFT / beneficios",
-      detail: isSunProfileMismatch ? "Bloqueado" : hasOnChainProof ? "Listo" : isFreshCommercialTap ? "Opcional" : "Protegido",
-      state: hasOnChainProof ? "done" : isFreshCommercialTap ? "ready" : "locked",
+      label: "Comprador verificado",
+      detail: isSunProfileMismatch ? "Bloqueado" : isFreshCommercialTap ? "Con prueba" : "Protegido",
+      state: isFreshCommercialTap ? "ready" : "locked",
     },
   ];
-  const friendlyTrustFactors = [
-    { label: "Tap fresco", ok: isFreshCommercialTap },
-    { label: "Perfil SUN correcto", ok: !isSunProfileMismatch },
-    { label: "Chip valido", ok: isTechnicallyAuthentic },
-    { label: "Sello coherente", ok: !isTamperRisk },
-    { label: "Ruta razonable", ok: originToTapDistance != null },
-    { label: "Riesgo bajo", ok: !isRiskBlocked && trustScore >= 65 },
-  ];
+  const friendlyTrustFactors = isQrScan
+    ? [
+      { label: "Ficha abierta", ok: true },
+      { label: "Tenant identificado", ok: Boolean(tenantSlug) },
+      { label: "Lote informado", ok: Boolean(batchDisplay) },
+      { label: "Lead opt-in", ok: true },
+      { label: "Propiedad protegida", ok: true },
+      { label: "NFC premium pendiente", ok: false },
+    ]
+    : [
+      { label: "Tap fresco", ok: isFreshCommercialTap },
+      { label: "Perfil SUN correcto", ok: !isSunProfileMismatch },
+      { label: "Chip valido", ok: isTechnicallyAuthentic },
+      { label: "Sello coherente", ok: !isTamperRisk },
+      { label: "Ruta razonable", ok: originToTapDistance != null },
+      { label: "Riesgo bajo", ok: !isRiskBlocked && trustScore >= 65 },
+    ];
   const passportStorySteps = [
     {
       label: "Nacio",
@@ -1183,14 +1233,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       body: `${distanceDisplay} de ruta de confianza entre origen y tap actual.`,
     },
     {
-      label: "Se verifico",
-      title: isTechnicallyAuthentic ? "Producto real" : "Lectura en revision",
-      body: isTechnicallyAuthentic ? "El chip y la politica del tenant sostienen la autenticidad." : "El sistema conserva evidencia, pero protege acciones sensibles.",
+      label: isQrScan ? "Se consulto" : "Se verifico",
+      title: isQrScan ? "Ficha QR abierta" : isTechnicallyAuthentic ? "Producto real" : "Lectura en revision",
+      body: isQrScan ? "La marca recibe telemetria, ubicacion aproximada y senales de interes sin exigir registro." : isTechnicallyAuthentic ? "El chip y la politica del tenant sostienen la autenticidad." : "El sistema conserva evidencia, pero protege acciones sensibles.",
     },
     {
       label: "Ahora",
-      title: hasOnChainProof ? "NFT disponible" : isFreshCommercialTap ? "Listo para reclamar" : "Acciones protegidas",
-      body: hasOnChainProof ? "El certificado ya tiene evidencia on-chain." : isFreshCommercialTap ? "Valida email o celular para guardarlo en tu Passport." : "Repeti el tap fisico para reclamar, transferir o mintear.",
+      title: isQrScan ? "Siguiente paso opcional" : isFreshCommercialTap ? "Ficha publica abierta" : "Acciones protegidas",
+      body: isQrScan ? "Si la persona compro, puede verificar compra o tocar NFC seguro. Si solo esta mirando en gondola, puede leer sin reclamar nada." : isFreshCommercialTap ? "El lector puede informarse sin registrarse. Si compro, activa garantia o beneficios con prueba separada." : "Repeti el tap fisico para activar garantia, beneficios o certificado.",
     },
   ];
 
@@ -1206,7 +1256,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          <div className="sun-topbar flex items-center justify-between px-2 mb-2">
             <div className="sun-passport-brand flex items-center gap-2">
                <BrandLockup size={38} variant="ripple" theme="dark" />
-               <p className="sun-passport-brand__caption">verified passport</p>
+               <p className="sun-passport-brand__caption">{isQrScan ? "qr product hub" : "verified passport"}</p>
             </div>
             <div className="sun-topbar-actions flex items-center gap-1.5">
               <ThemeToggle />
@@ -1217,21 +1267,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          </div>
 
-          <div className="sun-quick-nav grid grid-cols-4 gap-2">
+          <div className="sun-quick-nav grid grid-cols-[1.4fr_1fr_1fr] gap-2">
+           <a href="#product-info" className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Ficha</a>
             {certificateHref ? (
               <Link href={certificateHref} className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Certificado</Link>
             ) : (
-              <a href="#geo-trace" className="min-w-0 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Geo trace</a>
+              <a href="#geo-trace" className="min-w-0 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Ruta</a>
             )}
-           <Link href={registerHref} className={`min-w-0 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${isFreshCommercialTap ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "pointer-events-none border-white/10 bg-slate-900/60 text-slate-500"}`}>Crear</Link>
-           <Link href={portalHref} className={`min-w-0 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${isFreshCommercialTap ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "pointer-events-none border-white/10 bg-slate-900/60 text-slate-500"}`}>Portal</Link>
-           <Link href={walletHref} className={`min-w-0 rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "pointer-events-none border-white/10 bg-slate-900/60 text-slate-500"}`}>NFT</Link>
+           <a href="#product-assets" className="min-w-0 rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">Bodega</a>
          </div>
 
-         <section className={`sun-product-first sun-product-first--${productFirstTone}`} aria-label="Producto detectado despues del tap">
+         <section id="product-info" className={`sun-product-first sun-product-first--${productFirstTone}`} aria-label="Producto detectado despues del tap">
            <div className="sun-product-first__visual">
              {productHeroImageUrl ? (
-               <img src={productHeroImageUrl} alt={`Producto real: ${productDisplayName}`} />
+               <img src={productHeroImageUrl} alt={`Producto: ${productDisplayName}`} />
              ) : (
                <SunProductHeroStage
                  kind={productVisualKind}
@@ -1259,7 +1308,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
              </div>
            </div>
            <div className="sun-product-first__content">
-             <p className="sun-product-first__eyebrow">Producto real</p>
+             <p className="sun-product-first__eyebrow">{isQrScan ? "Ficha QR" : "Producto real"}</p>
              <h2>{productFirstStatusTitle}</h2>
              <p>{productFirstStatusBody}</p>
              <div className="sun-product-first__specs">
@@ -1274,7 +1323,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                {certificateHref ? (
                  <Link href={certificateHref}>Ver certificado</Link>
                ) : (
-                 <a href="#geo-trace">Ver trazabilidad</a>
+                 <a href="#geo-trace">{isQrScan ? "Ver ruta declarada" : "Ver trazabilidad"}</a>
                )}
                <a href={primaryPostTapAction.href}>{primaryPostTapAction.label}</a>
              </div>
@@ -1289,7 +1338,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            </div>
            <div className="sun-simple-guide__action">
              <a href={primaryPostTapAction.href}>{primaryPostTapAction.label}</a>
-             <small>{isFreshCommercialTap ? "Email o celular validado, producto guardado y beneficios visibles." : blockedTapReason || recommendedAction.helper}</small>
+              <small>{isFreshCommercialTap ? "La ficha se puede leer sin iniciar sesion. Contacto y beneficios son opcionales." : blockedTapReason || recommendedAction.helper}</small>
            </div>
            <div className="sun-simple-guide__steps" aria-label="Camino simple del producto">
              {simpleJourneySteps.map((step, index) => (
@@ -1300,7 +1349,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                </div>
              ))}
            </div>
-           <div className="sun-simple-guide__score" aria-label="Score de confianza para reclamar">
+            <div className="sun-simple-guide__score" aria-label="Score de confianza del tap">
              <div>
                <span>Score de confianza</span>
                <strong>{trustScore}/100</strong>
@@ -1317,16 +1366,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="rounded-2xl border border-amber-500/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.08)_0%,rgba(245,158,11,0.02)_100%)] p-4 text-xs leading-relaxed text-amber-200 flex gap-3 items-start shadow-md mb-2">
               <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
               <div>
-                <p className="font-black uppercase tracking-wider text-amber-300">Autenticidad Física No Verificada</p>
+                <p className="font-black uppercase tracking-wider text-amber-300">Modo QR / SDK engagement</p>
                 <p className="mt-1 text-[11px] text-amber-100/80 leading-normal">
-                  Este producto fue escaneado mediante un código QR estándar en papel. Los códigos QR pueden ser duplicados o fotocopiados fácilmente. Para obtener certificados reales de propiedad digital y trazabilidad blindada anti-fraude, busca el sello <strong>NFC nexID</strong> en botellas premium.
+                  Este canal sirve para ficha publica, sommelier IA, leads, fidelizacion, analytics y campanas sin vender hardware. Para anti-clon criptografico, anti-replay fuerte, garantia sensible o propiedad, la marca debe usar un flujo NFC/SUN o validar compra aparte.
                 </p>
               </div>
             </div>
           ) : isSnapshotView ? (
             <div id="fresh-tap-required" className="rounded-2xl border border-sky-300/25 bg-sky-500/10 p-3 text-xs leading-5 text-sky-100">
               <p className="font-semibold">Consulta segura del tap</p>
-              <p className="mt-1 text-sky-100/80">Esta vista sirve para demostrar autenticidad y trazabilidad sin exponer acciones sensibles. Para ownership, puntos, marketplace o tokenizacion, toca fisicamente la etiqueta y usa el nuevo tap fresco.</p>
+              <p className="mt-1 text-sky-100/80">Esta vista sirve para demostrar autenticidad y trazabilidad sin exponer acciones sensibles. Para puntos, garantia, marketplace o tokenizacion, toca fisicamente la etiqueta y usa el nuevo tap fresco.</p>
             </div>
           ) : null}
 
@@ -1401,14 +1450,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          </div>
 
-         {isQrScan ? (
-            <QREngagementSuite 
-              wineryName={result.product?.winery || "Bodega Premium"} 
-              productName={productDisplayName} 
-            />
-          ) : null}
+          {isQrScan ? (
+             <div id="qr-engagement">
+               <QREngagementSuite
+                 wineryName={result.product?.winery || "Bodega Premium"}
+                 productName={productDisplayName}
+                 tenantSlug={tenantSlug || "demobodega"}
+                 eventId={eventId || null}
+                 bid={bid || null}
+               />
+             </div>
+           ) : null}
 
-         <section className="sun-asset-bank-card rounded-2xl border border-cyan-300/15 bg-slate-900/60 p-4">
+         <section id="product-assets" className="sun-asset-bank-card rounded-2xl border border-cyan-300/15 bg-slate-900/60 p-4">
            <div className="sun-asset-bank-card__head">
              <div>
                <p>Banco real de assets</p>
@@ -1437,7 +1491,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          <section className="sun-passport-story rounded-2xl border border-white/10 bg-slate-900/60 p-4">
            <div className="sun-passport-story__head">
              <div>
-               <p>Historia del Passport</p>
+                <p>Historia del producto</p>
                <h2>{productDisplayName}</h2>
              </div>
              <span>{tokenStatusDisplay}</span>
@@ -1488,19 +1542,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            </div>
            <div className="sun-security-footer">
              <span>Rubro: {verticalLabel}</span>
-              <span>Ownership: {claimModeLabel}</span>
+               <span>Propiedad: {claimModeLabel}</span>
               <span>Token: {tokenPolicyLabel}</span>
               <span>{tokenEvidenceLabel}{hasOnChainTx ? ` · ${tokenTx.slice(0, 10)}...` : tokenId && hasOnChainProof ? ` · #${tokenId}` : ""}</span>
           </div>
         </section>
 
-         <section id="post-tap-passport" className="sun-certificate-panel rounded-2xl border border-emerald-300/20 bg-emerald-950/15 p-4">
-           <div className="flex flex-wrap items-start justify-between gap-3">
-             <div>
-               <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Ownership + NFT</p>
-               <h2 className="mt-1 text-base font-black text-white">{nftDisplayTitle}</h2>
-               <p className="mt-2 max-w-2xl text-xs leading-5 text-emerald-50/80">{nftDisplayCopy}</p>
-             </div>
+          <section id="post-tap-passport" className="sun-certificate-panel rounded-2xl border border-emerald-300/20 bg-emerald-950/15 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Comprador verificado + certificado</p>
+                <h2 className="mt-1 text-base font-black text-white">{nftDisplayTitle}</h2>
+                <p className="mt-2 max-w-2xl text-xs leading-5 text-emerald-50/80">{nftDisplayCopy}</p>
+              </div>
              <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${tokenStatusBadgeClass}`}>
                {tokenStatusDisplay}
              </span>
@@ -1515,13 +1569,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   </span>
                 </Link>
               ) : null}
-              <Link href={portalHref} className={`sun-certificate-action ${isFreshCommercialTap ? "" : "pointer-events-none opacity-50"}`}>
-               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-               <span>
-                 <b>Claim owner</b>
-                 <em>Guardar en Passport</em>
-               </span>
-             </Link>
+              <Link href={registerHref} className={`sun-certificate-action ${isFreshCommercialTap ? "" : "pointer-events-none opacity-50"}`}>
+                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                <span>
+                  <b>Soy comprador</b>
+                  <em>Activar con prueba</em>
+                </span>
+              </Link>
              <Link href={walletHref} className={`sun-certificate-action ${isFreshCommercialTap ? "" : "pointer-events-none opacity-50"}`}>
                <WalletCards className="h-4 w-4" aria-hidden="true" />
                <span>
@@ -1532,8 +1586,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
              <Link href={tapMarketplaceHref} className={`sun-certificate-action ${isFreshCommercialTap ? "" : "pointer-events-none opacity-50"}`}>
                <Store className="h-4 w-4" aria-hidden="true" />
                <span>
-                 <b>Marketplace</b>
-                 <em>Beneficios del tenant</em>
+                <b>Beneficios</b>
+                  <em>Solo opt-in</em>
                </span>
              </Link>
            </div>
@@ -1552,7 +1606,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </div>
             ) : (
              <p className="mt-3 rounded-xl border border-white/10 bg-slate-950/45 p-3 text-[11px] leading-5 text-slate-300">
-               Al validar tu cuenta se asocia el tenant, se guarda el producto y queda visible el estado de mint en Wallet/NFT.
+               Leer la ficha no asocia propiedad. La cuenta, garantia, wallet o NFT se activan solo si el usuario inicia el flujo de comprador y cumple la politica de la marca.
              </p>
            )}
          </section>
@@ -1644,27 +1698,24 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
            </div>
          </section>
 
-         <section className="sun-actions-panel sun-panel-actions rounded-2xl border border-white/10 bg-slate-900/65 p-4">
-           <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Acciones de passport</p>
-           <div className="mt-3 grid gap-2">
-              <Link href={registerHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isFreshCommercialTap ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
-               Crear mi nexID Passport
-             </Link>
-              <Link href={productsHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isFreshCommercialTap ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
-               Guardar producto
-             </Link>
-              <Link href={tapMarketplaceHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isFreshCommercialTap ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
-               Unirme al club de esta marca
-             </Link>
-              <Link href={walletHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
-               Ver mi Wallet / NFT
-             </Link>
-           </div>
-          {isFreshCommercialTap ? (
-            <p className="mt-2 text-[11px] text-slate-300">Despues de iniciar sesion podes reclamar ownership, guardar producto y unirte al tenant automaticamente.</p>
-           ) : (
-             <p className="mt-2 text-[11px] text-amber-200">{blockedTapReason}</p>
-           )}
+          <section id="consumer-choice" className="sun-actions-panel sun-panel-actions rounded-2xl border border-white/10 bg-slate-900/65 p-4">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Opciones del lector</p>
+            <div className="mt-3 grid gap-2">
+               <a href="#product-info" className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-100">
+                Ver ficha del producto
+              </a>
+               <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-100">
+                {isQrScan ? "Dejar contacto opcional" : "Ver ruta de confianza"}
+              </a>
+               <Link href={registerHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+                Soy comprador: activar garantia
+              </Link>
+            </div>
+           {isFreshCommercialTap ? (
+             <p className="mt-2 text-[11px] text-slate-300">Nadie reclama propiedad por leer una etiqueta. Garantia, beneficios o propiedad requieren intencion explicita y prueba de compra/politica de marca.</p>
+            ) : (
+              <p className="mt-2 text-[11px] text-amber-200">{blockedTapReason}</p>
+            )}
          </section>
 
 
@@ -1673,7 +1724,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="sun-map-section__header">
               <div>
                 <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Ruta de confianza</p>
-                <h2 className="px-1 text-lg font-black text-white">Origen, tap y ownership en una sola historia</h2>
+                <h2 className="px-1 text-lg font-black text-white">Origen, tap y lectura publica en una sola historia</h2>
               </div>
               <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">Producto vivo</span>
             </div>
@@ -1817,7 +1868,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                       <p className="text-[10px] text-indigo-300 uppercase tracking-widest mt-1">PROGRAMA DE LEALTAD</p>
                    </div>
                    <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center shadow-inner">
-                      <span className="text-[11px] font-black tracking-[0.12em] text-indigo-200">VIP</span>
+                       <span className="text-[11px] font-black tracking-[0.12em] text-indigo-200">OPT</span>
                    </div>
                 </div>
 
@@ -1826,31 +1877,31 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                       <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
                          <span className="text-emerald-400 font-bold text-xs">+10</span>
                       </div>
-                      <p className="text-xs text-slate-300">Puntos disponibles por escanear este producto auténtico.</p>
+                       <p className="text-xs text-slate-300">Puntos disponibles si el lector decide unirse al club de la bodega.</p>
                    </div>
                    <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shrink-0">
                          <span className="text-amber-400 text-sm">🎫</span>
                       </div>
-                      <p className="text-xs text-slate-300">Desbloquea reservas prioritarias para visitas a la bodega.</p>
+                       <p className="text-xs text-slate-300">Reservas y experiencias se ofrecen como opt-in, no por leer la etiqueta.</p>
                    </div>
                 </div>
 
                 <Link href={rewardsHref} className="block w-full py-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-100 text-center text-sm font-bold transition-colors shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-                   Unirme al Club y Sumar Puntos
+                   Ver club opcional
                 </Link>
              </div>
          )}
    {/* Actions / Passport Banner */}
           {isFreshCommercialTap ? (
-            <div className="sun-passport-banner rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 mt-4 text-center">
-               <h3 className="text-sm font-bold text-white mb-2">Crear mi NexID Passport</h3>
-               <p className="text-xs text-cyan-200/70 mb-4">Guardá este producto en tu colección, sumá puntos y accedé a recompensas exclusivas.</p>
-               <Link href={portalHref} className="block w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-cyan-950 text-sm font-bold transition-colors">
-                  Guardar Producto
-               </Link>
-            </div>
-         ) : (
+             <div className="sun-passport-banner rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 mt-4 text-center">
+                <h3 className="text-sm font-bold text-white mb-2">Ficha de producto y bodega</h3>
+                <p className="text-xs text-cyan-200/70 mb-4">Podes leer producto, origen y ruta sin iniciar sesion. Si queres, deja contacto para recibir ficha, sorteo o sommelier.</p>
+                <a href={isQrScan ? "#qr-engagement" : "#consumer-choice"} className="block w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-cyan-950 text-sm font-bold transition-colors">
+                   Ver opciones sin activar propiedad
+                </a>
+             </div>
+          ) : (
            <div className={`sun-passport-banner rounded-2xl border p-5 mt-4 text-center ${protectedBannerClass}`}>
               <h3 className="text-sm font-bold text-white mb-2">{protectedBannerTitle}</h3>
               <p className="text-xs opacity-80 mb-4">{protectedBannerCopy}</p>
@@ -1867,21 +1918,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
          )}
 
          {/* Post-tap journey (mobile-first) */}
-         <div className="sun-posttap-panel rounded-2xl border border-emerald-500/20 bg-emerald-950/15 p-5 mt-4">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Flujo post tap</p>
-            <h3 className="mt-2 text-sm font-bold text-white">{isFreshCommercialTap ? "Crear Passport, asociar tenant y abrir NFT/club" : "Acciones protegidas hasta un nuevo tap fisico"}</h3>
-            <div className="mt-3 space-y-2 text-xs text-slate-200">
-              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">1) {isCryptoCarrier ? `Verificas autenticidad con ${carrierLabel}${isTamperCarrier ? " y estado anti-tamper" : ""}.` : `Confirmas identidad ${carrierLabel} y trazabilidad declarada.`}</div>
-              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">2) Validás email o celular. El portal asocia este evento #{eventId || "tap"} al tenant {result.identity?.tenantSlug || "tenant-demo"}.</div>
-              <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">3) Ves ownership, wallet/NFT, marketplace y beneficios sin perder el contexto del tap.</div>
-            </div>
-            <div className={`mt-3 grid gap-2 text-xs ${certificateHref ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
-              <Link href={registerHref} className={`rounded-lg border px-2 py-2 text-center font-semibold ${isFreshCommercialTap ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "pointer-events-none border-white/10 bg-slate-950/60 text-slate-500"}`}>Crear Passport</Link>
-              <Link href={portalHref} className={`rounded-lg border px-2 py-2 text-center font-semibold ${isFreshCommercialTap ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "pointer-events-none border-white/10 bg-slate-950/60 text-slate-500"}`}>Abrir Portal</Link>
-              <Link href={walletHref} className={`rounded-lg border px-2 py-2 text-center font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "pointer-events-none border-white/10 bg-slate-950/60 text-slate-500"}`}>NFT / Wallet</Link>
-              {certificateHref ? (
-                <Link href={certificateHref} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">Certificado</Link>
-              ) : null}
+          <div className="sun-posttap-panel rounded-2xl border border-emerald-500/20 bg-emerald-950/15 p-5 mt-4">
+             <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Flujo post tap</p>
+             <h3 className="mt-2 text-sm font-bold text-white">{isFreshCommercialTap ? "Leer primero, decidir despues" : "Acciones protegidas hasta un nuevo tap fisico"}</h3>
+             <div className="mt-3 space-y-2 text-xs text-slate-200">
+               <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">1) Cualquier lector ve ficha, bodega, lote, origen y trazabilidad.</div>
+               <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">2) Dejar email o celular es opcional para ficha ampliada, sorteo o consulta.</div>
+               <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">3) Garantia, propiedad o NFT solo aparecen si el usuario declara compra y la marca exige prueba.</div>
+             </div>
+             <div className={`mt-3 grid gap-2 text-xs ${certificateHref ? "grid-cols-3" : "grid-cols-2"}`}>
+               <a href="#product-info" className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center font-semibold text-emerald-100">Ficha</a>
+               <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">{isQrScan ? "Contacto opcional" : "Ruta"}</a>
+               {certificateHref ? (
+                 <Link href={certificateHref} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">Certificado</Link>
+               ) : null}
             </div>
          </div>
 
@@ -1938,11 +1988,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       </div>
 
       <div className="sun-bottom-nav z-10 mx-auto mt-4 w-full max-w-[390px] px-3 lg:hidden">
-        <div className="grid grid-cols-4 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
-          <Link href={registerHref} className={`flex min-h-11 items-center justify-center rounded-xl border px-2 text-center text-xs font-semibold ${isFreshCommercialTap ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "pointer-events-none border-white/10 bg-slate-900/70 text-slate-500"}`}>Crear</Link>
-          <Link href={portalHref} className={`flex min-h-11 items-center justify-center rounded-xl border px-2 text-center text-xs font-semibold ${isFreshCommercialTap ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "pointer-events-none border-white/10 bg-slate-900/70 text-slate-500"}`}>Portal</Link>
-          <Link href={walletHref} className={`flex min-h-11 items-center justify-center rounded-xl border px-2 text-center text-xs font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "pointer-events-none border-white/10 bg-slate-900/70 text-slate-500"}`}>NFT</Link>
-          <Link href={tapMarketplaceHref} className={`flex min-h-11 items-center justify-center rounded-xl border px-2 text-center text-xs font-semibold ${isFreshCommercialTap ? "border-violet-300/30 bg-violet-500/15 text-violet-100" : "pointer-events-none border-white/10 bg-slate-900/70 text-slate-500"}`}>Club</Link>
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
+          <a href="#product-info" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Ficha</a>
+          <a href="#geo-trace" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">Ruta</a>
+          {certificateHref ? (
+            <Link href={certificateHref} className="flex min-h-11 items-center justify-center rounded-xl border border-sky-300/30 bg-sky-500/15 px-2 text-center text-xs font-semibold text-sky-100">Certificado</Link>
+          ) : (
+            <a href="#product-assets" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 text-center text-xs font-semibold text-violet-100">Bodega</a>
+          )}
         </div>
       </div>
     </main>

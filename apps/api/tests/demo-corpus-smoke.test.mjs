@@ -22,13 +22,18 @@ test("canonical demo manifest has deterministic 10 tags", () => {
   assert.match(manifest[1], /^DEMO-2026-02,/);
 });
 
-test("required cross-vertical demo products are present in seed corpus", () => {
+test("demobodega seed corpus is wine-only and does not leak cross-vertical demos", () => {
   const seed = JSON.parse(read("apps/api/prisma/demo/demobodega_seed.json"));
-  const productNames = new Set((seed.products || []).map((item) => String(item.productName || "")));
+  const products = seed.products || [];
+  const productNames = new Set(products.map((item) => String(item.productName || "")));
+  const verticals = new Set(products.map((item) => String(item.vertical || "")));
+
+  assert.equal(products.length, 10);
+  assert.deepEqual([...verticals], ["wine"]);
   assert.equal(productNames.has("Reserva Malbec 2022"), true);
-  assert.equal(productNames.has("Dermaluxe Serum C"), true);
-  assert.equal(productNames.has("Night Repair Cream"), true);
-  assert.equal(productNames.has("VIP Festival Pass"), true);
+  assert.equal(productNames.has("Cabernet Franc Reserva 2022"), true);
+  assert.equal(productNames.has("VIP Festival Pass"), false);
+  assert.equal(productNames.has("Dermaluxe Serum C"), false);
 });
 
 test("root and api scripts expose demo seed/reset/emit commands", () => {
