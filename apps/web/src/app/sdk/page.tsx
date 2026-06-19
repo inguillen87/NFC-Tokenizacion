@@ -1,8 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Boxes, Code2, KeyRound, Radio, ShieldCheck, Store, Webhook } from "lucide-react";
+import {
+  ArrowRight,
+  Boxes,
+  Code2,
+  Gem,
+  Globe2,
+  KeyRound,
+  PackageCheck,
+  Pill,
+  Radio,
+  ScanLine,
+  ShieldCheck,
+  Sprout,
+  Store,
+  TicketCheck,
+  Truck,
+  Webhook,
+} from "lucide-react";
 import { BackLink } from "../../components/back-link";
-import { Button, Card, SectionHeading } from "@product/ui";
+import { Button, Card } from "@product/ui";
 
 export const metadata: Metadata = {
   title: "SDK y APIs · nexID",
@@ -53,18 +70,92 @@ const strategy = [
   { label: "Global", text: "Interoperabilidad con GS1 Digital Link, integraciones API y tags hibridos NFC/UHF para escala logistica." },
 ];
 
+const heroIndustryTiles = [
+  { title: "Agro & alimentos", detail: "Semillas, insumos, frio, origen y cadena verificable.", Icon: Sprout, tone: "emerald" },
+  { title: "Eventos & tickets", detail: "Accesos inviolables, cashless, rewards y antifraude.", Icon: TicketCheck, tone: "amber" },
+  { title: "Pharma & salud", detail: "Medicamentos, prospectos, trazabilidad y alertas.", Icon: Pill, tone: "sky" },
+  { title: "Retail & lujo", detail: "Producto original, experiencias y fidelizacion premium.", Icon: Gem, tone: "violet" },
+];
+
+const heroNodes = [
+  { label: "NFC", sub: "SUN / DNA", x: "22%", y: "20%", Icon: Radio },
+  { label: "QR", sub: "Legacy ready", x: "74%", y: "18%", Icon: ScanLine },
+  { label: "GS1", sub: "Digital Link", x: "80%", y: "45%", Icon: PackageCheck },
+  { label: "POS", sub: "Compra validada", x: "16%", y: "58%", Icon: Store },
+  { label: "UHF", sub: "RAIN / RFID", x: "69%", y: "72%", Icon: Truck },
+  { label: "Webhooks", sub: "Eventos firmados", x: "36%", y: "76%", Icon: Webhook },
+];
+
+function SdkGlobalHeroScene() {
+  return (
+    <div className="sdk-global-hero-scene" aria-label="nexID SDK global integration map">
+      <div className="sdk-world-grid" />
+      <div className="sdk-world-map" />
+      <div className="sdk-route sdk-route--one" />
+      <div className="sdk-route sdk-route--two" />
+      <div className="sdk-route sdk-route--three" />
+
+      <div className="sdk-core">
+        <span>nexID</span>
+        <strong>CORE</strong>
+      </div>
+
+      {heroNodes.map((node) => {
+        const Icon = node.Icon;
+        return (
+          <div key={node.label} className="sdk-node" style={{ left: node.x, top: node.y }}>
+            <Icon className="h-4 w-4" />
+            <span>{node.label}</span>
+            <small>{node.sub}</small>
+          </div>
+        );
+      })}
+
+      <div className="sdk-live-card sdk-live-card--left">
+        <span>Taps en tiempo real</span>
+        <strong>24.891</strong>
+        <em>+12.5%</em>
+        <div className="sdk-mini-bars" aria-hidden="true">
+          {[30, 48, 38, 64, 52, 76, 58].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}
+        </div>
+      </div>
+
+      <div className="sdk-live-card sdk-live-card--right">
+        <span>Confianza</span>
+        <strong>98.7%</strong>
+        <em>Sin propiedad por solo escanear</em>
+      </div>
+
+      <div className="sdk-industry-strip">
+        {heroIndustryTiles.map((item) => {
+          const Icon = item.Icon;
+          return (
+            <div key={item.title} className={`sdk-industry-tile sdk-industry-tile--${item.tone}`}>
+              <Icon className="h-5 w-5" />
+              <strong>{item.title}</strong>
+              <span>{item.detail}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function SdkPage() {
   return (
     <main className="knowledge-page-surface public-page-shell container-shell space-y-10 py-16">
       <BackLink />
 
-      <section className="grid gap-8 lg:grid-cols-[1fr_0.92fr] lg:items-center">
-        <div>
-          <SectionHeading
-            eyebrow="SDK + APIs + POS"
-            title="El salto profesional para que nexID se integre en cualquier empresa"
-            description="El SDK convierte la plataforma en infraestructura: autenticidad, QR, NFC, GS1, POS, webhooks, marketplace, leads y analytics sin forzar a cada cliente a comprar hardware desde el primer dia."
-          />
+      <section className="sdk-global-hero grid gap-8 lg:grid-cols-[0.86fr_1.14fr] lg:items-center">
+        <div className="max-w-3xl">
+          <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-200">SDK + APIs + POS + GS1</p>
+          <h1 className="mt-5 text-4xl font-black leading-[1.03] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            Infraestructura de identidad para todo lo que creas, mueves y vendes.
+          </h1>
+          <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300">
+            nexID convierte productos, empaques, eventos, lotes agro, pharma, retail y logistica en identidades digitales verificables. Se integra con QR actuales, NFC seguro, POS, webhooks, GS1 Digital Link y UHF/RFID sin encerrar a la empresa en un silo caro.
+          </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/docs">
               <Button>Ver documentacion <ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -73,18 +164,25 @@ export default function SdkPage() {
               <Button variant="secondary">Hablar de integracion</Button>
             </Link>
           </div>
-        </div>
-        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950 shadow-[0_18px_80px_rgba(8,145,178,0.18)]">
-          <img
-            src="/demo/wine-secure/real-malbec-bottle-pexels.jpg"
-            alt="Botella premium integrada con identidad digital nexID"
-            className="h-[360px] w-full object-cover opacity-80"
-          />
-          <div className="absolute inset-x-4 bottom-4 rounded-lg border border-cyan-300/25 bg-slate-950/88 p-4 backdrop-blur">
-            <p className="text-xs uppercase tracking-[0.18em] text-cyan-200">De etiqueta fisica a revenue digital</p>
-            <p className="mt-2 text-sm text-slate-200">Un tap puede informar, vender, fidelizar, verificar compra y alimentar el CRM sin confundir lectura con propiedad.</p>
+          <div className="mt-7 grid gap-3 text-xs text-slate-300 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+              <ShieldCheck className="mb-2 h-4 w-4 text-emerald-300" />
+              <b className="block text-white">Anti-fraude real</b>
+              <span>Cripto cuando hace falta, QR cuando conviene.</span>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+              <Globe2 className="mb-2 h-4 w-4 text-cyan-300" />
+              <b className="block text-white">Global por diseno</b>
+              <span>GS1, webhooks y datos listos para escalar.</span>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+              <KeyRound className="mb-2 h-4 w-4 text-amber-300" />
+              <b className="block text-white">Claim seguro</b>
+              <span>Lectura, compra y propiedad quedan separados.</span>
+            </div>
           </div>
         </div>
+        <SdkGlobalHeroScene />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 type Role = "business" | "developer";
-type ProductType = "wine" | "pharma" | "cosmetic" | "agro";
+type ProductType = "wine" | "pharma" | "cosmetic" | "agro" | "event";
 
 interface Step {
   id: number;
@@ -78,6 +78,16 @@ export function InteractiveSdkGuide() {
           accentColor: "bg-amber-600",
           icon: <Globe className="h-4 w-4 text-amber-400" />,
           aiText: "¡Hola! Soy tu Asesor Agrónomo IA. El BioNutriente F10 aumenta el rendimiento del cultivo un 18%. Dilución recomendada: 5L por hectárea. ¿Querés calcular la dosificación exacta para tu campo?"
+        };
+      case "event":
+        return {
+          title: "VIP Access - Main Stage",
+          subtitle: "Festival Nova Pass - Sector A",
+          badge: "Acceso Original Verificado",
+          color: "border-cyan-500/30 text-cyan-400 bg-cyan-500/10",
+          accentColor: "bg-cyan-600",
+          icon: <Phone className="h-4 w-4 text-cyan-400" />,
+          aiText: "Hola, soy tu asistente del evento. Este acceso es valido para Sector A, check-in rapido y beneficios cashless. Puedo mostrar mapa, horarios y puntos VIP disponibles."
         };
     }
   };
@@ -418,8 +428,8 @@ nexid.showEngagementWidget({
           </p>
 
           {/* Selector de Industria */}
-          <div className="grid grid-cols-4 gap-1.5 bg-slate-900/60 p-1 rounded-lg border border-white/5">
-            {(["wine", "pharma", "cosmetic", "agro"] as ProductType[]).map((type) => (
+          <div className="grid grid-cols-5 gap-1.5 bg-slate-900/60 p-1 rounded-lg border border-white/5">
+            {(["wine", "pharma", "cosmetic", "agro", "event"] as ProductType[]).map((type) => (
               <button
                 key={type}
                 onClick={() => setProductType(type)}
@@ -429,7 +439,7 @@ nexid.showEngagementWidget({
                     : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                {type === "wine" ? "Vino" : type === "pharma" ? "Pharma" : type === "cosmetic" ? "Cosmética" : "Agro"}
+                {type === "wine" ? "Vino" : type === "pharma" ? "Pharma" : type === "cosmetic" ? "Cosmetica" : type === "agro" ? "Agro" : "Eventos"}
               </button>
             ))}
           </div>
@@ -450,6 +460,7 @@ nexid.showEngagementWidget({
                   if (productType === "pharma") setCustomUrl("https://farma-vita.com/cardio-50");
                   if (productType === "cosmetic") setCustomUrl("https://cosmeticos-gold.com/serum");
                   if (productType === "agro") setCustomUrl("https://agro-verde.com/f10-max");
+                  if (productType === "event") setCustomUrl("https://festivalnova.com/vip-pass-a");
                 }}
                 className="p-2 bg-slate-900 border border-white/5 rounded-lg text-slate-400 hover:text-white transition"
                 title="Reset URL"
