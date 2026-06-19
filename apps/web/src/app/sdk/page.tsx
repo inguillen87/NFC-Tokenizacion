@@ -11,7 +11,6 @@ import {
   Pill,
   PlayCircle,
   Radio,
-  ScanLine,
   ShieldCheck,
   Sprout,
   Store,
@@ -21,6 +20,8 @@ import {
   Zap,
 } from "lucide-react";
 import { BrandLockup, Button, Card } from "@product/ui";
+import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
+import { platformTrustedBy, platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes, type PlatformIconKey } from "../../lib/platform-verticals";
 
 export const metadata: Metadata = {
   title: "SDK y APIs - nexID",
@@ -78,118 +79,15 @@ const trustSignals = [
   { label: "Privacidad por diseno", detail: "Datos minimos y control del usuario.", Icon: KeyRound },
 ];
 
-const industryShowcase = [
-  {
-    title: "Agro & Alimentos",
-    body: "Trazabilidad de semillas, insumos y alimentos. Lotes, origen, cadena de frio y condiciones verificables.",
-    image: "/sdk/verticals/agro-nfc-qr-traceability.webp",
-    cta: "Ver solucion",
-    metric: "Batch + sensor",
-    tags: ["QR", "NFC", "IoT"],
-    demoVertical: "agro",
-    Icon: Sprout,
-    tone: "emerald",
-  },
-  {
-    title: "Eventos & Tickets",
-    body: "Entradas inviolables, accesos cashless, pasaportes y consumos en tiempo real sin depender de QR duplicables.",
-    image: "/sdk/verticals/events-nfc-qr-access.webp",
-    cta: "Ver solucion",
-    metric: "Tap + acceso",
-    tags: ["NFC", "QR", "POS"],
-    demoVertical: "events",
-    Icon: TicketCheck,
-    tone: "amber",
-  },
-  {
-    title: "Pharma & Salud",
-    body: "Autenticidad de medicamentos, prospecto digital, alertas, recall y cadena de frio con evidencias auditables.",
-    image: "/sdk/pharma-authentication-pack.webp",
-    cta: "Ver solucion",
-    metric: "Recall listo",
-    tags: ["QR", "NFC", "Cold chain"],
-    demoVertical: "pharma",
-    Icon: Pill,
-    tone: "sky",
-  },
-  {
-    title: "Belleza & Cosmetica",
-    body: "Perfumes, skincare y envases recargables con sello NFC, QR, tamper y proteccion contra refill fraudulento.",
-    image: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp",
-    cta: "Ver solucion",
-    metric: "Tamper + refill",
-    tags: ["NFC", "QR", "Tamper"],
-    demoVertical: "cosmetics",
-    Icon: Gem,
-    tone: "rose",
-  },
-  {
-    title: "Vinos & Spirits",
-    body: "Botellas premium con NTAG 424 DNA TT, tail de apertura, passport, ownership y trazabilidad para exportacion.",
-    image: "/sdk/verticals/wine-spirits-424-tt.webp",
-    cta: "Ver solucion",
-    metric: "424 TT",
-    tags: ["424 DNA", "Tail", "SUN"],
-    demoVertical: "wine",
-    Icon: ShieldCheck,
-    tone: "cyan",
-  },
-  {
-    title: "Retail & Lujo",
-    body: "Producto original, garantia, reventa, experiencias exclusivas y fidelizacion premium desde el empaque fisico.",
-    image: "/sdk/verticals/luxury-nfc-qr-tamper.webp",
-    cta: "Ver solucion",
-    metric: "Ownership",
-    tags: ["NFC", "QR", "Cert"],
-    demoVertical: "luxury",
-    Icon: Gem,
-    tone: "violet",
-  },
-  {
-    title: "Logistica & Cadena Fria",
-    body: "Pallets, cajas, UHF/RFID, QR, NFC y sensores de temperatura para auditoria operativa y rutas verificables.",
-    image: "/sdk/verticals/logistics-uhf-nfc-qr.webp",
-    cta: "Ver solucion",
-    metric: "UHF + IoT",
-    tags: ["UHF", "NFC", "Temp"],
-    demoVertical: "logistics",
-    Icon: Truck,
-    tone: "lime",
-  },
-  {
-    title: "Electronica & Garantia",
-    body: "Garantia, propiedad, serializacion y postventa con QR/NFC sellando el empaque y evitando reclamos falsos.",
-    image: "/sdk/verticals/electronics-warranty-nfc-qr.webp",
-    cta: "Ver solucion",
-    metric: "Warranty",
-    tags: ["QR", "NFC", "DPP"],
-    demoVertical: "electronics",
-    Icon: PackageCheck,
-    tone: "indigo",
-  },
-  {
-    title: "Textil & DPP",
-    body: "Pasaporte digital de producto, etiqueta de cuidado conectada, sustentabilidad, origen y reventa verificable.",
-    image: "/sdk/verticals/textile-dpp-nfc-qr.webp",
-    cta: "Ver solucion",
-    metric: "EU DPP",
-    tags: ["QR", "NFC", "DPP"],
-    demoVertical: "textile",
-    Icon: PackageCheck,
-    tone: "slate",
-  },
-];
-
-const heroNodes = [
-  { label: "NFC", sub: "SUN / DNA", x: "34%", y: "27%", Icon: Radio },
-  { label: "QR", sub: "Codigos dinamicos", x: "70%", y: "22%", Icon: ScanLine },
-  { label: "GS1", sub: "Digital Link", x: "79%", y: "48%", Icon: PackageCheck },
-  { label: "POS", sub: "Verificacion & venta", x: "24%", y: "55%", Icon: Store },
-  { label: "UHF / RFID", sub: "RAIN / EPC", x: "76%", y: "74%", Icon: Truck },
-  { label: "Webhooks", sub: "Eventos en tiempo real", x: "42%", y: "78%", Icon: Webhook },
-];
-
-const trustedBy = ["Bodegas", "Agro empresas", "Farmalab", "Retail Group", "Logic Cargo", "Eventos VIP"];
+const iconByKey: Record<PlatformIconKey, typeof Sprout> = {
+  sprout: Sprout,
+  ticket: TicketCheck,
+  pill: Pill,
+  gem: Gem,
+  shield: ShieldCheck,
+  truck: Truck,
+  package: PackageCheck,
+};
 
 function SdkTopNav() {
   return (
@@ -222,58 +120,24 @@ function SdkTopNav() {
 
 function SdkGlobalHeroScene() {
   return (
-    <div className="sdk-global-hero-scene" aria-label="nexID SDK global integration map">
-      <div className="sdk-world-grid" />
-      <div className="sdk-world-map" />
-      <div className="sdk-route sdk-route--one" />
-      <div className="sdk-route sdk-route--two" />
-      <div className="sdk-route sdk-route--three" />
-
-      <div className="sdk-core">
-        <span>nexID</span>
-        <strong>CORE</strong>
-      </div>
-
-      {heroNodes.map((node) => {
-        const Icon = node.Icon;
-        return (
-          <div key={node.label} className="sdk-node" style={{ left: node.x, top: node.y }}>
-            <Icon className="h-4 w-4" />
-            <span>{node.label}</span>
-            <small>{node.sub}</small>
-          </div>
-        );
-      })}
-
-      <div className="sdk-live-card sdk-live-card--left">
-        <span>Taps en tiempo real</span>
-        <strong>24.891</strong>
-        <em>+12.5% vs. 24h anteriores</em>
-        <div className="sdk-mini-bars" aria-hidden="true">
-          {[30, 42, 35, 55, 66, 50, 78, 68].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}
-        </div>
-      </div>
-
-      <div className="sdk-live-card sdk-live-card--right">
-        <span>Verificaciones</span>
-        <strong>98.7%</strong>
-        <em>Indice de confianza</em>
-      </div>
-
-      <div className="sdk-live-card sdk-live-card--device">
-        <span>Dispositivos activos</span>
-        <strong>18.732</strong>
-        <em>Web, movil, POS e IoT</em>
-      </div>
-    </div>
+    <PremiumTraceabilityGlobe
+      title="Infraestructura viva para productos reales"
+      subtitle="Taps, rutas, origen, riesgo y canales QR/NFC/UHF conectados al CRM y al SDK."
+      caption="Una capa visual y operativa para mostrarle a cualquier empresa que nexID no es solo vino: es identidad fisica verificable."
+      points={traceabilityGlobePoints}
+      routes={traceabilityGlobeRoutes}
+      ctaHref="/demo-lab?vertical=wine"
+      ctaLabel="Abrir Demo Lab"
+      className="sdk-global-hero-globe"
+    />
   );
 }
 
 function SdkIndustryShowcase() {
   return (
     <section className="sdk-industry-showcase">
-      {industryShowcase.map((item) => {
-        const Icon = item.Icon;
+      {platformVerticals.map((item) => {
+        const Icon = iconByKey[item.icon];
         return (
           <article key={item.title} className={`sdk-industry-card sdk-industry-card--${item.tone}`}>
             <div className="sdk-industry-image-wrap">
@@ -288,7 +152,7 @@ function SdkIndustryShowcase() {
                 {item.tags.map((tag) => <span key={tag}>{tag}</span>)}
               </div>
               <Link href={`/demo-lab?vertical=${item.demoVertical}`}>
-                {item.cta} <ArrowRight className="h-4 w-4" />
+                Ver solucion <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </article>
@@ -315,7 +179,7 @@ export default function SdkPage() {
               <span>mueves y vendes.</span>
             </h1>
             <p>
-              nexID SDK y APIs convierten cualquier producto, empaque, evento o activo fisico en una identidad digital verificable. Integracion en horas, preparada para millones de interacciones, sin atar a las marcas a proveedores cerrados ni contratos dificiles de cambiar.
+              nexID SDK y APIs convierten cualquier producto, empaque, evento o activo fisico en una identidad digital verificable. Integracion en horas, preparada para millones de interacciones, sin depender de integraciones caras y dificiles de cambiar.
             </p>
             <div className="sdk-hero-actions">
               <Link href="/docs">
@@ -345,7 +209,7 @@ export default function SdkPage() {
 
         <div className="sdk-trusted-rail">
           <span>Confian en nexID</span>
-          {trustedBy.map((item) => <strong key={item}>{item}</strong>)}
+          {platformTrustedBy.map((item) => <strong key={item}>{item}</strong>)}
         </div>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -366,7 +230,7 @@ export default function SdkPage() {
         <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <Card className="p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Por que lo construimos</p>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-white">Para integrar sin depender de proveedores cerrados</h2>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-white">Para integrar sin quedar atrapado en contratos caros</h2>
             <p className="mt-4 text-sm leading-7 text-slate-300">
               Muchos competidores venden plataformas potentes, pero la adopcion suele depender de procesos cerrados, integraciones a medida y pricing poco flexible. nexID debe ganar por velocidad de implementacion, costo de entrada, seguridad por politica y experiencia clara para consumidor, marca e inversor.
             </p>

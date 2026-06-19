@@ -4,12 +4,32 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
 import { PremiumVectorMap } from "@product/ui";
+import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 
 type Vertical = "wine" | "events" | "cosmetics" | "agro" | "fashion";
+type HeroSelectorKey = PlatformDemoVertical;
 
 const HeroThreeStage = dynamic(() => import("./hero-three-stage").then((mod) => mod.HeroThreeStage), {
   ssr: false,
 });
+
+const heroSceneFallbackByDemoVertical: Record<HeroSelectorKey, Vertical> = {
+  wine: "wine",
+  bracelet: "events",
+  pharma: "cosmetics",
+  perfume: "cosmetics",
+  seeds: "agro",
+  sneaker: "fashion",
+  logistics: "agro",
+  electronics: "fashion",
+  textile: "fashion",
+};
+
+function verticalLabel(item: PlatformVertical, locale: AppLocale) {
+  if (locale === "en") return item.titleEn;
+  if (locale === "pt-BR") return item.titlePt;
+  return item.title;
+}
 
 type LocationPoint = {
   city: string;
@@ -1000,9 +1020,10 @@ function HeroProductShowcase({
 }
 
 export function HeroScene({ locale }: { locale: AppLocale }) {
-  const [active, setActive] = useState<Vertical>("wine");
+  const [selectedVertical, setSelectedVertical] = useState<HeroSelectorKey>("wine");
   const [tapIndex, setTapIndex] = useState(0);
   const txt = labels[locale] || labels["es-AR"];
+  const active = heroSceneFallbackByDemoVertical[selectedVertical] || "wine";
   const data = useMemo(() => txt.items[active], [txt, active]);
   const tap = tapLocations[tapIndex % tapLocations.length];
   const distance = haversineKm(data.origin, tap);
@@ -1038,9 +1059,16 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
           </button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {(["wine", "events", "cosmetics", "agro", "fashion"] as const).map((key) => (
-            <button suppressHydrationWarning key={key} type="button" onClick={() => setActive(key)} className={`hero-vertical-pill ${active === key ? "hero-vertical-pill--active" : ""}`}>
-              {txt.items[key].label}
+          {platformVerticals.map((item) => (
+            <button
+              suppressHydrationWarning
+              key={item.id}
+              type="button"
+              onClick={() => setSelectedVertical(item.demoVertical)}
+              className={`hero-vertical-pill ${selectedVertical === item.demoVertical ? "hero-vertical-pill--active" : ""}`}
+              title={verticalLabel(item, locale)}
+            >
+              {item.shortTitle}
             </button>
           ))}
         </div>
@@ -1123,8 +1151,10 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {txt.ctaBands.map((item) => (
-          <span key={item} className="hero-scene-band rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">{item}</span>
+        {platformVerticals.map((item) => (
+          <span key={item.id} className="hero-scene-band rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
+            {verticalLabel(item, locale)}
+          </span>
         ))}
       </div>
     </div>

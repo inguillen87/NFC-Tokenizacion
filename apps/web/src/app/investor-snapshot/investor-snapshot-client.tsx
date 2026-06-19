@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@product/ui";
+import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
+import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } from "../../lib/platform-verticals";
 
 // Multi-market FAQs object
 const faqCategories = [
@@ -230,6 +232,50 @@ const slides = [
     ]
   }
 ];
+
+function InvestorVerticalMoat() {
+  return (
+    <section className="grid gap-5 rounded-3xl border border-cyan-300/15 bg-slate-950/72 p-5 shadow-2xl backdrop-blur-md xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="space-y-5">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">Mercados atacables</p>
+          <h2 className="mt-2 text-2xl font-black leading-tight tracking-tight text-white md:text-3xl">La misma infraestructura para muchos rubros, no una demo aislada.</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+            QR baja la barrera de entrada, NFC/424 TT protege productos de mayor valor y el SDK conecta POS, CRM, marketplace, webhooks e inteligencia comercial por industria.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {platformVerticals.map((item) => (
+            <a key={item.id} href={`/demo-lab?vertical=${item.demoVertical}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
+              <div className="h-24 overflow-hidden bg-slate-950">
+                <img src={item.image} alt={`${item.title} nexID`} className="h-full w-full object-cover opacity-82 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
+              </div>
+              <div className="p-3">
+                <p className="text-sm font-black text-white">{item.title}</p>
+                <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{item.body}</p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {item.tags.slice(0, 3).map((tag) => (
+                    <span key={tag} className="rounded-full border border-white/10 bg-slate-950/70 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-cyan-100">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+      <PremiumTraceabilityGlobe
+        title="Trazabilidad global por industria"
+        subtitle="Una vista para explicar origen, destino, riesgo y canales a inversores sin abrumarlos."
+        caption="SDK abierto, datos propios y carrier mix: QR, NFC, 424 TT, UHF y sensores."
+        points={traceabilityGlobePoints}
+        routes={traceabilityGlobeRoutes}
+        ctaHref="/sdk"
+        ctaLabel="Ver SDK"
+        compact
+      />
+    </section>
+  );
+}
 
 export function ThreeDProduct({ active, tapping, labelImageUrl, industry, chipModel }: { active: boolean; tapping: boolean; labelImageUrl?: string | null; industry: string; chipModel: string }) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -2712,6 +2758,8 @@ export function InvestorSnapshotClient() {
           })}
         </div>
       </header>
+
+      <InvestorVerticalMoat />
 
       {/* Split Interactive Screen */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch relative">

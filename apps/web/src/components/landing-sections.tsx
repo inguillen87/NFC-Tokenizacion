@@ -1,8 +1,10 @@
-import { Card, SectionHeading, Badge, Button, WorldMapRealtime } from "@product/ui";
+import { Card, SectionHeading, Badge, Button } from "@product/ui";
 import { schedulingUrls } from "@product/config";
 import Link from "next/link";
 import { HeroScene } from "./hero-scene";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
+import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
+import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } from "../lib/platform-verticals";
 
 type Content = any;
 
@@ -275,71 +277,13 @@ export function PremiumVerticalShowcaseSection({ locale }: { locale: string }) {
       secondary: "Abrir Demo Lab",
     };
 
-  const verticals = [
-    {
-      title: isEn ? "Agro & Food" : isBr ? "Agro & Alimentos" : "Agro & Alimentos",
-      image: "/sdk/verticals/agro-nfc-qr-traceability.webp",
-      tags: ["QR", "NFC", "IoT"],
-      body: isEn ? "Seeds, inputs, origin, cold chain and field verification." : isBr ? "Sementes, insumos, origem, cadeia fria e verificacao em campo." : "Semillas, insumos, origen, cadena fria y verificacion en campo.",
-      demoVertical: "agro",
-    },
-    {
-      title: isEn ? "Events & Access" : isBr ? "Eventos & Acesso" : "Eventos & Accesos",
-      image: "/sdk/verticals/events-nfc-qr-access.webp",
-      tags: ["NFC", "QR", "POS"],
-      body: isEn ? "Wristbands, tickets, cashless, VIP access and live capacity." : isBr ? "Pulseiras, ingressos, cashless, VIP e capacidade em vivo." : "Pulseras, tickets, cashless, VIP y capacidad en vivo.",
-      demoVertical: "events",
-    },
-    {
-      title: isEn ? "Pharma & Health" : isBr ? "Pharma & Saude" : "Pharma & Salud",
-      image: "/sdk/pharma-authentication-pack.webp",
-      tags: ["QR", "NFC", "Recall"],
-      body: isEn ? "Medicine authenticity, patient guidance, recall and audit trail." : isBr ? "Autenticidade, guia ao paciente, recall e auditoria." : "Autenticidad, guia al paciente, recall y auditoria.",
-      demoVertical: "pharma",
-    },
-    {
-      title: isEn ? "Wine & Spirits" : isBr ? "Vinhos & Spirits" : "Vinos & Spirits",
-      image: "/sdk/verticals/wine-spirits-424-tt.webp",
-      tags: ["424 TT", "SUN", "Tail"],
-      body: isEn ? "Tamper tail, premium passport, export control and ownership." : isBr ? "Tail tamper, passport premium, exportacao e propriedade." : "Tail tamper, passport premium, exportacion y propiedad.",
-      demoVertical: "wine",
-    },
-    {
-      title: isEn ? "Luxury & Retail" : isBr ? "Luxo & Retail" : "Lujo & Retail",
-      image: "/sdk/verticals/luxury-nfc-qr-tamper.webp",
-      tags: ["NFC", "QR", "Cert"],
-      body: isEn ? "Original product, warranty, resale, drops and loyalty." : isBr ? "Produto original, garantia, revenda, drops e loyalty." : "Producto original, garantia, reventa, drops y loyalty.",
-      demoVertical: "luxury",
-    },
-    {
-      title: isEn ? "Logistics & Cold Chain" : isBr ? "Logistica & Cadeia Fria" : "Logistica & Cadena Fria",
-      image: "/sdk/verticals/logistics-uhf-nfc-qr.webp",
-      tags: ["UHF", "NFC", "Temp"],
-      body: isEn ? "Pallets, cartons, temperature sensors and route control." : isBr ? "Pallets, caixas, sensores e controle de rota." : "Pallets, cajas, sensores y control de ruta.",
-      demoVertical: "logistics",
-    },
-    {
-      title: isEn ? "Electronics & Warranty" : isBr ? "Eletronica & Garantia" : "Electronica & Garantia",
-      image: "/sdk/verticals/electronics-warranty-nfc-qr.webp",
-      tags: ["DPP", "NFC", "QR"],
-      body: isEn ? "Serial ownership, warranty, support and anti-fraud claims." : isBr ? "Serial, garantia, suporte e reclamos antifraude." : "Serial, garantia, soporte y reclamos antifraude.",
-      demoVertical: "electronics",
-    },
-    {
-      title: isEn ? "Textile & DPP" : isBr ? "Textil & DPP" : "Textil & DPP",
-      image: "/sdk/verticals/textile-dpp-nfc-qr.webp",
-      tags: ["DPP", "QR", "NFC"],
-      body: isEn ? "Care label, origin, sustainability and resale passport." : isBr ? "Etiqueta, origem, sustentabilidade e passaporte de revenda." : "Etiqueta, origen, sustentabilidad y pasaporte de reventa.",
-      demoVertical: "textile",
-    },
-    {
-      title: isEn ? "Beauty & Cosmetics" : isBr ? "Beleza & Cosmetica" : "Belleza & Cosmetica",
-      image: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp",
-      tags: ["Tamper", "NFC", "QR"],
-      body: isEn ? "Perfume, skincare, refill prevention and premium engagement." : isBr ? "Perfume, skincare, anti-refill e experiencia premium." : "Perfume, skincare, anti-refill y experiencia premium.",
-      demoVertical: "cosmetics",
-    },
-  ];
+  const verticals = platformVerticals.map((item) => ({
+    title: isEn ? item.titleEn : isBr ? item.titlePt : item.title,
+    image: item.image,
+    tags: item.tags,
+    body: isEn ? item.bodyEn : isBr ? item.bodyPt : item.body,
+    demoVertical: item.demoVertical,
+  }));
 
   return (
     <section className="landing-premium-verticals container-shell py-12 md:py-16">
@@ -637,9 +581,15 @@ export function RadarSection({ radar, locale }: { radar: any; locale: string }) 
               ))}
             </ul>
          </div>
-         <div className="relative rounded-2xl border border-white/10 bg-slate-900/40 p-4 shadow-2xl backdrop-blur-xl h-[400px] overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent transition-opacity group-hover:opacity-50" />
-            <WorldMapRealtime title="" subtitle="" points={[{ lat: -34.6, lng: -58.3, city: "Buenos Aires", scans: 140, risk: 0 }]} initialExpanded={false} />
+         <div className="relative overflow-hidden">
+            <PremiumTraceabilityGlobe
+              title="Red operativa global"
+              subtitle="Origen, taps, riesgo y rutas comerciales en vivo."
+              caption="El mismo motor visual alimenta SDK, Demo Lab, CRM e Investor."
+              points={traceabilityGlobePoints}
+              routes={traceabilityGlobeRoutes}
+              compact
+            />
             <div className="absolute bottom-4 right-4 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-lg p-3 text-xs text-slate-300 shadow-xl">
                <div className="flex items-center gap-2 mb-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />

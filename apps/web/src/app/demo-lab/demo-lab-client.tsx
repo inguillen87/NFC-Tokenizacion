@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
-import { WorldMapRealtime } from "@product/ui";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
+import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
+import { platformVerticals } from "../../lib/platform-verticals";
 import { ThreeDBottle } from "../investor-snapshot/investor-snapshot-client";
 
 type Role = "ceo" | "operator" | "buyer";
@@ -41,7 +42,7 @@ type DemoScenario = {
 
 type DemoRealProductVariant = "studio" | "cinematic" | "stage";
 
-const DEMO_VERTICAL_ORDER: Vertical[] = ["wine", "seeds", "pharma", "perfume", "bracelet", "sneaker", "logistics", "electronics", "textile"];
+const DEMO_VERTICAL_ORDER: Vertical[] = platformVerticals.map((item) => item.demoVertical as Vertical);
 
 const DEMO_VERTICAL_ALIASES: Record<string, Vertical> = {
   wine: "wine",
@@ -711,13 +712,14 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
           <span className="ml-2 text-xs font-semibold text-slate-400">{LOCATIONS.origin.city} -&gt; {destination.city} - {routeKm.toLocaleString(locale)} km</span>
         </summary>
         <div className="mt-4">
-          <WorldMapRealtime
+          <PremiumTraceabilityGlobe
             title={txt.controls.mapTitle}
             subtitle={`${LOCATIONS.origin.city} -> ${destination.city}. ${txt.controls.distance}: ${routeKm.toLocaleString(locale)} km.`}
             points={mapPoints}
             routes={[{ fromLat: LOCATIONS.origin.lat, fromLng: LOCATIONS.origin.lng, toLat: destination.lat, toLng: destination.lng, tone: activeBeat.mode === "replay" ? "warn" : "info" }]}
-            metadataRows={(point) => [{ label: "Coordenadas", value: `${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` }, { label: "Abrir", value: mapsLink(point) }]}
-            initialExpanded
+            caption="Vista ejecutiva: origen, destino, distancia, estado y senales de riesgo. Las coordenadas finas se conservan en el evento y el CRM."
+            ctaHref={mapsLink(destination)}
+            ctaLabel="Abrir ubicacion"
           />
         </div>
       </details>
