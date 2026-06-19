@@ -82,18 +82,20 @@ const industryShowcase = [
   {
     title: "Agro & Alimentos",
     body: "Trazabilidad de semillas, insumos y alimentos. Lotes, origen, cadena de frio y condiciones verificables.",
-    image: "/demo/agro-secure/real-seed-packet-pexels.jpg",
+    image: "/sdk/verticals/agro-nfc-qr-traceability.png",
     cta: "Ver solucion",
     metric: "Batch + sensor",
+    tags: ["QR", "NFC", "IoT"],
     Icon: Sprout,
     tone: "emerald",
   },
   {
     title: "Eventos & Tickets",
     body: "Entradas inviolables, accesos cashless, pasaportes y consumos en tiempo real sin depender de QR duplicables.",
-    image: "/demo/events-basic/real-event-wristband-pexels.jpg",
+    image: "/sdk/verticals/events-nfc-qr-access.png",
     cta: "Ver solucion",
     metric: "Tap + acceso",
+    tags: ["NFC", "QR", "POS"],
     Icon: TicketCheck,
     tone: "amber",
   },
@@ -103,17 +105,69 @@ const industryShowcase = [
     image: "/sdk/pharma-authentication-pack.png",
     cta: "Ver solucion",
     metric: "Recall listo",
+    tags: ["QR", "NFC", "Cold chain"],
     Icon: Pill,
     tone: "sky",
   },
   {
+    title: "Belleza & Cosmetica",
+    body: "Perfumes, skincare y envases recargables con sello NFC, QR, tamper y proteccion contra refill fraudulento.",
+    image: "/sdk/verticals/cosmetics-nfc-qr-tamper.png",
+    cta: "Ver solucion",
+    metric: "Tamper + refill",
+    tags: ["NFC", "QR", "Tamper"],
+    Icon: Gem,
+    tone: "rose",
+  },
+  {
+    title: "Vinos & Spirits",
+    body: "Botellas premium con NTAG 424 DNA TT, tail de apertura, passport, ownership y trazabilidad para exportacion.",
+    image: "/sdk/verticals/wine-spirits-424-tt.png",
+    cta: "Ver solucion",
+    metric: "424 TT",
+    tags: ["424 DNA", "Tail", "SUN"],
+    Icon: ShieldCheck,
+    tone: "cyan",
+  },
+  {
     title: "Retail & Lujo",
     body: "Producto original, garantia, reventa, experiencias exclusivas y fidelizacion premium desde el empaque fisico.",
-    image: "/demo/luxury-basic/real-premium-sneakers-stage-crop.jpg",
+    image: "/sdk/verticals/luxury-nfc-qr-tamper.png",
     cta: "Ver solucion",
     metric: "Ownership",
+    tags: ["NFC", "QR", "Cert"],
     Icon: Gem,
     tone: "violet",
+  },
+  {
+    title: "Logistica & Cadena Fria",
+    body: "Pallets, cajas, UHF/RFID, QR, NFC y sensores de temperatura para auditoria operativa y rutas verificables.",
+    image: "/sdk/verticals/logistics-uhf-nfc-qr.png",
+    cta: "Ver solucion",
+    metric: "UHF + IoT",
+    tags: ["UHF", "NFC", "Temp"],
+    Icon: Truck,
+    tone: "lime",
+  },
+  {
+    title: "Electronica & Garantia",
+    body: "Garantia, propiedad, serializacion y postventa con QR/NFC sellando el empaque y evitando reclamos falsos.",
+    image: "/sdk/verticals/electronics-warranty-nfc-qr.png",
+    cta: "Ver solucion",
+    metric: "Warranty",
+    tags: ["QR", "NFC", "DPP"],
+    Icon: PackageCheck,
+    tone: "indigo",
+  },
+  {
+    title: "Textil & DPP",
+    body: "Pasaporte digital de producto, etiqueta de cuidado conectada, sustentabilidad, origen y reventa verificable.",
+    image: "/sdk/verticals/textile-dpp-nfc-qr.png",
+    cta: "Ver solucion",
+    metric: "EU DPP",
+    tags: ["QR", "NFC", "DPP"],
+    Icon: PackageCheck,
+    tone: "slate",
   },
 ];
 
@@ -221,6 +275,9 @@ function SdkIndustryShowcase() {
               <Icon className="h-6 w-6" />
               <h2>{item.title}</h2>
               <p>{item.body}</p>
+              <div className="sdk-industry-tags">
+                {item.tags.map((tag) => <span key={tag}>{tag}</span>)}
+              </div>
               <Link href="/demo-lab">
                 {item.cta} <ArrowRight className="h-4 w-4" />
               </Link>
