@@ -73,7 +73,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
                 <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
                   {meetingCta}
                 </a>
-                <Link href="/demo-lab" className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
+                <Link href="/demo-lab?vertical=wine" className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
                   {demoCta}
                 </Link>
                 <Link href="/login?next=/me" className="rounded-xl border border-purple-500/35 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-300 transition hover:bg-purple-500/20">
@@ -204,7 +204,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
             <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight tracking-tight text-white md:text-4xl">{copy.title}</h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">{copy.body}</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link href="/demo-lab" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/25">
+              <Link href="/demo-lab?vertical=wine" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/25">
                 {copy.primary}
               </Link>
               <Link href="/sun" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/20">
@@ -243,6 +243,132 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
             </div>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function PremiumVerticalShowcaseSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+      kicker: "One platform, many industries",
+      title: "nexID is not a wine demo. It is infrastructure for every physical asset that needs trust.",
+      body: "Start with QR when cost matters, add NFC or NTAG 424 DNA TT when the product needs cryptographic proof, and connect POS, logistics, loyalty and CRM without forcing the buyer into a confusing registration flow.",
+      cta: "Open SDK & APIs",
+      secondary: "Open Demo Lab",
+    }
+    : isBr
+    ? {
+      kicker: "Uma plataforma, muitos setores",
+      title: "nexID nao e uma demo de vinho. E infraestrutura para qualquer ativo fisico que precise de confianca.",
+      body: "Comece com QR quando custo importa, adicione NFC ou NTAG 424 DNA TT quando o produto precisa de prova criptografica, e conecte POS, logistica, loyalty e CRM sem empurrar o comprador para um cadastro confuso.",
+      cta: "Abrir SDK & APIs",
+      secondary: "Abrir Demo Lab",
+    }
+    : {
+      kicker: "Una plataforma, muchos rubros",
+      title: "nexID no es una demo de vinos. Es infraestructura para cualquier activo fisico que necesite confianza.",
+      body: "Empeza con QR cuando el costo importa, suma NFC o NTAG 424 DNA TT cuando el producto necesita prueba criptografica, y conecta POS, logistica, loyalty y CRM sin empujar al comprador a un registro confuso.",
+      cta: "Abrir SDK & APIs",
+      secondary: "Abrir Demo Lab",
+    };
+
+  const verticals = [
+    {
+      title: isEn ? "Agro & Food" : isBr ? "Agro & Alimentos" : "Agro & Alimentos",
+      image: "/sdk/verticals/agro-nfc-qr-traceability.webp",
+      tags: ["QR", "NFC", "IoT"],
+      body: isEn ? "Seeds, inputs, origin, cold chain and field verification." : isBr ? "Sementes, insumos, origem, cadeia fria e verificacao em campo." : "Semillas, insumos, origen, cadena fria y verificacion en campo.",
+      demoVertical: "agro",
+    },
+    {
+      title: isEn ? "Events & Access" : isBr ? "Eventos & Acesso" : "Eventos & Accesos",
+      image: "/sdk/verticals/events-nfc-qr-access.webp",
+      tags: ["NFC", "QR", "POS"],
+      body: isEn ? "Wristbands, tickets, cashless, VIP access and live capacity." : isBr ? "Pulseiras, ingressos, cashless, VIP e capacidade em vivo." : "Pulseras, tickets, cashless, VIP y capacidad en vivo.",
+      demoVertical: "events",
+    },
+    {
+      title: isEn ? "Pharma & Health" : isBr ? "Pharma & Saude" : "Pharma & Salud",
+      image: "/sdk/pharma-authentication-pack.webp",
+      tags: ["QR", "NFC", "Recall"],
+      body: isEn ? "Medicine authenticity, patient guidance, recall and audit trail." : isBr ? "Autenticidade, guia ao paciente, recall e auditoria." : "Autenticidad, guia al paciente, recall y auditoria.",
+      demoVertical: "pharma",
+    },
+    {
+      title: isEn ? "Wine & Spirits" : isBr ? "Vinhos & Spirits" : "Vinos & Spirits",
+      image: "/sdk/verticals/wine-spirits-424-tt.webp",
+      tags: ["424 TT", "SUN", "Tail"],
+      body: isEn ? "Tamper tail, premium passport, export control and ownership." : isBr ? "Tail tamper, passport premium, exportacao e propriedade." : "Tail tamper, passport premium, exportacion y propiedad.",
+      demoVertical: "wine",
+    },
+    {
+      title: isEn ? "Luxury & Retail" : isBr ? "Luxo & Retail" : "Lujo & Retail",
+      image: "/sdk/verticals/luxury-nfc-qr-tamper.webp",
+      tags: ["NFC", "QR", "Cert"],
+      body: isEn ? "Original product, warranty, resale, drops and loyalty." : isBr ? "Produto original, garantia, revenda, drops e loyalty." : "Producto original, garantia, reventa, drops y loyalty.",
+      demoVertical: "luxury",
+    },
+    {
+      title: isEn ? "Logistics & Cold Chain" : isBr ? "Logistica & Cadeia Fria" : "Logistica & Cadena Fria",
+      image: "/sdk/verticals/logistics-uhf-nfc-qr.webp",
+      tags: ["UHF", "NFC", "Temp"],
+      body: isEn ? "Pallets, cartons, temperature sensors and route control." : isBr ? "Pallets, caixas, sensores e controle de rota." : "Pallets, cajas, sensores y control de ruta.",
+      demoVertical: "logistics",
+    },
+    {
+      title: isEn ? "Electronics & Warranty" : isBr ? "Eletronica & Garantia" : "Electronica & Garantia",
+      image: "/sdk/verticals/electronics-warranty-nfc-qr.webp",
+      tags: ["DPP", "NFC", "QR"],
+      body: isEn ? "Serial ownership, warranty, support and anti-fraud claims." : isBr ? "Serial, garantia, suporte e reclamos antifraude." : "Serial, garantia, soporte y reclamos antifraude.",
+      demoVertical: "electronics",
+    },
+    {
+      title: isEn ? "Textile & DPP" : isBr ? "Textil & DPP" : "Textil & DPP",
+      image: "/sdk/verticals/textile-dpp-nfc-qr.webp",
+      tags: ["DPP", "QR", "NFC"],
+      body: isEn ? "Care label, origin, sustainability and resale passport." : isBr ? "Etiqueta, origem, sustentabilidade e passaporte de revenda." : "Etiqueta, origen, sustentabilidad y pasaporte de reventa.",
+      demoVertical: "textile",
+    },
+    {
+      title: isEn ? "Beauty & Cosmetics" : isBr ? "Beleza & Cosmetica" : "Belleza & Cosmetica",
+      image: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp",
+      tags: ["Tamper", "NFC", "QR"],
+      body: isEn ? "Perfume, skincare, refill prevention and premium engagement." : isBr ? "Perfume, skincare, anti-refill e experiencia premium." : "Perfume, skincare, anti-refill y experiencia premium.",
+      demoVertical: "cosmetics",
+    },
+  ];
+
+  return (
+    <section className="landing-premium-verticals container-shell py-12 md:py-16">
+      <div className="landing-premium-verticals__head">
+        <div>
+          <p>{copy.kicker}</p>
+          <h2>{copy.title}</h2>
+        </div>
+        <div>
+          <span>{copy.body}</span>
+          <div>
+            <Link href="/sdk">{copy.cta}</Link>
+            <Link href="/demo-lab?vertical=wine">{copy.secondary}</Link>
+          </div>
+        </div>
+      </div>
+      <div className="landing-premium-verticals__grid">
+        {verticals.map((item) => (
+          <Link key={item.title} href={`/demo-lab?vertical=${item.demoVertical}`} className="landing-premium-vertical-card">
+            <img src={item.image} alt={`${item.title} nexID`} loading="lazy" />
+            <div className="landing-premium-vertical-card__body">
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+              <div>
+                {item.tags.map((tag) => <span key={tag}>{tag}</span>)}
+              </div>
+            </div>
+          </Link>
+        ))}
       </div>
     </section>
   );
@@ -550,7 +676,7 @@ export function InteractiveDemoSection({ locale }: { locale: string }) {
                      <Link href="/sun" className="inline-flex items-center justify-center rounded-xl bg-white text-slate-950 px-6 py-3 font-bold transition hover:bg-slate-200 shadow-lg shadow-white/10">
                         Probar pasaporte celular
                      </Link>
-                     <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white transition hover:bg-white/10 backdrop-blur-sm">
+                     <Link href="/demo-lab?vertical=wine" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white transition hover:bg-white/10 backdrop-blur-sm">
                         Abrir Demo Lab
                      </Link>
                   </div>
@@ -911,7 +1037,7 @@ export function PremiumIdentitySection({ content, locale }: { content: Content; 
             <h2 className="mt-3 max-w-3xl text-3xl font-black leading-[1.12] tracking-tight text-white md:text-5xl">{copy.title}</h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">{copy.body}</p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/demo-lab" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-3 text-sm font-bold text-cyan-100 transition hover:bg-cyan-300/10">{copy.demo}</Link>
+              <Link href="/demo-lab?vertical=wine" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-3 text-sm font-bold text-cyan-100 transition hover:bg-cyan-300/10">{copy.demo}</Link>
               <Link href="/docs" className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10">{copy.docs}</Link>
               <Link href="/me/wallet" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-4 py-3 text-sm font-bold text-violet-100 transition hover:bg-violet-300/10">{copy.wallet}</Link>
             </div>
@@ -1306,7 +1432,7 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
   const isBr = locale === "pt-BR";
   const ctaLinks = isEn
     ? [
-      { href: "/demo-lab", label: "View live demo", body: "Bottle, seal, tap route, portal and marketplace in one guided scene." },
+      { href: "/demo-lab?vertical=wine", label: "View live demo", body: "Bottle, seal, tap route, portal and marketplace in one guided scene." },
       { href: schedulingUrls.meeting, label: "Schedule meeting", body: "Open the calendar and reserve a slot for business, reseller or customer pilots.", external: true },
       { href: "/?contact=demo#contact-modal", label: "Book a demo", body: "Create the lead and save the case in the admin flow." },
       { href: "/?contact=sales#contact-modal", label: "Talk to sales", body: "Discuss tags, volumes, tenant setup and rollout." },
@@ -1314,14 +1440,14 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
     ]
     : isBr
     ? [
-      { href: "/demo-lab", label: "Ver demo ao vivo", body: "Garrafa, lacre, rota, portal e marketplace em uma cena guiada." },
+      { href: "/demo-lab?vertical=wine", label: "Ver demo ao vivo", body: "Garrafa, lacre, rota, portal e marketplace em uma cena guiada." },
       { href: schedulingUrls.meeting, label: "Agendar reuniao", body: "Abre o calendario para reservar horario com marcas, resellers ou clientes.", external: true },
       { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Cria o lead e salva o caso no fluxo admin." },
       { href: "/?contact=sales#contact-modal", label: "Falar com vendas", body: "Tags, volume, tenant e rollout comercial." },
       { href: "/docs", label: "Ler docs", body: "API, SUN, NTAG, dashboard e arquitetura de integracao." },
     ]
     : [
-      { href: "/demo-lab", label: "Ver demo en vivo", body: "Botella, sello, ruta del toque, portal y tienda en una escena guiada." },
+      { href: "/demo-lab?vertical=wine", label: "Ver demo en vivo", body: "Botella, sello, ruta del toque, portal y tienda en una escena guiada." },
       { href: schedulingUrls.meeting, label: "Agendar reunion", body: "Abre el calendario y reserva una reunion con empresarios, distribuidores o clientes.", external: true },
       { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Crea el contacto y guarda el caso en el flujo del panel." },
       { href: "/?contact=sales#contact-modal", label: "Hablar con ventas", body: "Etiquetas, volumen, cuenta de marca y despliegue comercial." },
@@ -1336,7 +1462,7 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-6">{content.cta.title}</h2>
            <p className="mx-auto max-w-2xl text-base leading-7 text-slate-400 mb-8">{content.cta.body}</p>
            <div className="flex flex-wrap justify-center gap-4">
-             <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-sm font-bold text-slate-950 transition hover:bg-slate-200 hover:scale-105 shadow-xl">
+             <Link href="/demo-lab?vertical=wine" className="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-sm font-bold text-slate-950 transition hover:bg-slate-200 hover:scale-105 shadow-xl">
                 {isEn ? "View live demo" : isBr ? "Ver demo ao vivo" : "Ver demo en vivo"}
              </Link>
              <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-8 py-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">

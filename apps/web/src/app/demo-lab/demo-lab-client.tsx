@@ -6,12 +6,23 @@ import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { WorldMapRealtime } from "@product/ui";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
-import { InstitutionalVideoPanel } from "../../components/institutional-video-panel";
 import { ThreeDBottle } from "../investor-snapshot/investor-snapshot-client";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
-type Vertical = "wine" | "seeds" | "creamJar" | "perfume" | "creamTube" | "bracelet" | "ticket" | "sneaker";
+type Vertical =
+  | "wine"
+  | "seeds"
+  | "pharma"
+  | "creamJar"
+  | "perfume"
+  | "creamTube"
+  | "bracelet"
+  | "ticket"
+  | "sneaker"
+  | "logistics"
+  | "electronics"
+  | "textile";
 type SimulationMode = "valid" | "tamper" | "replay";
 type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
 type DemoModalView = "mobile" | "nft" | "claim" | null;
@@ -30,17 +41,68 @@ type DemoScenario = {
 
 type DemoRealProductVariant = "studio" | "cinematic" | "stage";
 
-const DEMO_VERTICAL_ORDER: Vertical[] = ["wine", "seeds", "creamJar", "perfume", "bracelet", "sneaker"];
+const DEMO_VERTICAL_ORDER: Vertical[] = ["wine", "seeds", "pharma", "perfume", "bracelet", "sneaker", "logistics", "electronics", "textile"];
+
+const DEMO_VERTICAL_ALIASES: Record<string, Vertical> = {
+  wine: "wine",
+  wines: "wine",
+  vino: "wine",
+  vinos: "wine",
+  spirits: "wine",
+  agro: "seeds",
+  food: "seeds",
+  alimentos: "seeds",
+  seeds: "seeds",
+  semillas: "seeds",
+  pharma: "pharma",
+  health: "pharma",
+  salud: "pharma",
+  medicamento: "pharma",
+  medicamentos: "pharma",
+  cosmetics: "perfume",
+  beauty: "perfume",
+  belleza: "perfume",
+  cosmetica: "perfume",
+  perfume: "perfume",
+  events: "bracelet",
+  event: "bracelet",
+  tickets: "bracelet",
+  access: "bracelet",
+  eventos: "bracelet",
+  luxury: "sneaker",
+  retail: "sneaker",
+  lujo: "sneaker",
+  logistics: "logistics",
+  logistica: "logistics",
+  "cold-chain": "logistics",
+  cadenafria: "logistics",
+  electronics: "electronics",
+  electronica: "electronics",
+  warranty: "electronics",
+  garantia: "electronics",
+  textile: "textile",
+  textil: "textile",
+  dpp: "textile",
+};
+
+function normalizeDemoVertical(value?: string | null): Vertical {
+  const normalized = String(value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+  return DEMO_VERTICAL_ALIASES[normalized] || "wine";
+}
 
 const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> = {
   wine: { imageUrl: "/demo/wine-secure/real-malbec-bottle-pexels.jpg", credit: "Pexels / Imperio Ame" },
   seeds: { imageUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg", credit: "Pexels / RDNE Stock project" },
+  pharma: { imageUrl: "/sdk/pharma-authentication-pack.webp", credit: "nexID generated asset" },
   creamJar: { imageUrl: "/demo/cosmetics-secure/real-premium-skincare-pexels.jpg", credit: "Pexels / skincare studio" },
   perfume: { imageUrl: "/demo/cosmetics-secure/real-premium-perfume-crop-pexels.jpg", credit: "Pexels / Suhashan Jar" },
   creamTube: { imageUrl: "/demo/cosmetics-secure/real-cosmetic-bottles-pexels.jpg", credit: "Pexels / Daria Liudnaya" },
   bracelet: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
   ticket: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
   sneaker: { imageUrl: "/demo/luxury-basic/real-premium-sneakers-stage-crop.jpg", credit: "Pexels / Jibarofoto" },
+  logistics: { imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp", credit: "nexID generated asset" },
+  electronics: { imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp", credit: "nexID generated asset" },
+  textile: { imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp", credit: "nexID generated asset" },
 };
 
 type DemoEvent = {
@@ -65,6 +127,18 @@ type DemoSummary = {
   tagCount?: number;
   crm?: { leads?: number; tickets?: number; orders?: number };
   events?: DemoEvent[];
+};
+
+type DemoMapPoint = {
+  city: string;
+  country?: string;
+  lat: number;
+  lng: number;
+  scans?: number;
+  risk?: number;
+  status?: string;
+  lastSeen?: string;
+  vertical?: string;
 };
 
 const LOCATIONS = {
@@ -115,12 +189,16 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Botella", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
+      pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caja y lote auditables", "Prospecto digital", "Cadena de frio", "Recall por unidad"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "Garantia premium", "Anti mercado gris"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "Garantia", "Anti falsificacion"] },
       creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "Garantia", "Recompra"] },
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
       sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "Dueno/token"] },
+      logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caja cadena fria", visual: "logistics-pack-demo", proof: ["Pallet/caja trazable", "Sensor temperatura", "Ruta auditada", "Entrega verificada"] },
+      electronics: { label: "Electronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificable", "Garantia por unidad", "Soporte postventa", "Reclamo antifraude"] },
+      textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta pasaporte textil", visual: "textile-dpp-demo", proof: ["Origen y composicion", "Cuidado conectado", "Sustentabilidad", "Reventa verificable"] },
     },
     controls: {
       narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto fisico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Linea animada, distancia y enlaces de ubicacion para construir confianza.", realFeed: "Registro publico real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Crear NFT", syncing: "Conectando con DemoBodega...", synced: "DemoBodega sincronizado con servidor.", unavailable: "DemoBodega no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en DemoBodega.", failedScan: "No se pudo simular el toque.", configs: [
@@ -156,12 +234,16 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Garrafa", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta na garrafa", "Rolha / lacre aberto", "SUN anti-replay", "Origem + toque global"] },
       seeds: { label: "Sementes", profile: "QR + NFC UID", product: "Envelope de semente certificada", visual: "seed-packet-demo", proof: ["Envelope antifraude", "Lote e variedade", "Custodia agro", "Uso rural"] },
+      pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caixa e lote auditaveis", "Bula digital", "Cadeia fria", "Recall por unidade"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Lacre tampa-envase", "Abertura muda estado", "Garantia premium", "Anti grey-market"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Lacre entre tampa e gargalo", "Lote e serie", "Garantia", "Antifalsificacao"] },
       creamTube: { label: "Creme", profile: "NTAG213 + lote", product: "Creme dermocosmetico", visual: "cream-tube-demo", proof: ["Lacre sobre tampa flip", "Lote visivel", "Garantia", "Recompra"] },
       bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulseira", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
       ticket: { label: "Ingresso", profile: "QR + NFC UID", product: "Ingresso festa VIP", visual: "party-ticket-demo", proof: ["QR visivel", "UID respaldo", "Acesso por zona", "Replay bloqueado"] },
       sneaker: { label: "Tenis", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque na lingueta", "UID + SUN", "Raridade visivel", "Dono/token"] },
+      logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caixa cadeia fria", visual: "logistics-pack-demo", proof: ["Pallet/caixa rastreavel", "Sensor temperatura", "Rota auditada", "Entrega verificada"] },
+      electronics: { label: "Eletronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificavel", "Garantia por unidade", "Suporte pos-venda", "Reclamo antifraude"] },
+      textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta passport textil", visual: "textile-dpp-demo", proof: ["Origem e composicao", "Cuidado conectado", "Sustentabilidade", "Revenda verificavel"] },
     },
     controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/demo: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao DemoBodega...", synced: "DemoBodega sincronizado com backend.", unavailable: "DemoBodega indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no DemoBodega.", failedScan: "Nao foi possivel simular o toque.", configs: [
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
@@ -196,12 +278,16 @@ const copy: Record<AppLocale, {
     verticals: {
       wine: { label: "Bottle", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Label on bottle", "Uncork / broken seal", "SUN anti-replay", "Origin + global tap"] },
       seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Certified seed packet", visual: "seed-packet-demo", proof: ["Anti-counterfeit packet", "Lot and variety", "Agro custody", "Rural use"] },
+      pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Serialized medicine pack", visual: "pharma-pack-demo", proof: ["Auditable pack and lot", "Digital leaflet", "Cold chain", "Unit recall"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Premium dermocosmetic set", visual: "cream-jar-demo", proof: ["Lid-package seal", "Opening changes state", "Premium warranty", "Anti grey-market"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Premium perfume", visual: "perfume-demo", proof: ["Cap-neck seal", "Lot and serial", "Warranty", "Anti-counterfeit"] },
       creamTube: { label: "Cream", profile: "NTAG213 + batch", product: "Dermocosmetic cream", visual: "cream-tube-demo", proof: ["Seal over flip cap", "Visible batch", "Warranty", "Repurchase"] },
       bracelet: { label: "Wristband", profile: "NTAG215", product: "VIP event wristband", visual: "event-bracelet-demo", proof: ["Phone taps wristband", "Serialized UID", "VIP zones", "Duplicate block"] },
       ticket: { label: "Ticket", profile: "QR + NFC UID", product: "VIP party ticket", visual: "party-ticket-demo", proof: ["Visible QR", "UID fallback", "Zone access", "Replay blocked"] },
       sneaker: { label: "Sneaker", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Tongue tap", "UID + SUN", "Rarity visible", "Owner/token"] },
+      logistics: { label: "Logistics", profile: "UHF + NFC + sensor", product: "Cold-chain carton", visual: "logistics-pack-demo", proof: ["Traceable pallet/carton", "Temperature sensor", "Audited route", "Verified delivery"] },
+      electronics: { label: "Electronics", profile: "QR + NFC warranty", product: "Serialized device", visual: "electronics-demo", proof: ["Verifiable serial", "Unit warranty", "Support", "Anti-fraud claim"] },
+      textile: { label: "Textile DPP", profile: "QR + NFC DPP", product: "Textile passport label", visual: "textile-dpp-demo", proof: ["Origin and composition", "Connected care", "Sustainability", "Verified resale"] },
     },
     controls: { narrative: "Audience narrative", cinematicStart: "Start cinematic", cinematicStop: "Pause cinematic", product: "Physical product", mobile: "Mobile result", feed: "Command feed", valid: "Register valid Zurich tap", tamper: "Break seal / uncork", replay: "Simulate duplicate replay", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Live map: product origin vs customer tap", mapSubtitle: "Animated route, distance and location links to build trust.", realFeed: "Real public feed connected.", adminKey: "Read-only demo mode: private scan writes run in the secured environment.", noGeo: "No geolocated API events yet.", origin: "Origin", currentTap: "Current tap", distance: "Distance", openOrigin: "Open origin", openTap: "Open tap", joinClub: "Join club", warranty: "Activate warranty", tokenize: "Tokenize premium", syncing: "Connecting to DemoBodega...", synced: "DemoBodega synced with backend.", unavailable: "DemoBodega unavailable.", sendingScan: "Sending scan", registeredScan: "Scan registered in DemoBodega.", failedScan: "Could not simulate the tap.", configs: [
       { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
@@ -316,10 +402,10 @@ async function readDemoSummary(): Promise<DemoSummary> {
   return data as DemoSummary;
 }
 
-export function DemoLabClient({ locale }: { locale: AppLocale }) {
+export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; initialVertical?: string }) {
   const txt = copy[locale] || copy["es-AR"];
   const [role, setRole] = useState<Role>("ceo");
-  const [vertical, setVertical] = useState<Vertical>("wine");
+  const [vertical, setVertical] = useState<Vertical>(() => normalizeDemoVertical(initialVertical));
   const [beat, setBeat] = useState<Beat>(1);
   const [running, setRunning] = useState(false);
   const [summary, setSummary] = useState<DemoSummary | null>(null);
@@ -330,6 +416,10 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
   const [modalView, setModalView] = useState<DemoModalView>(null);
 
   useEffect(() => setFallbackLastSeen(new Date().toISOString()), []);
+
+  useEffect(() => {
+    setVertical(normalizeDemoVertical(initialVertical));
+  }, [initialVertical]);
 
   useEffect(() => {
     let alive = true;
@@ -387,7 +477,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
   const realProductBadge = getRealProductBadge(locale);
   const liveEvents = Array.isArray(summary?.events) ? summary.events : [];
   const latestEvent = liveEvents[0];
-  const livePoints = liveEvents.flatMap((event) => {
+  const livePoints = liveEvents.flatMap<DemoMapPoint>((event) => {
     const lat = toFiniteNumber(event.lat);
     const lng = toFiniteNumber(event.lng);
     if (lat === null || lng === null) return [];
@@ -404,7 +494,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
     }];
   });
 
-  const mapPoints = useMemo(() => {
+  const mapPoints = useMemo<DemoMapPoint[]>(() => {
     const originPoint = { city: LOCATIONS.origin.city, country: LOCATIONS.origin.country, lat: LOCATIONS.origin.lat, lng: LOCATIONS.origin.lng, scans: 1, risk: 0, status: "ORIGEN LISTO", lastSeen: fallbackLastSeen, vertical };
     if (livePoints.length) return [originPoint, ...livePoints.slice(0, 18)];
     return [originPoint, { city: destination.city, country: destination.country, lat: destination.lat, lng: destination.lng, scans: 1, risk: activeBeat.mode === "replay" ? 1 : 0, status: activeBeat.status, lastSeen: fallbackLastSeen, vertical }];
@@ -496,6 +586,7 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         routeKm={routeKm}
         locale={locale}
         summary={summary}
+        mapPoints={mapPoints}
         liveEvents={liveEvents}
         latestEvent={latestEvent}
         simulating={simulating}
@@ -514,19 +605,6 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         onTamper={() => void simulate("tamper")}
         onReplay={() => void simulate("replay")}
         onRefresh={() => void refreshSummary()}
-      />
-
-      <DemoDifferentiatorStrip beat={beat} onGuided={startGuidedDemo} />
-
-      <InstitutionalVideoPanel locale={locale} variant="demo" className="mt-5" />
-
-      <DemoCinematicShowcase
-        beat={beat}
-        locale={locale}
-        vertical={vertical}
-        product={activeVertical.product}
-        label={activeVertical.label}
-        onGuided={startGuidedDemo}
       />
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.16fr_0.84fr]">
@@ -556,14 +634,6 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
           </div>
 
           <div className="mt-5 grid min-w-0 gap-4">
-            <DemoFirstRunGuide
-              beat={beat}
-              simulating={simulating}
-              onGuided={startGuidedDemo}
-              onValid={() => void simulate("valid")}
-              onOpen={() => void simulate("tamper")}
-              onMobile={() => setModalView("mobile")}
-            />
             <div className="demo-lab-product-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -652,15 +722,6 @@ export function DemoLabClient({ locale }: { locale: AppLocale }) {
         </div>
       </details>
 
-      <section className="mt-5 grid gap-4 lg:grid-cols-4">
-        {txt.controls.configs.map((item) => (
-          <article key={item.title} className="demo-lab-panel rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-            <p className="text-sm font-black text-white">{item.title}</p>
-            <p className="mt-2 text-xs leading-6 text-slate-300">{item.body}</p>
-          </article>
-        ))}
-      </section>
-
       <DemoFlowModal
         view={modalView}
         txt={txt}
@@ -691,6 +752,7 @@ function DemoLabStudioHero({
   routeKm,
   locale,
   summary,
+  mapPoints,
   liveEvents,
   latestEvent,
   simulating,
@@ -710,6 +772,7 @@ function DemoLabStudioHero({
   routeKm: number;
   locale: AppLocale;
   summary: DemoSummary | null;
+  mapPoints: DemoMapPoint[];
   liveEvents: DemoEvent[];
   latestEvent?: DemoEvent;
   simulating: boolean;
@@ -728,14 +791,6 @@ function DemoLabStudioHero({
     { icon: CalendarDays, label: "Cosecha", value: vertical === "wine" ? "2022" : "Lote vigente" },
     { icon: Fingerprint, label: "Perfil", value: activeVertical.profile },
     { icon: ShieldCheck, label: "Estado", value: scenario.stateLabel },
-  ];
-  const provenance = [
-    { label: "Origen", value: "Valle de Uco, Mendoza, Argentina" },
-    { label: "Elaboracion", value: "Bodega Demo - lote MZA-2026-0424" },
-    { label: "Embotellado", value: vertical === "wine" ? "750 ml - 100% Malbec" : activeVertical.product },
-    { label: "Distribucion", value: "Canal autorizado" },
-    { label: "Punto de venta", value: `${destination.city}, ${destination.country}` },
-    { label: "Ultima lectura", value: latestEvent ? `${latestEvent.city || destination.city} - ${formatEventResult(latestEvent.result)}` : "Hace segundos" },
   ];
   const trustItems = [
     { icon: ShieldCheck, title: "Infraestructura segura", body: "Datos inmutables en blockchain" },
@@ -871,6 +926,15 @@ function DemoLabStudioHero({
         </div>
 
         <aside className="demo-lab-studio-right">
+          <DemoLiveOpsMap
+            points={mapPoints}
+            liveEvents={liveEvents}
+            vertical={vertical}
+            destination={destination}
+            locale={locale}
+            routeKm={routeKm}
+          />
+
           <div className="demo-lab-studio-info">
             <div className="demo-lab-studio-panel-head">
               <p>Informacion del producto</p>
@@ -888,24 +952,6 @@ function DemoLabStudioHero({
                 );
               })}
             </div>
-          </div>
-
-          <div className="demo-lab-studio-info demo-lab-studio-info--provenance">
-            <div className="demo-lab-studio-panel-head">
-              <p>Procedencia verificada</p>
-              <span>{routeKm.toLocaleString(locale)} km</span>
-            </div>
-            <ol>
-              {provenance.map((item, index) => (
-                <li key={`${item.label}-${index}`}>
-                  <span />
-                  <div>
-                    <strong>{item.label}</strong>
-                    <small>{item.value}</small>
-                  </div>
-                </li>
-              ))}
-            </ol>
           </div>
         </aside>
       </div>
@@ -949,6 +995,102 @@ function DemoStudioMiniProduct({ vertical }: { vertical: Vertical }) {
     <span className={`demo-lab-studio-mini demo-lab-studio-mini--${vertical}`} aria-hidden="true">
       <i />
     </span>
+  );
+}
+
+function projectDemoMapPoint(point: Pick<DemoMapPoint, "lat" | "lng">) {
+  const x = ((point.lng + 180) / 360) * 100;
+  const y = ((90 - point.lat) / 180) * 100;
+  return { x: Math.max(4, Math.min(96, x)), y: Math.max(7, Math.min(93, y)) };
+}
+
+function formatDemoTapTime(value?: string, locale: AppLocale = "es-AR") {
+  if (!value) return locale === "en" ? "live" : "en vivo";
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value;
+  return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }).format(parsed);
+}
+
+function DemoLiveOpsMap({
+  points,
+  liveEvents,
+  vertical,
+  destination,
+  locale,
+  routeKm,
+}: {
+  points: DemoMapPoint[];
+  liveEvents: DemoEvent[];
+  vertical: Vertical;
+  destination: DemoLocation;
+  locale: AppLocale;
+  routeKm: number;
+}) {
+  const visiblePoints = points.slice(0, 9);
+  const origin = visiblePoints[0] || { city: LOCATIONS.origin.city, country: LOCATIONS.origin.country, lat: LOCATIONS.origin.lat, lng: LOCATIONS.origin.lng, scans: 1, risk: 0, status: "ORIGEN" };
+  const originXY = projectDemoMapPoint(origin);
+  const recentEvents = liveEvents.slice(0, 4);
+  const totalScans = visiblePoints.reduce((acc, point) => acc + (point.scans || 1), 0);
+  const risks = visiblePoints.reduce((acc, point) => acc + (point.risk || 0), 0);
+  const title = locale === "en" ? "Live taps map" : locale === "pt-BR" ? "Mapa de taps ao vivo" : "Mapa de taps en vivo";
+  const feedTitle = locale === "en" ? "Latest taps" : locale === "pt-BR" ? "Ultimos taps" : "Ultimos taps";
+  const fallbackText = locale === "en" ? "Waiting for live feed; showing route simulation." : locale === "pt-BR" ? "Aguardando feed real; mostrando rota simulada." : "Esperando feed real; mostrando ruta simulada.";
+
+  return (
+    <div className="demo-lab-studio-info demo-lab-studio-live-map">
+      <div className="demo-lab-studio-panel-head">
+        <p>{title}</p>
+        <span><i /> {totalScans} taps</span>
+      </div>
+      <div className={`demo-lab-mini-map demo-lab-mini-map--${vertical}`} aria-label={`${title}: ${LOCATIONS.origin.city} a ${destination.city}`}>
+        <svg viewBox="0 0 100 58" role="img" aria-hidden="true">
+          <defs>
+            <linearGradient id="demo-lab-map-route" x1="0" x2="1">
+              <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#34d399" stopOpacity="0.86" />
+            </linearGradient>
+          </defs>
+          <path className="demo-lab-mini-map__land" d="M8 29 C16 11 33 9 43 19 C51 28 43 39 54 44 C67 50 77 43 91 31 C96 43 86 55 64 55 C40 55 16 49 8 29Z" />
+          {visiblePoints.slice(1).map((point, index) => {
+            const xy = projectDemoMapPoint(point);
+            return <path key={`${point.city}-${index}`} className={point.risk ? "is-risk" : ""} d={`M ${originXY.x} ${originXY.y} C ${(originXY.x + xy.x) / 2} ${Math.min(originXY.y, xy.y) - 9}, ${(originXY.x + xy.x) / 2} ${Math.max(originXY.y, xy.y) + 7}, ${xy.x} ${xy.y}`} />;
+          })}
+        </svg>
+        {visiblePoints.map((point, index) => {
+          const xy = projectDemoMapPoint(point);
+          return (
+            <span
+              key={`${point.city}-${point.lat}-${point.lng}-${index}`}
+              className={`demo-lab-mini-map__point ${index === 0 ? "is-origin" : ""} ${(point.risk || 0) > 0 ? "is-risk" : ""}`}
+              style={{ left: `${xy.x}%`, top: `${xy.y}%` }}
+              title={`${point.city}, ${point.country || ""}`}
+            >
+              <i />
+            </span>
+          );
+        })}
+        <div className="demo-lab-mini-map__legend">
+          <span>{LOCATIONS.origin.city}</span>
+          <strong>{routeKm.toLocaleString(locale)} km</strong>
+          <span>{destination.city}</span>
+        </div>
+      </div>
+      <div className="demo-lab-mini-map__stats">
+        <span><strong>{visiblePoints.length}</strong> nodos</span>
+        <span><strong>{risks}</strong> riesgo</span>
+        <span><strong>{formatDemoTapTime(visiblePoints[1]?.lastSeen, locale)}</strong> ultimo</span>
+      </div>
+      <div className="demo-lab-live-feed-mini">
+        <p>{feedTitle}</p>
+        {recentEvents.length ? recentEvents.map((event) => (
+          <div key={event.id || `${event.created_at}-${event.uidMasked}`}>
+            <span>{formatEventResult(event.result)}</span>
+            <strong>{event.city || destination.city}</strong>
+            <small>{event.uidMasked || event.sku || "UID n/a"} / {formatDemoTapTime(event.created_at, locale)}</small>
+          </div>
+        )) : <small>{fallbackText}</small>}
+      </div>
+    </div>
   );
 }
 
@@ -1355,6 +1497,17 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
     };
   }
 
+  if (vertical === "pharma") {
+    return {
+      ...base,
+      family: "Caja pharma serializada",
+      evidence: "Lote, prospecto, cadena de frio y recall unidos",
+      proofTitle: "Pack + lote + auditoria",
+      tagTitle: "QR + NFC",
+      crop: "square",
+    };
+  }
+
   if (vertical === "bracelet" || vertical === "ticket") {
     return {
       ...base,
@@ -1374,6 +1527,39 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
       proofTitle: "Frasco + tapa + lote",
       tagTitle: "NTAG 424 DNA",
       crop: "portrait",
+    };
+  }
+
+  if (vertical === "logistics") {
+    return {
+      ...base,
+      family: "Caja logistica con sensor",
+      evidence: "Ruta, temperatura y entrega auditadas",
+      proofTitle: "UHF + NFC + IoT",
+      tagTitle: "Cadena fria",
+      crop: "wide",
+    };
+  }
+
+  if (vertical === "electronics") {
+    return {
+      ...base,
+      family: "Producto electronico serializado",
+      evidence: "Serial, garantia y soporte antifraude vinculados",
+      proofTitle: "Serial + garantia",
+      tagTitle: "QR + NFC",
+      crop: "wide",
+    };
+  }
+
+  if (vertical === "textile") {
+    return {
+      ...base,
+      family: "Etiqueta textil DPP",
+      evidence: "Origen, composicion, cuidado y reventa verificables",
+      proofTitle: "DPP + etiqueta",
+      tagTitle: "QR + NFC",
+      crop: "wide",
     };
   }
 

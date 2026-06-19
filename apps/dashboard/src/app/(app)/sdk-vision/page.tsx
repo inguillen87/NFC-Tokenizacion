@@ -30,7 +30,7 @@ export default async function SdkVisionPage() {
               Un **SDK (Software Development Kit)** es un kit de desarrollo de software que permite a cualquier programador conectar un sistema físico (como un chip NFC seguro o un código QR de botella) a una aplicación digital (e-commerce, Shopify, apps móviles) con muy pocas líneas de código.
             </p>
             <p className="mt-3 text-sm leading-relaxed text-slate-400">
-              Mientras competidores globales como **Authena**, **Qliktag** y **Selinko** operan como "silos cerrados" —donde las bodegas están obligadas a pasar por procesos de consultoría lentos, contratos corporativos caros y usar sus aplicaciones propietarias rígidas— **nexID provee una infraestructura abierta**. Al dar un SDK público (`@nexid/sdk`), permitimos que cualquier desarrollador integre autenticación de originalidad y programas de fidelidad con total libertad y bajo costo de entrada.
+              Mientras competidores globales como **Authena**, **Qliktag** y **Selinko** obligan a depender de proveedores cerrados, consultoria lenta, contratos dificiles de cambiar y aplicaciones rigidas, **nexID provee una infraestructura abierta**. Al dar un SDK publico (`@nexid/sdk`), permitimos que cualquier desarrollador integre autenticacion de originalidad y programas de fidelidad con libertad, velocidad y bajo costo de entrada.
             </p>
           </div>
         </div>

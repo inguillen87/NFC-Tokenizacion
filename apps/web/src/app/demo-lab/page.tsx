@@ -18,7 +18,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function DemoLabPage() {
+type DemoLabPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   const { locale } = await getWebI18n();
-  return <DemoLabClient locale={locale} />;
+  const params = searchParams ? await searchParams : {};
+  const initialVertical = firstParam(params.vertical || params.rubro || params.industry || params.useCase);
+  return <DemoLabClient locale={locale} initialVertical={initialVertical} />;
 }

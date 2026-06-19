@@ -24,7 +24,7 @@ import { BrandLockup, Button, Card } from "@product/ui";
 
 export const metadata: Metadata = {
   title: "SDK y APIs - nexID",
-  description: "SDK, APIs, webhooks y flujo POS para integrar autenticidad, QR, NFC, GS1 Digital Link y marketplace sin encerrar a las marcas en silos caros.",
+  description: "SDK, APIs, webhooks y flujo POS para integrar autenticidad, QR, NFC, GS1 Digital Link y marketplace sin atar a las marcas a proveedores cerrados.",
 };
 
 const code = `import { NexIdClient } from "@nexid/sdk";
@@ -86,6 +86,7 @@ const industryShowcase = [
     cta: "Ver solucion",
     metric: "Batch + sensor",
     tags: ["QR", "NFC", "IoT"],
+    demoVertical: "agro",
     Icon: Sprout,
     tone: "emerald",
   },
@@ -96,6 +97,7 @@ const industryShowcase = [
     cta: "Ver solucion",
     metric: "Tap + acceso",
     tags: ["NFC", "QR", "POS"],
+    demoVertical: "events",
     Icon: TicketCheck,
     tone: "amber",
   },
@@ -106,6 +108,7 @@ const industryShowcase = [
     cta: "Ver solucion",
     metric: "Recall listo",
     tags: ["QR", "NFC", "Cold chain"],
+    demoVertical: "pharma",
     Icon: Pill,
     tone: "sky",
   },
@@ -116,6 +119,7 @@ const industryShowcase = [
     cta: "Ver solucion",
     metric: "Tamper + refill",
     tags: ["NFC", "QR", "Tamper"],
+    demoVertical: "cosmetics",
     Icon: Gem,
     tone: "rose",
   },
@@ -126,6 +130,7 @@ const industryShowcase = [
     cta: "Ver solucion",
     metric: "424 TT",
     tags: ["424 DNA", "Tail", "SUN"],
+    demoVertical: "wine",
     Icon: ShieldCheck,
     tone: "cyan",
   },
@@ -136,6 +141,7 @@ const industryShowcase = [
     cta: "Ver solucion",
     metric: "Ownership",
     tags: ["NFC", "QR", "Cert"],
+    demoVertical: "luxury",
     Icon: Gem,
     tone: "violet",
   },
@@ -146,6 +152,7 @@ const industryShowcase = [
     cta: "Ver solucion",
     metric: "UHF + IoT",
     tags: ["UHF", "NFC", "Temp"],
+    demoVertical: "logistics",
     Icon: Truck,
     tone: "lime",
   },
@@ -156,6 +163,7 @@ const industryShowcase = [
     cta: "Ver solucion",
     metric: "Warranty",
     tags: ["QR", "NFC", "DPP"],
+    demoVertical: "electronics",
     Icon: PackageCheck,
     tone: "indigo",
   },
@@ -166,6 +174,7 @@ const industryShowcase = [
     cta: "Ver solucion",
     metric: "EU DPP",
     tags: ["QR", "NFC", "DPP"],
+    demoVertical: "textile",
     Icon: PackageCheck,
     tone: "slate",
   },
@@ -278,7 +287,7 @@ function SdkIndustryShowcase() {
               <div className="sdk-industry-tags">
                 {item.tags.map((tag) => <span key={tag}>{tag}</span>)}
               </div>
-              <Link href="/demo-lab">
+              <Link href={`/demo-lab?vertical=${item.demoVertical}`}>
                 {item.cta} <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -299,16 +308,20 @@ export default function SdkPage() {
           <div className="sdk-premium-copy">
             <p className="sdk-hero-eyebrow">Identidad - Autenticidad - Confianza</p>
             <h1>
-              Infraestructura de identidad para todo lo que creas, <span>mueves y vendes.</span>
+              Infraestructura de identidad{" "}
+              <br />
+              para todo lo que creas,{" "}
+              <br />
+              <span>mueves y vendes.</span>
             </h1>
             <p>
-              nexID SDK y APIs convierten cualquier producto, empaque, evento o activo fisico en una identidad digital verificable. Integracion en horas, preparada para millones de interacciones, sin encerrar a las marcas en silos caros.
+              nexID SDK y APIs convierten cualquier producto, empaque, evento o activo fisico en una identidad digital verificable. Integracion en horas, preparada para millones de interacciones, sin atar a las marcas a proveedores cerrados ni contratos dificiles de cambiar.
             </p>
             <div className="sdk-hero-actions">
               <Link href="/docs">
                 <Button><Code2 className="mr-2 h-4 w-4" />Explorar documentacion</Button>
               </Link>
-              <Link href="/demo-lab">
+              <Link href="/demo-lab?vertical=wine">
                 <Button variant="secondary"><PlayCircle className="mr-2 h-4 w-4" />Ver demo interactiva</Button>
               </Link>
             </div>
@@ -353,7 +366,7 @@ export default function SdkPage() {
         <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <Card className="p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Por que lo construimos</p>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-white">Para romper el silo cerrado sin bajar el nivel enterprise</h2>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-white">Para integrar sin depender de proveedores cerrados</h2>
             <p className="mt-4 text-sm leading-7 text-slate-300">
               Muchos competidores venden plataformas potentes, pero la adopcion suele depender de procesos cerrados, integraciones a medida y pricing poco flexible. nexID debe ganar por velocidad de implementacion, costo de entrada, seguridad por politica y experiencia clara para consumidor, marca e inversor.
             </p>
