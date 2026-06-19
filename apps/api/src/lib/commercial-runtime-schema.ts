@@ -359,7 +359,7 @@ export async function ensureSdkSchema() {
           name text NOT NULL DEFAULT 'SDK key',
           key_prefix text NOT NULL,
           key_hash text NOT NULL UNIQUE,
-          scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products"]'::jsonb,
+          scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events"]'::jsonb,
           status text NOT NULL DEFAULT 'active',
           last_used_at timestamptz,
           expires_at timestamptz,
@@ -372,7 +372,7 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'SDK key'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS key_prefix text NOT NULL DEFAULT 'legacy'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS key_hash text`;
-      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products"]'::jsonb`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events"]'::jsonb`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS last_used_at timestamptz`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS expires_at timestamptz`;
@@ -427,6 +427,26 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS meta jsonb NOT NULL DEFAULT '{}'::jsonb`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_claim_requests_tenant_created ON sdk_claim_requests(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_claim_requests_bid_uid ON sdk_claim_requests(bid, uid_hex)`;
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS sdk_external_events (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          api_key_id uuid REFERENCES tenant_api_keys(id) ON DELETE SET NULL,
+          batch_id uuid REFERENCES batches(id) ON DELETE SET NULL,
+          tag_id uuid REFERENCES tags(id) ON DELETE SET NULL,
+          bid text,
+          uid_hex text,
+          event_type text NOT NULL,
+          source text NOT NULL DEFAULT 'sdk',
+          occurred_at timestamptz,
+          data jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_tenant_created ON sdk_external_events(tenant_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_type_created ON sdk_external_events(event_type, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_bid_uid ON sdk_external_events(bid, uid_hex)`;
     }, () => {
       sdkSchemaReady = null;
     });

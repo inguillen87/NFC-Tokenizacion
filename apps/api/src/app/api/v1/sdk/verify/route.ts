@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     cmacHex,
     rawQuery: { bid, picc_data: piccDataHex, enc: encHex, cmac: cmacHex },
     context: {
-      source: "sun",
+      source: "real",
       requestId: auth.context.traceId,
       ip: parseHeaderIp(req) || undefined,
       userAgent: clean(deviceMeta.userAgent) || req.headers.get("user-agent") || undefined,
@@ -83,4 +83,3 @@ export async function POST(req: Request) {
     traceId: auth.context.traceId,
   }, result.status);
 }
-

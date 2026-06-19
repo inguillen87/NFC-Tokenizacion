@@ -28,10 +28,12 @@ type RealtimeEventPayload = {
   trace_id?: string | null;
   lead_id?: string;
   ticket_id?: string;
+  sdk_event_id?: string;
   contact?: string;
   company?: string;
   status?: string;
   title?: string;
+  external_event_type?: string;
 };
 
 const BUS_KEY = "__nexid_realtime_bus__";
