@@ -38,10 +38,9 @@ const WORLD_MAP_GRID = [
   "                                                                ",
   "                                                                "
 ];
-
 // Generador de puntos terrestres basados en la matriz
 const generateLandPoints = (radius: number) => {
-  const points: { x: number; y: number; z: number }[] = [];
+  const points: { x: number; y: number; z: number; isOcean?: boolean }[] = [];
   const rows = WORLD_MAP_GRID.length;
   const cols = WORLD_MAP_GRID[0].length;
 
@@ -60,7 +59,8 @@ const generateLandPoints = (radius: number) => {
         points.push({
           x: radius * cosLat * Math.sin(radLng),
           y: radius * sinLat,
-          z: radius * cosLat * Math.cos(radLng)
+          z: radius * cosLat * Math.cos(radLng),
+          isOcean: false
         });
       }
     }
@@ -76,14 +76,14 @@ const generateLandPoints = (radius: number) => {
       points.push({
         x: (radius * 0.99) * cosLat * Math.sin(radLng),
         y: (radius * 0.99) * sinLat,
-        z: (radius * 0.99) * cosLat * Math.cos(radLng)
+        z: (radius * 0.99) * cosLat * Math.cos(radLng),
+        isOcean: true
       });
     }
   }
 
   return points;
 };
-
 export type GlobePoint = {
   city: string;
   country?: string;
@@ -211,13 +211,23 @@ export function Globe3dMap({
 
         // Ocultar si está en la parte trasera de la esfera (sz < 0)
         const isFront = sz >= 0;
-        const opacity = isFront ? 0.35 + (sz / radius) * 0.45 : 0.08;
-        const size = isFront ? 1.4 : 0.8;
 
-        ctx.fillStyle = isFront ? `rgba(103, 232, 249, ${opacity})` : `rgba(71, 85, 105, ${opacity})`;
-        ctx.beginPath();
-        ctx.arc(sx, sy, size, 0, Math.PI * 2);
-        ctx.fill();
+        if (pt.isOcean) {
+          // Puntos oceánicos muy tenues y elegantes (fina malla de meridianos/paralelos)
+          const opacity = isFront ? 0.09 + (sz / radius) * 0.08 : 0.02;
+          ctx.fillStyle = isFront ? `rgba(148, 163, 184, ${opacity})` : `rgba(71, 85, 105, ${opacity})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 0.7, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Puntos terrestres en cian brillante (continentes bien definidos)
+          const opacity = isFront ? 0.42 + (sz / radius) * 0.48 : 0.06;
+          const size = isFront ? 1.5 : 0.8;
+          ctx.fillStyle = isFront ? `rgba(34, 211, 238, ${opacity})` : `rgba(71, 85, 105, ${opacity})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
       });
 
       // 3. Renderizar rutas (Arco 3D curvo que se desplaza)

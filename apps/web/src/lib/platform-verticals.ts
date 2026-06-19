@@ -38,7 +38,10 @@ export type PlatformIconKey =
   | "gem"
   | "shield"
   | "truck"
-  | "package";
+  | "package"
+  | "sparkles"
+  | "cpu"
+  | "shirt";
 
 export type PlatformVertical = {
   id: PlatformVerticalId;
@@ -119,7 +122,7 @@ export const platformVerticals: PlatformVertical[] = [
     image: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp",
     tags: ["NFC", "QR", "Tamper"],
     metric: "Tamper + refill",
-    icon: "gem",
+    icon: "sparkles",
     tone: "rose",
   },
   {
@@ -176,14 +179,14 @@ export const platformVerticals: PlatformVertical[] = [
     title: "Electronica & Garantia",
     titleEn: "Electronics & Warranty",
     titlePt: "Eletronica & Garantia",
-    shortTitle: "Garantia",
+    shortTitle: "Electrónica",
     body: "Serializacion, propiedad, garantia, soporte postventa y reclamos antifraude por unidad.",
     bodyEn: "Serialization, ownership, warranty, post-sale support and anti-fraud claims per unit.",
     bodyPt: "Serializacao, ownership, garantia, suporte pos-venda e reclamos antifraude por unidade.",
     image: "/sdk/verticals/electronics-warranty-nfc-qr.webp",
     tags: ["QR", "NFC", "DPP"],
     metric: "Warranty",
-    icon: "package",
+    icon: "cpu",
     tone: "indigo",
   },
   {
@@ -199,7 +202,7 @@ export const platformVerticals: PlatformVertical[] = [
     image: "/sdk/verticals/textile-dpp-nfc-qr.webp",
     tags: ["QR", "NFC", "DPP"],
     metric: "EU DPP",
-    icon: "package",
+    icon: "shirt",
     tone: "slate",
   },
 ];

@@ -18,6 +18,9 @@ import {
   Truck,
   Webhook,
   Zap,
+  Sparkles,
+  Cpu,
+  Shirt,
 } from "lucide-react";
 import { BrandLockup, Button, Card } from "@product/ui";
 import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
@@ -98,6 +101,9 @@ const iconByKey: Record<PlatformIconKey, typeof Sprout> = {
   shield: ShieldCheck,
   truck: Truck,
   package: PackageCheck,
+  sparkles: Sparkles,
+  cpu: Cpu,
+  shirt: Shirt,
 };
 
 function SdkTopNav() {
