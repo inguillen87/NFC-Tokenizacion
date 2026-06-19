@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { PremiumVectorMap, Globe3dMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import type { ProductInteractionState, ProductKind } from "../../components/hero-three-stage";
 
 const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), {
@@ -207,15 +207,27 @@ export function SunProductHeroStage({
   return (
     <div className={`sun-product-stage sun-product-stage--realtime sun-product-stage--${kind}`}>
       {hasTraceCoordinates ? (
-        <div className="sun-stage-real-map" aria-hidden="true">
-          <PremiumVectorMap
-            points={tracePoints}
-            routes={traceRoutes}
-            selectedPointId="sun-current-tap"
-            density="route"
-            chrome="minimal"
-            heightClassName="h-full"
-            className="sun-stage-real-map__vector"
+        <div className="sun-stage-real-map flex justify-center items-center overflow-hidden" aria-hidden="true">
+          <Globe3dMap
+            points={tracePoints.map((p) => ({
+              city: p.label,
+              country: p.sublabel,
+              lat: p.lat,
+              lng: p.lng,
+              scans: p.scans,
+              risk: p.risk,
+              vertical: kind === "wine" ? "wine" : "seeds"
+            }))}
+            routes={traceRoutes.map((r) => ({
+              fromLat: r.fromLat,
+              fromLng: r.fromLng,
+              toLat: r.toLat,
+              toLng: r.toLng,
+              tone: r.tone === "warn" ? "warn" as const : "info" as const
+            }))}
+            width={260}
+            height={200}
+            className="border-0 bg-transparent shadow-none"
           />
         </div>
       ) : (

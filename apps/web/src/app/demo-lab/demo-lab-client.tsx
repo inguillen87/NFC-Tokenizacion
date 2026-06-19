@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
-import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Mail } from "lucide-react";
 import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
 import { platformVerticals } from "../../lib/platform-verticals";
 import { ThreeDBottle } from "../investor-snapshot/investor-snapshot-client";
@@ -120,6 +120,56 @@ type DemoEvent = {
   vertical?: string;
 };
 
+type DemoLead = {
+  id: string;
+  locale: string;
+  contact: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  company?: string | null;
+  country?: string | null;
+  vertical?: string | null;
+  role_interest?: string | null;
+  estimated_volume?: string | null;
+  tag_type?: string | null;
+  volume?: number | null;
+  source: string;
+  status: string;
+  message?: string | null;
+  notes?: string | null;
+  assigned_to?: string | null;
+  created_at: string;
+};
+
+type DemoTicket = {
+  id: string;
+  locale: string;
+  contact: string;
+  title: string;
+  detail?: string | null;
+  status: string;
+  source: string;
+  assigned_to?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type DemoOrder = {
+  id: string;
+  locale: string;
+  contact: string;
+  company?: string | null;
+  tag_type?: string | null;
+  volume?: number | null;
+  notes?: string | null;
+  status: string;
+  source: string;
+  assigned_to?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type DemoSummary = {
   ok?: boolean;
   exists?: boolean;
@@ -127,6 +177,9 @@ type DemoSummary = {
   source?: string;
   tagCount?: number;
   crm?: { leads?: number; tickets?: number; orders?: number };
+  recentLeads?: DemoLead[];
+  recentTickets?: DemoTicket[];
+  recentOrders?: DemoOrder[];
   events?: DemoEvent[];
 };
 
@@ -405,6 +458,7 @@ async function readDemoSummary(): Promise<DemoSummary> {
 
 export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; initialVertical?: string }) {
   const txt = copy[locale] || copy["es-AR"];
+  const [viewMode, setViewMode] = useState<"simulator" | "crm">("simulator");
   const [role, setRole] = useState<Role>("ceo");
   const [vertical, setVertical] = useState<Vertical>(() => normalizeDemoVertical(initialVertical));
   const [beat, setBeat] = useState<Beat>(1);
@@ -442,7 +496,7 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
     loadWhenVisible();
     const onVisibilityChange = () => loadWhenVisible();
     document.addEventListener("visibilitychange", onVisibilityChange);
-    const id = window.setInterval(loadWhenVisible, 20000);
+    const id = window.setInterval(loadWhenVisible, 10000);
     return () => {
       alive = false;
       document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -577,152 +631,195 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
 
   return (
     <main className="demo-lab-shell container-shell py-8 text-slate-100">
-      <DemoLabStudioHero
-        txt={txt}
-        beat={beat}
-        vertical={vertical}
-        activeVertical={activeVertical}
-        scenario={scenario}
-        destination={destination}
-        routeKm={routeKm}
-        locale={locale}
-        summary={summary}
-        mapPoints={mapPoints}
-        liveEvents={liveEvents}
-        latestEvent={latestEvent}
-        simulating={simulating}
-        onVertical={setVertical}
-        onBeat={setBeat}
-        onPassport={() => setModalView("mobile")}
-        onValid={() => void simulate("valid")}
-        onOpen={() => void simulate("tamper")}
-        onReplay={() => void simulate("replay")}
-      />
-
-      <DemoFinalTapDock
-        status={status}
-        simulating={simulating}
-        onValid={() => void simulate("valid")}
-        onTamper={() => void simulate("tamper")}
-        onReplay={() => void simulate("replay")}
-        onRefresh={() => void refreshSummary()}
-      />
-
-      <section className="mt-5 grid gap-5 xl:grid-cols-[1.16fr_0.84fr]">
-        <article className="demo-lab-panel min-w-0 rounded-3xl border border-white/10 bg-slate-950/60 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.narrative}</p>
-              <h2 className="mt-2 text-2xl font-black text-white">{activeRole.headline}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-300">{activeRole.focus}</p>
-            </div>
-            <button suppressHydrationWarning type="button" onClick={() => setRunning((current) => !current)} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-bold text-cyan-100">{running ? txt.controls.cinematicStop : txt.controls.cinematicStart}</button>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {(Object.keys(txt.roles) as Role[]).map((item) => (
-              <button suppressHydrationWarning key={item} type="button" onClick={() => setRole(item)} className={`rounded-full border px-3 py-2 text-xs font-bold ${role === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>{txt.roles[item].label}</button>
-            ))}
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-4">
-            {([0, 1, 2, 3] as Beat[]).map((item) => (
-              <button suppressHydrationWarning key={item} type="button" onClick={() => setBeat(item)} className={`demo-lab-beat-card rounded-2xl border p-3 text-left ${beat === item ? "demo-lab-beat-card--active border-emerald-300/45 bg-emerald-500/10" : "border-white/10 bg-slate-900/60"}`}>
-                <p className="text-xs font-black text-white">{txt.beats[item].title}</p>
-                <p className="mt-2 text-[11px] leading-5 text-slate-400">{txt.beats[item].body}</p>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-5 grid min-w-0 gap-4">
-            <div className="demo-lab-product-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.product}</p>
-                  <h3 className="mt-1 text-xl font-black text-white">{activeVertical.product}</h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-[11px] font-bold text-violet-100">{activeVertical.profile}</span>
-                  <button suppressHydrationWarning type="button" onClick={() => setModalView("mobile")} className="demo-lab-modal-open-button">Ver resultado en celular</button>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {DEMO_VERTICAL_ORDER.map((item) => (
-                  <button suppressHydrationWarning key={item} type="button" onClick={() => setVertical(item)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${vertical === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>{txt.verticals[item].label}</button>
-                ))}
-              </div>
-              <div className={`demo-lab-product-stage demo-lab-product-stage--${vertical} demo-lab-product-stage--beat-${beat} demo-lab-product-stage--${scenario.tone} mt-4`}>
-                <StageRouteLayer txt={txt} routeKm={routeKm} destination={destination} scenario={scenario} locale={locale} />
-                <span className="demo-lab-product-depth-floor" aria-hidden="true" />
-                <span className="demo-lab-product-depth-rim" aria-hidden="true" />
-                <DemoLabProductThreeStage
-                  vertical={vertical}
-                  product={activeVertical.product}
-                  beat={beat}
-                  badge={realProductBadge}
-                  simulating={simulating}
-                />
-                <span className="demo-lab-tap-chip">SUN</span>
-                <span className="demo-lab-tap-wave" />
-              </div>
-              <DemoStageExplainer beat={beat} scenario={scenario} routeKm={routeKm} locale={locale} />
-              <DemoExperienceLayer beat={beat} product={activeVertical.product} scenario={scenario} destination={destination} routeKm={routeKm} locale={locale} onOpen={setModalView} />
-              <div className="demo-lab-sync-steps mt-4">
-                {activeVertical.proof.map((item, index) => <p key={item} className={`demo-lab-sync-step ${index <= beat ? "demo-lab-sync-step--active" : ""}`}><span>{index + 1}</span>{item}</p>)}
-              </div>
-              <DemoFlowRail scenario={scenario} beat={beat} onOpen={setModalView} />
-            </div>
-          </div>
-        </article>
-
-        <aside className="min-w-0 space-y-5">
-          <DemoActionMatrix txt={txt} beat={beat} routeKm={routeKm} status={activeBeat.status} destination={destination} scenario={scenario} onAction={handleDemoAction} actionMessage={actionMessage} locale={locale} />
-
-          <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.feed}</p>
-            <h2 className="mt-2 text-2xl font-black text-white">{activeBeat.event}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{status}</p>
-            <div className="mt-4 grid gap-2">
-              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void simulate("valid")} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-3 text-left text-xs font-bold text-emerald-100 disabled:opacity-60">{txt.controls.valid}</button>
-              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void simulate("tamper")} className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-3 text-left text-xs font-bold text-amber-100 disabled:opacity-60">{txt.controls.tamper}</button>
-              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void simulate("replay")} className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-3 text-left text-xs font-bold text-rose-100 disabled:opacity-60">{txt.controls.replay}</button>
-            </div>
-            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-300">DemoBodega</p>
-                <button suppressHydrationWarning type="button" onClick={() => void refreshSummary()} className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-slate-200">{txt.controls.refresh}</button>
-              </div>
-              <div className="mt-3 space-y-2">
-                {liveEvents.slice(0, 5).length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-3 text-xs text-slate-400">{txt.controls.noGeo}</p> : liveEvents.slice(0, 5).map((event) => (
-                  <div key={event.id || `${event.created_at}-${event.uidMasked}`} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs">
-                    <p className="font-bold text-white">{event.city || "Sin dato"}, {event.country_code || "S/D"} / {formatEventResult(event.result)}</p>
-                    <p className="mt-1 text-slate-400">{event.product_name || activeVertical.product} / {event.uidMasked || "UID-NA"}</p>
-                    <p className="mt-1 text-slate-500">{event.created_at || "sin fecha"}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </article>
-        </aside>
-      </section>
-
-      <details className="demo-lab-tech-map mt-5 rounded-3xl border border-white/10 bg-slate-950/60 p-3 md:p-5">
-        <summary className="cursor-pointer text-sm font-black text-cyan-100">
-          Mapa operativo completo / calor de actividad
-          <span className="ml-2 text-xs font-semibold text-slate-400">{LOCATIONS.origin.city} -&gt; {destination.city} - {routeKm.toLocaleString(locale)} km</span>
-        </summary>
-        <div className="mt-4">
-          <PremiumTraceabilityGlobe
-            title={txt.controls.mapTitle}
-            subtitle={`${LOCATIONS.origin.city} -> ${destination.city}. ${txt.controls.distance}: ${routeKm.toLocaleString(locale)} km.`}
-            points={mapPoints}
-            routes={[{ fromLat: LOCATIONS.origin.lat, fromLng: LOCATIONS.origin.lng, toLat: destination.lat, toLng: destination.lng, tone: activeBeat.mode === "replay" ? "warn" : "info" }]}
-            caption="Vista ejecutiva: origen, destino, distancia, estado y senales de riesgo. Las coordenadas finas se conservan en el evento y el CRM."
-            ctaHref={mapsLink(destination)}
-            ctaLabel="Abrir ubicacion"
-          />
+      {/* Premium Toggle Header */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="text-xs font-black uppercase tracking-widest text-cyan-300">nexID B2B Admin Console</span>
         </div>
-      </details>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setViewMode("simulator")}
+            className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
+              viewMode === "simulator"
+                ? "border border-cyan-400/30 bg-cyan-500/20 text-cyan-200"
+                : "border border-white/5 bg-white/5 text-slate-400 hover:text-white"
+            }`}
+          >
+            Simulador de Producto
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("crm")}
+            className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition flex items-center gap-2 ${
+              viewMode === "crm"
+                ? "border border-cyan-400/30 bg-cyan-500/20 text-cyan-200"
+                : "border border-white/5 bg-white/5 text-slate-400 hover:text-white"
+            }`}
+          >
+            <span>Live CRM & Leads</span>
+            {Number(summary?.crm?.leads ?? 0) > 0 && (
+              <span className="rounded-full bg-cyan-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
+                {summary?.crm?.leads}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {viewMode === "crm" ? (
+        <DemoCrmDashboard summary={summary} locale={locale} mapPoints={mapPoints} activeVertical={activeVertical} refreshSummary={refreshSummary} />
+      ) : (
+        <>
+          <DemoLabStudioHero
+            txt={txt}
+            beat={beat}
+            vertical={vertical}
+            activeVertical={activeVertical}
+            scenario={scenario}
+            destination={destination}
+            routeKm={routeKm}
+            locale={locale}
+            summary={summary}
+            mapPoints={mapPoints}
+            liveEvents={liveEvents}
+            latestEvent={latestEvent}
+            simulating={simulating}
+            onVertical={setVertical}
+            onBeat={setBeat}
+            onPassport={() => setModalView("mobile")}
+            onValid={() => void simulate("valid")}
+            onOpen={() => void simulate("tamper")}
+            onReplay={() => void simulate("replay")}
+          />
+
+          <DemoFinalTapDock
+            status={status}
+            simulating={simulating}
+            onValid={() => void simulate("valid")}
+            onTamper={() => void simulate("tamper")}
+            onReplay={() => void simulate("replay")}
+            onRefresh={() => void refreshSummary()}
+          />
+
+          <section className="mt-5 grid gap-5 xl:grid-cols-[1.16fr_0.84fr]">
+            <article className="demo-lab-panel min-w-0 rounded-3xl border border-white/10 bg-slate-950/60 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.narrative}</p>
+                  <h2 className="mt-2 text-2xl font-black text-white">{activeRole.headline}</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">{activeRole.focus}</p>
+                </div>
+                <button suppressHydrationWarning type="button" onClick={() => setRunning((current) => !current)} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-bold text-cyan-100">{running ? txt.controls.cinematicStop : txt.controls.cinematicStart}</button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(Object.keys(txt.roles) as Role[]).map((item) => (
+                  <button suppressHydrationWarning key={item} type="button" onClick={() => setRole(item)} className={`rounded-full border px-3 py-2 text-xs font-bold ${role === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>{txt.roles[item].label}</button>
+                ))}
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-4">
+                {([0, 1, 2, 3] as Beat[]).map((item) => (
+                  <button suppressHydrationWarning key={item} type="button" onClick={() => setBeat(item)} className={`demo-lab-beat-card rounded-2xl border p-3 text-left ${beat === item ? "demo-lab-beat-card--active border-emerald-300/45 bg-emerald-500/10" : "border-white/10 bg-slate-900/60"}`}>
+                    <p className="text-xs font-black text-white">{txt.beats[item].title}</p>
+                    <p className="mt-2 text-[11px] leading-5 text-slate-400">{txt.beats[item].body}</p>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-5 grid min-w-0 gap-4">
+                <div className="demo-lab-product-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.product}</p>
+                      <h3 className="mt-1 text-xl font-black text-white">{activeVertical.product}</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-[11px] font-bold text-violet-100">{activeVertical.profile}</span>
+                      <button suppressHydrationWarning type="button" onClick={() => setModalView("mobile")} className="demo-lab-modal-open-button">Ver resultado en celular</button>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {DEMO_VERTICAL_ORDER.map((item) => (
+                      <button suppressHydrationWarning key={item} type="button" onClick={() => setVertical(item)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${vertical === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>{txt.verticals[item].label}</button>
+                    ))}
+                  </div>
+                  <div className={`demo-lab-product-stage demo-lab-product-stage--${vertical} demo-lab-product-stage--beat-${beat} demo-lab-product-stage--${scenario.tone} mt-4`}>
+                    <StageRouteLayer txt={txt} routeKm={routeKm} destination={destination} scenario={scenario} locale={locale} />
+                    <span className="demo-lab-product-depth-floor" aria-hidden="true" />
+                    <span className="demo-lab-product-depth-rim" aria-hidden="true" />
+                    <DemoLabProductThreeStage
+                      vertical={vertical}
+                      product={activeVertical.product}
+                      beat={beat}
+                      badge={realProductBadge}
+                      simulating={simulating}
+                    />
+                    <span className="demo-lab-tap-chip">SUN</span>
+                    <span className="demo-lab-tap-wave" />
+                  </div>
+                  <DemoStageExplainer beat={beat} scenario={scenario} routeKm={routeKm} locale={locale} />
+                  <DemoExperienceLayer beat={beat} product={activeVertical.product} scenario={scenario} destination={destination} routeKm={routeKm} locale={locale} onOpen={setModalView} />
+                  <div className="demo-lab-sync-steps mt-4">
+                    {activeVertical.proof.map((item, index) => <p key={item} className={`demo-lab-sync-step ${index <= beat ? "demo-lab-sync-step--active" : ""}`}><span>{index + 1}</span>{item}</p>)}
+                  </div>
+                  <DemoFlowRail scenario={scenario} beat={beat} onOpen={setModalView} />
+                </div>
+              </div>
+            </article>
+
+            <aside className="min-w-0 space-y-5">
+              <DemoActionMatrix txt={txt} beat={beat} routeKm={routeKm} status={activeBeat.status} destination={destination} scenario={scenario} onAction={handleDemoAction} actionMessage={actionMessage} locale={locale} />
+
+              <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.feed}</p>
+                <h2 className="mt-2 text-2xl font-black text-white">{activeBeat.event}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{status}</p>
+                <div className="mt-4 grid gap-2">
+                  <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void simulate("valid")} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-3 text-left text-xs font-bold text-emerald-100 disabled:opacity-60">{txt.controls.valid}</button>
+                  <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void simulate("tamper")} className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-3 text-left text-xs font-bold text-amber-100 disabled:opacity-60">{txt.controls.tamper}</button>
+                  <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void simulate("replay")} className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-3 text-left text-xs font-bold text-rose-100 disabled:opacity-60">{txt.controls.replay}</button>
+                </div>
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-300">DemoBodega</p>
+                    <button suppressHydrationWarning type="button" onClick={() => void refreshSummary()} className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-slate-200">{txt.controls.refresh}</button>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {liveEvents.slice(0, 5).length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-3 text-xs text-slate-400">{txt.controls.noGeo}</p> : liveEvents.slice(0, 5).map((event) => (
+                      <div key={event.id || `${event.created_at}-${event.uidMasked}`} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs">
+                        <p className="font-bold text-white">{event.city || "Sin dato"}, {event.country_code || "S/D"} / {formatEventResult(event.result)}</p>
+                        <p className="mt-1 text-slate-400">{event.product_name || activeVertical.product} / {event.uidMasked || "UID-NA"}</p>
+                        <p className="mt-1 text-slate-500">{event.created_at || "sin fecha"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </article>
+            </aside>
+          </section>
+
+          <details className="demo-lab-tech-map mt-5 rounded-3xl border border-white/10 bg-slate-950/60 p-3 md:p-5">
+            <summary className="cursor-pointer text-sm font-black text-cyan-100">
+              Mapa operativo completo / calor de actividad
+              <span className="ml-2 text-xs font-semibold text-slate-400">{LOCATIONS.origin.city} -&gt; {destination.city} - {routeKm.toLocaleString(locale)} km</span>
+            </summary>
+            <div className="mt-4">
+              <PremiumTraceabilityGlobe
+                title={txt.controls.mapTitle}
+                subtitle={`${LOCATIONS.origin.city} -> ${destination.city}. ${txt.controls.distance}: ${routeKm.toLocaleString(locale)} km.`}
+                points={mapPoints}
+                routes={[{ fromLat: LOCATIONS.origin.lat, fromLng: LOCATIONS.origin.lng, toLat: destination.lat, toLng: destination.lng, tone: activeBeat.mode === "replay" ? "warn" : "info" }]}
+                caption="Vista ejecutiva: origen, destino, distancia, estado y senales de riesgo. Las coordenadas finas se conservan en el evento y el CRM."
+                ctaHref={mapsLink(destination)}
+                ctaLabel="Abrir ubicacion"
+              />
+            </div>
+          </details>
+        </>
+      )}
 
       <DemoFlowModal
         view={modalView}
@@ -2946,5 +3043,519 @@ function DemoActionMatrix({
       </p>
       {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
     </article>
+  );
+}
+
+function DemoCrmDashboard({
+  summary,
+  locale,
+  mapPoints,
+  activeVertical,
+  refreshSummary,
+}: {
+  summary: DemoSummary | null;
+  locale: AppLocale;
+  mapPoints: DemoMapPoint[];
+  activeVertical: any;
+  refreshSummary: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"leads" | "tickets" | "orders" | "taps">("leads");
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  
+  // Local overrides to simulate real-time CRM updates when buttons are clicked!
+  const [localLeadsStatus, setLocalLeadsStatus] = useState<Record<string, string>>({});
+  const [localTicketsStatus, setLocalTicketsStatus] = useState<Record<string, string>>({});
+  const [localOrdersStatus, setLocalOrdersStatus] = useState<Record<string, string>>({});
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      void refreshSummary();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshSummary]);
+
+  const recentLeads = summary?.recentLeads || [];
+  const recentTickets = summary?.recentTickets || [];
+  const recentOrders = summary?.recentOrders || [];
+  const liveEvents = summary?.events || [];
+
+  const routes = useMemo(() => {
+    return liveEvents
+      .filter((e) => e.lat != null && e.lng != null)
+      .map((e) => ({
+        fromLat: -33.6131, // Origin: Valle de Uco
+        fromLng: -69.2075,
+        toLat: e.lat!,
+        toLng: e.lng!,
+        tone: e.result === "REPLAY_FAIL" || e.result === "SUSPICIOUS" ? ("warn" as const) : ("info" as const)
+      }))
+      .slice(0, 10);
+  }, [liveEvents]);
+
+  const formatTime = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleDateString(locale === "en" ? "en-US" : "es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    } catch {
+      return isoString;
+    }
+  };
+
+  const handleLeadAction = (leadId: string, actionName: string) => {
+    setLocalLeadsStatus((prev) => ({ ...prev, [leadId]: actionName }));
+    setActionMessage(`Lead actualizado: Estado cambiado a "${actionName}". Notificación enviada al equipo comercial.`);
+    setTimeout(() => setActionMessage(null), 5000);
+  };
+
+  const handleTicketAction = (ticketId: string, statusName: string) => {
+    setLocalTicketsStatus((prev) => ({ ...prev, [ticketId]: statusName }));
+    setActionMessage(`Ticket de seguridad actualizado: Estado cambiado a "${statusName}". Registro de auditoría cerrado.`);
+    setTimeout(() => setActionMessage(null), 5000);
+  };
+
+  const handleOrderAction = (orderId: string, statusName: string) => {
+    setLocalOrdersStatus((prev) => ({ ...prev, [orderId]: statusName }));
+    setActionMessage(`Orden comercial actualizada: Estado cambiado a "${statusName}". Se ha enviado confirmación de despacho al reseller.`);
+    setTimeout(() => setActionMessage(null), 5000);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Stats Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Total Etiquetas</span>
+            <Fingerprint className="h-4 w-4 text-cyan-400" />
+          </div>
+          <p className="mt-2 text-2xl font-black text-white">{summary?.tagCount ?? "--"}</p>
+          <div className="mt-1 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-full bg-cyan-400 rounded-full" style={{ width: "70%" }} />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Leads en CRM</span>
+            <UserRound className="h-4 w-4 text-emerald-400" />
+          </div>
+          <p className="mt-2 text-2xl font-black text-emerald-400">{summary?.crm?.leads ?? 0}</p>
+          <span className="text-[10px] font-medium text-slate-400">Contactos calificados</span>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Alertas de Fraude</span>
+            <AlertTriangle className="h-4 w-4 text-rose-400" />
+          </div>
+          <p className="mt-2 text-2xl font-black text-rose-400">{summary?.crm?.tickets ?? 0}</p>
+          <span className="text-[10px] font-medium text-slate-400">Incidencias de seguridad</span>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Órdenes Activas</span>
+            <ShoppingCart className="h-4 w-4 text-amber-400" />
+          </div>
+          <p className="mt-2 text-2xl font-black text-amber-400">{summary?.crm?.orders ?? 0}</p>
+          <span className="text-[10px] font-medium text-slate-400">Solicitudes de hardware</span>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400">Escaneos Totales</span>
+            <Check className="h-4 w-4 text-violet-400" />
+          </div>
+          <p className="mt-2 text-2xl font-black text-white">{liveEvents.length}</p>
+          <span className="text-[10px] font-medium text-slate-400">Toques registrados</span>
+        </div>
+      </div>
+
+      {/* Main Grid: Map & Controls / Streams */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Map panel (Span 2) */}
+        <div className="lg:col-span-2 rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-cyan-300">Mapa Operativo en Tiempo Real</h3>
+              <p className="text-xs text-slate-400">Procedencia (Uco Valley) hacia puntos de escaneo actuales</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full bg-emerald-400 ${autoRefresh ? "animate-ping" : ""}`} />
+              <span className="text-[10px] uppercase font-bold text-slate-400">
+                {autoRefresh ? "Feed en vivo" : "Pausado"}
+              </span>
+            </div>
+          </div>
+          
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/5 bg-black/30 flex justify-center w-full">
+            <PremiumTraceabilityGlobe
+              title="Live Scan Activity"
+              subtitle="Rastreo global de lecturas de seguridad y accesos"
+              points={mapPoints}
+              routes={routes}
+              caption="Los toques sospechosos (alertas de copia) se proyectan en color naranja/rojo."
+            />
+          </div>
+        </div>
+
+        {/* Action matrix / Live Log */}
+        <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-cyan-300">Monitoreo de Eventos</h3>
+              <button 
+                type="button" 
+                onClick={() => void refreshSummary()}
+                className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 hover:text-white"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Refrescar
+              </button>
+            </div>
+            
+            <p className="mt-2 text-xs text-slate-400">Transacciones y verificaciones criptográficas activas</p>
+
+            <div className="mt-4 space-y-2 overflow-y-auto max-h-[380px] pr-2">
+              {liveEvents.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-xs text-slate-500">
+                  Esperando toques en el SDK o aplicación móvil...
+                </p>
+              ) : (
+                liveEvents.slice(0, 10).map((event) => {
+                  const isSuccess = event.result === "AUTHENTICATED" || event.result === "VERIFIED" || event.result === "OK";
+                  const isRisk = event.result === "REPLAY_FAIL" || event.result === "SUSPICIOUS" || event.result === "FAIL";
+                  return (
+                    <div 
+                      key={event.id || `${event.created_at}-${event.uidMasked}`} 
+                      className={`rounded-xl border p-3 text-xs transition ${
+                        isSuccess 
+                          ? "border-emerald-500/10 bg-emerald-500/5" 
+                          : isRisk 
+                          ? "border-rose-500/15 bg-rose-500/5 animate-pulse" 
+                          : "border-white/5 bg-slate-950/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <strong className="text-white font-black">
+                          {event.city || "Ciudad Desconocida"}, {event.country_code || "N/A"}
+                        </strong>
+                        <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                          isSuccess 
+                            ? "bg-emerald-500/10 text-emerald-400" 
+                            : isRisk 
+                            ? "bg-rose-500/10 text-rose-400" 
+                            : "bg-slate-800 text-slate-300"
+                        }`}>
+                          {event.result}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-slate-350">
+                        {event.product_name || activeVertical?.product || "Lote Premium"} / {event.uidMasked || "UID-NA"}
+                      </p>
+                      <p className="mt-1 text-[10px] text-slate-500">{formatTime(event.created_at || "")}</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-white/5 bg-black/20 p-3 text-center">
+            <span className="text-[10px] text-slate-500 font-mono">
+              Consola Operativa Segura · TLS 1.3 · IPFS Registry
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Notification Alert Toast */}
+      {actionMessage && (
+        <div className="rounded-2xl border border-emerald-300/30 bg-emerald-500/10 p-4 text-xs font-bold text-emerald-200 animate-fadeIn">
+          {actionMessage}
+        </div>
+      )}
+
+      {/* Ledger Section (Tables) */}
+      <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <div className="flex gap-2">
+            {(["leads", "tickets", "orders", "taps"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
+                  activeTab === tab
+                    ? "border border-cyan-400/30 bg-cyan-500/10 text-cyan-300"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                {tab === "leads" && `Leads (${recentLeads.length})`}
+                {tab === "tickets" && `Alertas / Incidentes (${recentTickets.length})`}
+                {tab === "orders" && `Órdenes de Compra (${recentOrders.length})`}
+                {tab === "taps" && `Historial de Escaneos (${liveEvents.length})`}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={autoRefresh} 
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="rounded border-white/20 bg-slate-950 text-cyan-500 focus:ring-0" 
+              />
+              Auto-refresh (10s)
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          {/* LEADS TABLE */}
+          {activeTab === "leads" && (
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
+                  <th className="py-3 px-4">Compañía / Nombre</th>
+                  <th className="py-3 px-4">Contacto</th>
+                  <th className="py-3 px-4">Rubro</th>
+                  <th className="py-3 px-4">Volumen</th>
+                  <th className="py-3 px-4">Origen</th>
+                  <th className="py-3 px-4">Fecha</th>
+                  <th className="py-3 px-4">Estado</th>
+                  <th className="py-3 px-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {recentLeads.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-500">No hay registros de leads activos en la base de datos.</td>
+                  </tr>
+                ) : (
+                  recentLeads.map((lead) => {
+                    const statusOverride = localLeadsStatus[lead.id] || lead.status;
+                    return (
+                      <tr key={lead.id} className="hover:bg-white/5 transition">
+                        <td className="py-3 px-4">
+                          <strong className="text-white block">{lead.company || "S/D"}</strong>
+                          <span className="text-slate-400 text-[10px]">{lead.name || lead.contact}</span>
+                        </td>
+                        <td className="py-3 px-4 font-mono">{lead.email || lead.phone || lead.contact}</td>
+                        <td className="py-3 px-4 uppercase font-bold text-cyan-355">{lead.vertical || "General"}</td>
+                        <td className="py-3 px-4">{lead.volume ? `${lead.volume.toLocaleString()} tags` : "S/D"}</td>
+                        <td className="py-3 px-4 uppercase font-bold text-slate-400">{lead.source}</td>
+                        <td className="py-3 px-4 text-slate-500">{formatTime(lead.created_at)}</td>
+                        <td className="py-3 px-4">
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${
+                            statusOverride === "new" || statusOverride === "Nuevo" 
+                              ? "bg-cyan-500/10 text-cyan-300 border border-cyan-400/20" 
+                              : statusOverride === "contacted" || statusOverride === "Contactado" || statusOverride === "Contactado"
+                              ? "bg-amber-500/10 text-amber-300 border border-amber-400/20"
+                              : "bg-emerald-500/10 text-emerald-300 border border-emerald-400/20"
+                          }`}>
+                            {statusOverride}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right space-x-1">
+                          <button
+                            type="button"
+                            onClick={() => handleLeadAction(lead.id, "Contactado")}
+                            disabled={statusOverride === "Contactado"}
+                            className="rounded bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-300/30 px-2 py-1 text-[10px] text-slate-300 hover:text-cyan-200 transition"
+                          >
+                            Contactar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleLeadAction(lead.id, "Calificado")}
+                            disabled={statusOverride === "Calificado"}
+                            className="rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 px-2 py-1 text-[10px] text-emerald-300 transition"
+                          >
+                            Calificar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {/* TICKETS (SECURITY INCIDENTS) TABLE */}
+          {activeTab === "tickets" && (
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
+                  <th className="py-3 px-4">Incidencia / Mensaje</th>
+                  <th className="py-3 px-4">Contacto</th>
+                  <th className="py-3 px-4">Origen canal</th>
+                  <th className="py-3 px-4">Fecha reporte</th>
+                  <th className="py-3 px-4">Estado</th>
+                  <th className="py-3 px-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {recentTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-500">No hay alertas de seguridad registradas en este período.</td>
+                  </tr>
+                ) : (
+                  recentTickets.map((ticket) => {
+                    const statusOverride = localTicketsStatus[ticket.id] || ticket.status;
+                    return (
+                      <tr key={ticket.id} className="hover:bg-white/5 transition">
+                        <td className="py-3 px-4">
+                          <strong className="text-rose-450 block">{ticket.title}</strong>
+                          <span className="text-slate-400 text-[10px] block max-w-sm overflow-hidden text-ellipsis whitespace-nowrap">{ticket.detail || "Sin detalles"}</span>
+                        </td>
+                        <td className="py-3 px-4 font-mono">{ticket.contact}</td>
+                        <td className="py-3 px-4 uppercase font-bold text-slate-400">{ticket.source}</td>
+                        <td className="py-3 px-4 text-slate-500">{formatTime(ticket.created_at)}</td>
+                        <td className="py-3 px-4">
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${
+                            statusOverride === "open" || statusOverride === "Abierto" 
+                              ? "bg-rose-500/10 text-rose-350 border border-rose-400/20" 
+                              : "bg-slate-500/10 text-slate-300 border border-white/10"
+                          }`}>
+                            {statusOverride}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleTicketAction(ticket.id, "Resuelto")}
+                            disabled={statusOverride === "Resuelto" || statusOverride === "resolved"}
+                            className="rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 px-2 py-1 text-[10px] text-emerald-300 transition"
+                          >
+                            Resolver
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {/* ORDER REQUESTS TABLE */}
+          {activeTab === "orders" && (
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
+                  <th className="py-3 px-4">Cliente / Compañía</th>
+                  <th className="py-3 px-4">Contacto</th>
+                  <th className="py-3 px-4">Tipo Tag NFC</th>
+                  <th className="py-3 px-4">Cantidad</th>
+                  <th className="py-3 px-4">Origen</th>
+                  <th className="py-3 px-4">Fecha de Solicitud</th>
+                  <th className="py-3 px-4">Estado</th>
+                  <th className="py-3 px-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {recentOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-500">No hay órdenes de compra activas en el CRM.</td>
+                  </tr>
+                ) : (
+                  recentOrders.map((order) => {
+                    const statusOverride = localOrdersStatus[order.id] || order.status;
+                    return (
+                      <tr key={order.id} className="hover:bg-white/5 transition">
+                        <td className="py-3 px-4">
+                          <strong className="text-white block">{order.company || "S/D"}</strong>
+                        </td>
+                        <td className="py-3 px-4 font-mono">{order.contact}</td>
+                        <td className="py-3 px-4 uppercase font-bold text-violet-300">{order.tag_type || "NTAG 424 DNA"}</td>
+                        <td className="py-3 px-4">{order.volume ? `${order.volume.toLocaleString()} unidades` : "S/D"}</td>
+                        <td className="py-3 px-4 uppercase font-bold text-slate-400">{order.source}</td>
+                        <td className="py-3 px-4 text-slate-500">{formatTime(order.created_at)}</td>
+                        <td className="py-3 px-4">
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${
+                            statusOverride === "new" || statusOverride === "Nuevo" || statusOverride === "pending"
+                              ? "bg-amber-500/10 text-amber-300 border border-amber-400/20" 
+                              : "bg-emerald-500/10 text-emerald-300 border border-emerald-400/20"
+                          }`}>
+                            {statusOverride}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleOrderAction(order.id, "Aprobado")}
+                            disabled={statusOverride === "Aprobado" || statusOverride === "approved"}
+                            className="rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 px-2 py-1 text-[10px] text-emerald-300 transition"
+                          >
+                            Aprobar Despacho
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {/* ALL SCANS HISTORIAL TABLE */}
+          {activeTab === "taps" && (
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
+                  <th className="py-3 px-4">Ubicación</th>
+                  <th className="py-3 px-4">Código País</th>
+                  <th className="py-3 px-4">Producto</th>
+                  <th className="py-3 px-4">Tag UID</th>
+                  <th className="py-3 px-4">Veredicto Cripto</th>
+                  <th className="py-3 px-4">Fecha Toque</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {liveEvents.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-500">No hay escaneos históricos registrados en la red.</td>
+                  </tr>
+                ) : (
+                  liveEvents.map((event) => {
+                    const isSuccess = event.result === "AUTHENTICATED" || event.result === "VERIFIED" || event.result === "OK";
+                    const isRisk = event.result === "REPLAY_FAIL" || event.result === "SUSPICIOUS" || event.result === "FAIL";
+                    return (
+                      <tr key={event.id || `${event.created_at}-${event.uidMasked}`} className="hover:bg-white/5 transition">
+                        <td className="py-3 px-4 font-bold text-white">{event.city || "Sin dato"}</td>
+                        <td className="py-3 px-4 font-mono uppercase text-slate-400">{event.country_code || "N/A"}</td>
+                        <td className="py-3 px-4">{event.product_name || activeVertical?.product || "Lote General"}</td>
+                        <td className="py-3 px-4 font-mono text-slate-400">{event.uidMasked || "UID-NA"}</td>
+                        <td className="py-3 px-4">
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${
+                            isSuccess 
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-400/20" 
+                              : isRisk 
+                              ? "bg-rose-500/10 text-rose-400 border border-rose-400/20" 
+                              : "bg-slate-800 text-slate-300 border border-slate-700"
+                          }`}>
+                            {event.result}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-500">{formatTime(event.created_at || "")}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

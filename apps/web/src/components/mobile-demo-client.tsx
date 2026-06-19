@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Card, PremiumVectorMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { Badge, Card, PremiumVectorMap, Globe3dMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 
 type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consumer_duplicate";
 type ConsumerState = "AUTH_PENDING" | "VALID" | "OPENED" | "TAMPER_RISK" | "CLAIMED" | "REPLAY_SUSPECT";
@@ -550,17 +550,27 @@ export function MobileDemoClient({
               ) : (
                 <p className="mt-1 text-[11px] text-slate-300">{geoError || "Esperando permiso de ubicación del dispositivo..."}</p>
               )}
-              <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
-                <PremiumVectorMap
-                  points={mobileMapPoints}
-                  routes={mobileMapRoutes}
-                  selectedPointId={geoState ? "tap" : "origin"}
-                  chrome="minimal"
-                  density="route"
-                  heightClassName="h-28"
-                  className="rounded-none border-0 shadow-none"
-                  evidenceSteps={mobileMapEvidenceSteps}
-                  ledgerItems={mobileMapLedgerItems}
+              <div className="mt-2 overflow-hidden rounded-lg border border-white/10 flex justify-center">
+                <Globe3dMap
+                  points={mobileMapPoints.map((p) => ({
+                    city: p.label,
+                    country: p.sublabel,
+                    lat: p.lat,
+                    lng: p.lng,
+                    scans: p.scans,
+                    risk: p.risk,
+                    vertical: activeVertical
+                  }))}
+                  routes={mobileMapRoutes.map((r) => ({
+                    fromLat: r.fromLat,
+                    fromLng: r.fromLng,
+                    toLat: r.toLat,
+                    toLng: r.toLng,
+                    tone: r.tone === "warn" ? "warn" as const : "info" as const
+                  }))}
+                  width={260}
+                  height={180}
+                  className="border-0 bg-transparent shadow-none"
                 />
               </div>
               <p className="mt-1 text-[10px] text-slate-400">Vista rápida del punto de tap sobre mapa para demo comercial.</p>
@@ -619,17 +629,27 @@ export function MobileDemoClient({
                 <p className="text-[11px] text-emerald-100">{distanceFromWinery ? `${distanceFromWinery.toFixed(1)} km` : "N/A"}</p>
               </div>
               <p className="mt-1 text-[11px] text-slate-200">{WINERY_HQ.name} → {geoState ? "Punto de lectura" : "Ubicación pendiente"}</p>
-              <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
-                <PremiumVectorMap
-                  points={mobileMapPoints}
-                  routes={mobileMapRoutes}
-                  selectedPointId={geoState ? "tap" : "origin"}
-                  chrome="minimal"
-                  density="route"
-                  heightClassName="h-44"
-                  className="rounded-none border-0 shadow-none"
-                  evidenceSteps={mobileMapEvidenceSteps}
-                  ledgerItems={mobileMapLedgerItems}
+              <div className="mt-2 overflow-hidden rounded-lg border border-white/10 flex justify-center">
+                <Globe3dMap
+                  points={mobileMapPoints.map((p) => ({
+                    city: p.label,
+                    country: p.sublabel,
+                    lat: p.lat,
+                    lng: p.lng,
+                    scans: p.scans,
+                    risk: p.risk,
+                    vertical: activeVertical
+                  }))}
+                  routes={mobileMapRoutes.map((r) => ({
+                    fromLat: r.fromLat,
+                    fromLng: r.fromLng,
+                    toLat: r.toLat,
+                    toLng: r.toLng,
+                    tone: r.tone === "warn" ? "warn" as const : "info" as const
+                  }))}
+                  width={260}
+                  height={180}
+                  className="border-0 bg-transparent shadow-none"
                 />
               </div>
               <div className="mt-2 rounded-lg border border-cyan-300/15 bg-slate-950/75 p-2">

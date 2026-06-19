@@ -13,13 +13,34 @@ export async function GET(req: Request) {
 
   const tenant = (await sql`SELECT id, slug, name FROM tenants WHERE slug='demobodega' LIMIT 1`)[0];
   if (!tenant) return json({ ok: true, exists: false });
-
+ 
   const batch = (await sql`SELECT id, bid, status FROM batches WHERE tenant_id=${tenant.id} AND bid='DEMO-2026-02' LIMIT 1`)[0];
   const tags = await sql`SELECT COUNT(*)::int AS count FROM tags WHERE batch_id=${batch?.id || null}`;
   const leads = await sql`SELECT COUNT(*)::int AS count FROM leads`;
   const tickets = await sql`SELECT COUNT(*)::int AS count FROM tickets`;
   const orders = await sql`SELECT COUNT(*)::int AS count FROM order_requests`;
 
+  const recentLeads = await sql`
+    SELECT id, locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes, assigned_to, created_at 
+    FROM leads 
+    ORDER BY created_at DESC 
+    LIMIT 20
+  `;
+
+  const recentTickets = await sql`
+    SELECT id, locale, contact, title, detail, status, source, assigned_to, created_at, updated_at 
+    FROM tickets 
+    ORDER BY created_at DESC 
+    LIMIT 20
+  `;
+
+  const recentOrders = await sql`
+    SELECT id, locale, contact, company, tag_type, volume, notes, status, source, assigned_to, created_at, updated_at 
+    FROM order_requests 
+    ORDER BY created_at DESC 
+    LIMIT 20
+  `;
+ 
   const events = await sql/*sql*/`
     SELECT
       e.id,
@@ -40,7 +61,7 @@ export async function GET(req: Request) {
     ORDER BY e.created_at DESC
     LIMIT 20
   `;
-
+ 
   return json({
     ok: true,
     exists: true,
@@ -48,6 +69,9 @@ export async function GET(req: Request) {
     batch,
     tagCount: tags[0]?.count || 0,
     crm: { leads: leads[0]?.count || 0, tickets: tickets[0]?.count || 0, orders: orders[0]?.count || 0 },
+    recentLeads,
+    recentTickets,
+    recentOrders,
     events,
   });
 }

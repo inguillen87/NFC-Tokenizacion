@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
-import { PremiumVectorMap } from "@product/ui";
+import { PremiumVectorMap, Globe3dMap } from "@product/ui";
 import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 
 type Vertical = "wine" | "events" | "cosmetics" | "agro" | "fashion";
@@ -595,58 +595,40 @@ function HeroTraceMap({
 
   return (
     <div className="hero-trace-map hero-trace-map--clear" aria-label={txt.routeTitle}>
-      <PremiumVectorMap
+      <Globe3dMap
         points={[
           {
-            id: "hero-origin",
-            label: origin.city,
-            sublabel: origin.country,
+            city: origin.city,
+            country: origin.country,
             lat: origin.lat,
             lng: origin.lng,
             scans: 1,
-            tone: "origin",
-            stageLabel: txt.originMap,
-            evidence: "Lote y origen",
+            status: "origin"
           },
           {
-            id: "hero-tap",
-            label: tap.city,
-            sublabel: tap.country,
+            city: tap.city,
+            country: tap.country,
             lat: tap.lat,
             lng: tap.lng,
             scans: 1,
-            tone: "tap",
-            stageLabel: txt.tapMap,
-            evidence: txt.custody,
-          },
+            status: "tap"
+          }
         ]}
         routes={[{
-          id: "hero-route",
           fromLat: origin.lat,
           fromLng: origin.lng,
           toLat: tap.lat,
           toLng: tap.lng,
-          tone: "info",
-          distanceLabel: `${formattedDistance} km`,
-          evidence: txt.custody,
+          tone: "info"
         }]}
-        chrome="minimal"
-        density="route"
-        heightClassName="h-full"
-        className="h-full rounded-none border-0 shadow-none"
+        width={420}
+        height={320}
+        className="border-0 bg-transparent shadow-none"
       />
       <div className="hero-map-intel">
         <p>{routeHeadline}</p>
         <strong>{origin.city} / {tap.city}</strong>
         <span>{evidenceCopy}</span>
-      </div>
-      <div className="hero-map-pin hero-map-pin--origin" style={{ left: `${originPinPoint.x}%`, top: `${originPinPoint.y}%` }}>
-        <span>{txt.originMap}</span>
-        <strong>{origin.city}</strong>
-      </div>
-      <div className="hero-map-pin hero-map-pin--tap" style={{ left: `${tapPinPoint.x}%`, top: `${tapPinPoint.y}%` }}>
-        <span>{txt.tapMap}</span>
-        <strong>{tap.city}</strong>
       </div>
       <div className="hero-route-summary-card">
         <div className="hero-route-summary-grid">

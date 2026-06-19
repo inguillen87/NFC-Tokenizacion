@@ -24,3 +24,4 @@ export * from "./helpbot";
 export * from "./theme-toggle";
 
 export * from "./global-ops-map";
+export * from "./globe-3d-map";

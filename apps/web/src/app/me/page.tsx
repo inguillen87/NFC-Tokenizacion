@@ -217,154 +217,169 @@ export default async function MePage({ searchParams }: { searchParams?: Promise<
         </section>
       </div>
 
-      {/* 2FA Incentive Banner */}
-      {me?.consumer?.status !== "verified" && (
-        <div className="rounded-3xl border border-amber-500/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.07)_0%,rgba(194,65,12,0.03)_100%)] p-5 flex flex-col md:flex-row items-center justify-between gap-5 transition hover:border-amber-500/35 shadow-lg">
-          <div className="flex items-start gap-4">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              <ShieldCheck className="h-6 w-6" aria-hidden="true" />
-            </div>
-            <div>
-              <h4 className="text-base font-black text-white tracking-tight">¡Duplicá tu seguridad y ganá +100 puntos de regalo!</h4>
-              <p className="mt-1 text-xs text-slate-300 leading-relaxed max-w-2xl">
-                Asociá tu cuenta con Doble Factor (Email + WhatsApp). Te regalamos 100 puntos de bienvenida automáticos para canjear en todos los clubes de bodegas donde participes.
-              </p>
-            </div>
-          </div>
-          <Link href="/me/security" className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 px-5 py-3 text-xs font-black text-slate-950 transition uppercase tracking-wider shrink-0 shadow-md">
-            Verificar 2FA ahora
-          </Link>
-        </div>
-      )}
-
-      {/* Interactive Stepper Navigation (Journey) */}
-      <section className="grid gap-4 sm:grid-cols-4">
-        {journey.map((step, index) => {
-          const StepIcon = step.icon;
-          return (
-            <article key={step.title} className="group relative rounded-2xl border border-white/5 bg-slate-950/40 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/10 hover:bg-slate-950/60">
-              <div className="flex items-center justify-between">
-                <span className="grid h-7 w-7 place-items-center rounded-lg border border-amber-500/25 bg-amber-500/10 text-[10px] font-black text-amber-200">
-                  {index + 1}
-                </span>
-                <StepIcon className="h-4 w-4 text-slate-500 group-hover:text-amber-400 transition" />
-              </div>
-              <p className="mt-3 text-xs font-black text-white">{step.title}</p>
-              <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">{step.desc}</p>
-            </article>
-          );
-        })}
-      </section>
-
-      {/* Grid of Key Metrics */}
-      <section className="grid gap-3 grid-cols-2 md:grid-cols-5">
-        {[
-          ["Vinos Verificados", String(verifiedProducts), "border-emerald-500/10 bg-emerald-500/5 text-emerald-300"],
-          ["Escaneos Taps", String(stats.taps || 0), "border-cyan-500/10 bg-cyan-500/5 text-cyan-300"],
-          ["Clubes Activos", String(activeMemberships), "border-amber-500/10 bg-amber-500/5 text-amber-300"],
-          ["Total Guardados", String(stats.products || 0), "border-violet-500/10 bg-violet-500/5 text-violet-300"],
-          ["Alertas / Inbox", String(stats.unread || 0), "border-rose-500/10 bg-rose-500/5 text-rose-300"],
-        ].map(([title, value, colorClass]) => (
-          <article key={title} className={`rounded-2xl border p-4 text-center transition hover:scale-[1.01] ${colorClass}`}>
-            <span className="block text-[9px] uppercase tracking-wider text-slate-400">{title}</span>
-            <b className="mt-2 block text-3xl font-black tracking-tight">{value}</b>
-          </article>
-        ))}
-      </section>
-
-      {/* Main Content: Split History Ledger & Recent Collection */}
-      <section className="grid gap-6 lg:grid-cols-2">
+      {/* Main Split Grid */}
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         
-        {/* Left: Audit Ledger style Taps History */}
-        <article className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg shadow-black/20">
-          <div className="flex items-center justify-between pb-3 border-b border-white/5">
-            <div>
-              <h3 className="text-sm font-black text-white">Registro Reciente de Autenticidad (Taps)</h3>
-              <p className="text-[11px] text-slate-400">Verdicts de escaneos geolocalizados.</p>
-            </div>
-            <Link href="/me/taps" className="text-xs font-bold text-amber-400 hover:text-amber-300 inline-flex items-center gap-1">
-              Ver Historial <ChevronRight className="h-3 w-3" />
-            </Link>
+        {/* Left Column (Main stats, collection, taps, quick-links) */}
+        <div className="space-y-6">
+          {/* Grid of Key Metrics */}
+          <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
+            {[
+              ["Vinos Verificados", String(verifiedProducts), "border-emerald-500/10 bg-emerald-500/5 text-emerald-300"],
+              ["Escaneos Taps", String(stats.taps || 0), "border-cyan-500/10 bg-cyan-500/5 text-cyan-300"],
+              ["Clubes Activos", String(activeMemberships), "border-amber-500/10 bg-amber-500/5 text-amber-300"],
+              ["Total Guardados", String(stats.products || 0), "border-violet-500/10 bg-violet-500/5 text-violet-300"],
+              ["Alertas / Inbox", String(stats.unread || 0), "border-rose-500/10 bg-rose-500/5 text-rose-300"],
+            ].map(([title, value, colorClass]) => (
+              <article key={title} className={`rounded-2xl border p-4 text-center transition hover:scale-[1.01] ${colorClass}`}>
+                <span className="block text-[9px] uppercase tracking-wider text-slate-400">{title}</span>
+                <b className="mt-2 block text-3xl font-black tracking-tight">{value}</b>
+              </article>
+            ))}
+          </section>
+
+          {/* main collections & history */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Left: Audit Ledger style Taps History */}
+            <article className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg shadow-black/20">
+              <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                <div>
+                  <h3 className="text-sm font-black text-white">Registro Reciente de Autenticidad (Taps)</h3>
+                  <p className="text-[11px] text-slate-400">Verdicts de escaneos geolocalizados.</p>
+                </div>
+                <Link href="/me/taps" className="text-xs font-bold text-amber-400 hover:text-amber-300 inline-flex items-center gap-1">
+                  Ver Historial <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+              
+              <div className="mt-4 space-y-3">
+                {latestTaps.length ? latestTaps.map((tap, index) => {
+                  const isVerif = String(tap.verdict || "unknown").toUpperCase().includes("VALID");
+                  return (
+                    <div key={`${tap.created_at || index}`} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3 hover:bg-slate-900/55 transition">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`h-2 w-2 rounded-full ${isVerif ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-pulse"}`} />
+                        <div>
+                          <p className="text-xs font-black text-white">{String(tap.verdict || "Desconocido").toUpperCase()}</p>
+                          <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <MapPin className="h-2.5 w-2.5 text-slate-500" />
+                            {tap.city || "Ubicación demo"}, {tap.country || "AR"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] uppercase font-mono text-slate-500">Tenant</span>
+                        <p className="text-[10px] font-mono text-slate-300 font-bold">{tap.tenant_slug || "n/a"}</p>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-xs text-slate-500 py-4 text-center">Todavía no has realizado escaneos de botellas.</p>
+                )}
+              </div>
+            </article>
+
+            {/* Right: Consumer Product Collection Grid */}
+            <article className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg shadow-black/20">
+              <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                <div>
+                  <h3 className="text-sm font-black text-white">Colección Guardada en Passport</h3>
+                  <p className="text-[11px] text-slate-400">Tus botellas con garantía activa.</p>
+                </div>
+                <Link href="/me/products" className="text-xs font-bold text-amber-400 hover:text-amber-300 inline-flex items-center gap-1">
+                  Ver Colección <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+              
+              <div className="mt-4 space-y-3">
+                {savedProducts.length ? savedProducts.map((product, index) => {
+                  const status = String(product.ownership_record_status || product.ownership_status || "viewed").toLowerCase();
+                  return (
+                    <div key={`${product.product_name || index}`} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3 hover:bg-slate-900/55 transition">
+                      <div>
+                        <p className="text-xs font-black text-white">{product.product_name || "Producto"}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Marca: {product.brand_name || product.tenant_slug}</p>
+                      </div>
+                      <span className={`rounded-full border px-2.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${
+                        status === "claimed" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-300" : "border-cyan-300/30 bg-cyan-500/10 text-cyan-300"
+                      }`}>
+                        {status}
+                      </span>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-xs text-slate-500 py-4 text-center">Aún no tienes botellas registradas en tu Pasaporte.</p>
+                )}
+              </div>
+            </article>
           </div>
-          
-          <div className="mt-4 space-y-3">
-            {latestTaps.length ? latestTaps.map((tap, index) => {
-              const isVerif = String(tap.verdict || "unknown").toUpperCase().includes("VALID");
-              return (
-                <div key={`${tap.created_at || index}`} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3 hover:bg-slate-900/55 transition">
-                  <div className="flex items-center gap-2.5">
-                    <span className={`h-2 w-2 rounded-full ${isVerif ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-pulse"}`} />
+
+          {/* Bottom Quick Links / Navigation Cards */}
+          <section className="grid gap-4 md:grid-cols-3">
+            {[
+              ["/me/products", "Mis Vinos & Productos", "Explora la biblioteca completa de botellas, garantías y certificados de autenticidad.", "text-emerald-400 bg-emerald-500/5 border-emerald-500/15 hover:border-emerald-500/35"],
+              ["/me/brands", "Mis Clubes de Fidelización", "Accede a las membresías premium, niveles de puntos y novedades directas de bodegas.", "text-amber-400 bg-amber-500/5 border-amber-500/15 hover:border-amber-500/35"],
+              ["/me/marketplace", "Marketplace Exclusivo", "Accede al catálogo de recompra, drops exclusivos y subastas de botellas limitadas.", "text-cyan-400 bg-cyan-500/5 border-cyan-500/15 hover:border-cyan-500/35"],
+            ].map(([href, title, desc, customClass]) => (
+              <Link key={href} href={href} className={`rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5 ${customClass}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-black text-white">{title}</span>
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-slate-300">{desc}</p>
+              </Link>
+            ))}
+          </section>
+        </div>
+
+        {/* Right Column (2FA info, Step by step explanation, rewards/ad space) */}
+        <div className="space-y-6">
+          {/* 2FA Incentive Banner */}
+          {me?.consumer?.status !== "verified" && (
+            <div className="rounded-3xl border border-amber-500/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.07)_0%,rgba(194,65,12,0.03)_100%)] p-5 flex flex-col items-stretch gap-4 transition hover:border-amber-500/35 shadow-lg">
+              <div className="flex items-start gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-white tracking-tight">¡Doble Factor de Seguridad!</h4>
+                  <p className="mt-1 text-[11px] text-slate-300 leading-relaxed">
+                    Asociá tu Email + WhatsApp. Te regalamos 100 puntos automáticos para canjear en tus clubes.
+                  </p>
+                </div>
+              </div>
+              <Link href="/me/security" className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 px-4 py-2.5 text-center text-xs font-black text-slate-950 transition uppercase tracking-wider shadow-md">
+                Activar 2FA (+100 pts)
+              </Link>
+            </div>
+          )}
+
+          {/* Interactive Stepper Navigation (Journey) */}
+          <article className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-lg">
+            <h3 className="text-xs font-black uppercase tracking-[0.16em] text-slate-400 mb-4">¿Cómo funciona nexID?</h3>
+            <div className="space-y-4">
+              {journey.map((step, index) => {
+                const StepIcon = step.icon;
+                return (
+                  <div key={step.title} className="flex gap-3">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-amber-500/25 bg-amber-500/10 text-[9px] font-black text-amber-200">
+                      {index + 1}
+                    </span>
                     <div>
-                      <p className="text-xs font-black text-white">{String(tap.verdict || "Desconocido").toUpperCase()}</p>
-                      <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                        <MapPin className="h-2.5 w-2.5 text-slate-500" />
-                        {tap.city || "Ubicación demo"}, {tap.country || "AR"}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-black text-white">{step.title}</p>
+                        <StepIcon className="h-3 w-3 text-slate-500" />
+                      </div>
+                      <p className="mt-0.5 text-[10px] leading-relaxed text-slate-400">{step.desc}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[9px] uppercase font-mono text-slate-500">Tenant</span>
-                    <p className="text-[10px] font-mono text-slate-300 font-bold">{tap.tenant_slug || "n/a"}</p>
-                  </div>
-                </div>
-              );
-            }) : (
-              <p className="text-xs text-slate-500 py-4 text-center">Todavía no has realizado escaneos de botellas.</p>
-            )}
-          </div>
-        </article>
-
-        {/* Right: Consumer Product Collection Grid */}
-        <article className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg shadow-black/20">
-          <div className="flex items-center justify-between pb-3 border-b border-white/5">
-            <div>
-              <h3 className="text-sm font-black text-white">Colección Guardada en Passport</h3>
-              <p className="text-[11px] text-slate-400">Tus botellas con garantía activa.</p>
+                );
+              })}
             </div>
-            <Link href="/me/products" className="text-xs font-bold text-amber-400 hover:text-amber-300 inline-flex items-center gap-1">
-              Ver Colección <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
-          
-          <div className="mt-4 space-y-3">
-            {savedProducts.length ? savedProducts.map((product, index) => {
-              const status = String(product.ownership_record_status || product.ownership_status || "viewed").toLowerCase();
-              return (
-                <div key={`${product.product_name || index}`} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3 hover:bg-slate-900/55 transition">
-                  <div>
-                    <p className="text-xs font-black text-white">{product.product_name || "Producto"}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Marca: {product.brand_name || product.tenant_slug}</p>
-                  </div>
-                  <span className={`rounded-full border px-2.5 py-0.5 text-[8px] font-black uppercase tracking-wider ${
-                    status === "claimed" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-300" : "border-cyan-300/30 bg-cyan-500/10 text-cyan-300"
-                  }`}>
-                    {status}
-                  </span>
-                </div>
-              );
-            }) : (
-              <p className="text-xs text-slate-500 py-4 text-center">Aún no tienes botellas registradas en tu Pasaporte.</p>
-            )}
-          </div>
-        </article>
-      </section>
+          </article>
+        </div>
 
-      {/* Bottom Quick Links / Navigation Cards */}
-      <section className="grid gap-4 lg:grid-cols-3">
-        {[
-          ["/me/products", "Mis Vinos & Productos", "Explora la biblioteca completa de botellas, garantías y certificados de autenticidad.", "text-emerald-400 bg-emerald-500/5 border-emerald-500/15 hover:border-emerald-500/35"],
-          ["/me/brands", "Mis Clubes de Fidelización", "Accede a las membresías premium, niveles de puntos y novedades directas de bodegas.", "text-amber-400 bg-amber-500/5 border-amber-500/15 hover:border-amber-500/35"],
-          ["/me/marketplace", "Marketplace Exclusivo", "Accede al catálogo de recompra, drops exclusivos y subastas de botellas limitadas.", "text-cyan-400 bg-cyan-500/5 border-cyan-500/15 hover:border-cyan-500/35"],
-        ].map(([href, title, desc, customClass]) => (
-          <Link key={href} href={href} className={`rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-0.5 ${customClass}`}>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-black text-white">{title}</span>
-              <ArrowRight className="h-4 w-4" />
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-slate-300">{desc}</p>
-          </Link>
-        ))}
-      </section>
+      </div>
 
     </PortalShell>
   );
