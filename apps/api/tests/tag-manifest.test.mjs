@@ -13,6 +13,31 @@ test("CSV manifest supports UID-only supplier import", () => {
   assert.equal(manifest.rows[0].sku, null);
 });
 
+test("CSV manifest keeps unit metadata and IoT separate from product identity", () => {
+  const csv = [
+    "uid_hex;batch_id;bottle_number;case_id;sensor_json;temperature_c;humidity_pct",
+    '04AABBCCDD1090;LOT-1;55555;CASE-9;"{""deviceId"":""logger-7"",""lightExposure"":""Low""}";12.4;67',
+  ].join("\n");
+  const manifest = parseTagManifest(csv, "LOT-1");
+  assert.equal(manifest.rows.length, 1);
+  assert.equal(manifest.rejectedRows.length, 0);
+  assert.equal(manifest.rows[0].productName, null);
+  assert.equal(manifest.rows[0].sku, null);
+  assert.equal(manifest.rows[0].serial, "55555");
+  assert.equal(manifest.rows[0].unitMetadata.bottle_number, "55555");
+  assert.equal(manifest.rows[0].unitMetadata.case_id, "CASE-9");
+  assert.equal(manifest.rows[0].iotData.deviceId, "logger-7");
+  assert.equal(manifest.rows[0].iotData.lightExposure, "Low");
+  assert.equal(manifest.rows[0].iotData.temperatureC, 12.4);
+  assert.equal(manifest.rows[0].iotData.humidityPct, 67);
+});
+
+test("CSV manifest rejects invalid IoT JSON", () => {
+  const manifest = parseTagManifest("uid_hex;batch_id;sensor_json\n04AABBCCDD1090;LOT-1;{bad-json}\n", "LOT-1");
+  assert.equal(manifest.rows.length, 0);
+  assert.equal(manifest.rejectedRows[0].reason, "invalid_iot_json");
+});
+
 test("CSV manifest rejects mismatched batch and duplicate UID", () => {
   const manifest = parseTagManifest("uid_hex,batch_id,sku\n04AABBCCDD1090,OTHER,SKU-1\n04AABBCCDD1090,LOT-1,SKU-1\n04AABBCCDD1090,LOT-1,SKU-1\n", "LOT-1");
   assert.equal(manifest.rows.length, 1);

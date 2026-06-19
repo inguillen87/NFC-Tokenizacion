@@ -150,7 +150,7 @@ export async function POST(req: Request) {
           'valid_and_opened',
           'purchase_proof_required',
           '{"requiresPurchaseProof":true,"requiresFreshTap":true,"requiresTenantMembership":true,"allowsPublicClaim":false,"antiReplayRequired":true}'::jsonb,
-          '{"acceptedFormats":["csv","txt"],"requiredColumns":["uid_hex"],"csvOptionalColumns":["batch_id","product_name","sku","lot","serial","expires_at","image_url","label_image_url","model_url","gallery_urls"],"activateDefault":false,"rejectDuplicates":true}'::jsonb,
+          '{"acceptedFormats":["csv","txt"],"requiredColumns":["uid_hex"],"csvOptionalColumns":["batch_id","product_name","sku","lot","serial","serial_number","external_unit_id","bottle_number","label_number","case_id","pallet_id","roll_id","supplier_lot","expires_at","image_url","label_image_url","model_url","gallery_urls","sensor_json","iot_json","telemetry_json","sensor_at","sensor_id","temperature_c","humidity_pct","light_exposure","transit_shock","storage_zone"],"activateDefault":false,"rejectDuplicates":true}'::jsonb,
           '{"accent":"cyan","secondary":"violet","mapStyle":"luxury"}'::jsonb,
           '{"setup_completed": false}'::jsonb
         )

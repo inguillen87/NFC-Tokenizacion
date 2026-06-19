@@ -22,10 +22,17 @@ export async function GET(req: Request) {
       t.uid_hex,
       b.bid,
       tn.slug AS tenant_slug,
-      COALESCE(tp.product_name, tp.sku, 'Unprofiled bottle') AS product_name,
-      tp.winery,
-      tp.region,
-      tp.vintage,
+      COALESCE(
+        CASE WHEN profile_guard.allowed THEN NULLIF(tp.product_name, '') END,
+        NULLIF(b.sdm_config->>'product_name', ''),
+        NULLIF(b.sdm_config #>> '{sun,product,name}', ''),
+        CASE WHEN profile_guard.allowed THEN NULLIF(tp.sku, '') END,
+        'Producto sin configurar'
+      ) AS product_name,
+      COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.winery, '') END, NULLIF(b.sdm_config->>'winery', ''), NULLIF(b.sdm_config #>> '{sun,product,producer}', ''), tn.name) AS winery,
+      COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.region, '') END, NULLIF(b.sdm_config->>'region', ''), NULLIF(b.sdm_config #>> '{sun,origin,region}', '') ) AS region,
+      COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.vintage, '') END, NULLIF(b.sdm_config->>'vintage', ''), NULLIF(b.sdm_config #>> '{sun,product,vintage}', '') ) AS vintage,
+      profile_guard.conflict AS tag_profile_conflict,
       t.status AS tag_status,
       t.scan_count,
       t.first_seen_at,
@@ -40,7 +47,30 @@ export async function GET(req: Request) {
     FROM tags t
     JOIN batches b ON b.id = t.batch_id
     JOIN tenants tn ON tn.id = b.tenant_id
+    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = tn.id
     LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(
+          NULLIF(tp.locale_data #>> '{es-AR,vertical}', ''),
+          NULLIF(tp.locale_data #>> '{en,vertical}', ''),
+          NULLIF(tp.locale_data #>> '{pt-BR,vertical}', ''),
+          NULLIF(tp.locale_data->>'vertical', '')
+        ) AS profile_vertical
+    ) profile_vertical ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        (
+          profile_vertical.profile_vertical IS NULL
+          OR tsp.vertical IS NULL
+          OR lower(profile_vertical.profile_vertical) = lower(tsp.vertical)
+        ) AS allowed,
+        (
+          profile_vertical.profile_vertical IS NOT NULL
+          AND tsp.vertical IS NOT NULL
+          AND lower(profile_vertical.profile_vertical) <> lower(tsp.vertical)
+        ) AS conflict
+    ) profile_guard ON TRUE
     LEFT JOIN LATERAL (
       SELECT e.result, e.city, e.country_code, e.created_at
       FROM events e
@@ -64,9 +94,15 @@ export async function GET(req: Request) {
         ${query} = ''
         OR t.uid_hex ILIKE ${`%${query}%`}
         OR b.bid ILIKE ${`%${query}%`}
-        OR COALESCE(tp.product_name, tp.sku, '') ILIKE ${`%${query}%`}
-        OR COALESCE(tp.winery, '') ILIKE ${`%${query}%`}
-        OR COALESCE(tp.region, '') ILIKE ${`%${query}%`}
+        OR COALESCE(
+          CASE WHEN profile_guard.allowed THEN NULLIF(tp.product_name, '') END,
+          NULLIF(b.sdm_config->>'product_name', ''),
+          NULLIF(b.sdm_config #>> '{sun,product,name}', ''),
+          CASE WHEN profile_guard.allowed THEN NULLIF(tp.sku, '') END,
+          ''
+        ) ILIKE ${`%${query}%`}
+        OR COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.winery, '') END, NULLIF(b.sdm_config->>'winery', ''), NULLIF(b.sdm_config #>> '{sun,product,producer}', ''), '') ILIKE ${`%${query}%`}
+        OR COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.region, '') END, NULLIF(b.sdm_config->>'region', ''), NULLIF(b.sdm_config #>> '{sun,origin,region}', ''), '') ILIKE ${`%${query}%`}
       )
     ORDER BY COALESCE(t.last_seen_at, t.created_at) DESC
     OFFSET ${offset}
@@ -83,7 +119,25 @@ export async function GET(req: Request) {
     FROM tags t
     JOIN batches b ON b.id = t.batch_id
     JOIN tenants tn ON tn.id = b.tenant_id
+    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = tn.id
     LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(
+          NULLIF(tp.locale_data #>> '{es-AR,vertical}', ''),
+          NULLIF(tp.locale_data #>> '{en,vertical}', ''),
+          NULLIF(tp.locale_data #>> '{pt-BR,vertical}', ''),
+          NULLIF(tp.locale_data->>'vertical', '')
+        ) AS profile_vertical
+    ) profile_vertical ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        (
+          profile_vertical.profile_vertical IS NULL
+          OR tsp.vertical IS NULL
+          OR lower(profile_vertical.profile_vertical) = lower(tsp.vertical)
+        ) AS allowed
+    ) profile_guard ON TRUE
     LEFT JOIN LATERAL (
       SELECT e.country_code
       FROM events e
@@ -107,9 +161,15 @@ export async function GET(req: Request) {
         ${query} = ''
         OR t.uid_hex ILIKE ${`%${query}%`}
         OR b.bid ILIKE ${`%${query}%`}
-        OR COALESCE(tp.product_name, tp.sku, '') ILIKE ${`%${query}%`}
-        OR COALESCE(tp.winery, '') ILIKE ${`%${query}%`}
-        OR COALESCE(tp.region, '') ILIKE ${`%${query}%`}
+        OR COALESCE(
+          CASE WHEN profile_guard.allowed THEN NULLIF(tp.product_name, '') END,
+          NULLIF(b.sdm_config->>'product_name', ''),
+          NULLIF(b.sdm_config #>> '{sun,product,name}', ''),
+          CASE WHEN profile_guard.allowed THEN NULLIF(tp.sku, '') END,
+          ''
+        ) ILIKE ${`%${query}%`}
+        OR COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.winery, '') END, NULLIF(b.sdm_config->>'winery', ''), NULLIF(b.sdm_config #>> '{sun,product,producer}', ''), '') ILIKE ${`%${query}%`}
+        OR COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.region, '') END, NULLIF(b.sdm_config->>'region', ''), NULLIF(b.sdm_config #>> '{sun,origin,region}', ''), '') ILIKE ${`%${query}%`}
       )
   `;
 
@@ -118,10 +178,11 @@ export async function GET(req: Request) {
     bid: String(row.bid || ""),
     tenantSlug: String(row.tenant_slug || ""),
     product: {
-      name: String(row.product_name || "Unprofiled bottle"),
+      name: String(row.product_name || "Producto sin configurar"),
       winery: String(row.winery || "-"),
       region: String(row.region || "-"),
       vintage: String(row.vintage || "-"),
+      profileConflict: Boolean(row.tag_profile_conflict),
     },
     status: {
       tag: String(row.tag_status || "unknown"),

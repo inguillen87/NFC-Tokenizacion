@@ -53,6 +53,8 @@ export type ParsedManifestRow = {
   labelImageUrl: string | null;
   modelUrl: string | null;
   galleryUrls: string[];
+  unitMetadata: Record<string, string>;
+  iotData: Record<string, unknown> | null;
   carrierProfileCode: CarrierProfileCode | null;
   sunPayload: SunPayloadParts | null;
   sunPayloadHashes: SunPayloadHashes | null;
@@ -78,6 +80,72 @@ function getColumn(row: Record<string, string>, names: string[]) {
     if (value) return value;
   }
   return "";
+}
+
+function numberColumn(row: Record<string, string>, names: string[]) {
+  const value = getColumn(row, names);
+  if (!value) return null;
+  const normalized = value.replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseObjectColumn(row: Record<string, string>, names: string[]) {
+  const raw = getColumn(row, names);
+  if (!raw) return { value: null as Record<string, unknown> | null, error: null as string | null };
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return { value: parsed as Record<string, unknown>, error: null };
+    }
+    return { value: null, error: "json_object_required" };
+  } catch {
+    return { value: null, error: "invalid_json" };
+  }
+}
+
+function compactObject<T extends Record<string, unknown>>(input: T) {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => {
+      if (value == null) return false;
+      if (typeof value === "string") return value.trim().length > 0;
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === "object") return Object.keys(value).length > 0;
+      return true;
+    }),
+  );
+}
+
+function collectUnitMetadata(row: Record<string, string>) {
+  const metadata = compactObject({
+    external_unit_id: getColumn(row, ["external_unit_id", "external_id", "unit_id", "piece_id"]),
+    bottle_number: getColumn(row, ["bottle_number", "bottle_no", "numero_botella", "nro_botella"]),
+    label_number: getColumn(row, ["label_number", "etiqueta_numero", "label_no"]),
+    case_id: getColumn(row, ["case_id", "case", "box_id", "carton_id", "caja"]),
+    pallet_id: getColumn(row, ["pallet_id", "pallet", "pallet_number"]),
+    roll_id: getColumn(row, ["roll_id", "reel_id", "roll", "reel"]),
+    supplier_lot: getColumn(row, ["supplier_lot", "supplier_batch", "supplier_batch_id"]),
+    production_line: getColumn(row, ["production_line", "linea", "line"]),
+    encoding_station: getColumn(row, ["encoding_station", "encoder", "station"]),
+  });
+  return Object.fromEntries(Object.entries(metadata).map(([key, value]) => [key, String(value)]));
+}
+
+function collectIotData(row: Record<string, string>) {
+  const parsed = parseObjectColumn(row, ["sensor_json", "iot_json", "telemetry_json", "sensor_data", "sensors", "iot"]);
+  if (parsed.error) return { value: null, error: parsed.error };
+  const columns = compactObject({
+    measuredAt: getColumn(row, ["sensor_at", "telemetry_at", "measured_at", "captured_at"]),
+    deviceId: getColumn(row, ["sensor_id", "iot_device_id", "logger_id", "device_id"]),
+    temperatureC: numberColumn(row, ["temperature_c", "temp_c", "cellar_temperature_c", "storage_temperature_c"]),
+    humidityPct: numberColumn(row, ["humidity_pct", "humidity", "relative_humidity_pct", "rh_pct"]),
+    pressureHpa: numberColumn(row, ["pressure_hpa", "pressure"]),
+    lightExposure: getColumn(row, ["light_exposure", "light", "lux"]),
+    transitShock: getColumn(row, ["transit_shock", "shock", "shock_g", "impact_g"]),
+    storageZone: getColumn(row, ["storage_zone", "cellar_zone", "warehouse_zone"]),
+  });
+  const merged = compactObject({ ...(parsed.value || {}), ...columns });
+  return { value: Object.keys(merged).length ? merged : null, error: null };
 }
 
 function splitUrls(value: string) {
@@ -191,6 +259,11 @@ export function parseTagManifest(content: string, expectedBid: string): Manifest
           cmacHex: sunPayload.cmacHex,
         })
       : null;
+    const iot = collectIotData(row);
+    if (iot.error) {
+      rejectedRows.push({ row: index + 1, reason: "invalid_iot_json", value: iot.error });
+      return;
+    }
     seen.add(uidHex);
     rows.push({
       uidHex,
@@ -198,12 +271,25 @@ export function parseTagManifest(content: string, expectedBid: string): Manifest
       productName: getColumn(row, ["product_name", "productName", "name"]) || null,
       sku: getColumn(row, ["sku", "SKU"]) || null,
       lot: getColumn(row, ["lot", "lote", "lot_id"]) || null,
-      serial: getColumn(row, ["serial", "serial_number"]) || null,
+      serial: getColumn(row, [
+        "serial",
+        "serial_number",
+        "external_unit_id",
+        "external_id",
+        "bottle_number",
+        "bottle_no",
+        "label_number",
+        "numero_botella",
+        "nro_botella",
+        "etiqueta_numero",
+      ]) || null,
       expiresAt: getColumn(row, ["expires_at", "expiry", "expiration"]) || null,
       imageUrl: getColumn(row, ["image_url", "imageUrl", "photo_url", "photoUrl", "hero_image_url", "product_image_url"]) || null,
       labelImageUrl: getColumn(row, ["label_image_url", "labelImageUrl", "tag_image_url", "tagImageUrl", "packshot_url", "packshotUrl"]) || null,
       modelUrl: getColumn(row, ["model_url", "modelUrl", "glb_url", "glbUrl", "model3d_url", "model3dUrl"]) || null,
       galleryUrls: splitUrls(getColumn(row, ["gallery_urls", "galleryUrls", "media_urls", "mediaUrls", "gallery", "images"])),
+      unitMetadata: collectUnitMetadata(row),
+      iotData: iot.value,
       carrierProfileCode,
       sunPayload,
       sunPayloadHashes,

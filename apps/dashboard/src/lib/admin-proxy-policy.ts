@@ -37,6 +37,8 @@ const READONLY_DEMO_ALLOWED = [
   "sdk/api-keys",
   "webhooks",
   "webhook-deliveries",
+  "batches",
+  "batches/",
   "product-assets",
   "tags",
   "tags/",

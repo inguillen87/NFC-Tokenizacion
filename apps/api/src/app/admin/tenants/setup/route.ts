@@ -10,6 +10,37 @@ import {
   type SunClaimPolicy,
 } from '../../../../lib/sun-tenant-profile';
 
+const EXTENDED_MANIFEST_COLUMNS = [
+  "batch_id",
+  "product_name",
+  "sku",
+  "lot",
+  "serial",
+  "serial_number",
+  "external_unit_id",
+  "bottle_number",
+  "label_number",
+  "case_id",
+  "pallet_id",
+  "roll_id",
+  "supplier_lot",
+  "expires_at",
+  "image_url",
+  "label_image_url",
+  "model_url",
+  "gallery_urls",
+  "sensor_json",
+  "iot_json",
+  "telemetry_json",
+  "sensor_at",
+  "sensor_id",
+  "temperature_c",
+  "humidity_pct",
+  "light_exposure",
+  "transit_shock",
+  "storage_zone",
+];
+
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
@@ -70,7 +101,7 @@ export async function POST(req: Request) {
     manifestPolicy = {
       acceptedFormats: ["csv"],
       requiredColumns: ["uid_hex"],
-      csvOptionalColumns: ["batch_id", "product_name", "sku", "expires_at"],
+      csvOptionalColumns: EXTENDED_MANIFEST_COLUMNS,
       activateDefault: true,
       rejectDuplicates: true,
     };
@@ -89,7 +120,7 @@ export async function POST(req: Request) {
     manifestPolicy = {
       acceptedFormats: ["csv", "txt"],
       requiredColumns: ["uid_hex"],
-      csvOptionalColumns: ["batch_id", "product_name", "sku", "serial", "image_url"],
+      csvOptionalColumns: EXTENDED_MANIFEST_COLUMNS,
       activateDefault: false,
       rejectDuplicates: true,
     };
@@ -108,7 +139,7 @@ export async function POST(req: Request) {
     manifestPolicy = {
       acceptedFormats: ["csv", "txt"],
       requiredColumns: ["uid_hex"],
-      csvOptionalColumns: ["batch_id", "product_name", "sku", "lot", "serial", "expires_at"],
+      csvOptionalColumns: EXTENDED_MANIFEST_COLUMNS,
       activateDefault: true,
       rejectDuplicates: true,
     };
@@ -127,7 +158,7 @@ export async function POST(req: Request) {
     manifestPolicy = {
       acceptedFormats: ["csv", "txt"],
       requiredColumns: ["uid_hex"],
-      csvOptionalColumns: [],
+      csvOptionalColumns: EXTENDED_MANIFEST_COLUMNS,
       activateDefault: true,
       rejectDuplicates: true,
     };
@@ -147,7 +178,7 @@ export async function POST(req: Request) {
     manifestPolicy = {
       acceptedFormats: ["csv", "txt"],
       requiredColumns: ["uid_hex"],
-      csvOptionalColumns: ["batch_id", "product_name", "sku", "lot", "serial", "expires_at", "image_url", "label_image_url", "model_url", "gallery_urls"],
+      csvOptionalColumns: EXTENDED_MANIFEST_COLUMNS,
       activateDefault: false,
       rejectDuplicates: true,
     };

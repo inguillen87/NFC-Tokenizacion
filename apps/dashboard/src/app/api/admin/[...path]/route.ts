@@ -25,9 +25,25 @@ const DEMO_TENANT_NAMES: Record<string, string> = {
 const DEMO_BATCH = {
   bid: "DEMO-2026-02",
   tenant_id: DEFAULT_DEMO_TENANT.slug,
-  sku: "DEMO-SKU",
+  tenant_slug: DEFAULT_DEMO_TENANT.slug,
+  sku: "GRM-2022-DEMO",
+  product_name: "Gran Reserva Malbec",
+  winery: "Demo Bodega",
+  region: "Valle de Uco",
+  grape_varietal: "Malbec",
+  vintage: "2022",
   qty: 10,
+  quantity: 10,
+  requested_quantity: 10,
+  active_tags: 10,
+  inactive_tags: 0,
+  unit_metadata_rows: 10,
+  iot_metadata_rows: 1,
+  unit_product_overrides: 0,
   type: "NTAG 424 DNA TT",
+  carrier_profile_code: "ntag424_dna_tt",
+  carrier_label: "NTAG424 DNA TT",
+  carrier_security_level: 5,
   status: "active",
 };
 
@@ -46,7 +62,7 @@ function resolveDemoTenant(input?: unknown) {
 }
 
 function demoBatchFor(tenantSlug: string) {
-  return { ...DEMO_BATCH, tenant_id: tenantSlug };
+  return { ...DEMO_BATCH, tenant_id: tenantSlug, tenant_slug: tenantSlug };
 }
 
 function isDemoSession(req: Request) {
@@ -116,6 +132,67 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
 
   if (method === "GET" && normalized === "batches") {
     return NextResponse.json([demoBatch]);
+  }
+  if (method === "GET" && normalized.startsWith("batches/") && normalized.endsWith("/summary")) {
+    const bid = normalized.split("/")[1] || demoBatch.bid;
+    return NextResponse.json({
+      ok: true,
+      batch: {
+        ...demoBatch,
+        bid,
+        imported_tags: demoBatch.quantity,
+        has_meta_key: true,
+        has_file_key: true,
+        product_identity: {
+          source: "batch",
+          product_name: demoBatch.product_name,
+          sku: demoBatch.sku,
+          winery: demoBatch.winery,
+          region: demoBatch.region,
+          grape_varietal: demoBatch.grape_varietal,
+          vintage: demoBatch.vintage,
+          harvest_year: "2022",
+          barrel_months: "14",
+          temperature_storage: "14C",
+          target_market: "AR",
+          image_url: null,
+        },
+        unit_metadata: {
+          tag_profile_rows: 10,
+          unit_metadata_rows: 10,
+          iot_metadata_rows: 1,
+          unit_product_overrides: 0,
+          samples: [
+            {
+              uid_hex: "04A1B2C3D41090",
+              status: "active",
+              carrier_profile_code: "ntag424_dna_tt",
+              product_override: false,
+              product_name: null,
+              sku: null,
+              lot: "MZA-2026-0424",
+              serial: "DEMO-001",
+              unit_metadata: { bottle_number: "0001", case_id: "CASE-01" },
+              iot: { deviceId: "logger-demo-7", temperatureC: 12.4, humidityPct: 67 },
+            },
+          ],
+        },
+        manifests: [
+          {
+            manifest_type: "csv",
+            row_count: 10,
+            inserted_count: 10,
+            reactivated_count: 0,
+            duplicate_count: 0,
+            rejected_count: 0,
+            import_status: "imported",
+            created_at: new Date().toISOString(),
+          },
+        ],
+      },
+      demoMode: true,
+      dataSource: "demo",
+    });
   }
   if (method === "GET" && normalized === "tenants") {
     const demobodegaMetrics = aggregateTenantMetrics({
@@ -409,13 +486,23 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           tenantSlug: demoTenant.slug,
           bid: "DEMO-2026-02",
           uidHex: "04A1B2C3D4",
-          productName: "Gran Reserva Malbec",
-          brandName: "Demo Bodega",
-          imageUrl: null,
-          labelImageUrl: null,
-          modelUrl: null,
-          galleryUrls: [],
-          assetScore: 64,
+          uidMasked: "04A1****C3D4",
+          tagStatus: "active",
+          unitMetadata: { lot: "MZA-2026-0424", serial: "DEMO-001", unitMetadata: { bottle_number: "0001", case_id: "CASE-01" } },
+          iot: { deviceId: "logger-demo-7", temperatureC: 12.4, humidityPct: 67 },
+          assetReadiness: "0 reales / 4 demo / 1 pendientes",
+          profile: {
+            productName: "Gran Reserva Malbec",
+            brandName: "Demo Bodega",
+            verticalLabel: "Vinos y bebidas premium",
+            primaryImageUrl: null,
+            labelImageUrl: null,
+            modelUrl: null,
+            galleryUrls: [],
+            assetScore: 64,
+            uploadChecklist: ["Foto producto", "Etiqueta frontal", "Foto tag aplicado", "Ficha comercial", "Reglas claim/NFT", "Modelo GLB opcional"],
+            slots: [],
+          },
         },
       ],
       demoMode: true,

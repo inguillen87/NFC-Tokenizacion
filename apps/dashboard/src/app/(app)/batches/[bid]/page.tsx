@@ -5,89 +5,280 @@ import { BatchSunValidator } from "../../../../components/batch-sun-validator";
 
 const API_BASE = productUrls.api;
 
+type UnitSample = {
+  uid_hex?: string | null;
+  status?: string | null;
+  carrier_profile_code?: string | null;
+  product_override?: boolean | null;
+  product_name?: string | null;
+  sku?: string | null;
+  lot?: string | null;
+  serial?: string | null;
+  unit_metadata?: Record<string, unknown> | null;
+  iot?: Record<string, unknown> | null;
+  updated_at?: string | null;
+};
+
+type BatchSummary = Record<string, unknown> & {
+  bid?: string;
+  status?: string;
+  tenant_slug?: string;
+  product_identity?: Record<string, unknown>;
+  unit_metadata?: {
+    tag_profile_rows?: number;
+    unit_metadata_rows?: number;
+    iot_metadata_rows?: number;
+    unit_product_overrides?: number;
+    samples?: UnitSample[];
+  };
+  manifests?: Array<Record<string, unknown>>;
+};
+
+function text(value: unknown, fallback = "-") {
+  const output = String(value || "").trim();
+  return output || fallback;
+}
+
+function numberValue(value: unknown) {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatNumber(value: unknown) {
+  return numberValue(value).toLocaleString("es-AR");
+}
+
 function formatCarrierAdminCopy(value: unknown) {
   if (!value) return "";
   if (typeof value === "string") return value;
   if (typeof value !== "object") return String(value);
   const copy = value as Record<string, unknown>;
-  const parts = [
+  return [
     copy.positioning ? `Posicionamiento: ${String(copy.positioning)}` : "",
     copy.bestFor ? `Ideal para: ${String(copy.bestFor)}` : "",
     copy.avoid ? `No prometer: ${String(copy.avoid)}` : "",
-  ].filter(Boolean);
-  return parts.join(" ");
+  ].filter(Boolean).join(" ");
 }
 
-async function getBatch(bid: string) {
+function maskUid(uid: unknown) {
+  const raw = String(uid || "").replace(/[^a-fA-F0-9]/g, "").toUpperCase();
+  if (!raw) return "-";
+  if (raw.length <= 8) return `${raw.slice(0, 4)}****`;
+  return `${raw.slice(0, 4)}****${raw.slice(-4)}`;
+}
+
+function objectEntries(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [] as Array<[string, unknown]>;
+  return Object.entries(value as Record<string, unknown>).filter(([, entry]) => String(entry ?? "").trim() !== "");
+}
+
+async function getBatch(bid: string): Promise<BatchSummary | null> {
   try {
-    const response = await fetch(`${API_BASE}/admin/batches`, {
+    const response = await fetch(`${API_BASE}/admin/batches/${encodeURIComponent(bid)}/summary`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
     if (!response.ok) return null;
-    const rows = (await response.json()) as Array<Record<string, unknown>>;
-    return rows.find((row) => String(row.bid || "") === bid) || null;
+    const payload = (await response.json()) as { batch?: BatchSummary };
+    return payload.batch || null;
   } catch {
     return null;
   }
 }
 
+function Fact({ label, value }: { label: string; value: unknown }) {
+  return (
+    <div>
+      <dt className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</dt>
+      <dd className="mt-1 break-words text-sm font-semibold text-white">{text(value)}</dd>
+    </div>
+  );
+}
+
+function Metric({ label, value, detail, tone = "neutral" }: { label: string; value: unknown; detail: string; tone?: "good" | "warn" | "bad" | "neutral" }) {
+  const toneClass = tone === "good"
+    ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
+    : tone === "warn"
+      ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
+      : tone === "bad"
+        ? "border-rose-300/25 bg-rose-500/10 text-rose-100"
+        : "border-white/10 bg-slate-950/55 text-slate-200";
+  return (
+    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] opacity-75">{label}</p>
+      <p className="mt-2 text-2xl font-black text-white">{typeof value === "number" ? formatNumber(value) : text(value)}</p>
+      <p className="mt-1 text-xs leading-5 opacity-80">{detail}</p>
+    </div>
+  );
+}
+
 export default async function BatchDetailPage({ params }: { params: Promise<{ bid: string }> }) {
   const { bid } = await params;
   const batch = await getBatch(bid);
-  const publicMobile = `${productUrls.web}/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
+  const product = batch?.product_identity || {};
+  const unit = batch?.unit_metadata || {};
+  const samples = Array.isArray(unit.samples) ? unit.samples : [];
+  const manifests = Array.isArray(batch?.manifests) ? batch?.manifests || [] : [];
+  const tenantSlug = text(batch?.tenant_slug, "tenant");
+  const firstUid = samples[0]?.uid_hex || "";
+  const publicMobile = firstUid
+    ? `${productUrls.web}/demo-lab/mobile/${encodeURIComponent(tenantSlug)}/${encodeURIComponent(String(firstUid))}?pack=${encodeURIComponent(text(product.sku || batch?.sku, "batch"))}&bid=${encodeURIComponent(bid)}&demoMode=consumer_tap`
+    : "";
   const carrierAdminCopy = formatCarrierAdminCopy(batch?.carrier_admin_copy);
+  const imported = numberValue(batch?.imported_tags);
+  const active = numberValue(batch?.active_tags);
+  const overrides = numberValue(unit.unit_product_overrides);
 
   return (
     <main className="space-y-8">
-      <SectionHeading eyebrow="Batch detail" title={bid} description="Vista puntual para revisar el lote registrado y sus próximos pasos operativos." />
+      <SectionHeading
+        eyebrow="Batch CRM"
+        title={bid}
+        description="Separacion operativa: la ficha del lote define el producto; el manifest define UID, seriales, sensores y excepciones por unidad."
+      />
       {!batch ? (
-        <Card className="p-6 text-sm text-rose-200">Batch no encontrado. Volvé a registrar el supplier batch o revisá el BID exacto.</Card>
+        <Card className="p-6 text-sm text-rose-200">Batch no encontrado. Revisa el BID exacto o registra el lote desde supplier flow.</Card>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-2">
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-white">Resumen</h2>
-            <dl className="mt-4 space-y-3 text-sm text-slate-300">
-              <div><dt className="text-slate-400">Tenant</dt><dd className="text-white">{String(batch.tenant_slug || "-")}</dd></div>
-              <div><dt className="text-slate-400">Status</dt><dd className="text-white">{String(batch.status || "-")}</dd></div>
-              <div><dt className="text-slate-400">Carrier</dt><dd className="text-white">{String(batch.carrier_label || batch.carrier_profile_code || "Sin carrier")}</dd></div>
-              <div><dt className="text-slate-400">Security level</dt><dd className="text-white">{batch.carrier_security_level ? `L${String(batch.carrier_security_level)}` : "-"}</dd></div>
-              <div><dt className="text-slate-400">Profile</dt><dd className="text-white">{String(batch.batch_profile || "custom")}</dd></div>
-              <div><dt className="text-slate-400">Chip model</dt><dd className="text-white">{String(batch.chip_model || batch.type || "-")}</dd></div>
-              <div><dt className="text-slate-400">SKU</dt><dd className="text-white">{String(batch.sku || "-")}</dd></div>
-              <div><dt className="text-slate-400">Requested quantity</dt><dd className="text-white">{String(batch.requested_quantity || batch.qty || 0)}</dd></div>
-              <div><dt className="text-slate-400">Imported tags</dt><dd className="text-white">{String(batch.imported_count || batch.tags_imported || "unknown")}</dd></div>
-              <div><dt className="text-slate-400">Active tags</dt><dd className="text-white">{String(batch.active_count || batch.tags_active || "unknown")}</dd></div>
-              <div><dt className="text-slate-400">Keys loaded</dt><dd className="text-white">{batch.k_meta_hex || batch.k_file_hex ? "yes" : "unknown"}</dd></div>
-            </dl>
-            {carrierAdminCopy ? (
-              <div className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs leading-5 text-cyan-100">
-                {carrierAdminCopy}
+        <>
+          <div className="grid gap-3 md:grid-cols-4">
+            <Metric label="Tenant" value={tenantSlug} detail="Scope comercial del lote." tone="neutral" />
+            <Metric label="Tags importados" value={imported} detail={`${formatNumber(active)} activos ahora.`} tone={imported ? "good" : "warn"} />
+            <Metric label="Metadata unidad" value={unit.unit_metadata_rows || 0} detail="Seriales, botellas, cajas, pallets." tone={numberValue(unit.unit_metadata_rows) ? "good" : "neutral"} />
+            <Metric label="IoT / sensores" value={unit.iot_metadata_rows || 0} detail="Humedad, temperatura, logger, shock." tone={numberValue(unit.iot_metadata_rows) ? "good" : "neutral"} />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <Card className="p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Ficha de lote / producto</p>
+                  <h2 className="mt-2 text-2xl font-black text-white">{text(product.product_name || batch.product_name, "Producto pendiente")}</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                    Esta ficha aplica a todos los UIDs del batch. Un UID solo cambia producto si existe un override explicito y auditado.
+                  </p>
+                </div>
+                <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-100">source: batch</span>
               </div>
-            ) : null}
-          </Card>
+              <dl className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <Fact label="SKU" value={product.sku || batch.sku} />
+                <Fact label="Bodega / marca" value={product.winery} />
+                <Fact label="Region" value={product.region} />
+                <Fact label="Varietal" value={product.grape_varietal} />
+                <Fact label="Vintage" value={product.vintage} />
+                <Fact label="Mercado" value={product.target_market} />
+                <Fact label="Cosecha" value={product.harvest_year} />
+                <Fact label="Barrica" value={product.barrel_months ? `${text(product.barrel_months)} meses` : ""} />
+                <Fact label="Guarda" value={product.temperature_storage} />
+              </dl>
+              {overrides ? (
+                <p className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-100">
+                  Hay {formatNumber(overrides)} overrides de producto por UID. Usalos solo para excepciones comerciales, no para representar botellas normales del mismo lote.
+                </p>
+              ) : (
+                <p className="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
+                  Sin overrides de producto por UID: arquitectura correcta para lotes de miles de botellas con una ficha comun.
+                </p>
+              )}
+            </Card>
+
+            <Card className="p-6">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Seguridad del lote</p>
+              <h2 className="mt-2 text-xl font-black text-white">{text(batch.carrier_label || batch.carrier_profile_code, "Carrier pendiente")}</h2>
+              <dl className="mt-5 space-y-4">
+                <Fact label="Status" value={batch.status} />
+                <Fact label="Security level" value={batch.carrier_security_level ? `L${text(batch.carrier_security_level)}` : ""} />
+                <Fact label="Profile" value={batch.batch_profile || "custom"} />
+                <Fact label="Chip model" value={batch.chip_model || batch.type} />
+                <Fact label="Cantidad planificada" value={formatNumber(batch.requested_quantity)} />
+                <Fact label="Keys cargadas" value={batch.has_meta_key || batch.has_file_key ? "si" : "pendiente"} />
+              </dl>
+              {carrierAdminCopy ? (
+                <div className="mt-5 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-xs leading-5 text-cyan-100">
+                  {carrierAdminCopy}
+                </div>
+              ) : null}
+            </Card>
+          </div>
+
           <Card className="p-6">
-            <h2 className="text-lg font-semibold text-white">Ops next</h2>
-            <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-slate-300">
-              <li>Importar manifest con <code>batch_id</code> idéntico a <code>{bid}</code>.</li>
-              <li>Activar tags importadas si ya llegaron programadas.</li>
-              <li>Probar sample URL real del proveedor.</li>
-              <li>Monitorear si devuelve VALID, NOT_REGISTERED, NOT_ACTIVE o INVALID.</li>
-            </ol>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Metadata de unidades / IoT / manifest</p>
+                <h2 className="mt-2 text-2xl font-black text-white">UIDs fisicos sin mezclar identidad comercial</h2>
+                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+                  Aca vive lo variable por botella: UID, numero de etiqueta, caja, pallet, sensor logger, humedad, temperatura y archivo importado.
+                </p>
+              </div>
+              <Link href="/batches/supplier" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100">Importar manifest</Link>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-4">
+              <Metric label="Tag profiles" value={unit.tag_profile_rows || 0} detail="Filas con metadata adicional." tone={numberValue(unit.tag_profile_rows) ? "good" : "neutral"} />
+              <Metric label="Overrides producto" value={overrides} detail="Excepciones por UID." tone={overrides ? "warn" : "good"} />
+              <Metric label="Manifests" value={manifests.length} detail="Ultimas cargas auditadas." tone={manifests.length ? "good" : "neutral"} />
+              <Metric label="Pendientes" value={Math.max(imported - active, 0)} detail="Importadas no activas." tone={imported - active > 0 ? "warn" : "good"} />
+            </div>
+            <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
+              <div className="grid grid-cols-[1.1fr_0.8fr_1fr_1fr] gap-3 border-b border-white/10 bg-slate-950/70 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <span>UID / estado</span>
+                <span>Unidad</span>
+                <span>IoT</span>
+                <span>Notas</span>
+              </div>
+              {samples.length ? samples.map((sample) => {
+                const unitEntries = objectEntries(sample.unit_metadata).slice(0, 3);
+                const iotEntries = objectEntries(sample.iot).slice(0, 3);
+                return (
+                  <div key={`${sample.uid_hex}-${sample.serial}`} className="grid grid-cols-[1.1fr_0.8fr_1fr_1fr] gap-3 border-b border-white/10 px-4 py-3 text-xs text-slate-300 last:border-b-0">
+                    <div>
+                      <b className="block font-mono text-white">{maskUid(sample.uid_hex)}</b>
+                      <span className="mt-1 block text-slate-500">{text(sample.status)} / {text(sample.carrier_profile_code, "carrier batch")}</span>
+                    </div>
+                    <div>
+                      <b className="block text-white">{text(sample.serial || sample.lot, "sin serial")}</b>
+                      {unitEntries.map(([key, value]) => <span key={key} className="block text-slate-500">{key}: {text(value)}</span>)}
+                    </div>
+                    <div>
+                      {iotEntries.length ? iotEntries.map(([key, value]) => <span key={key} className="block text-cyan-100">{key}: {text(value)}</span>) : <span className="text-slate-500">sin sensor</span>}
+                    </div>
+                    <div>
+                      {sample.product_override ? (
+                        <span className="rounded-full border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[10px] font-black text-amber-100">override: {text(sample.product_name || sample.sku)}</span>
+                      ) : (
+                        <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-black text-emerald-100">usa ficha del lote</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }) : (
+                <p className="px-4 py-6 text-sm text-slate-400">Sin muestras de UID todavia. Importa un manifest para ver seriales, IoT y excepciones.</p>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Ops next</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-4">
+              {[
+                "Completar ficha comercial del lote antes de importar miles de UIDs.",
+                "Importar manifest UID-only o con metadata unidad/IoT sin copiar producto por fila.",
+                "Activar tags y probar un tap fisico real del batch.",
+                "Revisar que claim/ownership solo se habilite con compra, POS, PIN o aprobacion.",
+              ].map((item) => (
+                <div key={item} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4 text-sm leading-6 text-slate-300">{item}</div>
+              ))}
+            </div>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/batches" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Volver a batches</Link>
               <Link href="/batches/supplier" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Abrir supplier flow</Link>
-              <Link href="/events" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open events</Link>
               <Link href="/tags" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tags</Link>
-              <Link href="/demo-lab" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open demo lab</Link>
-              <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">Open public mobile preview</a>
-              <Link href="/tenants" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open tenant dashboard</Link>
+              <Link href="/events" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Open events</Link>
+              {publicMobile ? <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100">Preview mobile del primer UID</a> : null}
             </div>
             <div className="mt-6">
               <BatchSunValidator bid={bid} />
             </div>
           </Card>
-        </div>
+        </>
       )}
     </main>
   );

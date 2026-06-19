@@ -29,7 +29,11 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
               <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2 py-1 text-violet-100">Secure login</span>
             </div>
             <h1 className="mt-5 text-3xl font-bold text-white">{t.web.auth.loginTitle}</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{content.hero.body}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              {isTapReturn
+                ? "Valida tu email o telefono para continuar. Si solo estas mirando el producto, no hace falta crear cuenta ni reclamar propiedad."
+                : content.hero.body}
+            </p>
             <div className="mt-6 grid gap-3">
               <input suppressHydrationWarning className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={t.web.auth.emailPlaceholder} />
               <input suppressHydrationWarning type="password" className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none" placeholder={t.web.auth.passwordPlaceholder} />
@@ -48,10 +52,11 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
         <section className="auth-info-panel rounded-2xl border border-white/10 bg-slate-900/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,.45)]">
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{isTapReturn ? "Continuar desde el tap" : "Portal premium + marketplace"}</p>
           <h2 className="mt-2 text-xl font-semibold text-white">
-            {isTapReturn ? "Valida tu contacto y el producto queda asociado a tu Passport." : "Una sola plataforma para autenticacion, trazabilidad y fidelizacion."}
+            {isTapReturn ? "Primero identidad. Despues prueba de compra si queres activar garantia." : "Una sola plataforma para autenticacion, trazabilidad y fidelizacion."}
           </h2>
           <div className="mt-4 grid gap-2.5 text-xs text-slate-200">
-            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Tap valido - Passport del consumidor + ownership + wallet/NFT.</div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Lectura publica para ficha, bodega, ruta y sommelier sin reclamar ownership.</div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Garantia, ownership, wallet/NFT o beneficios sensibles requieren compra validada, POS/PIN o politica de marca.</div>
             <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Marketplace por tenant con catalogo editable para beneficios, experiencias y productos.</div>
             <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">Panel enterprise para eventos, pharma, agro y cosmetica con monitoreo geografico y anti-fraude.</div>
           </div>

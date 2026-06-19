@@ -21,7 +21,7 @@ const rolloutSteps = [
   {
     step: "02",
     title: "Subir manifest",
-    body: "CSV/TXT con UID, BID, SKU, carrier, producto, fotos, etiqueta, GLB y galeria si existen.",
+    body: "CSV/TXT con UID, BID, carrier, seriales, caja/pallet, IoT y overrides de producto solo si son excepcion.",
   },
   {
     step: "03",
@@ -83,6 +83,9 @@ type ProductAssetItem = {
   tenantSlug?: string | null;
   bid?: string | null;
   assetReadiness?: string | null;
+  profileConflict?: boolean | null;
+  unitMetadata?: { lot?: string | null; serial?: string | null; unitMetadata?: Record<string, unknown> | null } | null;
+  iot?: Record<string, unknown> | null;
   profile?: {
     productName?: string | null;
     brandName?: string | null;
@@ -129,10 +132,11 @@ export default async function BatchesPage() {
   const supplierBatches = batchRows.filter((row) => String(row.batch_profile || row.type || row.carrier_label || "").toLowerCase().includes("supplier") || Boolean(row.has_meta_key || row.has_file_key)).length;
   const assetScores = assetRows.map((item) => Number(item.profile?.assetScore || 0)).filter((score) => score > 0);
   const averageAssetScore = assetScores.length ? Math.round(assetScores.reduce((sum, score) => sum + score, 0) / assetScores.length) : 0;
-  const assetReadyRows = assetRows.filter((item) => Number(item.profile?.assetScore || 0) >= 80).length;
   const realPhotoRows = assetRows.filter((item) => Boolean(item.profile?.primaryImageUrl)).length;
-  const realLabelRows = assetRows.filter((item) => Boolean(item.profile?.labelImageUrl)).length;
-  const modelRows = assetRows.filter((item) => Boolean(item.profile?.modelUrl)).length;
+  const batchProductReady = batchRows.filter((row) => Boolean(row.product_name || row.sku)).length;
+  const unitMetadataRows = batchRows.reduce((sum, row) => sum + Number(row.unit_metadata_rows || 0), 0);
+  const iotMetadataRows = batchRows.reduce((sum, row) => sum + Number(row.iot_metadata_rows || 0), 0);
+  const unitProductOverrides = batchRows.reduce((sum, row) => sum + Number(row.unit_product_overrides || 0), 0);
   const defaultOpsBid = String(batchRows.find((row) => row.bid)?.bid || (tenantScope ? "" : "DEMO-2026-02"));
   const statusCounts = batchRows.reduce((acc, row) => {
     const status = String(row.status || "pending").toLowerCase();
@@ -162,8 +166,8 @@ export default async function BatchesPage() {
       owner: "Auditor",
     },
     {
-      label: "Manifest con producto real",
-      body: "UID, BID, SKU, lote, foto, etiqueta y modelo 3D deben viajar juntos para que /sun y marketplace no sean genericos.",
+      label: "Manifest de unidades",
+      body: "El producto vive en la ficha del lote. El manifest agrega UID, seriales, cajas, pallets, sensores y excepciones auditadas.",
       status: importedTags > 0 ? "ready" : "blocked",
       owner: "Reseller",
     },
@@ -187,14 +191,15 @@ export default async function BatchesPage() {
     const inactive = Number(row.inactive_tags || 0);
     const requested = Number(row.requested_quantity || 0);
     const sku = row.sku ? String(row.sku) : "SKU pendiente";
+    const productName = row.product_name ? String(row.product_name) : "Producto pendiente";
     const profile = row.batch_profile ? String(row.batch_profile) : "Perfil pendiente";
     const carrier = row.carrier_label ? String(row.carrier_label) : row.carrier_profile_code ? String(row.carrier_profile_code) : "Carrier pendiente";
     const security = row.carrier_security_level ? ` L${String(row.carrier_security_level)}` : "";
     return {
-      batch: `${String(row.bid || "BID pendiente")} - ${sku}`,
+      batch: `${String(row.bid || "BID pendiente")} - ${productName}`,
       type: `${carrier}${security} - ${profile} - ${String(row.tenant_slug || "tenant pendiente")}`,
       status: String(row.status || "pending"),
-      quantity: `${quantity.toLocaleString()} imported / ${requested.toLocaleString()} planned - ${active.toLocaleString()} active - ${inactive.toLocaleString()} pending`,
+      quantity: `${quantity.toLocaleString()} imported / ${requested.toLocaleString()} planned - ${active.toLocaleString()} active - ${inactive.toLocaleString()} pending - SKU ${sku}`,
     };
   });
 
@@ -254,11 +259,11 @@ export default async function BatchesPage() {
         <div className="dashboard-hero-panel dashboard-hero-panel--green border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,0.98))] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">Banco visual por lote</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Producto real antes de publicar el batch</h2>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">Ficha de lote + metadata de unidades</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Producto y UIDs separados antes de publicar</h2>
               <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
-                Para competir con pasaportes premium, cada UID debe salir con foto real, etiqueta frontal, tag aplicado,
-                ficha comercial, reglas de claim y GLB opcional. Si falta esto, /sun y marketplace se sienten genericos.
+                La ficha comercial del lote define producto, bodega, SKU, varietal y mercado. El manifest agrega seriales,
+                numeros de botella, cajas, pallets, sensores IoT y overrides solo cuando una unidad realmente es excepcion.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -268,11 +273,11 @@ export default async function BatchesPage() {
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-5">
             {[
-              { label: "UID con perfil visual", value: assetRows.length.toLocaleString("es-AR"), detail: "tag_profiles/product-assets" },
-              { label: "Listos premium", value: assetReadyRows.toLocaleString("es-AR"), detail: "score >= 80/100" },
-              { label: "Fotos reales", value: realPhotoRows.toLocaleString("es-AR"), detail: "packshot/producto" },
-              { label: "Etiquetas reales", value: realLabelRows.toLocaleString("es-AR"), detail: "label_image_url" },
-              { label: "Modelos 3D", value: modelRows.toLocaleString("es-AR"), detail: "GLB/model_url" },
+              { label: "Lotes con ficha", value: batchProductReady.toLocaleString("es-AR"), detail: "product identity batch-level" },
+              { label: "UID con metadata", value: unitMetadataRows.toLocaleString("es-AR"), detail: "serial, botella, caja, pallet" },
+              { label: "UID con IoT", value: iotMetadataRows.toLocaleString("es-AR"), detail: "temperatura, humedad, logger" },
+              { label: "Overrides", value: unitProductOverrides.toLocaleString("es-AR"), detail: "producto por UID excepcional" },
+              { label: "Fotos reales", value: realPhotoRows.toLocaleString("es-AR"), detail: "asset visual opcional" },
             ].map((item) => (
               <div key={item.label} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{item.label}</p>
@@ -282,7 +287,7 @@ export default async function BatchesPage() {
             ))}
           </div>
           <p className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
-            Readiness visual promedio: {averageAssetScore}/100. Objetivo para salir a cliente grande: foto real + etiqueta + tag aplicado en al menos una muestra por producto/lote.
+            Readiness visual promedio: {averageAssetScore}/100. Objetivo enterprise: ficha de lote completa, manifest UID limpio y al menos una muestra visual real por producto/lote.
           </p>
         </div>
         <div className="grid gap-4 p-5 sm:p-6 lg:grid-cols-3">

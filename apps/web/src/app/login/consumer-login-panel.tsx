@@ -70,6 +70,9 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const demoConsumerEmail = "demo.consumer@nexid.local";
   const isTapReturn = nextPath.includes("fromTap=1") || nextPath.includes("eventId=");
   const isDemoTap = nextPath.toLowerCase().includes("tenant=demo") || nextPath.toUpperCase().includes("DEMO-");
+  const tapReturnCopy = isTapReturn
+    ? "Valida email o telefono para volver al flujo del producto. La garantia, ownership, wallet/NFT o puntos sensibles se activan recien con compra validada, POS/PIN o la politica de la marca."
+    : "Ingresa con email o telefono para abrir tu Passport, marketplace contextual y beneficios opt-in.";
 
   async function confirmSession() {
     const session = await fetch("/api/consumer/session", {
@@ -105,8 +108,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     setCode(String(payload.code || ""));
     setStep("verify");
     
-    let msg = isTapReturn 
-      ? "Codigo enviado. Al validar volvemos al tap para asociar el Passport." 
+    let msg = isTapReturn
+      ? "Codigo enviado. Al validar volvemos al producto; cualquier claim queda sujeto a prueba de compra o POS/PIN."
       : "Codigo enviado. Verificalo para entrar al portal.";
     if (payload.twoFactor) {
       msg = "Verificación de Doble Factor (2FA) activa. Enviamos el código tanto a tu WhatsApp como a tu correo.";
@@ -222,9 +225,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     <div className="mt-5 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
       <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Portal consumidor</p>
       <p className="mt-1 text-sm text-cyan-50/90">
-        {isTapReturn
-          ? "Valida email o telefono y volvemos al tap para asociar este producto al tenant, activar ownership, wallet/NFT y marketplace."
-          : "Ingresa con email o telefono para abrir tu Passport, wallet/NFT y marketplace contextual."}
+        {tapReturnCopy}
       </p>
       <div className="mt-3 grid gap-2">
         <input
@@ -249,7 +250,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
           </button>
         ) : (
           <button suppressHydrationWarning disabled={pending || !code.trim()} onClick={() => void verify()} className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60">
-            {isTapReturn ? "Validar y asociar tap" : "Entrar al portal"}
+            {isTapReturn ? "Validar y continuar" : "Entrar al portal"}
           </button>
         )}
 

@@ -48,10 +48,23 @@ type ManifestRow = {
   lot: string;
   serial: string;
   expiresAt: string;
+  externalUnitId: string;
+  bottleNumber: string;
+  labelNumber: string;
+  caseId: string;
+  palletId: string;
   imageUrl: string;
   labelImageUrl: string;
   modelUrl: string;
   galleryUrls: string;
+  sensorJson: string;
+  sensorAt: string;
+  sensorId: string;
+  temperatureC: string;
+  humidityPct: string;
+  lightExposure: string;
+  transitShock: string;
+  storageZone: string;
 };
 
 type ManifestIssue = {
@@ -258,7 +271,19 @@ function getColumn(row: Record<string, string>, names: string[]) {
   return "";
 }
 
-function parseManifestInput(raw: string, expectedBid: string, productLabel: string, fallbackSku: string, fallbackCarrierProfileCode: CarrierProfileCode | "") {
+function rowHasUnitMetadata(row: ManifestRow) {
+  return Boolean(row.lot || row.serial || row.externalUnitId || row.bottleNumber || row.labelNumber || row.caseId || row.palletId || row.expiresAt);
+}
+
+function rowHasIotMetadata(row: ManifestRow) {
+  return Boolean(row.sensorJson || row.sensorAt || row.sensorId || row.temperatureC || row.humidityPct || row.lightExposure || row.transitShock || row.storageZone);
+}
+
+function rowHasProductOverride(row: ManifestRow) {
+  return Boolean(row.productName || row.sku);
+}
+
+function parseManifestInput(raw: string, expectedBid: string, fallbackCarrierProfileCode: CarrierProfileCode | "") {
   const content = raw.replace(/^\uFEFF/, "").trim();
   const issues: ManifestIssue[] = [];
   if (!content) return { rows: [] as ManifestRow[], issues, type: "txt" as "txt" | "csv" };
@@ -296,17 +321,26 @@ function parseManifestInput(raw: string, expectedBid: string, productLabel: stri
         continue;
       }
       seen.add(uidHex);
-      const productName = getColumn(record, ["product_name", "productname", "name"]) || productLabel.trim();
-      const sku = getColumn(record, ["sku"]) || fallbackSku.trim();
+      const productName = getColumn(record, ["product_name", "productname", "name"]);
+      const sku = getColumn(record, ["sku"]);
       const rawCarrier = getColumn(record, ["carrier_profile_code", "carrier_profile", "carrier", "chip_model", "chip", "chip_type", "tag_type", "ic_type"]);
       const carrierProfileCode = rawCarrier ? normalizeCarrierProfileInput(rawCarrier) : fallbackCarrierProfileCode;
       if (rawCarrier && !carrierProfileCode) {
         issues.push({ row: rowNumber, reason: "invalid_carrier_profile", value: rawCarrier });
         continue;
       }
-      if (!productName && !sku) {
-        issues.push({ row: rowNumber, reason: "product_name_or_sku_required", value: uidHex });
-        continue;
+      const sensorJson = getColumn(record, ["sensor_json", "iot_json", "telemetry_json", "sensor_data", "sensors", "iot"]);
+      if (sensorJson) {
+        try {
+          const parsed = JSON.parse(sensorJson) as unknown;
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            issues.push({ row: rowNumber, reason: "invalid_iot_json", value: "json_object_required" });
+            continue;
+          }
+        } catch {
+          issues.push({ row: rowNumber, reason: "invalid_iot_json", value: "parse_failed" });
+          continue;
+        }
       }
       rows.push({
         uidHex,
@@ -317,10 +351,23 @@ function parseManifestInput(raw: string, expectedBid: string, productLabel: stri
         lot: getColumn(record, ["lot", "lote", "lot_id"]),
         serial: getColumn(record, ["serial", "serial_number"]),
         expiresAt: getColumn(record, ["expires_at", "expiry", "expiration"]),
+        externalUnitId: getColumn(record, ["external_unit_id", "external_id", "unit_id", "piece_id"]),
+        bottleNumber: getColumn(record, ["bottle_number", "bottle_no", "numero_botella", "nro_botella"]),
+        labelNumber: getColumn(record, ["label_number", "etiqueta_numero", "label_no"]),
+        caseId: getColumn(record, ["case_id", "case", "box_id", "carton_id", "caja"]),
+        palletId: getColumn(record, ["pallet_id", "pallet", "pallet_number"]),
         imageUrl: getColumn(record, ["image_url", "imageurl", "photo_url", "photourl", "hero_image_url", "product_image_url"]),
         labelImageUrl: getColumn(record, ["label_image_url", "labelimageurl", "tag_image_url", "tagimageurl", "packshot_url", "packshoturl"]),
         modelUrl: getColumn(record, ["model_url", "modelurl", "glb_url", "glburl", "model3d_url", "model3durl"]),
         galleryUrls: getColumn(record, ["gallery_urls", "galleryurls", "media_urls", "mediaurls", "gallery", "images"]),
+        sensorJson,
+        sensorAt: getColumn(record, ["sensor_at", "telemetry_at", "measured_at", "captured_at"]),
+        sensorId: getColumn(record, ["sensor_id", "iot_device_id", "logger_id", "device_id"]),
+        temperatureC: getColumn(record, ["temperature_c", "temp_c", "cellar_temperature_c", "storage_temperature_c"]),
+        humidityPct: getColumn(record, ["humidity_pct", "humidity", "relative_humidity_pct", "rh_pct"]),
+        lightExposure: getColumn(record, ["light_exposure", "light", "lux"]),
+        transitShock: getColumn(record, ["transit_shock", "shock", "shock_g", "impact_g"]),
+        storageZone: getColumn(record, ["storage_zone", "cellar_zone", "warehouse_zone"]),
       });
     }
     return { rows, issues, type: "csv" as const };
@@ -346,21 +393,30 @@ function parseManifestInput(raw: string, expectedBid: string, productLabel: stri
       uidHex,
       batchId: expectedBid,
       carrierProfileCode: fallbackCarrierProfileCode,
-      productName: productLabel.trim(),
-      sku: fallbackSku.trim(),
+      productName: "",
+      sku: "",
       lot: "",
       serial: "",
       expiresAt: "",
+      externalUnitId: "",
+      bottleNumber: "",
+      labelNumber: "",
+      caseId: "",
+      palletId: "",
       imageUrl: "",
       labelImageUrl: "",
       modelUrl: "",
       galleryUrls: "",
+      sensorJson: "",
+      sensorAt: "",
+      sensorId: "",
+      temperatureC: "",
+      humidityPct: "",
+      lightExposure: "",
+      transitShock: "",
+      storageZone: "",
     });
   });
-
-  if (rows.some((row) => !row.productName && !row.sku)) {
-    issues.push({ row: 0, reason: "product_identity_required_for_txt", value: "Set product label or SKU before importing TXT." });
-  }
 
   return { rows, issues, type: "txt" as const };
 }
@@ -370,7 +426,33 @@ function manifestRowsToCsv(rows: ManifestRow[]) {
     if (!value.includes(",") && !value.includes("\"") && !value.includes("\n")) return value;
     return `"${value.replace(/"/g, "\"\"")}"`;
   };
-  const header = "batch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at,image_url,label_image_url,model_url,gallery_urls";
+  const header = [
+    "batch_id",
+    "uid_hex",
+    "carrier_profile_code",
+    "product_name",
+    "sku",
+    "lot",
+    "serial",
+    "external_unit_id",
+    "bottle_number",
+    "label_number",
+    "case_id",
+    "pallet_id",
+    "expires_at",
+    "image_url",
+    "label_image_url",
+    "model_url",
+    "gallery_urls",
+    "sensor_json",
+    "sensor_at",
+    "sensor_id",
+    "temperature_c",
+    "humidity_pct",
+    "light_exposure",
+    "transit_shock",
+    "storage_zone",
+  ].join(",");
   const body = rows.map((row) => [
     row.batchId,
     row.uidHex,
@@ -379,11 +461,24 @@ function manifestRowsToCsv(rows: ManifestRow[]) {
     row.sku,
     row.lot,
     row.serial,
+    row.externalUnitId,
+    row.bottleNumber,
+    row.labelNumber,
+    row.caseId,
+    row.palletId,
     row.expiresAt,
     row.imageUrl,
     row.labelImageUrl,
     row.modelUrl,
     row.galleryUrls,
+    row.sensorJson,
+    row.sensorAt,
+    row.sensorId,
+    row.temperatureC,
+    row.humidityPct,
+    row.lightExposure,
+    row.transitShock,
+    row.storageZone,
   ].map(escape).join(","));
   return `${[header, ...body].join("\n")}\n`;
 }
@@ -427,8 +522,10 @@ function buildManifestPolicy() {
   return {
     accepted_formats: ["csv", "txt"],
     required_columns_csv: ["uid_hex"],
-    recommended_columns_csv: ["batch_id", "carrier_profile_code", "product_name", "sku", "lot", "serial", "expires_at"],
-    txt_requires_product_identity_from_wizard: true,
+    recommended_columns_csv: ["batch_id", "carrier_profile_code", "serial", "external_unit_id", "bottle_number", "case_id", "pallet_id", "sensor_json", "temperature_c", "humidity_pct"],
+    optional_product_override_columns_csv: ["product_name", "sku"],
+    product_identity_source: "batch_product_config",
+    txt_supports_uid_only: true,
     reject_duplicates: true,
     reject_batch_mismatch: true,
     audit_manifest_hash: true,
@@ -523,8 +620,8 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [batchSummary, setBatchSummary] = useState<BatchSummary | null>(null);
 
   const manifest = useMemo(
-    () => parseManifestInput(manifestText, bid.trim(), productLabel.trim(), sku.trim(), carrierProfileCode),
-    [manifestText, bid, productLabel, sku, carrierProfileCode],
+    () => parseManifestInput(manifestText, bid.trim(), carrierProfileCode),
+    [manifestText, bid, carrierProfileCode],
   );
   const selectedCarrier = getCarrierOption(carrierProfileCode);
 
@@ -564,8 +661,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const progress = Math.round(((activeStep - 1) / (steps.length - 1)) * 100);
   const manifestCsvForServer = useMemo(() => manifestRowsToCsv(manifest.rows), [manifest.rows]);
   const manifestPhotoCount = manifest.rows.filter((row) => row.imageUrl.trim()).length;
-  const manifestLabelCount = manifest.rows.filter((row) => row.labelImageUrl.trim()).length;
-  const manifestModelCount = manifest.rows.filter((row) => row.modelUrl.trim()).length;
+  const manifestUnitMetadataCount = manifest.rows.filter(rowHasUnitMetadata).length;
+  const manifestIotCount = manifest.rows.filter(rowHasIotMetadata).length;
+  const manifestOverrideCount = manifest.rows.filter(rowHasProductOverride).length;
   const expectedNdefTemplate = `${productUrls.api}/sun?v=1&bid=${encodeURIComponent(bid || "<BID>")}&picc_data=<dynamic>&enc=<dynamic>&cmac=<dynamic>`;
   const nextAction = !stepReady[1]
     ? "Completa identidad, origen y politica de ownership del tenant."
@@ -703,15 +801,28 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       uidHex: uid,
       batchId: DEMO_SUPPLIER_BATCH_ID,
       carrierProfileCode: "ntag424_dna_tt",
-      productName: "Gran Reserva Malbec",
-      sku: "wine-secure",
+      productName: "",
+      sku: "",
       lot: "MZA-2026-0424",
       serial: `DEMO-${String(index + 1).padStart(3, "0")}`,
       expiresAt: "",
+      externalUnitId: `DEMO-UNIT-${String(index + 1).padStart(3, "0")}`,
+      bottleNumber: String(index + 1).padStart(4, "0"),
+      labelNumber: `LBL-${String(index + 1).padStart(4, "0")}`,
+      caseId: "CASE-DEMO-01",
+      palletId: "PALLET-SAMPLE",
       imageUrl: "",
       labelImageUrl: "",
       modelUrl: "",
       galleryUrls: "",
+      sensorJson: index === 0 ? "{\"deviceId\":\"logger-demo-7\",\"lightExposure\":\"Low\"}" : "",
+      sensorAt: index === 0 ? new Date().toISOString() : "",
+      sensorId: index === 0 ? "logger-demo-7" : "",
+      temperatureC: index === 0 ? "12.4" : "",
+      humidityPct: index === 0 ? "67" : "",
+      lightExposure: index === 0 ? "Low" : "",
+      transitShock: "",
+      storageZone: "cellar-samples",
     }))));
     setManifestFileName("demobodega-pilot-manifest.csv");
     setAdminEnabled(false);
@@ -760,7 +871,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   function downloadCsvTemplate() {
     downloadText(
       `${bid.trim() || "batch"}-manifest-template.csv`,
-      `batch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at,image_url,label_image_url,model_url,gallery_urls\n${bid.trim() || "<BID>"},<UID_HEX>,${carrierProfileCode || "<carrier_profile_code>"},${productLabel.trim() || "<product_name>"},${sku.trim() || "<sku>"},<lot>,<serial>,<expires_at>,<foto_producto_real>,<etiqueta_frontal>,<glb_opcional>,<foto_tag_aplicado|galeria>\n`,
+      `batch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,external_unit_id,bottle_number,label_number,case_id,pallet_id,expires_at,image_url,label_image_url,model_url,gallery_urls,sensor_json,sensor_at,sensor_id,temperature_c,humidity_pct,light_exposure,transit_shock,storage_zone\n${bid.trim() || "<BID>"},<UID_HEX>,${carrierProfileCode || "<carrier_profile_code>"},,,<lot>,<serial>,<external_unit_id>,<bottle_number>,<label_number>,<case_id>,<pallet_id>,<expires_at>,<foto_producto_real>,<etiqueta_frontal>,<glb_opcional>,<foto_tag_aplicado|galeria>,"{""deviceId"":""logger-7""}",<sensor_at>,<sensor_id>,<temperature_c>,<humidity_pct>,<light>,<shock>,<storage_zone>\n`,
       "text/csv;charset=utf-8",
     );
   }
@@ -967,7 +1078,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     {
       label: "Manifest auditable",
       status: manifestReady ? `${uniqueUidCount} UID` : "falta",
-      body: manifestReady ? "UID, batch, SKU y producto ya tienen preflight local." : "Carga TXT/CSV y corrige duplicados o mismatch de BID.",
+      body: manifestReady ? "UID, batch, carrier y metadata pasan preflight. Producto queda en ficha de lote salvo override explicito." : "Carga TXT/CSV y corrige duplicados o mismatch de BID.",
       ready: manifestReady,
     },
     {
@@ -1264,7 +1375,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       </Card>
 
       <Card className={`p-5 sm:p-6 ${activeStep === 3 ? "" : "hidden"}`}>
-        <StepHeader step="3" title="Manifest intake con preflight" description="Pega UIDs, sube TXT/CSV o descarga una plantilla. El sistema valida formato, duplicados, batch mismatch e identidad de producto antes de tocar la DB." />
+        <StepHeader step="3" title="Manifest intake con preflight" description="Pega UIDs, sube TXT/CSV o descarga una plantilla. El producto vive en la ficha del lote; el manifest agrega unidades, seriales, sensores y overrides solo si son excepcion." />
         <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.85fr]">
           <div>
             <div className="flex flex-wrap gap-2">
@@ -1281,7 +1392,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
                 setManifestMode("paste");
                 setManifestText(event.target.value);
               }}
-              placeholder={"CSV recomendado:\nbatch_id,uid_hex,carrier_profile_code,product_name,sku,lot,serial,expires_at,image_url,label_image_url,model_url,gallery_urls\nBODEGA-2026-001,04A7FFFF1090,ntag424_dna_tt,Gran Reserva Malbec,wine-secure,MZA-2026-01,0001,,https://cdn.marca.com/botella.png,https://cdn.marca.com/etiqueta.png,https://cdn.marca.com/botella.glb,https://cdn.marca.com/frente.png|https://cdn.marca.com/contra.png\n\nTXT permitido:\n04A7FFFF1090\n04B8FFFF1090"}
+              placeholder={"CSV recomendado:\nbatch_id,uid_hex,carrier_profile_code,lot,serial,external_unit_id,bottle_number,case_id,pallet_id,sensor_json,temperature_c,humidity_pct\nBODEGA-2026-001,04A7FFFF1090,ntag424_dna_tt,MZA-2026-01,0001,UNIT-0001,55555,CASE-09,PALLET-01,\"{\\\"deviceId\\\":\\\"logger-7\\\"}\",12.4,67\n\nOverrides opcionales:\nproduct_name,sku solo si una unidad realmente no usa la ficha del lote.\n\nTXT permitido:\n04A7FFFF1090\n04B8FFFF1090"}
             />
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <input suppressHydrationWarning type="file" accept=".txt,.csv,text/plain,text/csv" className="block w-full max-w-md text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-white/20" onChange={(event) => void onManifestFile(event)} />
@@ -1294,10 +1405,11 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
               <Metric label="Issues" value={String(manifest.issues.length)} tone={manifest.issues.length ? "bad" : "good"} />
               <Metric label="Tipo" value={manifest.type.toUpperCase()} tone="neutral" />
               <Metric label="Carrier" value={selectedCarrier?.label || "Pendiente"} tone={selectedCarrier ? "good" : "warn"} />
-              <Metric label="Producto" value={productLabel || sku || "Pendiente"} tone={productLabel || sku ? "good" : "warn"} />
-              <Metric label="Fotos reales" value={String(manifestPhotoCount)} tone={manifestPhotoCount ? "good" : "warn"} />
-              <Metric label="Etiquetas" value={String(manifestLabelCount)} tone={manifestLabelCount ? "good" : "warn"} />
-              <Metric label="GLB/3D" value={String(manifestModelCount)} tone={manifestModelCount ? "good" : "neutral"} />
+              <Metric label="Producto lote" value={productLabel || sku || "Pendiente"} tone={productLabel || sku ? "good" : "warn"} />
+              <Metric label="Metadata unidad" value={String(manifestUnitMetadataCount)} tone={manifestUnitMetadataCount ? "good" : "neutral"} />
+              <Metric label="IoT / sensores" value={String(manifestIotCount)} tone={manifestIotCount ? "good" : "neutral"} />
+              <Metric label="Overrides UID" value={String(manifestOverrideCount)} tone={manifestOverrideCount ? "warn" : "good"} />
+              <Metric label="Fotos reales" value={String(manifestPhotoCount)} tone={manifestPhotoCount ? "good" : "neutral"} />
             </div>
             <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-xs text-slate-200">
               <input suppressHydrationWarning type="checkbox" checked={manifestActivated} onChange={(event) => setManifestActivated(event.target.checked)} />
@@ -1316,7 +1428,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
               </div>
             ) : (
               <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-100">
-                Manifest listo para importar. En TXT, el wizard genera CSV auditado con product_name/SKU del tenant. En CSV premium, cada UID puede traer foto, etiqueta, GLB y galeria para que /sun, portal y marketplace rendericen el producto real.
+                Manifest listo para importar. En TXT, el wizard genera CSV UID-only auditado. En CSV avanzado, cada UID puede traer serial, botella, caja, pallet, sensores, fotos o un override explicito de producto.
               </div>
             )}
             <div className="max-h-64 overflow-auto rounded-2xl border border-white/10 bg-slate-950/55 p-3">
@@ -1325,8 +1437,14 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
                 {manifest.rows.slice(0, 8).map((row) => (
                   <div key={row.uidHex} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
                     <b className="text-white">{row.uidHex}</b>
-                    <span className="mt-1 block text-slate-400">{row.productName || row.sku} / {row.batchId} / {row.carrierProfileCode || "carrier pendiente"}</span>
+                    <span className="mt-1 block text-slate-400">Lote: {productLabel || sku || "producto pendiente"} / {row.batchId} / {row.carrierProfileCode || "carrier pendiente"}</span>
+                    <span className="mt-1 block text-slate-500">
+                      Unidad: {row.serial || row.bottleNumber || row.externalUnitId || "sin serial"}{row.caseId ? ` / caja ${row.caseId}` : ""}{row.palletId ? ` / pallet ${row.palletId}` : ""}
+                    </span>
                     <span className="mt-2 flex flex-wrap gap-1">
+                      <em className={`not-italic rounded-full border px-2 py-0.5 text-[10px] font-bold ${rowHasProductOverride(row) ? "border-amber-300/25 bg-amber-500/10 text-amber-100" : "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"}`}>{rowHasProductOverride(row) ? "override producto" : "usa ficha lote"}</em>
+                      <em className={`not-italic rounded-full border px-2 py-0.5 text-[10px] font-bold ${rowHasUnitMetadata(row) ? "border-cyan-300/25 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-white/5 text-slate-400"}`}>{rowHasUnitMetadata(row) ? "metadata unidad" : "UID-only"}</em>
+                      <em className={`not-italic rounded-full border px-2 py-0.5 text-[10px] font-bold ${rowHasIotMetadata(row) ? "border-violet-300/25 bg-violet-500/10 text-violet-100" : "border-white/10 bg-white/5 text-slate-400"}`}>{rowHasIotMetadata(row) ? "IoT" : "sin IoT"}</em>
                       <em className={`not-italic rounded-full border px-2 py-0.5 text-[10px] font-bold ${row.imageUrl ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>{row.imageUrl ? "foto real" : "foto pendiente"}</em>
                       <em className={`not-italic rounded-full border px-2 py-0.5 text-[10px] font-bold ${row.labelImageUrl ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>{row.labelImageUrl ? "etiqueta" : "etiqueta pendiente"}</em>
                       <em className={`not-italic rounded-full border px-2 py-0.5 text-[10px] font-bold ${row.modelUrl ? "border-cyan-300/25 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-white/5 text-slate-400"}`}>{row.modelUrl ? "3D listo" : "3D opcional"}</em>
@@ -1346,7 +1464,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <ActionCard title="1. Tenant" body="Crea o actualiza SUN profile, origen, claim policy y manifest policy." ready={tenantReady} action={<Button disabled={pending || !tenantProfileReady} onClick={() => void createTenantIfMissing().then(() => setStatus("Tenant listo.")).catch((error) => setStatus(error instanceof Error ? error.message : "tenant failed"))}>Crear tenant</Button>} />
           <ActionCard title="2. Batch" body="Registra BID, carrier, chip, perfil, SKU y llaves." ready={batchReady} action={<Button disabled={pending || !tenantProfileReady || !stepReady[2]} onClick={() => void registerBatch().then(() => setStatus("Batch listo.")).catch((error) => setStatus(error instanceof Error ? error.message : "batch failed"))}>Registrar batch</Button>} />
-          <ActionCard title="3. Manifest" body="Importa CSV auditado y crea identidad por tag." ready={importedCount > 0} action={<Button disabled={pending || !batchReady || !manifestReady} onClick={() => void importManifest().then(() => setStatus("Manifest importado.")).catch((error) => setStatus(error instanceof Error ? error.message : "manifest failed"))}>Importar manifest</Button>} />
+          <ActionCard title="3. Manifest" body="Importa CSV auditado con UID, unidad, sensores y overrides opcionales." ready={importedCount > 0} action={<Button disabled={pending || !batchReady || !manifestReady} onClick={() => void importManifest().then(() => setStatus("Manifest importado.")).catch((error) => setStatus(error instanceof Error ? error.message : "manifest failed"))}>Importar manifest</Button>} />
           <ActionCard title="4. Activacion" body="Activa tags importadas para taps reales." ready={activeCount > 0} action={<Button disabled={pending || !importedCount} onClick={() => void activateAll().then(() => setStatus("Tags activadas.")).catch((error) => setStatus(error instanceof Error ? error.message : "activation failed"))}>Activar tags</Button>} />
         </div>
         <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/55 p-4">

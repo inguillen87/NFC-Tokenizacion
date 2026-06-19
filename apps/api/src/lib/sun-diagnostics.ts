@@ -55,6 +55,323 @@ function cloneRecord(value: unknown): Record<string, unknown> {
   }
 }
 
+type CurrentSnapshotIdentity = {
+  bid?: string | null;
+  uid_hex?: string | null;
+  uid_masked?: string | null;
+  tenant_id?: string | null;
+  tenant_slug?: string | null;
+  tenant_name?: string | null;
+  tenant_vertical?: string | null;
+  product_label?: string | null;
+  club_name?: string | null;
+  product_name?: string | null;
+  sku?: string | null;
+  winery?: string | null;
+  region?: string | null;
+  grape_varietal?: string | null;
+  vintage?: string | null;
+  harvest_year?: number | null;
+  barrel_months?: number | null;
+  temperature_storage?: string | null;
+  alcohol?: string | null;
+  bottle?: string | null;
+  serving?: string | null;
+  oak_type?: string | null;
+  image_url?: string | null;
+  locale_data?: Record<string, unknown> | null;
+  origin_label?: string | null;
+  origin_address?: string | null;
+  origin_lat?: number | null;
+  origin_lng?: number | null;
+  tag_profile_vertical?: string | null;
+  tag_profile_conflict?: boolean | null;
+  product_identity_source?: string | null;
+};
+
+function textOrNull(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function maskUid(value: unknown) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  if (raw.length <= 6) return `${raw.slice(0, 1)}***${raw.slice(-1)}`;
+  return `${raw.slice(0, 4)}****${raw.slice(-2)}`;
+}
+
+function mediaFromLocaleData(localeData: unknown, imageUrl?: string | null) {
+  const data = asRecord(localeData);
+  const media = asRecord(data.media);
+  const image = textOrNull(media.imageUrl)
+    || textOrNull(media.image_url)
+    || textOrNull(media.hero)
+    || textOrNull(media.packshot)
+    || textOrNull(imageUrl);
+  if (!image && Object.keys(media).length === 0) return null;
+  return {
+    ...media,
+    imageUrl: image,
+    hero: textOrNull(media.hero) || image,
+    packshot: textOrNull(media.packshot) || image,
+  };
+}
+
+function firstText(...values: unknown[]) {
+  return textOrNull(values.find((value) => textOrNull(value)) || null);
+}
+
+function numberOrNull(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value.replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function iotFromLocaleData(localeData: unknown) {
+  const data = asRecord(localeData);
+  const manifest = asRecord(data.manifest);
+  const manifestIot = asRecord(manifest.iot);
+  const iot = { ...manifestIot, ...asRecord(data.iot) };
+  if (!Object.keys(iot).length) return null;
+
+  const temperatureC = numberOrNull(iot.temperatureC ?? iot.temperature_c ?? iot.cellarTemperatureC ?? iot.storageTemperatureC);
+  const humidityPct = numberOrNull(iot.humidityPct ?? iot.humidity_pct ?? iot.humidity ?? iot.relativeHumidityPct);
+  const measuredAt = firstText(iot.measuredAt, iot.measured_at, iot.capturedAt, iot.sensor_at);
+  const lightExposure = firstText(iot.lightExposure, iot.light_exposure, iot.light, iot.lux);
+  const transitShock = firstText(iot.transitShock, iot.transit_shock, iot.shock, iot.impact_g);
+  const deviceId = firstText(iot.deviceId, iot.device_id, iot.sensor_id, iot.logger_id);
+
+  return {
+    raw: iot,
+    measuredAt,
+    deviceId,
+    temperatureC,
+    humidityPct,
+    snapshot: {
+      cellarTemperature: temperatureC != null ? `${temperatureC.toFixed(1)}C` : null,
+      humidity: humidityPct != null ? `${humidityPct.toFixed(0)}%` : null,
+      lightExposure,
+      transitShock,
+    },
+  };
+}
+
+async function resolveCurrentSnapshotIdentity(meta: { bid?: string | null; uidHex?: string | null; uidMasked?: string | null }): Promise<CurrentSnapshotIdentity | null> {
+  const bid = textOrNull(meta.bid);
+  const uidHex = textOrNull(meta.uidHex)?.toUpperCase();
+  if (!bid || !uidHex) return null;
+
+  try {
+    const rows = await sql/*sql*/`
+      WITH base AS (
+        SELECT
+          b.bid,
+          t.uid_hex,
+          tn.id::text AS tenant_id,
+          tn.slug AS tenant_slug,
+          tn.name AS tenant_name,
+          tsp.vertical AS tenant_vertical,
+          tsp.product_label,
+          tsp.club_name,
+          b.sdm_config AS batch_config,
+          tp.product_name AS tp_product_name,
+          tp.sku AS tp_sku,
+          tp.winery AS tp_winery,
+          tp.region AS tp_region,
+          tp.grape_varietal AS tp_grape_varietal,
+          tp.vintage AS tp_vintage,
+          tp.harvest_year AS tp_harvest_year,
+          tp.barrel_months AS tp_barrel_months,
+          tp.temperature_storage AS tp_temperature_storage,
+          tp.image_url AS tp_image_url,
+          tp.locale_data AS tp_locale_data,
+          COALESCE(
+            NULLIF(tp.locale_data #>> '{es-AR,vertical}', ''),
+            NULLIF(tp.locale_data #>> '{en,vertical}', ''),
+            NULLIF(tp.locale_data #>> '{pt-BR,vertical}', ''),
+            NULLIF(tp.locale_data->>'vertical', '')
+          ) AS tag_profile_vertical,
+          tsp.origin_label AS profile_origin_label,
+          tsp.origin_address AS profile_origin_address,
+          tsp.origin_lat AS profile_origin_lat,
+          tsp.origin_lng AS profile_origin_lng
+        FROM tags t
+        JOIN batches b ON b.id = t.batch_id
+        JOIN tenants tn ON tn.id = b.tenant_id
+        LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = b.tenant_id
+        LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
+        WHERE b.bid = ${bid}
+          AND UPPER(t.uid_hex) = UPPER(${uidHex})
+        LIMIT 1
+      ),
+      normalized AS (
+        SELECT
+          *,
+          (
+            tag_profile_vertical IS NULL
+            OR tenant_vertical IS NULL
+            OR lower(tag_profile_vertical) = lower(tenant_vertical)
+          ) AS tag_profile_allowed
+        FROM base
+      )
+      SELECT
+        bid,
+        uid_hex,
+        tenant_id,
+        tenant_slug,
+        tenant_name,
+        tenant_vertical,
+        product_label,
+        club_name,
+        COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_product_name, '') END, NULLIF(batch_config->>'product_name', ''), NULLIF(batch_config #>> '{sun,product,name}', '')) AS product_name,
+        COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_sku, '') END, NULLIF(batch_config->>'sku', ''), NULLIF(batch_config #>> '{sun,product,sku}', '')) AS sku,
+        COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_winery, '') END, NULLIF(batch_config->>'winery', ''), NULLIF(batch_config #>> '{sun,product,producer}', ''), tenant_name) AS winery,
+        COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_region, '') END, NULLIF(batch_config->>'region', ''), NULLIF(batch_config #>> '{sun,origin,region}', ''), NULLIF(profile_origin_label, '')) AS region,
+        COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_grape_varietal, '') END, NULLIF(batch_config->>'grape_varietal', ''), NULLIF(batch_config #>> '{sun,product,varietal}', '')) AS grape_varietal,
+        COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_vintage, '') END, NULLIF(batch_config->>'vintage', ''), NULLIF(batch_config #>> '{sun,product,vintage}', '')) AS vintage,
+        COALESCE(CASE WHEN tag_profile_allowed THEN tp_harvest_year END, (NULLIF(batch_config->>'harvest_year', ''))::integer, (NULLIF(batch_config #>> '{sun,product,harvestYear}', ''))::integer) AS harvest_year,
+        COALESCE(CASE WHEN tag_profile_allowed THEN tp_barrel_months END, (NULLIF(batch_config->>'barrel_months', ''))::integer, (NULLIF(batch_config #>> '{sun,product,barrelMonths}', ''))::integer) AS barrel_months,
+        COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_temperature_storage, '') END, NULLIF(batch_config->>'temperature_storage', ''), NULLIF(batch_config #>> '{sun,product,storage}', '')) AS temperature_storage,
+        COALESCE(NULLIF(batch_config #>> '{sun,product,alcohol}', ''), NULLIF(batch_config->>'alcohol', '')) AS alcohol,
+        COALESCE(NULLIF(batch_config #>> '{sun,product,bottle}', ''), NULLIF(batch_config->>'bottle', '')) AS bottle,
+        COALESCE(NULLIF(batch_config #>> '{sun,product,serving}', ''), NULLIF(batch_config->>'serving', '')) AS serving,
+        COALESCE(NULLIF(batch_config #>> '{sun,product,oakType}', ''), NULLIF(batch_config->>'oak_type', '')) AS oak_type,
+        COALESCE(CASE WHEN tag_profile_allowed THEN NULLIF(tp_image_url, '') END, NULLIF(batch_config->>'image_url', ''), NULLIF(batch_config #>> '{sun,product,imageUrl}', '')) AS image_url,
+        CASE WHEN tag_profile_allowed THEN tp_locale_data ELSE NULL END AS locale_data,
+        COALESCE(NULLIF(profile_origin_label, ''), NULLIF(batch_config #>> '{sun,origin,label}', ''), NULLIF(batch_config #>> '{sun,origin,region}', '')) AS origin_label,
+        COALESCE(NULLIF(profile_origin_address, ''), NULLIF(batch_config #>> '{sun,origin,address}', '')) AS origin_address,
+        COALESCE(profile_origin_lat, (NULLIF(batch_config #>> '{sun,origin,lat}', ''))::double precision) AS origin_lat,
+        COALESCE(profile_origin_lng, (NULLIF(batch_config #>> '{sun,origin,lng}', ''))::double precision) AS origin_lng,
+        tag_profile_vertical,
+        (NOT tag_profile_allowed AND tag_profile_vertical IS NOT NULL) AS tag_profile_conflict,
+        CASE
+          WHEN tag_profile_allowed AND (NULLIF(tp_product_name, '') IS NOT NULL OR NULLIF(tp_sku, '') IS NOT NULL) THEN 'tag_profile'
+          WHEN NULLIF(batch_config->>'product_name', '') IS NOT NULL OR NULLIF(batch_config #>> '{sun,product,name}', '') IS NOT NULL THEN 'batch'
+          ELSE 'tenant'
+        END AS product_identity_source
+      FROM normalized
+    `;
+    const row = rows[0] as CurrentSnapshotIdentity | undefined;
+    if (!row) return null;
+    return {
+      ...row,
+      uid_masked: meta.uidMasked || maskUid(row.uid_hex),
+    };
+  } catch (error) {
+    console.warn("[snapshot_identity_lookup_failed]", JSON.stringify({
+      bid,
+      uidMasked: meta.uidMasked || maskUid(uidHex),
+      reason: error instanceof Error ? error.message : "identity_lookup_failed",
+    }));
+    return null;
+  }
+}
+
+function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIdentity: CurrentSnapshotIdentity | null) {
+  const contract = cloneRecord(input);
+  if (!currentIdentity) return contract;
+
+  const tenant = asRecord(contract.tenant);
+  const provenance = asRecord(contract.provenance);
+  const iot = asRecord(contract.iot);
+  const identity = asRecord(contract.identity);
+  const productName = textOrNull(currentIdentity.product_name);
+  const winery = textOrNull(currentIdentity.winery || currentIdentity.tenant_name);
+  const region = textOrNull(currentIdentity.region || currentIdentity.origin_label);
+  const productMedia = mediaFromLocaleData(currentIdentity.locale_data, currentIdentity.image_url);
+  const unitIot = iotFromLocaleData(currentIdentity.locale_data);
+
+  contract.identity = {
+    ...identity,
+    bid: currentIdentity.bid || identity.bid || contract.batchId || null,
+    tenantSlug: currentIdentity.tenant_slug || identity.tenantSlug || null,
+    tenantId: currentIdentity.tenant_id || identity.tenantId || null,
+    uidMasked: identity.uidMasked || currentIdentity.uid_masked || contract.uidMasked || null,
+  };
+  contract.tenant = {
+    ...tenant,
+    id: currentIdentity.tenant_id || tenant.id || null,
+    slug: currentIdentity.tenant_slug || tenant.slug || null,
+    name: currentIdentity.tenant_name || tenant.name || null,
+    vertical: currentIdentity.tenant_vertical || tenant.vertical || null,
+    productLabel: currentIdentity.product_label || tenant.productLabel || null,
+    clubName: currentIdentity.club_name || tenant.clubName || null,
+  };
+  contract.product = {
+    name: productName || currentIdentity.sku || "Producto verificado",
+    sku: currentIdentity.sku || null,
+    winery: winery || null,
+    region: region || null,
+    varietal: currentIdentity.grape_varietal || null,
+    vintage: currentIdentity.vintage || null,
+    harvestYear: currentIdentity.harvest_year ?? null,
+    barrelMonths: currentIdentity.barrel_months ?? null,
+    storage: currentIdentity.temperature_storage || null,
+    alcohol: currentIdentity.alcohol || null,
+    bottle: currentIdentity.bottle || null,
+    serving: currentIdentity.serving || null,
+    oakType: currentIdentity.oak_type || null,
+    imageUrl: currentIdentity.image_url || null,
+    image_url: currentIdentity.image_url || null,
+    media: productMedia,
+    category: currentIdentity.product_label || null,
+    vertical: currentIdentity.tenant_vertical || null,
+  };
+  contract.provenance = {
+    ...provenance,
+    origin: region || provenance.origin || null,
+  };
+  contract.iot = {
+    ...iot,
+    wineryLocation: currentIdentity.origin_address || iot.wineryLocation || winery || null,
+    wineryCoordinates: asRecord(iot.wineryCoordinates).lat != null
+      ? iot.wineryCoordinates
+      : currentIdentity.origin_lat != null && currentIdentity.origin_lng != null
+        ? { lat: currentIdentity.origin_lat, lng: currentIdentity.origin_lng }
+        : iot.wineryCoordinates || null,
+    originLabel: currentIdentity.origin_label || region || iot.originLabel || null,
+    originType: currentIdentity.tenant_vertical || iot.originType || null,
+    sensorSnapshot: unitIot
+      ? {
+          ...asRecord(iot.sensorSnapshot),
+          ...unitIot.snapshot,
+        }
+      : iot.sensorSnapshot || null,
+    sensorHistory: unitIot?.measuredAt
+      ? [
+          {
+            at: unitIot.measuredAt,
+            stage: "manifest_iot",
+            temperatureC: unitIot.temperatureC,
+            humidityPct: unitIot.humidityPct,
+            deviceId: unitIot.deviceId,
+          },
+          ...(Array.isArray(iot.sensorHistory) ? iot.sensorHistory : []),
+        ]
+      : iot.sensorHistory || null,
+    manifestTelemetry: unitIot?.raw || null,
+  };
+  contract.productName = productName || currentIdentity.sku || null;
+  contract.tenantSlug = currentIdentity.tenant_slug || contract.tenantSlug || null;
+  contract.batchId = currentIdentity.bid || contract.batchId || null;
+  contract.troubleshooting = uniqueStrings(contract.troubleshooting, [
+    "Snapshot sincronizado contra la identidad actual del tenant/batch/UID en base de datos.",
+    ...(currentIdentity.tag_profile_conflict
+      ? [`Override unitario bloqueado: vertical ${currentIdentity.tag_profile_vertical || "desconocida"} no coincide con tenant ${currentIdentity.tenant_vertical || "sin vertical"}.`]
+      : []),
+  ]);
+  contract.dataQuality = {
+    ...asRecord(contract.dataQuality),
+    productIdentitySource: currentIdentity.product_identity_source || "unknown",
+    tagProfileConflict: Boolean(currentIdentity.tag_profile_conflict),
+  };
+
+  return contract;
+}
+
 function markHistoricalSnapshotContract(input: unknown, snapshot: { id: number; traceId: string; createdAt: string | null }) {
   const contract = cloneRecord(input);
   const tapSecurity = asRecord(contract.tapSecurity);
@@ -269,21 +586,24 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
 
   await ensureTable();
   const rows = await sql/*sql*/`
-    SELECT id, trace_id, created_at::text AS created_at, result_json
+    SELECT id, trace_id, created_at::text AS created_at, bid, uid_hex, uid_masked, result_json
     FROM sun_diagnostics
     WHERE id = ${numericId}
       AND trace_id = ${trace}
       AND tool_type = 'sun_scan'
     LIMIT 1
   `;
-  const row = rows[0] as { id?: number; trace_id?: string | null; created_at?: string | null; result_json?: unknown } | undefined;
+  const row = rows[0] as { id?: number; trace_id?: string | null; created_at?: string | null; bid?: string | null; uid_hex?: string | null; uid_masked?: string | null; result_json?: unknown } | undefined;
   if (!row || !row.result_json || typeof row.result_json !== "object") return null;
   const result = row.result_json as { contract?: unknown };
   if (!result.contract || typeof result.contract !== "object") return null;
   const diagnosticId = Number(row.id || numericId);
   const traceIdValue = row.trace_id || trace;
   const createdAt = row.created_at || null;
-  const contract = normalizeSunProfileMismatchContract(result.contract);
+  const currentIdentity = await resolveCurrentSnapshotIdentity({ bid: row.bid, uidHex: row.uid_hex, uidMasked: row.uid_masked });
+  const contract = normalizeSunProfileMismatchContract(
+    normalizeSnapshotContractFromCurrentIdentity(result.contract, currentIdentity),
+  );
   const identity = asRecord(contract.identity);
   const tokenizationEventId = String(contract.eventId || identity.eventId || "").trim();
   const bid = String(identity.bid || contract.bid || "").trim();

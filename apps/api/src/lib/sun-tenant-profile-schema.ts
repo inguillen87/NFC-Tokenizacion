@@ -105,7 +105,7 @@ async function migrateSunTenantProfilesSchema() {
       'valid_and_opened',
       'purchase_proof_required',
       '{"requiresPurchaseProof":true,"requiresFreshTap":true,"requiresTenantMembership":true,"allowsPublicClaim":false,"antiReplayRequired":true}'::jsonb,
-      '{"acceptedFormats":["csv","txt"],"requiredColumns":["uid_hex"],"csvOptionalColumns":["batch_id","product_name","sku","lot","serial","expires_at","image_url","label_image_url","model_url","gallery_urls"],"activateDefault":false,"rejectDuplicates":true}'::jsonb,
+      '{"acceptedFormats":["csv","txt"],"requiredColumns":["uid_hex"],"csvOptionalColumns":["batch_id","product_name","sku","lot","serial","serial_number","external_unit_id","bottle_number","label_number","case_id","pallet_id","roll_id","supplier_lot","expires_at","image_url","label_image_url","model_url","gallery_urls","sensor_json","iot_json","telemetry_json","sensor_at","sensor_id","temperature_c","humidity_pct","light_exposure","transit_shock","storage_zone"],"activateDefault":false,"rejectDuplicates":true}'::jsonb,
       '{"accent":"cyan","secondary":"violet","mapStyle":"luxury"}'::jsonb,
       '{"pilot":"demobodega","supportsOpenedSealLifecycle":true,"defaultBatch":"DEMO-2026-02","loyalty":{"pointsName":"Uvas","rules":{"pointsPerValidTap":10,"cooldownSeconds":3600},"rewards":[{"code":"WELCOME-10","title":"10% off proxima compra","description":"Descuento para compra directa de bodega.","type":"DISCOUNT","points":40,"stock":500},{"code":"TASTING-UP","title":"Upgrade de degustacion","description":"Acceso a cata premium durante la visita.","type":"TASTING","points":80,"stock":120},{"code":"TOUR-BARRICA","title":"Tour de barrica","description":"Visita guiada de barricas y proceso.","type":"TOUR","points":120,"stock":80}]}}'::jsonb
     FROM tenants t
@@ -162,6 +162,16 @@ async function migrateSunTenantProfilesSchema() {
         true
       )
       || '{
+        "product_name":"Gran Reserva Malbec",
+        "sku":"GRM-2022-DEMO",
+        "winery":"Demo Bodega",
+        "region":"Valle de Uco, Mendoza",
+        "grape_varietal":"Malbec",
+        "vintage":"2022",
+        "harvest_year":2022,
+        "barrel_months":12,
+        "temperature_storage":"16C",
+        "image_url":"https://nexid.lat/demo/wine-secure/real-malbec-bottle-pexels.jpg",
         "chip_model":"NTAG 424 DNA TT",
         "tagtamper_enabled":true,
         "tamper_status_enabled":true,

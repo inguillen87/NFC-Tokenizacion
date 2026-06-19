@@ -125,7 +125,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       registeredSunPayloads += 1;
     }
 
-    if (row.productName || row.sku) {
+    const hasUnitManifest = Boolean(
+      row.lot
+      || row.serial
+      || row.expiresAt
+      || row.imageUrl
+      || row.labelImageUrl
+      || row.modelUrl
+      || row.galleryUrls.length
+      || Object.keys(row.unitMetadata).length
+      || row.iotData
+      || rowCarrierCode !== batchCarrierCode,
+    );
+    const hasProductOverride = Boolean(row.productName || row.sku);
+
+    if (hasUnitManifest || hasProductOverride) {
       const media = {
         imageUrl: row.imageUrl,
         labelImageUrl: row.labelImageUrl,
@@ -136,11 +150,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         INSERT INTO tag_profiles (tag_id, sku, product_name, notes, image_url, locale_data, carrier_profile_code)
         VALUES (
           ${current.id},
-          ${row.sku},
-          ${row.productName},
-          ${row.lot || row.serial || row.expiresAt ? JSON.stringify({ lot: row.lot, serial: row.serial, expires_at: row.expiresAt }) : null},
+          ${hasProductOverride ? row.sku : null},
+          ${hasProductOverride ? row.productName : null},
+          ${row.lot || row.serial || row.expiresAt || Object.keys(row.unitMetadata).length || row.iotData ? JSON.stringify({ lot: row.lot, serial: row.serial, expires_at: row.expiresAt, ...row.unitMetadata, iot: row.iotData }) : null},
           ${row.imageUrl},
-          ${JSON.stringify({ media, manifest: { lot: row.lot, serial: row.serial, expires_at: row.expiresAt, raw: row.raw, carrier_profile_code: rowCarrierCode, carrier_label: rowCarrier.label } })}::jsonb,
+          ${JSON.stringify({
+            media,
+            manifest: {
+              lot: row.lot,
+              serial: row.serial,
+              external_unit_id: row.serial,
+              expires_at: row.expiresAt,
+              unit_metadata: row.unitMetadata,
+              raw: row.raw,
+              carrier_profile_code: rowCarrierCode,
+              carrier_label: rowCarrier.label,
+            },
+            iot: row.iotData,
+          })}::jsonb,
           ${rowCarrierCode}
         )
         ON CONFLICT (tag_id) DO UPDATE SET

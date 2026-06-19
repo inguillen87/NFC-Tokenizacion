@@ -182,8 +182,14 @@ function policyLabel(value?: string | null) {
 }
 
 function mapHref(lat?: number | null, lng?: number | null) {
-  if (lat == null || lng == null) return "";
+  if (!isUsableCoordinate(lat, lng)) return "";
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
+function isUsableCoordinate(lat?: number | null, lng?: number | null) {
+  if (lat == null || lng == null) return false;
+  if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return false;
+  return !(Number(lat) === 0 && Number(lng) === 0);
 }
 
 function resolveSunVisualKind(result: SunContract): SunVisualKind {
@@ -524,8 +530,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       const city = item.city || "Unknown city";
       const country = item.country || "--";
       const knownCoords = resolveKnownTapCoordinates([city, country, `${city}, ${country}`]);
-      const lat = typeof item.lat === "number" ? Number(item.lat) : knownCoords?.lat;
-      const lng = typeof item.lng === "number" ? Number(item.lng) : knownCoords?.lng;
+      const hasEventCoords = isUsableCoordinate(item.lat, item.lng);
+      const lat = hasEventCoords ? Number(item.lat) : knownCoords?.lat;
+      const lng = hasEventCoords ? Number(item.lng) : knownCoords?.lng;
       if (lat == null || lng == null) return null;
       return {
         city,
@@ -536,7 +543,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         risk: String(item.result || "").toLowerCase().includes("replay") || String(item.result || "").toLowerCase().includes("tamper") ? 1 : 0,
         status: item.result || "REVIEW",
         lastSeen: item.at || undefined,
-        source: typeof item.lat === "number" && typeof item.lng === "number" ? "tap_timeline" : "tap_city_geocenter",
+        source: hasEventCoords ? "tap_timeline" : "tap_city_geocenter",
       };
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
@@ -562,7 +569,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       source: "winery_origin",
     }]
     : [];
-  const currentTapFallbackCoords = result.tapContext?.lat != null && result.tapContext?.lng != null
+  const hasCurrentTapCoords = isUsableCoordinate(result.tapContext?.lat, result.tapContext?.lng);
+  const currentTapFallbackCoords = hasCurrentTapCoords
     ? null
     : resolveKnownTapCoordinates([
       result.tapContext?.city,
@@ -572,8 +580,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       result.provenance?.timelineSummary?.[0]?.city,
       result.provenance?.timelineSummary?.[0]?.country,
     ]);
-  const currentTapLat = result.tapContext?.lat != null ? Number(result.tapContext.lat) : currentTapFallbackCoords?.lat;
-  const currentTapLng = result.tapContext?.lng != null ? Number(result.tapContext.lng) : currentTapFallbackCoords?.lng;
+  const currentTapLat = hasCurrentTapCoords ? Number(result.tapContext?.lat) : currentTapFallbackCoords?.lat;
+  const currentTapLng = hasCurrentTapCoords ? Number(result.tapContext?.lng) : currentTapFallbackCoords?.lng;
   const currentTapCity = result.tapContext?.city || result.provenance?.lastVerifiedLocation?.city || result.provenance?.timelineSummary?.[0]?.city || "Tap";
   const currentTapCountry = result.tapContext?.country || result.provenance?.lastVerifiedLocation?.country || result.provenance?.timelineSummary?.[0]?.country || "--";
   const currentTapPoint = currentTapLat != null && currentTapLng != null
@@ -585,7 +593,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       scans: 1,
       risk: isRiskBlocked ? 1 : 0,
       status: result.status?.code || "REVIEW",
-      source: result.tapContext?.lat != null && result.tapContext?.lng != null ? "current_mobile_tap" : "current_tap_city_geocenter",
+      source: hasCurrentTapCoords ? "current_mobile_tap" : "current_tap_city_geocenter",
     }]
     : [];
   const orderedTimelinePoints = [...timelinePoints].reverse();
@@ -821,8 +829,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const tapParams = new URLSearchParams({ fromTap: "1" });
   if (tenantSlug) tapParams.set("tenant", tenantSlug);
   if (eventId) tapParams.set("eventId", eventId);
-  const tapQuery = tapParams.toString();
-  const withTapQuery = (path: string, action: string) => `${path}${path.includes("?") ? "&" : "?"}${tapQuery}&action=${encodeURIComponent(action)}`;
+  const withTapQuery = (path: string, action: string) => {
+    const [pathWithoutHash, hash = ""] = path.split("#");
+    const [pathname, existingQuery = ""] = pathWithoutHash.split("?");
+    const nextParams = new URLSearchParams(existingQuery);
+    tapParams.forEach((value, key) => {
+      if (!nextParams.has(key)) nextParams.set(key, value);
+    });
+    nextParams.set("action", action);
+    return `${pathname}?${nextParams.toString()}${hash ? `#${hash}` : ""}`;
+  };
   const registerHref = localizeHref(result.cta?.registerUrl) || withTapQuery("/me", "register");
   const walletHref = withTapQuery("/me/wallet", "wallet");
   const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");

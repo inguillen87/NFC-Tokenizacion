@@ -31,6 +31,31 @@ function maskUid(uid: unknown) {
   return `${raw.slice(0, 4)}****${raw.slice(-4)}`;
 }
 
+function readRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+function readManifestMetadata(localeData: unknown) {
+  const data = readRecord(localeData);
+  const manifest = readRecord(data.manifest);
+  const unitMetadata = readRecord(manifest.unit_metadata);
+  return {
+    lot: cleanText(manifest.lot) || null,
+    serial: cleanText(manifest.serial || manifest.external_unit_id) || null,
+    expiresAt: cleanText(manifest.expires_at) || null,
+    unitMetadata,
+  };
+}
+
+function readIotMetadata(localeData: unknown) {
+  const data = readRecord(localeData);
+  const manifest = readRecord(data.manifest);
+  const topLevel = readRecord(data.iot);
+  const nested = readRecord(manifest.iot);
+  return Object.keys(topLevel).length ? topLevel : Object.keys(nested).length ? nested : null;
+}
+
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
@@ -50,18 +75,46 @@ export async function GET(req: Request) {
       t.slug AS tenant_slug,
       t.name AS tenant_name,
       tsp.vertical AS tenant_vertical,
-      tp.sku,
-      tp.product_name,
-      tp.image_url,
-      tp.winery,
-      tp.region,
-      tp.locale_data,
+      COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.sku, '') END, NULLIF(b.sdm_config->>'sku', ''), NULLIF(b.sdm_config #>> '{sun,product,sku}', '')) AS sku,
+      COALESCE(
+        CASE WHEN profile_guard.allowed THEN NULLIF(tp.product_name, '') END,
+        NULLIF(b.sdm_config->>'product_name', ''),
+        NULLIF(b.sdm_config #>> '{sun,product,name}', ''),
+        CASE WHEN profile_guard.allowed THEN NULLIF(tp.sku, '') END
+      ) AS product_name,
+      COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.image_url, '') END, NULLIF(b.sdm_config->>'image_url', ''), NULLIF(b.sdm_config #>> '{sun,product,imageUrl}', '') ) AS image_url,
+      COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.winery, '') END, NULLIF(b.sdm_config->>'winery', ''), NULLIF(b.sdm_config #>> '{sun,product,producer}', ''), t.name) AS winery,
+      COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.region, '') END, NULLIF(b.sdm_config->>'region', ''), NULLIF(b.sdm_config #>> '{sun,origin,region}', '') ) AS region,
+      CASE WHEN profile_guard.allowed THEN tp.locale_data ELSE '{}'::jsonb END AS locale_data,
+      profile_guard.conflict AS tag_profile_conflict,
       tp.updated_at
     FROM tags tg
     JOIN batches b ON b.id = tg.batch_id
     JOIN tenants t ON t.id = b.tenant_id
     LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = t.id
     LEFT JOIN tag_profiles tp ON tp.tag_id = tg.id
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(
+          NULLIF(tp.locale_data #>> '{es-AR,vertical}', ''),
+          NULLIF(tp.locale_data #>> '{en,vertical}', ''),
+          NULLIF(tp.locale_data #>> '{pt-BR,vertical}', ''),
+          NULLIF(tp.locale_data->>'vertical', '')
+        ) AS profile_vertical
+    ) profile_vertical ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        (
+          profile_vertical.profile_vertical IS NULL
+          OR tsp.vertical IS NULL
+          OR lower(profile_vertical.profile_vertical) = lower(tsp.vertical)
+        ) AS allowed,
+        (
+          profile_vertical.profile_vertical IS NOT NULL
+          AND tsp.vertical IS NOT NULL
+          AND lower(profile_vertical.profile_vertical) <> lower(tsp.vertical)
+        ) AS conflict
+    ) profile_guard ON TRUE
     WHERE (${tenant} = '' OR t.slug = ${tenant})
       AND (${bid} = '' OR b.bid = ${bid})
       AND (${uid} = '' OR UPPER(tg.uid_hex) = UPPER(${uid}))
@@ -90,6 +143,9 @@ export async function GET(req: Request) {
       tenantSlug: row.tenant_slug,
       bid: row.bid,
       updatedAt: row.updated_at || null,
+      profileConflict: Boolean(row.tag_profile_conflict),
+      unitMetadata: readManifestMetadata(row.locale_data),
+      iot: readIotMetadata(row.locale_data),
       assetReadiness: summarizeAssetReadiness(profile),
       profile,
     };
