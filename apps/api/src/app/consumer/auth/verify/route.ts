@@ -23,24 +23,14 @@ export async function POST(req: Request) {
   if (!code) return new Response(JSON.stringify({ ok: false, error: "contact_and_code_required" }), { status: 400 });
 
   const normalized = contact.toLowerCase();
-  const isMockSocial = [
-    "google.user@nexid.lat",
-    "facebook.user@nexid.lat",
-    "whatsapp.user@nexid.lat",
-    "clerk.user@nexid.lat",
-    "demo.consumer@nexid.local"
-  ].includes(normalized);
-  if (isMockSocial && (code === "000000" || /^\d{6}$/.test(code))) {
+  const demoBypassAllowed =
+    normalized === "demo.consumer@nexid.local" &&
+    code === "000000" &&
+    (body.demoConsumer === true || String(body.consumerMode || "").toLowerCase() === "demo");
+
+  if (demoBypassAllowed) {
     await ensureConsumerAuthSchema();
-    const displayName = normalized.includes("google")
-      ? "Google User"
-      : normalized.includes("facebook")
-        ? "Facebook User"
-        : normalized.includes("whatsapp")
-          ? "WhatsApp User"
-          : normalized.includes("clerk")
-            ? "Clerk User"
-            : "Demo Consumer";
+    const displayName = "Demo Consumer";
 
     const consumerRows = await sql/*sql*/`
       INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)

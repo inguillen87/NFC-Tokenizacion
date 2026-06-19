@@ -59,21 +59,16 @@ const filterOptions = [
 
 async function ensureDemoConsumerSession() {
   const email = "demo.consumer@nexid.local";
-  const start = await fetch("/api/consumer/auth/start", {
-    method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email }),
-  }).catch(() => null);
-  if (!start?.ok) return false;
-
-  const challenge = (await start.json().catch(() => null)) as { code?: string } | null;
-  const code = String(challenge?.code || "000000");
   const verify = await fetch("/api/consumer/auth/verify", {
     method: "POST",
     credentials: "include",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, code }),
+    body: JSON.stringify({
+      email,
+      code: "000000",
+      demoConsumer: true,
+      consumerMode: "demo",
+    }),
   }).catch(() => null);
 
   return Boolean(verify?.ok);

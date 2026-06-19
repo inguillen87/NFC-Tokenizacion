@@ -55,6 +55,8 @@ function normalizeOtpDeliveryError(error: unknown) {
   if (message.includes("twilio_delivery_failed")) return "twilio_delivery_failed";
   if (message.includes("resend_delivery_failed")) return "resend_delivery_failed";
   if (message.includes("otp_provider_api_key_missing")) return "otp_provider_api_key_missing";
+  if (message.includes("smtp_credentials_missing")) return "smtp_credentials_missing";
+  if (message.includes("smtp_delivery_failed")) return "smtp_delivery_failed";
   return "otp_delivery_failed";
 }
 
@@ -126,13 +128,10 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
   `;
 
   const normalized = contact.trim().toLowerCase();
-  const isMockSocial = [
-    "google.user@nexid.lat",
-    "facebook.user@nexid.lat",
-    "whatsapp.user@nexid.lat",
-    "clerk.user@nexid.lat",
-    "demo.consumer@nexid.local"
-  ].includes(normalized);
+  const demoMode = String(process.env.DEMO_MODE || "").toLowerCase();
+  const consumerAuthMode = String(process.env.CONSUMER_AUTH_MODE || "").toLowerCase();
+  const demoBypassAllowed = ["1", "true", "yes", "demo"].includes(demoMode) || consumerAuthMode === "demo";
+  const isMockSocial = demoBypassAllowed && normalized === "demo.consumer@nexid.local";
 
   try {
     if (!isMockSocial) {

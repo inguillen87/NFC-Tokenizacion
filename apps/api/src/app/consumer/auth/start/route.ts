@@ -21,9 +21,10 @@ function startStatus(error: string) {
     error === "consumer_auth_from_email_missing" ||
     error === "twilio_credentials_missing" ||
     error === "twilio_sender_missing" ||
-    error === "otp_provider_api_key_missing"
+    error === "otp_provider_api_key_missing" ||
+    error === "smtp_credentials_missing"
   ) return 503;
-  if (error === "twilio_delivery_failed" || error === "resend_delivery_failed") return 502;
+  if (error === "twilio_delivery_failed" || error === "resend_delivery_failed" || error === "smtp_delivery_failed") return 502;
   return 500;
 }
 
@@ -33,6 +34,13 @@ function deliveryChannelFor(contact: string, mode: string) {
   const phoneChannel = String(process.env.CONSUMER_PHONE_OTP_CHANNEL || "").toLowerCase();
   if (mode.includes("whatsapp") || phoneChannel === "whatsapp") return "whatsapp";
   return "sms";
+}
+
+function canExposeDebugCode() {
+  const flag = String(process.env.CONSUMER_AUTH_DEBUG_CODE_RESPONSE || "").toLowerCase();
+  const debugEnabled = ["1", "true", "yes", "debug"].includes(flag);
+  const vercelEnv = String(process.env.VERCEL_ENV || "").toLowerCase();
+  return debugEnabled && process.env.NODE_ENV !== "production" && vercelEnv !== "production";
 }
 
 export async function POST(req: Request) {
@@ -59,8 +67,8 @@ export async function POST(req: Request) {
   const challenge = await startConsumerAuth(contact, { ip: req.headers.get("x-forwarded-for") });
   if (!challenge.ok) return json({ ok: false, error: challenge.error }, startStatus(challenge.error));
 
-  const demoMode = String(process.env.DEMO_MODE || "").toLowerCase() === "true";
-  const mode = String(process.env.CONSUMER_AUTH_MODE || "demo").toLowerCase();
+  const defaultMode = process.env.NODE_ENV === "production" || process.env.VERCEL === "1" ? "smart" : "demo";
+  const mode = String(process.env.CONSUMER_AUTH_MODE || defaultMode).toLowerCase();
   const payload = {
     ok: true,
     contact,
@@ -70,6 +78,6 @@ export async function POST(req: Request) {
     twoFactor: has2fa
   } as Record<string, unknown>;
 
-  if (demoMode || mode === "demo") payload.code = challenge.code;
+  if (canExposeDebugCode()) payload.code = challenge.code;
   return json(payload);
 }

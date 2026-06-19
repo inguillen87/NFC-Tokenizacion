@@ -65,10 +65,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
       return;
     }
 
-    // Set code automatically in demo/testing mode if returned
-    if (data.code) {
-      setCode(data.code);
-    }
+    setCode("");
     setStep("verify");
     setStatusMsg(`Código enviado con éxito a ${data.contact}. Revisa tu ${data.deliveryChannel === "email" ? "correo" : "WhatsApp"}.`);
   }
@@ -202,6 +199,8 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
                 <input
                   type="text"
                   placeholder="------"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                   maxLength={6}
                   value={code}
                   onChange={(e) => setCode(e.target.value)}

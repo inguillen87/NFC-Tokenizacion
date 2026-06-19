@@ -256,7 +256,8 @@ class NoopExternalOtpProvider implements ConsumerOtpProvider {
 }
 
 export function resolveConsumerOtpProvider() {
-  const mode = env("CONSUMER_AUTH_MODE").toLowerCase() || "demo";
+  const defaultMode = process.env.NODE_ENV === "production" || process.env.VERCEL === "1" ? "smart" : "demo";
+  const mode = env("CONSUMER_AUTH_MODE").toLowerCase() || defaultMode;
   if (mode === "smtp") return new SmtpOtpProvider();
   if (mode === "email" || mode === "resend") {
     if (env("SMTP_USER") && env("SMTP_PASSWORD")) return new SmtpOtpProvider();

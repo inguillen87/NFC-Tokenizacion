@@ -161,7 +161,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [claimCode, setClaimCode] = useState("");
   const [claimAuthStarted, setClaimAuthStarted] = useState(false);
   const [claimAuthMode, setClaimAuthMode] = useState("");
-  const [claimDemoCode, setClaimDemoCode] = useState("");
   const [claimAuthMessage, setClaimAuthMessage] = useState("");
   const [claimAuthError, setClaimAuthError] = useState("");
   const [claimAuthLoading, setClaimAuthLoading] = useState(false);
@@ -586,7 +585,6 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     setClaimAuthLoading(true);
     setClaimAuthError("");
     setClaimAuthMessage("");
-    setClaimDemoCode("");
     try {
       const payload = claimContactLooksEmail
         ? { email: normalizedClaimContact }
@@ -597,53 +595,14 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       }
       setClaimAuthStarted(true);
       setClaimAuthMode(String(data.mode || "otp"));
-      setClaimDemoCode(String(data.code || ""));
       const channel = String(data.deliveryChannel || (claimContactLooksEmail ? "email" : "sms"));
-      setClaimAuthMessage(data.code
-        ? `Codigo demo enviado: ${String(data.code)}`
-        : channel === "email"
+      setClaimAuthMessage(channel === "email"
           ? "Codigo enviado por email. Ingresalo para continuar como comprador verificado."
           : channel === "whatsapp"
             ? "Codigo enviado por WhatsApp. Ingresalo para continuar como comprador verificado."
             : "Codigo enviado por SMS. Ingresalo para continuar como comprador verificado.");
     } catch (error) {
       setClaimAuthError(normalizeClaimAuthError(error));
-    } finally {
-      setClaimAuthLoading(false);
-    }
-  }
-
-  async function startClerkAuthentication() {
-    if (claimAuthLoading) return;
-    setClaimAuthLoading(true);
-    setClaimAuthError("");
-    setClaimAuthMessage("");
-    setClaimDemoCode("");
-    try {
-      const clerkEmail = "clerk.user@nexid.lat";
-      const startData = await call("/api/consumer/auth/start", "POST", { email: clerkEmail });
-      if (!startData._httpOk || startData.ok === false) {
-        throw new Error("clerk_auth_start_failed");
-      }
-      const verifyCode = String(startData.code || "000000").trim();
-      const verifyData = await call("/api/consumer/auth/verify", "POST", { email: clerkEmail, code: verifyCode });
-      if (!verifyData._httpOk || verifyData.ok === false) {
-        throw new Error("clerk_auth_verify_failed");
-      }
-      setClaimAuthOpen(false);
-      setClaimAuthStarted(false);
-      setClaimCode("");
-      setClaimAuthMessage("");
-      
-      setIsAuthenticated(true);
-      if (verifyData.consumer) {
-        setConsumerData(verifyData.consumer);
-      }
-      
-      setShowReceiptForm(true);
-      setLastActionMessage("Autenticacion express con Clerk completada. Subi tu comprobante para completar comprador verificado.");
-    } catch (error) {
-      setClaimAuthError("Error en Clerk: " + normalizeClaimAuthError(error));
     } finally {
       setClaimAuthLoading(false);
     }
@@ -965,22 +924,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             </button>
           </div>
           {!isClaimContactValid && normalizedClaimContact ? <p className="mt-2 text-[11px] text-amber-200">Usa un email valido o un celular con codigo de pais.</p> : null}
-          {claimDemoCode ? <p className="mt-2 rounded-lg border border-emerald-300/25 bg-emerald-500/10 p-2 text-[11px] text-emerald-100">Codigo demo: <span className="font-mono">{claimDemoCode}</span></p> : null}
           {claimAuthMode ? <p className="mt-2 text-[11px] text-slate-400">Modo de verificacion: {claimAuthMode}</p> : null}
           {claimAuthMessage ? <p className="mt-2 text-[11px] text-cyan-100">{claimAuthMessage}</p> : null}
           {claimAuthError ? <p className="mt-2 rounded-lg border border-rose-300/30 bg-rose-500/10 p-2 text-[11px] text-rose-100">{claimAuthError}</p> : null}
           
-          <div className="mt-3 border-t border-white/10 pt-3">
-            <button
-              suppressHydrationWarning
-              type="button"
-              onClick={() => void startClerkAuthentication()}
-              disabled={claimAuthLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-purple-500/35 bg-purple-950/20 hover:bg-purple-900/30 px-4 py-2.5 text-xs font-bold text-purple-300 transition"
-            >
-              🔐 Usar Clerk (Verificación Express WhatsApp/Mail)
-            </button>
-          </div>
         </div>
       ) : null}
       {lastTraceId ? <p className="text-[11px] text-slate-400">trace_id: <span className="font-mono">{lastTraceId}</span></p> : null}

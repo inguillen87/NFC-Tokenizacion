@@ -64,7 +64,6 @@ export async function POST(req: Request) {
     return json({ ok: false, error: "otp_delivery_failed", detail: String(error) }, 500);
   }
 
-  const mode = String(process.env.CONSUMER_AUTH_MODE || "demo").toLowerCase();
   const payload = {
     ok: true,
     contact: normalized,
@@ -72,8 +71,9 @@ export async function POST(req: Request) {
     deliveryChannel: isMail ? "email" : "whatsapp"
   } as Record<string, unknown>;
 
-  // If in demo mode, return the code for testing convenience
-  if (String(process.env.DEMO_MODE || "").toLowerCase() === "true" || mode === "demo") {
+  const debugCodeEnabled = ["1", "true", "yes", "debug"].includes(String(process.env.CONSUMER_AUTH_DEBUG_CODE_RESPONSE || "").toLowerCase());
+  const vercelEnv = String(process.env.VERCEL_ENV || "").toLowerCase();
+  if (debugCodeEnabled && process.env.NODE_ENV !== "production" && vercelEnv !== "production") {
     payload.code = code;
   }
 

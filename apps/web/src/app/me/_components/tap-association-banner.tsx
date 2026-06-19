@@ -75,7 +75,9 @@ async function ensureDemoConsumerSession() {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       email: DEMO_CONSUMER_EMAIL,
-      code: String(start.code || "000000"),
+      code: "000000",
+      demoConsumer: true,
+      consumerMode: "demo",
       displayName: "nexID Demo Consumer",
     }),
   }).then((res) => res.json()).catch(() => null);
@@ -203,7 +205,7 @@ export function TapAssociationBanner() {
         setStatus("No se pudo iniciar verificacion. Proba con otro email o telefono.");
         return;
       }
-      setCode(String(start.code || ""));
+      setCode("");
       setStep("code");
       setStatus("Codigo enviado. Verifica para terminar la asociacion.");
     } finally {
@@ -288,7 +290,10 @@ export function TapAssociationBanner() {
                 suppressHydrationWarning
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
-                placeholder="Codigo"
+                placeholder="Codigo recibido"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={8}
                 className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
               />
               <button suppressHydrationWarning disabled={pending || !code.trim()} onClick={() => void verifyAndAssociate()} className="rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-violet-100 disabled:opacity-60">
