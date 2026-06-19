@@ -96,7 +96,7 @@ export function DemoOpsMap({
   const uniqueCities = new Set(filteredPoints.map(p => p.city)).size;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-5 shadow-xl backdrop-blur-xl">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80 p-4 shadow-xl backdrop-blur-xl sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.15em] text-cyan-200 flex items-center gap-2">
@@ -201,10 +201,11 @@ export function DemoOpsMap({
         </div>
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-2xl border border-white/5 bg-slate-900/25">
+      <div className="mt-3 overflow-x-auto rounded-2xl border border-white/5 bg-slate-900/25">
         {normalizedPoints.length === 0 ? (
           <EmptyState title="Sin hubs visibles" description="Probá cambiar país, scope o tipo de evento." className="border-dashed px-4 py-12 text-center text-sm text-slate-400" />
         ) : (
+          <div className="min-w-[560px]">
           <GlobalOpsMap
             title={mode === "demo" ? "Heatmap operativo demo" : mode === "tenant" ? "Heatmap tenant en vivo" : "Heatmap global multi-tenant"}
             subtitle="Mapa de calor, clusters y rutas punteadas entre eventos de tap."
@@ -214,6 +215,7 @@ export function DemoOpsMap({
             playbackEnabled
             riskOnly={eventFilter === "risk"}
           />
+          </div>
         )}
       </div>
 

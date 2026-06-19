@@ -20,6 +20,7 @@ import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
 import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
 import { eventShareUid } from '../../lib/public-cta-target';
 import { recordTapEvent } from '../../lib/tap-event-service';
+import { resolveEventLocalTime } from '@product/core';
 import crypto from "node:crypto";
 
 const RATE_LIMIT_MAX_IP = Number(process.env.SUN_RATE_LIMIT_IP_PER_MIN || 120);
@@ -560,6 +561,29 @@ function parseCoordinate(value: string | null, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function tapTimeContext(input: {
+  at?: string | null;
+  city?: string | null;
+  country?: string | null;
+  tenantSlug?: string | null;
+  timezone?: string | null;
+}) {
+  const time = resolveEventLocalTime({
+    created_at: input.at || new Date().toISOString(),
+    city: input.city || null,
+    country_code: input.country || null,
+    tenant_slug: input.tenantSlug || null,
+    meta: input.timezone ? { sun_context: { client: { timezone: input.timezone } } } : {},
+  });
+  return {
+    localTime: time.occurredAtLocal,
+    utcTime: time.occurredAtUtc,
+    timezone: time.timezone,
+    timezoneLabel: time.timezoneLabel,
+    timezoneOffset: time.timezoneOffset,
+  };
+}
+
 function browserFromUserAgent(ua: string) {
   const text = ua.toLowerCase();
   if (text.includes("edg")) return "Edge";
@@ -750,6 +774,14 @@ async function handleQrScan(input: {
     }).catch(() => null);
   }
 
+  const qrNow = new Date().toISOString();
+  const qrTapTime = tapTimeContext({
+    at: qrNow,
+    city: input.geoCity,
+    country: input.geoCountry,
+    tenantSlug,
+    timezone: deviceMeta.timezone || null,
+  });
   const contract = {
     ok: true,
     eventId: eventId ? String(eventId) : null,
@@ -794,9 +826,9 @@ async function handleQrScan(input: {
     provenance: {
       origin: requestedRegion,
       firstVerified: { at: null, city: null, country: null },
-      lastVerifiedLocation: { at: new Date().toISOString(), city: input.geoCity, country: input.geoCountry, result: "QR_SCAN" },
+      lastVerifiedLocation: { at: qrNow, city: input.geoCity, country: input.geoCountry, result: "QR_SCAN" },
       timelineSummary: [{
-        at: new Date().toISOString(),
+        at: qrNow,
         result: "QR_SCAN",
         city: input.geoCity || "Unknown",
         country: input.geoCountry || "--",
@@ -805,7 +837,15 @@ async function handleQrScan(input: {
         lng: hasGeo ? browserLng : null,
       }],
     },
-    tapContext: { city: input.geoCity, country: input.geoCountry, lat: hasGeo ? browserLat : null, lng: hasGeo ? browserLng : null },
+    tapContext: {
+      city: input.geoCity,
+      country: input.geoCountry,
+      lat: hasGeo ? browserLat : null,
+      lng: hasGeo ? browserLng : null,
+      locationSource: hasGeo ? "ip_geo" : "none",
+      accuracyM: null,
+      ...qrTapTime,
+    },
     tag_tamper: { available: false, status: "not_available", raw: null },
     cta: { claimOwnership: false, registerWarranty: false, provenance: true, tokenize: false },
     allowedActions: ["lead", "feedback", "sommelier"],
@@ -1038,15 +1078,25 @@ function buildDemoSensorHistory(timeline: TimelineEvent[], fallbackStorage: stri
   const baselineTemp = Number((fallbackStorage || "").replace(/[^\d.]/g, "")) || 16;
   const baselineHumidity = 68;
   const stages = ["cellar", "distribution", "retail", "consumer"];
-  if (timeline.length) {
-    return timeline.map((event, index) => ({
+  const measuredTimeline = timeline.filter((event) => event.sensorTempC != null || event.sensorHumidity != null);
+  if (measuredTimeline.length) {
+    return measuredTimeline.map((event, index) => {
+      const temperatureC = event.sensorTempC != null ? Number(event.sensorTempC) : baselineTemp;
+      const humidityPct = event.sensorHumidity != null ? Number(event.sensorHumidity) : baselineHumidity;
+      const alert = temperatureC > 24 || temperatureC < 6
+        ? "Temperatura fuera de rango declarado"
+        : humidityPct > 82 || humidityPct < 45
+          ? "Humedad fuera de rango declarado"
+          : null;
+      return {
       at: event.at,
       stage: event.stage || stages[Math.min(index, stages.length - 1)],
-      temperatureC: event.sensorTempC != null ? Number(event.sensorTempC) : Number((baselineTemp + Math.sin(index + 1) * 0.8).toFixed(1)),
-      humidityPct: event.sensorHumidity != null ? Number(event.sensorHumidity) : Number((baselineHumidity + Math.cos(index + 1) * 2.2).toFixed(0)),
+      temperatureC,
+      humidityPct,
       barrelAgeMonths: barrelMonths,
-      alert: (event.result || "").toLowerCase().includes("replay") ?"Payload replay detectado" : null,
-    }));
+      alert,
+    };
+  });
   }
   return [{
     at: new Date().toISOString(),
@@ -1125,6 +1175,12 @@ function buildPublicContract(params: {
       : setupIsAuthentic
         ?"medium"
         : verdictRisk.riskLevel;
+    const setupTapTime = tapTimeContext({
+      at: params.passport?.last_verified_at || params.timeline[0]?.at || new Date().toISOString(),
+      city: params.passport?.last_city || params.timeline[0]?.city || params.tap.city,
+      country: params.passport?.last_country || params.timeline[0]?.country || params.tap.country,
+      tenantSlug,
+    });
     return {
       ok: false,
       status: {
@@ -1264,6 +1320,9 @@ function buildPublicContract(params: {
         country: params.tap.country,
         lat: roundCoord(params.tap.lat, 2),
         lng: roundCoord(params.tap.lng, 2),
+        locationSource: params.tap.lat != null && params.tap.lng != null ? "ip_geo" : "none",
+        accuracyM: null,
+        ...setupTapTime,
       },
       quality: { score: setupScore, tier: setupIsReplay ?"Replay Hold" : setupIsAuthentic ?"Setup Hold" : "Setup Required" },
       cta: {
@@ -1328,6 +1387,12 @@ function buildPublicContract(params: {
   const timelineLatest = params.timeline[0] || null;
   const timelineOldest = params.timeline[params.timeline.length - 1] || null;
   const ua = summarizeUserAgent(params.tap.userAgent);
+  const currentTapTime = tapTimeContext({
+    at: params.passport?.last_verified_at || timelineLatest?.at || new Date().toISOString(),
+    city: params.passport?.last_city || timelineLatest?.city || params.tap.city,
+    country: params.passport?.last_country || timelineLatest?.country || params.tap.country,
+    tenantSlug,
+  });
   const isVerifiedOpenedTap = verdictRisk.verdict === "valid_opened"
     || ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(trust.code);
   const isAuthenticTap = verdictRisk.verdict === "valid" || isVerifiedOpenedTap;
@@ -1548,6 +1613,9 @@ function buildPublicContract(params: {
       country: params.tap.country,
       lat: roundCoord(params.tap.lat, 2),
       lng: roundCoord(params.tap.lng, 2),
+      locationSource: params.tap.lat != null && params.tap.lng != null ? "ip_geo" : "none",
+      accuracyM: null,
+      ...currentTapTime,
     },
     quality: {
       score: qualityScore,

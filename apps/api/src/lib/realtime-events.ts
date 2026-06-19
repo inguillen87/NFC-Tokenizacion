@@ -23,8 +23,11 @@ type RealtimeEventPayload = {
   country_code?: string | null;
   lat?: number | null;
   lng?: number | null;
+  location_source?: string | null;
+  location_accuracy_m?: number | null;
   source?: string | null;
   created_at?: string;
+  meta?: Record<string, unknown> | null;
   trace_id?: string | null;
   lead_id?: string;
   ticket_id?: string;

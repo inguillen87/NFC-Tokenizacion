@@ -176,10 +176,10 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
     { label: "Device anomalies", value: deviceSignals.filter((item) => item.risk >= 8).length, max: Math.max(deviceSignals.length, 1) },
   ];
   const aiSummary = [
-    `Se registraron ${scansTotal} taps en el scope actual, con ${(api.validRate ?? 0).toFixed(1)}% de validación.`,
-    `Las señales de riesgo (duplicados + tamper) son ${riskSignals} (${pct(riskSignals, Math.max(scansTotal, 1))}).`,
-    `Risk Score calculado para este periodo: ${api.riskScore || 0}/100.`,
-    `Prioridad sugerida: ${riskSignals > 0 ? "investigar outliers de riesgo y reforzar onboarding operativo" : "escalar escaneos reales y ampliar cobertura comercial del pasaporte digital"}.`,
+    `Taps del scope actual: ${scansTotal}. Lecturas limpias: ${(api.validRate ?? 0).toFixed(1)}%.`,
+    `Riesgo activo: ${riskSignals} senales entre duplicados y tamper (${pct(riskSignals, Math.max(scansTotal, 1))}).`,
+    `Risk Score: ${api.riskScore || 0}/100.`,
+    `Proxima accion: ${riskSignals > 0 ? "abrir feed filtrado por riesgo y bloquear acciones comerciales sensibles" : "activar marketplace, club y puntos sobre taps validos"}.`,
   ];
   const hasOperationalData = scansTotal > 0 || trend.length > 0 || feed.length > 0 || products.length > 0 || tagJourney.length > 0;
   const filteredFeed = useMemo(() => feed.filter((item) => {
@@ -277,8 +277,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">Analytics exports</p>
-              <p className="mt-1 text-xs text-slate-400">CSV, Excel y PDF del scope activo.</p>
+              <p className="text-sm font-semibold text-white">Exportaciones</p>
+              <p className="mt-1 text-xs text-slate-400">Datos del scope activo.</p>
             </div>
             <AnalyticsExportActions data={data} />
           </div>
@@ -294,28 +294,28 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
         </div>
 
-        <OpsPanel title="Operational storytelling board" subtitle="Lectura ejecutiva multi-tenant para operaciones, riesgo y trazabilidad comercial.">
+        <OpsPanel title="Control operativo" subtitle="KPIs del scope activo. Sin datos reales, no se inventa actividad.">
           <div className="grid gap-3 md:grid-cols-4">
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Operational throughput</p><p className="mt-1 text-2xl font-semibold text-cyan-200">{api.scans ?? 0}</p></div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Trust posture</p><p className="mt-1 text-2xl font-semibold text-emerald-300">{(api.validRate ?? 0).toFixed(1)}%</p></div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Risk density</p><p className="mt-1 text-2xl font-semibold text-amber-200">{pct(riskSignals, scansTotal)}</p></div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Journey coverage</p><p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage.toFixed(1)}%</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Taps</p><p className="mt-1 text-2xl font-semibold text-cyan-200">{api.scans ?? 0}</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Confianza</p><p className="mt-1 text-2xl font-semibold text-emerald-300">{(api.validRate ?? 0).toFixed(1)}%</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Riesgo</p><p className="mt-1 text-2xl font-semibold text-amber-200">{pct(riskSignals, scansTotal)}</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cobertura</p><p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage.toFixed(1)}%</p></div>
           </div>
         </OpsPanel>
-        <OpsPanel title="Resumen IA ejecutivo" subtitle="Resumen accionable para owner/admin con exportación PDF por impresión.">
+        <OpsPanel title="Ops Copilot" subtitle="Siguiente accion operativa, no relato comercial.">
           <div className="space-y-2 text-sm text-slate-200">
-            {aiSummary.map((line) => <p key={line}>• {line}</p>)}
+            {aiSummary.map((line) => <p key={line}>- {line}</p>)}
           </div>
           <button suppressHydrationWarning type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
             Exportar PDF (imprimir reporte)
           </button>
         </OpsPanel>
 
-        <OpsPanel title="No operational data yet" subtitle="Todavía no hay escaneos reales en el scope elegido.">
+        <OpsPanel title="Sin datos operativos" subtitle="Todavia no hay escaneos reales en el scope elegido.">
           <ul className="space-y-2 text-sm text-slate-300">
-            <li>• Confirmá tenant/source/rango/country en filtros.</li>
-            <li>• Validá que existan eventos SUN reales para este tenant.</li>
-            <li>• Si estás onboardeando, escaneá 1-2 NFC activos para inicializar el feed.</li>
+            <li>- Revisar tenant, source, rango y pais en filtros.</li>
+            <li>- Confirmar que existan eventos SUN reales para este tenant.</li>
+            <li>- Escanear 1 NFC activo para inicializar feed, mapa y analytics.</li>
           </ul>
         </OpsPanel>
       </div>
@@ -327,8 +327,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-white">Analytics exports</p>
-            <p className="mt-1 text-xs text-slate-400">Exporta KPIs, feed, productos y journeys del scope actual.</p>
+            <p className="text-sm font-semibold text-white">Exportaciones</p>
+            <p className="mt-1 text-xs text-slate-400">KPIs, feed, productos y journeys del scope actual.</p>
           </div>
           <AnalyticsExportActions data={data} />
         </div>
@@ -344,33 +344,33 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
       </div>
 
-      <OpsPanel title="Operational storytelling board" subtitle="Lectura ejecutiva multi-tenant para operaciones, riesgo y trazabilidad comercial.">
+      <OpsPanel title="Control operativo" subtitle="Resumen de actividad, confianza, riesgo y cobertura real.">
         <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Operational throughput</p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Taps</p>
             <p className="mt-1 text-2xl font-semibold text-cyan-200">{api.scans ?? 0}</p>
             <p className="text-xs text-slate-400">Taps totales en el scope actual.</p>
           </div>
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Trust posture</p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Confianza</p>
             <p className="mt-1 text-2xl font-semibold text-emerald-300">{(api.validRate ?? 0).toFixed(1)}%</p>
-            <p className="text-xs text-slate-400">Validación autenticada sobre taps.</p>
+            <p className="text-xs text-slate-400">Validacion autenticada sobre taps.</p>
           </div>
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Risk density</p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Riesgo</p>
             <p className="mt-1 text-2xl font-semibold text-amber-200">{pct(riskSignals, scansTotal)}</p>
-            <p className="text-xs text-slate-400">{riskSignals} señales de riesgo (dup + tamper).</p>
+            <p className="text-xs text-slate-400">{riskSignals} senales de riesgo (dup + tamper).</p>
           </div>
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Journey coverage</p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cobertura</p>
             <p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage.toFixed(1)}%</p>
             <p className="text-xs text-slate-400">UIDs con historia de origen/destino visible.</p>
           </div>
         </div>
       </OpsPanel>
-      <OpsPanel title="Resumen IA ejecutivo" subtitle="Resumen accionable para owner/admin con exportación PDF por impresión.">
+      <OpsPanel title="Ops Copilot" subtitle="Accion recomendada para el operador del tenant.">
         <div className="space-y-2 text-sm text-slate-200">
-          {aiSummary.map((line) => <p key={line}>• {line}</p>)}
+          {aiSummary.map((line) => <p key={line}>- {line}</p>)}
         </div>
         <button suppressHydrationWarning type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
           Exportar PDF (imprimir reporte)
@@ -450,7 +450,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       <div className="grid gap-6 xl:grid-cols-2">
         <OpsPanel title="Live tap feed" subtitle="Actividad reciente y contexto operativo real.">
           <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-300">
-            <p>Badge automático de alerta por severidad derivada del evento.</p>
+            <p>Eventos recientes del tenant.</p>
             <label>
               Severity
               <select suppressHydrationWarning value={feedSeverityFilter} onChange={(event) => setFeedSeverityFilter(event.target.value)} className="ml-2 rounded border border-white/10 bg-slate-950 px-2 py-1 text-slate-100">

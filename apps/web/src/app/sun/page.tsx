@@ -6,6 +6,7 @@ import { CtaActions } from "./cta-actions";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import { OnboardDemoButton } from "./onboard-demo-button";
 import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
+import { TapPrecisionTelemetry } from "./tap-precision-telemetry";
 import { QREngagementSuite } from "./qr-engagement-suite";
 import { productUrls } from "@product/config";
 import { BrandLockup, DeviceSignatureBadge, EmptyState, GlobalOpsMap, KeyValueSpec, ThemeToggle, TimelineRail } from "@product/ui";
@@ -115,7 +116,19 @@ type SunContract = {
     timelineSummary?: Array<{ at?: string | null; result?: string | null; city?: string | null; country?: string | null; device?: string | null; lat?: number | null; lng?: number | null }>;
   };
   iot?: { wineryLocation?: string | null; wineryCoordinates?: { lat?: number | null; lng?: number | null } | null };
-  tapContext?: { city?: string | null; country?: string | null; lat?: number | null; lng?: number | null };
+  tapContext?: {
+    city?: string | null;
+    country?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+    localTime?: string | null;
+    utcTime?: string | null;
+    timezone?: string | null;
+    timezoneLabel?: string | null;
+    timezoneOffset?: string | null;
+    locationSource?: string | null;
+    accuracyM?: number | null;
+  };
   tokenization?: { status?: string | null; network?: string | null; txHash?: string | null; tokenId?: string | null; requestId?: string | null; anchorHash?: string | null; reason?: string | null; nextAttemptAt?: string | null; lastError?: string | null };
   tag_tamper?: { available?: boolean; status?: "closed" | "opened" | "invalid" | "unknown" | "not_available" | string; raw?: string | null };
   cta?: {
@@ -141,10 +154,10 @@ type SunContract = {
   technical?: SunCarrierFields & { raw?: { piccDataPrefix?: string; encPrefix?: string; cmacPrefix?: string } };
 };
 
-function fmtDate(value?: string | null) {
+function fmtDate(value?: string | null, timezone?: string | null) {
   if (!value) return "N/A";
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "N/A" : d.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" });
+  return Number.isNaN(d.getTime()) ? "N/A" : d.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: timezone || undefined });
 }
 
 function resolveOriginCoordinates(input: Array<string | null | undefined>) {
@@ -639,6 +652,20 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : result.provenance?.lastVerifiedLocation?.city
       ? `${result.provenance.lastVerifiedLocation.city}, ${result.provenance.lastVerifiedLocation.country || "--"}`
       : "Tap actual no geolocalizado";
+  const rawLocationSource = String(result.tapContext?.locationSource || "").toLowerCase();
+  const accuracyM = Number(result.tapContext?.accuracyM);
+  const hasAccuracy = Number.isFinite(accuracyM) && accuracyM > 0;
+  const tapLocationPrecisionLabel = rawLocationSource === "browser_gps"
+    ? `GPS telefono${hasAccuracy ? ` (${Math.round(accuracyM)} m)` : ""}`
+    : rawLocationSource === "ip_geo"
+      ? "IP aproximada"
+      : rawLocationSource.includes("error") || rawLocationSource.includes("denied")
+        ? "GPS no autorizado"
+        : hasCurrentTapCoords
+          ? "Coordenada reportada"
+          : currentTapFallbackCoords
+            ? "Centro de ciudad aproximado"
+            : "Sin ubicacion";
   const distanceDisplay = fmtDistance(originToTapDistance);
   const mapUid = uid || uidMasked || bid || "sun-public-tap";
   const mapTenant = String(result.identity?.tenantSlug || "public");
@@ -720,19 +747,38 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : isSunProfileMismatch
         ? "border-amber-300/25 bg-amber-500/10 text-amber-100"
       : "border-rose-300/20 bg-rose-500/10 text-rose-100";
-  const riskSignals = (result.provenance?.timelineSummary || []).filter((item) => {
-    const verdict = String(item.result || "").toLowerCase();
-    return verdict.includes("replay") || verdict.includes("tamper") || verdict.includes("risk");
-  }).length;
   const apiQualityScore = Number(result.quality?.score);
+  const baseTrustScore = Number.isFinite(apiQualityScore)
+    ? apiQualityScore
+    : isValid
+      ? 94
+      : isVerifiedOpenedState && isTechnicallyAuthentic
+        ? 84
+        : isTechnicallyAuthentic
+          ? 76
+          : 48;
+  const currentRiskPenalty = isSunProfileMismatch
+    ? 44
+    : isReplay
+      ? 35
+      : isTamperRisk
+        ? 30
+        : 0;
+  const stateScoreCap = isSunProfileMismatch
+    ? 58
+    : isReplay || isTamperRisk
+      ? 62
+      : isVerifiedOpenedState
+        ? 84
+        : 100;
   const trustScore = Math.max(
     0,
     Math.min(
-      100,
-      (Number.isFinite(apiQualityScore) ? apiQualityScore : isValid ? 94 : isVerifiedOpenedState && isTechnicallyAuthentic ? 84 : isTechnicallyAuthentic ? 76 : 48)
-      - Math.min(30, riskSignals * 7)
-      + (result.tokenization?.status ? 4 : 0)
-      + ((result.identity?.scanCount || 0) > 3 ? 2 : 0),
+      stateScoreCap,
+      baseTrustScore
+        - currentRiskPenalty
+        + (result.tokenization?.status ? 4 : 0)
+        + ((result.identity?.scanCount || 0) > 3 ? 2 : 0),
     ),
   );
   const trustTone =
@@ -740,6 +786,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const timelineCount = result.provenance?.timelineSummary?.length || 0;
   const timelineCities = new Set((result.provenance?.timelineSummary || []).map((item) => `${item.city || "Unknown"}|${item.country || "--"}`)).size;
   const lastEventAt = result.provenance?.timelineSummary?.[0]?.at || result.provenance?.lastVerifiedLocation?.at || null;
+  const localTapTimeLabel = result.tapContext?.localTime || (lastEventAt ? fmtDate(lastEventAt, result.tapContext?.timezone) : "");
   const statusDotClass = isSnapshotView
     ? "sun-status-dot--warn"
     : isValid
@@ -814,6 +861,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá ruta y consistencia antes de guardar." }
       : { label: "Reportar y reintentar tap", href: reportProblemHref, helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
   const tenantSlug = String(result.identity?.tenantSlug || "").trim();
+  const telemetryEndpoint = `${resolvedApiBase.replace(/\/$/, "")}/sun/context`;
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
   const eventId = String(result.identity?.eventId || result.eventId || "").trim();
   const localizeHref = (href?: string | null) => {
@@ -1268,6 +1316,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
 
       <div className="sun-mobile-shell w-full max-w-[430px] min-w-0 z-10 space-y-4 px-3 mx-auto">
+        <TapPrecisionTelemetry
+          endpoint={telemetryEndpoint}
+          enabled={!isQrScan && !isSnapshotView && Boolean(eventId)}
+          bid={bid}
+          uid={uid || null}
+          eventId={eventId || null}
+          readCounter={typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null}
+          contextStatus={result.status?.code || null}
+        />
          {/* Trust Header */}
          <div className="sun-topbar flex items-center justify-between px-2 mb-2">
             <div className="sun-passport-brand flex items-center gap-2">
@@ -1806,14 +1863,18 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </div>
               <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
                 <p className="text-[9px] uppercase text-slate-500">Last</p>
-                <p className="text-[10px] font-semibold text-white">{lastEventAt ? fmtDate(lastEventAt) : "N/A"}</p>
+                <p className="text-[10px] font-semibold text-white">{localTapTimeLabel || "N/A"}</p>
               </div>
+            </div>
+            <div className="mt-2 rounded-lg border border-white/10 bg-slate-950/55 px-2.5 py-2 text-[10px] text-slate-300">
+              Ubicacion: <b className="text-cyan-100">{tapLocationPrecisionLabel}</b>
+              {result.tapContext?.timezoneLabel ? <span> · Hora local: {result.tapContext.timezoneLabel}</span> : null}
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
               {originMapHref ? <a href={originMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-2 text-center font-semibold text-emerald-100">Visitar origen</a> : null}
               {tapMapHref ? <a href={tapMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-2 text-center font-semibold text-cyan-100">Ver tap actual</a> : null}
             </div>
-            <p className="mt-2 text-[10px] text-slate-500">{timelineCities} ciudades reales en timeline. Si el tap no trae GPS, se usa centro de ciudad conocido para contar la ruta sin simular precision exacta.</p>
+            <p className="mt-2 text-[10px] text-slate-500">{timelineCities} ciudades reales en timeline. Sin permiso GPS, el mapa usa IP o ciudad aproximada y lo marca como tal.</p>
          </div>
 
           {/* IoT Telemetry & Winery Heritage Story (Premium Redesign) */}

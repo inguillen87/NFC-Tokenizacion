@@ -183,6 +183,33 @@ export function resolveSelectedMacInputModes(raw: unknown): SunMacInputMode[] {
     : [DEFAULT_SUN_MAC_INPUT_MODE];
 }
 
+function asPlainRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    const text = typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+    if (text) return text;
+  }
+  return null;
+}
+
+function resolveBatchProductName(batch: Record<string, unknown> | null | undefined) {
+  const cfg = asPlainRecord(batch?.sdm_config);
+  const sun = asPlainRecord(cfg.sun);
+  const product = asPlainRecord(sun.product);
+  return firstText(
+    cfg.product_name,
+    cfg.productName,
+    product.name,
+    cfg.sku,
+    product.sku,
+  );
+}
+
 function normalizeTamperValue(input: unknown): TamperState {
   const raw = String(input ?? "").trim().toLowerCase();
   if (!raw) return null;
@@ -421,6 +448,7 @@ export async function processSunScan(input: {
       piccDataHash: scanHashes.piccDataHash,
       cmacHash: scanHashes.cmacHash,
       rawUrlHash: scanHashes.rawUrlHash,
+      productName: resolveBatchProductName(batch as Record<string, unknown>),
       meta: {
         ...(input.context?.meta || {}),
         enc_data_hash: scanHashes.encHash,

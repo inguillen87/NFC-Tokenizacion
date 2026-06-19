@@ -12,6 +12,7 @@ import {
   toDemoFeedRow,
 } from "../../lib/demo-runtime-state";
 import { messages, productUrls } from "@product/config";
+import { resolveEventLocalTime } from "@product/core";
 import DashboardHomeClient from "../../components/dashboard-home-client";
 import { type OpsCommandStep, type OpsCommandTenantRow } from "../../components/ops-command-center";
 
@@ -163,7 +164,10 @@ function emptyAnalyticsData(tenant = "unknown", reason = "Analytics upstream una
 async function getAnalyticsData(tenantScope = "") {
   try {
     const query = new URLSearchParams({ range: "30d" });
-    if (tenantScope) query.set("tenant", tenantScope);
+    if (tenantScope) {
+      query.set("tenant", tenantScope);
+      query.set("source", "real");
+    }
     const response = await fetch(`${API_BASE}/admin/analytics?${query.toString()}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
@@ -176,34 +180,39 @@ async function getAnalyticsData(tenantScope = "") {
   }
 }
 
-async function getOverviewRows() {
+async function getOverviewRows(tenantScope = "") {
   try {
-    const response = await fetch(`${API_BASE}/admin/tenants?withStats=1`, {
+    const query = new URLSearchParams({ withStats: "1" });
+    if (tenantScope) query.set("tenant", tenantScope);
+    const response = await fetch(`${API_BASE}/admin/tenants?${query.toString()}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
-    if (!response.ok) return demoOverviewRows() as Array<Record<string, unknown>>;
+    if (!response.ok) return tenantScope ? [] : demoOverviewRows() as Array<Record<string, unknown>>;
     return response.json();
   } catch {
-    return demoOverviewRows() as Array<Record<string, unknown>>;
+    return tenantScope ? [] : demoOverviewRows() as Array<Record<string, unknown>>;
   }
 }
 
 async function getLiveEvents(tenantScope = "") {
   try {
     const query = new URLSearchParams({ limit: "18" });
-    if (tenantScope) query.set("tenant", tenantScope);
+    if (tenantScope) {
+      query.set("tenant", tenantScope);
+      query.set("source", "real");
+    }
     const response = await fetch(`${API_BASE}/admin/events?${query.toString()}`, {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
-    if (!response.ok) return demoLiveEventRows() as Array<Record<string, unknown>>;
+    if (!response.ok) return tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
     const payload = await response.json().catch(() => null) as { rows?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null;
-    if (!payload) return demoLiveEventRows() as Array<Record<string, unknown>>;
+    if (!payload) return tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
     if (Array.isArray(payload)) return payload;
-    return Array.isArray(payload.rows) ? payload.rows : demoLiveEventRows() as Array<Record<string, unknown>>;
+    return Array.isArray(payload.rows) ? payload.rows : tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
   } catch {
-    return demoLiveEventRows() as Array<Record<string, unknown>>;
+    return tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
   }
 }
 
@@ -215,11 +224,11 @@ async function getTokenizationRows(tenantScope = "") {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
-    if (!response.ok) return demoTokenizationRows() as Array<Record<string, unknown>>;
+    if (!response.ok) return tenantScope ? [] : demoTokenizationRows() as Array<Record<string, unknown>>;
     const payload = await response.json().catch(() => ({})) as { rows?: Array<Record<string, unknown>> };
-    return payload.rows || demoTokenizationRows() as Array<Record<string, unknown>>;
+    return payload.rows || (tenantScope ? [] : demoTokenizationRows() as Array<Record<string, unknown>>);
   } catch {
-    return demoTokenizationRows() as Array<Record<string, unknown>>;
+    return tenantScope ? [] : demoTokenizationRows() as Array<Record<string, unknown>>;
   }
 }
 
@@ -230,11 +239,11 @@ async function getBatchRows(tenantScope = "") {
       headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
       cache: "no-store",
     });
-    if (!response.ok) return demoBatchRows() as Array<Record<string, unknown>>;
+    if (!response.ok) return tenantScope ? [] : demoBatchRows() as Array<Record<string, unknown>>;
     const payload = await response.json().catch(() => []) as Array<Record<string, unknown>>;
-    return Array.isArray(payload) ? payload : demoBatchRows() as Array<Record<string, unknown>>;
+    return Array.isArray(payload) ? payload : tenantScope ? [] : demoBatchRows() as Array<Record<string, unknown>>;
   } catch {
-    return demoBatchRows() as Array<Record<string, unknown>>;
+    return tenantScope ? [] : demoBatchRows() as Array<Record<string, unknown>>;
   }
 }
 
@@ -259,6 +268,9 @@ function buildTenantRiskScore(scans: number, duplicates: number, tamper: number)
 function toRealtimeEvent(row: Record<string, unknown>): TenantTapRealtimeEvent {
   const uid = String(row.uid_hex || row.uidHex || "").toUpperCase();
   const uidMasked = uid ? `${uid.slice(0, 4)}****${uid.slice(-2)}` : "N/A";
+  const time = resolveEventLocalTime(row);
+  const location = row.location && typeof row.location === "object" ? row.location as Record<string, unknown> : {};
+  const accuracy = Number(row.location_accuracy_m ?? row.locationAccuracyM ?? location.accuracyM);
   return {
     eventId: String(row.id || row.eventId || row.created_at || Date.now()),
     tenantId: row.tenant_id ? String(row.tenant_id) : null,
@@ -266,13 +278,20 @@ function toRealtimeEvent(row: Record<string, unknown>): TenantTapRealtimeEvent {
     batchId: row.batch_id ? String(row.batch_id) : (row.bid ? String(row.bid) : null),
     tagId: row.tag_id ? String(row.tag_id) : null,
     uidMasked,
-    occurredAt: String(row.created_at || row.createdAt || new Date().toISOString()),
+    occurredAt: time.occurredAtUtc,
+    occurredAtUtc: time.occurredAtUtc,
+    occurredAtLocal: time.occurredAtLocal,
+    timezone: time.timezone,
+    timezoneLabel: time.timezoneLabel,
+    timezoneOffset: time.timezoneOffset,
     verdict: String(row.verdict || row.result || "invalid").toLowerCase(),
     riskLevel: String(row.risk_level || "medium").toLowerCase(),
-    city: row.city ? String(row.city) : null,
-    country: row.country_code ? String(row.country_code) : null,
-    lat: typeof row.lat === "number" ? row.lat : null,
-    lng: typeof row.lng === "number" ? row.lng : null,
+    city: row.city ? String(row.city) : (location.city ? String(location.city) : null),
+    country: row.country_code ? String(row.country_code) : (location.country ? String(location.country) : null),
+    lat: typeof row.lat === "number" ? row.lat : (typeof location.lat === "number" ? Number(location.lat) : null),
+    lng: typeof row.lng === "number" ? row.lng : (typeof location.lng === "number" ? Number(location.lng) : null),
+    locationSource: row.location_source ? String(row.location_source) : (location.source ? String(location.source) : null),
+    locationAccuracyM: Number.isFinite(accuracy) ? accuracy : null,
     productName: row.product_name ? String(row.product_name) : null,
     source: String(row.source || "").toLowerCase().includes("demo") ? "demo" : "production",
   };
@@ -291,7 +310,7 @@ export default async function DashboardHome() {
   const isTenantAdmin = session.role === "tenant-admin";
 
   const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult, analyticsDataResult] = await Promise.all([
-    getOverviewRows(),
+    getOverviewRows(tenantScope),
     getLiveEvents(tenantScope),
     getTokenizationRows(tenantScope),
     getBatchRows(tenantScope),

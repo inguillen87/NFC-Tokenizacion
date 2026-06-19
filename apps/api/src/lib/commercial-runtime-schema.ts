@@ -24,6 +24,24 @@ function cacheSchemaInit(task: () => Promise<void>, reset: () => void) {
   });
 }
 
+function isConcurrentSchemaCreateError(error: unknown) {
+  const err = error as { code?: string; detail?: string; message?: string };
+  const text = `${err?.detail || ""} ${err?.message || ""}`.toLowerCase();
+  return (
+    err?.code === "42P07" ||
+    err?.code === "42710" ||
+    (err?.code === "23505" && text.includes("pg_type_typname_nsp_index"))
+  );
+}
+
+async function tolerateConcurrentSchemaCreate(task: () => Promise<unknown>) {
+  try {
+    await task();
+  } catch (error) {
+    if (!isConcurrentSchemaCreateError(error)) throw error;
+  }
+}
+
 export async function ensureConsumerAuthSchema() {
   if (!authSchemaReady) {
     authSchemaReady = cacheSchemaInit(async () => {
@@ -352,7 +370,7 @@ export async function ensureSdkSchema() {
       await ensureLeadsSchema();
       await ensureCarrierProfileSchema();
 
-      await sql/*sql*/`
+      await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS tenant_api_keys (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -367,7 +385,7 @@ export async function ensureSdkSchema() {
           created_at timestamptz NOT NULL DEFAULT now(),
           updated_at timestamptz NOT NULL DEFAULT now()
         )
-      `;
+      `);
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS tenant_id uuid REFERENCES tenants(id) ON DELETE CASCADE`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'SDK key'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS key_prefix text NOT NULL DEFAULT 'legacy'`;
@@ -391,7 +409,7 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_batches_claim_activation ON batches(tenant_id, bid, active_for_claim)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tags_claim_activation ON tags(batch_id, uid_hex, active_for_claim)`;
 
-      await sql/*sql*/`
+      await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS sdk_usage_logs (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL,
@@ -406,12 +424,12 @@ export async function ensureSdkSchema() {
           meta jsonb NOT NULL DEFAULT '{}'::jsonb,
           created_at timestamptz NOT NULL DEFAULT now()
         )
-      `;
+      `);
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_usage_logs_tenant_created ON sdk_usage_logs(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_usage_logs_api_key_created ON sdk_usage_logs(api_key_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_usage_logs_endpoint_created ON sdk_usage_logs(endpoint, created_at DESC)`;
 
-      await sql/*sql*/`
+      await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS sdk_pos_activations (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -433,12 +451,12 @@ export async function ensureSdkSchema() {
           created_at timestamptz NOT NULL DEFAULT now(),
           updated_at timestamptz NOT NULL DEFAULT now()
         )
-      `;
+      `);
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_pos_activations_tenant_created ON sdk_pos_activations(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_pos_activations_bid_uid ON sdk_pos_activations(bid, uid_hex)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_pos_activations_status_expiry ON sdk_pos_activations(activation_status, expires_at)`;
 
-      await sql/*sql*/`
+      await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS sdk_claim_requests (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -462,7 +480,7 @@ export async function ensureSdkSchema() {
           created_at timestamptz NOT NULL DEFAULT now(),
           updated_at timestamptz NOT NULL DEFAULT now()
         )
-      `;
+      `);
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS api_key_id uuid REFERENCES tenant_api_keys(id) ON DELETE SET NULL`;
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS lead_id uuid REFERENCES leads(id) ON DELETE SET NULL`;
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES batches(id) ON DELETE SET NULL`;
@@ -479,7 +497,7 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_claim_requests_tenant_created ON sdk_claim_requests(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_claim_requests_bid_uid ON sdk_claim_requests(bid, uid_hex)`;
 
-      await sql/*sql*/`
+      await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS sdk_external_events (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -494,12 +512,12 @@ export async function ensureSdkSchema() {
           data jsonb NOT NULL DEFAULT '{}'::jsonb,
           created_at timestamptz NOT NULL DEFAULT now()
         )
-      `;
+      `);
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_tenant_created ON sdk_external_events(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_type_created ON sdk_external_events(event_type, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_bid_uid ON sdk_external_events(bid, uid_hex)`;
 
-      await sql/*sql*/`
+      await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS webhook_endpoints (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -512,7 +530,7 @@ export async function ensureSdkSchema() {
           updated_at timestamptz NOT NULL DEFAULT now(),
           UNIQUE (tenant_id, url)
         )
-      `;
+      `);
       await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'Webhook'`;
       await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS signing_secret text`;
       await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS enabled boolean NOT NULL DEFAULT false`;
@@ -521,7 +539,7 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_tenant_enabled ON webhook_endpoints(tenant_id, enabled)`;
 
-      await sql/*sql*/`
+      await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS webhook_deliveries (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           endpoint_id uuid NOT NULL REFERENCES webhook_endpoints(id) ON DELETE CASCADE,
@@ -534,7 +552,7 @@ export async function ensureSdkSchema() {
           created_at timestamptz NOT NULL DEFAULT now(),
           delivered_at timestamptz
         )
-      `;
+      `);
       await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS payload jsonb NOT NULL DEFAULT '{}'::jsonb`;
       await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS status_code integer`;
       await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS ok boolean NOT NULL DEFAULT false`;
@@ -1014,6 +1032,18 @@ export async function ensureConsumerPortalSchema() {
           updated_at timestamptz NOT NULL DEFAULT now()
         )
       `;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS image_url text`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS price_amount numeric(12,2)`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS price_currency text`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS external_checkout_url text`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS request_to_buy_enabled boolean NOT NULL DEFAULT true`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS accepts_rewards boolean NOT NULL DEFAULT true`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS accepts_tenant_points boolean NOT NULL DEFAULT true`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS accepts_network_credits boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS age_gate_required boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS authenticity_program_badge boolean NOT NULL DEFAULT true`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS featured boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE marketplace_products ADD COLUMN IF NOT EXISTS country_availability_json jsonb NOT NULL DEFAULT '[]'::jsonb`;
 
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS marketplace_offers (
@@ -1033,6 +1063,7 @@ export async function ensureConsumerPortalSchema() {
           updated_at timestamptz NOT NULL DEFAULT now()
         )
       `;
+      await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS eligibility_json jsonb NOT NULL DEFAULT '{}'::jsonb`;
 
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS marketplace_order_requests (
@@ -1072,7 +1103,7 @@ export async function ensureConsumerPortalSchema() {
 async function seedDemoMarketplaceRows() {
   await sql/*sql*/`
     INSERT INTO marketplace_brand_profiles (tenant_id, status, display_name, slug, vertical, description, country, city, visible_in_network, featured)
-    SELECT t.id, 'active', 'Demo Bodega', t.slug, 'winery', 'Bodega piloto con productos NFC verificados, ownership y marketplace.', 'AR', 'Mendoza', true, true
+    SELECT t.id, 'active', 'Demo Bodega', t.slug, 'winery', 'Bodega piloto con pasaporte NFC, club, experiencias y ventas asistidas.', 'AR', 'Mendoza', true, true
     FROM tenants t
     WHERE t.slug = 'demobodega'
     ON CONFLICT (tenant_id) DO UPDATE SET
@@ -1084,17 +1115,243 @@ async function seedDemoMarketplaceRows() {
   `;
 
   await sql/*sql*/`
-    WITH seed(slug, title, description, vertical, category, age_gate_required) AS (
+    INSERT INTO loyalty_programs (tenant_id, name, vertical, status, mode, points_name, default_locale, age_gate_required, allow_experience_booking, rules_json)
+    SELECT
+      t.id,
+      'Club Demo Bodega',
+      'winery',
+      'active',
+      'production',
+      'Puntos',
+      'es-AR',
+      true,
+      true,
+      '{"pointsPerValidTap":20,"cooldownSeconds":900,"requestToBuyPoints":180,"ownershipRequires":"pos_pin_or_purchase_proof"}'::jsonb
+    FROM tenants t
+    WHERE t.slug = 'demobodega'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM loyalty_programs p
+        WHERE p.tenant_id = t.id
+          AND p.status = 'active'
+      )
+  `;
+
+  await sql/*sql*/`
+    WITH program AS (
+      SELECT p.id AS program_id, p.tenant_id
+      FROM loyalty_programs p
+      JOIN tenants t ON t.id = p.tenant_id
+      WHERE t.slug = 'demobodega'
+        AND p.status = 'active'
+      ORDER BY p.created_at DESC
+      LIMIT 1
+    ),
+    seed(code, title, description, type, points_cost, stock_total, image_url, requires_age_gate, eligibility_json, fulfillment_json) AS (
       VALUES
-        ('demobodega', 'Gran Reserva Malbec - club release', 'Compra asistida y club premium para botella verificada con NTAG 424 DNA TT.', 'winery', 'wine', true)
+        ('DB-TASTING-120', 'Cata express en bodega', 'Degustacion guiada para conocer el lote y sumar al club despues de un tap valido.', 'TASTING', 120, 120, '/images/wine_tasting.png', true, '{"requiresVerifiedTap":true}'::jsonb, '{"mode":"booking_request","channel":"tenant_crm"}'::jsonb),
+        ('DB-TOUR-280', 'Paseo guiado por vinedo + copa', 'Reserva una visita guiada y conecta la experiencia fisica con el pasaporte digital.', 'TOUR', 280, 80, '/images/wine_tasting.png', true, '{"requiresVerifiedTap":true}'::jsonb, '{"mode":"booking_request","channel":"tenant_crm"}'::jsonb),
+        ('DB-VIP-MONTH-520', 'Club VIP vendimia por 30 dias', 'Acceso mensual a preventas, revista digital, descuentos y eventos privados.', 'VIP_ACCESS', 520, 250, '/images/premium_magnum.png', true, '{"requiresVerifiedTap":true,"requiresContact":true}'::jsonb, '{"mode":"manual_approval","channel":"tenant_crm"}'::jsonb),
+        ('DB-BOX-900', 'Caja seleccion terroir', 'Caja curada para clientes verificados con trazabilidad del lote y atencion comercial.', 'WINE_BOX', 900, 40, '/images/wine_crate.png', true, '{"requiresVerifiedTap":true,"requiresRequestToBuy":true}'::jsonb, '{"mode":"sales_request","channel":"tenant_crm"}'::jsonb),
+        ('DB-DISCOUNT-90', '15% off en compra directa', 'Beneficio de primera compra para convertir interes de gondola en lead del tenant.', 'DISCOUNT', 90, 500, '/images/wine_crate.png', true, '{"requiresVerifiedTap":true,"requiresEmail":true}'::jsonb, '{"mode":"coupon","channel":"email"}'::jsonb)
     )
-    INSERT INTO marketplace_products (tenant_id, status, title, description, vertical, category, request_to_buy_enabled, accepts_tenant_points, age_gate_required, featured)
-    SELECT t.id, 'active', s.title, s.description, s.vertical, s.category, true, true, s.age_gate_required, true
+    INSERT INTO rewards (
+      tenant_id,
+      program_id,
+      code,
+      title,
+      description,
+      type,
+      status,
+      points_cost,
+      stock_total,
+      stock_remaining,
+      image_url,
+      requires_age_gate,
+      network_visible,
+      eligibility_json,
+      fulfillment_json
+    )
+    SELECT
+      program.tenant_id,
+      program.program_id,
+      seed.code,
+      seed.title,
+      seed.description,
+      seed.type::reward_type,
+      'active',
+      seed.points_cost,
+      seed.stock_total,
+      seed.stock_total,
+      seed.image_url,
+      seed.requires_age_gate,
+      true,
+      seed.eligibility_json,
+      seed.fulfillment_json
+    FROM program
+    CROSS JOIN seed
+    ON CONFLICT (program_id, code) DO UPDATE SET
+      title = EXCLUDED.title,
+      description = EXCLUDED.description,
+      status = 'active',
+      points_cost = EXCLUDED.points_cost,
+      stock_total = EXCLUDED.stock_total,
+      stock_remaining = GREATEST(COALESCE(rewards.stock_remaining, 0), EXCLUDED.stock_remaining),
+      image_url = EXCLUDED.image_url,
+      requires_age_gate = EXCLUDED.requires_age_gate,
+      network_visible = true,
+      eligibility_json = EXCLUDED.eligibility_json,
+      fulfillment_json = EXCLUDED.fulfillment_json,
+      updated_at = now()
+  `;
+
+  await sql/*sql*/`
+    WITH seed(slug, title, description, vertical, category, image_url, price_amount, price_currency, age_gate_required, featured) AS (
+      VALUES
+        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automaticamente.', 'winery', 'wine', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
+        ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal consumer y seguimiento en CRM tenant.', 'winery', 'experience', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),
+        ('demobodega', 'Paseo guiado Valle de Uco', 'Tour de vinedo con copa incluida para clientes que dejaron contacto tras un tap real.', 'winery', 'experience', '/images/wine_tasting.png', 45000.00, 'ARS', true, true),
+        ('demobodega', 'Club VIP Vendimia - 30 dias', 'Acceso a preventas, revista, promociones por email y beneficios de temporada.', 'winery', 'membership', '/images/premium_magnum.png', 12000.00, 'ARS', true, true),
+        ('demobodega', 'Caja seleccion Demo Bodega', 'Caja curada con seguimiento por lote, promociones y postventa para miembros.', 'winery', 'wine_box', '/images/wine_crate.png', 69000.00, 'ARS', true, true)
+    )
+    INSERT INTO marketplace_products (
+      tenant_id,
+      status,
+      title,
+      description,
+      vertical,
+      category,
+      image_url,
+      price_amount,
+      price_currency,
+      request_to_buy_enabled,
+      accepts_rewards,
+      accepts_tenant_points,
+      age_gate_required,
+      authenticity_program_badge,
+      featured,
+      country_availability_json
+    )
+    SELECT
+      t.id,
+      'active',
+      s.title,
+      s.description,
+      s.vertical,
+      s.category,
+      s.image_url,
+      s.price_amount,
+      s.price_currency,
+      true,
+      true,
+      true,
+      s.age_gate_required,
+      true,
+      s.featured,
+      '["AR","UY","CL"]'::jsonb
     FROM tenants t
     JOIN seed s ON s.slug = t.slug
     WHERE NOT EXISTS (
       SELECT 1 FROM marketplace_products p
       WHERE p.tenant_id = t.id AND p.title = s.title
     )
+  `;
+
+  await sql/*sql*/`
+    WITH seed(slug, title, description, image_url, price_amount, price_currency, age_gate_required, featured) AS (
+      VALUES
+        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automaticamente.', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
+        ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal consumer y seguimiento en CRM tenant.', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),
+        ('demobodega', 'Paseo guiado Valle de Uco', 'Tour de vinedo con copa incluida para clientes que dejaron contacto tras un tap real.', '/images/wine_tasting.png', 45000.00, 'ARS', true, true),
+        ('demobodega', 'Club VIP Vendimia - 30 dias', 'Acceso a preventas, revista, promociones por email y beneficios de temporada.', '/images/premium_magnum.png', 12000.00, 'ARS', true, true),
+        ('demobodega', 'Caja seleccion Demo Bodega', 'Caja curada con seguimiento por lote, promociones y postventa para miembros.', '/images/wine_crate.png', 69000.00, 'ARS', true, true),
+        ('demobodega', 'Gran Reserva Malbec - club release', 'Demo comercial mejorada: oferta de club, puntos y venta asistida desde un tap valido.', '/images/premium_magnum.png', 19500.00, 'ARS', true, false)
+    )
+    UPDATE marketplace_products p
+    SET
+      description = s.description,
+      image_url = s.image_url,
+      price_amount = s.price_amount,
+      price_currency = s.price_currency,
+      request_to_buy_enabled = true,
+      accepts_rewards = true,
+      accepts_tenant_points = true,
+      age_gate_required = s.age_gate_required,
+      featured = s.featured,
+      updated_at = now()
+    FROM tenants t
+    JOIN seed s ON s.slug = t.slug
+    WHERE p.tenant_id = t.id
+      AND p.title = s.title
+  `;
+
+  await sql/*sql*/`
+    WITH seed(slug, title, product_title, reward_code, type, visibility, description, eligibility_json) AS (
+      VALUES
+        ('demobodega', 'Comprando Cabernet Franc sumas 180 puntos', 'Cabernet Franc Reserva 2022', 'DB-DISCOUNT-90', 'points_boost', 'verified_tappers', 'Convierte el tap de gondola en lead: el usuario pide compra, suma puntos y la bodega lo contacta.', '{"pointsAwarded":180,"requiresPurchaseProof":true,"ownershipNotGranted":true,"posOrPinRequiredForOwnership":true}'::jsonb),
+        ('demobodega', 'Cata privada 2x1 para miembros', 'Cata privada para dos', 'DB-TASTING-120', 'experience_booking', 'tenant_members_only', 'Beneficio para consumidores asociados al tenant, sin transferir propiedad del producto.', '{"requiresMembership":true,"requiresAgeGate":true}'::jsonb),
+        ('demobodega', 'Club VIP por este mes', 'Club VIP Vendimia - 30 dias', 'DB-VIP-MONTH-520', 'vip_access', 'verified_tappers', 'Promocion para taps reales: club, revista y descuentos por email con consentimiento.', '{"requiresVerifiedTap":true,"requiresContactConsent":true}'::jsonb),
+        ('demobodega', 'Caja seleccion con seguimiento de lote', 'Caja seleccion Demo Bodega', 'DB-BOX-900', 'request_to_buy', 'tenant_members_only', 'Lead de compra premium para el equipo comercial del tenant.', '{"requiresMembership":true,"requiresSalesReview":true}'::jsonb)
+    ),
+    resolved AS (
+      SELECT
+        t.id AS tenant_id,
+        s.title,
+        s.description,
+        s.type,
+        s.visibility,
+        s.eligibility_json,
+        p.id AS product_id,
+        r.id AS reward_id
+      FROM seed s
+      JOIN tenants t ON t.slug = s.slug
+      LEFT JOIN marketplace_products p ON p.tenant_id = t.id AND p.title = s.product_title
+      LEFT JOIN rewards r ON r.tenant_id = t.id AND r.code = s.reward_code
+    )
+    INSERT INTO marketplace_offers (
+      tenant_id,
+      marketplace_product_id,
+      reward_id,
+      title,
+      description,
+      status,
+      type,
+      starts_at,
+      ends_at,
+      visibility,
+      eligibility_json
+    )
+    SELECT
+      tenant_id,
+      product_id,
+      reward_id,
+      title,
+      description,
+      'active',
+      type,
+      now(),
+      now() + interval '60 days',
+      visibility::marketplace_visibility,
+      eligibility_json
+    FROM resolved
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM marketplace_offers o
+      WHERE o.tenant_id = resolved.tenant_id
+        AND o.title = resolved.title
+    )
+  `;
+
+  await sql/*sql*/`
+    UPDATE marketplace_offers
+    SET status = 'active',
+        updated_at = now()
+    WHERE tenant_id IN (SELECT id FROM tenants WHERE slug = 'demobodega')
+      AND title IN (
+        'Comprando Cabernet Franc sumas 180 puntos',
+        'Cata privada 2x1 para miembros',
+        'Club VIP por este mes',
+        'Caja seleccion con seguimiento de lote'
+      )
   `;
 }

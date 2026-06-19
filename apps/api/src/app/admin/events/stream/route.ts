@@ -48,7 +48,24 @@ function resolveWindowMs(raw: string): number | null {
   return map[raw] ?? null;
 }
 
+let eventLocationContextSchemaReady: Promise<void> | null = null;
+
+async function ensureEventLocationContextSchema() {
+  if (!eventLocationContextSchemaReady) {
+    eventLocationContextSchemaReady = (async () => {
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_accuracy_m double precision`;
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_source text`;
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_updated_at timestamptz`;
+    })().catch((error) => {
+      eventLocationContextSchemaReady = null;
+      throw error;
+    });
+  }
+  return eventLocationContextSchemaReady;
+}
+
 async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promise<EventRow[]> {
+  await ensureEventLocationContextSchema().catch(() => null);
   const limit = Math.max(1, Math.min(200, Number(search.get("limit") || 40)));
   const tenant = (forcedTenantSlug || String(search.get("tenant") || "")).trim().toLowerCase();
   const verdict = String(search.get("verdict") || "").trim().toUpperCase();
@@ -56,10 +73,35 @@ async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promis
   const { interval } = resolveWindow(search);
   const rows = tenant
     ? await sql/*sql*/`
-        SELECT id, tenant_id, batch_id, tag_id, product_name, result, reason, uid_hex, created_at, city, country_code, lat, lng, bid, source,
-               (SELECT slug FROM tenants t WHERE t.id = e.tenant_id LIMIT 1) AS tenant_slug
+        SELECT
+          e.id,
+          e.tenant_id,
+          e.batch_id,
+          e.tag_id,
+          COALESCE(
+            NULLIF(e.product_name, ''),
+            NULLIF(b.sdm_config->>'product_name', ''),
+            NULLIF(b.sdm_config #>> '{sun,product,name}', ''),
+            NULLIF(b.sdm_config->>'sku', ''),
+            NULLIF(b.sdm_config #>> '{sun,product,sku}', '')
+          ) AS product_name,
+          e.result,
+          e.reason,
+          e.uid_hex,
+          e.created_at,
+          e.city,
+          e.country_code,
+          e.lat,
+          e.lng,
+          e.location_source,
+          e.location_accuracy_m,
+          COALESCE(NULLIF(e.bid, ''), b.bid) AS bid,
+          e.source,
+          t.slug AS tenant_slug
         FROM events e
-        WHERE (SELECT slug FROM tenants t WHERE t.id = e.tenant_id LIMIT 1) = ${tenant}
+        LEFT JOIN batches b ON b.id = e.batch_id
+        LEFT JOIN tenants t ON t.id = COALESCE(b.tenant_id, e.tenant_id)
+        WHERE t.slug = ${tenant}
           AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
             ${risk} = ''
@@ -73,13 +115,38 @@ async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promis
             ) = ${risk}
           )
           AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
-        ORDER BY created_at DESC
+        ORDER BY e.created_at DESC
         LIMIT ${limit}
       `
     : await sql/*sql*/`
-        SELECT id, tenant_id, batch_id, tag_id, product_name, result, reason, uid_hex, created_at, city, country_code, lat, lng, bid, source,
-               (SELECT slug FROM tenants t WHERE t.id = e.tenant_id LIMIT 1) AS tenant_slug
+        SELECT
+          e.id,
+          e.tenant_id,
+          e.batch_id,
+          e.tag_id,
+          COALESCE(
+            NULLIF(e.product_name, ''),
+            NULLIF(b.sdm_config->>'product_name', ''),
+            NULLIF(b.sdm_config #>> '{sun,product,name}', ''),
+            NULLIF(b.sdm_config->>'sku', ''),
+            NULLIF(b.sdm_config #>> '{sun,product,sku}', '')
+          ) AS product_name,
+          e.result,
+          e.reason,
+          e.uid_hex,
+          e.created_at,
+          e.city,
+          e.country_code,
+          e.lat,
+          e.lng,
+          e.location_source,
+          e.location_accuracy_m,
+          COALESCE(NULLIF(e.bid, ''), b.bid) AS bid,
+          e.source,
+          t.slug AS tenant_slug
         FROM events e
+        LEFT JOIN batches b ON b.id = e.batch_id
+        LEFT JOIN tenants t ON t.id = COALESCE(b.tenant_id, e.tenant_id)
         WHERE (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
             ${risk} = ''
@@ -93,7 +160,7 @@ async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promis
             ) = ${risk}
           )
           AND (${interval} = '' OR e.created_at >= now() - ${interval}::interval)
-        ORDER BY created_at DESC
+        ORDER BY e.created_at DESC
         LIMIT ${limit}
       `;
   return Array.isArray(rows) ? rows : [];

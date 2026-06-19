@@ -161,7 +161,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
       return;
     }
 
-    const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; deduplicated?: boolean } | null;
+    const payload = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; deduplicated?: boolean; loyalty?: { pointsAwarded?: number } | null } | null;
     if (res.status === 401) {
       setFeedbackById((prev) => ({ ...prev, [item.id]: "Necesitas entrar al portal para solicitar este beneficio. Te llevo al acceso consumer." }));
       setBusyById((prev) => ({ ...prev, [item.id]: false }));
@@ -186,11 +186,14 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
     }
 
     setRequestedById((prev) => ({ ...prev, [item.id]: true }));
+    const pointsAwarded = Number(payload?.loyalty?.pointsAwarded || 0);
     setFeedbackById((prev) => ({
       ...prev,
       [item.id]: payload?.deduplicated
         ? "Ya tenias una solicitud activa. No duplicamos el lead."
-        : "Solicitud enviada. La marca te contactara desde el portal.",
+        : pointsAwarded > 0
+          ? `Solicitud enviada. Sumaste ${pointsAwarded} puntos y la marca te contactara desde el portal.`
+          : "Solicitud enviada. La marca te contactara desde el portal.",
     }));
     setAgeGateById((prev) => ({ ...prev, [item.id]: false }));
     setBusyById((prev) => ({ ...prev, [item.id]: false }));
@@ -201,10 +204,10 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
       <div className="consumer-marketplace-hero rounded-3xl border border-violet-300/20 bg-violet-950/20 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-300">Network marketplace</p>
-            <h2 className="mt-1 text-2xl font-black text-white">Drops conectados a ownership verificado</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-300">Marketplace del tenant</p>
+            <h2 className="mt-1 text-2xl font-black text-white">Beneficios, compras y experiencias por pasaporte</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-violet-100/75">
-              Cada canje, reserva o solicitud queda ligada al Passport del consumidor, al tenant y al estado del producto que habilito la experiencia.
+              Pedir compra o reservar una experiencia crea un lead y suma puntos. Ownership real queda separado hasta validar POS, PIN o comprobante.
             </p>
           </div>
           <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-100">sandbox commerce</span>

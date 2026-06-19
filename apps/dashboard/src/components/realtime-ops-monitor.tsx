@@ -16,11 +16,43 @@ type Labels = {
   mapSubtitle: string;
 };
 
+const KNOWN_CITY_COORDS: Array<{ match: RegExp; country: string; lat: number; lng: number }> = [
+  { match: /san\s*martin/i, country: "AR", lat: -34.5744, lng: -58.5358 },
+  { match: /buenos\s*aires|caba/i, country: "AR", lat: -34.6037, lng: -58.3816 },
+  { match: /mendoza|valle\s+de\s+uco|tunuyan|tupungato|lujan/i, country: "AR", lat: -32.8895, lng: -68.8458 },
+  { match: /cordoba/i, country: "AR", lat: -31.4201, lng: -64.1888 },
+  { match: /rosario/i, country: "AR", lat: -32.9442, lng: -60.6505 },
+  { match: /santa\s*fe/i, country: "AR", lat: -31.6107, lng: -60.6973 },
+  { match: /sao\s*paulo/i, country: "BR", lat: -23.5558, lng: -46.6396 },
+  { match: /santiago/i, country: "CL", lat: -33.4489, lng: -70.6693 },
+  { match: /montevideo/i, country: "UY", lat: -34.9011, lng: -56.1645 },
+  { match: /lima/i, country: "PE", lat: -12.0464, lng: -77.0428 },
+  { match: /bogota/i, country: "CO", lat: 4.711, lng: -74.0721 },
+  { match: /mexico|ciudad\s+de\s+mexico|cdmx/i, country: "MX", lat: 19.4326, lng: -99.1332 },
+  { match: /ashburn/i, country: "US", lat: 39.0438, lng: -77.4874 },
+];
+
+function cityFallback(city: string, country: string) {
+  const normalizedCountry = country.toUpperCase();
+  return KNOWN_CITY_COORDS.find((item) => item.country === normalizedCountry && item.match.test(city)) || null;
+}
+
+function locationSourceLabel(row: TenantTapRealtimeEvent) {
+  const source = String(row.locationSource || "").toLowerCase();
+  if (source === "browser_gps") {
+    return row.locationAccuracyM ? `GPS telefono ${Math.round(row.locationAccuracyM)}m` : "GPS telefono";
+  }
+  if (source === "ip_geo") return "IP aproximada";
+  if (source.includes("error") || source.includes("denied")) return "GPS no autorizado";
+  return Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng)) ? "Coordenada reportada" : "Ciudad estimada";
+}
+
 function toMapPoint(row: TenantTapRealtimeEvent) {
-  const lat = Number(row.lat);
-  const lng = Number(row.lng);
   const city = String(row.city || "Unknown");
   const country = String(row.country || "--");
+  const fallback = cityFallback(city, country);
+  const lat = Number.isFinite(Number(row.lat)) ? Number(row.lat) : fallback?.lat ?? Number.NaN;
+  const lng = Number.isFinite(Number(row.lng)) ? Number(row.lng) : fallback?.lng ?? Number.NaN;
   const result = String(row.verdict || "valid").toUpperCase();
   return {
     city,
@@ -32,6 +64,9 @@ function toMapPoint(row: TenantTapRealtimeEvent) {
     status: result,
     source: String(row.source || "production"),
     lastSeen: String(row.occurredAt || new Date().toISOString()),
+    tenantSlug: row.tenantSlug || undefined,
+    uid: row.uidMasked,
+    device: `${locationSourceLabel(row)}${row.timezoneLabel ? ` - ${row.timezoneLabel}` : ""}`,
   };
 }
 
@@ -59,7 +94,7 @@ export function RealtimeOpsMonitor({
   const generateAiInsights = () => {
     const visible = selectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === selectedTenant);
     if (!visible.length) {
-      setAiReport("No hay suficientes eventos de lecturas en vivo para generar un reporte analítico. Hacé algunos taps primero.");
+      setAiReport("Sin eventos reales en el stream activo. Primer paso: hacer 1 tap NFC fresco del tenant y confirmar que aparezca en mapa, feed y analytics.");
       return;
     }
     setAiAnalyzing(true);
@@ -70,27 +105,32 @@ export function RealtimeOpsMonitor({
       const ratio = total > 0 ? (risk / total) * 100 : 0;
       const uids = new Set(visible.map((item) => item.uidMasked)).size;
       const cities = new Set(visible.map((item) => item.city || "Unknown")).size;
+      const gps = visible.filter((item) => String(item.locationSource || "").toLowerCase() === "browser_gps").length;
+      const repeatedInterest = uids > 0 ? total / uids : 0;
+      const latest = visible[0];
 
-      let diagnosis = "✅ Red operativa saludable y segura.";
-      let recommendation = "Continuar el rollout según lo planificado. Monitorear los primeros lotes de consumo.";
+      let diagnosis = "Red limpia: no hay alertas de replay/tamper en el feed visible.";
+      let recommendation = "Convertir el interes: mostrar oferta de club, marketplace y puntos despues de cada tap valido.";
 
       if (ratio > 15) {
-        diagnosis = "⚠️ Alerta de Anomalías: Tasa de riesgo elevada (Replay/Tamper).";
-        recommendation = "Se sospecha clonación de URLs de validación o aperturas masivas. Auditar las ubicaciones con alertas de riesgo inmediatamente.";
-      } else if (uids > 0 && total / uids > 3) {
-        diagnosis = "ℹ️ Detección de Campaña Viral: Taps repetidos sobre las mismas etiquetas.";
-        recommendation = "Los consumidores están escaneando el producto múltiples veces para ver el pasaporte digital. Considerar aumentar los puntos de lealtad otorgados.";
+        diagnosis = "Riesgo alto: demasiadas lecturas no limpias en la ventana actual.";
+        recommendation = "Abrir eventos filtrados por riesgo, revisar UID/lote y bloquear acciones comerciales si el ratio supera 15%.";
+      } else if (repeatedInterest > 3) {
+        diagnosis = "Interes repetido: los mismos productos se estan escaneando varias veces.";
+        recommendation = "Ofrecer puntos extra, cata guiada o descuento si el usuario deja contacto voluntario.";
+      } else if (gps / Math.max(total, 1) < 0.25) {
+        diagnosis = "Buena autenticidad, pero baja precision GPS del telefono.";
+        recommendation = "Pedir permiso de ubicacion en mobile tap y marcar IP/ciudad como aproximada.";
       }
 
-      setAiReport(`**Resumen de Operación (AI Insights):**
-- Analizados **${total} escaneos** sobre **${uids} productos únicos** en **${cities} ciudades**.
-- **Diagnóstico:** ${diagnosis}
-- **Veredicto de Confianza:** **${(100 - ratio).toFixed(1)}%** de lecturas limpias en el feed actual.
-- **Recomendación de IA:** ${recommendation}`);
+      setAiReport(`Operacion: ${total} taps, ${uids} UIDs, ${cities} ciudades, ${gps} con GPS del telefono.
+Confianza: ${(100 - ratio).toFixed(1)}% de lecturas limpias.
+Diagnostico: ${diagnosis}
+Accion recomendada: ${recommendation}
+Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || latest?.occurredAt || "sin hora"} - ${latest ? locationSourceLabel(latest) : "sin ubicacion"}.`);
       setAiAnalyzing(false);
     }, 600);
   };
-
   const handleExportCsv = () => {
     const visible = selectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === selectedTenant);
     const dataToExport = visible.map((e) => ({
@@ -98,13 +138,17 @@ export function RealtimeOpsMonitor({
       Tenant: e.tenantSlug || "N/A",
       Lote: e.batchId || "N/A",
       Tag_UID_Enmascarado: e.uidMasked,
-      Fecha: e.occurredAt ? new Date(e.occurredAt).toLocaleString("es-AR") : "N/A",
+      Fecha_Local: e.occurredAtLocal || (e.occurredAt ? new Date(e.occurredAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" }) : "N/A"),
+      Zona_Horaria: e.timezoneLabel || e.timezone || "N/A",
+      Fecha_UTC_Auditoria: e.occurredAtUtc || e.occurredAt || "N/A",
       Veredicto: String(e.verdict || "").toUpperCase(),
       Riesgo: String(e.riskLevel || "").toUpperCase(),
-      Ciudad: e.city || "Geolocalización Pendiente",
+      Ciudad: e.city || "Geolocalizacion Pendiente",
       Pais: e.country || "--",
       Latitud: e.lat || "",
       Longitud: e.lng || "",
+      Fuente_Ubicacion: locationSourceLabel(e),
+      Precision_Metros: e.locationAccuracyM || "",
       Producto: e.productName || "N/A",
       Entorno: e.source
     }));
@@ -116,13 +160,17 @@ export function RealtimeOpsMonitor({
         { key: "Tenant", label: "Tenant" },
         { key: "Lote", label: "Lote" },
         { key: "Tag_UID_Enmascarado", label: "Tag UID Enmascarado" },
-        { key: "Fecha", label: "Fecha y Hora" },
+        { key: "Fecha_Local", label: "Fecha y Hora Local" },
+        { key: "Zona_Horaria", label: "Zona Horaria" },
+        { key: "Fecha_UTC_Auditoria", label: "Fecha UTC Auditoria" },
         { key: "Veredicto", label: "Veredicto" },
         { key: "Riesgo", label: "Nivel de Riesgo" },
         { key: "Ciudad", label: "Ciudad" },
-        { key: "Pais", label: "País" },
+        { key: "Pais", label: "Pais" },
         { key: "Latitud", label: "Latitud" },
         { key: "Longitud", label: "Longitud" },
+        { key: "Fuente_Ubicacion", label: "Fuente Ubicacion" },
+        { key: "Precision_Metros", label: "Precision GPS m" },
         { key: "Producto", label: "Producto" },
         { key: "Entorno", label: "Entorno" }
       ]
@@ -280,7 +328,7 @@ export function RealtimeOpsMonitor({
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+    <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(640px,0.9fr)]">
       <style>{`
         @media print {
           body {
@@ -298,7 +346,7 @@ export function RealtimeOpsMonitor({
           }
         }
       `}</style>
-      <Card className="p-5">
+      <Card className="min-w-0 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.liveFeed}</h2>
           <div className="flex items-center gap-2">
@@ -336,10 +384,10 @@ export function RealtimeOpsMonitor({
             <span className="no-print"><Badge tone={connected ? "green" : "amber"}>{connected ? "Live stream" : "Reconnecting..."}</Badge></span>
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-slate-400 no-print">Última actualización: {hydrated && lastUpdateAt ? new Date(lastUpdateAt).toLocaleTimeString("es-AR") : "sincronizando"}</p>
+        <p className="mt-2 text-[11px] text-slate-400 no-print">Ultima actualizacion: {hydrated && lastUpdateAt ? new Date(lastUpdateAt).toLocaleTimeString("es-AR") : "sincronizando"}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs text-emerald-100">
-            <p className="uppercase tracking-[0.12em] text-emerald-200/80">Taps válidos</p>
+            <p className="uppercase tracking-[0.12em] text-emerald-200/80">Taps validos</p>
             <p className="mt-1 text-xl font-semibold">{liveMetrics.valid}</p>
           </div>
           <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-xs text-rose-100">
@@ -357,7 +405,7 @@ export function RealtimeOpsMonitor({
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <div className="rounded-xl border border-fuchsia-300/25 bg-fuchsia-500/10 p-3 text-xs text-fuchsia-100">
-            <p className="uppercase tracking-[0.12em] text-fuchsia-200/80">Taps últimos 5m</p>
+            <p className="uppercase tracking-[0.12em] text-fuchsia-200/80">Taps ultimos 5m</p>
             <p className="mt-1 text-xl font-semibold">{realtimePulse.recentCount}</p>
           </div>
           <div className="rounded-xl border border-sky-300/25 bg-sky-500/10 p-3 text-xs text-sky-100">
@@ -366,13 +414,13 @@ export function RealtimeOpsMonitor({
           </div>
         </div>
         <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs">
-          <p className="font-semibold uppercase tracking-[0.12em] text-slate-200">Tenants activos (últimos 5m)</p>
+          <p className="font-semibold uppercase tracking-[0.12em] text-slate-200">Tenants activos (ultimos 5m)</p>
           <div className="mt-2 space-y-1.5">
             {realtimePulse.topTenants.map((tenant) => (
               <div key={tenant.tenant} className="flex items-center justify-between rounded border border-white/10 bg-slate-950/50 px-2 py-1">
                 <p className="font-mono text-[11px] text-slate-200">{tenant.tenant}</p>
                 <p className="text-[11px] text-slate-300">
-                  taps <span className="font-semibold text-cyan-200">{tenant.taps}</span> · riesgo{" "}
+                  taps <span className="font-semibold text-cyan-200">{tenant.taps}</span> - riesgo{" "}
                   <span className={tenant.risk ? "font-semibold text-rose-300" : "font-semibold text-emerald-300"}>{tenant.risk}</span>
                 </p>
               </div>
@@ -400,7 +448,7 @@ export function RealtimeOpsMonitor({
           <div className="mt-3 rounded-xl border border-violet-500/30 bg-slate-950/70 p-4 text-xs no-print">
             <div className="flex items-center justify-between">
               <p className="font-black uppercase tracking-[0.14em] text-violet-300 flex items-center gap-1.5">
-                <span>🔮 nexID IA Ops Copilot</span>
+                <span>nexID Ops Copilot</span>
               </p>
               <button
                 suppressHydrationWarning
@@ -428,7 +476,7 @@ export function RealtimeOpsMonitor({
                 <div
                   style={{ height: `${bar.height}px` }}
                   className={`w-full rounded-t bg-gradient-to-t transition-all duration-500 ${bar.count ? "from-cyan-500/30 to-cyan-300/80" : "from-slate-700/40 to-slate-600/40"}`}
-                  title={`${bar.label} · ${bar.count} taps`}
+                  title={`${bar.label} - ${bar.count} taps`}
                 />
                 <p className="mt-1 truncate text-center text-[9px] text-slate-500">{bar.label}</p>
               </div>
@@ -450,18 +498,21 @@ export function RealtimeOpsMonitor({
                     <span className="text-slate-400">{timeAgo(event.occurredAt)}</span>
                   </div>
                 </div>
+                <p className="mt-1 text-[11px] text-cyan-100">
+                  {event.occurredAtLocal || "Hora local pendiente"} {event.timezoneLabel ? `- ${event.timezoneLabel}` : ""}
+                </p>
                 <p className="mt-1 text-slate-300">
-                  {String(event.tenantSlug || "-")} · {String(event.batchId || "-")} · {String(event.uidMasked || "-")}
+                  {String(event.tenantSlug || "-")} - {String(event.batchId || "-")} - {String(event.uidMasked || "-")}
                 </p>
               </div>
             );
           })}
-          {!visibleEvents.length ? <p className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">Sin eventos aún en el stream activo para este tenant.</p> : null}
+          {!visibleEvents.length ? <p className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">Sin eventos aun en el stream activo para este tenant.</p> : null}
         </div>
       </Card>
 
-      <div>
-        <p className="mb-2 text-xs text-slate-400">{labels.mapTitle} · {labels.mapSubtitle}</p>
+      <div className="min-w-0">
+        <p className="mb-2 text-xs text-slate-400">{labels.mapTitle} - {labels.mapSubtitle}</p>
         <DemoOpsMap points={mapPoints} mode={mode} />
       </div>
     </div>

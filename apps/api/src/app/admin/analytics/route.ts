@@ -68,6 +68,22 @@ type ProductRow = {
   provenance_text: string | null;
 };
 
+const KNOWN_CITY_COORDS: Array<{ match: RegExp; country: string; lat: number; lng: number }> = [
+  { match: /san\s*mart[ií]n/i, country: "AR", lat: -34.5744, lng: -58.5358 },
+  { match: /buenos\s*aires|caba/i, country: "AR", lat: -34.6037, lng: -58.3816 },
+  { match: /mendoza|valle\s+de\s+uco|tunuy[aá]n|tupungato|luj[aá]n/i, country: "AR", lat: -32.8895, lng: -68.8458 },
+  { match: /c[oó]rdoba/i, country: "AR", lat: -31.4201, lng: -64.1888 },
+  { match: /rosario/i, country: "AR", lat: -32.9442, lng: -60.6505 },
+  { match: /santa\s*fe/i, country: "AR", lat: -31.6107, lng: -60.6973 },
+  { match: /s[aã]o\s*paulo/i, country: "BR", lat: -23.5558, lng: -46.6396 },
+];
+
+function cityCoords(city: string | null, country: string | null) {
+  const normalizedCity = String(city || "");
+  const normalizedCountry = String(country || "").toUpperCase();
+  return KNOWN_CITY_COORDS.find((item) => item.country === normalizedCountry && item.match.test(normalizedCity)) || null;
+}
+
 let analyticsEventsSchemaReady: Promise<void> | null = null;
 
 async function ensureAnalyticsEventsSchema() {
@@ -189,49 +205,47 @@ export async function GET(req: Request) {
       `,
     tenant
       ? sql/*sql*/`
-        SELECT status, COUNT(*)::int AS value
+        SELECT b.status AS status, COUNT(*)::int AS value
         FROM batches b
         JOIN tenants tn ON tn.id = b.tenant_id
         WHERE tn.slug = ${tenant}
-        GROUP BY status
+        GROUP BY b.status
       `
       : sql/*sql*/`
-        SELECT status, COUNT(*)::int AS value
-        FROM batches
-        GROUP BY status
+        SELECT b.status AS status, COUNT(*)::int AS value
+        FROM batches b
+        GROUP BY b.status
       `,
     tenant
       ? sql/*sql*/`
-        SELECT e.geo_city AS city,
-          e.geo_country AS country,
-          AVG(e.geo_lat)::float8 AS lat,
-          AVG(e.geo_lng)::float8 AS lng,
+        SELECT
+          COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
+          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
+          AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
+          AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
           COUNT(e.id)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
-          AND e.geo_lat IS NOT NULL
-          AND e.geo_lng IS NOT NULL
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source = ${source}::text)
-        GROUP BY e.geo_city, e.geo_country
+        GROUP BY 1, 2
         ORDER BY scans DESC
         LIMIT 20
       `
       : sql/*sql*/`
-        SELECT e.geo_city AS city,
-          e.geo_country AS country,
-          AVG(e.geo_lat)::float8 AS lat,
-          AVG(e.geo_lng)::float8 AS lng,
+        SELECT
+          COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
+          COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
+          AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
+          AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
           COUNT(e.id)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
         FROM events e
-        WHERE e.geo_lat IS NOT NULL
-          AND e.geo_lng IS NOT NULL
-          AND e.created_at >= now() - ${rangeSql}::interval
+        WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source = ${source}::text)
-        GROUP BY e.geo_city, e.geo_country
+        GROUP BY 1, 2
         ORDER BY scans DESC
         LIMIT 20
       `,
@@ -689,15 +703,21 @@ export async function GET(req: Request) {
   ];
 
   const geoPoints = (geoRows as GeoRow[])
-    .filter((row) => typeof row.lat === "number" && typeof row.lng === "number")
-    .map((row) => ({
+    .map((row) => {
+      const fallback = cityCoords(row.city, row.country);
+      const lat = typeof row.lat === "number" ? Number(row.lat) : fallback?.lat ?? null;
+      const lng = typeof row.lng === "number" ? Number(row.lng) : fallback?.lng ?? null;
+      if (lat == null || lng == null) return null;
+      return {
       city: row.city || "Unknown",
       country: row.country || "--",
-      lat: Number(row.lat),
-      lng: Number(row.lng),
+        lat,
+        lng,
       scans: Number(row.scans || 0),
       risk: Number(row.risk || 0),
-    }));
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row));
 
   const deviceSignals = (deviceRows as DeviceRow[]).map((row) => ({
     device: row.device || "Unknown device",

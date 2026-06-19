@@ -49,12 +49,19 @@ export type TenantTapRealtimeEvent = {
   tagId: string | null;
   uidMasked: string;
   occurredAt: string;
+  occurredAtUtc: string;
+  occurredAtLocal: string;
+  timezone: string;
+  timezoneLabel: string;
+  timezoneOffset: string | null;
   verdict: string;
   riskLevel: string;
   city?: string | null;
   country?: string | null;
   lat?: number | null;
   lng?: number | null;
+  locationSource?: string | null;
+  locationAccuracyM?: number | null;
   productName?: string | null;
   source: "production" | "demo";
 };
@@ -101,12 +108,116 @@ export function maskUid(uid: string | null | undefined) {
   return `${value.slice(0, 4)}****${value.slice(-2)}`;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    const text = typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+    if (text) return text;
+  }
+  return "";
+}
+
+const COUNTRY_TIMEZONES: Record<string, { timezone: string; label: string }> = {
+  AR: { timezone: "America/Argentina/Buenos_Aires", label: "Buenos Aires" },
+  BR: { timezone: "America/Sao_Paulo", label: "Sao Paulo" },
+  CL: { timezone: "America/Santiago", label: "Santiago" },
+  UY: { timezone: "America/Montevideo", label: "Montevideo" },
+  PY: { timezone: "America/Asuncion", label: "Asuncion" },
+  BO: { timezone: "America/La_Paz", label: "La Paz" },
+  PE: { timezone: "America/Lima", label: "Lima" },
+  CO: { timezone: "America/Bogota", label: "Bogota" },
+  MX: { timezone: "America/Mexico_City", label: "Mexico City" },
+  US: { timezone: "America/New_York", label: "US Eastern" },
+};
+
+const TENANT_TIMEZONES: Record<string, { timezone: string; label: string }> = {
+  demobodega: { timezone: "America/Argentina/Buenos_Aires", label: "Buenos Aires" },
+};
+
+function normalizeTimezoneCandidate(value: string) {
+  try {
+    new Intl.DateTimeFormat("es-AR", { timeZone: value }).format(new Date());
+    return value;
+  } catch {
+    return "";
+  }
+}
+
+function resolveTimezone(row: Record<string, unknown>, countryCode: string | null, tenantSlug: string | null) {
+  const meta = asRecord(row.meta);
+  const sunContext = asRecord(meta.sun_context);
+  const client = asRecord(sunContext.client);
+  const explicitTimezone = normalizeTimezoneCandidate(firstText(
+    row.timezone,
+    row.time_zone,
+    row.event_timezone,
+    client.timezone,
+    meta.timezone,
+  ));
+  if (explicitTimezone) {
+    return { timezone: explicitTimezone, label: explicitTimezone.replace(/^America\//, "").replace(/_/g, " ") };
+  }
+  const tenantMatch = TENANT_TIMEZONES[String(tenantSlug || "").toLowerCase()];
+  if (tenantMatch) return tenantMatch;
+  const countryMatch = COUNTRY_TIMEZONES[String(countryCode || "").toUpperCase()];
+  if (countryMatch) return countryMatch;
+  return { timezone: "UTC", label: "UTC" };
+}
+
+function timezoneOffsetLabel(date: Date, timezone: string) {
+  try {
+    const part = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "shortOffset",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(date).find((item) => item.type === "timeZoneName")?.value || null;
+    return part ? part.replace("GMT-03:00", "GMT-3").replace("GMT+00:00", "GMT") : null;
+  } catch {
+    return null;
+  }
+}
+
+export function resolveEventLocalTime(row: Record<string, unknown>) {
+  const normalized = normalizeEvent(row);
+  const occurredAtUtc = normalized.createdAt || new Date().toISOString();
+  const date = new Date(occurredAtUtc);
+  const safeDate = Number.isFinite(date.getTime()) ? date : new Date();
+  const { timezone, label } = resolveTimezone(row, normalized.countryCode || null, normalized.tenantSlug || null);
+  const offset = timezoneOffsetLabel(safeDate, timezone);
+  const occurredAtLocal = new Intl.DateTimeFormat("es-AR", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(safeDate);
+  return {
+    occurredAtUtc,
+    occurredAtLocal,
+    timezone,
+    timezoneLabel: offset ? `${label} (${offset})` : label,
+    timezoneOffset: offset,
+  };
+}
+
 export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): TenantTapRealtimeEvent {
   const normalized = normalizeEvent(row);
   const tenantId = row.tenant_id == null ? null : String(row.tenant_id);
   const batchId = row.batch_id == null ? (normalized.bid || null) : String(row.batch_id);
   const tagId = row.tag_id == null ? null : String(row.tag_id);
   const productName = row.product_name == null ? null : String(row.product_name);
+  const time = resolveEventLocalTime(row);
+  const accuracy = Number(row.location_accuracy_m ?? row.accuracy_m ?? row.accuracyM);
   return {
     eventId: String(normalized.id || row.event_id || `${normalized.createdAt || Date.now()}`),
     tenantId,
@@ -114,13 +225,20 @@ export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): T
     batchId,
     tagId,
     uidMasked: maskUid(normalized.uidHex || null),
-    occurredAt: normalized.createdAt || new Date().toISOString(),
+    occurredAt: time.occurredAtUtc,
+    occurredAtUtc: time.occurredAtUtc,
+    occurredAtLocal: time.occurredAtLocal,
+    timezone: time.timezone,
+    timezoneLabel: time.timezoneLabel,
+    timezoneOffset: time.timezoneOffset,
     verdict: normalized.verdict,
     riskLevel: normalized.riskLevel,
     city: normalized.city || null,
     country: normalized.countryCode || null,
     lat: normalized.lat ?? null,
     lng: normalized.lng ?? null,
+    locationSource: firstText(row.location_source, row.locationSource) || null,
+    locationAccuracyM: Number.isFinite(accuracy) ? accuracy : null,
     productName,
     source: normalized.isDemo ? "demo" : "production",
   };

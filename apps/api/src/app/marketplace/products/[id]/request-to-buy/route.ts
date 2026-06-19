@@ -6,6 +6,7 @@ import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { sql } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema, ensureOrderRequestsSchema } from "../../../../../lib/commercial-runtime-schema";
 import { evaluateMarketplaceCheckoutAccess, parseRequestToBuyPayload } from "../../../../../lib/marketplace-policy";
+import { awardPoints, getActiveProgram, getOrCreateMember } from "../../../../../lib/loyalty-service";
 
 function demoConsumerEnabled(payload: Record<string, unknown>, productId: string) {
   const explicit = payload?.demoConsumer === true || payload?.consumerMode === "demo";
@@ -35,6 +36,93 @@ async function getOrCreateDemoConsumer(payload: Record<string, unknown>, product
     `;
   }
   return consumer;
+}
+
+async function awardRequestToBuyPoints(input: {
+  tenantId: string;
+  consumer: Record<string, unknown>;
+  quantity: number;
+  orderRequestId: string;
+  sourceTapEventId?: string | null;
+  productTitle?: string | null;
+}) {
+  const points = Math.max(0, Math.min(1000, Number(input.quantity || 1) * 180));
+  if (!points) return null;
+
+  const program = await getActiveProgram(input.tenantId);
+  const consumerId = String(input.consumer.id || "");
+  const consumerEmail = typeof input.consumer.email === "string" ? input.consumer.email : null;
+  const consumerPhone = typeof input.consumer.phone === "string" ? input.consumer.phone : null;
+  const locale = typeof input.consumer.preferred_locale === "string" ? input.consumer.preferred_locale : "es-AR";
+  const displayName = typeof input.consumer.display_name === "string" ? input.consumer.display_name : null;
+
+  const membershipRows = await sql/*sql*/`
+    INSERT INTO tenant_consumer_memberships (tenant_id, consumer_id, loyalty_program_id, source, last_tap_event_id, status, points_balance, lifetime_points, metadata_json)
+    VALUES (
+      ${input.tenantId},
+      ${consumerId},
+      ${program?.id || null},
+      'marketplace',
+      ${input.sourceTapEventId || null},
+      'active',
+      ${points},
+      ${points},
+      ${JSON.stringify({ last_request_to_buy_id: input.orderRequestId, productTitle: input.productTitle || null })}::jsonb
+    )
+    ON CONFLICT (tenant_id, consumer_id)
+    DO UPDATE SET
+      loyalty_program_id = COALESCE(EXCLUDED.loyalty_program_id, tenant_consumer_memberships.loyalty_program_id),
+      last_tap_event_id = COALESCE(EXCLUDED.last_tap_event_id, tenant_consumer_memberships.last_tap_event_id),
+      last_activity_at = now(),
+      points_balance = tenant_consumer_memberships.points_balance + EXCLUDED.points_balance,
+      lifetime_points = tenant_consumer_memberships.lifetime_points + EXCLUDED.lifetime_points,
+      metadata_json = COALESCE(tenant_consumer_memberships.metadata_json, '{}'::jsonb) || EXCLUDED.metadata_json,
+      status = 'active',
+      updated_at = now()
+    RETURNING id, points_balance, lifetime_points
+  `;
+
+  await sql/*sql*/`
+    INSERT INTO consumer_reward_wallets (consumer_id, tenant_id, network_scope, points_balance, lifetime_points)
+    VALUES (${consumerId}, ${input.tenantId}, 'tenant', ${points}, ${points})
+    ON CONFLICT (consumer_id, tenant_id, network_scope)
+    DO UPDATE SET
+      points_balance = consumer_reward_wallets.points_balance + EXCLUDED.points_balance,
+      lifetime_points = consumer_reward_wallets.lifetime_points + EXCLUDED.lifetime_points,
+      updated_at = now()
+  `;
+
+  let ledger: unknown = null;
+  if (program?.id && input.sourceTapEventId) {
+    const member = await getOrCreateMember({
+      tenantId: input.tenantId,
+      programId: program.id,
+      eventId: input.sourceTapEventId,
+      memberKey: `consumer:${consumerId}`,
+      consumerId,
+      locale,
+      email: consumerEmail,
+      phone: consumerPhone,
+      displayName,
+    });
+    ledger = await awardPoints({
+      tenantId: input.tenantId,
+      programId: program.id,
+      memberId: member.id,
+      tapEventId: input.sourceTapEventId,
+      delta: points,
+      source: "ADMIN_ADJUSTMENT",
+      idempotencyKey: `marketplace-request:${input.orderRequestId}:member:${member.id}`,
+      reason: "Marketplace request-to-buy",
+      metadata: { productTitle: input.productTitle || null, orderRequestId: input.orderRequestId },
+    });
+  }
+
+  return {
+    pointsAwarded: points,
+    membership: membershipRows[0] || null,
+    ledger,
+  };
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -197,6 +285,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     )
     RETURNING *
   `;
+  const orderRequest = rows[0];
 
   await sql/*sql*/`
     INSERT INTO order_requests (locale, contact, company, tag_type, volume, notes, status, source)
@@ -212,11 +301,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     )
   `;
 
+  const loyalty = await awardRequestToBuyPoints({
+    tenantId: record.tenant_id,
+    consumer,
+    quantity: parsed.value.quantity,
+    orderRequestId: String(orderRequest.id),
+    sourceTapEventId: source.event_id || access.latest_verified_tap_event_id || null,
+    productTitle: String(record.title || ""),
+  });
+
   return json({
     ok: true,
-    orderRequest: rows[0],
+    orderRequest,
     checkout: "request_only",
     access: checkoutAccess.mode,
+    loyalty,
     source: {
       event_id: source.event_id || access.latest_verified_tap_event_id || null,
       uid_hex: source.uid_hex || null,
