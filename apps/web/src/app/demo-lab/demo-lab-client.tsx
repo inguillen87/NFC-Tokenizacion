@@ -798,14 +798,18 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
                   </div>
                 </div>
               </article>
+
             </aside>
           </section>
 
-          <details className="demo-lab-tech-map mt-5 rounded-3xl border border-white/10 bg-slate-950/60 p-3 md:p-5">
-            <summary className="cursor-pointer text-sm font-black text-cyan-100">
-              Mapa operativo completo / calor de actividad
-              <span className="ml-2 text-xs font-semibold text-slate-400">{LOCATIONS.origin.city} -&gt; {destination.city} - {routeKm.toLocaleString(locale)} km</span>
-            </summary>
+          <div className="demo-lab-tech-map mt-5 rounded-3xl border border-white/10 bg-slate-950/60 p-4 md:p-6 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider text-cyan-300">Mapa Operativo del Escaneo</h3>
+                <p className="text-xs text-slate-400">{LOCATIONS.origin.city} &rarr; {destination.city}</p>
+              </div>
+              <span className="text-xs font-bold text-slate-300 bg-white/5 px-3 py-1 rounded-full">{routeKm.toLocaleString(locale)} km</span>
+            </div>
             <div className="mt-4">
               <PremiumTraceabilityGlobe
                 title={txt.controls.mapTitle}
@@ -817,7 +821,7 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
                 ctaLabel="Abrir ubicacion"
               />
             </div>
-          </details>
+          </div>
         </>
       )}
 

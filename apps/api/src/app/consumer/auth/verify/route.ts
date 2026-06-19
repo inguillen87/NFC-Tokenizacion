@@ -24,13 +24,13 @@ export async function POST(req: Request) {
 
   const normalized = contact.toLowerCase();
   const demoBypassAllowed =
-    normalized === "demo.consumer@nexid.local" &&
+    (normalized === "demo.consumer@nexid.local" || normalized.endsWith(".consumer@nexid.local")) &&
     code === "000000" &&
     (body.demoConsumer === true || String(body.consumerMode || "").toLowerCase() === "demo");
 
   if (demoBypassAllowed) {
     await ensureConsumerAuthSchema();
-    const displayName = "Demo Consumer";
+    const displayName = body.displayName || (normalized.includes("google") ? "Google User" : normalized.includes("facebook") ? "Facebook User" : "Demo Consumer");
 
     const consumerRows = await sql/*sql*/`
       INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)

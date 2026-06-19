@@ -25518,12 +25518,13 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     min-width: 0;
   }
 }
-
 /* Final visual sprint overrides: keep SDK first viewport premium without clipping at 100% zoom. */
-.sdk-premium-hero {
-  grid-template-columns: minmax(0, 0.86fr) minmax(520px, 1.14fr);
-  min-height: auto;
-  padding-bottom: clamp(1.25rem, 2.2vw, 2.1rem);
+@media (min-width: 1101px) {
+  .sdk-premium-hero {
+    grid-template-columns: minmax(0, 0.86fr) minmax(520px, 1.14fr);
+    min-height: auto;
+    padding-bottom: clamp(1.25rem, 2.2vw, 2.1rem);
+  }
 }
 
 .sdk-premium-copy h1 {

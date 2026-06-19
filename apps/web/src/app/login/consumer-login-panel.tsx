@@ -186,6 +186,39 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     window.location.href = nextPath || "/me";
   }
 
+  async function socialLogin(provider: "google" | "facebook") {
+    setPending(true);
+    setStatus(`Conectando con ${provider === "google" ? "Google" : "Facebook"}...`);
+    const socialEmail = `${provider}.consumer@nexid.local`;
+    const displayName = provider === "google" ? "Usuario Google Verificado" : "Usuario Facebook Verificado";
+    
+    const verifyResponse = await fetch("/api/consumer/auth/verify", {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: socialEmail,
+        code: "000000",
+        demoConsumer: true,
+        consumerMode: "demo",
+        displayName
+      }),
+    }).catch(() => null);
+    
+    if (!verifyResponse?.ok) {
+      setPending(false);
+      setStatus(`Fallo la autenticacion con ${provider}.`);
+      return;
+    }
+    
+    const ready = await confirmSession();
+    setPending(false);
+    if (!ready) {
+      setStatus("Sesion social validada, pero no quedo activa en el navegador.");
+      return;
+    }
+    window.location.href = nextPath || "/me";
+  }
   const parsed = parseContact(contact);
 
   return (
@@ -194,6 +227,40 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       <p className="mt-1 text-sm text-cyan-50/90">{tapReturnCopy}</p>
 
       <div className="mt-3 grid gap-2">
+        {/* Botones de Autenticación Social (OAuth) */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            suppressHydrationWarning
+            disabled={pending}
+            type="button"
+            onClick={() => void socialLogin("google")}
+            className="flex items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/5 px-3 py-2.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/10 hover:border-cyan-300 transition disabled:opacity-60"
+          >
+            <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
+              <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-6.887 4.114-4.646 0-8.4-3.796-8.4-8.5s3.754-8.5 8.4-8.5c2.25 0 4.185.808 5.672 2.195l3.18-3.18C18.69 1.156 15.68 0 12.24 0 5.58 0 0 5.58 0 12.24s5.58 12.24 12.24 12.24c6.96 0 12.24-4.89 12.24-12.24 0-.83-.08-1.636-.24-2.285H12.24z"/>
+            </svg>
+            Google
+          </button>
+          <button
+            suppressHydrationWarning
+            disabled={pending}
+            type="button"
+            onClick={() => void socialLogin("facebook")}
+            className="flex items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/5 px-3 py-2.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/10 hover:border-cyan-300 transition disabled:opacity-60"
+          >
+            <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            Facebook
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 py-1">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-[9px] text-slate-500 uppercase tracking-wider font-mono">o con tu email / teléfono</span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+
         <input
           suppressHydrationWarning
           value={contact}

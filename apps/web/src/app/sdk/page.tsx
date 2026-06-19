@@ -27,14 +27,25 @@ export const metadata: Metadata = {
   title: "SDK y APIs - nexID",
   description: "SDK, APIs, webhooks y flujo POS para integrar autenticidad, QR, NFC, GS1 Digital Link y marketplace sin atar a las marcas a proveedores cerrados.",
 };
-
 const code = `import { NexIdClient } from "@nexid/sdk";
 
-const nexid = new NexIdClient({ apiKey, tenantSlug: "tu-empresa" });
-const product = await nexid.getProduct("BATCH-2026-001");
-const pos = await nexid.activatePosPurchase({ bid: product.batch.bid, uidHex, externalOrderId });
-await nexid.claimOwnership({ contact: buyer.email, bid: product.batch.bid, uidHex, posToken: pos.posToken });`;
+// 1. Inicializar cliente con tu API Key
+const nexid = new NexIdClient({ apiKey: "nx_live_...", tenantSlug: "mi-marca" });
 
+// 2. Leer credenciales del tag físico (QR o chip NFC seguro)
+const tag = await nexid.readPhysicalTag({ uidHex, sunSignature });
+
+// 3. Validar autenticidad y verificar estado del sello físico
+const verification = await nexid.verifyAuthenticity(tag);
+console.log(verification.genuine ? "Producto original" : "Alerta de copia");
+// 4. Registrar propiedad (ownership) del consumidor al comprar
+if (verification.genuine) {
+  await nexid.claimOwnership({
+    contact: buyer.email,
+    bid: tag.bid,
+    posToken: pos.token // Emitido al facturar en caja o e-commerce
+  });
+}`;
 const pillars = [
   {
     icon: Code2,

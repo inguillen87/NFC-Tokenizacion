@@ -440,8 +440,7 @@ export default async function DocsPage() {
           </div>
         </Card>
       </div>
-
-      <div id="api" className="scroll-mt-28">
+      <div id="api" className="grid gap-6 scroll-mt-28 lg:grid-cols-2">
         <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(99,102,241,0.10)]">
           <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
           <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
@@ -454,8 +453,40 @@ export default async function DocsPage() {
             ))}
           </div>
         </Card>
-      </div>
 
+        <Card className="p-6 border border-cyan-500/20 bg-cyan-950/10 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(6,182,212,0.10)]">
+          <div>
+            <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-100">
+              Integración de Clientes
+            </span>
+            <h3 className="mt-4 text-xl font-bold text-white">nexID SDK & APIs</h3>
+            <p className="mt-3 text-sm leading-relaxed text-slate-300">
+              Ofrecemos bibliotecas listas para integrar en tu e-commerce (Shopify, WooCommerce, Next.js), aplicaciones móviles (React Native, iOS, Android) y cajas registradoras/POS.
+            </p>
+            <div className="mt-5 grid gap-3 text-xs text-slate-200">
+              <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
+                <strong className="text-cyan-200 block">Lectura Criptográfica</strong>
+                Validación de firmas dinámicas SUN (Secure Unique NFC) y detección de copias sin exponer llaves privadas.
+              </div>
+              <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
+                <strong className="text-cyan-200 block">Orquestación de Reclamos</strong>
+                Registro seguro del ownership físico en el pasaporte digital al procesarse el pago (token nxpos).
+              </div>
+              <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
+                <strong className="text-cyan-200 block">Webhooks en Tiempo Real</strong>
+                Notificación instantánea de toques, cambios de estado del sello y geolocalización hacia tus sistemas.
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
+            <span className="text-[11px] font-mono text-slate-400">Versión estable v1.4.2</span>
+            <Link href="/sdk" className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-300">
+              Ir a la sección SDK completa
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </Card>
+      </div>
       <div id="rollout" className="grid gap-6 scroll-mt-28 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.packsTitle}</h3>
