@@ -4,7 +4,8 @@ export const dynamic = "force-dynamic";
 import { ensureSdkSchema } from "../../../../../lib/commercial-runtime-schema";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
-import { authenticateSdkRequest } from "../../../../../lib/sdk-auth";
+import { authenticateSdkRequest, hashSdkApiKey, logSdkUsage } from "../../../../../lib/sdk-auth";
+import { dispatchTenantWebhooks } from "../../../../../lib/sdk-webhooks";
 import { asRecord, clean, isSecureOwnershipCarrier, numberOrNull, parseHeaderIp, readJsonObject, sha256Hex } from "../_shared";
 
 function pinMatches(input: { storedHash: string; pin: string; tenantId: string; bid: string; uidHex: string }) {
@@ -21,8 +22,12 @@ function pinMatches(input: { storedHash: string; pin: string; tenantId: string; 
 }
 
 export async function POST(req: Request) {
+  const startedAt = Date.now();
   const auth = await authenticateSdkRequest(req, "sdk:claim");
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) {
+    await logSdkUsage({ req, endpoint: "sdk.claim", statusCode: auth.response.status, startedAt, reason: "auth_failed" });
+    return auth.response;
+  }
 
   await ensureSdkSchema();
   const body = asRecord(await req.json().catch(() => ({})));
@@ -31,7 +36,9 @@ export async function POST(req: Request) {
   const bid = clean(body.bid);
   const uidHex = clean(body.uidHex || body.uid_hex).toUpperCase();
   const pin = clean(body.pin);
+  const posToken = clean(body.posToken || body.pos_token || body.retailerPosToken || body.retailer_pos_token);
   if (!contact || !bid) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 400, startedAt, reason: "contact_and_bid_required" });
     return json({ ok: false, reason: "contact_and_bid_required", need: ["contact", "bid"], trace_id: auth.context.traceId }, 400);
   }
 
@@ -71,26 +78,55 @@ export async function POST(req: Request) {
     LIMIT 1
   `;
   const row = rows[0] as Record<string, unknown> | undefined;
-  if (!row) return json({ ok: false, reason: "batch_not_found_for_tenant", bid, trace_id: auth.context.traceId }, 404);
-  if (uidHex && !clean(row.tag_id)) return json({ ok: false, reason: "tag_not_found_for_batch", bid, uidHex, trace_id: auth.context.traceId }, 404);
+  if (!row) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 404, startedAt, reason: "batch_not_found_for_tenant", meta: { bid } });
+    return json({ ok: false, reason: "batch_not_found_for_tenant", bid, trace_id: auth.context.traceId }, 404);
+  }
+  if (uidHex && !clean(row.tag_id)) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 404, startedAt, reason: "tag_not_found_for_batch", meta: { bid, uidHex } });
+    return json({ ok: false, reason: "tag_not_found_for_batch", bid, uidHex, trace_id: auth.context.traceId }, 404);
+  }
 
   const sdmConfig = readJsonObject(row.sdm_config);
+  const posRows = posToken ? await sql/*sql*/`
+    SELECT id::text AS id, uid_hex, external_order_id, retailer_id
+    FROM sdk_pos_activations
+    WHERE tenant_id = ${auth.context.tenantId}
+      AND bid = ${bid}
+      AND pos_token_hash = ${hashSdkApiKey(posToken)}
+      AND activation_status = 'active'
+      AND (expires_at IS NULL OR expires_at > now())
+      AND (${uidHex} = '' OR uid_hex IS NULL OR UPPER(uid_hex) = UPPER(${uidHex}))
+    LIMIT 1
+  ` : [];
+  const posActivation = posRows[0] as Record<string, unknown> | undefined;
+  const posActivationId = clean(posActivation?.id);
+  const posValidated = Boolean(posActivationId);
   const carrierProfileCode = clean(row.carrier_profile_code || row.tag_carrier_profile_code || row.batch_carrier_profile_code || sdmConfig.carrier_profile_code) || null;
-  const activeForClaim = row.tag_active_for_claim !== null && row.tag_active_for_claim !== undefined
+  const configuredActiveForClaim = row.tag_active_for_claim !== null && row.tag_active_for_claim !== undefined
     ? Boolean(row.tag_active_for_claim)
     : Boolean(row.batch_active_for_claim || sdmConfig.active_for_claim);
+  const activeForClaim = posValidated || configuredActiveForClaim;
+  const claimRequiresPos = Boolean(sdmConfig.claim_requires_pos || sdmConfig.pos_required || sdmConfig.retailer_attestation_required);
+  if ((claimRequiresPos || posToken) && !posValidated) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 403, startedAt, reason: "pos_token_invalid_or_required", meta: { bid, uidHex: uidHex || null, claimRequiresPos } });
+    return json({ ok: false, reason: claimRequiresPos ? "pos_token_required_or_invalid" : "invalid_pos_token", bid, uidHex: uidHex || null, trace_id: auth.context.traceId }, 403);
+  }
   const pinRequired = row.tag_claim_pin_required !== null && row.tag_claim_pin_required !== undefined
     ? Boolean(row.tag_claim_pin_required)
     : Boolean(row.batch_claim_pin_required || sdmConfig.claim_pin_required);
   const storedPinHash = clean(row.tag_hash_pin || row.batch_hash_pin || sdmConfig.hash_pin || sdmConfig.claim_pin_hash);
   if (pinRequired && !storedPinHash) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 409, startedAt, reason: "pin_policy_misconfigured", meta: { bid, uidHex: uidHex || null } });
     return json({ ok: false, reason: "pin_policy_misconfigured", bid, trace_id: auth.context.traceId }, 409);
   }
   if (pinRequired && !pin) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 403, startedAt, reason: "pin_required", meta: { bid, uidHex: uidHex || null } });
     return json({ ok: false, reason: "pin_required", bid, uidHex: uidHex || null, trace_id: auth.context.traceId }, 403);
   }
   const pinValidated = pinRequired ? pinMatches({ storedHash: storedPinHash, pin, tenantId: auth.context.tenantId, bid, uidHex }) : false;
   if (pinRequired && !pinValidated) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 403, startedAt, reason: "invalid_pin", meta: { bid, uidHex: uidHex || null } });
     return json({ ok: false, reason: "invalid_pin", bid, uidHex: uidHex || null, trace_id: auth.context.traceId }, 403);
   }
 
@@ -107,6 +143,9 @@ export async function POST(req: Request) {
     requestIp: parseHeaderIp(req),
     pinRequired,
     pinValidated,
+    posValidated,
+    posActivationId: posActivationId || null,
+    claimRequiresPos,
     activeForClaim,
     carrierProfileCode,
   };
@@ -115,7 +154,8 @@ export async function POST(req: Request) {
   const lng = numberOrNull(gps.lng ?? gps.longitude);
   const secureOwnershipCarrier = isSecureOwnershipCarrier(carrierProfileCode);
   const autoClaimEnabled = Boolean(sdmConfig.sdk_auto_claim_enabled || sdmConfig.auto_claim_enabled);
-  const claimStatus = activeForClaim && secureOwnershipCarrier && (!pinRequired || pinValidated) && autoClaimEnabled
+  const hasPhysicalTagIdentity = Boolean(uidHex && clean(row.tag_id));
+  const claimStatus = activeForClaim && secureOwnershipCarrier && hasPhysicalTagIdentity && (!claimRequiresPos || posValidated) && (!pinRequired || pinValidated) && (autoClaimEnabled || posValidated)
     ? "claimed"
     : "pending_verification";
 
@@ -144,6 +184,8 @@ export async function POST(req: Request) {
         uidHex ? `uid=${uidHex}` : "",
         `active_for_claim=${activeForClaim}`,
         `pin_required=${pinRequired}`,
+        `pos_required=${claimRequiresPos}`,
+        `pos_validated=${posValidated}`,
         `carrier=${carrierProfileCode || "unknown"}`,
       ].filter(Boolean).join(" | ")},
       ${auth.context.tenantId},
@@ -156,7 +198,7 @@ export async function POST(req: Request) {
   const claimRows = await sql/*sql*/`
     INSERT INTO sdk_claim_requests (
       tenant_id, api_key_id, lead_id, batch_id, tag_id, bid, uid_hex, contact, name,
-      claim_status, pin_validated, active_for_claim, carrier_profile_code, meta
+      claim_status, pin_validated, active_for_claim, pos_activation_id, pos_validated, carrier_profile_code, meta
     ) VALUES (
       ${auth.context.tenantId},
       ${auth.context.apiKeyId},
@@ -170,12 +212,35 @@ export async function POST(req: Request) {
       ${claimStatus},
       ${pinValidated},
       ${activeForClaim},
+      ${posActivationId || null},
+      ${posValidated},
       ${carrierProfileCode || null},
       ${JSON.stringify(meta)}::jsonb
     )
     RETURNING id::text AS id, claim_status
   `;
   const claimId = String((claimRows[0] as { id?: string } | undefined)?.id || "");
+  if (posActivationId) {
+    await sql/*sql*/`
+      UPDATE sdk_pos_activations
+      SET activation_status = 'used', used_at = now(), claim_request_id = ${claimId || null}, updated_at = now()
+      WHERE id = ${posActivationId}
+    `;
+  }
+
+  await dispatchTenantWebhooks({
+    tenantId: auth.context.tenantId,
+    eventName: "sdk.claim.created",
+    payload: { claimId, leadId, status: claimStatus, bid, uidHex: uidHex || null, posValidated, pinValidated, traceId: auth.context.traceId },
+  }).catch(() => null);
+  if (claimStatus === "claimed") {
+    await dispatchTenantWebhooks({
+      tenantId: auth.context.tenantId,
+      eventName: "sdk.claim.claimed",
+      payload: { claimId, leadId, bid, uidHex: uidHex || null, posActivationId: posActivationId || null, traceId: auth.context.traceId },
+    }).catch(() => null);
+  }
+  await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 201, startedAt, meta: { bid, uidHex: uidHex || null, claimStatus, posValidated, pinValidated } });
 
   return json({
     ok: true,
@@ -191,14 +256,16 @@ export async function POST(req: Request) {
       activeForClaim,
       pinRequired,
       pinValidated,
+      claimRequiresPos,
+      posValidated,
       carrierProfileCode,
       secureOwnershipCarrier,
+      hasPhysicalTagIdentity,
       autoClaimEnabled,
       reason: claimStatus === "claimed"
-        ? "sdk_auto_claim_enabled"
+        ? (posValidated ? "verified_purchase_pos_token" : "sdk_auto_claim_enabled")
         : "pending_brand_or_purchase_verification",
     },
     traceId: auth.context.traceId,
   }, 201);
 }
-

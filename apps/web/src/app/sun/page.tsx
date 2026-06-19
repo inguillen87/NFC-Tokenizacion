@@ -1267,14 +1267,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
          </div>
 
-          <div className="sun-quick-nav grid grid-cols-[1.4fr_1fr_1fr] gap-2">
+          <div className="sun-quick-nav grid grid-cols-4 gap-2">
            <a href="#product-info" className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Ficha</a>
             {certificateHref ? (
               <Link href={certificateHref} className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Certificado</Link>
             ) : (
               <a href="#geo-trace" className="min-w-0 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Ruta</a>
             )}
-           <a href="#product-assets" className="min-w-0 rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">Bodega</a>
+           <a href={isQrScan ? "#qr-engagement" : "#consumer-choice"} className="min-w-0 rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">{isQrScan ? "Sommelier" : "Opciones"}</a>
+           <Link href={tapMarketplaceHref} className="min-w-0 rounded-xl border border-amber-300/30 bg-amber-500/15 px-2 py-2 text-center text-[11px] font-semibold text-amber-100">Comprar</Link>
          </div>
 
          <section id="product-info" className={`sun-product-first sun-product-first--${productFirstTone}`} aria-label="Producto detectado despues del tap">
@@ -1328,6 +1329,35 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                <a href={primaryPostTapAction.href}>{primaryPostTapAction.label}</a>
              </div>
            </div>
+         </section>
+
+         <section className="rounded-2xl border border-cyan-300/20 bg-slate-950/75 p-4 shadow-[0_18px_45px_rgba(8,47,73,0.22)]">
+           <div className="flex items-start justify-between gap-3">
+             <div>
+               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">Que podes hacer ahora</p>
+               <h2 className="mt-1 text-base font-black text-white">Lee primero. Compra o verifica solo si queres.</h2>
+             </div>
+             <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-100">sin registro</span>
+           </div>
+           <div className="mt-3 grid grid-cols-2 gap-2">
+             <a href="#product-info" className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-semibold text-emerald-100">
+               Ficha publica
+               <small className="mt-1 block font-normal text-emerald-100/70">Origen, producto y bodega.</small>
+             </a>
+             <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="rounded-xl border border-violet-300/25 bg-violet-500/10 px-3 py-3 text-xs font-semibold text-violet-100">
+               {isQrScan ? "Sommelier IA" : "Ruta"}
+               <small className="mt-1 block font-normal text-violet-100/70">{isQrScan ? "Preguntar sin cuenta." : "Mapa y evidencia."}</small>
+             </a>
+             <Link href={tapMarketplaceHref} className="rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-3 text-xs font-semibold text-amber-100">
+               Comprar o ver mas
+               <small className="mt-1 block font-normal text-amber-100/70">Marketplace de la marca.</small>
+             </Link>
+             <a href="#consumer-choice" className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-3 text-xs font-semibold text-cyan-100">
+               Verificar compra
+               <small className="mt-1 block font-normal text-cyan-100/70">POS, PIN o prueba aparte.</small>
+             </a>
+           </div>
+           <p className="mt-3 text-[11px] leading-5 text-slate-400">Escanear para leer no reclama propiedad. Si estas en una tienda o supermercado, podes informarte y salir sin dejar datos.</p>
          </section>
 
          <section className={`sun-simple-guide sun-simple-guide--${primaryPostTapAction.tone}`}>
@@ -1700,6 +1730,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           <section id="consumer-choice" className="sun-actions-panel sun-panel-actions rounded-2xl border border-white/10 bg-slate-900/65 p-4">
             <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Opciones del lector</p>
+            <h2 className="mt-1 text-sm font-bold text-white">Elegir no significa reclamar propiedad</h2>
             <div className="mt-3 grid gap-2">
                <a href="#product-info" className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-100">
                 Ver ficha del producto
@@ -1707,12 +1738,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-100">
                 {isQrScan ? "Dejar contacto opcional" : "Ver ruta de confianza"}
               </a>
-               <Link href={registerHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
+              <Link href={registerHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
                 Soy comprador: activar garantia
+              </Link>
+              <Link href={tapMarketplaceHref} className="rounded-xl border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-xs font-semibold text-violet-100">
+                Ver marketplace de la marca
               </Link>
             </div>
            {isFreshCommercialTap ? (
-             <p className="mt-2 text-[11px] text-slate-300">Nadie reclama propiedad por leer una etiqueta. Garantia, beneficios o propiedad requieren intencion explicita y prueba de compra/politica de marca.</p>
+             <p className="mt-2 text-[11px] text-slate-300">Nadie reclama propiedad por leer una etiqueta. Garantia, beneficios o propiedad requieren intencion explicita y prueba de compra/POS/PIN o politica de marca.</p>
             ) : (
               <p className="mt-2 text-[11px] text-amber-200">{blockedTapReason}</p>
             )}
@@ -1987,15 +2021,18 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
       </div>
 
+      {isQrScan ? (
+        <a href="#qr-engagement" className="fixed bottom-24 right-4 z-30 inline-flex items-center justify-center rounded-full border border-violet-300/35 bg-violet-500 px-4 py-3 text-xs font-black text-white shadow-[0_18px_50px_rgba(139,92,246,0.35)] lg:hidden">
+          Sommelier IA
+        </a>
+      ) : null}
+
       <div className="sun-bottom-nav z-10 mx-auto mt-4 w-full max-w-[390px] px-3 lg:hidden">
-        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
+        <div className="grid grid-cols-4 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
           <a href="#product-info" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Ficha</a>
-          <a href="#geo-trace" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">Ruta</a>
-          {certificateHref ? (
-            <Link href={certificateHref} className="flex min-h-11 items-center justify-center rounded-xl border border-sky-300/30 bg-sky-500/15 px-2 text-center text-xs font-semibold text-sky-100">Certificado</Link>
-          ) : (
-            <a href="#product-assets" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 text-center text-xs font-semibold text-violet-100">Bodega</a>
-          )}
+          <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">{isQrScan ? "Sommelier" : "Ruta"}</a>
+          <Link href={tapMarketplaceHref} className="flex min-h-11 items-center justify-center rounded-xl border border-amber-300/30 bg-amber-500/15 px-2 text-center text-xs font-semibold text-amber-100">Comprar</Link>
+          <a href="#consumer-choice" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 text-center text-xs font-semibold text-violet-100">Verificar</a>
         </div>
       </div>
     </main>

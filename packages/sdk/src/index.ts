@@ -48,6 +48,7 @@ export interface ClaimOwnershipRequest {
   bid: string;
   uidHex?: string;
   pin?: string;
+  posToken?: string;
   meta?: Record<string, unknown>;
   gps?: Record<string, unknown>;
   device?: Record<string, unknown>;
@@ -94,6 +95,31 @@ export interface ExternalEventResponse {
   tenant?: { slug: string; name?: string };
   bid?: string | null;
   uidMasked?: string | null;
+  traceId?: string;
+}
+
+export interface PosActivationRequest {
+  bid: string;
+  uidHex?: string;
+  externalOrderId?: string;
+  retailerId?: string;
+  contact?: string;
+  pin?: string;
+  expiresInMinutes?: number;
+  meta?: Record<string, unknown>;
+  gps?: Record<string, unknown>;
+  device?: Record<string, unknown>;
+}
+
+export interface PosActivationResponse {
+  ok: boolean;
+  activationId: string;
+  tenant?: { slug: string; name?: string };
+  bid: string;
+  uidMasked?: string | null;
+  posToken: string;
+  expiresAt: string;
+  policy?: Record<string, unknown>;
   traceId?: string;
 }
 
@@ -157,5 +183,8 @@ export class NexIdClient {
   reportEvent(params: ExternalEventRequest): Promise<ExternalEventResponse> {
     return this.request<ExternalEventResponse>("/api/v1/sdk/events", { method: "POST", body: params });
   }
-}
 
+  activatePosPurchase(params: PosActivationRequest): Promise<PosActivationResponse> {
+    return this.request<PosActivationResponse>("/api/v1/sdk/pos/activate", { method: "POST", body: params });
+  }
+}

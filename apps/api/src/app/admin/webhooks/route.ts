@@ -1,27 +1,46 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
+import { ensureSdkSchema } from "../../../lib/commercial-runtime-schema";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+
+function clean(value: unknown) {
+  return String(value || "").trim();
+}
+
+async function resolveTenant(req: Request, requestedTenant?: string | null) {
+  const tenantSlug = clean(getAdminTenantScope(req).forcedTenantSlug || requestedTenant).toLowerCase();
+  if (!tenantSlug) return null;
+  const rows = await sql/*sql*/`
+    SELECT id::text AS id, slug, name
+    FROM tenants
+    WHERE slug = ${tenantSlug} OR id::text = ${tenantSlug}
+    LIMIT 1
+  `;
+  return rows[0] as { id: string; slug: string; name: string } | undefined;
+}
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureSdkSchema();
 
   const { searchParams } = new URL(req.url);
-  const tenant = searchParams.get("tenant") || "";
+  const tenant = await resolveTenant(req, searchParams.get("tenant"));
+  if (getAdminTenantScope(req).forcedTenantSlug && !tenant) return json({ ok: false, reason: "tenant_not_found" }, 404);
 
   const rows = tenant
     ? await sql/*sql*/`
-      SELECT we.id, tn.slug AS tenant_slug, we.url, we.enabled, we.events, we.created_at, we.updated_at
+      SELECT we.id::text AS id, tn.slug AS tenant_slug, we.name, we.url, we.enabled, we.events, (we.signing_secret IS NOT NULL AND we.signing_secret <> '') AS has_signing_secret, we.created_at, we.updated_at
       FROM webhook_endpoints we
       JOIN tenants tn ON tn.id = we.tenant_id
-      WHERE tn.slug = ${tenant}
+      WHERE we.tenant_id = ${tenant.id}
       ORDER BY we.updated_at DESC
     `
     : await sql/*sql*/`
-      SELECT we.id, tn.slug AS tenant_slug, we.url, we.enabled, we.events, we.created_at, we.updated_at
+      SELECT we.id::text AS id, tn.slug AS tenant_slug, we.name, we.url, we.enabled, we.events, (we.signing_secret IS NOT NULL AND we.signing_secret <> '') AS has_signing_secret, we.created_at, we.updated_at
       FROM webhook_endpoints we
       JOIN tenants tn ON tn.id = we.tenant_id
       ORDER BY we.updated_at DESC
@@ -34,28 +53,27 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  await ensureSdkSchema();
 
   const body = await req.json().catch(() => ({}));
-  const tenantSlug = String(body?.tenant || "").trim();
-  const url = String(body?.url || "").trim();
-  const events = Array.isArray(body?.events) ? body.events : ["scan.valid", "scan.risk"];
+  const tenant = await resolveTenant(req, body?.tenant || body?.tenantSlug);
+  const name = clean(body?.name) || "SDK webhook";
+  const url = clean(body?.url);
+  const signingSecret = clean(body?.signingSecret || body?.signing_secret);
+  const events = Array.isArray(body?.events) ? body.events.map(clean).filter(Boolean) : ["sdk.verify", "sdk.claim.created", "sdk.external_event", "sdk.pos.activated"];
   const enabled = Boolean(body?.enabled);
 
-  if (!tenantSlug || !url) {
+  if (!tenant || !url) {
     return json({ error: "tenant and url are required" }, 400);
   }
 
-  const tenantRows = await sql/*sql*/`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`;
-  const tenantId = tenantRows[0]?.id;
-  if (!tenantId) return json({ error: "tenant not found" }, 404);
-
   const rows = await sql/*sql*/`
-    INSERT INTO webhook_endpoints (tenant_id, url, enabled, events, updated_at)
-    VALUES (${tenantId}, ${url}, ${enabled}, ${JSON.stringify(events)}::jsonb, now())
+    INSERT INTO webhook_endpoints (tenant_id, name, url, signing_secret, enabled, events, updated_at)
+    VALUES (${tenant.id}, ${name}, ${url}, ${signingSecret || null}, ${enabled}, ${JSON.stringify(events)}::jsonb, now())
     ON CONFLICT (tenant_id, url)
-    DO UPDATE SET enabled = EXCLUDED.enabled, events = EXCLUDED.events, updated_at = now()
-    RETURNING id, url, enabled, events, created_at, updated_at
+    DO UPDATE SET name = EXCLUDED.name, enabled = EXCLUDED.enabled, events = EXCLUDED.events, signing_secret = COALESCE(EXCLUDED.signing_secret, webhook_endpoints.signing_secret), updated_at = now()
+    RETURNING id::text AS id, name, url, enabled, events, (signing_secret IS NOT NULL AND signing_secret <> '') AS has_signing_secret, created_at, updated_at
   `;
 
-  return json({ ok: true, endpoint: rows[0] }, 201);
+  return json({ ok: true, tenant: { slug: tenant.slug, name: tenant.name }, endpoint: rows[0] }, 201);
 }

@@ -192,6 +192,7 @@ export default async function HomePage() {
     { label: "Portal Consumidor Demo", href: "/login?next=/me" },
     { label: content.nav.pricing, href: "/pricing" },
     { label: content.nav.reseller, href: "/resellers" },
+    { label: "SDK", href: "/sdk" },
     { label: content.nav.docs, href: "/docs" },
     { label: labels.quickDemoLab, href: productExitHref.demoLab },
     { label: labels.scheduleMeeting, href: meetingHref, external: true },
@@ -248,6 +249,7 @@ export default async function HomePage() {
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
+            <Link href="/sdk">SDK</Link>
             <Link href="/docs">{content.nav.docs}</Link>
           </nav>
 
@@ -416,6 +418,7 @@ export default async function HomePage() {
           <p className="text-sm site-muted">nexID ayuda a marcas y organizaciones a probar autenticidad, contar la historia del producto y activar garantia, beneficios, certificado digital y postventa desde un toque NFC o QR.</p>
           <div className="flex flex-wrap gap-2">
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
+            <Link href="/sdk" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">SDK</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
             <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</Link>
             <a href={meetingHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/40 px-3 py-2 text-xs text-emerald-300">{labels.scheduleMeeting}</a>

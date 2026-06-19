@@ -5,19 +5,27 @@ import { ensureSdkSchema } from "../../../../../lib/commercial-runtime-schema";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
 import { publishRealtimeEvent } from "../../../../../lib/realtime-events";
-import { authenticateSdkRequest } from "../../../../../lib/sdk-auth";
+import { authenticateSdkRequest, logSdkUsage } from "../../../../../lib/sdk-auth";
+import { dispatchTenantWebhooks } from "../../../../../lib/sdk-webhooks";
 import { asRecord, clean, parseHeaderIp } from "../_shared";
 
 export async function POST(req: Request) {
+  const startedAt = Date.now();
   const auth = await authenticateSdkRequest(req, "sdk:events");
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) {
+    await logSdkUsage({ req, endpoint: "sdk.events", statusCode: auth.response.status, startedAt, reason: "auth_failed" });
+    return auth.response;
+  }
 
   await ensureSdkSchema();
   const body = asRecord(await req.json().catch(() => ({})));
   const eventType = clean(body.eventType || body.event_type);
   const bid = clean(body.bid);
   const uidHex = clean(body.uidHex || body.uid_hex).toUpperCase();
-  if (!eventType) return json({ ok: false, reason: "event_type_required", trace_id: auth.context.traceId }, 400);
+  if (!eventType) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: 400, startedAt, reason: "event_type_required" });
+    return json({ ok: false, reason: "event_type_required", trace_id: auth.context.traceId }, 400);
+  }
 
   const targetRows = bid ? await sql/*sql*/`
     SELECT
@@ -37,6 +45,7 @@ export async function POST(req: Request) {
     LIMIT 1
   ` : [];
   if (bid && !targetRows[0]) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: 404, startedAt, reason: "batch_not_found_for_tenant", meta: { bid, eventType } });
     return json({ ok: false, reason: "batch_not_found_for_tenant", bid, trace_id: auth.context.traceId }, 404);
   }
   const target = (targetRows[0] || {}) as Record<string, unknown>;
@@ -78,6 +87,12 @@ export async function POST(req: Request) {
     created_at: String((rows[0] as { created_at?: string } | undefined)?.created_at || new Date().toISOString()),
     trace_id: auth.context.traceId,
   });
+  await dispatchTenantWebhooks({
+    tenantId: auth.context.tenantId,
+    eventName: "sdk.external_event",
+    payload: { eventId, eventType, bid: bid || null, uidHex: uidHex || null, source: clean(body.source) || "sdk", traceId: auth.context.traceId },
+  }).catch(() => null);
+  await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: 201, startedAt, meta: { eventId, eventType, bid: bid || null } });
 
   return json({
     ok: true,
@@ -89,4 +104,3 @@ export async function POST(req: Request) {
     traceId: auth.context.traceId,
   }, 201);
 }
-

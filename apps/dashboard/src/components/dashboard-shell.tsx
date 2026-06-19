@@ -34,6 +34,7 @@ import {
   Zap,
   Presentation,
   BookOpen,
+  Terminal,
   Menu,
   X,
 } from "lucide-react";
@@ -211,6 +212,7 @@ export function DashboardShellInner({
     { href: "/consumer-network/order-requests", label: "Order Requests" },
     { href: "/users", label: "IAM Users" },
     { href: "/mfa", label: "MFA Security" },
+    { href: "/sdk-vision", label: nav.sdkVision },
   ].filter((entry) => (entry as { role?: string }).role ? currentRole === (entry as { role?: string }).role : true);
 
   const filteredLinks = normalizedQuery
@@ -226,6 +228,7 @@ export function DashboardShellInner({
     { href: "/tokenization", label: "Tokenization", icon: Coins },
     { href: "/analytics", label: nav.analytics, icon: BarChart3 },
     { href: "/leads-tickets", label: nav.leadsTickets, icon: LifeBuoy },
+    { href: "/sdk-vision", label: nav.sdkVision, icon: Terminal },
   ];
 
   if (currentRole === "super-admin" || currentRole === "reseller") {

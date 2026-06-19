@@ -4,17 +4,24 @@ export const dynamic = "force-dynamic";
 import { ensureSdkSchema } from "../../../../../../lib/commercial-runtime-schema";
 import { sql } from "../../../../../../lib/db";
 import { json } from "../../../../../../lib/http";
-import { authenticateSdkRequest } from "../../../../../../lib/sdk-auth";
+import { authenticateSdkRequest, logSdkUsage } from "../../../../../../lib/sdk-auth";
 import { clean, readJsonObject } from "../../_shared";
 
 export async function GET(req: Request, { params }: { params: Promise<{ bid: string }> }) {
+  const startedAt = Date.now();
   const auth = await authenticateSdkRequest(req, "sdk:products");
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) {
+    await logSdkUsage({ req, endpoint: "sdk.products", statusCode: auth.response.status, startedAt, reason: "auth_failed" });
+    return auth.response;
+  }
 
   await ensureSdkSchema();
   const resolvedParams = await params;
   const bid = decodeURIComponent(resolvedParams.bid || "").trim();
-  if (!bid) return json({ ok: false, reason: "bid_required", trace_id: auth.context.traceId }, 400);
+  if (!bid) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.products", statusCode: 400, startedAt, reason: "bid_required" });
+    return json({ ok: false, reason: "bid_required", trace_id: auth.context.traceId }, 400);
+  }
 
   const rows = await sql/*sql*/`
     SELECT
@@ -42,7 +49,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
     LIMIT 1
   `;
   const batch = rows[0] as Record<string, unknown> | undefined;
-  if (!batch) return json({ ok: false, reason: "batch_not_found_for_tenant", bid, trace_id: auth.context.traceId }, 404);
+  if (!batch) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.products", statusCode: 404, startedAt, reason: "batch_not_found_for_tenant", meta: { bid } });
+    return json({ ok: false, reason: "batch_not_found_for_tenant", bid, trace_id: auth.context.traceId }, 404);
+  }
 
   const productRows = await sql/*sql*/`
     SELECT
@@ -68,7 +78,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
   `;
   const sdmConfig = readJsonObject(batch.sdm_config);
 
-  return json({
+  const responseBody = {
     ok: true,
     tenant: { slug: auth.context.tenantSlug, name: auth.context.tenantName },
     batch: {
@@ -109,6 +119,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
       lastSeenAt: row.last_seen_at ? String(row.last_seen_at) : null,
     })),
     traceId: auth.context.traceId,
-  });
+  };
+  await logSdkUsage({ req, context: auth.context, endpoint: "sdk.products", statusCode: 200, startedAt, meta: { bid, tagCount: Number(batch.tag_count || 0) } });
+  return json(responseBody);
 }
-

@@ -4,7 +4,7 @@ import { ensureSdkSchema } from "./commercial-runtime-schema";
 import { sql } from "./db";
 import { json } from "./http";
 
-export type SdkScope = "sdk:verify" | "sdk:claim" | "sdk:products" | "sdk:events";
+export type SdkScope = "sdk:verify" | "sdk:claim" | "sdk:products" | "sdk:events" | "sdk:pos";
 
 export type SdkAuthContext = {
   apiKeyId: string;
@@ -112,4 +112,39 @@ export async function authenticateSdkRequest(req: Request, requiredScope: SdkSco
       traceId,
     },
   };
+}
+
+export async function logSdkUsage(input: {
+  req: Request;
+  context?: SdkAuthContext | null;
+  endpoint: string;
+  statusCode: number;
+  startedAt: number;
+  reason?: string | null;
+  meta?: Record<string, unknown>;
+}) {
+  try {
+    await ensureSdkSchema();
+    const ipAddress = input.req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || input.req.headers.get("x-real-ip") || null;
+    const ipCountry = input.req.headers.get("x-vercel-ip-country") || null;
+    const latencyMs = Math.max(0, Math.round(Date.now() - input.startedAt));
+    await sql/*sql*/`
+      INSERT INTO sdk_usage_logs (
+        tenant_id, api_key_id, endpoint, status_code, latency_ms, ip_address, ip_country, reason, trace_id, meta
+      ) VALUES (
+        ${input.context?.tenantId || null},
+        ${input.context?.apiKeyId || null},
+        ${input.endpoint},
+        ${input.statusCode},
+        ${latencyMs},
+        ${ipAddress},
+        ${ipCountry},
+        ${input.reason || null},
+        ${input.context?.traceId || input.req.headers.get("x-nexid-trace-id") || null},
+        ${JSON.stringify(input.meta || {})}::jsonb
+      )
+    `;
+  } catch (error) {
+    console.warn("[sdk_usage_log_failed]", error instanceof Error ? error.message : "unknown_error");
+  }
 }

@@ -30,6 +30,7 @@ type DashboardContent = {
     campaigns: string;
     subscriptions: string;
     apiKeys: string;
+    sdkVision: string;
   };
   pages: {
     overview: { title: string; description: string };
@@ -45,6 +46,7 @@ type DashboardContent = {
     campaigns: { title: string; description: string };
     subscriptions: { title: string; description: string };
     apiKeys: { title: string; description: string };
+    sdkVision: { title: string; description: string };
   };
   auth: {
     roleLabel: string;
@@ -96,16 +98,16 @@ type DashboardContent = {
 };
 
 export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> = {
-  "super-admin": ["overview", "tenants", "batches", "tags", "analytics", "events", "resellers", "leadsTickets", "loyalty", "subscriptions", "apiKeys"],
-  "tenant-admin": ["overview", "batches", "tags", "analytics", "events", "leadsTickets", "loyalty", "experiences", "campaigns", "subscriptions", "apiKeys"],
-  reseller: ["overview", "batches", "analytics", "events", "resellers", "loyalty", "subscriptions"],
-  viewer: ["overview", "analytics", "events"],
+  "super-admin": ["overview", "tenants", "batches", "tags", "analytics", "events", "resellers", "leadsTickets", "loyalty", "subscriptions", "apiKeys", "sdkVision"],
+  "tenant-admin": ["overview", "batches", "tags", "analytics", "events", "leadsTickets", "loyalty", "experiences", "campaigns", "subscriptions", "apiKeys", "sdkVision"],
+  reseller: ["overview", "batches", "analytics", "events", "resellers", "loyalty", "subscriptions", "sdkVision"],
+  viewer: ["overview", "analytics", "events", "sdkVision"],
 };
 
 export const dashboardContent: Record<AppLocale, DashboardContent> = {
   "es-AR": {
     shell: { subtitle: "Control multi-tenant enterprise", search: "Buscar...", role: "Rol", logout: "Salir", apiConnected: "API conectada", loading: "Cargando...", empty: "Sin resultados", all: "Todos", refresh: "Actualizar", openModule: "Abrir módulo", ready: "Listo." },
-    nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Fidelización", experiences: "Experiencias", campaigns: "Campañas", subscriptions: "Suscripciones", apiKeys: "API Keys" },
+    nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Fidelización", experiences: "Experiencias", campaigns: "Campañas", subscriptions: "Suscripciones", apiKeys: "API Keys", sdkVision: "Ecosistema SDK" },
     pages: {
       overview: { title: "Overview operativo", description: "KPIs críticos de autenticación, fraude y operación de lotes." },
       tenants: { title: "Gestión de tenants", description: "Clientes, planes y estado operativo por tenant." },
@@ -120,6 +122,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       campaigns: { title: "Campañas BotIA", description: "Segmentos de crecimiento impulsados por IA para miembros activos." },
       subscriptions: { title: "Suscripciones", description: "Planes activos, renovación y expansión de ingresos." },
       apiKeys: { title: "Developer settings", description: "Gestión de API keys y políticas de rotación." },
+      sdkVision: { title: "Portal SDK & Ecosistema Developer", description: "Por qué nexID democratiza la autenticación física y se expande globalmente." },
     },
     auth: {
       roleLabel: "Rol operativo",
@@ -171,7 +174,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
   },
   "pt-BR": {
     shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "API conectada", loading: "Carregando...", empty: "Sem resultados", all: "Todos", refresh: "Atualizar", openModule: "Abrir módulo", ready: "Pronto." },
-    nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", leadsTickets: "Leads & Tickets", loyalty: "Fidelidade", experiences: "Experiências", campaigns: "Campanhas", subscriptions: "Assinaturas", apiKeys: "API Keys" },
+    nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", leadsTickets: "Leads & Tickets", loyalty: "Fidelidade", experiences: "Experiências", campaigns: "Campanhas", subscriptions: "Assinaturas", apiKeys: "API Keys", sdkVision: "Ecossistema SDK" },
     pages: {
       overview: { title: "Overview operacional", description: "KPIs críticos de autenticação, fraude e lotes." },
       tenants: { title: "Gestão de tenants", description: "Clientes, planos e estado operacional por tenant." },
@@ -186,6 +189,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       campaigns: { title: "Campanhas BotIA", description: "Segmentos de crescimento impulsionados por IA." },
       subscriptions: { title: "Assinaturas", description: "Planos ativos, renovação e expansão." },
       apiKeys: { title: "Developer settings", description: "Gestão de API keys e rotação." },
+      sdkVision: { title: "Portal SDK & Ecossistema Developer", description: "Por que a nexID democratiza a autenticação física e se expande globalmente." },
     },
     auth: {
       roleLabel: "Papel operacional",
@@ -228,7 +232,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       liveQueries: "Consultas ao vivo",
       intentDistribution: "Distribuicao por intencao",
       assistantLedger: "Ledger de assistentes",
-      generatedAnswer: "Resposta gerada",
+      generatedAnswer: "Resposta generada",
       category: "Categoria",
       noQueries: "Nao ha consultas registradas",
     },
@@ -237,7 +241,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
   },
   en: {
     shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "API connected", loading: "Loading...", empty: "No results", all: "All", refresh: "Refresh", openModule: "Open module", ready: "Ready." },
-    nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Loyalty Studio", experiences: "Experiences", campaigns: "Campaigns", subscriptions: "Subscriptions", apiKeys: "API Keys" },
+    nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Loyalty Studio", experiences: "Experiences", campaigns: "Campaigns", subscriptions: "Subscriptions", apiKeys: "API Keys", sdkVision: "SDK Developer Hub" },
     pages: {
       overview: { title: "Operational overview", description: "Critical authentication, fraud and batch KPIs." },
       tenants: { title: "Tenant management", description: "Customers, plans and operating health by tenant." },
@@ -251,7 +255,8 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       experiences: { title: "Experiences", description: "Agenda for visits, tastings and program events." },
       campaigns: { title: "BotIA Campaigns", description: "AI-driven growth segments for active members." },
       subscriptions: { title: "Subscriptions", description: "Active plans, renewal and revenue expansion." },
-      apiKeys: { title: "Developer settings", description: "API key management and rotation policies." },
+      apiKeys: { title: "API key management", description: "API key management and rotation policies." },
+      sdkVision: { title: "SDK & Developer Hub", description: "Why nexID democratizes product authentication and expands globally." },
     },
     auth: {
       roleLabel: "Operating role",

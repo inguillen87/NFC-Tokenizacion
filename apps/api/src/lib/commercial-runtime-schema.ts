@@ -359,7 +359,7 @@ export async function ensureSdkSchema() {
           name text NOT NULL DEFAULT 'SDK key',
           key_prefix text NOT NULL,
           key_hash text NOT NULL UNIQUE,
-          scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events"]'::jsonb,
+          scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events","sdk:pos"]'::jsonb,
           status text NOT NULL DEFAULT 'active',
           last_used_at timestamptz,
           expires_at timestamptz,
@@ -372,7 +372,7 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'SDK key'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS key_prefix text NOT NULL DEFAULT 'legacy'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS key_hash text`;
-      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events"]'::jsonb`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events","sdk:pos"]'::jsonb`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS last_used_at timestamptz`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS expires_at timestamptz`;
@@ -392,6 +392,53 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_tags_claim_activation ON tags(batch_id, uid_hex, active_for_claim)`;
 
       await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS sdk_usage_logs (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL,
+          api_key_id uuid REFERENCES tenant_api_keys(id) ON DELETE SET NULL,
+          endpoint text NOT NULL,
+          status_code integer NOT NULL,
+          latency_ms integer NOT NULL DEFAULT 0,
+          ip_address text,
+          ip_country text,
+          reason text,
+          trace_id text,
+          meta jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_usage_logs_tenant_created ON sdk_usage_logs(tenant_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_usage_logs_api_key_created ON sdk_usage_logs(api_key_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_usage_logs_endpoint_created ON sdk_usage_logs(endpoint, created_at DESC)`;
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS sdk_pos_activations (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          api_key_id uuid REFERENCES tenant_api_keys(id) ON DELETE SET NULL,
+          batch_id uuid REFERENCES batches(id) ON DELETE SET NULL,
+          tag_id uuid REFERENCES tags(id) ON DELETE SET NULL,
+          bid text NOT NULL,
+          uid_hex text,
+          pos_token_prefix text NOT NULL,
+          pos_token_hash text NOT NULL UNIQUE,
+          external_order_id text,
+          retailer_id text,
+          contact text,
+          activation_status text NOT NULL DEFAULT 'active',
+          expires_at timestamptz,
+          used_at timestamptz,
+          claim_request_id uuid,
+          meta jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_pos_activations_tenant_created ON sdk_pos_activations(tenant_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_pos_activations_bid_uid ON sdk_pos_activations(bid, uid_hex)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_pos_activations_status_expiry ON sdk_pos_activations(activation_status, expires_at)`;
+
+      await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS sdk_claim_requests (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -406,6 +453,8 @@ export async function ensureSdkSchema() {
           claim_status text NOT NULL DEFAULT 'pending_verification',
           pin_validated boolean NOT NULL DEFAULT false,
           active_for_claim boolean NOT NULL DEFAULT false,
+          pos_activation_id uuid REFERENCES sdk_pos_activations(id) ON DELETE SET NULL,
+          pos_validated boolean NOT NULL DEFAULT false,
           carrier_profile_code text,
           token_id text,
           tx_hash text,
@@ -421,6 +470,8 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS claim_status text NOT NULL DEFAULT 'pending_verification'`;
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS pin_validated boolean NOT NULL DEFAULT false`;
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS active_for_claim boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS pos_activation_id uuid REFERENCES sdk_pos_activations(id) ON DELETE SET NULL`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS pos_validated boolean NOT NULL DEFAULT false`;
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS token_id text`;
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS tx_hash text`;
@@ -447,6 +498,51 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_tenant_created ON sdk_external_events(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_type_created ON sdk_external_events(event_type, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_bid_uid ON sdk_external_events(bid, uid_hex)`;
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS webhook_endpoints (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          name text NOT NULL DEFAULT 'Webhook',
+          url text NOT NULL,
+          signing_secret text,
+          enabled boolean NOT NULL DEFAULT false,
+          events jsonb NOT NULL DEFAULT '["sdk.verify","sdk.claim.created","sdk.external_event"]'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE (tenant_id, url)
+        )
+      `;
+      await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'Webhook'`;
+      await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS signing_secret text`;
+      await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS enabled boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS events jsonb NOT NULL DEFAULT '["sdk.verify","sdk.claim.created","sdk.external_event"]'::jsonb`;
+      await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`;
+      await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_tenant_enabled ON webhook_endpoints(tenant_id, enabled)`;
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS webhook_deliveries (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          endpoint_id uuid NOT NULL REFERENCES webhook_endpoints(id) ON DELETE CASCADE,
+          event_name text NOT NULL,
+          payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+          status_code integer,
+          ok boolean NOT NULL DEFAULT false,
+          attempt_count integer NOT NULL DEFAULT 0,
+          last_error text,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          delivered_at timestamptz
+        )
+      `;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS payload jsonb NOT NULL DEFAULT '{}'::jsonb`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS status_code integer`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS ok boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS attempt_count integer NOT NULL DEFAULT 0`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS last_error text`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS delivered_at timestamptz`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint_created ON webhook_deliveries(endpoint_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_event_created ON webhook_deliveries(event_name, created_at DESC)`;
     }, () => {
       sdkSchemaReady = null;
     });

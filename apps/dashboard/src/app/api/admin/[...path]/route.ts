@@ -16,14 +16,38 @@ import {
 } from "../../../../lib/demo-runtime-state";
 
 const API_BASE = productUrls.api;
+const DEFAULT_DEMO_TENANT = { slug: "demo-sandbox", name: "Demo Sandbox" };
+const DEMO_TENANT_NAMES: Record<string, string> = {
+  "demo-sandbox": "Demo Sandbox",
+  demobodega: "Demo Bodega",
+  demoevents: "Demo Events",
+};
 const DEMO_BATCH = {
   bid: "DEMO-2026-02",
-  tenant_id: "demobodega",
+  tenant_id: DEFAULT_DEMO_TENANT.slug,
   sku: "DEMO-SKU",
   qty: 10,
   type: "NTAG 424 DNA TT",
   status: "active",
 };
+
+function tenantNameFromSlug(slug: string) {
+  if (DEMO_TENANT_NAMES[slug]) return DEMO_TENANT_NAMES[slug];
+  return slug
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ") || DEFAULT_DEMO_TENANT.name;
+}
+
+function resolveDemoTenant(input?: unknown) {
+  const slug = String(input || "").trim().toLowerCase() || DEFAULT_DEMO_TENANT.slug;
+  return { slug, name: tenantNameFromSlug(slug) };
+}
+
+function demoBatchFor(tenantSlug: string) {
+  return { ...DEMO_BATCH, tenant_id: tenantSlug };
+}
 
 function isDemoSession(req: Request) {
   const cookie = req.headers.get("cookie") || "";
@@ -66,6 +90,8 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   const url = new URL(reqUrl || `${API_BASE}/admin/${normalized}`);
   const payload = safeParseJson(body);
   const tenantFilter = (url.searchParams.get("tenant") || "").trim().toLowerCase();
+  const demoTenant = resolveDemoTenant(tenantFilter);
+  const demoBatch = demoBatchFor(demoTenant.slug);
   const parseUidRows = (raw: unknown) => {
     const text = String(raw || "").replace(/^\uFEFF/, "").trim();
     if (!text) return [] as string[];
@@ -89,7 +115,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   };
 
   if (method === "GET" && normalized === "batches") {
-    return NextResponse.json([DEMO_BATCH]);
+    return NextResponse.json([demoBatch]);
   }
   if (method === "GET" && normalized === "tenants") {
     const demobodegaMetrics = aggregateTenantMetrics({
@@ -103,6 +129,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       deviceAnomalyRate: 0.01,
     });
     const rows = [
+      { id: "demo-tenant-000", slug: DEFAULT_DEMO_TENANT.slug, name: DEFAULT_DEMO_TENANT.name, created_at: new Date().toISOString(), scans: 0, duplicates: 0, tamper: 0, risk_score: 0 },
       { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: demobodegaMetrics.riskScore },
       { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0, risk_score: demoeventsMetrics.riskScore },
     ];
@@ -111,8 +138,8 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   if (method === "GET" && normalized === "events") {
     const runtimeRows = getDashboardDemoEvents(80).map(toDemoAdminEventRow);
     const rows = [
-      { id: "evt-demo-001", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", created_at: new Date().toISOString(), city: "Mendoza", country_code: "AR", lat: -32.8895, lng: -68.8458, bid: "DEMO-2026-02", tenant_slug: "demobodega" },
-      { id: "evt-demo-002", result: "VALID", reason: "sun_ok", uid_hex: "04B1C2D3E4", created_at: new Date().toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "DEMO-2026-02", tenant_slug: "demobodega" },
+      { id: "evt-demo-001", result: "VALID", reason: "sun_ok", uid_hex: "04A1B2C3D4", created_at: new Date().toISOString(), city: "Mendoza", country_code: "AR", lat: -32.8895, lng: -68.8458, bid: "DEMO-2026-02", tenant_slug: demoTenant.slug },
+      { id: "evt-demo-002", result: "VALID", reason: "sun_ok", uid_hex: "04B1C2D3E4", created_at: new Date().toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "DEMO-2026-02", tenant_slug: demoTenant.slug },
       { id: "evt-demo-003", result: "INVALID", reason: "replay_detected", uid_hex: "04F1E2D3C4", created_at: new Date().toISOString(), city: "Rosario", country_code: "AR", lat: -32.9442, lng: -60.6505, bid: "EVENT-2026-01", tenant_slug: "demoevents" },
     ];
     const allRows = [...runtimeRows, ...rows];
@@ -162,7 +189,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     const mergedGeoPoints = mergeDemoGeoPoints(baseGeoPoints, runtimeGeoPoints);
 
     return NextResponse.json(annotatePayload({
-      scope: { tenant: tenantFilter || "demobodega", source: "demo", range: "30d", country: "all" },
+      scope: { tenant: demoTenant.slug, source: "demo", range: "30d", country: "all" },
       kpis: {
         scans,
         validRate: scans ? Number(((valid / scans) * 100).toFixed(1)) : 0,
@@ -252,15 +279,118 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       demoMode: true,
     });
   }
+  if (method === "GET" && normalized === "sdk/api-keys") {
+    return NextResponse.json({
+      ok: true,
+      tenant: { slug: demoTenant.slug, name: demoTenant.name },
+      usage: { monthRequests: 61, avgLatencyMs: 118 },
+      rows: [
+        {
+          id: "sdk-key-demo-pos",
+          tenant_slug: demoTenant.slug,
+          name: `${demoTenant.name} POS + SDK`,
+          key_prefix: "nxid_live_de",
+          scopes: ["sdk:verify", "sdk:claim", "sdk:products", "sdk:events", "sdk:pos"],
+          status: "active",
+          last_used_at: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+      ],
+      demoMode: true,
+      dataSource: "demo",
+    });
+  }
+  if (method === "POST" && normalized === "sdk/api-keys") {
+    return NextResponse.json({
+      ok: true,
+      tenant: resolveDemoTenant(payload?.tenant || tenantFilter),
+      key: {
+        id: "sdk-key-demo-new",
+        name: String(payload?.name || "SDK demo key"),
+        key_prefix: "nxid_live_de",
+        scopes: ["sdk:verify", "sdk:claim", "sdk:products", "sdk:events", "sdk:pos"],
+        status: "active",
+        created_at: new Date().toISOString(),
+      },
+      secret: "nxid_live_demo_only_not_for_production",
+      warning: "Demo fallback secret. Use a real API response for production integrations.",
+      demoMode: true,
+      dataSource: "demo",
+    }, { status: 201 });
+  }
+  if (method === "POST" && normalized === "sdk/claim-policy") {
+    return NextResponse.json({
+      ok: true,
+      tenant: resolveDemoTenant(payload?.tenant || tenantFilter).slug,
+      bid: String(payload?.bid || "DEMO-2026-02"),
+      policy: {
+        activeForClaim: Boolean(payload?.activeForClaim ?? true),
+        claimPinRequired: Boolean(payload?.claimPinRequired),
+        claimRequiresPos: Boolean(payload?.claimRequiresPos ?? true),
+        autoClaimEnabled: Boolean(payload?.autoClaimEnabled ?? true),
+        pinUpdated: Boolean(payload?.pin),
+      },
+      demoMode: true,
+      dataSource: "demo",
+    });
+  }
+  if (method === "GET" && normalized === "webhooks") {
+    return NextResponse.json([
+      {
+        id: "webhook-demo-erp",
+        tenant_slug: demoTenant.slug,
+        name: "ERP / CRM demo webhook",
+        url: "https://cliente.example/api/nexid",
+        enabled: true,
+        events: ["sdk.verify", "sdk.claim.created", "sdk.pos.activated"],
+        has_signing_secret: true,
+        updated_at: new Date(Date.now() - 14 * 60 * 1000).toISOString(),
+      },
+    ]);
+  }
+  if (method === "POST" && normalized === "webhooks") {
+    return NextResponse.json({
+      ok: true,
+      tenant: resolveDemoTenant(payload?.tenant || tenantFilter),
+      endpoint: {
+        id: "webhook-demo-new",
+        name: String(payload?.name || "SDK enterprise webhook"),
+        url: String(payload?.url || "https://cliente.example/api/nexid"),
+        enabled: Boolean(payload?.enabled ?? true),
+        events: Array.isArray(payload?.events) ? payload.events : ["sdk.verify", "sdk.claim.created"],
+        has_signing_secret: Boolean(payload?.signingSecret || payload?.signing_secret),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      demoMode: true,
+      dataSource: "demo",
+    }, { status: 201 });
+  }
+  if (method === "GET" && normalized === "webhook-deliveries") {
+    return NextResponse.json([
+      {
+        id: "delivery-demo-001",
+        tenant_slug: demoTenant.slug,
+        url: "https://cliente.example/api/nexid",
+        event_name: "sdk.pos.activated",
+        status_code: 200,
+        ok: true,
+        attempt_count: 1,
+        last_error: null,
+        created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+        delivered_at: new Date(Date.now() - 10 * 60 * 1000 + 1200).toISOString(),
+      },
+    ]);
+  }
   if (method === "GET" && normalized === "tags") {
     return NextResponse.json(annotatePayload({
-      scope: { tenant: tenantFilter || "demobodega", source: "demo", range: "30d", country: "all", query: "", offset: 0, limit: 100 },
+      scope: { tenant: demoTenant.slug, source: "demo", range: "30d", country: "all", query: "", offset: 0, limit: 100 },
       totals: { total: 3, active_tags: 3, non_active_tags: 0, minted_tags: 1, pending_tokenization: 2 },
       rows: [
         {
           uidHex: "04A1B2C3D4",
           bid: "DEMO-2026-02",
-          tenantSlug: "demobodega",
+          tenantSlug: demoTenant.slug,
           product: { name: "Gran Reserva Malbec", winery: "Demo Bodega", region: "Valle de Uco", vintage: "2022" },
           status: { tag: "active", lastResult: "ok" },
           scans: { count: 41, firstSeenAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(Date.now() - 9 * 60 * 1000).toISOString() },
@@ -276,7 +406,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       count: 1,
       items: [
         {
-          tenantSlug: "demobodega",
+          tenantSlug: demoTenant.slug,
           bid: "DEMO-2026-02",
           uidHex: "04A1B2C3D4",
           productName: "Gran Reserva Malbec",
@@ -296,7 +426,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     return NextResponse.json({
       ok: true,
       item: {
-        tenantSlug: String(payload?.tenantSlug || "demobodega"),
+        tenantSlug: resolveDemoTenant(payload?.tenantSlug || tenantFilter).slug,
         bid: String(payload?.bid || "DEMO-2026-02"),
         uidHex: payload?.uidHex ? String(payload.uidHex) : null,
         productName: String(payload?.productName || "Gran Reserva Malbec"),
@@ -317,7 +447,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       rows: [
         {
           id: "tok-demo-001",
-          tenant_slug: "demobodega",
+          tenant_slug: demoTenant.slug,
           bid: "DEMO-2026-02",
           uid_hex: "04A1B2C3D4",
           status: "anchored",
@@ -328,7 +458,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
         },
         {
           id: "tok-demo-002",
-          tenant_slug: "demobodega",
+          tenant_slug: demoTenant.slug,
           bid: "DEMO-2026-02",
           uid_hex: "04FFEEDDCC",
           status: "pending",
@@ -353,7 +483,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   if (method === "GET" && normalized === "security-alerts") {
     return NextResponse.json({
       ok: true,
-      scope: { tenant: tenantFilter || "demobodega", hours: 24 },
+      scope: { tenant: demoTenant.slug, hours: 24 },
       summary: { repeatedInvalidUid: 1, geoVelocityAlerts: 1 },
       repeatedInvalidUid: [
         { uidHex: "04F1E2D3C4", count: 3, lastSeen: new Date(Date.now() - 15 * 60 * 1000).toISOString(), severity: "high" },
@@ -374,7 +504,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     return NextResponse.json({
       ok: true,
       items: [
-        { id: "alert-demo-001", type: "replay_spike", severity: "high", status: "open", tenant_slug: "demobodega", created_at: new Date().toISOString(), title: "Replay spike detected" },
+        { id: "alert-demo-001", type: "replay_spike", severity: "high", status: "open", tenant_slug: demoTenant.slug, created_at: new Date().toISOString(), title: "Replay spike detected" },
       ],
     });
   }
@@ -382,7 +512,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     return NextResponse.json({
       ok: true,
       items: [
-        { id: "rule-demo-001", tenant_slug: "demobodega", type: "replay_spike", severity: "high", threshold: 2, window_minutes: 60, enabled: true },
+        { id: "rule-demo-001", tenant_slug: demoTenant.slug, type: "replay_spike", severity: "high", threshold: 2, window_minutes: 60, enabled: true },
       ],
     });
   }
@@ -420,9 +550,9 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     const uid = normalized.split("/")[1] || "04A1B2C3D4";
     return NextResponse.json({
       ok: true,
-      scope: { tenant: tenantFilter || "demobodega", source: "demo", range: "30d", country: "all" },
+      scope: { tenant: demoTenant.slug, source: "demo", range: "30d", country: "all" },
       passport: {
-        identity: { uidHex: uid, bid: "DEMO-2026-02", tenantSlug: "demobodega", tagStatus: "active", readCounter: 58, scanCount: 41 },
+        identity: { uidHex: uid, bid: "DEMO-2026-02", tenantSlug: demoTenant.slug, tagStatus: "active", readCounter: 58, scanCount: 41 },
         product: { productName: "Gran Reserva Malbec", winery: "Demo Bodega", region: "Valle de Uco", vintage: "2022", varietal: "Malbec" },
         provenance: {
           origin: { harvestYear: "2022", barrelMonths: 12, temperatureStorage: 16 },
@@ -447,16 +577,16 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   if (method === "POST" && normalized === "tenants") {
     return NextResponse.json({
       id: "demo-tenant-001",
-      slug: String(payload?.slug || "demobodega"),
-      name: String(payload?.name || "Demo Bodega"),
+      slug: String(payload?.slug || demoTenant.slug),
+      name: String(payload?.name || demoTenant.name),
       created_at: new Date().toISOString(),
     }, { status: 201 });
   }
   if (method === "POST" && normalized === "batches") {
     return NextResponse.json({
       ok: true,
-      batch: DEMO_BATCH,
-      requested_quantity: Number(payload?.qty || DEMO_BATCH.qty),
+      batch: demoBatch,
+      requested_quantity: Number(payload?.qty || demoBatch.qty),
       ndef_url_template: "https://api.nexid.lat/sun?v=1&bid=<BATCH_ID>&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
       keys: {
         k_meta_hex: String(payload?.k_meta_hex || "0123456789ABCDEF0123456789ABCDEF"),
@@ -467,8 +597,8 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   if (method === "POST" && normalized === "batches/register") {
     return NextResponse.json({
       ok: true,
-      batch: { ...DEMO_BATCH, bid: String(payload?.bid || DEMO_BATCH.bid), tenant_id: String(payload?.tenant_slug || DEMO_BATCH.tenant_id) },
-      ndef_url_template: `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(String(payload?.bid || DEMO_BATCH.bid))}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`,
+      batch: { ...demoBatch, bid: String(payload?.bid || demoBatch.bid), tenant_id: resolveDemoTenant(payload?.tenant_slug || tenantFilter).slug },
+      ndef_url_template: `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(String(payload?.bid || demoBatch.bid))}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`,
       keys: {
         k_meta_hex: String(payload?.k_meta_hex || "0123456789ABCDEF0123456789ABCDEF"),
         k_file_hex: String(payload?.k_file_hex || "ABCDEF0123456789ABCDEF0123456789"),
@@ -479,7 +609,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     const uids = Array.isArray(payload?.uids) ? payload?.uids : [];
     return NextResponse.json({
       ok: true,
-      batch: normalized.split("/")[1] || DEMO_BATCH.bid,
+      batch: normalized.split("/")[1] || demoBatch.bid,
       imported: uids.length,
       ignored: 0,
     });
@@ -487,7 +617,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   if (method === "POST" && normalized.endsWith("/activate-all")) {
     return NextResponse.json({
       ok: true,
-      batch: normalized.split("/")[1] || DEMO_BATCH.bid,
+      batch: normalized.split("/")[1] || demoBatch.bid,
       activated: Number(payload?.limit || 10),
     });
   }
@@ -495,17 +625,17 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     const importedRows = parseUidRows(payload?.csv).length;
     return NextResponse.json({
       ok: true,
-      batch: DEMO_BATCH.bid,
+      batch: demoBatch.bid,
       importedRows,
       activated: payload?.activateImported ? importedRows : 0,
       ignored: 0,
-      manifestBatchIds: [DEMO_BATCH.bid],
+      manifestBatchIds: [demoBatch.bid],
     });
   }
   if (method === "POST" && normalized === "tags/activate") {
     return NextResponse.json({
       ok: true,
-      batch: String(payload?.bid || DEMO_BATCH.bid),
+      batch: String(payload?.bid || demoBatch.bid),
       activated: Number(payload?.count || 1),
       requested: Number(payload?.count || 1),
     });
@@ -513,7 +643,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   if (method === "POST" && normalized.endsWith("/revoke")) {
     return NextResponse.json({
       ok: true,
-      batch: normalized.split("/")[1] || DEMO_BATCH.bid,
+      batch: normalized.split("/")[1] || demoBatch.bid,
       reason: String(payload?.reason || "manual revoke"),
       status: "revoked",
     });
