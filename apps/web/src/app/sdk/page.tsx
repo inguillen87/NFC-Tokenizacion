@@ -82,7 +82,7 @@ const industryShowcase = [
   {
     title: "Agro & Alimentos",
     body: "Trazabilidad de semillas, insumos y alimentos. Lotes, origen, cadena de frio y condiciones verificables.",
-    image: "/sdk/verticals/agro-nfc-qr-traceability.png",
+    image: "/sdk/verticals/agro-nfc-qr-traceability.webp",
     cta: "Ver solucion",
     metric: "Batch + sensor",
     tags: ["QR", "NFC", "IoT"],
@@ -92,7 +92,7 @@ const industryShowcase = [
   {
     title: "Eventos & Tickets",
     body: "Entradas inviolables, accesos cashless, pasaportes y consumos en tiempo real sin depender de QR duplicables.",
-    image: "/sdk/verticals/events-nfc-qr-access.png",
+    image: "/sdk/verticals/events-nfc-qr-access.webp",
     cta: "Ver solucion",
     metric: "Tap + acceso",
     tags: ["NFC", "QR", "POS"],
@@ -102,7 +102,7 @@ const industryShowcase = [
   {
     title: "Pharma & Salud",
     body: "Autenticidad de medicamentos, prospecto digital, alertas, recall y cadena de frio con evidencias auditables.",
-    image: "/sdk/pharma-authentication-pack.png",
+    image: "/sdk/pharma-authentication-pack.webp",
     cta: "Ver solucion",
     metric: "Recall listo",
     tags: ["QR", "NFC", "Cold chain"],
@@ -112,7 +112,7 @@ const industryShowcase = [
   {
     title: "Belleza & Cosmetica",
     body: "Perfumes, skincare y envases recargables con sello NFC, QR, tamper y proteccion contra refill fraudulento.",
-    image: "/sdk/verticals/cosmetics-nfc-qr-tamper.png",
+    image: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp",
     cta: "Ver solucion",
     metric: "Tamper + refill",
     tags: ["NFC", "QR", "Tamper"],
@@ -122,7 +122,7 @@ const industryShowcase = [
   {
     title: "Vinos & Spirits",
     body: "Botellas premium con NTAG 424 DNA TT, tail de apertura, passport, ownership y trazabilidad para exportacion.",
-    image: "/sdk/verticals/wine-spirits-424-tt.png",
+    image: "/sdk/verticals/wine-spirits-424-tt.webp",
     cta: "Ver solucion",
     metric: "424 TT",
     tags: ["424 DNA", "Tail", "SUN"],
@@ -132,7 +132,7 @@ const industryShowcase = [
   {
     title: "Retail & Lujo",
     body: "Producto original, garantia, reventa, experiencias exclusivas y fidelizacion premium desde el empaque fisico.",
-    image: "/sdk/verticals/luxury-nfc-qr-tamper.png",
+    image: "/sdk/verticals/luxury-nfc-qr-tamper.webp",
     cta: "Ver solucion",
     metric: "Ownership",
     tags: ["NFC", "QR", "Cert"],
@@ -142,7 +142,7 @@ const industryShowcase = [
   {
     title: "Logistica & Cadena Fria",
     body: "Pallets, cajas, UHF/RFID, QR, NFC y sensores de temperatura para auditoria operativa y rutas verificables.",
-    image: "/sdk/verticals/logistics-uhf-nfc-qr.png",
+    image: "/sdk/verticals/logistics-uhf-nfc-qr.webp",
     cta: "Ver solucion",
     metric: "UHF + IoT",
     tags: ["UHF", "NFC", "Temp"],
@@ -152,7 +152,7 @@ const industryShowcase = [
   {
     title: "Electronica & Garantia",
     body: "Garantia, propiedad, serializacion y postventa con QR/NFC sellando el empaque y evitando reclamos falsos.",
-    image: "/sdk/verticals/electronics-warranty-nfc-qr.png",
+    image: "/sdk/verticals/electronics-warranty-nfc-qr.webp",
     cta: "Ver solucion",
     metric: "Warranty",
     tags: ["QR", "NFC", "DPP"],
@@ -162,7 +162,7 @@ const industryShowcase = [
   {
     title: "Textil & DPP",
     body: "Pasaporte digital de producto, etiqueta de cuidado conectada, sustentabilidad, origen y reventa verificable.",
-    image: "/sdk/verticals/textile-dpp-nfc-qr.png",
+    image: "/sdk/verticals/textile-dpp-nfc-qr.webp",
     cta: "Ver solucion",
     metric: "EU DPP",
     tags: ["QR", "NFC", "DPP"],
