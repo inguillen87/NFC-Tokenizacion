@@ -667,6 +667,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             ? "Centro de ciudad aproximado"
             : "Sin ubicacion";
   const distanceDisplay = fmtDistance(originToTapDistance);
+  const dynamicTastingNotes = result.product?.notes || result.product?.tasting_notes || "Entrada dulce y carnosa, con taninos maduros y redondos. Final persistente con toques de cacao y frutos negros.";
+  const dynamicMaridaje = result.product?.maridaje || "Carnes rojas asadas, pastas con salsas trufadas o quesos curados.";
+  const dynamicTemp = result.iot?.sensorSnapshot?.cellarTemperature || "15.2°C";
+  const dynamicHumidity = result.iot?.sensorSnapshot?.humidity || "62%";
+  const dynamicLight = result.iot?.sensorSnapshot?.lightExposure || "Low / protected";
+  const dynamicShock = result.iot?.sensorSnapshot?.transitShock || "No critical shocks detected";
   const mapUid = uid || uidMasked || bid || "sun-public-tap";
   const mapTenant = String(result.identity?.tenantSlug || "public");
   const mapProductName = result.product?.name || result.identity?.bid || "Producto verificado";
@@ -1679,7 +1685,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </div>
               <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-400 flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                ESTABLE (15.2°C)
+                ESTABLE ({dynamicTemp})
               </span>
             </div>
 
@@ -1697,13 +1703,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <line x1="0" y1="35" x2="300" y2="35" stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
               </svg>
               <div className="absolute right-2 top-0.5 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-black text-slate-950">
-                15.2°C
+                {dynamicTemp}
               </div>
             </div>
 
             <div className="flex justify-between text-[9px] text-slate-500">
-              <span>Humedad: 62%</span>
-              <span>G-Force: 0.0g (Estable)</span>
+              <span>Humedad: {dynamicHumidity}</span>
+              <span>G-Force: {dynamicShock}</span>
             </div>
           </div>
 
@@ -1712,10 +1718,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <div className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-2">
               <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Detalle del Sommelier</span>
               <p className="text-slate-300 italic">
-                "Entrada dulce y carnosa, con taninos maduros y redondos. Final persistente con toques de cacao y frutos negros."
+                "{dynamicTastingNotes}"
               </p>
               <p className="text-[10px] text-amber-300 font-medium">
-                🍷 Maridaje: Carnes rojas asadas, pastas con salsas trufadas o quesos curados.
+                🍷 Maridaje: {dynamicMaridaje}
               </p>
             </div>
           )}

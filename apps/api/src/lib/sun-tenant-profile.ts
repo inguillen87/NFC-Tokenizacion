@@ -73,6 +73,13 @@ export type SunTenantProfile = {
     serving: string | null;
     oakType: string | null;
     imageUrl: string | null;
+    notes?: string | null;
+    tasting_notes?: string | null;
+    maridaje?: string | null;
+    simulatedTempC?: number | null;
+    simulatedHumidityPct?: number | null;
+    simulatedLight?: string | null;
+    simulatedShock?: string | null;
     media: Record<string, unknown> | null;
   };
 };
@@ -307,6 +314,13 @@ export function resolveSunTenantProfile(input: {
         serving: firstString(readPath(config, ["sun", "product", "serving"])),
         oakType: firstString(readPath(config, ["sun", "product", "oakType"])),
         imageUrl: firstString(passport?.image_url, readPath(config, ["sun", "product", "imageUrl"]), readPath(config, ["sun", "product", "image_url"])),
+        notes: firstString(readPath(config, ["sun", "product", "notes"]), readPath(config, ["sun", "product", "tasting_notes"])),
+        tasting_notes: firstString(readPath(config, ["sun", "product", "tasting_notes"]), readPath(config, ["sun", "product", "notes"])),
+        maridaje: firstString(readPath(config, ["sun", "product", "maridaje"])),
+        simulatedTempC: toNumber(readPath(config, ["sun", "telemetry", "simulatedTempC"])) || toNumber(readPath(config, ["sun", "product", "simulatedTempC"])),
+        simulatedHumidityPct: toNumber(readPath(config, ["sun", "telemetry", "simulatedHumidityPct"])) || toNumber(readPath(config, ["sun", "product", "simulatedHumidityPct"])),
+        simulatedLight: firstString(readPath(config, ["sun", "telemetry", "simulatedLight"])) || firstString(readPath(config, ["sun", "product", "simulatedLight"])),
+        simulatedShock: firstString(readPath(config, ["sun", "telemetry", "simulatedShock"])) || firstString(readPath(config, ["sun", "product", "simulatedShock"])),
         media,
       },
     },

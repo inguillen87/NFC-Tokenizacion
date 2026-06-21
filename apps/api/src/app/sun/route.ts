@@ -1080,9 +1080,15 @@ async function getCtaTimelineSummary(bid: string, uid: string | undefined): Prom
     }));
 }
 
-function buildDemoSensorHistory(timeline: TimelineEvent[], fallbackStorage: string | null, barrelMonths: number | null) {
-  const baselineTemp = Number((fallbackStorage || "").replace(/[^\d.]/g, "")) || 16;
-  const baselineHumidity = 68;
+function buildDemoSensorHistory(
+  timeline: TimelineEvent[],
+  fallbackStorage: string | null,
+  barrelMonths: number | null,
+  simulatedTemp?: number | string | null,
+  simulatedHumidity?: number | string | null
+) {
+  const baselineTemp = simulatedTemp != null && !Number.isNaN(Number(simulatedTemp)) ? Number(simulatedTemp) : (Number((fallbackStorage || "").replace(/[^\d.]/g, "")) || 16);
+  const baselineHumidity = simulatedHumidity != null && !Number.isNaN(Number(simulatedHumidity)) ? Number(simulatedHumidity) : 68;
   const stages = ["cellar", "distribution", "retail", "consumer"];
   const measuredTimeline = timeline.filter((event) => event.sensorTempC != null || event.sensorHumidity != null);
   if (measuredTimeline.length) {
@@ -1095,14 +1101,14 @@ function buildDemoSensorHistory(timeline: TimelineEvent[], fallbackStorage: stri
           ? "Humedad fuera de rango declarado"
           : null;
       return {
-      at: event.at,
-      stage: event.stage || stages[Math.min(index, stages.length - 1)],
-      temperatureC,
-      humidityPct,
-      barrelAgeMonths: barrelMonths,
-      alert,
-    };
-  });
+        at: event.at,
+        stage: event.stage || stages[Math.min(index, stages.length - 1)],
+        temperatureC,
+        humidityPct,
+        barrelAgeMonths: barrelMonths,
+        alert,
+      };
+    });
   }
   return [{
     at: new Date().toISOString(),
@@ -1387,7 +1393,13 @@ function buildPublicContract(params: {
   });
   if (eventId) tapQuery.set("eventId", eventId);
   const wineryLocation = tenantProfile.origin.address || tenantProfile.origin.label || null;
-  const sensorHistory = buildDemoSensorHistory(params.timeline, fallbackStorage, params.passport?.barrel_months || fallbackBarrelMonths);
+  const sensorHistory = buildDemoSensorHistory(
+    params.timeline,
+    fallbackStorage,
+    params.passport?.barrel_months || fallbackBarrelMonths,
+    tenantProfile.product.simulatedTempC,
+    tenantProfile.product.simulatedHumidityPct
+  );
   const avgTemp = sensorHistory.length ?(sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
   const avgHumidity = sensorHistory.length ?(sensorHistory.reduce((acc, item) => acc + (item.humidityPct || 0), 0) / sensorHistory.length) : null;
   const timelineLatest = params.timeline[0] || null;
@@ -1550,6 +1562,10 @@ function buildPublicContract(params: {
       alcohol: fallbackAlcohol,
       bottle: fallbackBottle,
       serving: fallbackServing,
+      notes: tenantProfile.product.notes || null,
+      tasting_notes: tenantProfile.product.tasting_notes || null,
+      maridaje: tenantProfile.product.maridaje || null,
+      oakType: tenantProfile.product.oakType || null,
       imageUrl: params.passport?.image_url || fallbackImageUrl,
       image_url: params.passport?.image_url || fallbackImageUrl,
       media: fallbackMedia,
@@ -1606,8 +1622,8 @@ function buildPublicContract(params: {
       sensorSnapshot: {
         cellarTemperature: avgTemp != null ?`${avgTemp.toFixed(1)}°C` : null,
         humidity: avgHumidity != null ?`${avgHumidity.toFixed(0)}%` : null,
-        lightExposure: "Low / protected",
-        transitShock: sensorHistory.some((item) => item.alert) ?"Potential handling alert detected" : "No critical shocks detected",
+        lightExposure: tenantProfile.product.simulatedLight || "Low / protected",
+        transitShock: tenantProfile.product.simulatedShock || (sensorHistory.some((item) => item.alert) ? "Potential handling alert detected" : "No critical shocks detected"),
       },
       sensorHistory,
     },

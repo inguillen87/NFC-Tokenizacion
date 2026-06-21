@@ -35,6 +35,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
       b.status,
       b.created_at,
       t.slug AS tenant_slug,
+      b.sdm_config,
       COALESCE(b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', '')) AS carrier_profile_code,
       cp.label AS carrier_label,
       cp.security_level AS carrier_security_level,
@@ -103,7 +104,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
     LEFT JOIN tags ON tags.batch_id = b.id
     LEFT JOIN tag_profiles tp ON tp.tag_id = tags.id
     WHERE b.bid = ${bid}
-    GROUP BY b.id, t.slug, t.name, cp.code, cp.label, cp.security_level, cp.capabilities, cp.admin_copy, cp.consumer_copy, cp.cost_band
+    GROUP BY b.id, b.sdm_config, t.slug, t.name, cp.code, cp.label, cp.security_level, cp.capabilities, cp.admin_copy, cp.consumer_copy, cp.cost_band
     LIMIT 1
   `;
 

@@ -4,6 +4,7 @@ import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSessi
 import type { ConsumerPortalProduct } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
 import { MetamaskSandboxCard } from "./metamask-sandbox-card";
+import { WalletInteractiveClient } from "../_components/wallet-interactive-client";
 
 type TenantWallet = {
   slug?: string | null;
@@ -36,19 +37,6 @@ function hasOnChainProof(product: ConsumerPortalProduct) {
   const txHash = String(product.tokenization_tx_hash || "");
   const status = String(product.tokenization_status || "").toLowerCase();
   return Boolean(txHash && status !== "none" && !txHash.toUpperCase().includes("DEMO"));
-}
-
-function walletStatus(product: ConsumerPortalProduct) {
-  const ownership = String(product.ownership_record_status || product.ownership_status || "viewed").toLowerCase();
-  if (hasOnChainProof(product)) return "Certificado (Blockchain)";
-  if (String(product.tokenization_status || "none").toLowerCase() !== "none") return `NFT ${product.tokenization_status}`;
-  if (ownership === "claimed") return "Propietario Confirmado";
-  return "Listo para Reclamar";
-}
-
-function certificateHref(product: ConsumerPortalProduct) {
-  const eventId = String(product.latest_tap_event_id || product.first_tap_event_id || "").trim();
-  return eventId ? `/certificado/${encodeURIComponent(eventId)}` : "";
 }
 
 export default async function WalletLedgerPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -145,116 +133,9 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
               ))}
             </section>
 
-            {/* Collected Certificates List */}
-            <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-white/5">
-                <div>
-                  <h3 className="text-sm font-black text-white">Tus Certificados Digitales (NFTs)</h3>
-                  <p className="text-xs text-slate-400">Colección original vinculada a tu identidad digital.</p>
-                </div>
-                <Link href={selectedTenant ? `/me/marketplace?tenant=${encodeURIComponent(selectedTenant)}` : "/me/marketplace"} className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20 transition">
-                  Ver Club de Beneficios
-                </Link>
-              </div>
+            {/* Collected Certificates List - Rendered with Interactive Client */}
+            <WalletInteractiveClient initialProducts={products} selectedTenant={selectedTenant} />
 
-              {!products.length ? (
-                <div className="rounded-3xl border border-dashed border-white/10 bg-slate-950/25 p-8 text-center text-slate-400">
-                  <PackageCheck className="mx-auto h-10 w-10 text-slate-600 animate-pulse" />
-                  <p className="mt-3 text-xs">Todavía no has asociado productos.</p>
-                  <p className="mt-1 text-[10px] text-slate-500 max-w-sm mx-auto">
-                    Cuando escanees un vino con nexID, presiona "Reclamar Dueño" para que aparezca su certificado aquí.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {products.slice(0, 10).map((product, index) => {
-                    const tenant = String(product.tenant_slug || selectedTenant || "");
-                    const txHash = String(product.tokenization_tx_hash || "");
-                    const explorerHref = hasOnChainProof(product) ? `https://amoy.polygonscan.com/tx/${encodeURIComponent(txHash)}` : "";
-                    const certificateUrl = certificateHref(product);
-                    const statusText = walletStatus(product);
-                    const isClaimed = String(product.ownership_record_status || product.ownership_status || "").toLowerCase() === "claimed";
-                    
-                    // Determine wine or case asset thumbnail
-                    const isBottle = !product.product_name?.toLowerCase().includes("crate") && !product.product_name?.toLowerCase().includes("caja");
-                    const thumbnailImg = isBottle ? "/images/premium_magnum.png" : "/images/wine_crate.png";
-
-                    return (
-                      <article key={`${product.bid || product.product_name || "wallet-product"}-${index}`} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 transition duration-300 hover:border-white/10 relative overflow-hidden">
-                        <div className="absolute right-0 top-0 h-16 w-16 bg-gradient-to-bl from-amber-500/5 to-transparent blur-md" />
-                        
-                        <div className="flex gap-4 items-start">
-                          
-                          {/* Visual asset thumbnail */}
-                          <div className="h-16 w-14 shrink-0 rounded-xl border border-white/10 bg-black/40 p-1 flex items-center justify-center overflow-hidden">
-                            <img
-                              src={thumbnailImg}
-                              alt={product.product_name || "Wine"}
-                              className="h-14 w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]"
-                            />
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-start justify-between gap-2">
-                              <div>
-                                <span className="rounded-full border border-amber-400/20 bg-amber-400/5 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-300/80">
-                                  Certificado Original
-                                </span>
-                                <h3 className="mt-1 text-sm font-black text-white truncate leading-snug">{product.product_name || "Vino Auténtico"}</h3>
-                                <p className="text-[10px] text-slate-400 mt-0.5">
-                                  Bodega: <span className="text-slate-200 font-bold">{product.brand_name || "nexID Partner"}</span> · Lote: <span className="font-mono text-slate-300">{product.bid || "n/a"}</span>
-                                </p>
-                              </div>
-                              <span className={`rounded-full border px-2.5 py-0.5 text-[8px] font-black uppercase tracking-wider shrink-0 ${
-                                hasOnChainProof(product)
-                                  ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-300"
-                                  : isClaimed
-                                  ? "border-cyan-500/35 bg-cyan-500/10 text-cyan-300"
-                                  : "border-white/5 bg-slate-900 text-slate-400"
-                              }`}>
-                                {statusText}
-                              </span>
-                            </div>
-
-                            <div className="mt-3 grid gap-2 text-[10px] sm:grid-cols-3">
-                              <div className="rounded-xl border border-white/5 bg-slate-900/50 p-2.5">
-                                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Estado Propietario</span>
-                                <strong className="mt-1 block text-white uppercase">{String(product.ownership_record_status || product.ownership_status || "viewed").toUpperCase()}</strong>
-                              </div>
-                              
-                              <div className="rounded-xl border border-white/5 bg-slate-900/50 p-2.5">
-                                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Registro Blockchain</span>
-                                <strong className="mt-1 block text-white">
-                                  {product.tokenization_token_id ? `Token ID #${product.tokenization_token_id}` : String(product.tokenization_status || "Pendiente")}
-                                </strong>
-                              </div>
-
-                              <div className="rounded-xl border border-white/5 bg-slate-900/50 p-2.5 flex flex-col justify-center">
-                                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold mb-1">Acciones</span>
-                                {certificateUrl ? (
-                                  <Link href={certificateUrl} className="inline-flex items-center gap-1 font-black text-amber-300 hover:text-white transition">
-                                    Ver Firma <ExternalLink className="h-3 w-3" />
-                                  </Link>
-                                ) : explorerHref ? (
-                                    <a href={explorerHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-black text-emerald-300 hover:text-white transition">
-                                      Ver Tx <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                ) : (
-                                  <Link href={tenant ? `/me/marketplace?tenant=${encodeURIComponent(tenant)}` : "/me/marketplace"} className="inline-flex font-black text-cyan-300 hover:text-white transition">
-                                    Canjear Club
-                                  </Link>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
          </div>
 
          {/* Right Column: Faucet / Metamask / Sandbox & Tenant Points */}

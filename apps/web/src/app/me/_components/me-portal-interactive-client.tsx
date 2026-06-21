@@ -1,0 +1,570 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { 
+  Award, 
+  ShieldCheck, 
+  Sparkles, 
+  Compass, 
+  History, 
+  Tag, 
+  Box, 
+  Clock, 
+  UserCheck, 
+  ArrowRight,
+  ExternalLink,
+  ChevronRight,
+  MapPin,
+  Layers,
+  Coins,
+  PackageCheck,
+  Share2,
+  TrendingUp,
+  ShoppingBag,
+  Info
+} from "lucide-react";
+
+type MePayload = {
+  ok?: boolean;
+  consumer?: { email?: string | null; display_name?: string | null; passport_status?: string | null; preferred_locale?: string | null; status?: string | null };
+  stats?: { products?: number; taps?: number; memberships?: number; unread?: number; rewards?: number };
+};
+
+type Product = {
+  product_name?: string;
+  brand_name?: string | null;
+  tenant_slug?: string;
+  bid?: string | null;
+  batch?: string | null;
+  sku?: string | null;
+  vertical?: string | null;
+  category?: string | null;
+  image_url?: string | null;
+  imageUrl?: string | null;
+  photo_url?: string | null;
+  photoUrl?: string | null;
+  ownership_record_status?: string | null;
+  ownership_status?: string | null;
+  tokenization_tx_hash?: string | null;
+  tokenization_token_id?: string | number | null;
+  tokenization_status?: string | null;
+  latest_tap_event_id?: string | null;
+  first_tap_event_id?: string | null;
+};
+
+type Tap = { created_at?: string; verdict?: string; tenant_slug?: string; city?: string; country?: string };
+type Brand = { slug?: string; name?: string; status?: string };
+
+type MePortalInteractiveClientProps = {
+  me: MePayload | null;
+  products: Product[];
+  taps: Tap[];
+  brands: Brand[];
+  passportReadiness: number;
+  featuredAsset: any;
+  featuredAssetReadiness: string;
+};
+
+type TabType = "passport" | "nfts" | "trades" | "drops";
+
+export function MePortalInteractiveClient({
+  me,
+  products,
+  taps,
+  brands,
+  passportReadiness,
+  featuredAsset,
+  featuredAssetReadiness,
+}: MePortalInteractiveClientProps) {
+  const [activeTab, setActiveTab] = useState<TabType>("passport");
+  const [p2pPrice, setP2pPrice] = useState<Record<string, string>>({});
+  const [listedProducts, setListedProducts] = useState<Record<string, number>>({});
+  const [trades, setTrades] = useState<Array<{ id: string; assetName: string; type: "claim" | "mint" | "list" | "sell" | "buy" | "transfer"; from: string; to: string; price?: string; at: string; txHash?: string }>>([
+    { id: "tx-001", assetName: "Gran Reserva Malbec 2022", type: "mint", from: "0x0000...0000", to: "Tu Billetera", at: "Hace 2 horas", txHash: "0x51c9d2f...39b1" },
+    { id: "tx-002", assetName: "Gran Reserva Malbec 2022", type: "claim", from: "Bodega del Valle", to: "Tu Cuenta", at: "Hace 2 horas", txHash: "0x34a1b02...c55d" },
+    { id: "tx-003", assetName: "Reserva Cabernet 2021", type: "buy", from: "0x8f2d...b38e", to: "Tu Billetera", price: "2,500 pts + 45 USD", at: "Ayer", txHash: "0xae10c43...4490" },
+    { id: "tx-004", assetName: "Chardonnay de Altura 2023", type: "transfer", from: "Tu Billetera", to: "0x3ddf...45a1", at: "Hace 3 días", txHash: "0x9d3ef84...212a" },
+  ]);
+
+  const stats = me?.stats || {};
+  const activeMemberships = brands.filter((item) => String(item.status || "").toLowerCase() === "active").length;
+  const verifiedProducts = products.filter((item) => String(item.ownership_record_status || item.ownership_status || "").toLowerCase() === "claimed").length;
+  const latestTaps = taps.slice(0, 5);
+  const consumerName = String(me?.consumer?.display_name || "").trim() || String(me?.consumer?.email || "Coleccionista Premium");
+
+  const journey = [
+    { title: "Tap Físico", desc: "Lectura NFC segura desde el celular sobre el producto.", icon: Compass },
+    { title: "Verificación", desc: "Validación digital de autenticidad en tiempo real.", icon: ShieldCheck },
+    { title: "Ownership", desc: "Propiedad digital registrada en tu Pasaporte.", icon: Award },
+    { title: "Marketplace", desc: "Canje de beneficios, preventas y drops premium.", icon: Sparkles },
+  ];
+
+  const mockDrops = [
+    { id: "drop-1", name: "Estuche Colección Ícono Malbec 2020", winery: "Demo Bodega", price: "4,000 pts", cashPrice: "$120 USD", stock: "6 unidades", img: "/images/wine_crate.png" },
+    { id: "drop-2", name: "Gran Reserva Cabernet Franc 2021", winery: "Bodega Altamira", price: "3,000 pts", cashPrice: "$85 USD", stock: "14 unidades", img: "/images/premium_magnum.png" },
+    { id: "drop-3", name: "Chardonnay Single Vineyard Barrel Select", winery: "Gualtallary Estate", price: "2,500 pts", cashPrice: "$60 USD", stock: "22 unidades", img: "/images/premium_magnum.png" },
+  ];
+
+  const handleListForSale = (uid: string, productName: string) => {
+    const price = p2pPrice[uid] || "3,500 pts";
+    setListedProducts((prev) => ({ ...prev, [uid]: Number(price.replace(/[^\d]/g, "")) || 3500 }));
+    setTrades((prev) => [
+      {
+        id: `tx-${Math.random().toString(36).substring(2, 6)}`,
+        assetName: productName,
+        type: "list",
+        from: "Tu Billetera",
+        to: "P2P Marketplace",
+        price,
+        at: "Ahora mismo",
+      },
+      ...prev,
+    ]);
+  };
+
+  const certificateHref = (product: Product) => {
+    const eventId = String(product.latest_tap_event_id || product.first_tap_event_id || "").trim();
+    return eventId ? `/certificado/${encodeURIComponent(eventId)}` : "";
+  };
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Category/Tabs Navigation Bar */}
+      <div className="flex border-b border-white/10 bg-slate-950/60 p-2 rounded-2xl backdrop-blur-xl sticky top-[72px] z-[40] overflow-x-auto gap-2">
+        {[
+          { id: "passport", label: "Pasaporte Digital", icon: Award },
+          { id: "nfts", label: "Bodega & NFTs Reclamados", icon: PackageCheck },
+          { id: "trades", label: "Libro de Trades & P2P", icon: History },
+          { id: "drops", label: "Drops & Tienda Exclusiva", icon: ShoppingBag },
+        ].map((tab) => {
+          const TabIcon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as TabType)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shrink-0 ${
+                isActive
+                  ? "bg-amber-500 text-slate-950 shadow-md"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <TabIcon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Contents: PASSPORT (Dashboard View) */}
+      {activeTab === "passport" && (
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            {/* Left: Golden Passport Card */}
+            <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-[linear-gradient(135deg,#131316_0%,#1e1b18_100%)] p-6 shadow-2xl transition hover:border-amber-500/35">
+              <div className="absolute -right-20 -top-20 h-44 w-44 rounded-full bg-amber-500/5 blur-3xl" />
+              <div className="absolute -left-20 -bottom-20 h-44 w-44 rounded-full bg-amber-600/5 blur-3xl" />
+              
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">nexID GLOBAL AUTHENTICITY PASSPORT</p>
+                  <div className="mt-4 flex items-center gap-2">
+                    <h2 className="text-2xl font-black text-white tracking-tight">{consumerName}</h2>
+                    <UserCheck className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <p className="mt-1 text-[11px] font-mono text-slate-400">{me?.consumer?.email || "email no verificado"}</p>
+                </div>
+                
+                {/* Hologram security chip */}
+                <div className="h-10 w-12 rounded-lg border border-amber-400/30 bg-gradient-to-br from-amber-300/20 to-amber-600/30 p-1.5 flex flex-col justify-between shadow-inner">
+                  <span className="h-1 w-full bg-amber-300/40 rounded-sm block" />
+                  <span className="h-1 w-2/3 bg-amber-300/30 rounded-sm block" />
+                  <span className="h-2 w-full bg-amber-300/20 rounded-sm block" />
+                </div>
+              </div>
+
+              <div className="mt-8 rounded-2xl border border-white/5 bg-black/40 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Nivel de Pasaporte</p>
+                    <p className="mt-1 text-xs text-amber-200">
+                      {passportReadiness >= 80 ? "Coleccionista Platino" : passportReadiness >= 50 ? "Coleccionista Oro" : "Starter"}
+                    </p>
+                  </div>
+                  <span className="text-2xl font-black tracking-tight text-white">{passportReadiness}%</span>
+                </div>
+                <div className="mt-3.5 h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-1000" style={{ width: `${passportReadiness}%` }} />
+                </div>
+              </div>
+              
+              <div className="mt-6 flex flex-wrap gap-4 text-xs font-mono text-slate-400">
+                <div>
+                  <span className="block text-[9px] uppercase tracking-wider text-slate-500">Membresías</span>
+                  <span className="text-slate-200">{activeMemberships} Activas</span>
+                </div>
+                <div className="h-8 w-px bg-white/5" />
+                <div>
+                  <span className="block text-[9px] uppercase tracking-wider text-slate-500">Estatus de Cuenta</span>
+                  {me?.consumer?.status === "verified" ? (
+                    <span className="text-emerald-400 font-bold">2FA VERIFICADA</span>
+                  ) : (
+                    <span className="text-amber-400 font-bold">REGISTRADA (Simple)</span>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Right: Featured Product Showcase */}
+            <section className="relative overflow-hidden rounded-3xl border border-emerald-300/10 bg-slate-950/80 p-5 shadow-xl">
+              <div className="grid gap-4 sm:grid-cols-[1.3fr_0.7fr]">
+                <div className="flex flex-col justify-between">
+                  <div>
+                    <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                      Último Destacado Reclamado
+                    </span>
+                    <h3 className="mt-3 text-xl font-black text-white tracking-tight leading-tight">{featuredAsset.productName}</h3>
+                    <p className="mt-1 text-xs text-slate-400">Original de {featuredAsset.brandName}</p>
+                    <p className="mt-3 text-[11px] leading-relaxed text-slate-300">
+                      Firma digital y procedencia de bodega activa. El activo está anclado de forma criptográfica y segura a tu identidad.
+                    </p>
+                  </div>
+                  
+                  <div className="mt-4 flex flex-wrap gap-1.5 text-[10px]">
+                    <span className="rounded-full border border-white/5 bg-white/5 px-2 py-0.5 text-slate-300">{featuredAsset.batchLabel}</span>
+                    <span className="rounded-full border border-emerald-400/20 bg-emerald-400/5 px-2 py-0.5 text-emerald-300 font-medium">{featuredAssetReadiness}</span>
+                  </div>
+                </div>
+                
+                <div className="relative min-h-36 flex items-center justify-center rounded-2xl border border-white/5 bg-[linear-gradient(135deg,#0a0a0c,#161619)] p-2 group overflow-hidden">
+                  <img
+                    src={featuredAsset.primaryImageUrl || "/images/premium_magnum.png"}
+                    alt={featuredAsset.productName}
+                    className="h-32 w-auto object-contain transition duration-500 group-hover:scale-110 drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)]"
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-6">
+              {/* Metrics Grid */}
+              <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
+                {[
+                  ["Vinos Verificados", String(verifiedProducts), "border-emerald-500/10 bg-emerald-500/5 text-emerald-300"],
+                  ["Escaneos Taps", String(stats.taps || 0), "border-cyan-500/10 bg-cyan-500/5 text-cyan-300"],
+                  ["Clubes Activos", String(activeMemberships), "border-amber-500/10 bg-amber-500/5 text-amber-300"],
+                  ["Total Guardados", String(stats.products || 0), "border-violet-500/10 bg-violet-500/5 text-violet-300"],
+                  ["Alertas / Inbox", String(stats.unread || 0), "border-rose-500/10 bg-rose-500/5 text-rose-300"],
+                ].map(([title, value, colorClass]) => (
+                  <article key={title} className={`rounded-2xl border p-4 text-center transition hover:scale-[1.01] ${colorClass}`}>
+                    <span className="block text-[9px] uppercase tracking-wider text-slate-400">{title}</span>
+                    <b className="mt-2 block text-3xl font-black tracking-tight">{value}</b>
+                  </article>
+                ))}
+              </section>
+
+              {/* History & Saved Timeline */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <article className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                    <div>
+                      <h3 className="text-sm font-black text-white">Últimos Taps Físicos</h3>
+                      <p className="text-[11px] text-slate-400">Verdicts de escaneos de seguridad.</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {latestTaps.map((tap, idx) => (
+                      <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <div>
+                            <p className="text-xs font-black text-white">{String(tap.verdict || "VALID").toUpperCase()}</p>
+                            <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                              <MapPin className="h-2.5 w-2.5 text-slate-500" />
+                              {tap.city || "Valle de Uco"}, {tap.country || "AR"}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-300 font-bold">{tap.tenant_slug || "demobodega"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+
+                <article className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                    <div>
+                      <h3 className="text-sm font-black text-white">Colección Reciente</h3>
+                      <p className="text-[11px] text-slate-400">Botellas cargadas a tu nombre.</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {products.slice(0, 4).map((product, idx) => (
+                      <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black text-white truncate max-w-40">{product.product_name || "Vino Premium"}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{product.brand_name || "Demo Bodega"}</p>
+                        </div>
+                        <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-300">
+                          {product.ownership_status || "Reclamado"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            {/* Stepper info */}
+            <article className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-lg self-start">
+              <h3 className="text-xs font-black uppercase tracking-[0.16em] text-slate-400 mb-4">Funcionamiento</h3>
+              <div className="space-y-4">
+                {journey.map((step, index) => {
+                  const StepIcon = step.icon;
+                  return (
+                    <div key={step.title} className="flex gap-3">
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-amber-500/25 bg-amber-500/10 text-[9px] font-black text-amber-200">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-black text-white">{step.title}</p>
+                          <StepIcon className="h-3 w-3 text-slate-500" />
+                        </div>
+                        <p className="mt-0.5 text-[10px] leading-relaxed text-slate-400">{step.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Contents: NFTS (Digital Wine Cellar Grid) */}
+      {activeTab === "nfts" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-white/10">
+            <div>
+              <h2 className="text-lg font-black text-white">Mi Bodega Digital (NFTs & Activos)</h2>
+              <p className="text-xs text-slate-400">Títulos criptográficos de autenticidad emitidos en Polygon y Polygon Amoy.</p>
+            </div>
+            <Link href="/me/wallet" className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20 transition">
+              Administrar Billetera Web3
+            </Link>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {products.map((product, idx) => {
+              const isBottle = !product.product_name?.toLowerCase().includes("crate") && !product.product_name?.toLowerCase().includes("caja");
+              const thumbnailImg = isBottle ? "/images/premium_magnum.png" : "/images/wine_crate.png";
+              const isClaimed = String(product.ownership_record_status || product.ownership_status || "").toLowerCase() === "claimed";
+              const txHash = product.tokenization_tx_hash;
+              const hasOnChain = txHash && !txHash.includes("DEMO");
+              const isListed = listedProducts[product.bid || ""] !== undefined;
+
+              return (
+                <div key={idx} className="relative rounded-3xl border border-white/10 bg-slate-950/80 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/30 hover:shadow-[0_12px_30px_rgba(245,158,11,0.06)] group flex flex-col justify-between min-h-[360px]">
+                  {/* Glowing halo */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-amber-500/0 via-amber-500/0 to-amber-500/5 opacity-0 group-hover:opacity-100 transition rounded-3xl pointer-events-none" />
+
+                  {/* Thumbnail */}
+                  <div className="h-44 w-full rounded-2xl border border-white/5 bg-[linear-gradient(135deg,#0a0a0c,#161619)] p-4 flex items-center justify-center relative overflow-hidden">
+                    <img
+                      src={thumbnailImg}
+                      alt={product.product_name}
+                      className="h-36 w-auto object-contain transition duration-500 group-hover:scale-105 drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]"
+                    />
+                    <span className="absolute bottom-2 right-2 rounded bg-black/85 px-2 py-0.5 text-[8px] font-mono text-slate-500 border border-white/5">
+                      {product.sku || "NFC NTAG424"}
+                    </span>
+                  </div>
+
+                  {/* Title & Metadata */}
+                  <div className="mt-4 flex-1">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-300 border border-amber-500/10">
+                        {product.brand_name || "Demo Bodega"}
+                      </span>
+                      {hasOnChain && (
+                        <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-violet-400 border border-violet-500/10">
+                          Polygon NFT
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="mt-2 text-sm font-black text-white leading-snug group-hover:text-amber-200 transition">{product.product_name || "Vino Auténtico"}</h3>
+                    <p className="text-[10px] text-slate-500 mt-1 font-mono">Lote: {product.bid || "N/A"}</p>
+                  </div>
+
+                  {/* Actions / Public Cert */}
+                  <div className="mt-4 pt-3 border-t border-white/5 space-y-2">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-slate-500">Estado:</span>
+                      <span className="text-emerald-400 font-bold uppercase">{isClaimed ? "Propietario" : "Registrado"}</span>
+                    </div>
+
+                    <div className="grid gap-1.5">
+                      {certificateHref(product) ? (
+                        <Link
+                          href={certificateHref(product)}
+                          className="w-full text-center rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white px-3 py-2 text-[10px] font-black transition flex items-center justify-center gap-1.5 border border-white/5"
+                        >
+                          Ver Certificado Público <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      ) : (
+                        <span className="w-full text-center rounded-xl bg-slate-900/50 text-slate-600 px-3 py-2 text-[10px] font-black border border-white/5 cursor-not-allowed">
+                          Certificado No Disponible
+                        </span>
+                      )}
+
+                      {/* Selling / Marketplace Simulator */}
+                      {isClaimed && (
+                        <div className="pt-2">
+                          {isListed ? (
+                            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-2 text-center text-[10px] font-bold text-emerald-300">
+                              Publicado P2P por {listedProducts[product.bid || ""]} pts
+                            </div>
+                          ) : (
+                            <div className="flex gap-1.5">
+                              <input
+                                type="text"
+                                placeholder="Precio (puntos)"
+                                name={product.bid || ""}
+                                value={p2pPrice[product.bid || ""] || ""}
+                                onChange={(e) => setP2pPrice((prev) => ({ ...prev, [product.bid || ""]: e.target.value }))}
+                                className="w-2/3 bg-slate-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-[10px] text-white focus:outline-none focus:border-amber-400"
+                              />
+                              <button
+                                onClick={() => handleListForSale(product.bid || "", product.product_name || "Vino")}
+                                className="w-1/3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-1.5 text-[9px] font-black transition uppercase tracking-wider"
+                              >
+                                Vender
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tab Contents: TRADES (Simulated Ledger) */}
+      {activeTab === "trades" && (
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
+            <h2 className="text-lg font-black text-white">Libro de Transacciones Criptográficas</h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Registro auditado de claims de propiedad, acuñaciones de tokens NFT, y ofertas de intercambio en el mercado secundario.
+            </p>
+
+            <div className="mt-6 space-y-4">
+              {trades.map((trade) => (
+                <div key={trade.id} className="rounded-2xl border border-white/5 bg-slate-900/25 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-slate-900/40 transition">
+                  <div className="flex items-start gap-3">
+                    <div className={`h-8 w-8 rounded-xl flex items-center justify-center text-xs font-black ${
+                      trade.type === "mint"
+                        ? "bg-violet-500/10 text-violet-400 border border-violet-500/15"
+                        : trade.type === "claim"
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/15"
+                        : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/15"
+                    }`}>
+                      {trade.type === "mint" ? "🪙" : trade.type === "claim" ? "✓" : "🔄"}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-white">{trade.assetName}</h4>
+                      <p className="text-[10px] text-slate-500 mt-1 font-mono">
+                        De: <span className="text-slate-300">{trade.from}</span> · Para: <span className="text-slate-300">{trade.to}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex sm:flex-col sm:items-end justify-between items-center shrink-0">
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                      trade.type === "mint"
+                        ? "bg-violet-400/15 text-violet-300"
+                        : trade.type === "claim"
+                        ? "bg-emerald-400/15 text-emerald-300"
+                        : "bg-cyan-400/15 text-cyan-300"
+                    }`}>
+                      {trade.type}
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400 mt-1">{trade.at}</span>
+                    {trade.txHash && (
+                      <a href={`https://amoy.polygonscan.com/tx/${trade.txHash}`} target="_blank" rel="noreferrer" className="text-[9px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 mt-1">
+                        Tx Hash: {trade.txHash.slice(0, 10)}... <ExternalLink className="h-2.5 w-2.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Contents: DROPS (Online Store Boutique drops) */}
+      {activeTab === "drops" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
+            <div>
+              <h2 className="text-lg font-black text-white">Drops de Bodega & Preventas</h2>
+              <p className="text-xs text-slate-400">Canjea tus puntos acumulados por botellas físicas exclusivas de bodega y preventas antes del lanzamiento general.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/30 px-3 py-1.5 flex items-center gap-1.5">
+              <Coins className="h-4 w-4 text-amber-300" />
+              <span className="text-xs font-black text-white">{stats.unread ? 2500 : 0} pts</span>
+            </div>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {mockDrops.map((drop) => (
+              <div key={drop.id} className="rounded-3xl border border-white/10 bg-slate-950/80 p-5 transition duration-300 hover:border-cyan-400/30 flex flex-col justify-between min-h-[320px]">
+                <div className="flex gap-4 items-start">
+                  <div className="h-20 w-16 shrink-0 rounded-2xl border border-white/10 bg-black/40 p-1 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={drop.img}
+                      alt={drop.name}
+                      className="h-16 w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/10">
+                      {drop.winery}
+                    </span>
+                    <h3 className="mt-2 text-sm font-black text-white leading-snug">{drop.name}</h3>
+                    <p className="text-[10px] text-slate-500 mt-1">Disponibilidad: <span className="text-slate-300 font-bold">{drop.stock}</span></p>
+                  </div>
+                </div>
+
+                <div className="mt-6 border-t border-white/5 pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Precio</span>
+                      <strong className="text-sm font-black text-amber-300">{drop.price} <span className="text-[10px] font-normal text-slate-400">o {drop.cashPrice}</span></strong>
+                    </div>
+                    <button
+                      onClick={() => alert(`¡Felicitaciones! Has canjeado exitosamente el drop ${drop.name}. Recibirás las coordenadas de envío por e-mail.`)}
+                      className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 px-4 py-2 text-xs font-black transition uppercase tracking-wider shadow-md"
+                    >
+                      Comprar Drop
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

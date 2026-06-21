@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { productUrls } from "@product/config";
 import { BatchSunValidator } from "../../../../components/batch-sun-validator";
+import { BatchConfigFormClient } from "./batch-config-form-client";
 
 const API_BASE = productUrls.api;
 
@@ -128,6 +129,35 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
   const imported = numberValue(batch?.imported_tags);
   const active = numberValue(batch?.active_tags);
   const overrides = numberValue(unit.unit_product_overrides);
+  const sdmConfig = (batch?.sdm_config && typeof batch.sdm_config === "object") ? (batch.sdm_config as Record<string, any>) : {};
+  const sunProduct = sdmConfig.sun?.product || {};
+  const sunOrigin = sdmConfig.sun?.origin || {};
+  const sunTelemetry = sdmConfig.sun?.telemetry || {};
+
+  const initialFormData = {
+    product_name: product.product_name || sdmConfig.product_name || sunProduct.name || "",
+    sku: product.sku || sdmConfig.sku || sunProduct.sku || "",
+    winery: product.winery || sdmConfig.winery || sunProduct.producer || "",
+    region: product.region || sdmConfig.region || sunOrigin.region || "",
+    grape_varietal: product.grape_varietal || sdmConfig.grape_varietal || sunProduct.varietal || "",
+    vintage: product.vintage || sdmConfig.vintage || sunProduct.vintage || "",
+    harvest_year: product.harvest_year || sdmConfig.harvest_year || sunProduct.harvestYear || "",
+    barrel_months: product.barrel_months || sdmConfig.barrel_months || sunProduct.barrelMonths || "",
+    temperature_storage: product.temperature_storage || sdmConfig.temperature_storage || sunProduct.storage || "",
+    image_url: product.image_url || sdmConfig.image_url || sunProduct.imageUrl || "",
+    target_market: product.target_market || sdmConfig.target_market || "",
+    altitude: sunOrigin.altitude || "",
+    oak_type: sunProduct.oakType || "",
+    alcohol: sunProduct.alcohol || "",
+    bottle: sunProduct.bottle || "",
+    serving: sunProduct.serving || "",
+    notes: sunProduct.notes || sunProduct.tasting_notes || "",
+    maridaje: sunProduct.maridaje || "",
+    simulated_temp_c: sunTelemetry.simulatedTempC || sunProduct.simulatedTempC || "",
+    simulated_humidity_pct: sunTelemetry.simulatedHumidityPct || sunProduct.simulatedHumidityPct || "",
+    simulated_light: sunTelemetry.simulatedLight || sunProduct.simulatedLight || "",
+    simulated_shock: sunTelemetry.simulatedShock || sunProduct.simulatedShock || "",
+  };
 
   return (
     <main className="space-y-8">
@@ -254,6 +284,8 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
               )}
             </div>
           </Card>
+          
+          <BatchConfigFormClient bid={bid} initialData={initialFormData} />
 
           <Card className="p-6">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Ops next</p>
