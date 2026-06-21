@@ -906,7 +906,7 @@ function HeroTraceMap({
       : `${formattedDistance} km con evidencia de toque fisico, SUN y canal.`;
 
   return (
-    <div className="hero-trace-map hero-trace-map--clear" aria-label={txt.routeTitle}>
+    <div className="hero-trace-map hero-trace-map--clear flex items-center justify-center" aria-label={txt.routeTitle}>
       <Globe3dMap
         offset={[0, 0]}
         points={[
