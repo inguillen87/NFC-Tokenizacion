@@ -1869,15 +1869,24 @@ function DemoPremiumProductScene({
       <span className="demo-lab-premium-scene__aura" aria-hidden="true" />
       <span className="demo-lab-premium-scene__floor" aria-hidden="true" />
 
-      <figure className="demo-lab-premium-scene__media" data-credit={asset.credit} aria-hidden="true">
-        <div className="w-full h-[225px] relative overflow-hidden rounded-2xl bg-slate-950/20 border border-white/5 shadow-inner">
-          <ThreeDProduct
-            active={beat === 1 || beat === 3}
-            tapping={!!simulating}
-            industry={verticalTo3DIndustry(vertical)}
-            chipModel={vertical === "wine" ? "tamper" : "dna"}
+      <figure className="demo-lab-premium-scene__media" data-credit={asset?.credit} aria-hidden="true">
+        {asset ? (
+          <img
+            src={asset.imageUrl}
+            alt={product}
+            loading="eager"
+            decoding="async"
           />
-        </div>
+        ) : (
+          <div className="w-full h-[225px] relative overflow-hidden rounded-2xl bg-slate-950/20 border border-white/5 shadow-inner">
+            <ThreeDProduct
+              active={beat === 1 || beat === 3}
+              tapping={!!simulating}
+              industry={verticalTo3DIndustry(vertical)}
+              chipModel={vertical === "wine" ? "tamper" : "dna"}
+            />
+          </div>
+        )}
         <figcaption>
           <span>{meta.family}</span>
           <strong>{product}</strong>
