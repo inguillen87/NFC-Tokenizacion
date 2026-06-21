@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Globe3dMap } from "@product/ui";
+import { traceabilityGlobePoints } from "../lib/platform-verticals";
 
 export type TraceabilityGlobePoint = {
   city: string;
@@ -37,7 +39,7 @@ type TraceabilityGlobeProps = {
 
 const fallbackPoints: TraceabilityGlobePoint[] = [
   { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 4820, risk: 0, status: "origin", vertical: "wine" },
-  { city: "San Martin", country: "Argentina", lat: -33.0806, lng: -68.4681, scans: 1240, risk: 0, status: "tap", vertical: "agro" },
+  { city: "Cordoba", country: "Argentina", lat: -31.4201, lng: -64.1888, scans: 1240, risk: 0, status: "tap", vertical: "agro" },
   { city: "Sao Paulo", country: "Brasil", lat: -23.5505, lng: -46.6333, scans: 2190, risk: 3, status: "risk", vertical: "events" },
   { city: "Miami", country: "USA", lat: 25.7617, lng: -80.1918, scans: 3180, risk: 0, status: "export", vertical: "luxury" },
   { city: "Zurich", country: "Suiza", lat: 47.3769, lng: 8.5417, scans: 980, risk: 0, status: "passport", vertical: "wine" },
@@ -46,7 +48,7 @@ const fallbackPoints: TraceabilityGlobePoint[] = [
 
 const fallbackRoutes: TraceabilityGlobeRoute[] = [
   { fromLat: -32.8895, fromLng: -68.8458, toLat: 47.3769, toLng: 8.5417, tone: "info", label: "Wine export" },
-  { fromLat: -33.0806, fromLng: -68.4681, toLat: -23.5505, toLng: -46.6333, tone: "warn", label: "Replay watch" },
+  { fromLat: -31.4201, fromLng: -64.1888, toLat: -23.5505, toLng: -46.6333, tone: "warn", label: "Replay watch" },
   { fromLat: -32.8895, fromLng: -68.8458, toLat: 25.7617, toLng: -80.1918, tone: "info", label: "Retail route" },
 ];
 
@@ -61,8 +63,99 @@ export function PremiumTraceabilityGlobe({
   className = "",
   compact = false,
 }: TraceabilityGlobeProps) {
-  const safePoints = points.length ? points : fallbackPoints;
-  const safeRoutes = routes.length ? routes : fallbackRoutes;
+  const [liveData, setLiveData] = useState<{
+    points: TraceabilityGlobePoint[];
+    routes: TraceabilityGlobeRoute[];
+  } | null>(null);
+
+  useEffect(() => {
+    const isFallbackOrSdk = points === fallbackPoints || points === traceabilityGlobePoints;
+    if (!isFallbackOrSdk) return;
+
+    fetch("/api/demo/summary")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.ok && Array.isArray(data.events) && data.events.length > 0) {
+          const pointsList: TraceabilityGlobePoint[] = [];
+          const routesList: TraceabilityGlobeRoute[] = [];
+
+          const getOrigin = (vertical: string) => {
+            if (vertical === "agro" || vertical === "seeds") {
+              return { city: "Rosario", country: "Argentina", lat: -32.9442, lng: -60.6505 };
+            }
+            if (vertical === "fashion" || vertical === "textile") {
+              return { city: "Buenos Aires", country: "Argentina", lat: -34.5875, lng: -58.3974 };
+            }
+            if (vertical === "cosmetics" || vertical === "pharma") {
+              return { city: "Santiago", country: "Chile", lat: -33.4489, lng: -70.6693 };
+            }
+            return { city: "Valle de Uco", country: "Argentina", lat: -33.6131, lng: -69.2075 };
+          };
+
+          const uniqueTaps: Record<string, any> = {};
+          data.events.forEach((event: any) => {
+            const lat = Number(event.lat);
+            const lng = Number(event.lng);
+            if (Number.isFinite(lat) && Number.isFinite(lng) && event.city) {
+              const key = `${event.city}-${event.vertical}`;
+              if (!uniqueTaps[key]) {
+                uniqueTaps[key] = event;
+              }
+            }
+          });
+
+          const activeEvents = Object.values(uniqueTaps);
+
+          activeEvents.forEach((event: any) => {
+            const origin = getOrigin(event.vertical);
+            const tapLat = Number(event.lat);
+            const tapLng = Number(event.lng);
+            const isRisk = /REPLAY|DUPLICATE|TAMPER|INVALID|REVOKED/i.test(event.result || "");
+
+            if (!pointsList.some((p) => p.city === origin.city)) {
+              pointsList.push({
+                city: origin.city,
+                country: origin.country,
+                lat: origin.lat,
+                lng: origin.lng,
+                scans: 1,
+                risk: 0,
+                status: "origin",
+                vertical: event.vertical
+              });
+            }
+
+            pointsList.push({
+              city: event.city,
+              country: event.country_code || "UNK",
+              lat: tapLat,
+              lng: tapLng,
+              scans: 1,
+              risk: isRisk ? 1 : 0,
+              status: isRisk ? "risk" : "tap",
+              vertical: event.vertical
+            });
+
+            routesList.push({
+              fromLat: origin.lat,
+              fromLng: origin.lng,
+              toLat: tapLat,
+              toLng: tapLng,
+              tone: isRisk ? "warn" : "info",
+              label: `${event.product_name || "Product"} route`
+            });
+          });
+
+          if (pointsList.length > 0) {
+            setLiveData({ points: pointsList, routes: routesList });
+          }
+        }
+      })
+      .catch((err) => console.error("Error loading live globe summary:", err));
+  }, [points]);
+
+  const safePoints = liveData ? liveData.points : (points.length ? points : fallbackPoints);
+  const safeRoutes = liveData ? liveData.routes : (routes.length ? routes : fallbackRoutes);
   const totalScans = safePoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const totalRisk = safePoints.reduce((acc, point) => acc + (point.risk || 0), 0);
   const regions = new Set(safePoints.map((point) => point.country || point.city)).size;
@@ -85,6 +178,7 @@ export function PremiumTraceabilityGlobe({
       <div className="traceability-globe__stage flex justify-center items-center relative min-h-[350px]">
         <div className="absolute inset-0 flex justify-center items-center z-10 pointer-events-auto">
           <Globe3dMap
+            theme="dark"
             points={safePoints.map((p) => ({
               city: p.city,
               country: p.country,

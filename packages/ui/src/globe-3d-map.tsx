@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 
 const Globe = dynamic(() => import("react-globe.gl"), { ssr: false });
@@ -31,7 +31,8 @@ export function Globe3dMap({
   width = 600,
   height = 500,
   className = "",
-  offset = [0, 0]
+  offset = [0, 0],
+  theme = "auto"
 }: {
   points?: GlobePoint[];
   routes?: GlobeRoute[];
@@ -39,6 +40,7 @@ export function Globe3dMap({
   height?: number;
   className?: string;
   offset?: [number, number];
+  theme?: "light" | "dark" | "auto";
 }) {
   const globeRef = useRef<any>(null);
   const [mounted, setMounted] = useState(false);
@@ -47,6 +49,11 @@ export function Globe3dMap({
   useEffect(() => {
     setMounted(true);
     
+    if (theme !== "auto") {
+      setIsLightTheme(theme === "light");
+      return;
+    }
+
     // Theme synchronization
     const root = document.documentElement;
     const syncTheme = () => {
@@ -57,7 +64,7 @@ export function Globe3dMap({
     const observer = new MutationObserver(syncTheme);
     observer.observe(root, { attributes: true, attributeFilter: ["class", "data-theme", "data-nexid-theme"] });
     return () => observer.disconnect();
-  }, []);
+  }, [theme]);
 
   const handleGlobeReady = () => {
     if (globeRef.current) {
@@ -86,6 +93,39 @@ export function Globe3dMap({
     }
   }, [mounted, isLightTheme, offset]);
 
+  // Prevent overlapping labels by deduplicating by city and adjusting coordinates slightly
+  const labelPoints = useMemo(() => {
+    const unique: Record<string, GlobePoint> = {};
+    points.forEach((p) => {
+      if (p.city) {
+        unique[p.city] = { ...p };
+      }
+    });
+    const list = Object.values(unique);
+
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const pi = list[i];
+        const pj = list[j];
+        const dLat = pi.lat - pj.lat;
+        const dLng = pi.lng - pj.lng;
+        const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+        if (dist < 6.0) {
+          if (pi.lat >= pj.lat) {
+            pi.lat += 2.2;
+            pj.lat -= 2.2;
+          } else {
+            pi.lat -= 2.2;
+            pj.lat += 2.2;
+          }
+          pi.lng -= 1.8;
+          pj.lng += 1.8;
+        }
+      }
+    }
+    return list;
+  }, [points]);
+
   if (!mounted) {
     return (
       <div 
@@ -101,7 +141,7 @@ export function Globe3dMap({
 
   return (
     <div 
-      className={`relative select-none flex items-center justify-center overflow-hidden rounded-2xl border border-white/5 shadow-2xl p-0 ${className}`}
+      className={`relative select-none flex items-center justify-center overflow-hidden rounded-2xl border border-white/5 shadow-2xl p-0 pointer-events-auto ${className}`}
       style={{ width, height }}
     >
       <div className="absolute top-4 left-4 z-20 text-[10px] text-slate-400 font-mono pointer-events-none bg-slate-950/80 px-2 py-1 rounded border border-white/5 backdrop-blur">
@@ -132,19 +172,19 @@ export function Globe3dMap({
         pointLat="lat"
         pointLng="lng"
         pointColor={(p: any) => (p.risk || p.status === "risk" ? "#fb7185" : "#22d3ee")}
-        pointAltitude={0.025}
+        pointAltitude={0.035}
         pointRadius={(p: any) => (p.risk || p.status === "risk" ? 0.38 : 0.28)}
         pointsMerge={false}
         
         // Labels
-        labelsData={points}
+        labelsData={labelPoints}
         labelLat="lat"
         labelLng="lng"
         labelText="city"
-        labelColor={() => (isLightTheme ? "#0f172a" : "#ffffff")}
-        labelSize={1.4}
-        labelDotRadius={0.4}
-        labelAltitude={0.03}
+        labelColor={() => (isLightTheme ? "#020617" : "#ffffff")}
+        labelSize={1.8}
+        labelDotRadius={0}
+        labelAltitude={0.045}
         
         // Arcs
         arcsData={routes}

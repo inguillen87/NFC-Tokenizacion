@@ -211,7 +211,7 @@ export const platformTrustedBy = ["Bodegas", "Agro empresas", "Farmalab", "Retai
 
 export const traceabilityGlobePoints = [
   { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 4820, risk: 0, status: "origin", vertical: "wine" },
-  { city: "San Martin", country: "Argentina", lat: -33.0806, lng: -68.4681, scans: 1240, risk: 0, status: "tap", vertical: "agro" },
+  { city: "Cordoba", country: "Argentina", lat: -31.4201, lng: -64.1888, scans: 1240, risk: 0, status: "tap", vertical: "agro" },
   { city: "Sao Paulo", country: "Brasil", lat: -23.5505, lng: -46.6333, scans: 2190, risk: 3, status: "risk", vertical: "events" },
   { city: "Miami", country: "USA", lat: 25.7617, lng: -80.1918, scans: 3180, risk: 0, status: "export", vertical: "luxury" },
   { city: "Zurich", country: "Suiza", lat: 47.3769, lng: 8.5417, scans: 980, risk: 0, status: "passport", vertical: "wine" },
@@ -221,7 +221,7 @@ export const traceabilityGlobePoints = [
 
 export const traceabilityGlobeRoutes = [
   { fromLat: -32.8895, fromLng: -68.8458, toLat: 47.3769, toLng: 8.5417, tone: "info" as const, label: "Wine export" },
-  { fromLat: -33.0806, fromLng: -68.4681, toLat: -23.5505, toLng: -46.6333, tone: "warn" as const, label: "Replay watch" },
+  { fromLat: -31.4201, fromLng: -64.1888, toLat: -23.5505, toLng: -46.6333, tone: "warn" as const, label: "Replay watch" },
   { fromLat: -32.8895, fromLng: -68.8458, toLat: 25.7617, toLng: -80.1918, tone: "info" as const, label: "Retail route" },
   { fromLat: 4.711, fromLng: -74.0721, toLat: 40.4168, toLng: -3.7038, tone: "info" as const, label: "DPP route" },
 ] as const;
