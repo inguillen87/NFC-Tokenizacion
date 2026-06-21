@@ -47,9 +47,9 @@ type SimulatorCopy = {
 
 const PANEL_COPY: Record<SupportedLocale, PanelCopy> = {
   "es-AR": {
-    eyebrow: "Experiencia de verifación interactiva",
+    eyebrow: "Experiencia de verificación interactiva",
     title: "Tocá para simular el puente de producto físico a identidad digital.",
-    body: "Recorré la verifación NFC en tiempo real o reproducí el institucional multi-idioma desde el mismo panel.",
+    body: "Recorré la verificación NFC en tiempo real o reproducí el institucional multi-idioma desde el mismo panel.",
     primary: "Abrir Demo Lab",
     secondary: "Agendar reunión",
     aria: "video institucional nexID",
