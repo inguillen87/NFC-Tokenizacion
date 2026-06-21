@@ -596,6 +596,7 @@ function HeroTraceMap({
   return (
     <div className="hero-trace-map hero-trace-map--clear" aria-label={txt.routeTitle}>
       <Globe3dMap
+        offset={[70, 0]}
         points={[
           {
             city: origin.city,

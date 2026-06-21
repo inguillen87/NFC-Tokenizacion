@@ -6,7 +6,6 @@ import {
   HeroSection,
   MarketplaceNetworkSection,
   PremiumIdentitySection,
-  PremiumVerticalShowcaseSection,
   PlansSection,
   SimpleTrustFlowSection,
   UnitEconomicsSection,
@@ -288,7 +287,6 @@ export default async function HomePage() {
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
 
-      <PremiumVerticalShowcaseSection locale={locale} />
       <SimpleTrustFlowSection locale={locale} />
       <PlansSection content={content} locale={locale} />
       <CarrierProfileMatrixSection locale={locale} />
