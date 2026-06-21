@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Award, Cpu, Radio, RefreshCw, Zap } from "lucide-react";
+import { Award, Cpu, Radio, RefreshCw, Zap, Volume2, VolumeX } from "lucide-react";
 import { schedulingUrls } from "@product/config";
 import { resolveInstitutionalVideo } from "../lib/institutional-video";
 
@@ -47,9 +47,9 @@ type SimulatorCopy = {
 
 const PANEL_COPY: Record<SupportedLocale, PanelCopy> = {
   "es-AR": {
-    eyebrow: "Experiencia de verificación interactiva",
+    eyebrow: "Experiencia de verifación interactiva",
     title: "Tocá para simular el puente de producto físico a identidad digital.",
-    body: "Recorré la verificación NFC en tiempo real o reproducí el institucional multi-idioma desde el mismo panel.",
+    body: "Recorré la verifación NFC en tiempo real o reproducí el institucional multi-idioma desde el mismo panel.",
     primary: "Abrir Demo Lab",
     secondary: "Agendar reunión",
     aria: "video institucional nexID",
@@ -150,6 +150,27 @@ const SIMULATOR_COPY: Record<SupportedLocale, SimulatorCopy> = {
   },
 };
 
+const VIDEO_SUBTITLES: Record<SupportedLocale, Array<{ start: number; end: number; text: string }>> = {
+  "es-AR": [
+    { start: 0, end: 15, text: "En un mundo inundado de copias, la confianza física necesita una firma digital indestructible. Presentamos nexID." },
+    { start: 15, end: 35, text: "Un simple toque con tu celular sobre cualquier producto original activa un desafío criptográfico único. Sin aplicaciones que descargar, validado directamente por el chip de seguridad NTAG 424 DNA." },
+    { start: 35, end: 50, text: "Al instante, el consumidor accede al pasaporte digital del producto: procedencia garantizada, historial de la pieza y beneficios exclusivos del Club de Marcas aliadas." },
+    { start: 50, end: 60, text: "nexID. El puente definitivo entre el producto físico y el ecosistema Web3. Protege tu marca, fideliza a tus clientes." }
+  ],
+  en: [
+    { start: 0, end: 15, text: "In a world flooded with counterfeits, physical trust requires an indestructible digital signature. Introducing nexID." },
+    { start: 15, end: 35, text: "A simple tap of your phone on any original product triggers a unique cryptographic challenge. No apps to download, validated instantly by the secure NTAG 424 DNA chip." },
+    { start: 35, end: 50, text: "Immediately, the consumer unlocks the product's digital passport: guaranteed provenance, lifecycle history, and exclusive partner brand rewards." },
+    { start: 50, end: 60, text: "nexID. The ultimate bridge between physical assets and the Web3 ecosystem. Protect your brand, empower your community." }
+  ],
+  "pt-BR": [
+    { start: 0, end: 15, text: "Em um mundo cheio de falsificações, a confiança física exige uma assinatura digital indestrutível. Apresentamos nexID." },
+    { start: 15, end: 35, text: "Um simples toque do celular em qualquer produto original ativa um desafio criptográfico único. Sem aplicativos para baixar, validado instantaneamente pelo chip de segurança NTAG 424 DNA." },
+    { start: 35, end: 50, text: "Na hora, o consumidor acessa o passaporte digital do produto: procedência garantida, histórico do ciclo de vida e benefícios exclusivos do Clube de Marcas parceiras." },
+    { start: 50, end: 60, text: "nexID. A ponte definitiva entre o produto físico e o ecossistema Web3. Proteja sua marca, fidelize seus clientes." }
+  ]
+};
+
 const STATUS_BY_STEP = ["STANDBY", "NFC TAP", "NTAG 424 DNA", "PASS DECODE", "MARKETPLACE WIN"] as const;
 const BARCODE_BARS = Array.from({ length: 24 }, (_, index) => ({
   width: index % 3 === 0 ? "3px" : index % 5 === 0 ? "1px" : "2px",
@@ -165,9 +186,21 @@ function normalizeLocale(locale: string): SupportedLocale {
 
 export function InstitutionalVideoPanel({ locale, variant = "landing", className = "" }: InstitutionalVideoPanelProps) {
   const [mode, setMode] = useState<"video" | "interactive">("interactive");
+  const [activeVideoSubtitle, setActiveVideoSubtitle] = useState<string | null>(null);
   const activeLocale = normalizeLocale(locale);
   const video = resolveInstitutionalVideo(locale);
   const copy = PANEL_COPY[activeLocale];
+
+  useEffect(() => {
+    setActiveVideoSubtitle(null);
+  }, [mode]);
+
+  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const time = e.currentTarget.currentTime;
+    const subtitles = VIDEO_SUBTITLES[activeLocale];
+    const matched = subtitles.find((s) => time >= s.start && time < s.end);
+    setActiveVideoSubtitle(matched ? matched.text : null);
+  };
 
   return (
     <section className={`institutional-video-panel institutional-video-panel--${variant} ${className}`} aria-label={copy.aria}>
@@ -231,11 +264,13 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
                   preload="metadata"
                   playsInline
                   controlsList="nodownload"
+                  onTimeUpdate={handleTimeUpdate}
                   data-video-locale={video.locale}
                   data-video-target={video.futureSrc}
                 >
                   <source src={video.src} type={video.type} />
                 </video>
+                <FilmSubtitle subtitle={activeVideoSubtitle} />
                 <span className="institutional-video-watermark">nexID</span>
               </motion.div>
             ) : (
@@ -263,11 +298,12 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
 
 function CinematicTapSimulator({ locale }: { locale: SupportedLocale }) {
   const [step, setStep] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
   const t = SIMULATOR_COPY[locale];
 
   useEffect(() => {
     if (step === 1) {
-      const timer = setTimeout(() => setStep(2), 1800);
+      const timer = setTimeout(() => setStep(2), 2200);
       return () => clearTimeout(timer);
     }
     if (step === 2) {
@@ -281,34 +317,60 @@ function CinematicTapSimulator({ locale }: { locale: SupportedLocale }) {
     return undefined;
   }, [step]);
 
+  const handleStart = () => {
+    setIsMuted(false);
+    setStep(1);
+  };
+
   const subtitle = step > 0 ? t.subtitles[step as 1 | 2 | 3 | 4] : null;
 
   return (
     <div className="pointer-events-auto relative flex h-full w-full select-none flex-col justify-between overflow-hidden bg-slate-950 p-3 font-sans">
-      <SimulatorMediaLayer step={step} />
+      <SimulatorMediaLayer step={step} isMuted={isMuted} />
 
       <div className="z-10 flex items-center justify-between rounded border-b border-white/10 bg-slate-950/40 px-2 pb-2 font-mono text-[10px] text-slate-300 backdrop-blur-sm">
         <span className="flex items-center gap-1.5 font-bold">
           <span className={`h-1.5 w-1.5 rounded-full ${step === 4 ? "bg-emerald-400" : step > 0 ? "bg-cyan-400" : "bg-slate-500"} animate-pulse`} />
           {STATUS_BY_STEP[step]}
         </span>
-        <span className="font-bold opacity-80">UID: 04E1D4A7F392B1</span>
+        <div className="flex items-center gap-3">
+          <span className="font-bold opacity-80">UID: 04E1D4A7F392B1</span>
+          {step > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsMuted(!isMuted)}
+              className="flex items-center justify-center rounded p-1 hover:bg-white/10 active:scale-95 transition"
+              aria-label={isMuted ? "Unmute sound" : "Mute sound"}
+            >
+              {isMuted ? (
+                <VolumeX className="h-3.5 w-3.5 text-slate-400" />
+              ) : (
+                <Volume2 className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {step === 0 ? <IntroState copy={t} /> : <div className="z-10 flex-1" />}
 
       <AnimatePresence>
-        {step === 4 ? <GiftVoucher key="gift-voucher" copy={t} /> : null}
+        {step === 4 ? <GiftVoucher key="gift-voucher" copy={t} onReset={() => setStep(0)} /> : null}
       </AnimatePresence>
 
       <FilmSubtitle subtitle={subtitle} />
-      <StepStatus step={step} copy={t} />
-      <SimulatorActions step={step} copy={t} onStart={() => setStep(1)} onReset={() => setStep(0)} />
+
+      {step < 4 ? (
+        <>
+          <StepStatus step={step} copy={t} />
+          <SimulatorActions step={step} copy={t} onStart={handleStart} onReset={() => setStep(0)} />
+        </>
+      ) : null}
     </div>
   );
 }
 
-function SimulatorMediaLayer({ step }: { step: number }) {
+function SimulatorMediaLayer({ step, isMuted }: { step: number; isMuted: boolean }) {
   return (
     <div className="absolute inset-0 z-0 h-full w-full overflow-hidden">
       <AnimatePresence mode="wait">
@@ -321,59 +383,31 @@ function SimulatorMediaLayer({ step }: { step: number }) {
 
         {step === 1 ? (
           <motion.div
-            key="tap-animation"
+            key="tap-video"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex h-full w-full items-center justify-between bg-[radial-gradient(circle_at_center,rgba(8,47,73,0.8),rgba(2,6,23,0.98))] px-16 py-6"
+            className="relative h-full w-full"
           >
-            <motion.div
-              animate={{ x: 120, rotate: 10, scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 90, damping: 15 }}
-              className="relative z-10 flex h-[140px] w-[95px] shrink-0 flex-col items-center justify-between rounded-2xl border-2 border-slate-700 bg-slate-950 p-1.5 shadow-2xl"
-            >
-              <div className="relative flex h-full w-full flex-col justify-between rounded-xl bg-slate-900/60 p-1">
-                <div className="mx-auto h-0.5 w-5 rounded-full bg-slate-800" />
-                <div className="flex flex-1 flex-col items-center justify-center">
-                  <Radio className="h-5 w-5 animate-pulse text-cyan-400" />
-                  <span className="mt-0.5 animate-pulse font-mono text-[5px] font-bold text-cyan-300">CONNECTING</span>
-                </div>
-                <div className="mx-auto h-0.5 w-8 rounded-full bg-slate-800" />
-              </div>
-            </motion.div>
-
-            <div className="pointer-events-none absolute bottom-[40px] left-[120px] right-[100px] top-[40px] z-0 flex items-center justify-center">
-              {[0, 1, 2].map((index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0.8, scale: 0.2 }}
-                  animate={{ opacity: 0, scale: 1.4 }}
-                  transition={{ repeat: Infinity, duration: 1.2, delay: index * 0.4, ease: "easeOut" }}
-                  className="absolute h-20 w-20 rounded-full border border-cyan-400/40"
-                />
-              ))}
-            </div>
-
-            <img
-              src="/images/premium_magnum.png"
-              alt="Premium wine bottle"
-              className="z-10 h-[120px] w-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.7)]"
-            />
+            <video className="h-full w-full object-cover filter brightness-[0.85]" autoPlay loop muted={isMuted} playsInline>
+              <source src="/video/Hand_holding_smartphone_touching.mp4" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/10 to-transparent" />
           </motion.div>
         ) : null}
 
-        {step === 2 ? <VideoScene key="step-chip-video" src="/video/3D_render_NTAG_424_DNA.mp4" brightness="brightness-[0.85]" /> : null}
-        {step === 3 ? <VideoScene key="step-passport-video" src="/video/Smartphone_screen_displaying_hologram.mp4" brightness="brightness-[0.85]" /> : null}
-        {step === 4 ? <VideoScene key="step-glasses-video" src="/video/Man_and_woman_clinking_glasses.mp4" brightness="brightness-[0.6]" overlay="via-slate-950/40" /> : null}
+        {step === 2 ? <VideoScene key="step-chip-video" src="/video/3D_render_NTAG_424_DNA.mp4" brightness="brightness-[0.85]" muted={isMuted} /> : null}
+        {step === 3 ? <VideoScene key="step-passport-video" src="/video/Smartphone_screen_nexID_web_interface.mp4" brightness="brightness-[0.85]" muted={isMuted} /> : null}
+        {step === 4 ? <VideoScene key="step-glasses-video" src="/video/Man_and_woman_clinking_glasses.mp4" brightness="brightness-[0.5]" overlay="via-slate-950/30" muted={isMuted} /> : null}
       </AnimatePresence>
     </div>
   );
 }
 
-function VideoScene({ src, brightness, overlay = "via-slate-950/10" }: { src: string; brightness: string; overlay?: string }) {
+function VideoScene({ src, brightness, overlay = "via-slate-950/10", muted = true }: { src: string; brightness: string; overlay?: string; muted?: boolean }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative h-full w-full">
-      <video className={`h-full w-full object-cover ${brightness}`} autoPlay loop muted playsInline>
+      <video className={`h-full w-full object-cover ${brightness}`} autoPlay loop muted={muted} playsInline>
         <source src={src} type="video/mp4" />
       </video>
       <div className={`absolute inset-0 bg-gradient-to-t from-slate-950 ${overlay} to-transparent`} />
@@ -384,7 +418,7 @@ function VideoScene({ src, brightness, overlay = "via-slate-950/10" }: { src: st
 function IntroState({ copy }: { copy: SimulatorCopy }) {
   return (
     <div className="z-10 flex flex-1 flex-col items-center justify-center p-4 text-center">
-      <div className="mb-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 p-3">
+      <div className="mb-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 p-3 animate-pulse">
         <Zap className="h-6 w-6 text-cyan-400" />
       </div>
       <h3 className="text-sm font-black uppercase leading-none tracking-wide text-white">nexID Experience</h3>
@@ -393,20 +427,22 @@ function IntroState({ copy }: { copy: SimulatorCopy }) {
   );
 }
 
-function GiftVoucher({ copy }: { copy: SimulatorCopy }) {
+function GiftVoucher({ copy, onReset }: { copy: SimulatorCopy; onReset: () => void }) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.92, y: 18 }}
+      initial={{ opacity: 0, scale: 0.92, y: 12 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.96, y: 10 }}
+      exit={{ opacity: 0, scale: 0.96, y: 8 }}
       transition={{ delay: 0.35, duration: 0.48, type: "spring", damping: 16 }}
-      className="pointer-events-auto absolute inset-x-4 bottom-[96px] top-10 z-30 flex items-center justify-center"
+      className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center p-3"
     >
-      <div className="relative flex w-full max-w-md flex-col justify-between overflow-hidden rounded-2xl border border-cyan-500/30 bg-slate-900/90 p-4 shadow-[0_0_30px_rgba(34,211,238,0.22)] backdrop-blur-md before:absolute before:inset-x-4 before:top-1/2 before:border-t before:border-dashed before:border-white/20">
-        <div className="absolute -left-3 top-1/2 z-10 h-6 w-6 -translate-y-1/2 rounded-full border-r border-cyan-500/30 bg-slate-950" />
-        <div className="absolute -right-3 top-1/2 z-10 h-6 w-6 -translate-y-1/2 rounded-full border-l border-cyan-500/30 bg-slate-950" />
+      <div className="relative flex w-full max-w-sm max-h-[92%] flex-col justify-between overflow-hidden rounded-2xl border border-cyan-500/30 bg-slate-900/95 p-3 shadow-[0_0_25px_rgba(34,211,238,0.25)] backdrop-blur-md">
+        {/* Ticket jagged edge circles (cuts) */}
+        <div className="absolute -left-3 top-[55%] z-10 h-6 w-6 -translate-y-1/2 rounded-full border-r border-cyan-500/30 bg-slate-950" />
+        <div className="absolute -right-3 top-[55%] z-10 h-6 w-6 -translate-y-1/2 rounded-full border-l border-cyan-500/30 bg-slate-950" />
 
-        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        {/* Ticket Header */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
           <div className="flex items-center gap-1.5">
             <span className="flex h-4 w-4 items-center justify-center rounded border border-cyan-400/30 bg-cyan-400/10 text-[9px] font-bold text-cyan-300">N</span>
             <span className="text-[9px] font-bold uppercase tracking-widest text-white">nexID Marketplace</span>
@@ -416,27 +452,46 @@ function GiftVoucher({ copy }: { copy: SimulatorCopy }) {
           </span>
         </div>
 
-        <div className="my-2 text-center">
-          <div className="mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-full border border-cyan-500/30 bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.12)]">
-            <Award className="h-4 w-4 text-cyan-400" />
+        {/* Voucher Main Info */}
+        <div className="my-1.5 text-center">
+          <div className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full border border-cyan-500/30 bg-cyan-500/10 shadow-[0_0_12px_rgba(34,211,238,0.12)]">
+            <Award className="h-3.5 w-3.5 text-cyan-400" />
           </div>
           <h4 className="text-xs font-black uppercase leading-snug tracking-wider text-white">{copy.voucherSubtitle}</h4>
-          <p className="mx-auto mt-1 max-w-[290px] text-[9px] leading-relaxed text-slate-300">{copy.voucherDesc}</p>
+          <p className="mx-auto mt-0.5 max-w-[270px] text-[8.5px] leading-normal text-slate-300">{copy.voucherDesc}</p>
         </div>
 
-        <div className="flex flex-col items-center border-t border-dashed border-white/20 pt-2">
-          <div className="mb-2 flex w-full justify-between gap-0.5 opacity-20">
+        {/* Barcode / Coupon details & Actions */}
+        <div className="flex flex-col items-center border-t border-dashed border-white/20 pt-1.5">
+          <div className="mb-1.5 flex w-full justify-between gap-0.5 opacity-20">
             {TICKET_DOTS.map((dot) => (
               <span key={dot} className="h-0.5 w-1 rounded-full bg-white" />
             ))}
           </div>
-          <div className="mb-1 flex h-5 w-44 items-center justify-between bg-transparent px-2 opacity-80" aria-hidden="true">
+          <div className="mb-1 flex h-4 w-40 items-center justify-between bg-transparent px-2 opacity-80" aria-hidden="true">
             {BARCODE_BARS.map((bar, index) => (
               <div key={index} className="h-full bg-cyan-400" style={bar} />
             ))}
           </div>
           <span className="font-mono text-[8px] font-bold tracking-wider text-cyan-300">{copy.voucherCode}</span>
-          <span className="mt-0.5 font-mono text-[7.5px] text-slate-400">{copy.voucherStatus}</span>
+          <span className="mt-0.5 font-mono text-[7px] text-slate-400">{copy.voucherStatus}</span>
+          
+          <div className="mt-3.5 flex w-full gap-2">
+            <Link
+              href="/login?next=/me"
+              className="flex-1 rounded-xl bg-emerald-500 py-1.5 text-center text-[10px] font-black uppercase tracking-wider text-slate-950 transition hover:bg-emerald-400"
+            >
+              {copy.voucherClaim}
+            </Link>
+            <button
+              type="button"
+              onClick={onReset}
+              className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm transition hover:bg-white/10"
+            >
+              <RefreshCw className="h-3 w-3" />
+              {copy.resetBtn}
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -455,7 +510,7 @@ function FilmSubtitle({ subtitle }: { subtitle: string | null }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.28 }}
-          className="inline-block max-w-full rounded-lg border border-white/10 bg-black/80 px-3 py-1.5 text-[9.5px] font-semibold leading-normal text-white shadow-2xl backdrop-blur-sm md:text-[11px]"
+          className="inline-block max-w-full rounded-lg border border-white/10 bg-black/85 px-3 py-1.5 text-[9.5px] font-semibold leading-normal text-white shadow-2xl backdrop-blur-sm md:text-[11px]"
         >
           {subtitle}
         </motion.div>
