@@ -26,9 +26,11 @@ export function ChartEmptyState({ message }: { message: string }) {
 }
 
 export const tooltipStyle = {
-  backgroundColor: "rgba(15,23,42,.96)",
-  border: "1px solid rgba(148,163,184,.24)",
-  borderRadius: 12,
-  color: "#e2e8f0",
-  boxShadow: "0 10px 35px rgba(2,6,23,.45)",
+  backgroundColor: "rgba(10, 15, 30, 0.95)",
+  border: "1px solid rgba(6, 182, 212, 0.25)",
+  borderRadius: "14px",
+  color: "#f8fafc",
+  boxShadow: "0 10px 40px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+  fontFamily: "Inter, sans-serif",
+  padding: "10px 14px",
 };

@@ -174,6 +174,10 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
         replyText = `Te sugiero servir este tinto a una temperatura templada entre 16°C y 18°C para potenciar su fruta y equilibrar los taninos.`;
       } else if (clean.includes("cata") || clean.includes("aroma") || clean.includes("sabor") || clean.includes("oler")) {
         replyText = `En copa vas a encontrar notas intensas de frutos rojos maduros, pimienta y sutiles toques de madera. En boca es redondo y de gran persistencia.`;
+      } else if (clean.includes("premio") || clean.includes("punto") || clean.includes("suckling") || clean.includes("decanter") || clean.includes("atkin") || clean.includes("calificacion")) {
+        replyText = `¡Este vino es de élite! Este Gran Reserva fue galardonado con 95 puntos en guías internacionales (como James Suckling) y ha obtenido medalla de oro Decanter por su notable tipicidad y crianza de 12 meses en roble francés.`;
+      } else if (clean.includes("regalo") || clean.includes("cena") || clean.includes("romantica") || clean.includes("romantico") || clean.includes("ocasion") || clean.includes("evento") || clean.includes("festejo")) {
+        replyText = `Es una opción perfecta. Para una cena romántica, sus notas aterciopeladas y aromas seductores son ideales; y si lo pensás como regalo premium, su gran potencial de guarda (5 a 8 años) y su estuche exclusivo lo convierten en un acierto garantizado.`;
       }
 
       setMessages(prev => [...prev, {

@@ -18,6 +18,9 @@ function fallbackOptimizedText(text: string, tone?: string) {
   if (tone === "modern-web3") {
     return `Producto conectado: ${clean || "botella verificada"} con pasaporte digital, trazabilidad del lote y evidencia tecnica consultable desde el celular.`;
   }
+  if (tone === "executive-summary") {
+    return `Análisis del Negocio: Con un volumen de ${clean || "taps registrados"}, la bodega experimenta un canal de interacción saludable con alta tasa de lecturas originales. Se recomienda potenciar la fidelización activa ofreciendo beneficios directos en el paso final del escaneo para maximizar el registro en el Pasaporte. Las alertas de riesgo se mantienen en niveles bajos, lo que valida la robustez del sellado.`;
+  }
   return clean || "Texto premium generado localmente.";
 }
 
@@ -50,6 +53,9 @@ function buildPrompt(tone?: string) {
   }
   if (tone === "modern-web3") {
     return "Sos arquitecto de producto phygital. Reescribi el texto en espanol explicando pasaporte digital, trazabilidad, evidencia tecnica y tokenizacion opcional. No prometas ownership si no hay prueba de compra.";
+  }
+  if (tone === "executive-summary") {
+    return "Sos un consultor de negocios y analista estratégico experto en retail, trazabilidad y Web3. Analizá los KPIs y métricas proporcionados del sistema de autenticación de tags NFC de la bodega. Proporcioná un resumen ejecutivo sumamente claro, ejecutivo y conciso de 2 o 3 párrafos en español rioplatense. Detallá la salud operativa (taps totales, tasa de lecturas válidas), el nivel de alertas de riesgo (duplicados, tamper, dispersión geográfica) y una recomendación de acción estratégica concreta y proactiva para el negocio (ej. cómo fidelizar mejor o dónde ajustar la seguridad). No inventes datos que no estén presentes en las métricas de entrada.";
   }
   return "Reescribi el texto en espanol para una marca premium. Debe sonar claro, sofisticado y util. No inventes datos, certificaciones, premios, origen, proceso, beneficios, propiedad ni claims no incluidos. No uses garantizado, 100%, certificado o autentico si el input no lo afirma.";
 }

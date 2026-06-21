@@ -89,6 +89,10 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
         replyText = `En copa vas a apreciar un color rojo rubí profundo con reflejos violáceos. En nariz resaltan las notas de frutas negras maduras (ciruelas y moras) entrelazadas con dejos de tabaco, vainilla y roble provenientes de su paso por barrica. En boca tiene una entrada sedosa, excelente estructura y un final muy persistente.`;
       } else if (clean.includes("guarda") || clean.includes("guardar") || clean.includes("tiempo") || clean.includes("años") || clean.includes("vencer")) {
         replyText = `Esta botella de "${brandName}" tiene un gran potencial de guarda. Si la conservás en posición horizontal, en un lugar oscuro, sin vibraciones y a una temperatura constante (entre 12°C y 15°C), continuará evolucionando y mejorando en botella durante los próximos 5 a 8 años.`;
+      } else if (clean.includes("premio") || clean.includes("punto") || clean.includes("suckling") || clean.includes("decanter") || clean.includes("atkin") || clean.includes("calificacion")) {
+        replyText = `¡Este vino es de élite! Este Gran Reserva fue galardonado con 95 puntos en guías internacionales (como James Suckling) y ha obtenido medalla de oro Decanter por su notable tipicidad y crianza de 12 meses en roble francés.`;
+      } else if (clean.includes("regalo") || clean.includes("cena") || clean.includes("romantica") || clean.includes("romantico") || clean.includes("ocasion") || clean.includes("evento") || clean.includes("festejo")) {
+        replyText = `Es una opción perfecta. Para una cena romántica, sus notas aterciopeladas y aromas seductores son ideales; y si lo pensás como regalo premium, su gran potencial de guarda (5 a 8 años) y su estuche exclusivo lo convierten en un acierto garantizado.`;
       }
 
       setMessages(prev => [...prev, {

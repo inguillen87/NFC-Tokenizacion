@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { OpsPanel, StatCard, StatusChip } from "@product/ui";
 import { DemoOpsMap } from "./demo-ops-map";

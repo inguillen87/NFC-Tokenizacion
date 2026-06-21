@@ -39,21 +39,21 @@ export function BrandWordmark({ size = 120, variant = "static", theme = "dark", 
       <text className="brand-wordmark-text brand-wordmark-text--main" x="0" y="78" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" fontSize="72" fontWeight="780" letterSpacing="0" fill="url(#brand-word-main)" filter="url(#brand-word-bevel)">
         nex
       </text>
-      <text className="brand-wordmark-shadow" x="184" y="80" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" fontSize="72" fontWeight="820" letterSpacing="0" fill="rgba(2,6,23,0.3)">
+      <text className="brand-wordmark-shadow" x="156" y="80" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" fontSize="72" fontWeight="820" letterSpacing="0" fill="rgba(2,6,23,0.3)">
         ID
       </text>
-      <text className="brand-wordmark-text brand-wordmark-text--accent" x="182" y="78" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" fontSize="72" fontWeight="820" letterSpacing="0" fill="url(#brand-word-accent)" filter="url(#brand-word-bevel)">
+      <text className="brand-wordmark-text brand-wordmark-text--accent" x="154" y="78" fontFamily="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial" fontSize="72" fontWeight="820" letterSpacing="0" fill="url(#brand-word-accent)" filter="url(#brand-word-bevel)">
         ID
       </text>
-      <ellipse className="brand-wordmark-orbit" cx="248" cy="41" rx="17" ry="11" fill="none" stroke={orbitColor} strokeWidth="1.5" strokeDasharray="3 3" />
+      <ellipse className="brand-wordmark-orbit" cx="220" cy="41" rx="17" ry="11" fill="none" stroke={orbitColor} strokeWidth="1.5" strokeDasharray="3 3" />
       <g className="brand-wordmark-satellite">
-        <circle cx="248" cy="30" r="4.4" fill={accent}>
+        <circle cx="220" cy="30" r="4.4" fill={accent}>
           {motionEnabled ? (
             <animateTransform
               attributeName="transform"
               type="rotate"
-              from={`0 248 41`}
-              to={`360 248 41`}
+              from={`0 220 41`}
+              to={`360 220 41`}
               dur={variant === "ripple" ? "2.2s" : "3.1s"}
               repeatCount="indefinite"
             />

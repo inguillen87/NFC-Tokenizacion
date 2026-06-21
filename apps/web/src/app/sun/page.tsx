@@ -1768,14 +1768,62 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           {/* Cata y Maridaje section (For Wine vertical) */}
           {(result.product?.vertical === "wine" || result.tenant?.vertical === "wine" || productDisplayName.toLowerCase().includes("wine") || productDisplayName.toLowerCase().includes("malbec") || productDisplayName.toLowerCase().includes("reserva")) && (
-            <div className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-2">
-              <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Detalle del Sommelier</span>
-              <p className="text-slate-300 italic">
-                "{dynamicTastingNotes}"
-              </p>
-              <p className="text-[10px] text-amber-300 font-medium">
-                🍷 Maridaje: {dynamicMaridaje}
-              </p>
+            <div className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-4">
+              <div className="space-y-1">
+                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Detalle del Sommelier</span>
+                <p className="text-slate-300 italic">
+                  "{dynamicTastingNotes}"
+                </p>
+                <p className="text-[10px] text-amber-300 font-medium pt-1">
+                  🍷 Maridaje: {dynamicMaridaje}
+                </p>
+              </div>
+
+              {/* Perfil Sensorial */}
+              <div className="space-y-2.5 pt-3 border-t border-white/5">
+                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Perfil Sensorial</span>
+                <div className="space-y-2.5">
+                  {[
+                    { label: "Cuerpo / Intensidad", val: 85, desc: "Intenso y estructurado" },
+                    { label: "Taninos", val: 70, desc: "Sedosos y redondos" },
+                    { label: "Acidez", val: 60, desc: "Fresca y equilibrada" },
+                    { label: "Roble Francés", val: 75, desc: "12 meses de crianza" },
+                    { label: "Fruta Negra", val: 90, desc: "Mora y ciruela madura" },
+                  ].map((attr) => (
+                    <div key={attr.label} className="space-y-1">
+                      <div className="flex justify-between text-[10px] font-medium text-slate-300">
+                        <span>{attr.label}</span>
+                        <span className="text-slate-500 text-[9px]">{attr.desc}</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-white/5">
+                        <div 
+                          className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.4)]"
+                          style={{ width: `${attr.val}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Premios y Distinciones */}
+              <div className="space-y-2.5 pt-3 border-t border-white/5">
+                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Premios y Sellos</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-2 text-center flex flex-col justify-center items-center gap-0.5 hover:border-amber-500/40 hover:bg-amber-500/10 transition duration-300">
+                    <span className="text-[13px] font-black text-amber-300">95 Pts</span>
+                    <span className="text-[7px] text-slate-400 uppercase font-bold tracking-wider leading-none">James Suckling</span>
+                  </div>
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-2 text-center flex flex-col justify-center items-center gap-0.5 hover:border-amber-500/40 hover:bg-amber-500/10 transition duration-300">
+                    <span className="text-[13px] font-black text-amber-300">Oro</span>
+                    <span className="text-[7px] text-slate-400 uppercase font-bold tracking-wider leading-none">Decanter Awards</span>
+                  </div>
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-2 text-center flex flex-col justify-center items-center gap-0.5 hover:border-amber-500/40 hover:bg-amber-500/10 transition duration-300">
+                    <span className="text-[11px] font-black text-amber-300">Valle de Uco</span>
+                    <span className="text-[7px] text-slate-400 uppercase font-bold tracking-wider leading-none">Origen Certificado</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

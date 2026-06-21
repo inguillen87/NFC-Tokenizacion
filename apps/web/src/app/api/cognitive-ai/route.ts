@@ -11,10 +11,12 @@ const DEFAULT_FALLBACK_CHAT_MODEL = "google/gemma-4-26B-A4B-it:deepinfra";
 function fallbackOptimizedText(text: string, tone?: string) {
   const clean = String(text || "").replace(/\s+/g, " ").trim();
   if (tone === "sommelier-chat") {
-    if (/temperatura|servir|frio|fria/i.test(clean)) return "Servilo entre 16 y 18 C. Esa temperatura sostiene fruta, madera y taninos sin endurecer la boca.";
-    if (/maridaje|comida|carne|queso|pasta/i.test(clean)) return "Va muy bien con carnes asadas, pastas con salsa intensa y quesos semiduros. Abrilo unos minutos antes.";
-    if (/aroma|cata|sabor|nota/i.test(clean)) return "En copa deberias encontrar fruta roja madura, especias suaves y un final redondo con crianza integrada.";
-    return "Es un vino pensado para tomarse con calma: abrilo 15 minutos antes y servilo en copa amplia para expresar mejor el terroir.";
+    if (/temperatura|servir|frio|fria/i.test(clean)) return "Servilo entre 16 y 18°C. Esa temperatura ideal sostiene toda su fruta roja madura, madera y taninos sin endurecer la boca.";
+    if (/maridaje|comida|carne|queso|pasta|comer/i.test(clean)) return "Va excelente con asado, cortes a la parrilla, pastas con ragú o fileto trufado, y quesos duros maduros. Evitá lo muy picante.";
+    if (/aroma|cata|sabor|nota|oler/i.test(clean)) return "En copa revela rojo violáceo intenso, aromas de ciruela y mora madura con dejos de tabaco y vainilla por su paso por roble.";
+    if (/premio|punto|suckling|decanter|calificacion|atkin/i.test(clean)) return "Este Gran Reserva posee 95 puntos James Suckling y medalla de oro Decanter por su equilibrio excepcional y elegancia.";
+    if (/regalo|cena|romantica|romantico|ocasion|amigos|cumple/i.test(clean)) return "¡Ideal! En una cena romántica enamora por su sedosidad; como regalo es un éxito garantizado con su perfil premium de guarda.";
+    return "Es un vino excepcional para disfrutar con calma: abrilo 15 minutos antes y servilo en copa amplia para expresar el terroir.";
   }
   if (tone === "sommelier") {
     return `Propuesta premium: ${clean || "vino de bodega"} con foco en origen, crianza, expresion del terroir y una experiencia cuidada para el cliente.`;
@@ -50,7 +52,7 @@ function extractModelText(data: any) {
 
 function buildPrompt(tone?: string) {
   if (tone === "sommelier") {
-    return "Sos un sommelier enologo de lujo. Reescribi el texto en espanol para una bodega premium. Usa solo datos presentes en el texto: no inventes bodega, finca, terroir, premios, certificaciones, origen, proceso, anada ni propiedad. No uses garantizado, 100%, certificado o autentico si el input no lo afirma. Mejora tono, claridad y utilidad.";
+    return "Sos un sommelier enologo de lujo. Reescribi el texto en espanol para una bodega premium. Usa solo datos presentes en el texto: no inventes bodega, finca, terroir, premios, certificaciones, origen, proceso, anada ni propiedad. No uses garantizado, 100%, certificado o autentico si el input no lo afirma. Mejora tono, claridad and utilidad.";
   }
   if (tone === "club-privado") {
     return "Sos estratega de fidelizacion premium. Reescribi el texto en espanol con exclusividad, cupos limitados y acceso preferencial, sin prometer propiedad ni beneficios no verificados.";
@@ -59,7 +61,7 @@ function buildPrompt(tone?: string) {
     return "Sos arquitecto de producto phygital. Reescribi el texto en espanol explicando pasaporte digital, trazabilidad, evidencia tecnica y tokenizacion opcional. No prometas ownership si no hay prueba de compra.";
   }
   if (tone === "sommelier-chat") {
-    return "Sos sommelier experto de una bodega argentina. Responde en espanol rioplatense, profesional y muy breve: maximo 230 caracteres. Habla de servicio, maridaje, terroir o notas de cata. No inventes certificaciones.";
+    return "Sos un sommelier enólogo experto de una prestigiosa bodega de Mendoza. Responde en español rioplatense, elegante y muy carismático. Responde detalladamente sobre maridajes (carnes asadas, pastas trufadas, quesos maduros), temperatura óptima (16-18°C) y ocasiones (cenas románticas, regalos de prestigio, festejos). Menciona que este Gran Reserva tiene 95 puntos James Suckling y 12 meses de guarda en roble francés. Limita tu respuesta a un máximo de 450 caracteres.";
   }
   return "Reescribi el texto en espanol para una marca premium. Debe sonar claro, sofisticado y util. No inventes datos, certificaciones, premios, origen, proceso, beneficios, propiedad ni claims no incluidos. No uses garantizado, 100%, certificado o autentico si el input no lo afirma.";
 }

@@ -16,10 +16,19 @@ export function RiskRadarChart({ data, onSelectCategory }: { data: RiskRadarPoin
           const active = state?.activePayload?.[0]?.payload as { label?: string } | undefined;
           if (active?.label) onSelectCategory?.(active.label);
         }}>
-          <PolarGrid stroke="rgba(148,163,184,.25)" />
-          <PolarAngleAxis dataKey="label" tick={{ fill: "#cbd5e1", fontSize: 11 }} />
-                    <Radar isAnimationActive={!reducedMotion} animationDuration={420} name="risk" dataKey="score" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.35} />
-                    <Tooltip contentStyle={tooltipStyle} />
+          <PolarGrid stroke="rgba(255,255,255,0.05)" />
+          <PolarAngleAxis dataKey="label" tick={{ fill: "#64748b", fontSize: 10, fontWeight: 500 }} />
+          <Radar 
+            isAnimationActive={!reducedMotion} 
+            animationDuration={600} 
+            name="Riesgo" 
+            dataKey="score" 
+            stroke="#f43f5e" 
+            strokeWidth={2}
+            fill="rgba(244,63,94,0.25)" 
+            dot={{ r: 3, fill: "#f43f5e", strokeWidth: 0 }}
+          />
+          <Tooltip contentStyle={tooltipStyle} />
         </RadarChart>
       </ResponsiveContainer>
       )}
