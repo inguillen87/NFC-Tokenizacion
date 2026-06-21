@@ -102,15 +102,15 @@ function verticalTo3DIndustry(vertical: Vertical): string {
 }
 
 const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> = {
-  wine: { imageUrl: "/demo/wine-secure/real-malbec-bottle-pexels.jpg", credit: "Pexels / Imperio Ame" },
-  seeds: { imageUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg", credit: "Pexels / RDNE Stock project" },
+  wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.webp", credit: "nexID generated asset" },
+  seeds: { imageUrl: "/sdk/verticals/agro-nfc-qr-traceability.webp", credit: "nexID generated asset" },
   pharma: { imageUrl: "/sdk/pharma-authentication-pack.webp", credit: "nexID generated asset" },
-  creamJar: { imageUrl: "/demo/cosmetics-secure/real-premium-skincare-pexels.jpg", credit: "Pexels / skincare studio" },
-  perfume: { imageUrl: "/demo/cosmetics-secure/real-premium-perfume-crop-pexels.jpg", credit: "Pexels / Suhashan Jar" },
-  creamTube: { imageUrl: "/demo/cosmetics-secure/real-cosmetic-bottles-pexels.jpg", credit: "Pexels / Daria Liudnaya" },
-  bracelet: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
-  ticket: { imageUrl: "/demo/events-basic/real-event-wristband-pexels.jpg", credit: "Pexels / freestocks.org" },
-  sneaker: { imageUrl: "/demo/luxury-basic/real-premium-sneakers-stage-crop.jpg", credit: "Pexels / Jibarofoto" },
+  creamJar: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", credit: "nexID generated asset" },
+  perfume: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", credit: "nexID generated asset" },
+  creamTube: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", credit: "nexID generated asset" },
+  bracelet: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", credit: "nexID generated asset" },
+  ticket: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", credit: "nexID generated asset" },
+  sneaker: { imageUrl: "/sdk/verticals/luxury-nfc-qr-tamper.webp", credit: "nexID generated asset" },
   logistics: { imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp", credit: "nexID generated asset" },
   electronics: { imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp", credit: "nexID generated asset" },
   textile: { imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp", credit: "nexID generated asset" },
