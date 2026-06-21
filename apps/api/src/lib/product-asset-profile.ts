@@ -54,7 +54,7 @@ type ProductAssetInput = {
 
 const demoStockAssets: Partial<Record<AssetVisualKind, { productImageUrl: string; sourceLabel: string }>> = {
   wine: {
-    productImageUrl: "/demo/wine-secure/real-malbec-bottle-pexels.jpg",
+    productImageUrl: "/images/premium_wine_mendoza_nfc.png",
     sourceLabel: "Pexels / Imperio Ame",
   },
   bracelet: {

@@ -46,7 +46,7 @@ const demoProduct = {
   vintage: "2022",
   alcoholPct: 14.5,
   storage: "16C",
-  imageUrl: "https://nexid.lat/demo/wine-secure/real-malbec-bottle-pexels.jpg",
+  imageUrl: "https://nexid.lat/images/premium_wine_mendoza_nfc.png",
 };
 const demoOrigin = {
   label: "Valle de Uco, Mendoza",

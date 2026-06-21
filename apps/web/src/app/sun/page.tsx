@@ -9,7 +9,7 @@ import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stag
 import { TapPrecisionTelemetry } from "./tap-precision-telemetry";
 import { QREngagementSuite } from "./qr-engagement-suite";
 import { productUrls } from "@product/config";
-import { BrandLockup, DeviceSignatureBadge, EmptyState, GlobalOpsMap, KeyValueSpec, ThemeToggle, TimelineRail } from "@product/ui";
+import { BrandLockup, DeviceSignatureBadge, EmptyState, GlobalOpsMap, KeyValueSpec, LocaleSwitcher, ThemeToggle, TimelineRail } from "@product/ui";
 import type { GlobalOpsPoint, GlobalOpsRoute } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 import { resolveProductAssetProfile, summarizeAssetReadiness } from "../../lib/product-asset-bank";
@@ -404,6 +404,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SunPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
+  const { locale, locales } = await getWebI18n();
   const isQrScan = params.qr === "1" || params.channel === "qr";
   const query = new URLSearchParams();
   ["v", "bid", "picc_data", "enc", "cmac"].forEach((key) => {
@@ -1380,6 +1381,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <LocaleSwitcher value={locale} options={locales as any} />
             <ThemeToggle />
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/5 backdrop-blur-md">
               <span className={`w-2 h-2 rounded-full ${pulseClass} animate-pulse`} />
@@ -1484,7 +1486,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         </section>
 
         {/* 2. Premium Product Profile Card */}
-        <section className="rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden">
+        <section id="product-info" className="rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden">
           <div className="flex flex-col items-center">
             
             {/* Floating Premium Image */}
@@ -1547,7 +1549,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         </section>
 
         {/* 3. Core Action Buttons (Authena/Qliktag Style - Large, Touch-Friendly) */}
-        <section className="space-y-3">
+        <section id="consumer-choice" className="space-y-3">
           
           {/* Main Action Block: Claim/Warranty/Rewards */}
           {isFreshCommercialTap ? (

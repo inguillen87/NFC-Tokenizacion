@@ -171,7 +171,7 @@ async function migrateSunTenantProfilesSchema() {
         "harvest_year":2022,
         "barrel_months":12,
         "temperature_storage":"16C",
-        "image_url":"https://nexid.lat/demo/wine-secure/real-malbec-bottle-pexels.jpg",
+        "image_url":"https://nexid.lat/images/premium_wine_mendoza_nfc.png",
         "chip_model":"NTAG 424 DNA TT",
         "tagtamper_enabled":true,
         "tamper_status_enabled":true,

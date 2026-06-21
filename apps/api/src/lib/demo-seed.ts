@@ -24,7 +24,7 @@ const DEMO_PRODUCT = {
   serving: "16C - decantar 20 min",
   storage: "16C",
   oakType: "Roble frances tostado medio",
-  imageUrl: "https://nexid.lat/demo/wine-secure/real-malbec-bottle-pexels.jpg",
+  imageUrl: "https://nexid.lat/images/premium_wine_mendoza_nfc.png",
 };
 
 const DEMO_ORIGIN = {
