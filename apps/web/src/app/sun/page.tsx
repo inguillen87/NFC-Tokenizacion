@@ -1310,774 +1310,290 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
 
   return (
-    <main className="sun-mobile-surface min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col items-center py-4 sm:py-6 lg:py-8 px-0 font-sans relative overflow-hidden pb-safe pb-32 lg:pb-10">
+    <main className="min-h-screen bg-[#060813] text-slate-100 flex flex-col items-center py-4 sm:py-8 px-4 font-sans relative overflow-hidden pb-32">
       <FreshHandoffUrlCleaner enabled={Boolean(isFreshHandoff && freshToken)} />
-      {/* Dynamic Background */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[400px] bg-gradient-to-b from-cyan-900/20 to-transparent blur-3xl pointer-events-none"></div>
+      
+      {/* Background glow effects */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[500px] bg-gradient-to-b from-indigo-500/10 via-cyan-500/5 to-transparent blur-3xl pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-80 h-80 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 -right-40 w-96 h-96 bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="sun-mobile-shell w-full max-w-[430px] min-w-0 z-10 space-y-4 px-3 mx-auto">
-        <TapPrecisionTelemetry
-          endpoint={telemetryEndpoint}
-          enabled={!isQrScan && !isSnapshotView && Boolean(eventId)}
-          bid={bid}
-          uid={uid || null}
-          eventId={eventId || null}
-          readCounter={typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null}
-          contextStatus={result.status?.code || null}
-        />
-         {/* Trust Header */}
-         <div className="sun-topbar flex items-center justify-between px-2 mb-2">
-            <div className="sun-passport-brand flex items-center gap-2">
-               <BrandLockup size={38} variant="ripple" theme="dark" />
-               <p className="sun-passport-brand__caption">{isQrScan ? "qr product hub" : "verified passport"}</p>
+      {/* Telemetry data collection component */}
+      <TapPrecisionTelemetry
+        endpoint={telemetryEndpoint}
+        enabled={!isQrScan && !isSnapshotView && Boolean(eventId)}
+        bid={bid}
+        uid={uid || null}
+        eventId={eventId || null}
+        readCounter={typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null}
+        contextStatus={result.status?.code || null}
+      />
+
+      <div className="w-full max-w-[430px] z-10 space-y-5 mx-auto">
+        
+        {/* Modern minimal top bar */}
+        <header className="flex items-center justify-between px-1 mb-2">
+          <div className="flex items-center gap-2">
+            <BrandLockup size={36} variant="ripple" theme="dark" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+              {isQrScan ? "qr passport" : "nfc passport"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/5 backdrop-blur-md">
+              <span className={`w-2 h-2 rounded-full ${pulseClass} animate-pulse`} />
+              <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">{livePillLabel}</span>
             </div>
-            <div className="sun-topbar-actions flex items-center gap-1.5">
-              <ThemeToggle />
-              <div className="sun-live-tap-pill flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-900/85 border border-slate-700">
-                 <span className={`w-1.5 h-1.5 rounded-full ${pulseClass}`}></span>
-                 <span className="text-[9px] font-bold text-slate-300 uppercase">{livePillLabel}</span>
+          </div>
+        </header>
+
+        {/* 1. Main Authenticity Banner (Glassmorphism & Glowing border) */}
+        <section 
+          className={`relative rounded-3xl border border-white/10 p-6 backdrop-blur-2xl shadow-2xl overflow-hidden bg-gradient-to-br ${
+            isValid 
+              ? "from-emerald-950/40 via-slate-900/60 to-emerald-950/20 shadow-emerald-950/20" 
+              : isVerifiedOpenedState && isTechnicallyAuthentic
+                ? "from-amber-950/40 via-slate-900/60 to-amber-950/20 shadow-amber-950/20"
+                : isSunProfileMismatch
+                  ? "from-amber-950/40 via-slate-900/60 to-amber-950/20 shadow-amber-950/20"
+                  : "from-rose-950/40 via-slate-900/60 to-rose-950/20 shadow-rose-950/20"
+          }`}
+        >
+          {/* Status color glow */}
+          <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-25 pointer-events-none ${
+            isValid 
+              ? "bg-emerald-500" 
+              : isVerifiedOpenedState && isTechnicallyAuthentic
+                ? "bg-amber-500"
+                : isSunProfileMismatch
+                  ? "bg-amber-500"
+                  : "bg-rose-500"
+          }`} />
+
+          <div className="relative z-10 flex flex-col items-center text-center">
+            {/* Massive status icon */}
+            <div className="relative mb-4">
+              <div className={`w-20 h-20 rounded-full border-4 border-slate-900 flex items-center justify-center text-3xl shadow-inner relative z-10 ${
+                isValid 
+                  ? "bg-emerald-500/10 text-emerald-400" 
+                  : isVerifiedOpenedState && isTechnicallyAuthentic
+                    ? "bg-amber-500/10 text-amber-400"
+                    : isSunProfileMismatch
+                      ? "bg-amber-500/10 text-amber-400"
+                      : "bg-rose-500/10 text-rose-400"
+              }`}>
+                {isValid ? "✓" : isVerifiedOpenedState && isTechnicallyAuthentic ? "⚠️" : isSunProfileMismatch ? "⚠️" : "❌"}
+              </div>
+              <div className={`absolute -inset-1 rounded-full blur-md opacity-30 ${
+                isValid 
+                  ? "bg-emerald-500 animate-pulse" 
+                  : isVerifiedOpenedState && isTechnicallyAuthentic
+                    ? "bg-amber-500"
+                    : isSunProfileMismatch
+                      ? "bg-amber-500"
+                      : "bg-rose-500"
+              }`} />
+            </div>
+
+            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
+              isValid
+                ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                : isVerifiedOpenedState && isTechnicallyAuthentic
+                  ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                  : isSunProfileMismatch
+                    ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                    : "bg-rose-500/10 border border-rose-500/20 text-rose-400"
+            }`}>
+              {isQrScan
+                ? "QR / Ficha Informativa"
+                : isValid
+                  ? "AUTÉNTICO & INTACTO"
+                  : isVerifiedOpenedState && isTechnicallyAuthentic
+                    ? "AUTÉNTICO & SELLO ABIERTO"
+                    : isReplay
+                      ? "REPLAY / ENLACE REUTILIZADO"
+                      : isSunProfileMismatch
+                        ? "PERFIL DESALINEADO"
+                        : "ALERTA DE SEGURIDAD"}
+            </span>
+
+            <h2 className="text-lg font-black text-white leading-snug tracking-tight mb-2">
+              {displayStatusHeadline}
+            </h2>
+            <p className="text-xs text-slate-300 max-w-[340px] leading-relaxed">
+              {replayDecisionText}
+            </p>
+
+            {/* Quick status dots for mobile */}
+            <div className="mt-4 w-full border-t border-white/5 pt-4 grid grid-cols-3 gap-2">
+              <div className="text-center">
+                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Chip NFC</span>
+                <span className="text-[11px] font-bold text-slate-300 mt-0.5 block">{carrierLabel}</span>
+              </div>
+              <div className="text-center border-x border-white/5">
+                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Sello Físico</span>
+                <span className={`text-[11px] font-bold mt-0.5 block ${sealClosed ? "text-emerald-400" : "text-amber-400"}`}>{sealLabel}</span>
+              </div>
+              <div className="text-center">
+                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Confianza</span>
+                <span className={`text-[11px] font-bold mt-0.5 block ${trustTone}`}>{trustScore}/100</span>
               </div>
             </div>
-         </div>
-
-          <div className="sun-quick-nav grid grid-cols-4 gap-2">
-           <a href="#product-info" className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Ficha</a>
-            {certificateHref ? (
-              <Link href={certificateHref} className="min-w-0 rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-[11px] font-semibold text-emerald-100">Certificado</Link>
-            ) : (
-              <a href="#geo-trace" className="min-w-0 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-[11px] font-semibold text-cyan-100">Ruta</a>
-            )}
-           <a href={isQrScan ? "#qr-engagement" : "#consumer-choice"} className="min-w-0 rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-[11px] font-semibold text-violet-100">{isQrScan ? "Sommelier" : "Opciones"}</a>
-           <Link href={tapMarketplaceHref} className="min-w-0 rounded-xl border border-amber-300/30 bg-amber-500/15 px-2 py-2 text-center text-[11px] font-semibold text-amber-100">Comprar</Link>
-         </div>
-
-         <section id="product-info" className={`sun-product-first sun-product-first--${productFirstTone}`} aria-label="Producto detectado despues del tap">
-           <div className="sun-product-first__visual">
-             {productHeroImageUrl ? (
-               <img src={productHeroImageUrl} alt={`Producto: ${productDisplayName}`} />
-             ) : (
-               <SunProductHeroStage
-                 kind={productVisualKind}
-                 productName={productDisplayName}
-                 imageUrl={productHeroImageUrl}
-                 originDisplay={originDisplay}
-                 tapDisplay={tapDisplay}
-                 distanceDisplay={distanceDisplay}
-                 state={productVisualState}
-                 originLat={wineryPoint[0]?.lat}
-                 originLng={wineryPoint[0]?.lng}
-                 tapLat={currentTapPoint[0]?.lat}
-                 tapLng={currentTapPoint[0]?.lng}
-               />
-             )}
-             <div className="sun-product-first__badges" aria-label="Datos principales del producto">
-               {productFirstBadges.map((badge, index) => (
-                 <span key={`${badge}-${index}`}>{badge}</span>
-               ))}
-             </div>
-             <div className="sun-product-first__caption">
-               <span>{tenantDisplayName}</span>
-               <h1>{productDisplayName}</h1>
-               <p>{productLine || verticalLabel}</p>
-             </div>
-           </div>
-           <div className="sun-product-first__content">
-             <p className="sun-product-first__eyebrow">{isQrScan ? "Ficha QR" : "Producto real"}</p>
-             <h2>{productFirstStatusTitle}</h2>
-             <p>{productFirstStatusBody}</p>
-             <div className="sun-product-first__specs">
-               {productFirstSpecs.map((item) => (
-                 <div key={item.label} className="sun-product-first__spec">
-                   <span>{item.label}</span>
-                   <strong>{item.value}</strong>
-                 </div>
-               ))}
-             </div>
-             <div className="sun-product-first__actions">
-               {certificateHref ? (
-                 <Link href={certificateHref}>Ver certificado</Link>
-               ) : (
-                 <a href="#geo-trace">{isQrScan ? "Ver ruta declarada" : "Ver trazabilidad"}</a>
-               )}
-               <a href={primaryPostTapAction.href}>{primaryPostTapAction.label}</a>
-             </div>
-           </div>
-         </section>
-
-         <section className="rounded-2xl border border-cyan-300/20 bg-slate-950/75 p-4 shadow-[0_18px_45px_rgba(8,47,73,0.22)]">
-           <div className="flex items-start justify-between gap-3">
-             <div>
-               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">Que podes hacer ahora</p>
-               <h2 className="mt-1 text-base font-black text-white">Lee primero. Compra o verifica solo si queres.</h2>
-             </div>
-             <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-100">sin registro</span>
-           </div>
-           <div className="mt-3 grid grid-cols-2 gap-2">
-             <a href="#product-info" className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-semibold text-emerald-100">
-               Ficha publica
-               <small className="mt-1 block font-normal text-emerald-100/70">Origen, producto y bodega.</small>
-             </a>
-             <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="rounded-xl border border-violet-300/25 bg-violet-500/10 px-3 py-3 text-xs font-semibold text-violet-100">
-               {isQrScan ? "Sommelier IA" : "Ruta"}
-               <small className="mt-1 block font-normal text-violet-100/70">{isQrScan ? "Preguntar sin cuenta." : "Mapa y evidencia."}</small>
-             </a>
-             <Link href={tapMarketplaceHref} className="rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-3 text-xs font-semibold text-amber-100">
-               Comprar o ver mas
-               <small className="mt-1 block font-normal text-amber-100/70">Marketplace de la marca.</small>
-             </Link>
-             <a href="#consumer-choice" className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-3 text-xs font-semibold text-cyan-100">
-               Verificar compra
-               <small className="mt-1 block font-normal text-cyan-100/70">POS, PIN o prueba aparte.</small>
-             </a>
-           </div>
-           <p className="mt-3 text-[11px] leading-5 text-slate-400">Escanear para leer no reclama propiedad. Si estas en una tienda o supermercado, podes informarte y salir sin dejar datos.</p>
-         </section>
-
-         <section className={`sun-simple-guide sun-simple-guide--${primaryPostTapAction.tone}`}>
-           <div className="sun-simple-guide__copy">
-             <p>Estado del tap</p>
-             <h1>{friendlyStageTitle}</h1>
-             <span>{friendlyStageBody}</span>
-           </div>
-           <div className="sun-simple-guide__action">
-             <a href={primaryPostTapAction.href}>{primaryPostTapAction.label}</a>
-              <small>{isFreshCommercialTap ? "La ficha se puede leer sin iniciar sesion. Contacto y beneficios son opcionales." : blockedTapReason || recommendedAction.helper}</small>
-           </div>
-           <div className="sun-simple-guide__steps" aria-label="Camino simple del producto">
-             {simpleJourneySteps.map((step, index) => (
-               <div key={step.label} className={`sun-simple-step sun-simple-step--${step.state}`}>
-                 <strong>{index + 1}</strong>
-                 <span>{step.label}</span>
-                 <small>{step.detail}</small>
-               </div>
-             ))}
-           </div>
-            <div className="sun-simple-guide__score" aria-label="Score de confianza del tap">
-             <div>
-               <span>Score de confianza</span>
-               <strong>{trustScore}/100</strong>
-             </div>
-             <ul>
-               {friendlyTrustFactors.map((factor) => (
-                 <li key={factor.label} className={factor.ok ? "ok" : "pending"}>{factor.label}</li>
-               ))}
-             </ul>
-           </div>
-         </section>
-
-         {isQrScan ? (
-            <div className="rounded-2xl border border-amber-500/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.08)_0%,rgba(245,158,11,0.02)_100%)] p-4 text-xs leading-relaxed text-amber-200 flex gap-3 items-start shadow-md mb-2">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
-              <div>
-                <p className="font-black uppercase tracking-wider text-amber-300">Modo QR / SDK engagement</p>
-                <p className="mt-1 text-[11px] text-amber-100/80 leading-normal">
-                  Este canal sirve para ficha publica, sommelier IA, leads, fidelizacion, analytics y campanas sin vender hardware. Para anti-clon criptografico, anti-replay fuerte, garantia sensible o propiedad, la marca debe usar un flujo NFC/SUN o validar compra aparte.
-                </p>
-              </div>
-            </div>
-          ) : isSnapshotView ? (
-            <div id="fresh-tap-required" className="rounded-2xl border border-sky-300/25 bg-sky-500/10 p-3 text-xs leading-5 text-sky-100">
-              <p className="font-semibold">Consulta segura del tap</p>
-              <p className="mt-1 text-sky-100/80">Esta vista sirve para demostrar autenticidad y trazabilidad sin exponer acciones sensibles. Para puntos, garantia, marketplace o tokenizacion, toca fisicamente la etiqueta y usa el nuevo tap fresco.</p>
-            </div>
-          ) : null}
-
-         {/* Hero Product Card */}
-         <div className="sun-passport-card sun-passport-hero rounded-[2rem] border border-white/10 bg-slate-900/60 p-1 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-            <div className="rounded-[1.75rem] border border-white/5 bg-slate-950 p-5 relative z-10 text-center">
-               <SunProductHeroStage
-                 kind={productVisualKind}
-                 productName={productDisplayName}
-                 imageUrl={productHeroImageUrl}
-                 originDisplay={originDisplay}
-                 tapDisplay={tapDisplay}
-                 distanceDisplay={distanceDisplay}
-                 state={productVisualState}
-                 originLat={wineryPoint[0]?.lat}
-                 originLng={wineryPoint[0]?.lng}
-                 tapLat={currentTapPoint[0]?.lat}
-                 tapLng={currentTapPoint[0]?.lng}
-               />
-
-               <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-1">{result.product?.winery || "Bodega Premium"}</p>
-               <h1 className="text-xl font-bold text-white leading-tight mb-2">{productDisplayName}</h1>
-               <p className="text-xs text-slate-500">{result.product?.region || "Mendoza, Argentina"} · {result.product?.varietal || "Blend"}</p>
-               <div className="sun-route-card mt-5">
-                 <div>
-                   <span>Origen</span>
-                   <strong>{originDisplay}</strong>
-                 </div>
-                 <div className="sun-route-card__line" aria-hidden="true" />
-                 <div>
-                   <span>Tap actual</span>
-                   <strong>{tapDisplay}</strong>
-                 </div>
-                 <b>{distanceDisplay}</b>
-               </div>
-
-               <div className="mt-6 inline-flex flex-col items-center justify-center">
-                  <span className={`text-xs font-bold uppercase tracking-widest ${trustTone === "text-emerald-200" ? "text-emerald-400" : trustTone === "text-amber-200" ? "text-amber-400" : "text-red-400"}`}>
-                     {result.status?.label || "AUTÉNTICO"}
-                  </span>
-                  <span className="text-[10px] text-slate-500 mt-1">Tap #{result.identity?.scanCount ?? 1} · {handoffCopy}</span>
-               </div>
-
-               <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left">
-                  <div className="flex items-start justify-between gap-3">
-                     <div>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300">Certificado vivo</p>
-                         <p className="mt-1 text-sm font-semibold text-white">{displayStatusHeadline}</p>
-                        <p className="mt-1 text-xs leading-5 text-slate-400">{effectiveTrustCopy}</p>
-                     </div>
-                     <div className={`shrink-0 rounded-2xl border px-3 py-2 text-center ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/15" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/15" : "border-rose-300/30 bg-rose-500/15"}`}>
-                        <p className={`text-2xl font-black leading-none ${trustTone}`}>{trustScore}</p>
-                        <p className="mt-1 text-[9px] uppercase tracking-[0.12em] text-slate-400">trust</p>
-                     </div>
-                  </div>
-
-                 <div className="mt-4 grid grid-cols-3 gap-2">
-                     <div className="sun-signal-cell">
-                        <span>Carrier</span>
-                        <b>{carrierLabel}</b>
-                     </div>
-                     <div className="sun-signal-cell">
-                        <span>Seal</span>
-                        <b>{sealLabel}</b>
-                     </div>
-                     <div className="sun-signal-cell">
-                        <span>Chain</span>
-                        <b>{chainLabel}</b>
-                     </div>
-                  </div>
-               </div>
-            </div>
-         </div>
-
-          {isQrScan ? (
-             <div id="qr-engagement">
-               <QREngagementSuite
-                 wineryName={result.product?.winery || "Bodega Premium"}
-                 productName={productDisplayName}
-                 tenantSlug={tenantSlug || "demobodega"}
-                 eventId={eventId || null}
-                 bid={bid || null}
-               />
-             </div>
-           ) : null}
-
-         <section id="product-assets" className="sun-asset-bank-card rounded-2xl border border-cyan-300/15 bg-slate-900/60 p-4">
-           <div className="sun-asset-bank-card__head">
-             <div>
-               <p>Banco real de assets</p>
-               <h2>{assetProfile.productName}</h2>
-               <span>{assetProfile.heroLine}</span>
-             </div>
-             <strong>{assetProfile.assetScore}/100</strong>
-           </div>
-           <div className="sun-asset-bank-card__meta">
-             <span>{assetProfile.brandName}</span>
-             <span>{assetProfile.batchLabel}</span>
-             <span>{assetReadinessLabel}</span>
-           </div>
-           <div className="sun-asset-bank-card__slots">
-             {assetProfile.slots.map((slot) => (
-               <article key={slot.id} className={`sun-asset-slot sun-asset-slot--${slot.status} sun-asset-slot--${slot.tone}`}>
-                 <b>{slot.label}</b>
-                 <small>{slot.detail}</small>
-                 <em>{slot.status === "ready" ? "asset real" : slot.status === "demo" ? "demo controlada" : "pendiente"}</em>
-               </article>
-             ))}
-           </div>
-           <p className="sun-asset-bank-card__claim">{assetProfile.claimLine}</p>
-         </section>
-
-         <section className="sun-passport-story rounded-2xl border border-white/10 bg-slate-900/60 p-4">
-           <div className="sun-passport-story__head">
-             <div>
-                <p>Historia del producto</p>
-               <h2>{productDisplayName}</h2>
-             </div>
-             <span>{tokenStatusDisplay}</span>
-           </div>
-           <ol>
-             {passportStorySteps.map((step) => (
-               <li key={step.label}>
-                 <strong>{step.label}</strong>
-                 <div>
-                   <span>{step.title}</span>
-                   <small>{step.body}</small>
-                 </div>
-               </li>
-             ))}
-           </ol>
-         </section>
-
-          <section className={`sun-security-ledger sun-panel-primary ${isReplay ? "sun-security-ledger--replay" : isRiskBlocked ? "sun-security-ledger--review" : isVerifiedOpenedState ? "sun-security-ledger--opened" : "sun-security-ledger--fresh"}`}>
-           <div className="sun-security-ledger__header">
-             <div>
-               <p className="sun-security-eyebrow">{isCryptoCarrier ? `Prueba criptografica ${carrierLabel}` : `Identidad operativa ${carrierLabel}`}</p>
-                <h2>{isReplay ? "Replay detectado y bloqueado" : isSnapshotView ? "Prueba guardada para consulta" : isVerifiedOpenedState && isTechnicallyAuthentic ? "Sello abierto verificado" : isValid ? "Tap fresco verificado" : "Tap protegido en revision"}</h2>
-             </div>
-             <span className={`sun-status-dot ${statusDotClass}`} aria-hidden="true" />
-           </div>
-           <p className="sun-security-copy">{replayDecisionText}</p>
-           <div className="sun-security-steps">
-             <div className="sun-security-step">
-               <span>01</span>
-               <b>UID fisico</b>
-               <p>{result.identity?.uid || result.identity?.bid || "Oculto por privacidad"}</p>
-             </div>
-             <div className="sun-security-step">
-               <span>02</span>
-               <b>Contador SUN</b>
-               <p>{result.identity?.readCounter ?? "N/A"}</p>
-             </div>
-             <div className="sun-security-step">
-               <span>03</span>
-               <b>CMAC / ENC</b>
-               <p>{result.technical?.raw?.cmacPrefix || "server"} / {result.technical?.raw?.encPrefix || "server"}</p>
-             </div>
-             <div className="sun-security-step">
-               <span>04</span>
-               <b>TagTamper</b>
-               <p>{sealLabel}</p>
-             </div>
-           </div>
-           <div className="sun-security-footer">
-             <span>Rubro: {verticalLabel}</span>
-               <span>Propiedad: {claimModeLabel}</span>
-              <span>Token: {tokenPolicyLabel}</span>
-              <span>{tokenEvidenceLabel}{hasOnChainTx ? ` · ${tokenTx.slice(0, 10)}...` : tokenId && hasOnChainProof ? ` · #${tokenId}` : ""}</span>
           </div>
         </section>
 
-          <section id="post-tap-passport" className="sun-certificate-panel rounded-2xl border border-emerald-300/20 bg-emerald-950/15 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Comprador verificado + certificado</p>
-                <h2 className="mt-1 text-base font-black text-white">{nftDisplayTitle}</h2>
-                <p className="mt-2 max-w-2xl text-xs leading-5 text-emerald-50/80">{nftDisplayCopy}</p>
-              </div>
-             <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${tokenStatusBadgeClass}`}>
-               {tokenStatusDisplay}
-             </span>
-           </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-4">
-              {certificateHref ? (
-                <Link href={certificateHref} className="sun-certificate-action">
-                  <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-                  <span>
-                    <b>Certificado</b>
-                    <em>Link publico</em>
-                  </span>
-                </Link>
-              ) : null}
-              <Link href={registerHref} className={`sun-certificate-action ${isFreshCommercialTap ? "" : "pointer-events-none opacity-50"}`}>
-                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-                <span>
-                  <b>Soy comprador</b>
-                  <em>Activar con prueba</em>
-                </span>
-              </Link>
-             <Link href={walletHref} className={`sun-certificate-action ${isFreshCommercialTap ? "" : "pointer-events-none opacity-50"}`}>
-               <WalletCards className="h-4 w-4" aria-hidden="true" />
-               <span>
-                 <b>Wallet</b>
-                 <em>MetaMask o sandbox</em>
-               </span>
-             </Link>
-             <Link href={tapMarketplaceHref} className={`sun-certificate-action ${isFreshCommercialTap ? "" : "pointer-events-none opacity-50"}`}>
-               <Store className="h-4 w-4" aria-hidden="true" />
-               <span>
-                <b>Beneficios</b>
-                  <em>Solo opt-in</em>
-               </span>
-             </Link>
-           </div>
-            {tokenExplorerHref || certificateHref ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {certificateHref ? (
-                  <Link href={certificateHref} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 text-xs font-black text-cyan-100 transition hover:bg-cyan-500/20">
-                    Abrir certificado digital <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Link>
-                ) : null}
-                {tokenExplorerHref ? (
-                  <a href={tokenExplorerHref} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 text-xs font-black text-emerald-100 transition hover:bg-emerald-500/20">
-                    Ver transaccion en Polygonscan <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                  </a>
-                ) : null}
-              </div>
-            ) : (
-             <p className="mt-3 rounded-xl border border-white/10 bg-slate-950/45 p-3 text-[11px] leading-5 text-slate-300">
-               Leer la ficha no asocia propiedad. La cuenta, garantia, wallet o NFT se activan solo si el usuario inicia el flujo de comprador y cumple la politica de la marca.
-             </p>
-           )}
-         </section>
-
-         <section className="sun-rights-panel rounded-2xl border border-cyan-300/15 bg-slate-900/65 p-4">
-           <div className="flex items-start justify-between gap-3">
-             <div>
-               <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Derechos por rubro</p>
-               <h2 className="mt-1 text-sm font-semibold text-white">{rightsTitle || "Politica comercial del tap"}</h2>
-             </div>
-             <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${rightsPolicy.canTokenize ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : "border-amber-300/30 bg-amber-500/10 text-amber-100"}`}>
-               {rightsPolicy.canTokenize ? "token-ready" : "protegido"}
-             </span>
-           </div>
-           <p className="mt-2 text-xs leading-5 text-slate-300">{rightsSummary || "La politica del tenant define que acciones comerciales se habilitan para esta lectura."}</p>
-           <div className="mt-3 grid grid-cols-2 gap-2">
-             {rightsModeCards.map((item) => (
-               <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/55 p-2.5">
-                 <p className="text-[9px] uppercase tracking-[0.14em] text-slate-500">{item.label}</p>
-                 <p className="mt-1 text-xs font-semibold text-white">{item.value}</p>
-               </div>
-             ))}
-           </div>
-           {rightsRequirementsPreview.length ? (
-             <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/45 p-3">
-               <p className="text-[10px] uppercase tracking-[0.14em] text-cyan-300">Requisitos antes de accionar</p>
-               <div className="mt-2 flex flex-wrap gap-1.5">
-                 {rightsRequirementsPreview.map((item) => (
-                   <span key={item} className="rounded-full border border-cyan-300/20 bg-cyan-500/10 px-2 py-1 text-[10px] text-cyan-100">{item}</span>
-                 ))}
-               </div>
-             </div>
-           ) : null}
-           {rightsEnterpriseCopy ? <p className="mt-2 text-[10px] leading-4 text-slate-500">{rightsEnterpriseCopy}</p> : null}
-         </section>
-
-         <section className="sun-config-panel sun-panel-education rounded-2xl border border-white/10 bg-slate-900/65 p-4">
-           <div className="flex items-start justify-between gap-3">
-             <div>
-               <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Configuracion detectada</p>
-               <h2 className="mt-1 text-sm font-semibold text-white">{carrierLabel}</h2>
-             </div>
-             <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100">
-               perfil {activeCarrierIndex + 1}/7
-             </span>
-           </div>
-           <div className="mt-3 grid grid-cols-2 gap-2">
-             {carrierEducation.slice(0, 7).map((item, index) => (
-               <div key={item.name} className={`rounded-xl border p-2.5 ${index === activeCarrierIndex ? "border-cyan-300/35 bg-cyan-500/15" : "border-white/10 bg-slate-950/55"}`}>
-                 <div className="flex items-center justify-between gap-2">
-                   <p className="text-xs font-semibold text-white">{item.name}</p>
-                   <span className="rounded-full border border-white/10 bg-slate-950 px-1.5 py-0.5 text-[8px] uppercase tracking-[0.1em] text-slate-300">{item.mode}</span>
-                 </div>
-                 <p className="mt-1 text-[10px] leading-4 text-slate-300">{item.body}</p>
-               </div>
-             ))}
-           </div>
-           {carrierConsumerCopy ? (
-             <p className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-[11px] leading-4 text-cyan-50">{carrierConsumerCopy}</p>
-           ) : null}
-         </section>
-
-         <div className="sun-journey-panel sun-panel-journey rounded-2xl border border-white/10 bg-slate-900/55 p-4">
-           <p className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">Journey post tap</p>
-           <div className="mt-3 grid grid-cols-4 gap-2">
-             {journeySteps.map((step) => (
-               <div key={step.id} className={`rounded-lg border px-2 py-2 text-center text-[10px] ${step.done ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : "border-white/10 bg-slate-950/50 text-slate-400"}`}>
-                 <p className="font-semibold">{step.done ? "✓" : "•"}</p>
-                 <p className="mt-1 leading-tight">{step.label}</p>
-               </div>
-             ))}
-           </div>
-           <p className="mt-2 text-[11px] text-slate-300">{displayStatusHeadline}</p>
-         </div>
-
-         <section className="sun-priority-panel sun-panel-priority rounded-2xl border border-white/10 bg-slate-900/65 p-4">
-           <p className="text-[10px] uppercase tracking-[0.16em] text-violet-300">Prioridad operativa</p>
-           <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-             <span className={`rounded-full border px-2 py-1 font-semibold ${securityTone}`}>{result.status?.label || "Estado"}</span>
-              <span className={`rounded-full border px-2 py-1 font-semibold ${trustTone === "text-emerald-200" ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : trustTone === "text-amber-200" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>{displayRiskLevelLabel}</span>
-             <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 font-semibold text-cyan-100">Trust {trustScore}/100</span>
-           </div>
-           <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/55 p-3">
-             <p className="text-xs font-semibold text-white">Siguiente acción recomendada</p>
-             <p className="mt-1 text-xs text-slate-300">{recommendedAction.helper}</p>
-             <a href={recommendedAction.href} className={`mt-3 inline-flex min-h-10 items-center justify-center rounded-lg border px-3 text-xs font-semibold ${trustScore >= 85 ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : trustScore >= 65 ? "border-cyan-300/30 bg-cyan-500/15 text-cyan-100" : "border-rose-300/30 bg-rose-500/15 text-rose-100"}`}>
-               {recommendedAction.label}
-             </a>
-           </div>
-         </section>
-
-          <section id="consumer-choice" className="sun-actions-panel sun-panel-actions rounded-2xl border border-white/10 bg-slate-900/65 p-4">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Opciones del lector</p>
-            <h2 className="mt-1 text-sm font-bold text-white">Elegir no significa reclamar propiedad</h2>
-            <div className="mt-3 grid gap-2">
-               <a href="#product-info" className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-100">
-                Ver ficha del producto
-              </a>
-               <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-100">
-                {isQrScan ? "Dejar contacto opcional" : "Ver ruta de confianza"}
-              </a>
-              <Link href={registerHref} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${isFreshCommercialTap ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-white/10 bg-slate-950/60 text-slate-400 pointer-events-none"}`}>
-                Soy comprador: activar garantia
-              </Link>
-              <Link href={tapMarketplaceHref} className="rounded-xl border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-xs font-semibold text-violet-100">
-                Ver marketplace de la marca
-              </Link>
-            </div>
-           {isFreshCommercialTap ? (
-             <p className="mt-2 text-[11px] text-slate-300">Nadie reclama propiedad por leer una etiqueta. Garantia, beneficios o propiedad requieren intencion explicita y prueba de compra/POS/PIN o politica de marca.</p>
-            ) : (
-              <p className="mt-2 text-[11px] text-amber-200">{blockedTapReason}</p>
-            )}
-         </section>
-
-
-         {/* Mobile Geo Trace / Enterprise Map */}
-         <div id="geo-trace" className="sun-map-section sun-map-section--enterprise sun-panel-map rounded-2xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-xl">
-            <div className="sun-map-section__header">
-              <div>
-                <p className="px-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300">Ruta de confianza</p>
-                <h2 className="px-1 text-lg font-black text-white">Origen, tap y lectura publica en una sola historia</h2>
-              </div>
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">Producto vivo</span>
-            </div>
-            <div className="mt-2">
-               {opsMapPoints.length ? (
-                  <GlobalOpsMap
-                    title="Ruta de confianza del producto"
-                    subtitle="Origen real, tap fisico, distancia, riesgo y proximo paso sin jerga tecnica."
-                    points={opsMapPoints}
-                    routes={opsMapRoutes}
-                    mode="demo"
-                    selectedPointId={opsMapPoints.find((point) => point.role === "tap")?.id || opsMapPoints[0]?.id}
-                    playbackEnabled
-                  />
-               ) : (
-                  <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-400">
-                    Sin coordenadas disponibles para este tap. El mapa aparece cuando llegan eventos con ubicacion.
-                  </div>
-               )}
-            </div>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
-                <p className="text-[9px] uppercase text-slate-500">Events</p>
-                <p className="text-xs font-semibold text-white">{timelineCount}</p>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
-                <p className="text-[9px] uppercase text-slate-500">Distancia</p>
-                <p className="text-xs font-semibold text-white">{fmtDistance(originToTapDistance)}</p>
-              </div>
-              <div className="rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-center">
-                <p className="text-[9px] uppercase text-slate-500">Last</p>
-                <p className="text-[10px] font-semibold text-white">{localTapTimeLabel || "N/A"}</p>
-              </div>
-            </div>
-            <div className="mt-2 rounded-lg border border-white/10 bg-slate-950/55 px-2.5 py-2 text-[10px] text-slate-300">
-              Ubicacion: <b className="text-cyan-100">{tapLocationPrecisionLabel}</b>
-              {result.tapContext?.timezoneLabel ? <span> · Hora local: {result.tapContext.timezoneLabel}</span> : null}
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-              {originMapHref ? <a href={originMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-2 text-center font-semibold text-emerald-100">Visitar origen</a> : null}
-              {tapMapHref ? <a href={tapMapHref} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-2 text-center font-semibold text-cyan-100">Ver tap actual</a> : null}
-            </div>
-            <p className="mt-2 text-[10px] text-slate-500">{timelineCities} ciudades reales en timeline. Sin permiso GPS, el mapa usa IP o ciudad aproximada y lo marca como tal.</p>
-         </div>
-
-          {/* IoT Telemetry & Winery Heritage Story (Premium Redesign) */}
-          <div className="sun-sensor-story-section rounded-2xl border border-amber-500/20 bg-gradient-to-br from-slate-950 via-slate-900/90 to-slate-950 p-5 mt-4 relative overflow-hidden">
-            <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-amber-500/5 blur-xl" />
+        {/* 2. Premium Product Profile Card */}
+        <section className="rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden">
+          <div className="flex flex-col items-center">
             
-            {/* Part 1: IoT Sensor Telemetry */}
-            <div className="border-b border-white/10 pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[9px] uppercase tracking-[0.18em] text-amber-300 font-black">Monitoreo IoT en Tránsito</p>
-                  <h3 className="text-sm font-black text-white mt-1">Historial de Cadena de Frío</h3>
-                </div>
-                <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-300 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  ÓPTIMO (15.2°C)
-                </span>
-              </div>
-
-              {/* Sparkline chart using SVG for stability */}
-              <div className="mt-3 bg-slate-950/45 rounded-xl border border-white/5 p-3">
-                <div className="flex justify-between items-center text-[10px] text-slate-400 mb-2">
-                  <span>Mendoza (Origen)</span>
-                  <span>Puerto BA</span>
-                  <span>Tránsito Atlántico</span>
-                  <span>Miami (Destino)</span>
-                </div>
-                <div className="h-16 w-full relative">
-                  <svg className="w-full h-full" viewBox="0 0 300 60" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="sensorGrad" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    {/* Area under the line */}
-                    <path 
-                      d="M0 60 Q 50 20, 100 24 T 200 18 T 300 15 L 300 60 L 0 60 Z" 
-                      fill="url(#sensorGrad)" 
-                    />
-                    {/* Temperature line */}
-                    <path 
-                      d="M0 45 Q 50 20, 100 24 T 200 18 T 300 15" 
-                      fill="none" 
-                      stroke="#f59e0b" 
-                      strokeWidth="2.5" 
-                      strokeLinecap="round"
-                    />
-                    {/* Dotted threshold line */}
-                    <line x1="0" y1="35" x2="300" y2="35" stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
-                  </svg>
-                  {/* Current floating indicator */}
-                  <div className="absolute right-4 top-1 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-black text-slate-950">
-                    15.2°C
-                  </div>
-                </div>
-                <div className="mt-2 flex justify-between text-[9px] text-slate-500">
-                  <span>Humedad: 62% (Estable)</span>
-                  <span>Choques/G-Force: 0.0g (Sin alertas)</span>
-                </div>
-              </div>
+            {/* Floating Premium Image */}
+            <div className="w-full h-64 relative mb-4 rounded-2xl overflow-hidden bg-slate-900/30 flex items-center justify-center">
+              {productHeroImageUrl ? (
+                <img 
+                  src={productHeroImageUrl} 
+                  alt={productDisplayName}
+                  className="max-h-full max-w-full object-contain transform hover:scale-[1.05] transition-transform duration-500" 
+                />
+              ) : (
+                <SunProductHeroStage
+                  kind={productVisualKind}
+                  productName={productDisplayName}
+                  imageUrl={productHeroImageUrl}
+                  originDisplay={originDisplay}
+                  tapDisplay={tapDisplay}
+                  distanceDisplay={distanceDisplay}
+                  state={productVisualState}
+                  originLat={wineryPoint[0]?.lat}
+                  originLng={wineryPoint[0]?.lng}
+                  tapLat={currentTapPoint[0]?.lat}
+                  tapLng={currentTapPoint[0]?.lng}
+                />
+              )}
             </div>
 
-            {/* Part 2: Terroir & Storytelling (Winery Heritage) */}
-            <div className="mt-4 space-y-3">
-              <p className="text-[9px] uppercase tracking-[0.18em] text-amber-300 font-black">Origen & Ficha Técnica</p>
-              <h3 className="text-sm font-black text-white">Notas de Cata & Maridaje</h3>
-              
-              <div className="grid grid-cols-2 gap-2.5 text-[11px]">
-                <div className="rounded-xl border border-white/5 bg-slate-950/60 p-3">
-                  <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Terroir Valle de Uco</span>
-                  <p className="mt-1 text-slate-200 font-bold">Altitud: 1,200m</p>
-                  <p className="mt-0.5 text-slate-400 leading-normal text-[10px]">
-                    Suelos aluviales que otorgan taninos elegantes y excelente acidez natural.
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/5 bg-slate-950/60 p-3">
-                  <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Crianza en Barrica</span>
-                  <p className="mt-1 text-slate-200 font-bold">18 Meses de Roble</p>
-                  <p className="mt-0.5 text-slate-400 leading-normal text-[10px]">
-                    Roble francés de primer uso. Aporta notas de vainilla, chocolate negro y tabaco.
-                  </p>
-                </div>
-              </div>
+            <div className="text-center w-full">
+              <span className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">
+                {tenantDisplayName}
+              </span>
+              <h1 className="text-2xl font-black text-white leading-tight mt-1 tracking-tight">
+                {productDisplayName}
+              </h1>
+              <p className="text-xs text-slate-400 mt-1 leading-normal">
+                {productLine || verticalLabel}
+              </p>
+            </div>
 
-              <div className="rounded-xl border border-white/5 bg-slate-950/50 p-3 text-[11px] leading-relaxed text-slate-300">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold mb-1">Nota de Cata Malbec Premium</span>
-                "Entrada dulce y carnosa, con taninos maduros y redondos. Final persistente con toques de cacao y frutos negros."
-                <div className="mt-2 text-[10px] text-amber-200 font-semibold">
-                  🍷 Maridaje recomendado: Carne asada, cordero al horno o quesos duros curados.
-                </div>
+            {/* Spec grid for fast reading */}
+            <div className="w-full mt-5 bg-slate-900/40 rounded-2xl border border-white/5 p-4 grid grid-cols-2 gap-3 text-left">
+              <div>
+                <span className="text-[9px] uppercase text-slate-500 block">Lote / Batch</span>
+                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{batchDisplay}</span>
+              </div>
+              <div>
+                <span className="text-[9px] uppercase text-slate-500 block">UID del Tag</span>
+                <span className="text-xs font-mono text-slate-200 mt-0.5 block">{visibleUid}</span>
+              </div>
+              <div className="border-t border-white/5 pt-2.5">
+                <span className="text-[9px] uppercase text-slate-500 block">Origen</span>
+                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{originDisplay}</span>
+              </div>
+              <div className="border-t border-white/5 pt-2.5">
+                <span className="text-[9px] uppercase text-slate-500 block">Lectura</span>
+                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{tapDisplay}</span>
               </div>
             </div>
           </div>
+        </section>
 
-         {/* Loyalty & Experiences Mini-app (Consumer Network) */}
-          {isFreshCommercialTap && (
-             <div className="sun-loyalty-panel rounded-2xl border border-indigo-500/20 bg-indigo-950/20 p-5 mt-4">
-                <div className="flex justify-between items-start mb-4">
-                   <div>
-                      <h3 className="text-sm font-bold text-white">Club Terroir</h3>
-                      <p className="text-[10px] text-indigo-300 uppercase tracking-widest mt-1">PROGRAMA DE LEALTAD</p>
-                   </div>
-                   <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center shadow-inner">
-                       <span className="text-[11px] font-black tracking-[0.12em] text-indigo-200">OPT</span>
-                   </div>
-                </div>
-
-                <div className="space-y-3 mb-4">
-                   <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
-                         <span className="text-emerald-400 font-bold text-xs">+10</span>
-                      </div>
-                       <p className="text-xs text-slate-300">Puntos disponibles si el lector decide unirse al club de la bodega.</p>
-                   </div>
-                   <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shrink-0">
-                         <span className="text-amber-400 text-sm">🎫</span>
-                      </div>
-                       <p className="text-xs text-slate-300">Reservas y experiencias se ofrecen como opt-in, no por leer la etiqueta.</p>
-                   </div>
-                </div>
-
-                <Link href={rewardsHref} className="block w-full py-3 rounded-xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-100 text-center text-sm font-bold transition-colors shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-                   Ver club opcional
-                </Link>
-             </div>
-         )}
-   {/* Actions / Passport Banner */}
+        {/* 3. Core Action Buttons (Authena/Qliktag Style - Large, Touch-Friendly) */}
+        <section className="space-y-3">
+          
+          {/* Main Action Block: Claim/Warranty/Rewards */}
           {isFreshCommercialTap ? (
-             <div className="sun-passport-banner rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 mt-4 text-center">
-                <h3 className="text-sm font-bold text-white mb-2">Ficha de producto y bodega</h3>
-                <p className="text-xs text-cyan-200/70 mb-4">Podes leer producto, origen y ruta sin iniciar sesion. Si queres, deja contacto para recibir ficha, sorteo o sommelier.</p>
-                <a href={isQrScan ? "#qr-engagement" : "#consumer-choice"} className="block w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-cyan-950 text-sm font-bold transition-colors">
-                   Ver opciones sin activar propiedad
-                </a>
-             </div>
+            <div className="grid grid-cols-1 gap-2.5">
+              
+              {/* Option to claim / verify purchase */}
+              <Link 
+                href={registerHref} 
+                className="flex items-center justify-between w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:scale-[1.01] transition-transform active:scale-95"
+              >
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5" />
+                  <div className="text-left">
+                    <span className="block font-black leading-none text-slate-950">Registrar Propiedad / Garantía</span>
+                    <span className="text-[10px] font-medium text-slate-900 mt-0.5 block">Activar beneficios y comprobar compra</span>
+                  </div>
+                </div>
+                <span className="text-lg">➔</span>
+              </Link>
+
+              {/* Option to join loyalty club */}
+              <Link 
+                href={rewardsHref} 
+                className="flex items-center justify-between w-full p-4 rounded-2xl bg-slate-900 border border-white/10 text-white font-bold text-sm shadow-md hover:scale-[1.01] transition-transform active:scale-95"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">🌟</span>
+                  <div className="text-left">
+                    <span className="block font-black leading-none text-white">Unirse al Club de la Marca</span>
+                    <span className="text-[10px] font-normal text-slate-400 mt-0.5 block">Sumar 10 puntos de bienvenida</span>
+                  </div>
+                </div>
+                <span className="text-lg text-slate-400">➔</span>
+              </Link>
+
+              {/* Option to view brand catalog / marketplace */}
+              <Link 
+                href={tapMarketplaceHref} 
+                className="flex items-center justify-between w-full p-4 rounded-2xl bg-slate-900 border border-white/10 text-white font-bold text-sm shadow-md hover:scale-[1.01] transition-transform active:scale-95"
+              >
+                <div className="flex items-center gap-3">
+                  <Store className="h-5 w-5 text-amber-400" />
+                  <div className="text-left">
+                    <span className="block font-black leading-none text-white">Ver más productos de la marca</span>
+                    <span className="text-[10px] font-normal text-slate-400 mt-0.5 block">Explorar colección y promociones</span>
+                  </div>
+                </div>
+                <span className="text-lg text-slate-400">➔</span>
+              </Link>
+
+              {/* Wallet/MetaMask integrations */}
+              <Link 
+                href={walletHref} 
+                className="flex items-center justify-between w-full p-4 rounded-2xl bg-slate-900 border border-white/10 text-white font-bold text-sm shadow-md hover:scale-[1.01] transition-transform active:scale-95"
+              >
+                <div className="flex items-center gap-3">
+                  <WalletCards className="h-5 w-5 text-indigo-400" />
+                  <div className="text-left">
+                    <span className="block font-black leading-none text-white">Conectar Wallet Web3</span>
+                    <span className="text-[10px] font-normal text-slate-400 mt-0.5 block">Ver tokens digitales y sandbox</span>
+                  </div>
+                </div>
+                <span className="text-lg text-slate-400">➔</span>
+              </Link>
+
+            </div>
           ) : (
-           <div className={`sun-passport-banner rounded-2xl border p-5 mt-4 text-center ${protectedBannerClass}`}>
-              <h3 className="text-sm font-bold text-white mb-2">{protectedBannerTitle}</h3>
-              <p className="text-xs opacity-80 mb-4">{protectedBannerCopy}</p>
+            // Disabled state with clear message
+            <div className={`p-5 rounded-2xl border text-center ${protectedBannerClass}`}>
+              <h3 className="text-sm font-bold text-white mb-1.5">{protectedBannerTitle}</h3>
+              <p className="text-xs opacity-85 mb-3">{protectedBannerCopy}</p>
               {isSnapshotView ? (
-                <a href="#fresh-tap-required" className="block w-full py-3 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-50 text-sm font-bold transition-colors">
-                  Escanear nuevamente
+                <a href="#fresh-tap-required" className="block w-full py-3 rounded-xl bg-sky-500/10 border border-sky-500/25 hover:bg-sky-500/20 text-sky-200 text-xs font-bold transition-all">
+                  Escanear etiqueta física nuevamente
                 </a>
               ) : (
-                <Link href={reportProblemHref} className="block w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition-colors">
-                   Reportar problema
+                <Link href={reportProblemHref} className="block w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors">
+                  Reportar problema / Avisar a soporte
                 </Link>
               )}
-           </div>
-         )}
-
-         {/* Post-tap journey (mobile-first) */}
-          <div className="sun-posttap-panel rounded-2xl border border-emerald-500/20 bg-emerald-950/15 p-5 mt-4">
-             <p className="text-[10px] uppercase tracking-[0.16em] text-emerald-300">Flujo post tap</p>
-             <h3 className="mt-2 text-sm font-bold text-white">{isFreshCommercialTap ? "Leer primero, decidir despues" : "Acciones protegidas hasta un nuevo tap fisico"}</h3>
-             <div className="mt-3 space-y-2 text-xs text-slate-200">
-               <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">1) Cualquier lector ve ficha, bodega, lote, origen y trazabilidad.</div>
-               <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">2) Dejar email o celular es opcional para ficha ampliada, sorteo o consulta.</div>
-               <div className="rounded-lg border border-white/10 bg-slate-950/60 p-2">3) Garantia, propiedad o NFT solo aparecen si el usuario declara compra y la marca exige prueba.</div>
-             </div>
-             <div className={`mt-3 grid gap-2 text-xs ${certificateHref ? "grid-cols-3" : "grid-cols-2"}`}>
-               <a href="#product-info" className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center font-semibold text-emerald-100">Ficha</a>
-               <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">{isQrScan ? "Contacto opcional" : "Ruta"}</a>
-               {certificateHref ? (
-                 <Link href={certificateHref} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center font-semibold text-cyan-100">Certificado</Link>
-               ) : null}
             </div>
-         </div>
+          )}
 
-         {/* Technical Spec */}
-         <div className="sun-tech-panel rounded-2xl border border-white/5 bg-slate-900/40 p-5 mt-4">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Trazabilidad Técnica</h4>
-            <div className="space-y-3">
-               <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-xs text-slate-500">Tag UID</span>
-                  <span className="text-xs font-mono text-slate-300">{result.identity?.uid?.substring(0, 14)}...</span>
-               </div>
-               <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-xs text-slate-500">Batch ID</span>
-                  <span className="text-xs font-mono text-slate-300">{result.identity?.bid || "N/A"}</span>
-               </div>
-               <div className="flex justify-between items-center">
-                  <span className="text-xs text-slate-500">Token Blockchain</span>
-                 {hasOnChainTx ? (
-                    <a
-                      href={`https://amoy.polygonscan.com/tx/${encodeURIComponent(tokenTx)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={`text-[10px] px-2 py-0.5 rounded ${tokenStatusBadgeClass} font-bold uppercase`}
-                    >
-                      {tokenStatusDisplay} · tx
-                    </a>
-                  ) : (
-                    <span className={`text-[10px] px-2 py-0.5 rounded ${tokenStatusBadgeClass} font-bold uppercase`}>{tokenStatusDisplay}</span>
-                  )}
-               </div>
-            </div>
-         </div>
-
-         {bid && (uid || eventId) ? (
-           <div className="sun-cta-actions mt-4">
+          {/* Secure CTAs actions integration */}
+          {bid && (uid || eventId) && (
+            <div className="pt-1">
               <CtaActions
                 bid={bid}
                 uid={uid}
@@ -2087,31 +1603,227 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 tapState={isSnapshotView || isRiskBlocked ? "blocked" : isVerifiedOpenedState ? "opened" : "valid"}
                 rightsPolicy={result.rightsPolicy || result.condition}
               />
-           </div>
-         ) : null}
+            </div>
+          )}
 
-         {canAutoOnboard ? (
-           <div className="sun-onboard-action">
-             <OnboardDemoButton bid={bid} />
-           </div>
-         ) : null}
+          {/* Sommelier / QRengagementSuite integration if QR mode is active */}
+          {isQrScan && (
+            <div id="qr-engagement">
+              <QREngagementSuite
+                wineryName={result.product?.winery || "Bodega Premium"}
+                productName={productDisplayName}
+                tenantSlug={tenantSlug || "demobodega"}
+                eventId={eventId || null}
+                bid={bid || null}
+              />
+            </div>
+          )}
+
+          {canAutoOnboard && (
+            <div className="pt-2">
+              <OnboardDemoButton bid={bid} />
+            </div>
+          )}
+        </section>
+
+        {/* 4. Traceability, Map & Cold Chain history */}
+        <section className="rounded-3xl border border-white/5 bg-slate-900/30 p-5 backdrop-blur-md shadow-lg space-y-4">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">
+              Trazabilidad e Inteligencia
+            </span>
+            <h3 className="text-base font-black text-white mt-1">Ruta de Confianza & Origen</h3>
+          </div>
+
+          {/* Interactive OpsMap */}
+          <div id="geo-trace" className="rounded-2xl overflow-hidden border border-white/5 bg-slate-950 p-2 shadow-inner">
+            {opsMapPoints.length ? (
+              <GlobalOpsMap
+                title="Ruta del Producto"
+                subtitle="Origen, tap y recorrido del producto"
+                points={opsMapPoints}
+                routes={opsMapRoutes}
+                mode="demo"
+                selectedPointId={opsMapPoints.find((point) => point.role === "tap")?.id || opsMapPoints[0]?.id}
+                playbackEnabled
+              />
+            ) : (
+              <div className="py-6 text-center text-xs text-slate-500">
+                Sin coordenadas de geolocalización para este tap.
+              </div>
+            )}
+          </div>
+
+          {/* Quick Trace Metrics */}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-slate-950/60 rounded-xl border border-white/5 p-2">
+              <span className="text-[8px] uppercase text-slate-500 block">Eventos</span>
+              <span className="text-xs font-bold text-slate-200 mt-0.5 block">{timelineCount}</span>
+            </div>
+            <div className="bg-slate-950/60 rounded-xl border border-white/5 p-2">
+              <span className="text-[8px] uppercase text-slate-500 block">Distancia</span>
+              <span className="text-xs font-bold text-slate-200 mt-0.5 block">{fmtDistance(originToTapDistance)}</span>
+            </div>
+            <div className="bg-slate-950/60 rounded-xl border border-white/5 p-2">
+              <span className="text-[8px] uppercase text-slate-500 block">Último Tap</span>
+              <span className="text-[10px] font-bold text-slate-200 mt-0.5 block truncate">{localTapTimeLabel || "N/A"}</span>
+            </div>
+          </div>
+
+          {/* Cold Chain Monitoreo IoT (Premium redrawn line) */}
+          <div className="bg-gradient-to-br from-slate-950 to-slate-900/90 rounded-2xl border border-white/5 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="block text-[8px] uppercase tracking-wider text-amber-300 font-bold">Monitoreo IoT en Tránsito</span>
+                <span className="text-xs font-bold text-slate-200 mt-0.5 block">Historial de Temperatura</span>
+              </div>
+              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-400 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                ESTABLE (15.2°C)
+              </span>
+            </div>
+
+            {/* Sparkline chart SVG */}
+            <div className="h-16 w-full relative">
+              <svg className="w-full h-full" viewBox="0 0 300 60" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sensorGrad" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path d="M0 60 Q 50 20, 100 24 T 200 18 T 300 15 L 300 60 L 0 60 Z" fill="url(#sensorGrad)" />
+                <path d="M0 45 Q 50 20, 100 24 T 200 18 T 300 15" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" />
+                <line x1="0" y1="35" x2="300" y2="35" stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
+              </svg>
+              <div className="absolute right-2 top-0.5 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-black text-slate-950">
+                15.2°C
+              </div>
+            </div>
+
+            <div className="flex justify-between text-[9px] text-slate-500">
+              <span>Humedad: 62%</span>
+              <span>G-Force: 0.0g (Estable)</span>
+            </div>
+          </div>
+
+          {/* Cata y Maridaje section (For Wine vertical) */}
+          {(result.product?.vertical === "wine" || result.tenant?.vertical === "wine" || productDisplayName.toLowerCase().includes("wine") || productDisplayName.toLowerCase().includes("malbec") || productDisplayName.toLowerCase().includes("reserva")) && (
+            <div className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 text-xs space-y-2">
+              <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Detalle del Sommelier</span>
+              <p className="text-slate-300 italic">
+                "Entrada dulce y carnosa, con taninos maduros y redondos. Final persistente con toques de cacao y frutos negros."
+              </p>
+              <p className="text-[10px] text-amber-300 font-medium">
+                🍷 Maridaje: Carnes rojas asadas, pastas con salsas trufadas o quesos curados.
+              </p>
+            </div>
+          )}
+
+          {/* Timeline points list */}
+          <div className="space-y-3 pt-2">
+            <span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold">Bitácora de Eventos</span>
+            <div className="relative pl-4 space-y-4 before:absolute before:inset-y-0 before:left-[5px] before:w-[2px] before:bg-slate-800">
+              {passportStorySteps.map((step, idx) => (
+                <div key={step.label} className="relative text-xs">
+                  <div className={`absolute -left-[14px] top-1 w-2.5 h-2.5 rounded-full border-2 border-slate-950 ${idx === 3 ? pulseClass : "bg-slate-700"}`} />
+                  <span className="block text-[9px] font-mono text-slate-500">{step.label}</span>
+                  <span className="block font-bold text-slate-200 mt-0.5">{step.title}</span>
+                  <p className="text-slate-400 mt-0.5 leading-normal text-[11px]">{step.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 5. Technical Specifications (Accordion) */}
+        <section>
+          <details className="group border border-white/5 rounded-3xl bg-slate-900/20 backdrop-blur-md overflow-hidden transition-all duration-300">
+            <summary className="flex items-center justify-between p-5 cursor-pointer font-bold text-xs text-slate-400 uppercase tracking-widest hover:text-slate-200 select-none">
+              <span>Especificaciones Técnicas & Cripto</span>
+              <span className="transition-transform group-open:rotate-180 duration-300 text-sm">▼</span>
+            </summary>
+            
+            <div className="p-5 pt-0 space-y-4 text-xs border-t border-white/5 bg-slate-950/40">
+              
+              <div className="space-y-3 mt-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-slate-500">UID Físico del Chip</span>
+                  <span className="font-mono text-slate-200">{result.identity?.uid || "Oculto / No disponible"}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-slate-500">Lote (Batch ID)</span>
+                  <span className="font-mono text-slate-200">{bid || "N/A"}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-slate-500">Contador de Lecturas</span>
+                  <span className="font-mono text-slate-200">{result.identity?.readCounter ?? "N/A"}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-slate-500">Firma Criptográfica CMAC</span>
+                  <span className="font-mono text-slate-200">{result.technical?.raw?.cmacPrefix || "verificada"}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <span className="text-slate-500">Registro Blockchain</span>
+                  <span className="font-semibold text-slate-200">{tokenEvidenceLabel}</span>
+                </div>
+                {hasOnChainTx && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Hash de Transacción</span>
+                    <a 
+                      href={tokenExplorerHref} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="text-cyan-400 font-mono underline hover:text-cyan-300"
+                    >
+                      {tokenTx.substring(0, 12)}...
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {carrierConsumerCopy && (
+                <div className="rounded-xl border border-cyan-500/10 bg-cyan-500/5 p-3 leading-normal text-cyan-200/90 text-[11px]">
+                  {carrierConsumerCopy}
+                </div>
+              )}
+            </div>
+          </details>
+        </section>
 
       </div>
 
-      {isQrScan ? (
-        <a href="#qr-engagement" className="fixed bottom-24 right-4 z-30 inline-flex items-center justify-center rounded-full border border-violet-300/35 bg-violet-500 px-4 py-3 text-xs font-black text-white shadow-[0_18px_50px_rgba(139,92,246,0.35)] lg:hidden">
-          Sommelier IA
+      {/* Floating sommelier trigger for mobile */}
+      {isQrScan && (
+        <a 
+          href="#qr-engagement" 
+          className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-violet-600 px-4 py-3 text-xs font-black text-white shadow-lg hover:bg-violet-500 active:scale-95 transition-all lg:hidden"
+        >
+          <span>💬</span> Sommelier IA
         </a>
-      ) : null}
+      )}
 
-      <div className="sun-bottom-nav z-10 mx-auto mt-4 w-full max-w-[390px] px-3 lg:hidden">
-        <div className="grid grid-cols-4 gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 backdrop-blur-xl">
-          <a href="#product-info" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 text-center text-xs font-semibold text-emerald-100">Ficha</a>
-          <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 text-center text-xs font-semibold text-cyan-100">{isQrScan ? "Sommelier" : "Ruta"}</a>
-          <Link href={tapMarketplaceHref} className="flex min-h-11 items-center justify-center rounded-xl border border-amber-300/30 bg-amber-500/15 px-2 text-center text-xs font-semibold text-amber-100">Comprar</Link>
-          <a href="#consumer-choice" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 text-center text-xs font-semibold text-violet-100">Verificar</a>
+      {/* Fixed Bottom Quick Nav Bar */}
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[390px] px-3 z-30 lg:hidden">
+        <div className="grid grid-cols-4 gap-1.5 rounded-2xl border border-white/10 bg-slate-950/80 p-2 backdrop-blur-xl shadow-xl">
+          <a href="#product-info" className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
+            <span className="text-xs">🍷</span>
+            <span className="text-[8px] font-bold mt-0.5">Ficha</span>
+          </a>
+          <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
+            <span className="text-xs">📍</span>
+            <span className="text-[8px] font-bold mt-0.5">Ruta</span>
+          </a>
+          <Link href={tapMarketplaceHref} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
+            <span className="text-xs">🛒</span>
+            <span className="text-[8px] font-bold mt-0.5">Comprar</span>
+          </Link>
+          <a href={isQrScan ? "#qr-engagement" : "#consumer-choice"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
+            <span className="text-xs">🔒</span>
+            <span className="text-[8px] font-bold mt-0.5">Acciones</span>
+          </a>
         </div>
-      </div>
+      </nav>
     </main>
   );
 }

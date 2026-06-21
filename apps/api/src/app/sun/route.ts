@@ -227,8 +227,11 @@ function wantsInlineApiHtml(url: URL) {
 }
 
 function webBaseUrl(sourceUrl?: URL) {
-  const configured = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || process.env.WEB_BASE_URL;
-  if (configured) return configured.replace(/\/$/, "");
+  let configured = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || process.env.WEB_BASE_URL;
+  if (configured) {
+    configured = configured.replace(/^['"]|['"]$/g, "").trim();
+    return configured.replace(/\/$/, "");
+  }
 
   const host = sourceUrl?.hostname || "";
   if (host === "localhost" || host === "127.0.0.1") {
@@ -239,12 +242,15 @@ function webBaseUrl(sourceUrl?: URL) {
 }
 
 function dashboardBaseUrl() {
-  const configured =
+  let configured =
     process.env.NEXT_PUBLIC_DASHBOARD_URL
     || process.env.NEXT_PUBLIC_DASHBOARD_BASE_URL
     || process.env.DASHBOARD_BASE_URL
     || process.env.DASHBOARD_URL
     || process.env.APP_DASHBOARD_URL;
+  if (configured) {
+    configured = configured.replace(/^['"]|['"]$/g, "").trim();
+  }
   return (configured || "https://app.nexid.lat").replace(/\/$/, "");
 }
 
@@ -1373,7 +1379,7 @@ function buildPublicContract(params: {
   const fallbackMedia = tenantProfile.product.media || null;
   const tenantSlug = tenantProfile.tenantSlug;
   const tenantId = tenantProfile.tenantId;
-  const webBase = process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat";
+  const webBase = (process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat").replace(/^['"]|['"]$/g, "").trim();
   const eventId = (params.result as { event_id?: string | number | null }).event_id ?String((params.result as { event_id?: string | number | null }).event_id) : null;
   const tapQuery = new URLSearchParams({
     tenant: tenantSlug,
@@ -2340,9 +2346,10 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
 
 
 async function dispatchValidScanWebhook(payload: Record<string, unknown>) {
-  const url = process.env.SCAN_WEBHOOK_URL;
+  let url = process.env.SCAN_WEBHOOK_URL;
   if (!url) return;
-  const secret = process.env.SCAN_WEBHOOK_SECRET || '';
+  url = url.replace(/^['"]|['"]$/g, "").trim();
+  const secret = (process.env.SCAN_WEBHOOK_SECRET || '').replace(/^['"]|['"]$/g, "").trim();
   await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...(secret ?{ 'x-nexid-signature': secret } : {}) },
