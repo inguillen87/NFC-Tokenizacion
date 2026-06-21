@@ -22,6 +22,8 @@ type Vertical =
   | "bracelet"
   | "ticket"
   | "sneaker"
+  | "luxury"
+  | "bottle"
   | "logistics"
   | "electronics"
   | "textile";
@@ -71,9 +73,17 @@ const DEMO_VERTICAL_ALIASES: Record<string, Vertical> = {
   tickets: "bracelet",
   access: "bracelet",
   eventos: "bracelet",
-  luxury: "sneaker",
-  retail: "sneaker",
-  lujo: "sneaker",
+  luxury: "luxury",
+  retail: "luxury",
+  lujo: "luxury",
+  bottle: "bottle",
+  bottles: "bottle",
+  botella: "bottle",
+  botellas: "bottle",
+  sneaker: "sneaker",
+  sneakers: "sneaker",
+  zapatilla: "sneaker",
+  zapatillas: "sneaker",
   logistics: "logistics",
   logistica: "logistics",
   "cold-chain": "logistics",
@@ -93,10 +103,10 @@ function normalizeDemoVertical(value?: string | null): Vertical {
 }
 
 function verticalTo3DIndustry(vertical: Vertical): string {
-  if (vertical === "wine") return "bodegas";
+  if (vertical === "wine" || vertical === "bottle") return "bodegas";
   if (vertical === "seeds" || vertical === "logistics") return "agro";
   if (vertical === "pharma") return "pharma";
-  if (vertical === "creamJar" || vertical === "perfume" || vertical === "creamTube" || vertical === "sneaker" || vertical === "textile") return "cosmetica";
+  if (vertical === "creamJar" || vertical === "perfume" || vertical === "creamTube" || vertical === "sneaker" || vertical === "luxury" || vertical === "textile") return "cosmetica";
   if (vertical === "bracelet" || vertical === "ticket" || vertical === "electronics") return "eventos";
   return "bodegas";
 }
@@ -110,7 +120,9 @@ const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> 
   creamTube: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", credit: "nexID generated asset" },
   bracelet: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", credit: "nexID generated asset" },
   ticket: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", credit: "nexID generated asset" },
-  sneaker: { imageUrl: "/sdk/verticals/luxury-nfc-qr-tamper.webp", credit: "nexID generated asset" },
+  sneaker: { imageUrl: "/sdk/verticals/sneaker-nfc-qr-tamper.png", credit: "nexID generated asset" },
+  luxury: { imageUrl: "/sdk/verticals/luxury-nfc-qr-tamper.webp", credit: "nexID generated asset" },
+  bottle: { imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png", credit: "nexID generated asset" },
   logistics: { imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp", credit: "nexID generated asset" },
   electronics: { imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp", credit: "nexID generated asset" },
   textile: { imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp", credit: "nexID generated asset" },
@@ -251,7 +263,7 @@ const copy: Record<AppLocale, {
       3: { title: "4. Apertura + venta", body: "El sello cambia estado y abre beneficios.", event: "Sello abierto + llamado a reclamar dueño/tokenizar.", mode: "tamper", location: "zurich", status: "ABIERTO", cta: "Reclamar dueño" },
     },
     verticals: {
-      wine: { label: "Botella", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
+      wine: { label: "Vino", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caja y lote auditables", "Prospecto digital", "Cadena de frio", "Recall por unidad"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "Garantia premium", "Anti mercado gris"] },
@@ -260,6 +272,8 @@ const copy: Record<AppLocale, {
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
       sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "Dueno/token"] },
+      luxury: { label: "Lujo", profile: "NTAG 424 DNA", product: "Reloj Cronógrafo Premium", visual: "luxury-demo", proof: ["Toque en tarjeta", "UID + SUN", "Certificado de autenticidad", "Owner/club"] },
+      bottle: { label: "Botellas", profile: "NFC + QR", product: "Bebida Gaseosa Orgánica", visual: "bottle-demo", proof: ["Envase con tag", "UID + QR de retorno", "impacto verde", "Recompensa activa"] },
       logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caja cadena fria", visual: "logistics-pack-demo", proof: ["Pallet/caja trazable", "Sensor temperatura", "Ruta auditada", "Entrega verificada"] },
       electronics: { label: "Electronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificable", "Garantia por unidad", "Soporte postventa", "Reclamo antifraude"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta pasaporte textil", visual: "textile-dpp-demo", proof: ["Origen y composicion", "Cuidado conectado", "Sustentabilidad", "Reventa verificable"] },
@@ -305,6 +319,8 @@ const copy: Record<AppLocale, {
       bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulseira", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
       ticket: { label: "Ingresso", profile: "QR + NFC UID", product: "Ingresso festa VIP", visual: "party-ticket-demo", proof: ["QR visivel", "UID respaldo", "Acesso por zona", "Replay bloqueado"] },
       sneaker: { label: "Tenis", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque na lingueta", "UID + SUN", "Raridade visivel", "Dono/token"] },
+      luxury: { label: "Luxo", profile: "NTAG 424 DNA", product: "Relogio de Luxo", visual: "luxury-demo", proof: ["Toque no cartao", "UID + SUN", "Certificado de autenticidade", "Dono/clube"] },
+      bottle: { label: "Garrafas", profile: "NFC + QR", product: "Embalagem Retornavel", visual: "bottle-demo", proof: ["Embalagem com tag", "UID + QR de retorno", "impacto verde", "Recompensa ativa"] },
       logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caixa cadeia fria", visual: "logistics-pack-demo", proof: ["Pallet/caixa rastreavel", "Sensor temperatura", "Rota auditada", "Entrega verificada"] },
       electronics: { label: "Eletronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificavel", "Garantia por unidade", "Suporte pos-venda", "Reclamo antifraude"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta passport textil", visual: "textile-dpp-demo", proof: ["Origem e composicao", "Cuidado conectado", "Sustentabilidade", "Revenda verificavel"] },
@@ -340,7 +356,7 @@ const copy: Record<AppLocale, {
       3: { title: "4. Open + monetize", body: "Seal state changes and benefits open.", event: "Opened seal + ownership/tokenization CTA.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Activate ownership" },
     },
     verticals: {
-      wine: { label: "Bottle", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Label on bottle", "Uncork / broken seal", "SUN anti-replay", "Origin + global tap"] },
+      wine: { label: "Wine", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Label on bottle", "Uncork / broken seal", "SUN anti-replay", "Origin + global tap"] },
       seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Certified seed packet", visual: "seed-packet-demo", proof: ["Anti-counterfeit packet", "Lot and variety", "Agro custody", "Rural use"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Serialized medicine pack", visual: "pharma-pack-demo", proof: ["Auditable pack and lot", "Digital leaflet", "Cold chain", "Unit recall"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Premium dermocosmetic set", visual: "cream-jar-demo", proof: ["Lid-package seal", "Opening changes state", "Premium warranty", "Anti grey-market"] },
@@ -349,6 +365,8 @@ const copy: Record<AppLocale, {
       bracelet: { label: "Wristband", profile: "NTAG215", product: "VIP event wristband", visual: "event-bracelet-demo", proof: ["Phone taps wristband", "Serialized UID", "VIP zones", "Duplicate block"] },
       ticket: { label: "Ticket", profile: "QR + NFC UID", product: "VIP party ticket", visual: "party-ticket-demo", proof: ["Visible QR", "UID fallback", "Zone access", "Replay blocked"] },
       sneaker: { label: "Sneaker", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Tongue tap", "UID + SUN", "Rarity visible", "Owner/token"] },
+      luxury: { label: "Luxury", profile: "NTAG 424 DNA", product: "Luxury Watch", visual: "luxury-demo", proof: ["Card tap", "UID + SUN", "Certificate of authenticity", "Owner/club"] },
+      bottle: { label: "Bottles", profile: "NFC + QR", product: "Returnable Bottle", visual: "bottle-demo", proof: ["Tagged container", "UID + QR return control", "green impact", "Active reward"] },
       logistics: { label: "Logistics", profile: "UHF + NFC + sensor", product: "Cold-chain carton", visual: "logistics-pack-demo", proof: ["Traceable pallet/carton", "Temperature sensor", "Audited route", "Verified delivery"] },
       electronics: { label: "Electronics", profile: "QR + NFC warranty", product: "Serialized device", visual: "electronics-demo", proof: ["Verifiable serial", "Unit warranty", "Support", "Anti-fraud claim"] },
       textile: { label: "Textile DPP", profile: "QR + NFC DPP", product: "Textile passport label", visual: "textile-dpp-demo", proof: ["Origin and composition", "Connected care", "Sustainability", "Verified resale"] },

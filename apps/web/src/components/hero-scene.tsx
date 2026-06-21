@@ -531,7 +531,6 @@ const labels: Record<AppLocale, {
         objectClass: "textile-demo scanning",
         phoneTag: "TEXTILE - DPP_OK",
         steps: ["Leitura da etiqueta", "Valida pasaporte DPP", "Mostra materiais/origem", "Habilita revenda/cuidados"],
-      },a/cuidados"],
       },
       luxury: {
         label: "Luxo",
@@ -568,7 +567,7 @@ const labels: Record<AppLocale, {
         objectClass: "bottle-demo scanning",
         phoneTag: "BOTTLE - RETURN_OK",
         steps: ["Leitura da garrafa", "Verifica retorno", "Atribui incentivo ecologico", "Confirma recepcao"],
-      },     },
+      },
     },
   },
   en: {
