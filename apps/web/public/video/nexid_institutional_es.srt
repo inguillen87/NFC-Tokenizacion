@@ -1,0 +1,31 @@
+1
+00:00:00,200 --> 00:00:07,250
+En un mercado lleno de copias, la confianza ya no puede depender solo de una etiqueta.
+
+2
+00:00:07,350 --> 00:00:14,400
+Con nexID, cada producto físico puede activar una identidad digital verificable con un simple toque.
+
+3
+00:00:14,500 --> 00:00:21,750
+El chip N F C responde con una firma criptográfica única, validada en tiempo real, sin instalar aplicaciones.
+
+4
+00:00:21,850 --> 00:00:29,100
+El consumidor accede a un pasaporte digital: origen, lote, historial y estado del producto.
+
+5
+00:00:29,200 --> 00:00:36,250
+Para la marca, eso abre trazabilidad, prevención de fraude y nuevos canales de relación directa.
+
+6
+00:00:36,350 --> 00:00:43,400
+Y para el usuario, beneficios, garantías y experiencias exclusivas conectadas al producto original.
+
+7
+00:00:43,500 --> 00:00:50,550
+nexID une objetos reales con datos, propiedad digital y ecosistemas Web tres, de forma simple.
+
+8
+00:00:50,650 --> 00:00:59,650
+nexID. La capa de confianza para productos reales en un mundo digital.

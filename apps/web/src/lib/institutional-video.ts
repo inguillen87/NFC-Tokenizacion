@@ -1,9 +1,15 @@
-export const legacyInstitutionalVideo = "/video/nexid-institutional-english-sub-es-1080p.mp4";
+export const legacyInstitutionalVideo = "/video/nexid_institutional_es_1920x1080.mp4";
 
 export const institutionalVideoDropTargets = {
-  "es-AR": "/video/nexid-institutional-es-1080p.mp4",
-  en: "/video/nexid-institutional-en-1080p.mp4",
-  "pt-BR": "/video/nexid-institutional-pt-1080p.mp4",
+  "es-AR": "/video/nexid_institutional_es_1920x1080.mp4",
+  en: "/video/nexid_institutional_en_1920x1080.mp4",
+  "pt-BR": "/video/nexid_institutional_pt_1920x1080.mp4",
+} as const;
+
+export const institutionalVideoPosters = {
+  "es-AR": "/video/poster_nexid_institutional_es.jpg",
+  en: "/video/poster_nexid_institutional_en.jpg",
+  "pt-BR": "/video/poster_nexid_institutional_pt.jpg",
 } as const;
 
 const activeInstitutionalVideos: Record<string, string> = {
@@ -18,6 +24,7 @@ export function resolveInstitutionalVideo(locale: string) {
     locale: normalized,
     src: activeInstitutionalVideos[normalized] || activeInstitutionalVideos["es-AR"],
     futureSrc: institutionalVideoDropTargets[normalized],
+    poster: institutionalVideoPosters[normalized] || institutionalVideoPosters["es-AR"],
     type: "video/mp4",
   };
 }
