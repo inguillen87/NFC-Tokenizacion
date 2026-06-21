@@ -131,12 +131,28 @@
 
 .brand-lockup:hover .brand-mark {
   animation: none;
-  transform: rotateX(7deg) rotateY(-9deg) translateY(-1px);
-  border-color: rgba(103, 232, 249, 0.46) !important;
+  transform: rotateX(12deg) rotateY(-14deg) translateY(-3px) scale(1.06);
+  border-color: rgba(34, 211, 238, 0.6) !important;
   box-shadow:
-    0 22px 46px rgba(2, 6, 23, 0.46),
-    0 0 30px rgba(34, 211, 238, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    0 24px 50px rgba(2, 6, 23, 0.55),
+    0 0 35px rgba(34, 211, 238, 0.32),
+    0 0 15px rgba(47, 225, 195, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.brand-n-path {
+  animation: brandNPulse 3.2s ease-in-out infinite;
+}
+.brand-n-path-stroke {
+  animation: brandNStrokePulse 3.2s ease-in-out infinite;
+}
+.brand-i-path {
+  animation: brandIPulse 3.2s ease-in-out infinite;
+  animation-delay: 1.6s;
+}
+.brand-i-path-stroke {
+  animation: brandIStrokePulse 3.2s ease-in-out infinite;
+  animation-delay: 1.6s;
 }
 
 .brand-mark__depth {
@@ -330,13 +346,43 @@ html.theme-light .brand-surface-loading .brand-wordmark-svg {
 }
 
 @keyframes brandDotTraverse {
-  0% { transform: translate(0, 0) scale(1); }
-  14% { transform: translate(14px, -11px) scale(1.08); }
-  30% { transform: translate(20px, 5px) scale(1.02); }
-  48% { transform: translate(4px, 16px) scale(1.12); }
-  66% { transform: translate(-13px, 4px) scale(1.04); }
-  84% { transform: translate(-4px, -13px) scale(1.08); }
-  100% { transform: translate(0, 0) scale(1); }
+  0% { transform: rotate(0deg) translateX(12px) rotate(0deg) scale(0.85); z-index: 3; opacity: 0.75; filter: blur(0.3px); }
+  25% { transform: rotate(90deg) translateX(12px) rotate(-90deg) scale(1); z-index: 6; opacity: 1; filter: blur(0px); }
+  50% { transform: rotate(180deg) translateX(12px) rotate(-180deg) scale(1.15); z-index: 6; opacity: 1; filter: blur(0px); }
+  75% { transform: rotate(270deg) translateX(12px) rotate(-270deg) scale(1); z-index: 3; opacity: 0.85; filter: blur(0.3px); }
+  100% { transform: rotate(360deg) translateX(12px) rotate(-360deg) scale(0.85); z-index: 3; opacity: 0.75; filter: blur(0.3px); }
+}
+
+@keyframes brandNPulse {
+  0%, 100% {
+    fill: currentColor;
+    filter: drop-shadow(0 0 1px rgba(103, 232, 249, 0.1));
+  }
+  50% {
+    fill: #f8fafc;
+    filter: drop-shadow(0 0 5px rgba(103, 232, 249, 0.45));
+  }
+}
+
+@keyframes brandIPulse {
+  0%, 100% {
+    fill: var(--brand-accent, #2FE1C3);
+    filter: drop-shadow(0 0 1px rgba(47, 225, 195, 0.1));
+  }
+  50% {
+    fill: #5eead4;
+    filter: drop-shadow(0 0 8px rgba(47, 225, 195, 0.75));
+  }
+}
+
+@keyframes brandNStrokePulse {
+  0%, 100% { stroke: rgba(255,255,255,0.18); }
+  50% { stroke: rgba(34, 211, 238, 0.5); }
+}
+
+@keyframes brandIStrokePulse {
+  0%, 100% { stroke: rgba(255,255,255,0.22); }
+  50% { stroke: rgba(47, 225, 195, 0.55); }
 }
 
 @keyframes brandDotPulse {

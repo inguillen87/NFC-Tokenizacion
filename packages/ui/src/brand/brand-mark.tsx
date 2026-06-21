@@ -51,10 +51,10 @@ export function BrandMark({ size = 40, variant = "pulse", theme = "dark", classN
         <circle cx="118" cy="48" r="3" fill={iColor} opacity="0.72" />
         <circle cx="136" cy="80" r="2.7" fill={iColor} opacity="0.5" />
         <circle cx="118" cy="112" r="3" fill={iColor} opacity="0.72" />
-        <path d="M47 104V56H58L86 91V56H99V104H88L60 69V104H47Z" fill={nColor} />
-        <path d="M47 104V56H58L86 91V56H99V104H88L60 69V104H47Z" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.1" />
-        <path d="M110 56H123V104H110V56Z" fill={iColor} />
-        <path d="M110 56H123V104H110V56Z" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.1" />
+        <path className="brand-n-path" d="M47 104V56H58L86 91V56H99V104H88L60 69V104H47Z" fill={nColor} />
+        <path className="brand-n-path-stroke" d="M47 104V56H58L86 91V56H99V104H88L60 69V104H47Z" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.1" />
+        <path className="brand-i-path" d="M110 56H123V104H110V56Z" fill={iColor} />
+        <path className="brand-i-path-stroke" d="M110 56H123V104H110V56Z" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.1" />
         <path d="M38 39C55 25 84 21 112 32" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" />
         <path d="M35 121C60 131 98 132 124 115" stroke="rgba(47,225,195,0.18)" strokeWidth="2" strokeLinecap="round" />
       </svg>

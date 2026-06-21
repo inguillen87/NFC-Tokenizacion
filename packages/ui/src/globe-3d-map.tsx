@@ -144,9 +144,6 @@ export function Globe3dMap({
       className={`relative select-none flex items-center justify-center overflow-hidden rounded-2xl border border-white/5 shadow-2xl p-0 pointer-events-auto ${className}`}
       style={{ width, height }}
     >
-      <div className="absolute top-4 left-4 z-20 text-[10px] text-slate-400 font-mono pointer-events-none bg-slate-950/80 px-2 py-1 rounded border border-white/5 backdrop-blur">
-        🗺️ LIVE TELEMETRY GLOBE3D
-      </div>
 
       <div className="absolute bottom-4 right-4 z-20 text-[9px] text-slate-500 font-mono pointer-events-none bg-slate-950/80 px-2 py-1 rounded border border-white/5 backdrop-blur">
         Drag to rotate
