@@ -21,9 +21,9 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
 
   const copy = isEn
     ? {
-      eyebrow: "Verify experience",
-      title: "Understand nexID in a cinematic tap.",
-      body: "Toggle between the video explanation and the live interactive 3D simulation showing the real physical-to-digital handoff.",
+      eyebrow: "Interactive verification experience",
+      title: "Tap to simulate the physical-to-digital handoff.",
+      body: "Experience the verification steps in real-time or play the multi-language institutional video below.",
       play: "nexID institutional",
       primary: "Open Demo Lab",
       secondary: "Schedule meeting",
@@ -34,9 +34,9 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
     }
     : isBr
       ? {
-        eyebrow: "Experiência de Verificação",
-        title: "Entenda o nexID com um toque cinemático.",
-        body: "Alterne entre o vídeo institucional e a simulação 3D interativa que demonstra a transferência real do físico para o digital.",
+        eyebrow: "Experiência de Verificação Interativa",
+        title: "Toque para simular a transferência física para digital.",
+        body: "Experimente as etapas de verificação em tempo real ou reproduza o vídeo institucional multi-idioma abaixo.",
         play: "Institucional nexID",
         primary: "Abrir Demo Lab",
         secondary: "Agendar reunião",
@@ -46,9 +46,9 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
         demoBtn: "⚡ Simulação 3D",
       }
       : {
-        eyebrow: "Experiencia de Verificación",
-        title: "Entiende nexID en un toque cinemático.",
-        body: "Alterna entre el video institucional y la simulación 3D interactiva que demuestra la transferencia real del plano físico al digital.",
+        eyebrow: "Experiencia de Verificación Interactiva",
+        title: "Toca para simular la transferencia física a digital.",
+        body: "Experimenta los pasos de verificación en tiempo real o reproduce el video institucional multi-idioma a continuación.",
         play: "Institucional nexID",
         primary: "Abrir Demo Lab",
         secondary: "Agendar reunión",
@@ -99,7 +99,7 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
           </div>
         </div>
 
-        <div className="institutional-video-frame relative overflow-hidden bg-slate-950 aspect-ratio-[16/9] min-h-[220px]">
+        <div className="institutional-video-frame relative overflow-hidden bg-slate-950 aspect-ratio-[16/9] min-h-[260px]">
           <AnimatePresence mode="wait">
             {mode === "video" ? (
               <motion.div
@@ -150,10 +150,11 @@ function CinematicTapSimulator({ locale }: { locale: string }) {
       verified: "AUTHENTIC ORIGINAL VERIFIED",
       synergy: "NexID Club Synergy: 15% discount on VIP cab ride back unlocked!",
       resetBtn: "Reset Simulation",
-      step0_desc: "Bring the phone close to the bottle to tap the secure tag.",
+      step0_desc: "Storyboards & real captures: Tap the phone close to the bottle tag.",
       step1_desc: "NFC challenge triggered. Reading cryptogram from the label...",
-      step2_desc: "Validating SUN signature against the decentralised registry...",
-      step3_desc: "Guaranteed provenance. NFT proof generated on Polygon Amoy.",
+      step2_desc: "NTAG 424 DNA security chip computing signature on-the-fly...",
+      step3_desc: "Verifying signature. Digital passport unlocked & verified.",
+      step4_desc: "Mendoza Malbec Gran Reserva unlocks 15% VIP cab ride discount.",
       provenance: "Mendoza Malbec Gran Reserva",
       batch: "Batch: MZ-2026-A",
       points: "+150 Points Earned",
@@ -166,10 +167,11 @@ function CinematicTapSimulator({ locale }: { locale: string }) {
         verified: "ORIGINAL AUTÊNTICO VERIFICADO",
         synergy: "Sinergia NexID Club: 15% de desconto no transporte VIP liberado!",
         resetBtn: "Reiniciar Simulação",
-        step0_desc: "Aproxime o celular da garrafa para escanear a etiqueta de segurança.",
+        step0_desc: "Storyboards e capturas reais: Aproxime o celular para escanear a etiqueta.",
         step1_desc: "Desafio NFC disparado. Lendo criptograma da etiqueta...",
-        step2_desc: "Validando assinatura SUN contra o registro descentralizado...",
-        step3_desc: "Procedência garantida. Comprovante NFT emitido na Polygon Amoy.",
+        step2_desc: "Chip de segurança NTAG 424 DNA computando assinatura em tempo real...",
+        step3_desc: "Verificando assinatura. Passaporte digital desbloqueado e verificado.",
+        step4_desc: "Mendoza Malbec Gran Reserva libera 15% de desconto no traslado VIP.",
         provenance: "Mendoza Malbec Gran Reserva",
         batch: "Lote: MZ-2026-A",
         points: "+150 Pontos Ganhos",
@@ -181,10 +183,11 @@ function CinematicTapSimulator({ locale }: { locale: string }) {
         verified: "ORIGINAL AUTÉNTICO VERIFICADO",
         synergy: "Sinergia NexID Club: ¡15% de descuento en traslado VIP liberado!",
         resetBtn: "Reiniciar Simulación",
-        step0_desc: "Aproxima el celular a la botella para escanear la etiqueta de seguridad.",
+        step0_desc: "Storyboards y capturas reales: Aproxima el celular para escanear la etiqueta.",
         step1_desc: "Desafío NFC disparado. Leyendo criptograma de la etiqueta...",
-        step2_desc: "Validando firma SUN contra el registro descentralizado...",
-        step3_desc: "Procedencia garantizada. Comprobación NFT emitida en Polygon Amoy.",
+        step2_desc: "Chip de seguridad NTAG 424 DNA computando firma al vuelo...",
+        step3_desc: "Verificando firma. Pasaporte digital desbloqueado y verificado.",
+        step4_desc: "Mendoza Malbec Gran Reserva libera 15% de descuento en traslado VIP.",
         provenance: "Mendoza Malbec Gran Reserva",
         batch: "Lote: MZ-2026-A",
         points: "+150 Puntos Ganados",
@@ -195,211 +198,205 @@ function CinematicTapSimulator({ locale }: { locale: string }) {
       const timer = setTimeout(() => setStep(2), 1500);
       return () => clearTimeout(timer);
     } else if (step === 2) {
-      const timer = setTimeout(() => setStep(3), 2200);
+      const timer = setTimeout(() => setStep(3), 3500);
+      return () => clearTimeout(timer);
+    } else if (step === 3) {
+      const timer = setTimeout(() => setStep(4), 3800);
       return () => clearTimeout(timer);
     }
   }, [step]);
 
   return (
-    <div className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(8,47,73,0.8),rgba(2,6,23,0.98))] flex flex-col justify-between p-4 font-sans select-none pointer-events-auto">
-      {/* Top Banner Status */}
-      <div className="flex items-center justify-between border-b border-white/5 pb-2 text-[10px] text-slate-400 font-mono">
-        <span className="flex items-center gap-1.5">
-          <span className={`h-1.5 w-1.5 rounded-full ${step === 3 ? "bg-emerald-400 animate-pulse" : step > 0 ? "bg-cyan-400 animate-pulse" : "bg-slate-500"}`} />
-          {step === 0 ? "STANDBY" : step === 1 ? "NFC CONNECTION" : step === 2 ? "CRYPTO AUDIT" : "PASSPORT VALID"}
-        </span>
-        <span>UID: 04E1D4A7F392B1</span>
-      </div>
+    <div className="w-full h-full bg-slate-950 flex flex-col justify-between p-3 font-sans select-none pointer-events-auto relative">
+      
+      {/* Step Video/Image Player Surface */}
+      <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
+        <AnimatePresence mode="wait">
+          {step === 0 && (
+            <motion.div
+              key="storyboard-cover"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.95 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full relative"
+            >
+              <img
+                src="/images/visual_storyboard.jpeg"
+                alt="Storyboards nexID"
+                className="w-full h-full object-cover filter brightness-[0.4]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            </motion.div>
+          )}
 
-      {/* Main Animation Area */}
-      <div className="flex-1 flex items-center justify-between relative overflow-hidden min-h-[140px] px-6">
-        
-        {/* Smartphone Mock */}
-        <motion.div
-          animate={
-            step === 1
-              ? { x: 130, rotate: 12, scale: 1.05 }
-              : step >= 2
-              ? { x: 0, rotate: 0, scale: 1 }
-              : { x: -20, rotate: 0, scale: 1 }
-          }
-          transition={{ type: "spring", stiffness: 90, damping: 15 }}
-          className={`w-[110px] h-[160px] rounded-2xl border-2 bg-slate-950 flex flex-col items-center justify-between p-2 shadow-2xl relative z-10 shrink-0 ${
-            step === 3 ? "border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.25)]" : "border-slate-800"
-          }`}
-        >
-          {/* Internal Screen Mock */}
-          <div className="w-full h-full rounded-xl bg-slate-900/60 overflow-hidden flex flex-col justify-between p-1.5 relative">
-            <div className="w-6 h-1 rounded-full bg-slate-800 mx-auto mb-1 shrink-0" />
-            
-            {/* Screen Content based on step */}
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <AnimatePresence mode="wait">
-                {step === 0 && (
-                  <motion.div
-                    key="sc-0"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex flex-col items-center"
-                  >
-                    <Smartphone className="h-6 w-6 text-slate-500 animate-bounce" />
-                    <span className="text-[7px] text-slate-500 font-mono mt-1 font-bold">READY TO TAP</span>
-                  </motion.div>
-                )}
-                {step === 1 && (
-                  <motion.div
-                    key="sc-1"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex flex-col items-center"
-                  >
-                    <Radio className="h-6 w-6 text-cyan-400 animate-pulse" />
-                    <span className="text-[6px] text-cyan-300 font-mono mt-1 font-bold animate-pulse">CONNECTING...</span>
-                  </motion.div>
-                )}
-                {step === 2 && (
-                  <motion.div
-                    key="sc-2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="w-full flex flex-col items-start text-left font-mono text-[5px] text-cyan-400 leading-tight space-y-0.5 bg-black/40 p-1 rounded border border-white/5"
-                  >
-                    <div className="text-[6px] text-amber-300 font-bold border-b border-white/5 pb-0.5 w-full">DECRYPTING SUN...</div>
-                    <div>&gt; UID: 04E1D4A7</div>
-                    <div>&gt; CTR: 000164</div>
-                    <div>&gt; SIG: VALID</div>
-                    <div>&gt; RISK: 0/100</div>
-                  </motion.div>
-                )}
-                {step === 3 && (
-                  <motion.div
-                    key="sc-3"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center w-full"
-                  >
-                    <ShieldCheck className="h-6 w-6 text-emerald-400" />
-                    <span className="text-[7px] text-emerald-300 font-bold mt-1 tracking-tight leading-none">VERIFIED</span>
-                    <span className="text-[5px] text-slate-400 mt-1 font-mono leading-none truncate max-w-[80px]">MZ-GranReserva</span>
-                    <div className="mt-1 flex items-center gap-0.5 bg-amber-500/10 border border-amber-500/20 rounded px-1 py-0.5 text-[5px] text-amber-200">
-                      <Award className="h-2 w-2 shrink-0" />
-                      <span>{isEn ? "Gold" : "Oro"}</span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            
-            {/* Phone Home Bar */}
-            <div className="w-10 h-0.5 rounded-full bg-slate-800 mx-auto mt-1 shrink-0" />
-          </div>
-        </motion.div>
-
-        {/* Electromagnetic Ripple (Only visible during step 1) */}
-        <AnimatePresence>
           {step === 1 && (
-            <div className="absolute left-[110px] right-[100px] top-[40px] bottom-[40px] flex items-center justify-center pointer-events-none z-0">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0.8, scale: 0.2 }}
-                  animate={{ opacity: 0, scale: 1.5 }}
-                  exit={{ opacity: 0 }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 1.2,
-                    delay: i * 0.4,
-                    ease: "easeOut",
-                  }}
-                  className="absolute w-24 h-24 rounded-full border border-cyan-400/40"
-                />
-              ))}
-            </div>
+            <motion.div
+              key="tap-animation"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(8,47,73,0.8),rgba(2,6,23,0.98))] flex items-center justify-between px-16 py-6"
+            >
+              {/* Smartphone Mock */}
+              <motion.div
+                animate={{ x: 120, rotate: 10, scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 90, damping: 15 }}
+                className="w-[95px] h-[140px] rounded-2xl border-2 border-slate-700 bg-slate-950 flex flex-col items-center justify-between p-1.5 shadow-2xl relative z-10 shrink-0"
+              >
+                <div className="w-full h-full rounded-xl bg-slate-900/60 flex flex-col justify-between p-1 relative">
+                  <div className="w-5 h-0.5 rounded-full bg-slate-800 mx-auto" />
+                  <div className="flex-1 flex flex-col items-center justify-center">
+                    <Radio className="h-5 w-5 text-cyan-400 animate-pulse" />
+                    <span className="text-[5px] text-cyan-300 font-mono mt-0.5 font-bold animate-pulse">CONNECTING...</span>
+                  </div>
+                  <div className="w-8 h-0.5 rounded-full bg-slate-800 mx-auto" />
+                </div>
+              </motion.div>
+
+              {/* Electromagnetic Ripples */}
+              <div className="absolute left-[120px] right-[100px] top-[40px] bottom-[40px] flex items-center justify-center pointer-events-none z-0">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0.8, scale: 0.2 }}
+                    animate={{ opacity: 0, scale: 1.4 }}
+                    transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.4, ease: "easeOut" }}
+                    className="absolute w-20 h-20 rounded-full border border-cyan-400/40"
+                  />
+                ))}
+              </div>
+
+              {/* Wine Bottle */}
+              <img
+                src="/images/premium_magnum.png"
+                alt="Bottle"
+                className="h-[120px] w-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.7)] z-10"
+              />
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div
+              key="step-chip-video"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full relative"
+            >
+              <video className="w-full h-full object-cover filter brightness-[0.85]" autoPlay loop muted playsInline>
+                <source src="/video/3D_render_NTAG_424_DNA.mp4" type="video/mp4" />
+              </video>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/10 to-transparent" />
+            </motion.div>
+          )}
+
+          {step === 3 && (
+            <motion.div
+              key="step-passport-video"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full relative"
+            >
+              <video className="w-full h-full object-cover filter brightness-[0.85]" autoPlay loop muted playsInline>
+                <source src="/video/Smartphone_screen_displaying_hologram.mp4" type="video/mp4" />
+              </video>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/10 to-transparent" />
+            </motion.div>
+          )}
+
+          {step === 4 && (
+            <motion.div
+              key="step-glasses-video"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full relative"
+            >
+              <video className="w-full h-full object-cover filter brightness-[0.85]" autoPlay loop muted playsInline>
+                <source src="/video/Man_and_woman_clinking_glasses.mp4" type="video/mp4" />
+              </video>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+            </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Premium Product Mock (Wine Bottle) */}
-        <motion.div
-          animate={step === 1 ? { scale: 0.98, y: 2 } : { scale: 1, y: 0 }}
-          className="relative h-[150px] w-[90px] flex items-center justify-center shrink-0 z-10"
-        >
-          {/* Bottle Shadow */}
-          <div className="absolute bottom-1 w-12 h-2.5 bg-black/50 blur-md rounded-full" />
-          
-          {/* Bottle Graphic using generated premium magnum */}
-          <img
-            src="/images/premium_magnum.png"
-            alt="Mendoza Malbec Premium"
-            className="h-[140px] w-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.7)]"
-          />
-
-          {/* Secure Tag Glow Overlay */}
-          <span className={`absolute top-[42px] h-3.5 w-3.5 rounded-full border flex items-center justify-center transition-all duration-300 ${
-            step === 3 
-              ? "bg-emerald-500/25 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.8)]" 
-              : step === 1 
-              ? "bg-cyan-500/25 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.8)] animate-ping" 
-              : "bg-amber-500/10 border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)]"
-          }`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${step === 3 ? "bg-emerald-400" : step === 1 ? "bg-cyan-400" : "bg-amber-400"}`} />
-          </span>
-        </motion.div>
       </div>
 
-      {/* Steps Descriptions */}
-      <div className="mt-2 text-center px-4 min-h-[36px] flex flex-col justify-center border-t border-white/5 pt-2">
+      {/* Overlay Status Bar */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-2 text-[10px] text-slate-300 font-mono z-10 bg-slate-950/40 backdrop-blur-sm px-2 rounded">
+        <span className="flex items-center gap-1.5 font-bold">
+          <span className={`h-1.5 w-1.5 rounded-full ${step === 4 ? "bg-emerald-400 animate-pulse" : step > 0 ? "bg-cyan-400 animate-pulse" : "bg-slate-500"}`} />
+          {step === 0 ? "STANDBY" : step === 1 ? "NFC TAP" : step === 2 ? "NTAG 424 DNA" : step === 3 ? "PASS DECODE" : "SYNERGY LOCKED"}
+        </span>
+        <span className="font-bold opacity-80">UID: 04E1D4A7F392B1</span>
+      </div>
+
+      {/* Center Intro Card for Step 0 */}
+      {step === 0 && (
+        <div className="z-10 flex-1 flex flex-col items-center justify-center text-center p-4">
+          <div className="rounded-full bg-cyan-400/10 border border-cyan-400/30 p-3 mb-2 animate-pulse">
+            <Zap className="h-6 w-6 text-cyan-400" />
+          </div>
+          <h3 className="text-sm font-black text-white leading-none tracking-wide uppercase">nexID Experience</h3>
+          <p className="text-[10px] text-slate-300 mt-1.5 max-w-sm">{t.step0_desc}</p>
+        </div>
+      )}
+
+      {/* Spacer to push elements to bottom in other steps */}
+      {step > 0 && <div className="flex-1 z-10" />}
+
+      {/* Steps Descriptions Panel */}
+      <div className="z-10 text-center px-4 min-h-[38px] flex flex-col justify-center bg-slate-950/70 border border-white/5 rounded-xl backdrop-blur p-2 shadow-2xl">
         <AnimatePresence mode="wait">
           <motion.div
             key={`desc-${step}`}
-            initial={{ opacity: 0, y: 4 }}
+            initial={{ opacity: 0, y: 3 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className="text-[10px] leading-snug"
+            exit={{ opacity: 0, y: -3 }}
+            className="text-[9.5px] leading-snug"
           >
             {step === 0 && <p className="text-slate-300">{t.step0_desc}</p>}
             {step === 1 && <p className="text-cyan-300 font-bold">{t.step1_desc}</p>}
             {step === 2 && <p className="text-amber-300 font-semibold">{t.step2_desc}</p>}
-            {step === 3 && (
-              <div className="space-y-1">
-                <p className="text-emerald-300 font-bold tracking-wider">{t.verified} · {t.provenance}</p>
-                <p className="text-[9px] text-cyan-300 font-medium">{t.synergy}</p>
+            {step === 3 && <p className="text-cyan-200 font-semibold">{t.step3_desc}</p>}
+            {step === 4 && (
+              <div className="space-y-0.5">
+                <p className="text-emerald-300 font-black tracking-wider uppercase text-[10px]">{t.verified} · {t.provenance}</p>
+                <p className="text-[9px] text-cyan-300 font-bold animate-bounce mt-0.5">{t.synergy}</p>
               </div>
             )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Action Buttons */}
-      <div className="mt-3 flex gap-2 justify-center z-20">
+      {/* Actions and Controls */}
+      <div className="mt-2.5 flex gap-2 justify-center z-20">
         {step === 0 && (
           <button
             onClick={() => setStep(1)}
-            className="px-6 py-2 rounded-xl bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:bg-cyan-300 hover:scale-[1.02] active:scale-95 transition-all shadow-[0_4px_16px_rgba(34,211,238,0.25)] flex items-center gap-1.5"
+            className="px-6 py-2 rounded-xl bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:bg-cyan-300 hover:scale-[1.01] active:scale-95 transition-all shadow-[0_4px_16px_rgba(34,211,238,0.3)] flex items-center gap-1.5"
           >
             <Zap className="h-3.5 w-3.5" />
             {t.startBtn}
           </button>
         )}
-        {step > 0 && step < 3 && (
-          <div className="px-5 py-2 rounded-xl border border-white/10 bg-slate-900/50 text-[10px] text-slate-400 font-mono animate-pulse flex items-center gap-2">
+        {step > 0 && step < 4 && (
+          <div className="px-4 py-1.5 rounded-xl border border-white/10 bg-slate-950/80 backdrop-blur-sm text-[9px] text-slate-300 font-mono animate-pulse flex items-center gap-2">
             <Cpu className="h-3.5 w-3.5 animate-spin text-cyan-400" />
             {step === 1 ? t.scanning : t.verifying}
           </div>
         )}
-        {step === 3 && (
+        {step === 4 && (
           <div className="flex gap-2">
             <Link
               href="/demo-lab"
-              className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs uppercase tracking-wider hover:bg-emerald-400 transition"
+              className="px-4 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs uppercase tracking-wider hover:bg-emerald-400 transition"
             >
               {isEn ? "Open Passport" : isBr ? "Abrir Passport" : "Abrir Pasaporte"}
             </Link>
             <button
               onClick={() => setStep(0)}
-              className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-white font-bold text-xs uppercase tracking-wider hover:bg-white/10 hover:scale-[1.01] active:scale-95 transition flex items-center gap-1.5"
+              className="px-4 py-1.5 rounded-xl border border-white/10 bg-slate-950/80 backdrop-blur-sm text-white font-bold text-xs uppercase tracking-wider hover:bg-white/10 hover:scale-[1.01] active:scale-95 transition flex items-center gap-1.5"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               {t.resetBtn}
