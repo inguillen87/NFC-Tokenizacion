@@ -1087,6 +1087,15 @@ export async function ensureConsumerPortalSchema() {
       await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_batch_id uuid`;
       await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_bid text`;
       await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_context_json jsonb NOT NULL DEFAULT '{}'::jsonb`;
+      
+      await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS seller_consumer_id uuid REFERENCES consumers(id) ON DELETE CASCADE`;
+      await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS resale_price numeric(12,2)`;
+      await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS resale_currency text`;
+      await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS resale_uid_hex text`;
+      
+      await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS fee_amount numeric(12,2)`;
+      await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS fee_currency text`;
+
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_products_tenant ON marketplace_products(tenant_id, status)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_tenant ON marketplace_order_requests(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_consumer_product_status ON marketplace_order_requests(consumer_id, marketplace_product_id, status, created_at DESC)`;

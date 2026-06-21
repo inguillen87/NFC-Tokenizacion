@@ -120,6 +120,10 @@ type PassportSnapshot = {
   tokenization_network: string | null;
   tokenization_tx_hash: string | null;
   tokenization_token_id: string | null;
+  tag_claim_pin_required: boolean | null;
+  tag_active_for_claim: boolean | null;
+  batch_claim_pin_required: boolean | null;
+  batch_active_for_claim: boolean | null;
 } | null;
 
 type TimelineEvent = {
@@ -941,6 +945,8 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       b.tenant_id::text AS tenant_id,
       b.status::text AS batch_status,
       b.sdm_config AS batch_sdm_config,
+      b.claim_pin_required AS batch_claim_pin_required,
+      b.active_for_claim AS batch_active_for_claim,
       tn.slug AS tenant_slug,
       tn.name AS tenant_name,
       COALESCE(t.carrier_profile_code, b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', '')) AS carrier_profile_code,
@@ -972,6 +978,8 @@ async function getPassportSnapshot(bid: string, uid: string | undefined): Promis
       tp.image_url,
       tp.locale_data,
       t.status AS tag_status,
+      t.claim_pin_required AS tag_claim_pin_required,
+      t.active_for_claim AS tag_active_for_claim,
       t.scan_count,
       first_evt.created_at::text AS first_verified_at,
       first_evt.city AS first_city,
@@ -1073,7 +1081,11 @@ async function getBatchSunContext(bid: string): Promise<PassportSnapshot> {
       NULL::text AS tokenization_status,
       NULL::text AS tokenization_network,
       NULL::text AS tokenization_tx_hash,
-      NULL::text AS tokenization_token_id
+      NULL::text AS tokenization_token_id,
+      NULL::boolean AS tag_claim_pin_required,
+      NULL::boolean AS tag_active_for_claim,
+      b.claim_pin_required AS batch_claim_pin_required,
+      b.active_for_claim AS batch_active_for_claim
     FROM batches b
     JOIN tenants tn ON tn.id = b.tenant_id
     LEFT JOIN carrier_profiles cp ON cp.code = COALESCE(b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', ''))
@@ -1477,6 +1489,17 @@ function buildPublicContract(params: {
     productState: params.result.product_state || null,
     reason,
   });
+
+  const claimPinRequired = params.passport?.tag_claim_pin_required !== null && params.passport?.tag_claim_pin_required !== undefined
+    ? Boolean(params.passport?.tag_claim_pin_required)
+    : Boolean(params.passport?.batch_claim_pin_required || tenantProfile.ownershipPolicy?.claim_pin_required);
+
+  const activeForClaim = params.passport?.tag_active_for_claim !== null && params.passport?.tag_active_for_claim !== undefined
+    ? Boolean(params.passport?.tag_active_for_claim)
+    : params.passport?.batch_active_for_claim !== null && params.passport?.batch_active_for_claim !== undefined
+    ? Boolean(params.passport?.batch_active_for_claim)
+    : true;
+
   const carrierAllowedActions = new Set(rightsPolicy.allowedActions);
   const carrierBlockedActions = new Set(rightsPolicy.blockedActions);
   const blockCarrierAction = (action: (typeof rightsPolicy.allowedActions)[number]) => {
@@ -1494,8 +1517,8 @@ function buildPublicContract(params: {
     blockCarrierAction("join");
   }
   const carrierRequirements = [
-    !carrierSupportsOwnership ?`${carrierLabel}: ownership publico requiere compra/custodia o carrier seguro.` : "",
-    !carrierSupportsTokenization ?`${carrierLabel}: tokenizacion automatica requiere NTAG 424 DNA/TT o aprobacion manual.` : "",
+    !carrierSupportsOwnership ? `${carrierLabel}: ownership publico requiere compra/custodia o carrier seguro.` : "",
+    !carrierSupportsTokenization ? `${carrierLabel}: tokenizacion automatica requiere NTAG 424 DNA/TT o aprobacion manual.` : "",
   ].filter(Boolean);
   const effectiveRequirements = Array.from(new Set([...rightsPolicy.requirements, ...carrierRequirements]));
   const actionMatrix = {
@@ -1503,30 +1526,30 @@ function buildPublicContract(params: {
     blockedActions: Array.from(carrierBlockedActions),
   };
   const trustPenalty = trust.code === "VALID"
-    ?0
+    ? 0
     : isVerifiedOpenedTap
-      ?8
+      ? 8
       : trust.code === "SUN_PROFILE_MISMATCH"
-        ?50
+        ? 50
       : trust.code === "REPLAY_SUSPECT"
-        ?35
+        ? 35
         : trust.code === "TAMPER_RISK"
-          ?44
+          ? 44
           : 22;
-  const sensorPenalty = sensorHistory.some((item) => item.alert) ?10 : 0;
+  const sensorPenalty = sensorHistory.some((item) => item.alert) ? 10 : 0;
   const qualityScore = Math.max(0, Math.min(100, 92 - trustPenalty - sensorPenalty));
   const compatibilityTokenizationPolicy = actionMatrix.allowedActions.includes("tokenization")
-    ?isVerifiedOpenedTap
-      ?"verified_opened_tap"
+    ? isVerifiedOpenedTap
+      ? "verified_opened_tap"
       : "fresh_valid_tap"
     : !carrierSupportsTokenization
-      ?"blocked_carrier_profile"
+      ? "blocked_carrier_profile"
       : String(rightsPolicy.tokenizationPolicy || "").startsWith("blocked_")
-      ?rightsPolicy.tokenizationPolicy
+      ? rightsPolicy.tokenizationPolicy
       : verdictRisk.verdict === "replay_suspect"
-        ?"blocked_replay"
+        ? "blocked_replay"
         : verdictRisk.verdict === "tampered"
-          ?"blocked_tamper"
+          ? "blocked_tamper"
           : "blocked_policy";
   const tokenizationPolicy = compatibilityTokenizationPolicy;
 
@@ -1594,14 +1617,16 @@ function buildPublicContract(params: {
       marketplaceMode: rightsPolicy.marketplaceMode,
       tokenizationPolicy,
       requirements: effectiveRequirements,
-      canClaimPublicly: rightsPolicy.canClaimPublicly && actionMatrix.allowedActions.includes("claim"),
-      canTokenize: actionMatrix.allowedActions.includes("tokenization"),
+      canClaimPublicly: rightsPolicy.canClaimPublicly && actionMatrix.allowedActions.includes("claim") && activeForClaim,
+      canTokenize: actionMatrix.allowedActions.includes("tokenization") && activeForClaim,
       requiresReview: rightsPolicy.requiresReview,
       statusTitle: rightsPolicy.statusTitle,
       statusSummary: rightsPolicy.statusSummary,
       consumerCopy: rightsPolicy.consumerCopy,
       enterpriseCopy: rightsPolicy.enterpriseCopy,
       recommendedNextStep: rightsPolicy.recommendedNextStep,
+      claimPinRequired,
+      activeForClaim,
     },
     product: {
       name: params.passport?.product_name || params.passport?.sku || fallbackName,

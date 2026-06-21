@@ -48,6 +48,74 @@ export async function POST(req: Request) {
   const event = await getTapEvent(eventId);
   if (!event) return json({ ok: false, reason: "event_not_found", trace_id: traceId }, 404);
 
+  // 0. Query Tag and Batch Security Policies (POS Activation & PIN Requirement)
+  const tagRows = await sql`
+    SELECT 
+      t.claim_pin_required AS tag_claim_pin_required,
+      t.hash_pin AS tag_hash_pin,
+      t.active_for_claim AS tag_active_for_claim,
+      b.claim_pin_required AS batch_claim_pin_required,
+      b.hash_pin AS batch_hash_pin,
+      b.active_for_claim AS batch_active_for_claim,
+      b.sdm_config AS batch_sdm_config
+    FROM tags t
+    JOIN batches b ON b.id = t.batch_id
+    WHERE t.uid_hex = ${event.uid_hex} AND b.id = ${event.batch_id}
+    LIMIT 1
+  `;
+  const tagRow = tagRows[0];
+  if (!tagRow) return json({ ok: false, reason: "tag_not_found", error: "El tag no está registrado.", trace_id: traceId }, 404);
+
+  const activeForClaim = tagRow.tag_active_for_claim !== null && tagRow.tag_active_for_claim !== undefined
+    ? Boolean(tagRow.tag_active_for_claim)
+    : tagRow.batch_active_for_claim !== null && tagRow.batch_active_for_claim !== undefined
+    ? Boolean(tagRow.batch_active_for_claim)
+    : true; // Default to true for legacy tags
+
+  if (!activeForClaim) {
+    return json({
+      ok: false,
+      reason: "pos_activation_pending",
+      error: "Este producto requiere ser activado en caja al momento del pago. Por favor solicita la activación al comercio.",
+      trace_id: traceId,
+    }, 403);
+  }
+
+  const pinRequired = tagRow.tag_claim_pin_required !== null && tagRow.tag_claim_pin_required !== undefined
+    ? Boolean(tagRow.tag_claim_pin_required)
+    : Boolean(tagRow.batch_claim_pin_required || (tagRow.batch_sdm_config as any)?.claim_pin_required);
+
+  if (pinRequired) {
+    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
+    if (!pin) {
+      return json({
+        ok: false,
+        reason: "pin_required",
+        error: "Se requiere ingresar el PIN de seguridad oculto bajo la cápsula de la botella.",
+        trace_id: traceId,
+      }, 400);
+    }
+
+    const storedPinHash = tagRow.tag_hash_pin || tagRow.batch_hash_pin || (tagRow.batch_sdm_config as any)?.hash_pin || (tagRow.batch_sdm_config as any)?.claim_pin_hash;
+    const crypto = await import("crypto");
+    const sha256Hex = (val: string) => crypto.createHash("sha256").update(val).digest("hex");
+    
+    const candidateHashes = [
+      sha256Hex(pin),
+      sha256Hex(`${event.tenant_id}:${event.bid}:${event.uid_hex}:${pin}`),
+      sha256Hex(`${event.tenant_id}:${event.bid}:${pin}`)
+    ];
+
+    if (!storedPinHash || !candidateHashes.includes(storedPinHash)) {
+      return json({
+        ok: false,
+        reason: "invalid_pin",
+        error: "El PIN de seguridad ingresado es incorrecto. Verificá los caracteres bajo la cápsula.",
+        trace_id: traceId,
+      }, 403);
+    }
+  }
+
   // Security Checks: Location & Device Verification
   const host = req.headers.get("host") || "";
   const isLocal = /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(?::\d+)?$/i.test(host);

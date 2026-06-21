@@ -177,6 +177,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [receiptPrice, setReceiptPrice] = useState("");
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
+  const [securityPin, setSecurityPin] = useState("");
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const tokenModalRef = useRef<HTMLDivElement | null>(null);
   const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -494,6 +495,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           receiptEstablishment: receiptEstablishment || null,
           receiptFileName: receiptFileName || null,
           receiptFileData: receiptFileData || null,
+          pin: securityPin || null,
         };
       }
       const data = await call(path, method, basePayload(extraPayload));

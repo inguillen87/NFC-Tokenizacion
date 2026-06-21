@@ -83,6 +83,18 @@ async function run() {
     }
   }
 
+  // Pre-condition: Enforce active_for_claim = true and claim_pin_required = false for test consistency
+  await sql`
+    UPDATE tags
+    SET active_for_claim = true, claim_pin_required = false
+    WHERE UPPER(uid_hex) = UPPER(${uidHex})
+  `;
+  await sql`
+    UPDATE batches
+    SET active_for_claim = true, claim_pin_required = false
+    WHERE bid = ${bid}
+  `;
+
   console.log(`\n👉 1. Simulando Tap Físico NFC (Lote: ${bid}, UID: ${uidHex})`);
   console.log("Ubicación del Tap: Finca Altamira, Mendoza (-33.3667, -69.15)");
   const tapResponse = await fetch(`${API_BASE}/internal/demo/scan`, {
@@ -353,6 +365,120 @@ async function run() {
   console.log("   Red de Anclaje:", tokenizeData.network || "Polygon Amoy");
   console.log("   Hash de Transacción:", tokenizeData.tx_hash || tokenizeData.txHash);
   console.log("   ID de Token:", tokenizeData.token_id || tokenizeData.tokenId);
+
+  console.log("\n👉 8. Simulando reventa P2P en el Mercado Secundario (Listar para la Venta)");
+  const listResponse = await fetch(`${API_BASE}/marketplace/p2p/list`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Cookie": cookieHeader,
+    },
+    body: JSON.stringify({
+      uidHex,
+      price: 150,
+      currency: "USD",
+      description: "Edición limitada resellada por comprador certificado.",
+    }),
+  });
+
+  if (!listResponse.ok) {
+    console.error("❌ Error al listar producto para venta P2P:", await listResponse.text());
+    process.exit(1);
+  }
+
+  const listData = await listResponse.json();
+  const offerId = listData.offer.id;
+  console.log("✅ Producto listado en mercado secundario con éxito!");
+  console.log(`   ID de Oferta: ${offerId}`);
+  console.log(`   Precio de Venta: $${listData.offer.resale_price} ${listData.offer.resale_currency}`);
+
+  console.log("\n👉 9. Creando segundo comprador para adquirir el NFT secundario...");
+  const secondContact = `e2e.test.second.buyer.${Date.now()}@nexid.lat`;
+  const secondAuthStart = await fetch(`${API_BASE}/consumer/auth/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: secondContact }),
+  });
+
+  if (!secondAuthStart.ok) {
+    console.error("❌ Error al iniciar auth del segundo comprador:", await secondAuthStart.text());
+    process.exit(1);
+  }
+
+  // Bruteforce second OTP
+  const secondChallengeRows = await sql`
+    SELECT code_hash
+    FROM consumer_auth_challenges
+    WHERE contact = ${secondContact}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  if (secondChallengeRows.length === 0) {
+    console.error("❌ No se encontró desafío de autenticación en la base de datos para el segundo comprador.");
+    process.exit(1);
+  }
+
+  const secondHash = secondChallengeRows[0].code_hash;
+  let secondOtpCode = "";
+  console.log("   Bruteforceando segundo código OTP...");
+  for (let candidate = 100000; candidate <= 999999; candidate++) {
+    const candStr = String(candidate);
+    if (sha256(candStr) === secondHash) {
+      secondOtpCode = candStr;
+      break;
+    }
+  }
+
+  if (!secondOtpCode) {
+    console.error("❌ No se pudo descifrar el código OTP del segundo comprador.");
+    process.exit(1);
+  }
+  console.log(`   Segundo OTP descifrado: ${secondOtpCode}`);
+
+  const secondVerifyResponse = await fetch(`${API_BASE}/consumer/auth/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: secondContact, code: secondOtpCode }),
+  });
+
+  if (!secondVerifyResponse.ok) {
+    console.error("❌ Error en verificación OTP del segundo comprador:", await secondVerifyResponse.text());
+    process.exit(1);
+  }
+
+  const secondSetCookie = secondVerifyResponse.headers.get("set-cookie") || "";
+  const secondMatchCookie = secondSetCookie.match(/nexid_consumer_session=([^;]+)/);
+  const secondSessionToken = secondMatchCookie ? decodeURIComponent(secondMatchCookie[1]) : null;
+  if (!secondSessionToken) {
+    console.error("❌ No se pudo obtener la sesión del segundo comprador.");
+    process.exit(1);
+  }
+
+  const secondCookieHeader = `nexid_consumer_session=${encodeURIComponent(secondSessionToken)}`;
+  console.log("✅ Segundo comprador autenticado con éxito!");
+
+  console.log("\n👉 10. Comprando el NFT del mercado secundario (P2P Checkout con transferencia de Blockchain y Fees)");
+  const buyP2pResponse = await fetch(`${API_BASE}/marketplace/p2p/buy`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Cookie": secondCookieHeader,
+    },
+    body: JSON.stringify({ offerId }),
+  });
+
+  if (!buyP2pResponse.ok) {
+    console.error("❌ Error al comprar oferta P2P:", await buyP2pResponse.text());
+    process.exit(1);
+  }
+
+  const buyP2pData = await buyP2pResponse.json();
+  console.log("✅ Compra de mercado secundario completada con éxito!");
+  console.log(`   Fee de plataforma cobrada: $${buyP2pData.platformFee.amount} ${buyP2pData.platformFee.currency} (${buyP2pData.platformFee.rate})`);
+  console.log(`   Transferencia Blockchain exitosa:`, buyP2pData.blockchainTransfer.success);
+  console.log(`   Simulada:`, buyP2pData.blockchainTransfer.simulated);
+  console.log(`   Transacción Hash:`, buyP2pData.blockchainTransfer.txHash);
+  console.log(`   Token ID:`, buyP2pData.blockchainTransfer.tokenId);
 
   console.log("\n==================================================================");
   console.log("🎉 SIMULACIÓN E2E COMPLETADA CON ÉXITO: TODO FUNCIONA A LA PERFECCIÓN!");
