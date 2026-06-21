@@ -65,7 +65,7 @@ type AtlasRegion = {
   opacity: number;
 };
 
-const ATLAS_REGIONS: AtlasRegion[] = [
+export const ATLAS_REGIONS: AtlasRegion[] = [
   {
     id: "north-america",
     name: "North America",
@@ -211,7 +211,7 @@ const MAP_PLACE_LABELS = [
 const MERIDIANS = [-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150];
 const PARALLELS = [-60, -30, 0, 30, 60];
 
-function project(lat: number, lng: number) {
+export function project(lat: number, lng: number) {
   const x = ((lng + 180) / 360) * WIDTH;
   const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, lat));
   const sin = Math.sin((clippedLat * Math.PI) / 180);

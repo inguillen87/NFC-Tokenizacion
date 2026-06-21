@@ -7,7 +7,8 @@ import type { AppLocale } from "@product/config";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Mail, Cpu } from "lucide-react";
 import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
 import { platformVerticals } from "../../lib/platform-verticals";
-import { ThreeDBottle } from "../investor-snapshot/investor-snapshot-client";
+import { ThreeDProduct } from "../investor-snapshot/investor-snapshot-client";
+import { ATLAS_REGIONS } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -89,6 +90,15 @@ const DEMO_VERTICAL_ALIASES: Record<string, Vertical> = {
 function normalizeDemoVertical(value?: string | null): Vertical {
   const normalized = String(value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
   return DEMO_VERTICAL_ALIASES[normalized] || "wine";
+}
+
+function verticalTo3DIndustry(vertical: Vertical): string {
+  if (vertical === "wine") return "bodegas";
+  if (vertical === "seeds" || vertical === "logistics") return "agro";
+  if (vertical === "pharma") return "pharma";
+  if (vertical === "creamJar" || vertical === "perfume" || vertical === "creamTube" || vertical === "sneaker" || vertical === "textile") return "cosmetica";
+  if (vertical === "bracelet" || vertical === "ticket" || vertical === "electronics") return "eventos";
+  return "bodegas";
 }
 
 const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> = {
@@ -1217,9 +1227,11 @@ function DemoStudioMiniProduct({ vertical }: { vertical: Vertical }) {
 }
 
 function projectDemoMapPoint(point: Pick<DemoMapPoint, "lat" | "lng">) {
-  const x = ((point.lng + 180) / 360) * 100;
-  const y = ((90 - point.lat) / 180) * 100;
-  return { x: Math.max(4, Math.min(96, x)), y: Math.max(7, Math.min(93, y)) };
+  const x = ((point.lng + 180) / 360) * 1200;
+  const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, point.lat));
+  const sin = Math.sin((clippedLat * Math.PI) / 180);
+  const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * 620;
+  return { x, y };
 }
 
 function formatDemoTapTime(value?: string, locale: AppLocale = "es-AR") {
@@ -1261,17 +1273,50 @@ function DemoLiveOpsMap({
         <span><i /> {totalScans} taps</span>
       </div>
       <div className={`demo-lab-mini-map demo-lab-mini-map--${vertical}`} aria-label={`${title}: ${LOCATIONS.origin.city} a ${destination.city}`}>
-        <svg viewBox="0 0 100 58" role="img" aria-hidden="true">
+        <svg viewBox="0 0 1200 620" preserveAspectRatio="none" role="img" aria-hidden="true">
           <defs>
             <linearGradient id="demo-lab-map-route" x1="0" x2="1">
               <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.25" />
               <stop offset="100%" stopColor="#34d399" stopOpacity="0.86" />
             </linearGradient>
           </defs>
-          <path className="demo-lab-mini-map__land" d="M8 29 C16 11 33 9 43 19 C51 28 43 39 54 44 C67 50 77 43 91 31 C96 43 86 55 64 55 C40 55 16 49 8 29Z" />
+          {/* Real vector continent contours */}
+          {ATLAS_REGIONS.map((region) => (
+            <path
+              key={region.id}
+              d={region.d}
+              fill="rgba(15, 118, 110, 0.18)"
+              stroke="rgba(103, 232, 249, 0.16)"
+              strokeWidth={1.5}
+            />
+          ))}
           {visiblePoints.slice(1).map((point, index) => {
             const xy = projectDemoMapPoint(point);
-            return <path key={`${point.city}-${index}`} className={point.risk ? "is-risk" : ""} d={`M ${originXY.x} ${originXY.y} C ${(originXY.x + xy.x) / 2} ${Math.min(originXY.y, xy.y) - 9}, ${(originXY.x + xy.x) / 2} ${Math.max(originXY.y, xy.y) + 7}, ${xy.x} ${xy.y}`} />;
+            const distance = Math.abs(originXY.x - xy.x) + Math.abs(originXY.y - xy.y);
+            const lift = point.risk ? 140 : Math.max(90, Math.min(220, distance * 0.35));
+            const cx = (originXY.x + xy.x) / 2;
+            const cy = Math.min(originXY.y, xy.y) - lift;
+            const routePathD = `M ${originXY.x.toFixed(1)} ${originXY.y.toFixed(1)} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${xy.x.toFixed(1)} ${xy.y.toFixed(1)}`;
+            return (
+              <g key={`${point.city}-${index}`}>
+                {/* Route background halo */}
+                <path
+                  d={routePathD}
+                  fill="none"
+                  stroke={point.risk ? "#fb7185" : "#67e8f9"}
+                  style={{ strokeWidth: "12px", strokeLinecap: "round" }}
+                  opacity="0.12"
+                />
+                {/* Route main line */}
+                <path
+                  d={routePathD}
+                  className={point.risk ? "is-risk" : ""}
+                  fill="none"
+                  stroke={point.risk ? "#fb7185" : "url(#demo-lab-map-route)"}
+                  style={{ strokeWidth: "4.5px", strokeLinecap: "round", strokeDasharray: "12 14" }}
+                />
+              </g>
+            );
           })}
         </svg>
         {visiblePoints.map((point, index) => {
@@ -1280,7 +1325,7 @@ function DemoLiveOpsMap({
             <span
               key={`${point.city}-${point.lat}-${point.lng}-${index}`}
               className={`demo-lab-mini-map__point ${index === 0 ? "is-origin" : ""} ${(point.risk || 0) > 0 ? "is-risk" : ""}`}
-              style={{ left: `${xy.x}%`, top: `${xy.y}%` }}
+              style={{ left: `${(xy.x / 1200) * 100}%`, top: `${(xy.y / 620) * 100}%` }}
               title={`${point.city}, ${point.country || ""}`}
             >
               <i />
@@ -1825,13 +1870,14 @@ function DemoPremiumProductScene({
       <span className="demo-lab-premium-scene__floor" aria-hidden="true" />
 
       <figure className="demo-lab-premium-scene__media" data-credit={asset.credit} aria-hidden="true">
-        {vertical === "wine" ? (
-          <div className="w-full h-[225px] relative overflow-hidden rounded-2xl bg-slate-950/20 border border-white/5 shadow-inner">
-            <ThreeDBottle active={beat === 1 || beat === 3} tapping={!!simulating} />
-          </div>
-        ) : (
-          <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
-        )}
+        <div className="w-full h-[225px] relative overflow-hidden rounded-2xl bg-slate-950/20 border border-white/5 shadow-inner">
+          <ThreeDProduct
+            active={beat === 1 || beat === 3}
+            tapping={!!simulating}
+            industry={verticalTo3DIndustry(vertical)}
+            chipModel={vertical === "wine" ? "tamper" : "dna"}
+          />
+        </div>
         <figcaption>
           <span>{meta.family}</span>
           <strong>{product}</strong>
