@@ -156,6 +156,9 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [riskCategoryFilter, setRiskCategoryFilter] = useState<string>("ALL");
   const [feedSeverityFilter, setFeedSeverityFilter] = useState<string>("all");
+  const [dynamicSummary, setDynamicSummary] = useState<string>("");
+  const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
+
   const api = data?.kpis || {};
   const trend = data?.trend || [];
   const countries = data?.geography?.countries || [];
@@ -169,6 +172,42 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
   const scansTotal = Number(api.scans || 0);
   const riskSignals = Number(api.duplicates || 0) + Number(api.tamper || 0);
   const journeyCoverage = tagJourney.length ? Math.min(100, (tagJourney.length / Math.max(products.length, 1)) * 100) : 0;
+
+  const metricText = `Taps totales: ${scansTotal}. Tasa de lecturas válidas: ${(api.validRate ?? 0).toFixed(1)}%. Tasa de lecturas sospechosas: ${(api.invalidRate ?? 0).toFixed(1)}%. Duplicados detectados: ${api.duplicates ?? 0}. Alertas de manipulación física (tamper): ${api.tamper ?? 0}. Regiones geográficas activas: ${api.geoRegions ?? 0}. Score de riesgo general: ${api.riskScore ?? 0}/100.`;
+
+  useEffect(() => {
+    if (!scansTotal) return;
+    let cancelled = false;
+    setLoadingSummary(true);
+    fetch("/api/cognitive-ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: metricText,
+        tone: "executive-summary",
+      }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Status: " + res.status);
+        return res.json();
+      })
+      .then((data) => {
+        if (!cancelled && data?.optimizedText) {
+          setDynamicSummary(data.optimizedText);
+        }
+      })
+      .catch((err) => {
+        console.warn("AI Executive Summary error, using local template:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSummary(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [scansTotal, api.validRate, api.invalidRate, api.duplicates, api.tamper, api.geoRegions, api.riskScore]);
+
   const riskRadar = [
     { label: "Replay / duplicates", value: Number(api.duplicates || 0), max: Math.max(scansTotal, 1) },
     { label: "Tamper alerts", value: Number(api.tamper || 0), max: Math.max(scansTotal, 1) },
@@ -302,10 +341,21 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cobertura</p><p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage.toFixed(1)}%</p></div>
           </div>
         </OpsPanel>
-        <OpsPanel title="Ops Copilot" subtitle="Siguiente accion operativa, no relato comercial.">
-          <div className="space-y-2 text-sm text-slate-200">
-            {aiSummary.map((line) => <p key={line}>- {line}</p>)}
-          </div>
+        <OpsPanel title="Ops Copilot (AI Summary)" subtitle="Siguiente acción operativa redactada por Hugging Face GLM-5.2 en tiempo real.">
+          {loadingSummary ? (
+            <div className="flex items-center gap-2 py-2 text-xs text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping" />
+              <span>Redactando resumen de negocio en tiempo real...</span>
+            </div>
+          ) : dynamicSummary ? (
+            <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-line bg-slate-950/60 border border-white/5 rounded-2xl p-4">
+              {dynamicSummary}
+            </div>
+          ) : (
+            <div className="space-y-2 text-xs text-slate-300">
+              {aiSummary.map((line) => <p key={line}>- {line}</p>)}
+            </div>
+          )}
           <button suppressHydrationWarning type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
             Exportar PDF (imprimir reporte)
           </button>
@@ -368,10 +418,21 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           </div>
         </div>
       </OpsPanel>
-      <OpsPanel title="Ops Copilot" subtitle="Accion recomendada para el operador del tenant.">
-        <div className="space-y-2 text-sm text-slate-200">
-          {aiSummary.map((line) => <p key={line}>- {line}</p>)}
-        </div>
+      <OpsPanel title="Ops Copilot (AI Summary)" subtitle="Acción recomendada para el operador generada por Hugging Face GLM-5.2 en tiempo real.">
+        {loadingSummary ? (
+          <div className="flex items-center gap-2 py-2 text-xs text-slate-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping" />
+            <span>Redactando resumen de negocio en tiempo real...</span>
+          </div>
+        ) : dynamicSummary ? (
+          <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-line bg-slate-950/60 border border-white/5 rounded-2xl p-4">
+            {dynamicSummary}
+          </div>
+        ) : (
+          <div className="space-y-2 text-xs text-slate-300">
+            {aiSummary.map((line) => <p key={line}>- {line}</p>)}
+          </div>
+        )}
         <button suppressHydrationWarning type="button" onClick={() => window.print()} className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20">
           Exportar PDF (imprimir reporte)
         </button>

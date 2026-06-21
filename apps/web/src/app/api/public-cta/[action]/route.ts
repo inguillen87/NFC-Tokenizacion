@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { createDemoShareToken } from "../../../../lib/demo-share";
 
-const ALLOWED = new Set(["claim-ownership", "register-warranty", "tokenize-request", "provenance", "report-problem"]);
+const ALLOWED = new Set(["claim-ownership", "register-warranty", "tokenize-request", "provenance", "report-problem", "receipt-ocr"]);
 const UID_OR_EVENT_RE = /^(?:[0-9A-F]{8,20}|EVENT-\d+)$/;
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 

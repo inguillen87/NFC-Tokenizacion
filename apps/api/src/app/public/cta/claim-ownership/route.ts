@@ -8,6 +8,7 @@ import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-s
 import { getTapEvent } from "../../../../lib/loyalty-service";
 import { createAlert } from "../../../../lib/alert-engine";
 import { sql } from "../../../../lib/db";
+import { performReceiptOcr } from "../../../../lib/ocr-service";
 
 function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371; // Radius of the Earth in km
@@ -161,6 +162,55 @@ export async function POST(req: Request) {
     const receiptFileName = typeof body.receiptFileName === "string" ? body.receiptFileName : null;
     const receiptFileData = typeof body.receiptFileData === "string" ? body.receiptFileData : null;
 
+    let ocrResult = null;
+    if (receiptFileData) {
+      let expectedProduct = "Gran Reserva Malbec";
+      let expectedWinery = "Bodega Demo";
+      try {
+        if (event.batch_id) {
+          const batchRows = await sql`SELECT sdm_config FROM batches WHERE id = ${event.batch_id} LIMIT 1`;
+          const sdmConfig = batchRows[0]?.sdm_config as any;
+          const resolvedName = sdmConfig?.sun?.product?.name || sdmConfig?.productName || sdmConfig?.product_name || sdmConfig?.title;
+          if (resolvedName) expectedProduct = String(resolvedName);
+        }
+        if (event.tenant_id) {
+          const tenantRows = await sql`SELECT name FROM tenants WHERE id = ${event.tenant_id} LIMIT 1`;
+          const resolvedWinery = tenantRows[0]?.name;
+          if (resolvedWinery) expectedWinery = String(resolvedWinery);
+        }
+      } catch (err) {
+        console.warn("Failed to resolve product/winery metadata in claim:", err);
+      }
+
+      console.log(`[OCR Verification] Auditing uploaded file for: ${expectedProduct} by ${expectedWinery}`);
+      ocrResult = await performReceiptOcr(
+        receiptFileData,
+        expectedProduct,
+        expectedWinery,
+        receiptFileName
+      );
+
+      console.log(`[OCR Result] compliance_score: ${ocrResult.compliance_score}, is_invoice: ${ocrResult.is_invoice}, product_matched: ${ocrResult.product_matched}`);
+
+      if (ocrResult.compliance_score < 40 || !ocrResult.is_invoice) {
+        return json({
+          ok: false,
+          reason: "compliance_failed",
+          error: "El comprobante subido no parece ser una factura o ticket de compra válido. Por favor, subí una foto clara del comprobante.",
+          trace_id: traceId,
+        }, 400);
+      }
+
+      if (!ocrResult.product_matched) {
+        return json({
+          ok: false,
+          reason: "compliance_failed",
+          error: `El comprobante no menciona el producto de la bodega (${expectedProduct}). Verificá que la factura corresponda a la compra del vino.`,
+          trace_id: traceId,
+        }, 400);
+      }
+    }
+
     // Mercado Gris check
     let isGrayMarket = false;
     let targetCountry: string | null = null;
@@ -226,8 +276,8 @@ export async function POST(req: Request) {
           price: receiptPrice,
           establishment: receiptEstablishment,
           file_name: receiptFileName,
-          // Guardamos un extracto seguro del base64 en la base de datos
           file_preview: receiptFileData ? receiptFileData.slice(0, 1000) + "..." : null,
+          ocr_analysis: ocrResult,
         },
         gray_market: {
           detected: isGrayMarket,

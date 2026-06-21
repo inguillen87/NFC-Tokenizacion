@@ -175,6 +175,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [receiptDate, setReceiptDate] = useState("");
   const [receiptTime, setReceiptTime] = useState("");
   const [receiptPrice, setReceiptPrice] = useState("");
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const tokenModalRef = useRef<HTMLDivElement | null>(null);
   const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -702,23 +704,82 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
                   <input
                     type="file"
                     accept="image/*"
+                    disabled={ocrLoading}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
                         setReceiptFileName(file.name);
+                        setOcrLoading(true);
+                        setOcrConfidence(null);
                         const reader = new FileReader();
-                        reader.onload = (evt) => {
-                          if (evt.target?.result) setReceiptFileData(evt.target.result as string);
+                        reader.onload = async (evt) => {
+                          if (evt.target?.result) {
+                            const base64 = evt.target.result as string;
+                            setReceiptFileData(base64);
+
+                            try {
+                              console.log("[OCR] Digitalizando comprobante con IA...");
+                              const response = await fetch("/api/public-cta/receipt-ocr", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  bid,
+                                  uid_hex: uid,
+                                  event_id: eventId,
+                                  receiptFileData: base64,
+                                  receiptFileName: file.name,
+                                }),
+                              });
+
+                              if (response.ok) {
+                                const data = await response.json();
+                                if (data.ok && data.ocr) {
+                                  const ocr = data.ocr;
+                                  if (ocr.establishment) setReceiptEstablishment(ocr.establishment);
+                                  if (ocr.date) setReceiptDate(ocr.date);
+                                  if (ocr.time) setReceiptTime(ocr.time);
+                                  if (ocr.price) setReceiptPrice(String(ocr.price));
+                                  setOcrConfidence(ocr.compliance_score);
+                                }
+                              }
+                            } catch (err) {
+                              console.warn("[OCR] Error de escaneo IA:", err);
+                            } finally {
+                              setOcrLoading(false);
+                            }
+                          }
                         };
                         reader.readAsDataURL(file);
                       }
                     }}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
                   />
-                  {receiptFileData ? (
-                    <div className="flex items-center gap-2">
-                      <img src={receiptFileData} className="w-10 h-10 object-cover rounded border border-white/10" alt="Preview" />
-                      <span className="text-[10px] font-mono text-emerald-300 max-w-[120px] truncate">{receiptFileName}</span>
+                  {ocrLoading ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+                      <span className="text-[10px] text-cyan-300 font-medium animate-pulse">Digitalizando con IA...</span>
+                    </div>
+                  ) : receiptFileData ? (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        <img src={receiptFileData} className="w-8 h-8 object-cover rounded border border-white/10" alt="Preview" />
+                        <span className="text-[10px] font-mono text-emerald-300 max-w-[120px] truncate">{receiptFileName}</span>
+                      </div>
+                      {ocrConfidence !== null && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
+                          ocrConfidence >= 75 
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.12)]" 
+                            : ocrConfidence >= 45 
+                            ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                            : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                        }`}>
+                          {ocrConfidence >= 75 
+                            ? `✓ Verificado (IA: ${ocrConfidence}%)` 
+                            : ocrConfidence >= 45 
+                            ? `⚠ Verificación parcial (${ocrConfidence}%)`
+                            : `✗ Confianza baja (${ocrConfidence}%)`}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <>

@@ -32,7 +32,7 @@ if (!DATABASE_URL || !ADMIN_API_KEY) {
 }
 
 const sql = neon(DATABASE_URL);
-const API_BASE = "https://api.nexid.lat";
+const API_BASE = process.env.API_BASE || "https://api.nexid.lat";
 
 // Helpers
 function sha256(value) {
@@ -179,7 +179,7 @@ async function run() {
   
   let otpCode = null;
   const startBrute = Date.now();
-  for (let i = 100000; i <= 900000; i++) {
+  for (let i = 100000; i <= 999999; i++) {
     const candidate = String(i);
     if (sha256(candidate) === targetHash) {
       otpCode = candidate;
@@ -238,6 +238,31 @@ async function run() {
   const joinData = await joinResponse.json();
   console.log("✅ Club de Fidelidad unido con éxito!");
   console.log(`   Puntos acumulados del lote:`, joinData.pointsAwarded || 10);
+
+  console.log("\n👉 4.5. Probando digitalización OCR de comprobante con IA VLM (Hugging Face)");
+  const ocrTestResponse = await fetch(`${API_BASE}/public/cta/receipt-ocr`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      bid,
+      uid_hex: uidHex,
+      event_id: eventId,
+      receiptFileName: "comprobante_vinoteca.png",
+      receiptFileData: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+    }),
+  });
+
+  if (!ocrTestResponse.ok) {
+    console.error("❌ Error en endpoint OCR:", await ocrTestResponse.text());
+    process.exit(1);
+  }
+
+  const ocrTestData = await ocrTestResponse.json();
+  console.log("✅ Digitalización OCR completada exitosamente!");
+  console.log("   Establecimiento Detectado:", ocrTestData.ocr?.establishment);
+  console.log("   Fecha de Compra:", ocrTestData.ocr?.date);
+  console.log("   Total Ticket:", ocrTestData.ocr?.price);
+  console.log("   Confianza de Compliance:", ocrTestData.ocr?.compliance_score + "%");
 
   console.log("\n👉 5. Reclamar propiedad comercial cargando comprobante (Receipt Upload) + GPS");
   console.log("   Ubicación del celular: Finca Altamira, Mendoza (-33.3667, -69.15) -> Distancia: 0 km");
