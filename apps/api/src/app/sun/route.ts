@@ -712,10 +712,64 @@ async function handleQrScan(input: {
   const browserLng = parseCoordinate(input.url.searchParams.get("lng") || input.url.searchParams.get("gps_lng"), input.geoLng);
   const hasGeo = Number.isFinite(browserLat) && Number.isFinite(browserLng);
   const tenantBatch = await resolveQrTenantBatch(input.url).catch(() => undefined);
-  const sdmConfig = jsonObject(tenantBatch?.sdm_config);
-  const bid = String(tenantBatch?.bid || firstParam(input.url, ["bid"], "QR-SCAN"));
-  const tenantSlug = String(tenantBatch?.tenant_slug || firstParam(input.url, ["tenant", "tenantSlug", "tenant_slug"], "demobodega"));
+  
+  const tenantSlug = String(tenantBatch?.tenant_slug || firstParam(input.url, ["tenant", "tenantSlug", "tenant_slug"], "demobodega")).toLowerCase();
   const tenantName = String(tenantBatch?.tenant_name || requestedWinery || tenantSlug);
+  
+  let tenantId = tenantBatch?.tenant_id || null;
+  let batchId = tenantBatch?.batch_id || null;
+  let sdmConfig = jsonObject(tenantBatch?.sdm_config);
+  let bid = String(tenantBatch?.bid || firstParam(input.url, ["bid"], ""));
+
+  if (!tenantId) {
+    try {
+      const newTenant = await sql`
+        INSERT INTO tenants (slug, name, status)
+        VALUES (${tenantSlug}, ${tenantName}, 'active')
+        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+        RETURNING id::text, slug, name
+      `;
+      if (newTenant[0]) {
+        tenantId = newTenant[0].id;
+      }
+    } catch (e) {
+      console.error("[sun] auto-create tenant failed", e);
+    }
+  }
+
+  if (tenantId && !batchId) {
+    try {
+      const existing = await sql`
+        SELECT id::text, bid, sdm_config
+        FROM batches
+        WHERE tenant_id = ${tenantId} AND bid = 'QR-DEFAULT'
+        LIMIT 1
+      `;
+      if (existing[0]) {
+        batchId = existing[0].id;
+        sdmConfig = jsonObject(existing[0].sdm_config);
+        bid = existing[0].bid;
+      } else {
+        const newBatch = await sql`
+          INSERT INTO batches (tenant_id, bid, status, sdm_config, name)
+          VALUES (${tenantId}, 'QR-DEFAULT', 'active', '{}'::jsonb, 'Default QR Batch')
+          RETURNING id::text, bid, sdm_config
+        `;
+        if (newBatch[0]) {
+          batchId = newBatch[0].id;
+          sdmConfig = jsonObject(newBatch[0].sdm_config);
+          bid = newBatch[0].bid;
+        }
+      }
+    } catch (e) {
+      console.error("[sun] auto-create QR-DEFAULT batch failed", e);
+    }
+  }
+
+  if (!bid) {
+    bid = "QR-DEFAULT";
+  }
+
   const rawQuery = Object.fromEntries(input.url.searchParams.entries());
   const deviceMeta = {
     userAgent: input.userAgent,
@@ -733,11 +787,11 @@ async function handleQrScan(input: {
     sun_context: { client: deviceMeta },
   };
 
-  const eventId = tenantBatch?.batch_id
+  const eventId = batchId
     ? await recordTapEvent({
-      tenantId: tenantBatch.tenant_id || null,
+      tenantId: tenantId,
       tenantSlug,
-      batchId: tenantBatch.batch_id,
+      batchId: batchId,
       bid,
       uidHex: firstParam(input.url, ["uid", "uidHex", "uid_hex"]) || null,
       source: "real",
@@ -768,7 +822,7 @@ async function handleQrScan(input: {
   if (!eventId) {
     await logQrAttempt({
       bid,
-      reason: tenantBatch?.batch_id ? "qr_event_insert_failed" : "qr_batch_not_found",
+      reason: batchId ? "qr_event_insert_failed" : "qr_batch_not_found",
       ip: input.ip,
       userAgent: input.userAgent,
       city: input.geoCity,
@@ -798,7 +852,6 @@ async function handleQrScan(input: {
       summary: "Canal de bajo costo para ficha, CRM, analitica, leads y fidelizacion. No reemplaza la autenticacion criptografica NFC ni activa propiedad automaticamente.",
       reason: "qr_scan",
       productState: "QR_UNVERIFIED",
-      tamperSupported: false,
       carrierProfileCode: "qr_basic",
       carrierLabel: "QR / SDK",
     },
@@ -808,11 +861,11 @@ async function handleQrScan(input: {
       uidMasked: null,
       eventId: eventId ? String(eventId) : null,
       tenantSlug,
-      tenantId: tenantBatch?.tenant_id || null,
+      tenantId: tenantId,
       scanCount: 1,
     },
     tenant: {
-      id: tenantBatch?.tenant_id || null,
+      id: tenantId,
       slug: tenantSlug,
       name: tenantName,
       vertical: String(sdmConfig.vertical || "wine"),

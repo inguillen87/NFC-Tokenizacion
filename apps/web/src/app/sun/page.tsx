@@ -1598,6 +1598,23 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <span className="text-lg text-slate-400">➔</span>
               </Link>
 
+              {/* Option to view public certificate */}
+              {certificateHref && (
+                <Link 
+                  href={certificateHref} 
+                  className="flex items-center justify-between w-full p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300 font-bold text-sm shadow-md hover:scale-[1.01] transition-transform active:scale-95"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📜</span>
+                    <div className="text-left">
+                      <span className="block font-black leading-none text-purple-200">Ver Certificado Digital</span>
+                      <span className="text-[10px] font-normal text-purple-400 mt-0.5 block">Comprobar autenticidad en blockchain</span>
+                    </div>
+                  </div>
+                  <span className="text-lg text-purple-400">➔</span>
+                </Link>
+              )}
+
               {/* Wallet/MetaMask integrations */}
               <Link 
                 href={walletHref} 

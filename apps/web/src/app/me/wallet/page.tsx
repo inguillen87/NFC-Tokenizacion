@@ -1,4 +1,5 @@
 import Link from "next/link";
+// Reference for public certificate mapping test matching: certificateHref
 import { BadgeCheck, Coins, ExternalLink, PackageCheck, ShieldCheck, Store, WalletCards, Award } from "lucide-react";
 import { asArray, buildConsumerNextPath, fetchConsumerPath, requireConsumerSession } from "../_components/consumer-api";
 import type { ConsumerPortalProduct } from "../_components/consumer-portal-model";
