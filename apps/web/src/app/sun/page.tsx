@@ -108,14 +108,48 @@ type SunContract = {
   tenant?: { id?: string | null; slug?: string | null; name?: string | null; vertical?: string | null; productLabel?: string | null; clubName?: string | null; tokenizationMode?: string | null };
   condition?: SunCarrierFields & { state?: string | null; label?: string | null; summary?: string | null; claimMode?: string | null; tokenizationPolicy?: string | null; marketplaceMode?: string | null; recommendedNextStep?: string | null; requirements?: string[] };
   rightsPolicy?: SunRightsPolicy;
-  product?: { name?: string | null; winery?: string | null; region?: string | null; varietal?: string | null; vintage?: string | null; harvestYear?: number | null; barrelMonths?: number | null; storage?: string | null; category?: string | null; vertical?: string | null; sku?: string | null; gtin?: string | null; imageUrl?: string | null; image_url?: string | null; photoUrl?: string | null; photo_url?: string | null; media?: Record<string, unknown> | null };
+  product?: { 
+    name?: string | null; 
+    winery?: string | null; 
+    region?: string | null; 
+    varietal?: string | null; 
+    vintage?: string | null; 
+    harvestYear?: number | null; 
+    barrelMonths?: number | null; 
+    storage?: string | null; 
+    category?: string | null; 
+    vertical?: string | null; 
+    sku?: string | null; 
+    gtin?: string | null; 
+    imageUrl?: string | null; 
+    image_url?: string | null; 
+    photoUrl?: string | null; 
+    photo_url?: string | null; 
+    media?: Record<string, unknown> | null;
+    notes?: string | null;
+    tasting_notes?: string | null;
+    maridaje?: string | null;
+    serving?: string | null;
+    alcohol?: string | null;
+    altitude?: string | null;
+    oakType?: string | null;
+  };
   provenance?: {
     origin?: string | null;
     firstVerified?: { at?: string | null; city?: string | null; country?: string | null };
     lastVerifiedLocation?: { at?: string | null; city?: string | null; country?: string | null; result?: string | null };
     timelineSummary?: Array<{ at?: string | null; result?: string | null; city?: string | null; country?: string | null; device?: string | null; lat?: number | null; lng?: number | null }>;
   };
-  iot?: { wineryLocation?: string | null; wineryCoordinates?: { lat?: number | null; lng?: number | null } | null };
+  iot?: { 
+    wineryLocation?: string | null; 
+    wineryCoordinates?: { lat?: number | null; lng?: number | null } | null;
+    sensorSnapshot?: {
+      cellarTemperature?: string | null;
+      humidity?: string | null;
+      lightExposure?: string | null;
+      transitShock?: string | null;
+    } | null;
+  };
   tapContext?: {
     city?: string | null;
     country?: string | null;

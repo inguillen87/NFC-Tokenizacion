@@ -16,27 +16,16 @@ import {
   Sparkles,
   Info
 } from "lucide-react";
+import type { ConsumerPortalProduct } from "./consumer-portal-model";
 
-type Product = {
-  product_name?: string;
-  brand_name?: string | null;
-  tenant_slug?: string;
-  bid?: string | null;
+type Product = ConsumerPortalProduct & {
   batch?: string | null;
   sku?: string | null;
   vertical?: string | null;
   category?: string | null;
-  image_url?: string | null;
   imageUrl?: string | null;
   photo_url?: string | null;
   photoUrl?: string | null;
-  ownership_record_status?: string | null;
-  ownership_status?: string | null;
-  tokenization_tx_hash?: string | null;
-  tokenization_token_id?: string | number | null;
-  tokenization_status?: string | null;
-  latest_tap_event_id?: string | null;
-  first_tap_event_id?: string | null;
 };
 
 type WalletInteractiveClientProps = {
