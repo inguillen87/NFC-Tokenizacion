@@ -8,7 +8,7 @@ import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Finger
 import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
 import { platformVerticals } from "../../lib/platform-verticals";
 import { ThreeDProduct } from "../investor-snapshot/investor-snapshot-client";
-import { ATLAS_REGIONS } from "@product/ui";
+import { ATLAS_REGIONS, Globe3dMap } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -102,7 +102,7 @@ function verticalTo3DIndustry(vertical: Vertical): string {
 }
 
 const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> = {
-  wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.webp", credit: "nexID generated asset" },
+  wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.png", credit: "nexID generated asset" },
   seeds: { imageUrl: "/sdk/verticals/agro-nfc-qr-traceability.webp", credit: "nexID generated asset" },
   pharma: { imageUrl: "/sdk/pharma-authentication-pack.webp", credit: "nexID generated asset" },
   creamJar: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", credit: "nexID generated asset" },
@@ -1257,8 +1257,6 @@ function DemoLiveOpsMap({
   routeKm: number;
 }) {
   const visiblePoints = points.slice(0, 9);
-  const origin = visiblePoints[0] || { city: LOCATIONS.origin.city, country: LOCATIONS.origin.country, lat: LOCATIONS.origin.lat, lng: LOCATIONS.origin.lng, scans: 1, risk: 0, status: "ORIGEN" };
-  const originXY = projectDemoMapPoint(origin);
   const recentEvents = liveEvents.slice(0, 4);
   const totalScans = visiblePoints.reduce((acc, point) => acc + (point.scans || 1), 0);
   const risks = visiblePoints.reduce((acc, point) => acc + (point.risk || 0), 0);
@@ -1266,73 +1264,47 @@ function DemoLiveOpsMap({
   const feedTitle = locale === "en" ? "Latest taps" : locale === "pt-BR" ? "Ultimos taps" : "Ultimos taps";
   const fallbackText = locale === "en" ? "Waiting for live feed; showing route simulation." : locale === "pt-BR" ? "Aguardando feed real; mostrando rota simulada." : "Esperando feed real; mostrando ruta simulada.";
 
+  const globePoints = visiblePoints.map((p, index) => ({
+    city: p.city,
+    country: p.country,
+    lat: p.lat,
+    lng: p.lng,
+    scans: p.scans || 1,
+    risk: p.risk || 0,
+    status: index === 0 ? "origin" : p.risk ? "risk" : "tap",
+    vertical: p.vertical,
+  }));
+
+  const originPoint = visiblePoints[0];
+  const globeRoutes = originPoint
+    ? visiblePoints.slice(1).map((p) => ({
+        fromLat: originPoint.lat,
+        fromLng: originPoint.lng,
+        toLat: p.lat,
+        toLng: p.lng,
+        tone: p.risk ? ("warn" as const) : ("info" as const),
+        label: `${p.city} route`,
+      }))
+    : [];
+
   return (
     <div className="demo-lab-studio-info demo-lab-studio-live-map">
       <div className="demo-lab-studio-panel-head">
         <p>{title}</p>
         <span><i /> {totalScans} taps</span>
       </div>
-      <div className={`demo-lab-mini-map demo-lab-mini-map--${vertical}`} aria-label={`${title}: ${LOCATIONS.origin.city} a ${destination.city}`}>
-        <svg viewBox="0 0 1200 620" preserveAspectRatio="none" role="img" aria-hidden="true">
-          <defs>
-            <linearGradient id="demo-lab-map-route" x1="0" x2="1">
-              <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#34d399" stopOpacity="0.86" />
-            </linearGradient>
-          </defs>
-          {/* Real vector continent contours */}
-          {ATLAS_REGIONS.map((region) => (
-            <path
-              key={region.id}
-              d={region.d}
-              fill="rgba(15, 118, 110, 0.18)"
-              stroke="rgba(103, 232, 249, 0.16)"
-              strokeWidth={1.5}
-            />
-          ))}
-          {visiblePoints.slice(1).map((point, index) => {
-            const xy = projectDemoMapPoint(point);
-            const distance = Math.abs(originXY.x - xy.x) + Math.abs(originXY.y - xy.y);
-            const lift = point.risk ? 140 : Math.max(90, Math.min(220, distance * 0.35));
-            const cx = (originXY.x + xy.x) / 2;
-            const cy = Math.min(originXY.y, xy.y) - lift;
-            const routePathD = `M ${originXY.x.toFixed(1)} ${originXY.y.toFixed(1)} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${xy.x.toFixed(1)} ${xy.y.toFixed(1)}`;
-            return (
-              <g key={`${point.city}-${index}`}>
-                {/* Route background halo */}
-                <path
-                  d={routePathD}
-                  fill="none"
-                  stroke={point.risk ? "#fb7185" : "#67e8f9"}
-                  style={{ strokeWidth: "12px", strokeLinecap: "round" }}
-                  opacity="0.12"
-                />
-                {/* Route main line */}
-                <path
-                  d={routePathD}
-                  className={point.risk ? "is-risk" : ""}
-                  fill="none"
-                  stroke={point.risk ? "#fb7185" : "url(#demo-lab-map-route)"}
-                  style={{ strokeWidth: "4.5px", strokeLinecap: "round", strokeDasharray: "12 14" }}
-                />
-              </g>
-            );
-          })}
-        </svg>
-        {visiblePoints.map((point, index) => {
-          const xy = projectDemoMapPoint(point);
-          return (
-            <span
-              key={`${point.city}-${point.lat}-${point.lng}-${index}`}
-              className={`demo-lab-mini-map__point ${index === 0 ? "is-origin" : ""} ${(point.risk || 0) > 0 ? "is-risk" : ""}`}
-              style={{ left: `${(xy.x / 1200) * 100}%`, top: `${(xy.y / 620) * 100}%` }}
-              title={`${point.city}, ${point.country || ""}`}
-            >
-              <i />
-            </span>
-          );
-        })}
-        <div className="demo-lab-mini-map__legend">
+      <div className={`demo-lab-mini-map demo-lab-mini-map--${vertical} flex justify-center items-center relative overflow-hidden`} aria-label={`${title}: ${LOCATIONS.origin.city} a ${destination.city}`}>
+        <div className="absolute inset-0 flex justify-center items-center pointer-events-auto">
+          <Globe3dMap
+            theme="dark"
+            points={globePoints}
+            routes={globeRoutes}
+            width={340}
+            height={200}
+            className="border-0 bg-transparent shadow-none"
+          />
+        </div>
+        <div className="demo-lab-mini-map__legend z-10 pointer-events-none">
           <span>{LOCATIONS.origin.city}</span>
           <strong>{routeKm.toLocaleString(locale)} km</strong>
           <span>{destination.city}</span>

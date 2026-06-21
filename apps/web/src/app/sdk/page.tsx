@@ -21,6 +21,8 @@ import {
   Sparkles,
   Cpu,
   Shirt,
+  Footprints,
+  GlassWater,
 } from "lucide-react";
 import { BrandLockup, Button, Card } from "@product/ui";
 import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
@@ -104,6 +106,8 @@ const iconByKey: Record<PlatformIconKey, typeof Sprout> = {
   sparkles: Sparkles,
   cpu: Cpu,
   shirt: Shirt,
+  bottle: GlassWater,
+  sneaker: Footprints,
 };
 
 function SdkTopNav() {

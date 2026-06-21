@@ -4,7 +4,9 @@ export type PlatformVerticalId =
   | "pharma"
   | "cosmetics"
   | "wine"
+  | "bottle"
   | "luxury"
+  | "sneaker"
   | "logistics"
   | "electronics"
   | "textile";
@@ -15,6 +17,8 @@ export type PlatformDemoVertical =
   | "pharma"
   | "perfume"
   | "wine"
+  | "bottle"
+  | "luxury"
   | "sneaker"
   | "logistics"
   | "electronics"
@@ -41,7 +45,9 @@ export type PlatformIconKey =
   | "package"
   | "sparkles"
   | "cpu"
-  | "shirt";
+  | "shirt"
+  | "bottle"
+  | "sneaker";
 
 export type PlatformVertical = {
   id: PlatformVerticalId;
@@ -135,7 +141,7 @@ export const platformVerticals: PlatformVertical[] = [
     body: "Botellas premium con NTAG 424 DNA TT, tail de apertura, passport, ownership y exportacion.",
     bodyEn: "Premium bottles with NTAG 424 DNA TT, opening tail, passport, ownership and export control.",
     bodyPt: "Garrafas premium com NTAG 424 DNA TT, tail de abertura, passport, ownership e exportacao.",
-    image: "/sdk/verticals/wine-spirits-424-tt.webp",
+    image: "/sdk/verticals/wine-spirits-424-tt.png",
     tags: ["424 DNA", "Tail", "SUN"],
     metric: "424 TT",
     icon: "shield",
@@ -143,7 +149,7 @@ export const platformVerticals: PlatformVertical[] = [
   },
   {
     id: "luxury",
-    demoVertical: "sneaker",
+    demoVertical: "luxury",
     title: "Retail & Lujo",
     titleEn: "Luxury & Retail",
     titlePt: "Luxo & Retail",
@@ -156,6 +162,38 @@ export const platformVerticals: PlatformVertical[] = [
     metric: "Ownership",
     icon: "gem",
     tone: "violet",
+  },
+  {
+    id: "sneaker",
+    demoVertical: "sneaker",
+    title: "Zapatillas & Calzado",
+    titleEn: "Sneakers & Footwear",
+    titlePt: "Tenis & Calcados",
+    shortTitle: "Zapatillas",
+    body: "Autenticacion de drop verificado, control de reventa, certificado de propiedad digital y beneficios exclusivos de club.",
+    bodyEn: "Verified drop authenticity, resale control, digital ownership certificate and exclusive club benefits.",
+    bodyPt: "Autenticacao de drop verificado, controle de revenda, certificado de propriedade digital e beneficios de clube.",
+    image: "/sdk/verticals/sneaker-nfc-qr-tamper.png",
+    tags: ["424 DNA", "Drop", "Cert"],
+    metric: "Drop verificado",
+    icon: "sneaker",
+    tone: "indigo",
+  },
+  {
+    id: "bottle",
+    demoVertical: "bottle",
+    title: "Botellas & Bebidas",
+    titleEn: "Bottles & Beverages",
+    titlePt: "Garrafas & Bebidas",
+    shortTitle: "Botellas",
+    body: "Botellas de bebidas y refrescos con tags NFC/QR y control de retorno, reciclado o procedencia.",
+    bodyEn: "Beverage and soda bottles with NFC/QR tags and returns, recycling or origin control.",
+    bodyPt: "Garrafas de bebidas e refrigerantes com tags NFC/QR e controle de retorno, reciclagem ou procedencia.",
+    image: "/sdk/verticals/beverages-bottle-nfc-qr.png",
+    tags: ["QR", "NFC", "Retorno"],
+    metric: "Retorno + reciclado",
+    icon: "bottle",
+    tone: "sky",
   },
   {
     id: "logistics",
