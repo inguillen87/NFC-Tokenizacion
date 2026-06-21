@@ -1,14 +1,10 @@
 import Link from "next/link";
 import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
-  AboutInmovarSection,
   CarrierProfileMatrixSection,
-  CommercialPromiseSection,
   CtaSection,
-  EventsTagPositioningSection,
   HeroSection,
   MarketplaceNetworkSection,
-  PlainLanguageValueSection,
   PremiumIdentitySection,
   PremiumVerticalShowcaseSection,
   PlansSection,
@@ -290,23 +286,17 @@ export default async function HomePage() {
         </div>
       </header>
 
-
-
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
 
       <PremiumVerticalShowcaseSection locale={locale} />
       <SimpleTrustFlowSection locale={locale} />
-      <PlainLanguageValueSection locale={locale} />
-      <CommercialPromiseSection locale={locale} />
       <PlansSection content={content} locale={locale} />
       <CarrierProfileMatrixSection locale={locale} />
-      <EventsTagPositioningSection locale={locale} />
 
       <PremiumIdentitySection content={content} locale={locale} />
       <MarketplaceNetworkSection locale={locale} />
       <WhiteLabelOperatingSystemSection locale={locale} />
       <UnitEconomicsSection locale={locale} />
-      <AboutInmovarSection locale={locale} />
 
       {/* nexID Cognitive AI Engine Explainer Section */}
       <section className="container-shell my-16">
@@ -386,7 +376,7 @@ export default async function HomePage() {
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">Una sola propuesta clara: autenticación + trazabilidad + operación reseller</h2>
           <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-300 md:text-base">
             Diseñado para imprentas de seguridad, integradores, agencias, distribuidores y operadores que revenden soluciones a bodegas,
-            productores de eventos, organizadores de conferencias y marcas premium. Implementamos un modelo white-label con gobierno central de
+            productores de eventos, organizadores de corporativas y marcas premium. Implementamos un modelo white-label con gobierno central de
             autenticación para que cada partner venda con su marca y opere con estándares enterprise.
           </p>
 

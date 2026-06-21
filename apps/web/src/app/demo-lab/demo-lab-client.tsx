@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, useRef, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
-import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Mail } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Mail, Cpu } from "lucide-react";
 import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
 import { platformVerticals } from "../../lib/platform-verticals";
 import { ThreeDBottle } from "../investor-snapshot/investor-snapshot-client";
@@ -470,6 +470,53 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [modalView, setModalView] = useState<DemoModalView>(null);
 
+  const [toasts, setToasts] = useState<Array<{
+    id: string;
+    title: string;
+    body: string;
+    type: "success" | "warn" | "error" | "info";
+  }>>([]);
+
+  const addToast = (title: string, body: string, type: "success" | "warn" | "error" | "info" = "info") => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, title, body, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 6000);
+  };
+
+  const lastEventCountRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!summary || !summary.events) return;
+    const events = summary.events;
+    if (lastEventCountRef.current === 0) {
+      lastEventCountRef.current = events.length;
+      return;
+    }
+    if (events.length > lastEventCountRef.current) {
+      const newEvents = events.slice(0, events.length - lastEventCountRef.current);
+      newEvents.forEach((event) => {
+        const resultText = String(event.result || "").toUpperCase();
+        const isSuccess = resultText.includes("AUTH_OK") || resultText.includes("VALID") || resultText.includes("VERIFIED") || resultText.includes("OK") || resultText.includes("AUTHENTICATED");
+        const isRisk = resultText.includes("REPLAY") || resultText.includes("FAIL") || resultText.includes("SUSPICIOUS") || resultText.includes("COPIA");
+        const isTamper = resultText.includes("TAMPER") || resultText.includes("OPEN") || resultText.includes("ABIERTO") || resultText.includes("MANIPULADO");
+        
+        const type = isSuccess ? "success" : isRisk ? "error" : isTamper ? "warn" : "info";
+        const title = isSuccess 
+          ? "Escaneo Autenticado" 
+          : isRisk 
+          ? "¡Alerta de Fraude!" 
+          : isTamper 
+          ? "Sello de Seguridad Abierto" 
+          : "Lectura Registrada";
+        const body = `Producto: ${event.product_name || txt.verticals[vertical]?.product || "Lote Premium"} en ${event.city || "Ubicación remota"}. Verdict: ${event.result}`;
+        addToast(title, body, type);
+      });
+      lastEventCountRef.current = events.length;
+    }
+  }, [summary, vertical]);
+
   useEffect(() => setFallbackLastSeen(new Date().toISOString()), []);
 
   useEffect(() => {
@@ -669,7 +716,16 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
       </div>
 
       {viewMode === "crm" ? (
-        <DemoCrmDashboard summary={summary} locale={locale} mapPoints={mapPoints} activeVertical={activeVertical} refreshSummary={refreshSummary} />
+        <DemoCrmDashboard
+          summary={summary}
+          locale={locale}
+          mapPoints={mapPoints}
+          activeVertical={activeVertical}
+          refreshSummary={refreshSummary}
+          simulate={simulate}
+          simulating={simulating}
+          txt={txt}
+        />
       ) : (
         <>
           <DemoLabStudioHero
@@ -841,6 +897,65 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
         onClose={() => setModalView(null)}
         onOpen={setModalView}
       />
+
+      {/* Floating Toast Notification Center */}
+      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        <style>{`
+          @keyframes slideInRight {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          .animate-slideInRight {
+            animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
+        `}</style>
+        {toasts.map((toast) => {
+          const typeColors = {
+            success: "bg-emerald-950/90 border-emerald-500/30 text-emerald-100",
+            warn: "bg-amber-950/90 border-amber-500/30 text-amber-100",
+            error: "bg-rose-950/90 border-rose-500/30 text-rose-100",
+            info: "bg-slate-950/90 border-cyan-500/30 text-cyan-100"
+          };
+          const Icon = {
+            success: CheckCircle2,
+            warn: AlertTriangle,
+            error: AlertTriangle,
+            info: Fingerprint
+          }[toast.type];
+
+          return (
+            <div
+              key={toast.id}
+              className={`pointer-events-auto flex gap-3 rounded-2xl border p-4 shadow-2xl backdrop-blur-md transition-all duration-300 transform translate-y-0 opacity-100 animate-slideInRight ${typeColors[toast.type]}`}
+            >
+              <div className="flex-shrink-0 mt-0.5">
+                <Icon className={`h-5 w-5 ${
+                  toast.type === "success" ? "text-emerald-400" :
+                  toast.type === "warn" ? "text-amber-400" :
+                  toast.type === "error" ? "text-rose-400" : "text-cyan-400"
+                }`} />
+              </div>
+              <div className="flex-1">
+                <h5 className="text-xs font-black uppercase tracking-wider">{toast.title}</h5>
+                <p className="text-[11px] leading-relaxed text-slate-300 mt-1 font-medium">{toast.body}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                className="text-slate-400 hover:text-white text-xs self-start"
+              >
+                ✕
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </main>
   );
 }
@@ -3056,12 +3171,18 @@ function DemoCrmDashboard({
   mapPoints,
   activeVertical,
   refreshSummary,
+  simulate,
+  simulating,
+  txt,
 }: {
   summary: DemoSummary | null;
   locale: AppLocale;
   mapPoints: DemoMapPoint[];
   activeVertical: any;
   refreshSummary: () => void;
+  simulate: (mode: SimulationMode) => Promise<void>;
+  simulating: boolean;
+  txt: DemoCopy;
 }) {
   const [activeTab, setActiveTab] = useState<"leads" | "tickets" | "orders" | "taps">("leads");
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -3225,6 +3346,45 @@ function DemoCrmDashboard({
             </div>
             
             <p className="mt-2 text-xs text-slate-400">Transacciones y verificaciones criptográficas activas</p>
+
+            {/* Consola de Simulación Rápida */}
+            <div className="mt-4 mb-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-inner">
+              <h4 className="text-[10px] font-black uppercase tracking-wider text-cyan-300 mb-2.5 flex items-center gap-1.5">
+                <Cpu className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
+                Consola de Simulación Rápida
+              </h4>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  disabled={simulating}
+                  onClick={() => void simulate("valid")}
+                  className="flex flex-col items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
+                >
+                  <span className="text-[11px] font-black text-emerald-400">✓ Válido</span>
+                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">Zúrich</span>
+                </button>
+                
+                <button
+                  type="button"
+                  disabled={simulating}
+                  onClick={() => void simulate("replay")}
+                  className="flex flex-col items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
+                >
+                  <span className="text-[11px] font-black text-rose-400">⚠ Copia</span>
+                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">Replay</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={simulating}
+                  onClick={() => void simulate("tamper")}
+                  className="flex flex-col items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
+                >
+                  <span className="text-[11px] font-black text-amber-400">✕ Abierto</span>
+                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">Tamper</span>
+                </button>
+              </div>
+            </div>
 
             <div className="mt-4 space-y-2 overflow-y-auto max-h-[380px] pr-2">
               {liveEvents.length === 0 ? (

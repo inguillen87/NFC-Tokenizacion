@@ -118,8 +118,10 @@ export function Globe3dMap({
   className?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [rotation, setRotation] = useState({ y: 0, x: 0.2 });
+  const rotationRef = useRef({ y: 0, x: 0.2 });
+  const velocityRef = useRef({ y: 0.0035, x: 0 });
   const mouseRef = useRef({ isDown: false, startX: 0, startY: 0, rotY: 0, rotX: 0.2 });
+  const lastMousePosRef = useRef({ x: 0, y: 0 });
 
   const radius = Math.min(width, height) * 0.38;
   const center = { x: width / 2, y: height / 2 };
@@ -144,7 +146,6 @@ export function Globe3dMap({
   // Rotación y Renderizado continuo
   useEffect(() => {
     let animId: number;
-    let autoRotY = rotation.y;
 
     const render = () => {
       const canvas = canvasRef.current;
@@ -155,16 +156,30 @@ export function Globe3dMap({
       // Limpiar lienzo
       ctx.clearRect(0, 0, width, height);
 
-      // Auto-rotar ligeramente si el ratón no está presionado
+      // Aplicar inercia física si el mouse no está apretado
       if (!mouseRef.current.isDown) {
-        autoRotY += 0.0035;
-        setRotation((prev) => ({ ...prev, y: autoRotY }));
-      } else {
-        autoRotY = rotation.y;
+        rotationRef.current.y += velocityRef.current.y;
+        rotationRef.current.x = Math.max(
+          -Math.PI / 3,
+          Math.min(Math.PI / 3, rotationRef.current.x + velocityRef.current.x)
+        );
+
+        // Fricción / desaceleración
+        velocityRef.current.y *= 0.95;
+        velocityRef.current.x *= 0.95;
+
+        // Velocidad mínima para seguir girando indefinidamente (auto-rotación base)
+        const baseAutoRotSpeed = 0.0025;
+        if (Math.abs(velocityRef.current.y) < baseAutoRotSpeed) {
+          velocityRef.current.y = velocityRef.current.y * 0.95 + baseAutoRotSpeed * 0.05;
+        }
+        if (Math.abs(velocityRef.current.x) < 0.0001) {
+          velocityRef.current.x = 0;
+        }
       }
 
-      const rotY = rotation.y;
-      const rotX = rotation.x;
+      const rotY = rotationRef.current.y;
+      const rotX = rotationRef.current.x;
 
       const cosY = Math.cos(rotY);
       const sinY = Math.sin(rotY);
@@ -278,34 +293,45 @@ export function Globe3dMap({
           }
 
           if (isRouteVisible) {
-            ctx.strokeStyle = route.tone === "warn" ? "rgba(245, 158, 11, 0.42)" : "rgba(34, 211, 238, 0.42)";
-            ctx.lineWidth = 1.2;
-            ctx.setLineDash([4, 4]);
+            // Glow inferior sutil (arco continuo translúcido más grueso)
+            ctx.strokeStyle = route.tone === "warn" ? "rgba(245, 158, 11, 0.12)" : "rgba(34, 211, 238, 0.12)";
+            ctx.lineWidth = 4.0;
+            ctx.stroke();
+
+            // Línea principal discontinua
+            ctx.strokeStyle = route.tone === "warn" ? "rgba(245, 158, 11, 0.48)" : "rgba(34, 211, 238, 0.48)";
+            ctx.lineWidth = 1.3;
+            ctx.setLineDash([3, 5]);
             ctx.stroke();
             ctx.setLineDash([]); // Reset
             
-            // Dibujar punto móvil (pulso de luz viajando sobre la línea)
-            const speedFactor = (Date.now() / 1500) % 1.0;
-            const px = from.x + (to.x - from.x) * speedFactor;
-            const py = from.y + (to.y - from.y) * speedFactor;
-            const pz = from.z + (to.z - from.z) * speedFactor;
-            const len = Math.sqrt(px * px + py * py + pz * pz);
-            const altitude = Math.sin(speedFactor * Math.PI) * (radius * 0.15);
-            const factor = (radius + altitude) / len;
+            // Animación de Estela de Cometa (partículas encadenadas con desvanecimiento)
+            const speedFactor = (Date.now() / 1800) % 1.0;
+            const baseColor = route.tone === "warn" ? "245, 158, 11" : "34, 211, 238";
+            const tailSteps = 8;
 
-            const pulseProj = projectPoint(px * factor, py * factor, pz * factor);
-            
-            ctx.fillStyle = route.tone === "warn" ? "#f59e0b" : "#22d3ee";
-            ctx.beginPath();
-            ctx.arc(pulseProj.sx, pulseProj.sy, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Halo del pulso
-            ctx.strokeStyle = route.tone === "warn" ? "rgba(245, 158, 11, 0.4)" : "rgba(34, 211, 238, 0.4)";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(pulseProj.sx, pulseProj.sy, 5, 0, Math.PI * 2);
-            ctx.stroke();
+            for (let tail = tailSteps - 1; tail >= 0; tail--) {
+              const tTail = (speedFactor - tail * 0.012 + 1.0) % 1.0;
+              const px = from.x + (to.x - from.x) * tTail;
+              const py = from.y + (to.y - from.y) * tTail;
+              const pz = from.z + (to.z - from.z) * tTail;
+              const len = Math.sqrt(px * px + py * py + pz * pz);
+              const altitude = Math.sin(tTail * Math.PI) * (radius * 0.15);
+              const factor = (radius + altitude) / len;
+
+              const pulseProj = projectPoint(px * factor, py * factor, pz * factor);
+              
+              if (pulseProj.sz >= -20) {
+                const opacityFactor = 1 - tail / tailSteps;
+                const opacity = opacityFactor * opacityFactor * 0.85;
+                const size = opacityFactor * 3.2 + 0.6;
+
+                ctx.fillStyle = `rgba(${baseColor}, ${opacity})`;
+                ctx.beginPath();
+                ctx.arc(pulseProj.sx, pulseProj.sy, size, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
           }
         }
       });
@@ -316,19 +342,26 @@ export function Globe3dMap({
 
         // Mostrar solo en la cara visible anterior
         if (sz >= -10) {
-          const sizeFactor = 2 + (sz / radius) * 2;
+          const sizeFactor = 2.2 + (sz / radius) * 2.2;
           const isRisk = (city.risk || 0) > 0;
           const pointColor = isRisk ? "251, 113, 133" : "34, 211, 238"; // Rojo vs Cian
 
-          // Halo animado del punto
-          const pulse = 1 + Math.sin(Date.now() / 250) * 0.25;
-          ctx.strokeStyle = `rgba(${pointColor}, ${0.15 + (sz / radius) * 0.35})`;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(sx, sy, sizeFactor * 2 * pulse, 0, Math.PI * 2);
-          ctx.stroke();
+          // Halo animado con ondas concéntricas (efecto radar premium)
+          const time = (Date.now() / 1200) % 1.0;
+          for (let k = 0; k < 3; k++) {
+            const ringProgress = (time + k / 3) % 1.0;
+            const ringRadius = sizeFactor * (1 + ringProgress * 3.2);
+            const baseOpacity = 0.22 + (sz / radius) * 0.42;
+            const ringOpacity = (1 - ringProgress) * baseOpacity;
 
-          // Centro del punto
+            ctx.strokeStyle = `rgba(${pointColor}, ${ringOpacity})`;
+            ctx.lineWidth = 1.2 - ringProgress * 0.7;
+            ctx.beginPath();
+            ctx.arc(sx, sy, ringRadius, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Centro del punto terrestre
           ctx.fillStyle = isRisk ? "#fb7185" : "#22d3ee";
           ctx.beginPath();
           ctx.arc(sx, sy, sizeFactor, 0, Math.PI * 2);
@@ -355,17 +388,19 @@ export function Globe3dMap({
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [rotation, width, height, radius, center, landPoints, cityPoints3D, routes]);
+  }, [width, height, radius, center, landPoints, cityPoints3D, routes]);
 
-  // Manejo de interacciones de arrastre táctil/mouse para girar el globo
+  // Manejo de interacciones de arrastre táctil/mouse para girar el globo con inercia física
   const handleMouseDown = (e: React.MouseEvent) => {
     mouseRef.current = {
       isDown: true,
       startX: e.clientX,
       startY: e.clientY,
-      rotY: rotation.y,
-      rotX: rotation.x
+      rotY: rotationRef.current.y,
+      rotX: rotationRef.current.x
     };
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+    velocityRef.current = { y: 0, x: 0 };
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -373,10 +408,17 @@ export function Globe3dMap({
     const deltaX = e.clientX - mouseRef.current.startX;
     const deltaY = e.clientY - mouseRef.current.startY;
 
-    setRotation({
-      y: mouseRef.current.rotY + deltaX * 0.007,
-      x: Math.max(-Math.PI / 3, Math.min(Math.PI / 3, mouseRef.current.rotX - deltaY * 0.007))
-    });
+    const newY = mouseRef.current.rotY + deltaX * 0.007;
+    const newX = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, mouseRef.current.rotX - deltaY * 0.007));
+
+    // Calcular velocidad instantánea basada en el movimiento del puntero
+    const instVelocityY = (e.clientX - lastMousePosRef.current.x) * 0.007;
+    const instVelocityX = -(e.clientY - lastMousePosRef.current.y) * 0.007;
+
+    rotationRef.current = { y: newY, x: newX };
+    velocityRef.current = { y: instVelocityY, x: instVelocityX };
+
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseUp = () => {
