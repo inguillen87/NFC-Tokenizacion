@@ -22,7 +22,8 @@ import {
   Share2,
   TrendingUp,
   ShoppingBag,
-  Info
+  Info,
+  HelpCircle
 } from "lucide-react";
 
 type MePayload = {
@@ -78,6 +79,7 @@ export function MePortalInteractiveClient({
   featuredAssetReadiness,
 }: MePortalInteractiveClientProps) {
   const [activeTab, setActiveTab] = useState<TabType>("passport");
+  const [dropsCategory, setDropsCategory] = useState<"scanned" | "synergy">("scanned");
   const [p2pPrice, setP2pPrice] = useState<Record<string, string>>({});
   const [listedProducts, setListedProducts] = useState<Record<string, number>>({});
   const [trades, setTrades] = useState<Array<{ id: string; assetName: string; type: "claim" | "mint" | "list" | "sell" | "buy" | "transfer"; from: string; to: string; price?: string; at: string; txHash?: string }>>([
@@ -86,6 +88,15 @@ export function MePortalInteractiveClient({
     { id: "tx-003", assetName: "Reserva Cabernet 2021", type: "buy", from: "0x8f2d...b38e", to: "Tu Billetera", price: "2,500 pts + 45 USD", at: "Ayer", txHash: "0xae10c43...4490" },
     { id: "tx-004", assetName: "Chardonnay de Altura 2023", type: "transfer", from: "Tu Billetera", to: "0x3ddf...45a1", at: "Hace 3 días", txHash: "0x9d3ef84...212a" },
   ]);
+
+  // Web3 Checkout & MetaMask Simulation States
+  const [checkoutDrop, setCheckoutDrop] = useState<any | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"points" | "usdt">("points");
+  const [isWeb3Connecting, setIsWeb3Connecting] = useState(false);
+  const [isWeb3Paying, setIsWeb3Paying] = useState(false);
+  const [web3Address, setWeb3Address] = useState("");
+  const [txSuccess, setTxSuccess] = useState(false);
+  const [activeTxHash, setActiveTxHash] = useState("");
 
   const stats = me?.stats || {};
   const activeMemberships = brands.filter((item) => String(item.status || "").toLowerCase() === "active").length;
@@ -100,11 +111,70 @@ export function MePortalInteractiveClient({
     { title: "Marketplace", desc: "Canje de beneficios, preventas y drops premium.", icon: Sparkles },
   ];
 
-  const mockDrops = [
-    { id: "drop-1", name: "Estuche Colección Ícono Malbec 2020", winery: "Demo Bodega", price: "4,000 pts", cashPrice: "$120 USD", stock: "6 unidades", img: "/images/wine_crate.png" },
-    { id: "drop-2", name: "Gran Reserva Cabernet Franc 2021", winery: "Bodega Altamira", price: "3,000 pts", cashPrice: "$85 USD", stock: "14 unidades", img: "/images/premium_magnum.png" },
-    { id: "drop-3", name: "Chardonnay Single Vineyard Barrel Select", winery: "Gualtallary Estate", price: "2,500 pts", cashPrice: "$60 USD", stock: "22 unidades", img: "/images/premium_magnum.png" },
+  const scannedDrops = [
+    { id: "drop-1", name: "Estuche Colección Ícono Malbec 2020", winery: "Demo Bodega", price: "4,000 pts", cashPrice: "$120 USDT", stock: "6 unidades", img: "/images/wine_crate.png", label: "Vino de Lote", rawPriceUsd: 120 },
+    { id: "drop-2", name: "Gran Reserva Cabernet Franc 2021", winery: "Demo Bodega", price: "3,000 pts", cashPrice: "$85 USDT", stock: "14 unidades", img: "/images/premium_magnum.png", label: "Preventa Limitada", rawPriceUsd: 85 },
   ];
+
+  const synergyDrops = [
+    { id: "syn-1", name: "Pack Sinergia: Cata a Ciegas + Traslado Seguro en Combi", winery: "Bodega Alta Cima & Traslados", price: "6,000 pts", cashPrice: "$180 USDT", stock: "6 packs", img: "/images/wine_tasting.png", label: "Cata + Traslado Seguro", rawPriceUsd: 180 },
+    { id: "syn-2", name: "Pack Sinergia: Estadía Luxury + Traslado de Turistas VIP", winery: "Valle de Uco Resorts & Mendoza Tours", price: "15,000 pts", cashPrice: "$420 USDT", stock: "4 packs", img: "/images/wine_crate.png", label: "Hotel + Chofer Privado", rawPriceUsd: 420 },
+    { id: "syn-3", name: "Zapatillas Urban Limited Edition (NFC Chip)", winery: "NexID Wearables", price: "8,000 pts", cashPrice: "$220 USDT", stock: "12 pares", img: "/images/sneaker.png", label: "Indumentaria Partner", rawPriceUsd: 220 },
+  ];
+
+  const currentDrops = dropsCategory === "scanned" ? scannedDrops : synergyDrops;
+
+  const connectMetaMask = async () => {
+    setIsWeb3Connecting(true);
+    try {
+      if (typeof window !== "undefined" && window.ethereum) {
+        const accounts: any = await window.ethereum.request({ method: "eth_requestAccounts" });
+        if (accounts && accounts[0]) {
+          setWeb3Address(accounts[0]);
+        }
+      } else {
+        setWeb3Address("0x71C7656EC7ab88b098defB751B7401B5f6d8976F");
+      }
+    } catch (e) {
+      console.error(e);
+      setWeb3Address("0x71C7656EC7ab88b098defB751B7401B5f6d8976F");
+    } finally {
+      setIsWeb3Connecting(false);
+    }
+  };
+
+  const handleCheckoutPayment = async () => {
+    if (paymentMethod === "usdt" && !web3Address) {
+      alert("Por favor conecta tu MetaMask primero.");
+      return;
+    }
+
+    setIsWeb3Paying(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const generatedHash = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+      setActiveTxHash(generatedHash);
+      setTxSuccess(true);
+
+      setTrades((prev) => [
+        {
+          id: `tx-${Math.random().toString(36).substring(2, 6)}`,
+          assetName: checkoutDrop.name,
+          type: "buy",
+          from: paymentMethod === "usdt" ? web3Address.slice(0, 8) + "..." : "Tus Puntos",
+          to: "nexID Escrow (Fee: 1.5%)",
+          price: paymentMethod === "usdt" ? `${checkoutDrop.cashPrice} (+1.5% Fee)` : checkoutDrop.price,
+          at: "Ahora mismo",
+          txHash: generatedHash,
+        },
+        ...prev,
+      ]);
+    } catch (e) {
+      alert("Ocurrió un error al procesar el pago.");
+    } finally {
+      setIsWeb3Paying(false);
+    }
+  };
 
   const handleListForSale = (uid: string, productName: string) => {
     const price = p2pPrice[uid] || "3,500 pts";
@@ -517,7 +587,7 @@ export function MePortalInteractiveClient({
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
             <div>
               <h2 className="text-lg font-black text-white">Drops de Bodega & Preventas</h2>
-              <p className="text-xs text-slate-400">Canjea tus puntos acumulados por botellas físicas exclusivas de bodega y preventas antes del lanzamiento general.</p>
+              <p className="text-xs text-slate-400">Canjea tus puntos acumulados por botellas físicas exclusivas o beneficios cruzados de la red de marcas.</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-slate-900/30 px-3 py-1.5 flex items-center gap-1.5">
               <Coins className="h-4 w-4 text-amber-300" />
@@ -525,9 +595,46 @@ export function MePortalInteractiveClient({
             </div>
           </div>
 
+          {/* nexID Synergy Explanation Card */}
+          <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-slate-950 to-slate-950 p-4 text-[11px] leading-5 text-slate-300 flex items-start gap-3 shadow-xl">
+            <Sparkles className="h-5 w-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
+            <div>
+              <strong className="text-white">¡Club nexID de Sinergia de Marcas Aliadas!</strong>
+              <p className="mt-0.5">
+                Al escanear etiquetas de productos verificados de la red nexID, accedes a un club de beneficios cruzados. Las marcas aliadas comparten preventas exclusivas, eventos VIP y lanzamientos especiales que se complementan entre sí, recompensando tu fidelidad de una forma integral.
+              </p>
+            </div>
+          </div>
+
+          {/* Drops Category Selector Sub-tabs */}
+          <div className="flex bg-slate-900/80 p-1 rounded-xl border border-white/5 max-w-sm gap-1">
+            <button
+              onClick={() => setDropsCategory("scanned")}
+              className={`flex-1 text-center py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
+                dropsCategory === "scanned"
+                  ? "bg-amber-500 text-slate-950 shadow-md"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Marcas en tu Historial
+            </button>
+            <button
+              onClick={() => setDropsCategory("synergy")}
+              className={`flex-1 text-center py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
+                dropsCategory === "synergy"
+                  ? "bg-cyan-500 text-slate-950 shadow-md"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Sinergia nexID (Recomendación IA)
+            </button>
+          </div>
+
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {mockDrops.map((drop) => (
-              <div key={drop.id} className="rounded-3xl border border-white/10 bg-slate-950/80 p-5 transition duration-300 hover:border-cyan-400/30 flex flex-col justify-between min-h-[320px]">
+            {currentDrops.map((drop) => (
+              <div key={drop.id} className={`rounded-3xl border border-white/10 bg-slate-950/80 p-5 transition duration-300 flex flex-col justify-between min-h-[320px] ${
+                dropsCategory === "synergy" ? "hover:border-cyan-400/30" : "hover:border-amber-500/30"
+              }`}>
                 <div className="flex gap-4 items-start">
                   <div className="h-20 w-16 shrink-0 rounded-2xl border border-white/10 bg-black/40 p-1 flex items-center justify-center overflow-hidden">
                     <img
@@ -537,9 +644,16 @@ export function MePortalInteractiveClient({
                     />
                   </div>
                   <div>
-                    <span className="text-[9px] font-black uppercase tracking-wider text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/10">
-                      {drop.winery}
-                    </span>
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                        dropsCategory === "synergy" 
+                          ? "text-cyan-300 bg-cyan-500/10 border-cyan-500/10" 
+                          : "text-amber-300 bg-amber-500/10 border-amber-500/10"
+                      }`}>
+                        {drop.winery}
+                      </span>
+                      <span className="text-[8px] font-bold text-slate-500">{drop.label}</span>
+                    </div>
                     <h3 className="mt-2 text-sm font-black text-white leading-snug">{drop.name}</h3>
                     <p className="text-[10px] text-slate-500 mt-1">Disponibilidad: <span className="text-slate-300 font-bold">{drop.stock}</span></p>
                   </div>
@@ -549,11 +663,19 @@ export function MePortalInteractiveClient({
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Precio</span>
-                      <strong className="text-sm font-black text-amber-300">{drop.price} <span className="text-[10px] font-normal text-slate-400">o {drop.cashPrice}</span></strong>
+                      <strong className={`text-sm font-black ${dropsCategory === "synergy" ? "text-cyan-300" : "text-amber-300"}`}>{drop.price} <span className="text-[10px] font-normal text-slate-400 font-mono">o {drop.cashPrice}</span></strong>
                     </div>
                     <button
-                      onClick={() => alert(`¡Felicitaciones! Has canjeado exitosamente el drop ${drop.name}. Recibirás las coordenadas de envío por e-mail.`)}
-                      className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 px-4 py-2 text-xs font-black transition uppercase tracking-wider shadow-md"
+                      onClick={() => {
+                        setCheckoutDrop(drop);
+                        setTxSuccess(false);
+                        setPaymentMethod("points");
+                      }}
+                      className={`rounded-xl px-4 py-2 text-xs font-black transition uppercase tracking-wider shadow-md ${
+                        dropsCategory === "synergy"
+                          ? "bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-slate-950"
+                          : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950"
+                      }`}
                     >
                       Comprar Drop
                     </button>
@@ -561,6 +683,195 @@ export function MePortalInteractiveClient({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Glassmorphic Web3 Checkout Modal with MetaMask & nexID Synergy Fee */}
+      {checkoutDrop && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
+          <div className="relative max-w-md w-full bg-[linear-gradient(135deg,#0f0f12_0%,#1a191d_100%)] border border-amber-500/20 p-6 rounded-3xl text-white shadow-2xl">
+            
+            {/* Close Button */}
+            {!isWeb3Paying && (
+              <button
+                onClick={() => setCheckoutDrop(null)}
+                className="absolute right-4 top-4 text-slate-400 hover:text-white text-xs uppercase font-black"
+              >
+                Cerrar
+              </button>
+            )}
+
+            {!txSuccess ? (
+              <>
+                <h3 className="text-base font-black tracking-tight text-white pr-8">{checkoutDrop.name}</h3>
+                <p className="text-[11px] text-slate-400 mt-1">{checkoutDrop.winery} · {checkoutDrop.label}</p>
+
+                {/* Payment Method Selector */}
+                <div className="mt-5 grid grid-cols-2 bg-slate-900/60 p-1 rounded-xl border border-white/5">
+                  <button
+                    onClick={() => setPaymentMethod("points")}
+                    className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
+                      paymentMethod === "points"
+                        ? "bg-amber-500 text-slate-950 shadow-sm"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Puntos NexID
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPaymentMethod("usdt");
+                      if (!web3Address) connectMetaMask();
+                    }}
+                    className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
+                      paymentMethod === "usdt"
+                        ? "bg-cyan-500 text-slate-950 shadow-sm"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    USDT (MetaMask)
+                  </button>
+                </div>
+
+                {/* Billing Details Pane */}
+                <div className="mt-4 rounded-2xl bg-black/40 border border-white/5 p-4 space-y-3">
+                  {paymentMethod === "points" ? (
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between text-slate-400">
+                        <span>Tus Puntos Disponibles:</span>
+                        <strong className="text-white">2,500 pts</strong>
+                      </div>
+                      <div className="flex justify-between text-slate-400">
+                        <span>Costo de Canje:</span>
+                        <strong className="text-amber-400">{checkoutDrop.price}</strong>
+                      </div>
+                      <div className="h-px bg-white/5 my-2" />
+                      {Number(checkoutDrop.price.replace(/[^\d]/g, "")) > 2500 ? (
+                        <p className="text-[10px] text-red-400 font-bold">Puntos insuficientes. Prueba con el método de pago USDT.</p>
+                      ) : (
+                        <div className="flex justify-between text-white font-bold">
+                          <span>Saldo Final Est.:</span>
+                          <span>{(2500 - Number(checkoutDrop.price.replace(/[^\d]/g, ""))).toLocaleString()} pts</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between text-slate-400">
+                        <span>Precio Neto:</span>
+                        <strong className="text-white">{checkoutDrop.rawPriceUsd} USDT</strong>
+                      </div>
+                      <div className="flex justify-between text-slate-400 items-center">
+                        <span className="flex items-center gap-1">
+                          Protocol fee de Sinergia (1.5%):
+                          <span title="Fee cobrado por nexID para sostener la red de beneficios cruzados.">
+                            <HelpCircle className="h-3.5 w-3.5 text-slate-500" />
+                          </span>
+                        </span>
+                        <strong className="text-cyan-400">{(checkoutDrop.rawPriceUsd * 0.015).toFixed(2)} USDT</strong>
+                      </div>
+                      <div className="flex justify-between text-slate-400">
+                        <span>Gas de Red (Est. Polygon):</span>
+                        <strong className="text-slate-300">0.15 POL</strong>
+                      </div>
+                      <div className="h-px bg-white/5 my-2" />
+                      <div className="flex justify-between text-white font-bold text-sm">
+                        <span>Total a pagar:</span>
+                        <span className="text-cyan-300">{(checkoutDrop.rawPriceUsd * 1.015 + 0.15).toFixed(2)} USDT</span>
+                      </div>
+
+                      {/* MetaMask Connection HUD */}
+                      <div className="mt-3 pt-3 border-t border-white/5">
+                        {web3Address ? (
+                          <div className="flex items-center justify-between text-[10px] font-mono bg-slate-900/60 px-3 py-2 rounded-xl border border-white/5">
+                            <span className="text-slate-400">MetaMask:</span>
+                            <span className="text-emerald-400 font-bold">{web3Address.slice(0, 6)}...{web3Address.slice(-4)}</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={connectMetaMask}
+                            disabled={isWeb3Connecting}
+                            className="w-full py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-xl transition animate-pulse"
+                          >
+                            {isWeb3Connecting ? "Abriendo MetaMask..." : "Conectar MetaMask 🦊"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="mt-6 flex gap-3">
+                  <button
+                    disabled={isWeb3Paying}
+                    onClick={() => setCheckoutDrop(null)}
+                    className="flex-1 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-black uppercase tracking-wider text-slate-400 transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    disabled={isWeb3Paying || (paymentMethod === "points" && Number(checkoutDrop.price.replace(/[^\d]/g, "")) > 2500)}
+                    onClick={handleCheckoutPayment}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-slate-950 transition shadow-md ${
+                      paymentMethod === "usdt"
+                        ? "bg-gradient-to-r from-cyan-400 to-cyan-300 hover:from-cyan-300 hover:to-cyan-200"
+                        : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300"
+                    }`}
+                  >
+                    {isWeb3Paying ? "Procesando pago..." : paymentMethod === "usdt" ? "Confirmar en MetaMask" : "Canjear Puntos"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Success Screen */
+              <div className="text-center py-4 space-y-4 animate-fade-in">
+                <div className="h-16 w-16 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/35 flex items-center justify-center text-emerald-400 text-2xl font-bold animate-bounce">
+                  ✓
+                </div>
+                <div>
+                  <h4 className="text-base font-black text-white">¡Canje / Compra Exitosa!</h4>
+                  <p className="text-[11px] text-slate-400 mt-1">Tu orden de despacho ha sido registrada en el escrow inteligente de nexID.</p>
+                </div>
+
+                <div className="rounded-2xl bg-black/40 border border-white/5 p-4 text-[10px] space-y-2 text-left">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Producto:</span>
+                    <strong className="text-white truncate max-w-48">{checkoutDrop.name}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Método:</span>
+                    <strong className="text-white uppercase">{paymentMethod}</strong>
+                  </div>
+                  {paymentMethod === "usdt" && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Synergy Fee (1.5%):</span>
+                      <strong className="text-cyan-400">{(checkoutDrop.rawPriceUsd * 0.015).toFixed(2)} USDT</strong>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Hash de Red:</span>
+                    <a
+                      href={`https://amoy.polygonscan.com/tx/${activeTxHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-amber-400 hover:text-white font-mono flex items-center gap-0.5"
+                    >
+                      {activeTxHash.slice(0, 12)}... <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setCheckoutDrop(null)}
+                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-black uppercase tracking-wider text-slate-200 transition"
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       )}

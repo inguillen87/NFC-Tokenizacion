@@ -1,16 +1,11 @@
 import Link from "next/link";
 import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
-  CarrierProfileMatrixSection,
   CtaSection,
   HeroSection,
-  MarketplaceNetworkSection,
-  PremiumIdentitySection,
-  PlansSection,
   SimpleTrustFlowSection,
-  UnitEconomicsSection,
-  WhiteLabelOperatingSystemSection,
 } from "../components/landing-sections";
+import { BrandSynergySimulator } from "../components/brand-synergy-simulator";
 import { SalesChatWidget } from "../components/sales-chat-widget";
 import { DemoRequestSection } from "../components/demo-request-section";
 import { MobileNavSheet } from "../components/mobile-nav-sheet";
@@ -21,7 +16,7 @@ import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { ProductExitLink } from "../components/product-exit-link";
 import { productUrls, schedulingUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
-import { ArrowRight, Download, ExternalLink, ShieldCheck } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, ShieldCheck, BookOpen, BadgeDollarSign, Layers3, Smartphone, Zap } from "lucide-react";
 
 const afipDataFiscalHref = "https://qr.afip.gob.ar/?qr=-F2blnmFe6pmSP-chYnylQ,,";
 const mipymeCertificateHref = "/certificados/certificado-mipyme-intellitech.pdf";
@@ -288,109 +283,127 @@ export default async function HomePage() {
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
 
       <SimpleTrustFlowSection locale={locale} />
-      <PlansSection content={content} locale={locale} />
-      <CarrierProfileMatrixSection locale={locale} />
-
-      <PremiumIdentitySection content={content} locale={locale} />
-      <MarketplaceNetworkSection locale={locale} />
-      <WhiteLabelOperatingSystemSection locale={locale} />
-      <UnitEconomicsSection locale={locale} />
-
-      {/* nexID Cognitive AI Engine Explainer Section */}
+      {/* nexID Cognitive AI & Brand Synergy Section */}
       <section className="container-shell my-16">
         <div className="relative overflow-hidden rounded-3xl border border-purple-500/25 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.15),transparent_40%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(2,6,23,0.98))] p-8 shadow-2xl md:p-10">
-          <div className="absolute -left-16 -top-16 h-36 w-36 rounded-full bg-purple-500/5 blur-3xl animate-pulse" />
-          
-          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] items-center">
-            <div>
-              <span className="rounded-full border border-purple-400/25 bg-purple-400/5 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-purple-300">
-                PROPRIETARY COGNITIVE SUITE
-              </span>
-              <h2 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl leading-tight">
-                Optimización de Campañas y Análisis de Comportamiento Humano con IA
-              </h2>
-              <p className="mt-4 text-sm leading-relaxed text-slate-300">
-                El motor cognitivo de nexID analiza de forma automática las interacciones físicas, estimando la fidelización y engagement de cada copy comercial. Permite a los productores ingresar borradores técnicos sencillos y convertirlos en un copy de lujo de alta conversión para su club de beneficios.
-              </p>
-              
-              <div className="mt-6 space-y-4">
-                {[
-                  { title: "Estimación de Viralidad", desc: "Predice la tasa de conversión analizando triggers psicológicos y legibilidad." },
-                  { title: "Reescritura de Lujo", desc: "Mejora el texto de cata plano, inyectando terminología de sommelier y tono exclusivo." },
-                  { title: "Análisis de Comportamiento Antifraude", desc: "Evalúa coordenadas GPS e IPs para anticipar clonaciones y asegurar el inventario." }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex gap-3">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-purple-300 text-[11px] font-bold">✓</span>
-                    <div>
-                      <strong className="text-xs font-bold text-white block">{item.title}</strong>
-                      <span className="text-xs text-slate-400">{item.desc}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Visual HUD Mockup */}
-            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 font-mono text-[11px] text-slate-300 space-y-4 relative">
-              <div className="absolute right-4 top-4 rounded bg-purple-500/15 border border-purple-500/25 px-2 py-0.5 text-[8px] font-bold text-purple-300">
-                nexID AI Live
-              </div>
-              <div>
-                <span className="text-slate-500 block uppercase tracking-wider text-[9px] mb-1">Entrada del Productor (Borrador)</span>
-                <p className="bg-slate-900/40 p-2.5 rounded-lg border border-white/5 text-slate-400 text-xs italic">
-                  "Este vino malbec es muy rico y es barato para comprar en nuestro club."
-                </p>
-              </div>
-              <div className="flex justify-between items-center bg-purple-500/5 border border-purple-500/20 rounded-xl p-3">
-                <div>
-                  <span className="text-purple-300 block text-[9px] uppercase font-bold">Optimización Sommelier</span>
-                  <p className="text-xs font-black text-white mt-0.5 leading-tight">
-                    "Un exquisito exponente de autor. Untuoso, persistente y con taninos de seda para nuestro Club VIP."
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-[10px] text-center pt-2">
-                <div className="bg-slate-900/60 border border-white/5 p-2 rounded-lg">
-                  <span className="text-slate-500 block text-[8px]">Prestigio</span>
-                  <strong className="text-amber-400 text-xs">96%</strong>
-                </div>
-                <div className="bg-slate-900/60 border border-white/5 p-2 rounded-lg">
-                  <span className="text-slate-500 block text-[8px]">Viralidad</span>
-                  <strong className="text-purple-400 text-xs">88%</strong>
-                </div>
-                <div className="bg-slate-900/60 border border-white/5 p-2 rounded-lg">
-                  <span className="text-slate-500 block text-[8px]">Conversión</span>
-                  <strong className="text-emerald-400 text-xs">Alto (A)</strong>
-                </div>
-              </div>
-            </div>
-          </div>
+          <BrandSynergySimulator locale={locale} />
         </div>
       </section>
 
-      <section className="hidden">
-        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 md:p-8">
-          <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Canal y arquitectura comercial</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">Una sola propuesta clara: autenticación + trazabilidad + operación reseller</h2>
-          <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-300 md:text-base">
-            Diseñado para imprentas de seguridad, integradores, agencias, distribuidores y operadores que revenden soluciones a bodegas,
-            productores de eventos, organizadores de corporativas y marcas premium. Implementamos un modelo white-label con gobierno central de
-            autenticación para que cada partner venda con su marca y opere con estándares enterprise.
+      {/* Quick-Jump Hub Directory */}
+      <section className="container-shell my-16">
+        <div className="text-center max-w-3xl mx-auto mb-10">
+          <h2 className="text-2xl font-black text-white tracking-tight sm:text-3xl">
+            {locale === "en" ? "Explore nexID Platform Depth" : "Explorá la Búsqueda de Soluciones"}
+          </h2>
+          <p className="mt-2 text-sm text-slate-400">
+            {locale === "en" 
+              ? "Zero fluff. Jump directly into technical specifications, live simulators, ROI math, or operational vocabulary."
+              : "Sin redundancia ni rodeos. Navegá directo a las especificaciones técnicas, simuladores en vivo, calculadora de ROI o glosario."
+            }
           </p>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Card 1: Demo Lab */}
+          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/30 hover:bg-slate-900/60">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300">
+              <Zap className="h-5 w-5" />
+            </span>
+            <h3 className="mt-4 text-base font-bold text-white">🧪 Demo Lab & Sandbox</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              {locale === "en" 
+                ? "Simulate physical NFC scans, GPS coordinates, verification logs, and tamper events in real-time."
+                : "Simulá escaneos físicos de chips, coordenadas GPS de riesgo, logs de auditoría y tamper en tiempo real."
+              }
+            </p>
+            <Link href="/demo-lab" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-cyan-300 group-hover:text-cyan-200">
+              {locale === "en" ? "Open Sandbox" : "Abrir Sandbox"} <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <article className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
-              <p className="text-sm font-semibold text-cyan-200">Programa reseller / white-label</p>
-              <p className="mt-2 text-sm text-slate-300">Onboarding operativo, playbooks comerciales y soporte para acelerar ventas B2B desde el día uno.</p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
-              <p className="text-sm font-semibold text-cyan-200">Stacks por nivel de riesgo</p>
-              <p className="mt-2 text-sm text-slate-300">Desde activaciones con QR/NFC hasta SUN criptográfico con anti-clonado y trazabilidad para sectores críticos.</p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-slate-950/70 p-5">
-              <p className="text-sm font-semibold text-cyan-200">Identidad digital y lifecycle</p>
-              <p className="mt-2 text-sm text-slate-300">Cada producto conecta autenticidad, ownership, garantías y marketplace en un flujo continuo y auditable.</p>
-            </article>
+          {/* Card 2: Docs & APIs */}
+          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:bg-slate-900/60">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
+              <BookOpen className="h-5 w-5" />
+            </span>
+            <h3 className="mt-4 text-base font-bold text-white">📖 Documentación & APIs</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              {locale === "en" 
+                ? "Step-by-step developer guides, operational manifests format, and technical API reference."
+                : "Guías de desarrollo paso a paso, formato de manifiestos operativos de lotes y referencia técnica de API."
+              }
+            </p>
+            <Link href="/docs" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-emerald-300 group-hover:text-emerald-200">
+              {locale === "en" ? "Read Docs" : "Ver Documentos"} <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {/* Card 3: Pricing & ROI */}
+          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/30 hover:bg-slate-900/60">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
+              <BadgeDollarSign className="h-5 w-5" />
+            </span>
+            <h3 className="mt-4 text-base font-bold text-white">💳 Planes y Calculadora ROI</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              {locale === "en" 
+                ? "Estimate hardware setup costs, SaaS usage fees, and commercial business value by industry."
+                : "Estimá costos de hardware/setup, licencias mensuales de SaaS y calculadora de retorno de inversión por sector."
+              }
+            </p>
+            <Link href="/pricing" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-amber-300 group-hover:text-amber-200">
+              {locale === "en" ? "Calculate Costs" : "Calcular Costos"} <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {/* Card 4: Verify Centre (SUN) */}
+          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/30 hover:bg-slate-900/60">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+            <h3 className="mt-4 text-base font-bold text-white">🛡️ Verify Centre (SUN)</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              {locale === "en" 
+                ? "Public verification portal for cryptographic tags (SUN/SDM) to prove physical presence."
+                : "Portal público de validación criptográfica SUN/SDM para constatar procedencia y firmas físicas."
+              }
+            </p>
+            <Link href="/sun" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-blue-300 group-hover:text-blue-200">
+              {locale === "en" ? "Verify Tag" : "Validar Tag"} <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {/* Card 5: Billetera Consumidor */}
+          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/30 hover:bg-slate-900/60">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-300">
+              <Smartphone className="h-5 w-5" />
+            </span>
+            <h3 className="mt-4 text-base font-bold text-white">🍇 Portal & Billetera /me</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              {locale === "en" 
+                ? "The digital home for consumer assets, claimed NFTs, certificates, and P2P trade market."
+                : "El hogar digital de activos del comprador: pasaportes reclamados, certificados de procedencia y P2P trades."
+              }
+            </p>
+            <Link href="/login?next=/me" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-purple-300 group-hover:text-purple-200">
+              {locale === "en" ? "Open Wallet" : "Ver Billetera"} <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {/* Card 6: Glosario & Pitch */}
+          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-pink-500/30 hover:bg-slate-900/60">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-pink-500/10 text-pink-300">
+              <Layers3 className="h-5 w-5" />
+            </span>
+            <h3 className="mt-4 text-base font-bold text-white">🎓 Glosario y Audiencias</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              {locale === "en" 
+                ? "Key terms explained and tailored pitches for brands, resellers, or governments."
+                : "Glosario de conceptos físicos/digitales y pitch comercial adaptado para marcas o resellers."
+              }
+            </p>
+            <Link href="/glossary" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-300 group-hover:text-pink-200">
+              {locale === "en" ? "View Glossary" : "Ver Glosario"} <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
         </div>
       </section>
