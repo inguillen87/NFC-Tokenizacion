@@ -853,13 +853,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : ttStatus === "closed" || productState === "VALID_CLOSED"
     ? "Autenticidad confirmada. Sello intacto."
     : ttStatus === "opened" || ttStatus === "opened_previously" || productState === "VALID_OPENED" || productState === "VALID_OPENED_PREVIOUSLY"
-      ? "Producto auténtico, pero el sello fue abierto (OPENED)."
+      ? "Producto auténtico, pero el sello ya fue abierto."
     : ttStatus === "invalid"
       ? "TagTamper no inicializado o configuración inválida."
     : productState === "VALID_MANUAL_OPENED"
       ? "Autenticidad confirmada. Sello marcado como abierto por operador."
     : productState === "VALID_OPENED"
-      ? "Producto auténtico, pero el sello fue abierto."
+      ? "Producto auténtico, pero el sello ya fue abierto."
     : productState === "VALID_UNKNOWN_TAMPER" || ttStatus === "not_available"
         ? "Autenticidad confirmada. Estado de apertura no disponible."
         : result.status?.code === "REPLAY_SUSPECT"
@@ -889,7 +889,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const displayStatusHeadline = isQrScan
     ? "Ficha publica QR / SDK"
     : rightsTitle || (isVerifiedOpenedState && isTechnicallyAuthentic
-    ? "Producto autentico. Sello abierto registrado como lifecycle event."
+    ? "Producto auténtico. El sello de la botella ya fue abierto."
     : statusHeadline);
   const reportProblemHref = "/?contact=sales&intent=sun_mobile#contact-modal";
   const recommendedAction = isFreshCommercialTap
@@ -1095,8 +1095,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "Lectura fresca: UID, contador SUN y CMAC pasan la politica anti-replay."
         : "Lectura fresca: identidad registrada y trazabilidad declarada por plataforma.")
       : isVerifiedOpenedState && isTechnicallyAuthentic
-        ? rightsSummary || "Sello abierto verificado: la apertura queda registrada como lifecycle event y conserva garantia, provenance y tokenizacion opcional segun politica de marca."
-        : rightsSummary || "Lectura revisable: la prueba tecnica se conserva, pero las acciones comerciales quedan protegidas.";
+        ? rightsSummary || "Autenticidad confirmada. El sello de la botella ya fue abierto (descorchado). Podés registrar la botella como tuya, sumar puntos y acceder al club de beneficios."
+        : rightsSummary || "Lectura de control: la verificación técnica de autenticidad se mantiene activa, pero se restringen algunas acciones comerciales.";
   const tokenEvidenceLabel = hasOnChainProof
     ? `On-chain ${tokenNetwork}`
     : tokenPending
