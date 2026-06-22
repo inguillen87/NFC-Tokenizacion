@@ -484,6 +484,20 @@ function resolveTrustState(status: string, reason: string, productState?: string
     };
   }
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay') || normalizedReason.includes('copied url')) {
+    const isTamperOpened = Boolean(
+      resultMeta?.tamper_opened || 
+      resultMeta?.tamperOpened || 
+      normalizedProductState.includes("OPENED") || 
+      normalizedReason.includes("opened")
+    );
+    if (isTamperOpened) {
+      return {
+        code: 'REPLAY_SUSPECT',
+        label: 'Lectura repetida (Sello abierto)',
+        summary: 'El producto es auténtico, pero su sello ya fue abierto y esta lectura ya fue procesada anteriormente.',
+        tone: 'warn' as const,
+      };
+    }
     return { code: 'REPLAY_SUSPECT', label: 'URL reutilizada', summary: 'Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
