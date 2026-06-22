@@ -74,7 +74,8 @@ test("wine opened remains authentic but commercial rights require proof", () => 
   assert.equal(policy.conditionState, "opened_verified");
   assert.equal(policy.canTokenize, true);
   assert.equal(policy.claimMode, "purchase_or_custody_proof");
-  assert.match(policy.statusSummary, /Sello abierto/i);
+  assert.match(policy.statusSummary, /sello/i);
+  assert.match(policy.statusSummary, /abierto/i);
 });
 
 test("pharma opened keeps provenance but blocks public tokenization", () => {

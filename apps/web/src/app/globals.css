@@ -25624,3 +25624,136 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     min-height: 650px;
   }
 }
+
+/* ==========================================
+   ✨ PREMIUM UX/UI REDESIGN TOKENS & STYLES
+   ========================================== */
+
+/* Holographic Glass Card Glow & Shine */
+.card-holographic {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.45) 0%, rgba(30, 41, 59, 0.4) 100%);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.45s, box-shadow 0.45s;
+}
+
+.card-holographic::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 42%,
+    rgba(34, 211, 238, 0.08) 45%,
+    rgba(99, 102, 241, 0.16) 50%,
+    rgba(34, 211, 238, 0.08) 55%,
+    transparent 58%
+  );
+  transform: rotate(-45deg) translate(-35%, -35%);
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.card-holographic:hover::before {
+  transform: rotate(-45deg) translate(35%, 35%);
+}
+
+.card-holographic:hover {
+  transform: translateY(-5px) scale(1.008);
+  box-shadow: 0 16px 42px rgba(6, 182, 212, 0.12);
+  border-color: rgba(34, 211, 238, 0.36);
+}
+
+/* Data Stream Pulse Line SVG */
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -30;
+  }
+}
+
+.svg-flow-path {
+  stroke-dasharray: 6, 9;
+  animation: flow-dash 1.4s linear infinite;
+  filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.45));
+}
+
+/* Neon Glass Premium Buttons */
+.btn-neon-glass {
+  position: relative;
+  background: rgba(34, 211, 238, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  color: #22d3ee;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.btn-neon-glass:hover {
+  background: rgba(34, 211, 238, 0.16);
+  border-color: rgba(34, 211, 238, 0.65);
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.35);
+  text-shadow: 0 0 5px rgba(34, 211, 238, 0.7);
+}
+
+/* Scanner Matrix Laser Effect */
+@keyframes scan-laser {
+  0% {
+    top: 0%;
+    opacity: 0.1;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    top: 100%;
+    opacity: 0.1;
+  }
+}
+
+.scan-laser-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #22d3ee, #6366f1, #22d3ee, transparent);
+  box-shadow: 0 0 12px 2px rgba(34, 211, 238, 0.7);
+  animation: scan-laser 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+/* 3D Tilt Wrapper helper */
+.tilt-container {
+  perspective: 1200px;
+}
+
+.tilt-inner {
+  transition: transform 0.15s ease-out;
+  transform-style: preserve-3d;
+}
+
+/* Staggered Timeline Fade-in Animation */
+@keyframes slide-in-fade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-stagger-step {
+  animation: slide-in-fade 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+
