@@ -538,6 +538,7 @@ export function GlobalOpsMap({
   onPointSelect,
   playbackEnabled,
   riskOnly,
+  chrome = "full",
 }: {
   title?: string;
   subtitle?: string;
@@ -548,6 +549,7 @@ export function GlobalOpsMap({
   onPointSelect?: (point: GlobalOpsPoint) => void;
   playbackEnabled?: boolean;
   riskOnly?: boolean;
+  chrome?: "full" | "compact";
 }) {
   const [tenant, setTenant] = useState("ALL");
   const [country, setCountry] = useState("ALL");
@@ -903,6 +905,7 @@ export function GlobalOpsMap({
 
   const canRenderMap = true;
   const isDemoMode = mode === "demo";
+  const isCompactChrome = chrome === "compact";
   const totalScans = visiblePoints.reduce((sum, point) => sum + point.scans, 0);
   const riskyPoints = visiblePoints.filter((point) => point.risk > 0);
   const firstVisibleRoute = visibleRoutes[0] || null;
@@ -921,7 +924,8 @@ export function GlobalOpsMap({
   const demoRiskLabel = replayTamper > 0 ? "replay/tamper" : riskyPoints.length ? "riesgo activo" : "ruta limpia";
 
   return (
-    <Card className="worldmap-card global-ops-map-card overflow-hidden p-4 md:p-6">
+    <Card className={`worldmap-card global-ops-map-card overflow-hidden ${isCompactChrome ? "p-2 md:p-3" : "p-4 md:p-6"}`}>
+      {!isCompactChrome ? (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-white">{isDemoMode ? title : `${title} - mapa vivo nexID`}</p>
@@ -947,8 +951,9 @@ export function GlobalOpsMap({
           )}
         </div>
       </div>
+      ) : null}
 
-      {isDemoMode ? (
+      {isDemoMode && !isCompactChrome ? (
         <div className="global-ops-map-story mt-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch">
           <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">01 origen</p>
@@ -970,7 +975,7 @@ export function GlobalOpsMap({
         </div>
       ) : null}
 
-      <div className={isDemoMode ? "hidden" : "global-ops-map-controls mt-3 grid gap-2 md:grid-cols-7"}>
+      <div className={isDemoMode || isCompactChrome ? "hidden" : "global-ops-map-controls mt-3 grid gap-2 md:grid-cols-7"}>
         <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={tenant} onChange={(event) => setTenant(event.target.value)}>
           {tenants.map((item) => <option key={item} value={item}>{item === "ALL" ? "Tenant: todos" : item}</option>)}
         </select>
@@ -991,9 +996,9 @@ export function GlobalOpsMap({
         <button suppressHydrationWarning type="button" onClick={centerOperationalMap} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-100">Centrar mapa</button>
       </div>
 
-      <div className={`global-ops-map-layout mt-3 grid gap-3 ${isDemoMode ? "" : "lg:grid-cols-[1fr_22rem]"}`}>
+      <div className={`global-ops-map-layout grid gap-3 ${isCompactChrome ? "mt-0" : "mt-3"} ${isDemoMode || isCompactChrome ? "" : "lg:grid-cols-[1fr_22rem]"}`}>
         <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(90deg,rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(160deg,#020617,#0f172a,#111827)] bg-[length:4.5rem_4.5rem,4.5rem_4.5rem,auto]">
-          <div className={`global-ops-map-canvas relative ${isDemoMode ? "h-[24rem] md:h-[31rem]" : "h-[29rem]"}`}>
+          <div className={`global-ops-map-canvas relative ${isCompactChrome ? "h-[26rem]" : isDemoMode ? "h-[24rem] md:h-[31rem]" : "h-[29rem]"}`}>
             <PremiumVectorMap
               title={isDemoMode ? "Ruta de confianza" : "Mapa operativo premium"}
               subtitle={isDemoMode ? `${shortOriginLabel} -> ${shortTapLabel} con evidencia SUN y tap fisico.` : "Rutas de confianza, taps y clusters renderizados con motor propio."}
@@ -1002,7 +1007,7 @@ export function GlobalOpsMap({
               routes={vectorRoutes}
               selectedPointId={selectedPoint?.id}
               density={mode === "global" ? "heat" : "route"}
-              chrome={isDemoMode ? "minimal" : "compact"}
+              chrome={isCompactChrome ? "minimal" : isDemoMode ? "minimal" : "compact"}
               className="h-full rounded-none border-0 shadow-none"
               heightClassName="h-full"
               maxPoints={isDemoMode ? 28 : mode === "global" ? 120 : 64}
@@ -1121,7 +1126,8 @@ export function GlobalOpsMap({
           </aside>
         ) : null}
 
-        <aside className={isDemoMode ? "hidden" : "global-ops-map-drawer h-[29rem] overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200"}>
+        {!isDemoMode && !isCompactChrome ? (
+        <aside className="global-ops-map-drawer h-[29rem] overflow-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200">
           <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Detalle del punto</p>
           {selectedPoint ? (
             <div className="global-ops-map-selected mt-2 space-y-2 rounded-lg border border-cyan-300/25 bg-cyan-500/10 p-3">
@@ -1186,6 +1192,7 @@ export function GlobalOpsMap({
             {!fallbackRows.length ? <p className="text-slate-400">Sin datos para los filtros seleccionados.</p> : null}
           </div>
         </aside>
+        ) : null}
       </div>
 
       {isDemoMode ? (
@@ -1194,11 +1201,11 @@ export function GlobalOpsMap({
           <button suppressHydrationWarning type="button" onClick={centerOperationalMap} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 font-semibold text-emerald-100">Reencuadrar</button>
           <span>La vista demo evita filtros tecnicos para vender la historia del producto.</span>
         </div>
-      ) : (
+      ) : !isCompactChrome ? (
         <div className="mt-3">
           <input suppressHydrationWarning type="range" min={10} max={100} step={10} value={progress} onChange={(event) => setProgress(Number(event.target.value))} className="w-full" />
         </div>
-      )}
+      ) : null}
     </Card>
   );
 }

@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { EmptyState, FilterBar, type GlobalOpsPoint, type GlobalOpsRoute } from "@product/ui";
-import { ShieldAlert, ShieldCheck, MapPin, RefreshCw, Layers } from "lucide-react";
+import { EmptyState, type GlobalOpsPoint, type GlobalOpsRoute } from "@product/ui";
+import { ShieldAlert, ShieldCheck, MapPin, RefreshCw } from "lucide-react";
 
 const GlobalOpsMap = dynamic(() => import("@product/ui").then((mod) => mod.GlobalOpsMap), { ssr: false });
 
@@ -32,11 +32,13 @@ export function DemoOpsMap({
   selectedVertical,
   selectedPack,
   mode = "demo",
+  chrome = "full",
 }: {
   points: MapPoint[];
   selectedVertical?: string;
   selectedPack?: string;
   mode?: MapMode;
+  chrome?: "full" | "compact";
 }) {
   const [eventFilter, setEventFilter] = useState<EventFilter>("all");
   const [country, setCountry] = useState("ALL");
@@ -94,9 +96,11 @@ export function DemoOpsMap({
   const cleanCount = filteredPoints.filter(p => p.risk === 0).length;
   const riskCount = filteredPoints.filter(p => p.risk > 0).length;
   const uniqueCities = new Set(filteredPoints.map(p => p.city)).size;
+  const isCompact = chrome === "compact";
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80 p-4 shadow-xl backdrop-blur-xl sm:p-5">
+    <div className={`min-w-0 overflow-hidden ${isCompact ? "rounded-xl border border-white/5 bg-slate-950/35 p-0" : "rounded-2xl border border-white/10 bg-slate-950/80 p-4 shadow-xl backdrop-blur-xl sm:p-5"}`}>
+      {!isCompact ? (
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.15em] text-cyan-200 flex items-center gap-2">
@@ -115,8 +119,10 @@ export function DemoOpsMap({
           Restablecer
         </button>
       </div>
+      ) : null}
 
       {/* Floating HUD over the map control */}
+      {!isCompact ? (
       <div className="mt-4 grid gap-2 grid-cols-2 md:grid-cols-4">
         <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 text-xs">
           <span className="text-slate-400">Taps Geotrazados</span>
@@ -139,8 +145,10 @@ export function DemoOpsMap({
           </b>
         </div>
       </div>
+      ) : null}
 
       {/* Premium Toggle Buttons for Filters */}
+      {!isCompact ? (
       <div className="mt-4 p-3 rounded-xl bg-slate-950 border border-white/5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Filtro Alertas:</span>
@@ -200,12 +208,13 @@ export function DemoOpsMap({
           )}
         </div>
       </div>
+      ) : null}
 
-      <div className="mt-3 overflow-x-auto rounded-2xl border border-white/5 bg-slate-900/25">
+      <div className={isCompact ? "overflow-hidden rounded-xl border border-white/5 bg-slate-900/25" : "mt-3 overflow-x-auto rounded-2xl border border-white/5 bg-slate-900/25"}>
         {normalizedPoints.length === 0 ? (
           <EmptyState title="Sin hubs visibles" description="Probá cambiar país, scope o tipo de evento." className="border-dashed px-4 py-12 text-center text-sm text-slate-400" />
         ) : (
-          <div className="min-w-[560px]">
+          <div className={isCompact ? "min-w-0" : "min-w-[560px]"}>
           <GlobalOpsMap
             title={mode === "demo" ? "Heatmap operativo demo" : mode === "tenant" ? "Heatmap tenant en vivo" : "Heatmap global multi-tenant"}
             subtitle="Mapa de calor, clusters y rutas punteadas entre eventos de tap."
@@ -214,14 +223,17 @@ export function DemoOpsMap({
             routes={routes}
             playbackEnabled
             riskOnly={eventFilter === "risk"}
+            chrome={isCompact ? "compact" : "full"}
           />
           </div>
         )}
       </div>
 
+      {!isCompact ? (
       <p className="mt-2 text-[10px] text-slate-500">
         Ubicación física mapeada: {mode === "demo" ? (scope === "selected" ? `pack:${selectedPack || "activo"}` : "todas las verticales demo") : mode === "tenant" ? `tenant:${selectedPack || "activo"}` : "global"}.
       </p>
+      ) : null}
     </div>
   );
 }

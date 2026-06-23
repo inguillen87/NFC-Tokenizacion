@@ -13,8 +13,23 @@ function fallbackStream(
   options: { includeDemoRows?: boolean; tenant?: string } = {},
 ) {
   const encoder = new TextEncoder();
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let closed = false;
+  const cleanup = () => {
+    closed = true;
+    if (heartbeat) clearInterval(heartbeat);
+    heartbeat = null;
+  };
   const stream = new ReadableStream({
     start(controller) {
+      const enqueue = (chunk: string) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(chunk));
+        } catch {
+          cleanup();
+        }
+      };
       const pushSnapshot = () => {
         const tenant = String(options.tenant || "").toLowerCase();
         const rows = options.includeDemoRows
@@ -22,20 +37,19 @@ function fallbackStream(
             .filter((row) => !tenant || row.tenant_slug === tenant)
             .map(toDemoRealtimeEvent)
           : [];
-        controller.enqueue(encoder.encode(`event: snapshot\ndata: ${JSON.stringify({ rows })}\n\n`));
+        enqueue(`event: snapshot\ndata: ${JSON.stringify({ rows })}\n\n`);
       };
       pushSnapshot();
-      controller.enqueue(encoder.encode(`event: warning\ndata: ${JSON.stringify({ reason: message, requestId })}\n\n`));
-      const heartbeat = setInterval(() => {
+      enqueue(`event: warning\ndata: ${JSON.stringify({ reason: message, requestId })}\n\n`);
+      heartbeat = setInterval(() => {
         const now = Date.now();
-        controller.enqueue(encoder.encode(`: ping ${now}\n\n`));
+        enqueue(`: ping ${now}\n\n`);
         pushSnapshot();
-        controller.enqueue(encoder.encode(`event: heartbeat\ndata: ${JSON.stringify({ id: `hb-${now}`, ts: now, requestId })}\n\n`));
+        enqueue(`event: heartbeat\ndata: ${JSON.stringify({ id: `hb-${now}`, ts: now, requestId })}\n\n`);
       }, 5000);
-      setTimeout(() => {
-        clearInterval(heartbeat);
-        controller.close();
-      }, 60 * 1000);
+    },
+    cancel() {
+      cleanup();
     },
   });
 

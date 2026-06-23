@@ -1,4 +1,4 @@
-import type { TenantTapRealtimeEvent } from "../../lib/realtime-feed";
+import { sortRealtimeEvents, type TenantTapRealtimeEvent } from "../../lib/realtime-feed";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
@@ -358,7 +358,7 @@ export default async function DashboardHome() {
     ? liveEvents.filter((row: Record<string, unknown>) => tenantFromRow(row) === tenantScope)
     : liveEvents;
 
-  const initialRealtimeEvents = scopedLiveEvents.map(toRealtimeEvent);
+  const initialRealtimeEvents = sortRealtimeEvents(scopedLiveEvents.map(toRealtimeEvent), 40);
 
   const scopedTokenizationRows = tenantScope
     ? tokenizationRows.filter((row: Record<string, unknown>) => String(row.tenant_slug || "").toLowerCase() === tenantScope)

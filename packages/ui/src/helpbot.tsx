@@ -249,15 +249,15 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
   return (
     <div className={className}>
       {!open ? (
-        <div className="helpbot-hint fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] right-4 z-[91] max-w-[220px] rounded-lg border border-cyan-300/30 bg-slate-950/95 px-3 py-2 text-[11px] text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,.2)] sm:right-5">
+        <div className="helpbot-hint fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] right-4 z-[91] max-w-[220px] rounded-lg border border-cyan-300/30 bg-slate-950/95 px-3 py-2 text-[11px] text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,.2)] sm:right-5 lg:hidden">
           {t.hints[hintIndex]}
         </div>
       ) : null}
-      <button suppressHydrationWarning className="helpbot-surface helpbot-trigger fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[90] inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,.35)] sm:bottom-5 sm:right-5" onClick={() => setOpen((v) => !v)}>
+      <button suppressHydrationWarning className="helpbot-surface helpbot-trigger fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[90] inline-flex items-center justify-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/95 px-4 py-2 text-sm text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,.35)] sm:bottom-5 sm:right-5 lg:h-11 lg:w-11 lg:px-0" onClick={() => setOpen((v) => !v)}>
         <span className="relative inline-flex">
           <BrandDot size={10} variant="ripple" theme="dark" />
         </span>
-        {open ? t.close : t.open}
+        <span className="lg:sr-only">{open ? t.close : t.open}</span>
       </button>
 
       {open ? (
