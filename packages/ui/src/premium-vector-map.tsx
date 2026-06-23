@@ -895,7 +895,7 @@ export function PremiumVectorMap({
             const selected = selectedPoint?.id === point.id;
             const radius = selected ? 10 : tone === "origin" || tone === "tap" ? 8 : 6.2;
             const shouldLabel = chrome !== "minimal" && !isTightRouteView && (selected || tone === "origin" || tone === "tap" || tone === "risk");
-            const isFresh = point.lastSeen ? Math.abs(Date.now() - Date.parse(point.lastSeen)) < 25000 : false;
+            const isFresh = point.lastSeen ? Math.abs(Date.now() - Date.parse(point.lastSeen)) < 20000 : false;
 
             return (
               <g

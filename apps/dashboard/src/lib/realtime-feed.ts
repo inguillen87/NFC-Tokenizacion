@@ -19,6 +19,9 @@ export type TenantTapRealtimeEvent = {
   lng?: number | null;
   locationSource?: string | null;
   locationAccuracyM?: number | null;
+  deviceLabel?: string | null;
+  deviceOs?: string | null;
+  deviceType?: string | null;
   productName?: string | null;
   source: "production" | "demo";
 };

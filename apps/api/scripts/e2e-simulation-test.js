@@ -33,6 +33,13 @@ if (!DATABASE_URL || !ADMIN_API_KEY) {
 
 const sql = neon(DATABASE_URL);
 const API_BASE = process.env.API_BASE || "https://api.nexid.lat";
+const SIMULATED_GPS_POINTS = [
+  { label: "Mendoza", city: "Mendoza", countryCode: "AR", lat: -32.8895, lng: -68.8458, accuracy: 18 },
+  { label: "Buenos Aires", city: "Buenos Aires", countryCode: "AR", lat: -34.6037, lng: -58.3816, accuracy: 22 },
+  { label: "Cordoba", city: "Cordoba", countryCode: "AR", lat: -31.4201, lng: -64.1888, accuracy: 28 },
+  { label: "Santiago", city: "Santiago", countryCode: "CL", lat: -33.4489, lng: -70.6693, accuracy: 24 },
+  { label: "Sao Paulo", city: "Sao Paulo", countryCode: "BR", lat: -23.5505, lng: -46.6333, accuracy: 30 },
+];
 
 // Helpers
 function sha256(value) {
@@ -54,6 +61,7 @@ async function run() {
   const testContact = `e2e.test.buyer.${Date.now()}@nexid.lat`;
   const testPhone = `+549261${Math.floor(1000000 + Math.random() * 9000000)}`;
   const bid = "DEMO-2026-02";
+  const tapLocation = SIMULATED_GPS_POINTS[Math.floor(Math.random() * SIMULATED_GPS_POINTS.length)];
 
   console.log("🔍 Seleccionando un tag no reclamado del lote en la base de datos...");
   const unclaimedRows = await sql`
@@ -96,7 +104,7 @@ async function run() {
   `;
 
   console.log(`\n👉 1. Simulando Tap Físico NFC (Lote: ${bid}, UID: ${uidHex})`);
-  console.log("Ubicación del Tap: Finca Altamira, Mendoza (-33.3667, -69.15)");
+  console.log(`Ubicacion GPS variable del Tap: ${tapLocation.label} (${tapLocation.lat}, ${tapLocation.lng})`);
   const tapResponse = await fetch(`${API_BASE}/internal/demo/scan`, {
     method: "POST",
     headers: {
@@ -107,11 +115,11 @@ async function run() {
       bid,
       uidHex,
       action: "verify",
-      city: "Mendoza",
-      countryCode: "AR",
-      lat: -33.3667,
-      lng: -69.15,
-      deviceLabel: "Demo Phone (Altamira)",
+      city: "",
+      countryCode: "",
+      lat: tapLocation.lat,
+      lng: tapLocation.lng,
+      deviceLabel: `Demo Phone (${tapLocation.label})`,
     }),
   });
 
@@ -142,6 +150,52 @@ async function run() {
     console.error("❌ No se encontró ningún evento de tap registrado en DB.");
     process.exit(1);
   }
+
+  console.log("\n1.5. Enriqueciendo contexto GPS y validando geocoder local...");
+  const contextResponse = await fetch(`${API_BASE}/sun/context`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      bid,
+      uid: uidHex,
+      eventId,
+      contextStatus: verdict || "VALID",
+      scannedAt: new Date().toISOString(),
+      geo: {
+        lat: tapLocation.lat,
+        lng: tapLocation.lng,
+        accuracy: tapLocation.accuracy,
+      },
+      client: {
+        platform: "iPhone",
+        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+        mobile: true,
+        timezone: tapLocation.countryCode === "BR" ? "America/Sao_Paulo" : tapLocation.countryCode === "CL" ? "America/Santiago" : "America/Argentina/Buenos_Aires",
+      },
+    }),
+  });
+
+  if (!contextResponse.ok) {
+    console.error("ERROR enriqueciendo contexto SUN:", await contextResponse.text());
+    process.exit(1);
+  }
+  const contextData = await contextResponse.json();
+  const locationRows = await sql`
+    SELECT city, country_code, lat, lng, location_source, location_accuracy_m, device_label
+    FROM events
+    WHERE id = ${eventId}
+    LIMIT 1
+  `;
+  const resolvedLocation = locationRows[0] || {};
+  if (String(resolvedLocation.city || "") !== tapLocation.city || String(resolvedLocation.country_code || "") !== tapLocation.countryCode) {
+    console.error("ERROR Geocoder local no resolvio la ciudad esperada.", { expected: tapLocation, contextData, resolvedLocation });
+    process.exit(1);
+  }
+  if (String(resolvedLocation.location_source || "") !== "browser_gps") {
+    console.error("ERROR El evento no quedo marcado como browser_gps.", resolvedLocation);
+    process.exit(1);
+  }
+  console.log(`OK Contexto GPS resuelto: ${resolvedLocation.city}, ${resolvedLocation.country_code} (${resolvedLocation.location_accuracy_m || tapLocation.accuracy}m)`);
 
   const diagnosticId = tapData.request_id || 1;
 
@@ -277,7 +331,7 @@ async function run() {
   console.log("   Confianza de Compliance:", ocrTestData.ocr?.compliance_score + "%");
 
   console.log("\n👉 5. Reclamar propiedad comercial cargando comprobante (Receipt Upload) + GPS");
-  console.log("   Ubicación del celular: Finca Altamira, Mendoza (-33.3667, -69.15) -> Distancia: 0 km");
+  console.log(`   Ubicacion del celular: ${tapLocation.label} (${tapLocation.lat}, ${tapLocation.lng})`);
   const claimResponse = await fetch(`${API_BASE}/public/cta/claim-ownership`, {
     method: "POST",
     headers: {
@@ -296,9 +350,9 @@ async function run() {
       receiptPrice: 45,
       receiptFileName: "comprobante_vinoteca.png",
       receiptFileData: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
-      latitude: -33.3667,
-      longitude: -69.15,
-      accuracy: 5,
+      latitude: tapLocation.lat,
+      longitude: tapLocation.lng,
+      accuracy: tapLocation.accuracy,
       screenSize: { width: 390, height: 844 },
     }),
   });

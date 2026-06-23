@@ -25,6 +25,9 @@ type RealtimeEventPayload = {
   lng?: number | null;
   location_source?: string | null;
   location_accuracy_m?: number | null;
+  device_label?: string | null;
+  device_os?: string | null;
+  device_type?: string | null;
   source?: string | null;
   created_at?: string;
   meta?: Record<string, unknown> | null;

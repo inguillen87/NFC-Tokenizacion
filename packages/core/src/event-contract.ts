@@ -62,6 +62,9 @@ export type TenantTapRealtimeEvent = {
   lng?: number | null;
   locationSource?: string | null;
   locationAccuracyM?: number | null;
+  deviceLabel?: string | null;
+  deviceOs?: string | null;
+  deviceType?: string | null;
   productName?: string | null;
   source: "production" | "demo";
 };
@@ -119,6 +122,23 @@ function firstText(...values: unknown[]) {
     const text = typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
     if (text) return text;
   }
+  return "";
+}
+
+function inferDeviceOs(platform: string, userAgent: string) {
+  const normalized = `${platform} ${userAgent}`.toLowerCase();
+  if (/iphone|ipad|ios|mac os/.test(normalized)) return "iOS";
+  if (/android/.test(normalized)) return "Android";
+  if (/windows/.test(normalized)) return "Windows";
+  if (/linux/.test(normalized)) return "Linux";
+  return "";
+}
+
+function inferDeviceType(mobile: unknown, platform: string, userAgent: string) {
+  if (mobile === true || String(mobile).toLowerCase() === "true") return "mobile";
+  const normalized = `${platform} ${userAgent}`.toLowerCase();
+  if (/ipad|tablet/.test(normalized)) return "tablet";
+  if (/mobi|iphone|android/.test(normalized)) return "mobile";
   return "";
 }
 
@@ -212,12 +232,21 @@ export function resolveEventLocalTime(row: Record<string, unknown>) {
 
 export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): TenantTapRealtimeEvent {
   const normalized = normalizeEvent(row);
+  const meta = asRecord(row.meta);
+  const sunContext = asRecord(meta.sun_context);
+  const client = asRecord(sunContext.client);
+  const deviceMeta = asRecord(sunContext.device);
   const tenantId = row.tenant_id == null ? null : String(row.tenant_id);
   const batchId = row.batch_id == null ? (normalized.bid || null) : String(row.batch_id);
   const tagId = row.tag_id == null ? null : String(row.tag_id);
   const productName = row.product_name == null ? null : String(row.product_name);
   const time = resolveEventLocalTime(row);
   const accuracy = Number(row.location_accuracy_m ?? row.accuracy_m ?? row.accuracyM);
+  const userAgent = firstText(row.user_agent, row.userAgent, client.userAgent, client.browser);
+  const platform = firstText(row.device_label, row.deviceLabel, client.platform);
+  const deviceOs = firstText(row.device_os, row.deviceOs, deviceMeta.deviceOs, deviceMeta.os, client.os) || inferDeviceOs(platform, userAgent);
+  const deviceType = firstText(row.device_type, row.deviceType, deviceMeta.deviceType, client.deviceType) || inferDeviceType(client.mobile, platform, userAgent);
+  const deviceLabel = firstText(row.device_label, row.deviceLabel, deviceMeta.deviceLabel, platform, deviceOs, deviceType);
   return {
     eventId: String(normalized.id || row.event_id || `${normalized.createdAt || Date.now()}`),
     tenantId,
@@ -239,6 +268,9 @@ export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): T
     lng: normalized.lng ?? null,
     locationSource: firstText(row.location_source, row.locationSource) || null,
     locationAccuracyM: Number.isFinite(accuracy) ? accuracy : null,
+    deviceLabel: deviceLabel || null,
+    deviceOs: deviceOs || null,
+    deviceType: deviceType || null,
     productName,
     source: normalized.isDemo ? "demo" : "production",
   };

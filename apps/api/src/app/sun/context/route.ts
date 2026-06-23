@@ -43,6 +43,44 @@ function firstNumber(...values: unknown[]) {
   return null;
 }
 
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    const text = typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+    if (text) return text;
+  }
+  return "";
+}
+
+function inferDeviceOs(platform: string, userAgent: string) {
+  const normalized = `${platform} ${userAgent}`.toLowerCase();
+  if (/iphone|ipad|ios|mac os/.test(normalized)) return "iOS";
+  if (/android/.test(normalized)) return "Android";
+  if (/windows/.test(normalized)) return "Windows";
+  if (/linux/.test(normalized)) return "Linux";
+  return "";
+}
+
+function inferDeviceType(mobile: unknown, platform: string, userAgent: string) {
+  if (mobile === true) return "mobile";
+  const normalized = `${platform} ${userAgent}`.toLowerCase();
+  if (/ipad|tablet/.test(normalized)) return "tablet";
+  if (/mobi|iphone|android/.test(normalized)) return "mobile";
+  return "desktop";
+}
+
+function deviceContext(client: Record<string, unknown> | undefined) {
+  const platform = firstText(client?.platform);
+  const userAgent = firstText(client?.userAgent, client?.browser);
+  const deviceOs = firstText(client?.os) || inferDeviceOs(platform, userAgent);
+  const deviceType = firstText(client?.deviceType) || inferDeviceType(client?.mobile, platform, userAgent);
+  const deviceLabel = firstText(platform, deviceOs, deviceType);
+  return {
+    deviceLabel: deviceLabel.slice(0, 80) || null,
+    deviceOs: deviceOs || null,
+    deviceType: deviceType || null,
+  };
+}
+
 function contextJson(payload: unknown, status = 200) {
   const response = json(payload, status);
   Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
@@ -86,6 +124,7 @@ export async function POST(req: Request): Promise<Response> {
   const accuracy = asNumber(body.geo?.accuracy);
   const hasBrowserGps = lat !== null && lng !== null;
   const locationSource = hasBrowserGps ? "browser_gps" : body.geoError ? "browser_geolocation_error" : "browser_context";
+  const device = deviceContext(body.client);
   const metaPayload = {
     sun_context: {
       status: body.contextStatus || "unknown",
@@ -99,6 +138,7 @@ export async function POST(req: Request): Promise<Response> {
         speed: asNumber(body.geo?.speed),
       },
       client: body.client || {},
+      device,
       geoError: body.geoError || null,
     },
   };
@@ -207,13 +247,16 @@ export async function POST(req: Request): Promise<Response> {
 
   let resolvedCity: string | null = null;
   let resolvedCountry: string | null = null;
-  if (lat !== null && lng !== null) {
+  const shouldResolveCity = hasBrowserGps && (!target.city || !target.country_code);
+  if (shouldResolveCity && lat !== null && lng !== null) {
     const matchedCity = findNearestCity(lat, lng);
     if (matchedCity) {
       resolvedCity = matchedCity.city;
       resolvedCountry = matchedCity.countryCode;
     }
   }
+  const finalCity = firstText(target.city) || resolvedCity || null;
+  const finalCountry = firstText(target.country_code) || resolvedCountry || null;
 
   try {
     await ensureEventLocationContextSchema();
@@ -227,9 +270,9 @@ export async function POST(req: Request): Promise<Response> {
           location_accuracy_m = COALESCE(${accuracy}, location_accuracy_m),
           location_source = ${locationSource},
           location_updated_at = now(),
-          city = COALESCE(${resolvedCity}, city, geo_city),
-          country_code = COALESCE(${resolvedCountry}, country_code, geo_country),
-          device_label = COALESCE(device_label, ${String((body.client?.platform as string) || "").slice(0, 80) || null})
+          city = COALESCE(NULLIF(city, ''), ${resolvedCity}, geo_city),
+          country_code = COALESCE(NULLIF(country_code, ''), ${resolvedCountry}, geo_country),
+          device_label = COALESCE(NULLIF(device_label, ''), ${device.deviceLabel})
       WHERE id = ${target.id}
     `;
     publishRealtimeEvent({
@@ -241,18 +284,21 @@ export async function POST(req: Request): Promise<Response> {
       bid: target.bid || bid,
       uid_hex: target.uid_hex || uid,
       result: target.result || String(body.contextStatus || "unknown").toUpperCase(),
-      city: resolvedCity || target.city || null,
-      country_code: resolvedCountry || target.country_code || null,
+      city: finalCity,
+      country_code: finalCountry,
       lat: lat ?? firstNumber(target.lat),
       lng: lng ?? firstNumber(target.lng),
       location_source: locationSource,
       location_accuracy_m: accuracy,
+      device_label: device.deviceLabel,
+      device_os: device.deviceOs,
+      device_type: device.deviceType,
       product_name: target.product_name || null,
       source: "real",
       created_at: target.created_at || new Date().toISOString(),
       meta: metaPayload,
     });
-    return contextJson({ ok: true, updated: true, eventId: target.id, matchedBy, source: locationSource, accuracyM: accuracy });
+    return contextJson({ ok: true, updated: true, eventId: target.id, matchedBy, source: locationSource, accuracyM: accuracy, city: finalCity, countryCode: finalCountry });
   } catch {
     try {
       await sql/*sql*/`

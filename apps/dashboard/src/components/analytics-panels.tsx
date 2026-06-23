@@ -152,6 +152,135 @@ function AnalyticsExportActions({ data }: { data?: AnalyticsPanelsProps["data"] 
   );
 }
 
+type GeoOfferSource = {
+  city: string;
+  country?: string;
+  scans?: number;
+  risk?: number;
+  lat: number | null;
+  lng: number | null;
+  lastSeen?: string | null;
+};
+
+function GamificationGeoOfferStudio({
+  cities,
+  geoPoints,
+  mapMode,
+}: {
+  cities: GeoOfferSource[];
+  geoPoints: GeoOfferSource[];
+  mapMode: "demo" | "tenant" | "global";
+}) {
+  const [multipliers, setMultipliers] = useState<Record<string, number>>({});
+  const rows = useMemo(() => {
+    const source = cities.length ? cities : geoPoints;
+    return source
+      .filter((item) => typeof item.lat === "number" && typeof item.lng === "number")
+      .map((item) => {
+        const key = `${item.city}-${item.country || "--"}`.toLowerCase();
+        return {
+          key,
+          city: item.city || "Unknown",
+          country: item.country || "--",
+          lat: Number(item.lat),
+          lng: Number(item.lng),
+          scans: Number(item.scans || 0),
+          risk: Number(item.risk || 0),
+          lastSeen: item.lastSeen || new Date().toISOString(),
+          multiplier: multipliers[key] || 1,
+        };
+      })
+      .sort((a, b) => b.scans - a.scans)
+      .slice(0, 8);
+  }, [cities, geoPoints, multipliers]);
+  const totalScans = rows.reduce((sum, row) => sum + row.scans, 0);
+  const projectedClaims = rows.reduce((sum, row) => sum + Math.round(row.scans * (row.multiplier > 1 ? 0.22 : 0.14)), 0);
+  const projectedPoints = rows.reduce((sum, row) => sum + Math.round(row.scans * row.multiplier * 10), 0);
+  const mapPoints = rows.map((row) => ({
+    id: `geo-offer-${row.key}`,
+    city: row.city,
+    country: row.country,
+    lat: row.lat,
+    lng: row.lng,
+    scans: Math.max(row.scans, 1),
+    risk: row.risk,
+    verdict: row.risk > 0 ? "RISK" : "VALID",
+    tenantSlug: "geo-offers",
+    lastSeen: row.lastSeen,
+    uid: row.key,
+    role: "tap" as const,
+    productName: `Loyalty x${row.multiplier}`,
+  }));
+
+  function setMultiplier(key: string, multiplier: number) {
+    setMultipliers((current) => ({ ...current, [key]: multiplier }));
+  }
+
+  return (
+    <OpsPanel title="Gamification & geotargeted offers studio" subtitle="Multiplicadores de puntos por origen geografico, simulados sobre hotspots reales del scope.">
+      {!rows.length ? (
+        <p className="text-sm text-slate-400">Sin coordenadas suficientes para activar ofertas por zona. Hace un tap con GPS o revisa la resolucion de ciudad.</p>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.75fr)]">
+          <div className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-slate-950/60">
+            <GlobalOpsMap
+              title="Heatmap de ofertas localizadas"
+              subtitle="Hotspots, recurrencia y zonas candidatas para puntos extra."
+              mode={mapMode === "global" ? "global" : "tenant"}
+              points={mapPoints}
+              routes={[]}
+              playbackEnabled={false}
+              riskOnly={false}
+            />
+          </div>
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
+                <p className="uppercase tracking-[0.12em] text-cyan-200/80">Taps base</p>
+                <p className="mt-1 text-lg font-semibold">{totalScans}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">
+                <p className="uppercase tracking-[0.12em] text-emerald-200/80">Claims</p>
+                <p className="mt-1 text-lg font-semibold">{projectedClaims}</p>
+              </div>
+              <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-xs text-violet-100">
+                <p className="uppercase tracking-[0.12em] text-violet-200/80">Puntos</p>
+                <p className="mt-1 text-lg font-semibold">{projectedPoints}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {rows.slice(0, 6).map((row) => (
+                <div key={row.key} className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-white">{row.city}, {row.country}</p>
+                      <p className="text-slate-400">{row.scans} taps - risk {row.risk}</p>
+                    </div>
+                    <StatusChip label={`x${row.multiplier}`} tone={row.multiplier > 1 ? "good" : "neutral"} />
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {[1, 1.5, 2, 3].map((value) => (
+                      <button
+                        key={`${row.key}-${value}`}
+                        type="button"
+                        suppressHydrationWarning
+                        onClick={() => setMultiplier(row.key, value)}
+                        className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${row.multiplier === value ? "border-emerald-300/40 bg-emerald-500/15 text-emerald-100" : "border-white/10 bg-white/5 text-slate-300 hover:text-white"}`}
+                      >
+                        x{value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </OpsPanel>
+  );
+}
+
 export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: AnalyticsPanelsProps) {
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [riskCategoryFilter, setRiskCategoryFilter] = useState<string>("ALL");
@@ -309,6 +438,15 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         productName: product?.productName,
       };
     });
+  const geoOfferPoints: GeoOfferSource[] = (data?.geoPoints || []).map((point) => ({
+    city: point.city,
+    country: point.country || "--",
+    lat: point.lat,
+    lng: point.lng,
+    scans: point.scans || 0,
+    risk: point.risk || 0,
+    lastSeen: null,
+  }));
 
   if (!hasOperationalData) {
     return (
@@ -360,6 +498,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
             Exportar PDF (imprimir reporte)
           </button>
         </OpsPanel>
+
+        <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />
 
         <OpsPanel title="Sin datos operativos" subtitle="Todavia no hay escaneos reales en el scope elegido.">
           <ul className="space-y-2 text-sm text-slate-300">
@@ -492,6 +632,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           </div>
         </OpsPanel>
       </div>
+
+      <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />
 
       <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({ city: point.city, country: point.country || "--", lat: point.lat, lng: point.lng, scans: point.scans || 1, risk: point.risk || 0 }))} />
       <OpsPanel title="Journey map (tenant premium taps)" subtitle="Origen del producto vs tap actual del cliente, con distancia estimada, linea punteada y links a ubicacion.">

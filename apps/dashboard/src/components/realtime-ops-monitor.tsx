@@ -48,6 +48,15 @@ function locationSourceLabel(row: TenantTapRealtimeEvent) {
   return Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng)) ? "Coordenada reportada" : "Ciudad estimada";
 }
 
+function deviceSummary(row: TenantTapRealtimeEvent) {
+  const parts = [
+    row.deviceLabel,
+    row.deviceOs,
+    row.deviceType,
+  ].map((item) => String(item || "").trim()).filter(Boolean);
+  return parts.length ? parts.join(" - ") : "Dispositivo sin clasificar";
+}
+
 function toMapPoint(row: TenantTapRealtimeEvent) {
   const city = String(row.city || "Unknown");
   const country = String(row.country || "--");
@@ -67,7 +76,7 @@ function toMapPoint(row: TenantTapRealtimeEvent) {
     lastSeen: String(row.occurredAt || new Date().toISOString()),
     tenantSlug: row.tenantSlug || undefined,
     uid: row.uidMasked,
-    device: `${locationSourceLabel(row)}${row.timezoneLabel ? ` - ${row.timezoneLabel}` : ""}`,
+    device: `${deviceSummary(row)} - ${locationSourceLabel(row)}${row.timezoneLabel ? ` - ${row.timezoneLabel}` : ""}`,
   };
 }
 
@@ -119,7 +128,7 @@ export function RealtimeOpsMonitor({
   const [latestEventId, setLatestEventId] = useState<string>("");
   const [selectedTenant, setSelectedTenant] = useState<string>("all");
 
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreenOps, setIsFullscreenOps] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [timeStr, setTimeStr] = useState("");
 
@@ -219,6 +228,12 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
 
   useEffect(() => {
     setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    const openControlCenter = () => setIsFullscreenOps(true);
+    window.addEventListener("nexid:open-control-center", openControlCenter);
+    return () => window.removeEventListener("nexid:open-control-center", openControlCenter);
   }, []);
 
   useEffect(() => {
@@ -373,6 +388,15 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
       height: Math.max(8, Math.round((bucket.count / max) * 52)),
     }));
   }, [hydrated, visibleEvents]);
+  const fraudRate = visibleEvents.length ? Math.round((liveMetrics.risk / visibleEvents.length) * 1000) / 10 : 0;
+  const latestImpactEvent = useMemo(() => {
+    if (!hydrated) return null;
+    const latest = visibleEvents[0];
+    if (!latest) return null;
+    const at = new Date(String(latest.occurredAt || "")).getTime();
+    if (!Number.isFinite(at)) return null;
+    return Date.now() - at <= 3000 ? latest : null;
+  }, [hydrated, timeStr, visibleEvents]);
 
   function timeAgo(value: unknown) {
     if (!hydrated) return "en vivo";
@@ -384,7 +408,7 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
     return `hace ${Math.round(sec / 3600)}h`;
   }
 
-  if (isFullscreen) {
+  if (isFullscreenOps) {
     return (
       <div className="fixed inset-0 z-[9999] flex flex-col bg-[#030712] font-mono text-cyan-400 select-none overflow-hidden p-4">
         {/* NASA Header */}
@@ -422,7 +446,7 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
             </button>
             
             <button
-              onClick={() => setIsFullscreen(false)}
+              onClick={() => setIsFullscreenOps(false)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition-colors"
             >
               <Minimize2 className="h-4 w-4" />
@@ -431,6 +455,15 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
           </div>
         </div>
         
+        {latestImpactEvent ? (
+          <div className="pointer-events-none absolute left-1/2 top-24 z-20 w-[min(58rem,calc(100vw-2rem))] -translate-x-1/2 animate-pulse rounded-xl border border-cyan-300/40 bg-cyan-950/70 px-5 py-4 text-center shadow-[0_0_38px_rgba(34,211,238,0.28)] backdrop-blur">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Impacto en vivo</p>
+            <p className="mt-1 text-lg font-black uppercase tracking-[0.08em] text-white">
+              LOTE ACTIVO ESCANEADO EN {String(latestImpactEvent.city || "ZONA SIN RESOLVER")} - UID: {latestImpactEvent.uidMasked || "N/A"}
+            </p>
+          </div>
+        ) : null}
+
         {/* HUD grid */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
           <div className="bg-slate-950/60 border border-cyan-500/20 rounded-xl p-3 text-center">
@@ -442,8 +475,8 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
             <div className="text-2xl font-black text-emerald-400 mt-1">{liveMetrics.valid}</div>
           </div>
           <div className="bg-slate-950/60 border border-rose-500/20 rounded-xl p-3 text-center">
-            <span className="text-[10px] text-rose-500/80 uppercase tracking-widest">Alertas de Fraude</span>
-            <div className="text-2xl font-black text-rose-400 mt-1">{liveMetrics.risk}</div>
+            <span className="text-[10px] text-rose-500/80 uppercase tracking-widest">Fraude</span>
+            <div className="text-2xl font-black text-rose-400 mt-1">{fraudRate}%</div>
           </div>
           <div className="bg-slate-950/60 border border-indigo-500/20 rounded-xl p-3 text-center">
             <span className="text-[10px] text-indigo-400 uppercase tracking-widest">Zonas Activas</span>
@@ -497,7 +530,7 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
                     <div key={eventId} className={`p-2 rounded border transition-all ${isLatest ? 'bg-cyan-950/20 border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.15)]' : 'bg-slate-900/30 border-white/5'} ${isRisk ? 'border-rose-500/20 bg-rose-950/5' : ''}`}>
                       <div className="flex items-center justify-between mb-1">
                         <span className={`font-black ${isRisk ? 'text-rose-400' : 'text-emerald-400'}`}>
-                          [{result}] {isLatest ? '● NEW_EVENT' : ''}
+                          [{result}] {isLatest ? "NEW_EVENT" : ""}
                         </span>
                         <span className="text-[10px] text-slate-500">{time}</span>
                       </div>
@@ -511,7 +544,7 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
                   );
                 })}
                 {!visibleEvents.length ? (
-                  <p className="text-slate-500 text-center py-10">ESPERANDO SEÑALES DE DISPOSITIVOS...</p>
+                  <p className="text-slate-500 text-center py-10">ESPERANDO SENALES DE DISPOSITIVOS...</p>
                 ) : null}
               </div>
             </div>
@@ -535,137 +568,145 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
   }
 
   return (
-    <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(640px,0.9fr)]">
+    <div id="control-center" className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(640px,0.9fr)]">
       <style>{`
         @media print {
-          body {
-            background-color: #020817 !important;
-            color: #f8fafc !important;
-          }
-          header, nav, select, button, .site-header, aside, .no-print, select, label, .site-footer {
-            display: none !important;
-          }
-          main {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-          }
+          body { background-color: #020817 !important; color: #f8fafc !important; }
+          header, nav, select, button, .site-header, aside, .no-print, label, .site-footer { display: none !important; }
+          main { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
         }
       `}</style>
       <Card className="min-w-0 p-5">
-              className="rounded border border-white/20 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 no-print"
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">
+              <Activity className="h-4 w-4 text-cyan-300" />
+              {labels.liveFeed}
+            </h2>
+            <p className="mt-1 text-xs text-slate-400">
+              {labels.mission} - {hydrated && lastUpdateAt ? `ultimo evento ${new Date(lastUpdateAt).toLocaleTimeString("es-AR")}` : "sincronizando stream"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 no-print">
+            <select
+              suppressHydrationWarning
+              value={selectedTenant}
+              onChange={(event) => setSelectedTenant(event.target.value)}
+              className="rounded border border-white/20 bg-slate-900 px-2 py-1.5 text-[11px] text-slate-100"
             >
               <option value="all">Todos los tenants</option>
               {tenantOptions.map((tenant) => (
-                <option key={tenant} value={tenant}>
-                  {tenant}
-                </option>
+                <option key={tenant} value={tenant}>{tenant}</option>
               ))}
             </select>
-            <span className="no-print"><Badge tone="cyan">{labels.mission}</Badge></span>
-            <span className="no-print"><Badge tone={connected ? "green" : "amber"}>{connected ? "Live stream" : "Reconnecting..."}</Badge></span>
+            <button
+              suppressHydrationWarning
+              type="button"
+              onClick={() => setIsFullscreenOps(true)}
+              className="inline-flex items-center gap-1.5 rounded border border-cyan-300/35 bg-cyan-500/12 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-100 hover:bg-cyan-400/20"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+              Centro de Control NASA
+            </button>
+            <button
+              suppressHydrationWarning
+              type="button"
+              onClick={handleExportCsv}
+              className="rounded border border-emerald-300/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-500/20"
+            >
+              Export CSV
+            </button>
+            <Badge tone={connected ? "green" : "amber"}>{connected ? "Live stream" : "Reconnecting..."}</Badge>
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-slate-400 no-print">Ultima actualizacion: {hydrated && lastUpdateAt ? new Date(lastUpdateAt).toLocaleTimeString("es-AR") : "sincronizando"}</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs text-emerald-100">
-            <p className="uppercase tracking-[0.12em] text-emerald-200/80">Taps validos</p>
-            <p className="mt-1 text-xl font-semibold">{liveMetrics.valid}</p>
+
+        {latestImpactEvent ? (
+          <div className="mt-4 animate-pulse rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-3 text-xs text-cyan-100">
+            LOTE ACTIVO ESCANEADO EN {String(latestImpactEvent.city || "ZONA SIN RESOLVER")} - UID: {latestImpactEvent.uidMasked || "N/A"}
+          </div>
+        ) : null}
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-xs text-cyan-100">
+            <p className="uppercase tracking-[0.12em] text-cyan-200/80">Taps totales</p>
+            <p className="mt-1 text-xl font-semibold">{visibleEvents.length}</p>
+          </div>
+          <div className="rounded-xl border border-sky-300/25 bg-sky-500/10 p-3 text-xs text-sky-100">
+            <p className="uppercase tracking-[0.12em] text-sky-200/80">TPM</p>
+            <p className="mt-1 text-xl font-semibold">{realtimePulse.tapsPerMinute}</p>
           </div>
           <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-xs text-rose-100">
-            <p className="uppercase tracking-[0.12em] text-rose-200/80">Taps con riesgo</p>
-            <p className="mt-1 text-xl font-semibold">{liveMetrics.risk}</p>
+            <p className="uppercase tracking-[0.12em] text-rose-200/80">Fraude</p>
+            <p className="mt-1 text-xl font-semibold">{fraudRate}%</p>
           </div>
-          <div className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-            <p className="uppercase tracking-[0.12em] text-cyan-200/80">UIDs activas</p>
+          <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs text-emerald-100">
+            <p className="uppercase tracking-[0.12em] text-emerald-200/80">Validos</p>
+            <p className="mt-1 text-xl font-semibold">{liveMetrics.valid}</p>
+          </div>
+          <div className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3 text-xs text-violet-100">
+            <p className="uppercase tracking-[0.12em] text-violet-200/80">UIDs</p>
             <p className="mt-1 text-xl font-semibold">{liveMetrics.uniqueTags}</p>
           </div>
           <div className="rounded-xl border border-indigo-300/25 bg-indigo-500/10 p-3 text-xs text-indigo-100">
-            <p className="uppercase tracking-[0.12em] text-indigo-200/80">Ciudades activas</p>
+            <p className="uppercase tracking-[0.12em] text-indigo-200/80">Ciudades</p>
             <p className="mt-1 text-xl font-semibold">{liveMetrics.uniqueCities}</p>
           </div>
         </div>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-xl border border-fuchsia-300/25 bg-fuchsia-500/10 p-3 text-xs text-fuchsia-100">
-            <p className="uppercase tracking-[0.12em] text-fuchsia-200/80">Taps ultimos 5m</p>
-            <p className="mt-1 text-xl font-semibold">{realtimePulse.recentCount}</p>
-          </div>
-          <div className="rounded-xl border border-sky-300/25 bg-sky-500/10 p-3 text-xs text-sky-100">
-            <p className="uppercase tracking-[0.12em] text-sky-200/80">Velocidad (TPM)</p>
-            <p className="mt-1 text-xl font-semibold">{realtimePulse.tapsPerMinute}</p>
-          </div>
-        </div>
-        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs">
-          <p className="font-semibold uppercase tracking-[0.12em] text-slate-200">Tenants activos (ultimos 5m)</p>
-          <div className="mt-2 space-y-1.5">
-            {realtimePulse.topTenants.map((tenant) => (
-              <div key={tenant.tenant} className="flex items-center justify-between rounded border border-white/10 bg-slate-950/50 px-2 py-1">
-                <p className="font-mono text-[11px] text-slate-200">{tenant.tenant}</p>
-                <p className="text-[11px] text-slate-300">
-                  taps <span className="font-semibold text-cyan-200">{tenant.taps}</span> - riesgo{" "}
-                  <span className={tenant.risk ? "font-semibold text-rose-300" : "font-semibold text-emerald-300"}>{tenant.risk}</span>
-                </p>
-              </div>
-            ))}
-            {!realtimePulse.topTenants.length ? <p className="text-slate-400">Sin actividad reciente por tenant.</p> : null}
-          </div>
-        </div>
-        <p className="mt-2 text-[11px] text-slate-400">
-          Scope activo: <span className="font-mono text-slate-200">{selectedTenant === "all" ? "todos los tenants" : selectedTenant}</span>
-        </p>
-        {selectedTenant !== "all" ? (
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-            <Link href={`/tenants/${encodeURIComponent(selectedTenant)}`} className="rounded border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100 hover:bg-cyan-500/20">
-              Ver tenant
-            </Link>
-            <Link href={`/events?tenant=${encodeURIComponent(selectedTenant)}`} className="rounded border border-indigo-300/30 bg-indigo-500/10 px-2 py-1 text-indigo-100 hover:bg-indigo-500/20">
-              Abrir eventos filtrados
-            </Link>
-            <Link href={`/tags?tenant=${encodeURIComponent(selectedTenant)}`} className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100 hover:bg-emerald-500/20">
-              Ver tags del tenant
-            </Link>
-          </div>
-        ) : null}
-        {aiReport ? (
-          <div className="mt-3 rounded-xl border border-violet-500/30 bg-slate-950/70 p-4 text-xs no-print">
+
+        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,0.9fr)_minmax(18rem,0.7fr)]">
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs">
             <div className="flex items-center justify-between">
-              <p className="font-black uppercase tracking-[0.14em] text-violet-300 flex items-center gap-1.5">
-                <span>nexID Ops Copilot</span>
-              </p>
+              <p className="font-semibold uppercase tracking-[0.12em] text-slate-200">Momentum taps (10m)</p>
+              <p className="text-[11px] text-slate-400">barras por minuto</p>
+            </div>
+            <div className="mt-2 flex items-end gap-1">
+              {minuteBars.map((bar) => (
+                <div key={bar.key} className="group flex-1">
+                  <div
+                    style={{ height: `${bar.height}px` }}
+                    className={`w-full rounded-t transition-all duration-500 ${bar.count ? "bg-cyan-300/80" : "bg-slate-700/40"}`}
+                    title={`${bar.label} - ${bar.count} taps`}
+                  />
+                  <p className="mt-1 truncate text-center text-[9px] text-slate-500">{bar.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs">
+            <p className="font-semibold uppercase tracking-[0.12em] text-slate-200">Tenants activos (5m)</p>
+            <div className="mt-2 space-y-1.5">
+              {realtimePulse.topTenants.map((tenant) => (
+                <div key={tenant.tenant} className="flex items-center justify-between rounded border border-white/10 bg-slate-950/50 px-2 py-1">
+                  <p className="font-mono text-[11px] text-slate-200">{tenant.tenant}</p>
+                  <p className="text-[11px] text-slate-300">
+                    taps <span className="font-semibold text-cyan-200">{tenant.taps}</span> - riesgo{" "}
+                    <span className={tenant.risk ? "font-semibold text-rose-300" : "font-semibold text-emerald-300"}>{tenant.risk}</span>
+                  </p>
+                </div>
+              ))}
+              {!realtimePulse.topTenants.length ? <p className="text-slate-400">Sin actividad reciente por tenant.</p> : null}
+            </div>
+          </div>
+        </div>
+
+        {aiReport ? (
+          <div className="mt-4 rounded-xl border border-violet-500/30 bg-slate-950/70 p-4 text-xs no-print">
+            <div className="flex items-center justify-between">
+              <p className="font-black uppercase tracking-[0.14em] text-violet-300">nexID Ops Copilot</p>
               <button
                 suppressHydrationWarning
                 type="button"
-                className="text-[10px] text-cyan-300 font-bold hover:underline"
+                className="text-[10px] font-bold text-cyan-300 hover:underline"
                 onClick={generateAiInsights}
                 disabled={aiAnalyzing}
               >
                 {aiAnalyzing ? "Analizando..." : "Actualizar reporte"}
               </button>
             </div>
-            <div className="mt-2 text-slate-300 whitespace-pre-line leading-5">
-              {aiReport}
-            </div>
+            <div className="mt-2 whitespace-pre-line leading-5 text-slate-300">{aiReport}</div>
           </div>
         ) : null}
-        <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs">
-          <div className="flex items-center justify-between">
-            <p className="font-semibold uppercase tracking-[0.12em] text-slate-200">Momentum taps (10m)</p>
-            <p className="text-[11px] text-slate-400">barras por minuto</p>
-          </div>
-          <div className="mt-2 flex items-end gap-1">
-            {minuteBars.map((bar) => (
-              <div key={bar.key} className="group flex-1">
-                <div
-                  style={{ height: `${bar.height}px` }}
-                  className={`w-full rounded-t bg-gradient-to-t transition-all duration-500 ${bar.count ? "from-cyan-500/30 to-cyan-300/80" : "from-slate-700/40 to-slate-600/40"}`}
-                  title={`${bar.label} - ${bar.count} taps`}
-                />
-                <p className="mt-1 truncate text-center text-[9px] text-slate-500">{bar.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+
         <div className="mt-4 space-y-2">
           {visibleEvents.slice(0, 10).map((event) => {
             const result = String(event.verdict || "valid").toUpperCase();
@@ -687,11 +728,25 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
                 <p className="mt-1 text-slate-300">
                   {String(event.tenantSlug || "-")} - {String(event.batchId || "-")} - {String(event.uidMasked || "-")}
                 </p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  {event.city || "Geolocalizando"}, {event.country || "--"} - {deviceSummary(event)} - {locationSourceLabel(event)}
+                </p>
               </div>
             );
           })}
           {!visibleEvents.length ? <p className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-300">Sin eventos aun en el stream activo para este tenant.</p> : null}
         </div>
+
+        <p className="mt-3 text-[11px] text-slate-400">
+          Scope activo: <span className="font-mono text-slate-200">{selectedTenant === "all" ? "todos los tenants" : selectedTenant}</span>
+        </p>
+        {selectedTenant !== "all" ? (
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            <Link href={`/tenants/${encodeURIComponent(selectedTenant)}`} className="rounded border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100 hover:bg-cyan-500/20">Ver tenant</Link>
+            <Link href={`/events?tenant=${encodeURIComponent(selectedTenant)}`} className="rounded border border-indigo-300/30 bg-indigo-500/10 px-2 py-1 text-indigo-100 hover:bg-indigo-500/20">Abrir eventos filtrados</Link>
+            <Link href={`/tags?tenant=${encodeURIComponent(selectedTenant)}`} className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100 hover:bg-emerald-500/20">Ver tags del tenant</Link>
+          </div>
+        ) : null}
       </Card>
 
       <div className="min-w-0">

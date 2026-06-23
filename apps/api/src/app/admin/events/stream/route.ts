@@ -95,6 +95,9 @@ async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promis
           e.lng,
           e.location_source,
           e.location_accuracy_m,
+          e.device_label,
+          e.user_agent,
+          e.meta,
           COALESCE(NULLIF(e.bid, ''), b.bid) AS bid,
           e.source,
           t.slug AS tenant_slug
@@ -141,6 +144,9 @@ async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promis
           e.lng,
           e.location_source,
           e.location_accuracy_m,
+          e.device_label,
+          e.user_agent,
+          e.meta,
           COALESCE(NULLIF(e.bid, ''), b.bid) AS bid,
           e.source,
           t.slug AS tenant_slug

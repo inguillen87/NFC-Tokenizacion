@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, StatusChip } from "@product/ui";
 import { AdminActionForms } from "./admin-action-forms";
@@ -22,7 +22,8 @@ import {
   ShieldCheck,
   Zap,
   TrendingUp,
-  MapPin
+  MapPin,
+  Maximize2
 } from "lucide-react";
 
 interface DashboardHomeClientProps {
@@ -77,6 +78,7 @@ export default function DashboardHomeClient({
   mintedTokens
 }: DashboardHomeClientProps) {
   const [activeTab, setActiveTab] = useState<"summary" | "infra" | "loyalty" | "demo" | "tenants">("summary");
+  const [controlCenterOpenRequest, setControlCenterOpenRequest] = useState(0);
 
   const tabClass = (tab: typeof activeTab) =>
     `flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all select-none border ${
@@ -85,6 +87,16 @@ export default function DashboardHomeClient({
         : "bg-slate-900/40 border-white/5 text-slate-400 hover:bg-slate-900/60 hover:text-white hover:border-white/10"
     }`;
 
+  function openControlCenter() {
+    setActiveTab("summary");
+    setControlCenterOpenRequest((value) => value + 1);
+  }
+
+  useEffect(() => {
+    if (activeTab !== "summary" || controlCenterOpenRequest === 0) return;
+    window.dispatchEvent(new Event("nexid:open-control-center"));
+  }, [activeTab, controlCenterOpenRequest]);
+
   return (
     <div className="space-y-6">
       {/* Dynamic Tab Navigation */}
@@ -92,6 +104,14 @@ export default function DashboardHomeClient({
         <button onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
           <LayoutDashboard className="h-4 w-4" />
           {isTenantAdmin ? "Analitica CRM" : "Resumen Ejecutivo"}
+        </button>
+        <button
+          type="button"
+          onClick={openControlCenter}
+          className="flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition-all hover:border-cyan-300/50 hover:bg-cyan-400/20"
+        >
+          <Maximize2 className="h-4 w-4" />
+          Centro de Control
         </button>
         <button onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
           <Cpu className="h-4 w-4" />
