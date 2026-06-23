@@ -326,6 +326,7 @@ export function DashboardShellInner({
             onClick={() => setIsMobileSidebarOpen(false)}
             className="lg:hidden p-1.5 rounded-lg border border-white/10 bg-slate-900/50 text-slate-400 hover:text-white"
             aria-label="Close navigation menu"
+            title="Cerrar menú de navegación"
           >
             <X className="h-4 w-4" />
           </button>
@@ -380,7 +381,7 @@ export function DashboardShellInner({
               {filteredLinks.length ? (
                 <div className="space-y-1">
                   {filteredLinks.slice(0, 4).map((entry) => (
-                    <button suppressHydrationWarning key={entry.href} onClick={() => { router.push(entry.href); setQuery(""); }} className="block w-full rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-left text-cyan-100 hover:bg-cyan-500/15">
+                    <button suppressHydrationWarning key={entry.href} type="button" title={`Ir a ${entry.label}`} aria-label={`Ir a ${entry.label}`} onClick={() => { router.push(entry.href); setQuery(""); }} className="block w-full rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-left text-cyan-100 hover:bg-cyan-500/15">
                       {entry.label}
                     </button>
                   ))}
@@ -482,6 +483,7 @@ export function DashboardShellInner({
                 onClick={() => setIsMobileSidebarOpen(true)}
                 className="lg:hidden p-2 rounded-xl border border-white/10 bg-slate-900/50 text-slate-305 hover:text-white"
                 aria-label="Open navigation menu"
+                title="Abrir menú de navegación"
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -505,6 +507,8 @@ export function DashboardShellInner({
                 onClick={handleLogout}
                 disabled={loggingOut}
                 className="rounded-lg border border-rose-500/20 hover:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 transition-colors"
+                aria-label="Cerrar sesión del panel admin"
+                title="Cerrar sesión del panel admin"
               >
                  {loggingOut ? "Saliendo..." : shell.logout}
               </button>

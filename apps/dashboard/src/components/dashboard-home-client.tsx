@@ -93,26 +93,26 @@ export default function DashboardHomeClient({
     <div className="space-y-6">
       {/* Dynamic Tab Navigation */}
       <nav className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5 backdrop-blur-xl sticky top-[72px] z-40">
-        <button onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
+        <button type="button" title="Abrir CRM realtime: mapa vivo, taps, riesgo, hotspots y métricas ejecutivas" aria-label="Abrir CRM realtime" onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
           <LayoutDashboard className="h-4 w-4" />
           {tabText("CRM en vivo", "taps, mapa, riesgo")}
         </button>
-        <button onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
+        <button type="button" title="Abrir operación NFC: lotes, tags, anclaje, rollout y auditoría" aria-label="Abrir operación NFC" onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
           <Cpu className="h-4 w-4" />
           {tabText("Operación NFC", "lotes, tags, anclaje")}
         </button>
-        <button onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
+        <button type="button" title="Abrir clientes y campañas: leads post-tap, loyalty y conversión" aria-label="Abrir clientes y campañas" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
           <Trophy className="h-4 w-4" />
           {tabText(isTenantAdmin ? "Clientes & campañas" : "Marketing & loyalty", "conversión post-tap")}
         </button>
         {!isTenantAdmin && (
-          <button onClick={() => setActiveTab("demo")} className={tabClass("demo")}>
+          <button type="button" title="Abrir demo lab: escenarios guiados de validación, replay y tamper" aria-label="Abrir demo lab" onClick={() => setActiveTab("demo")} className={tabClass("demo")}>
             <Terminal className="h-4 w-4" />
             {tabText("Demo lab", "escenarios guiados")}
           </button>
         )}
         {!isTenantAdmin && (
-          <button onClick={() => setActiveTab("tenants")} className={tabClass("tenants")}>
+          <button type="button" title="Abrir tenants: marcas, permisos y alcance multi-tenant" aria-label="Abrir tenants" onClick={() => setActiveTab("tenants")} className={tabClass("tenants")}>
             <Building2 className="h-4 w-4" />
             {tabText("Tenants", "marcas y permisos")}
           </button>

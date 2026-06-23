@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import "./globals.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { resolveLocale } from "@product/config";
 import { HelpBot } from "@product/ui";

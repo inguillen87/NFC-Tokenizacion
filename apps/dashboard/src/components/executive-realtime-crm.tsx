@@ -27,21 +27,14 @@ import {
   Users,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { RealtimeMapLibreMap } from "./realtime-maplibre-map";
 import { exportToCsv } from "../lib/export-utils";
 import { mergeRealtimeEvents, sortRealtimeEvents, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type MapMode = "tenant" | "global";
 type CrmSection = "summary" | "infra" | "loyalty";
 type MapView = "heat" | "points" | "nearby";
-
-const CITY_HEAT_POSITIONS: Array<{ match: RegExp; country: string; x: number; y: number }> = [
-  { match: /mendoza|valle\s+de\s+uco|tunuyan|tupungato|lujan/i, country: "AR", x: 25, y: 42 },
-  { match: /cordoba/i, country: "AR", x: 42, y: 29 },
-  { match: /rosario/i, country: "AR", x: 54, y: 37 },
-  { match: /buenos\s*aires|caba|san\s*martin/i, country: "AR", x: 59, y: 50 },
-  { match: /mar\s*del\s*plata/i, country: "AR", x: 64, y: 58 },
-  { match: /neuquen/i, country: "AR", x: 32, y: 66 },
-];
+type TimeRange = "5m" | "1h" | "24h";
 
 const tooltipStyle = {
   backgroundColor: "rgba(5, 12, 25, 0.96)",
@@ -50,6 +43,20 @@ const tooltipStyle = {
   color: "#f8fafc",
   fontSize: "12px",
 };
+
+const TIME_RANGE_OPTIONS: Array<{ value: TimeRange; label: string; ms: number }> = [
+  { value: "5m", label: "Últimos 5m", ms: 5 * 60_000 },
+  { value: "1h", label: "Última 1h", ms: 60 * 60_000 },
+  { value: "24h", label: "Últimas 24h", ms: 24 * 60 * 60_000 },
+];
+
+function timeRangeLabel(value: TimeRange) {
+  return TIME_RANGE_OPTIONS.find((item) => item.value === value)?.label || "Últimas 24h";
+}
+
+function timeRangeMs(value: TimeRange) {
+  return TIME_RANGE_OPTIONS.find((item) => item.value === value)?.ms || TIME_RANGE_OPTIONS[2].ms;
+}
 
 function formatPercent(value: number) {
   if (!Number.isFinite(value)) return "0%";
@@ -72,34 +79,6 @@ function timeAgo(value: unknown) {
   if (sec < 60) return `hace ${sec}s`;
   if (sec < 3600) return `hace ${Math.round(sec / 60)}m`;
   return `hace ${Math.round(sec / 3600)}h`;
-}
-
-function cityHeatPosition(city: string, country: string, index: number) {
-  const normalizedCountry = country.toUpperCase();
-  const match = CITY_HEAT_POSITIONS.find((item) => item.country === normalizedCountry && item.match.test(city));
-  if (match) return { x: match.x, y: match.y };
-  return {
-    x: 38 + ((index * 11) % 34),
-    y: 28 + ((index * 17) % 42),
-  };
-}
-
-function hashString(value: string) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-  }
-  return hash;
-}
-
-function jitteredPosition(city: string, country: string, seed: string, index: number) {
-  const base = cityHeatPosition(city, country, index);
-  const hash = hashString(seed || `${city}-${country}-${index}`);
-  const spread = 3.2;
-  return {
-    x: Math.max(9, Math.min(88, base.x + (((hash % 100) / 100) - 0.5) * spread)),
-    y: Math.max(12, Math.min(86, base.y + ((((hash >> 8) % 100) / 100) - 0.5) * spread)),
-  };
 }
 
 function locationSourceLabel(row: TenantTapRealtimeEvent) {
@@ -225,154 +204,6 @@ function FunnelNode({ icon, label, value, pct, tone }: { icon: ReactNode; label:
   );
 }
 
-function TapMapCanvas({
-  hotspots,
-  events,
-  mapView,
-  mode,
-  zoom,
-}: {
-  hotspots: ReturnType<typeof buildHotspots>;
-  events: TenantTapRealtimeEvent[];
-  mapView: MapView;
-  mode: MapMode;
-  zoom: number;
-}) {
-  const maxTaps = Math.max(1, ...hotspots.map((item) => item.taps));
-  const hotspotNodes = hotspots.map((hotspot, index) => {
-    const pos = cityHeatPosition(hotspot.city, hotspot.country, index);
-    const intensity = hotspot.taps / maxTaps;
-    const riskRatio = hotspot.taps ? hotspot.risk / hotspot.taps : 0;
-    return {
-      ...hotspot,
-      ...pos,
-      pointSize: Math.min(10, 4 + Math.sqrt(hotspot.taps) * 1.15),
-      heatSize: Math.min(92, 38 + intensity * 36 + Math.log1p(hotspot.taps) * 8),
-      ringSize: Math.min(76, 38 + intensity * 28),
-      riskRatio,
-    };
-  });
-
-  const tapNodes = events.slice(0, 90).map((event, index) => {
-    const city = String(event.city || "Unknown");
-    const country = String(event.country || "--");
-    const pos = jitteredPosition(city, country, String(event.eventId || event.uidMasked || event.occurredAt), index);
-    const risk = String(event.verdict || "").toLowerCase() !== "valid";
-    return { ...pos, risk, id: String(event.eventId || `${event.uidMasked}-${event.occurredAt}-${index}`), fresh: index < 8 };
-  });
-
-  const routeNodes = hotspotNodes.slice(0, 4).flatMap((node, index, rows) => {
-    const next = rows[index + 1];
-    return next ? [{ id: `${node.key}-${next.key}`, from: node, to: next }] : [];
-  });
-
-  return (
-    <div className="relative h-full min-h-[300px] overflow-hidden rounded-xl border border-white/8 bg-[#061322] shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,.045)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.045)_1px,transparent_1px),radial-gradient(circle_at_42%_30%,rgba(34,211,238,.13),transparent_22%),radial-gradient(circle_at_58%_52%,rgba(20,184,166,.12),transparent_26%)] bg-[length:64px_64px,64px_64px,auto,auto]" />
-      <div className="absolute inset-0 transition-transform duration-300 ease-out" style={{ transform: `scale(${zoom})`, transformOrigin: "52% 48%" }}>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full opacity-90" aria-hidden="true">
-        <defs>
-          <linearGradient id="execLand" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="rgba(23,37,84,.58)" />
-            <stop offset="100%" stopColor="rgba(15,23,42,.24)" />
-          </linearGradient>
-          <filter id="execMapGlow">
-            <feGaussianBlur stdDeviation="0.6" />
-          </filter>
-        </defs>
-        <rect width="100" height="100" fill="rgba(2,6,23,.28)" />
-        <path d="M17 0H100V100H20C23 89 29 79 30 68C31 55 22 45 25 34C28 23 38 16 41 4L17 0Z" fill="url(#execLand)" stroke="rgba(148,163,184,.16)" strokeWidth="0.25" />
-        <path d="M29 2C31 15 28 25 29 37C30 51 38 61 36 76C35 86 30 94 27 100" fill="none" stroke="rgba(125,211,252,.14)" strokeWidth="0.8" />
-        <path d="M55 20C62 25 69 31 76 34M58 50C67 49 76 50 84 55M47 64C54 70 61 75 68 82" fill="none" stroke="rgba(148,163,184,.1)" strokeWidth="0.35" strokeDasharray="1.4 1.4" />
-        {routeNodes.map((route) => (
-          <path
-            key={route.id}
-            d={`M ${route.from.x} ${route.from.y} Q ${(route.from.x + route.to.x) / 2} ${Math.min(route.from.y, route.to.y) - 8} ${route.to.x} ${route.to.y}`}
-            fill="none"
-            stroke={route.from.riskRatio > 0.1 || route.to.riskRatio > 0.1 ? "rgba(251,191,36,.72)" : "rgba(34,211,238,.56)"}
-            strokeDasharray="1.6 1.4"
-            strokeWidth="0.55"
-          />
-        ))}
-      </svg>
-
-      <div className="absolute left-[18%] top-[18%] text-[11px] text-slate-400">Mendoza</div>
-      <div className="absolute left-[39%] top-[23%] text-[11px] text-slate-300">Córdoba</div>
-      <div className="absolute left-[52%] top-[31%] text-[11px] text-slate-300">Rosario</div>
-      <div className="absolute left-[58%] top-[47%] text-[11px] text-slate-300">Buenos Aires</div>
-      <div className="absolute left-[66%] top-[57%] text-[10px] text-slate-500">Mar del Plata</div>
-
-      {mapView === "heat" && hotspotNodes.map((spot) => {
-        const core = spot.riskRatio > 0.18 ? "rgba(239,68,68,.72)" : spot.taps >= maxTaps ? "rgba(250,204,21,.76)" : "rgba(34,197,94,.58)";
-        const mid = spot.riskRatio > 0.18 ? "rgba(250,204,21,.48)" : "rgba(34,211,238,.32)";
-        return (
-          <div
-            key={`heat-${spot.key}`}
-            className="pointer-events-none absolute rounded-full mix-blend-screen"
-            style={{
-              left: `${spot.x}%`,
-              top: `${spot.y}%`,
-              width: `${spot.heatSize}px`,
-              height: `${spot.heatSize}px`,
-              transform: "translate(-50%, -50%)",
-              background: `radial-gradient(circle, ${core} 0%, ${core} 12%, ${mid} 42%, rgba(34,211,238,0) 72%)`,
-              opacity: 0.78,
-            }}
-          />
-        );
-      })}
-
-      {mapView === "nearby" && hotspotNodes.map((spot) => (
-        <div
-          key={`nearby-${spot.key}`}
-          className="pointer-events-none absolute rounded-full border border-cyan-200/55 bg-cyan-300/5 shadow-[0_0_24px_rgba(34,211,238,.18)]"
-          style={{
-            left: `${spot.x}%`,
-            top: `${spot.y}%`,
-            width: `${spot.ringSize}px`,
-            height: `${spot.ringSize}px`,
-            transform: "translate(-50%, -50%)",
-          }}
-        />
-      ))}
-
-      {tapNodes.map((tap) => (
-        <span
-          key={tap.id}
-          className={`absolute rounded-full ${tap.risk ? "bg-rose-300 shadow-[0_0_10px_rgba(251,113,133,.65)]" : "bg-cyan-200 shadow-[0_0_8px_rgba(34,211,238,.55)]"} ${tap.fresh ? "ring-2 ring-white/20" : ""}`}
-          style={{
-            left: `${tap.x}%`,
-            top: `${tap.y}%`,
-            width: tap.fresh ? 5 : 3,
-            height: tap.fresh ? 5 : 3,
-            transform: "translate(-50%, -50%)",
-            opacity: tap.fresh ? 0.95 : 0.62,
-          }}
-        />
-      ))}
-
-      {hotspotNodes.map((spot) => (
-        <div key={`point-${spot.key}`} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${spot.x}%`, top: `${spot.y}%` }}>
-          <span
-            className={`grid place-items-center rounded-full border-2 ${spot.riskRatio > 0.18 ? "border-rose-200 bg-rose-400" : "border-white/80 bg-cyan-300"} shadow-[0_0_16px_rgba(34,211,238,.45)]`}
-            style={{ width: `${spot.pointSize + 7}px`, height: `${spot.pointSize + 7}px` }}
-          >
-            <i className="h-1.5 w-1.5 rounded-full bg-white" />
-          </span>
-          <div className="mt-1 rounded-md border border-white/10 bg-slate-950/70 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg">
-            {spot.city} · {spot.taps}
-          </div>
-        </div>
-      ))}
-      </div>
-
-      <div className="absolute bottom-3 left-3 rounded-lg border border-white/8 bg-slate-950/72 px-3 py-2 text-xs text-slate-300 backdrop-blur">
-        <b className="text-cyan-200">{events.length}</b> taps visibles · {hotspots.length} hotspots · zoom {Math.round(zoom * 100)}% · {mode === "tenant" ? "scope tenant" : "scope global"}
-      </div>
-    </div>
-  );
-}
-
 export function ExecutiveRealtimeCrm({
   initialEvents,
   tenantScope,
@@ -390,8 +221,14 @@ export function ExecutiveRealtimeCrm({
   const [selectedTenant, setSelectedTenant] = useState("all");
   const [mapView, setMapView] = useState<MapView>("heat");
   const [mapZoom, setMapZoom] = useState(1);
+  const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const [clock, setClock] = useState("");
   const lastEventIdRef = useRef("");
+
+  useEffect(() => {
+    document.body.classList.add("nexid-crm-overlay-active");
+    return () => document.body.classList.remove("nexid-crm-overlay-active");
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setClock(new Date().toLocaleTimeString("es-AR")), 1000);
@@ -402,7 +239,7 @@ export function ExecutiveRealtimeCrm({
   useEffect(() => {
     const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
     streamUrl.searchParams.set("limit", "50");
-    streamUrl.searchParams.set("range", "24h");
+    streamUrl.searchParams.set("range", timeRange);
     streamUrl.searchParams.set("source", "all");
     if (tenantScope) streamUrl.searchParams.set("tenant", tenantScope);
 
@@ -441,7 +278,7 @@ export function ExecutiveRealtimeCrm({
       source.removeEventListener("event", onEvent as EventListener);
       source.close();
     };
-  }, [tenantScope]);
+  }, [tenantScope, timeRange]);
 
   const tenantOptions = useMemo(
     () => [...new Set(events.map((event) => String(event.tenantSlug || "unknown").toLowerCase()))].filter(Boolean).sort(),
@@ -449,9 +286,20 @@ export function ExecutiveRealtimeCrm({
   );
 
   const visibleEvents = useMemo(
-    () => selectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === selectedTenant),
-    [events, selectedTenant],
+    () => {
+      const cutoff = Date.now() - timeRangeMs(timeRange);
+      return (selectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === selectedTenant))
+        .filter((event) => {
+          const at = safeDate(event.occurredAt);
+          return !at || at >= cutoff;
+        });
+    },
+    [events, selectedTenant, timeRange],
   );
+
+  const cycleTimeRange = () => {
+    setTimeRange((current) => current === "5m" ? "1h" : current === "1h" ? "24h" : "5m");
+  };
 
   const metrics = useMemo(() => {
     const total = visibleEvents.length;
@@ -561,36 +409,36 @@ export function ExecutiveRealtimeCrm({
   ];
 
   return (
-    <div className="fixed inset-0 z-[120] overflow-hidden bg-[#030a16] text-slate-100">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]" />
-      <header className="relative z-10 flex h-[70px] items-center border-b border-cyan-200/10 bg-[#06101d]/90 px-4 shadow-[0_1px_0_rgba(255,255,255,.04)]">
-        <div className="flex w-[510px] items-center gap-5">
-          <div className="pr-6 text-[28px] font-black tracking-[-0.04em] text-white">
+    <div className="fixed inset-0 z-[120] overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]" />
+      <header className="relative z-10 flex min-h-[70px] flex-wrap items-center gap-3 border-b border-cyan-200/10 bg-[#06101d]/90 px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,.04)] lg:h-[70px] lg:flex-nowrap lg:px-4 lg:py-0">
+        <div className="flex w-full items-center gap-4 sm:w-auto lg:w-[510px] lg:gap-5">
+          <div className="pr-4 text-[24px] font-black tracking-[-0.04em] text-white lg:pr-6 lg:text-[28px]">
             nex<span className="text-cyan-300">ID</span>
           </div>
-          <div className="border-l border-white/10 pl-5">
+          <div className="border-l border-white/10 pl-4 lg:pl-5">
             <p className="text-xs text-slate-400">Centro de Control</p>
-            <h1 className="text-2xl font-black tracking-[-0.03em] text-white">CRM realtime</h1>
+            <h1 className="text-xl font-black tracking-[-0.03em] text-white lg:text-2xl">CRM realtime</h1>
           </div>
         </div>
 
-        <nav className="mx-auto grid h-12 w-[470px] grid-cols-3 overflow-hidden rounded-xl border border-white/8 bg-slate-950/45 text-sm font-semibold text-slate-300">
-          <button type="button" onClick={() => onSectionChange?.("summary")} className="flex items-center justify-center gap-2 border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200">
+        <nav className="order-3 grid h-11 w-full grid-cols-3 overflow-hidden rounded-xl border border-white/8 bg-slate-950/45 text-xs font-semibold text-slate-300 sm:text-sm lg:order-none lg:mx-auto lg:h-12 lg:w-[470px]">
+          <button type="button" title="Volver al cockpit de CRM realtime" onClick={() => onSectionChange?.("summary")} className="flex items-center justify-center gap-2 border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200">
             <Activity className="h-4 w-4" /> Realtime CRM
           </button>
-          <button type="button" onClick={() => onSectionChange?.("infra")} className="flex items-center justify-center gap-2 hover:bg-white/5">
+          <button type="button" title="Abrir rollout operativo: lotes, tags, preflight y tokenización" onClick={() => onSectionChange?.("infra")} className="flex items-center justify-center gap-2 hover:bg-white/5">
             <Truck className="h-4 w-4" /> Rollout
           </button>
-          <button type="button" onClick={() => onSectionChange?.("loyalty")} className="flex items-center justify-center gap-2 hover:bg-white/5">
+          <button type="button" title="Abrir clientes, loyalty y campañas post-tap" onClick={() => onSectionChange?.("loyalty")} className="flex items-center justify-center gap-2 hover:bg-white/5">
             <Users className="h-4 w-4" /> Customers
           </button>
         </nav>
 
-        <div className="ml-auto flex items-center gap-5 text-xs text-slate-300">
+        <div className="ml-0 flex w-full flex-wrap items-center justify-between gap-3 text-xs text-slate-300 lg:ml-auto lg:w-auto lg:flex-nowrap lg:justify-start lg:gap-5">
           <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> Sistema operativo</span>
           <span className="flex items-center gap-2"><Clock className="h-4 w-4 text-slate-500" /> {clock}</span>
           <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
-          <button type="button" className="flex items-center gap-3 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 text-left" onClick={() => setSelectedTenant(tenantScope || "all")}>
+          <button type="button" title="Filtrar la consola al tenant de tu sesión" className="flex items-center gap-3 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 text-left" onClick={() => setSelectedTenant(tenantScope || "all")}>
             <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">TA</span>
             <span><b className="block text-white">Tenant Admin</b>{selectedTenant === "all" ? tenantScope || "demo.bodega" : selectedTenant}</span>
             <ChevronDown className="h-4 w-4 text-slate-500" />
@@ -598,33 +446,37 @@ export function ExecutiveRealtimeCrm({
         </div>
       </header>
 
-      <aside className="absolute bottom-0 left-0 top-[70px] z-10 flex w-20 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4">
+      <aside className="absolute bottom-0 left-0 top-[70px] z-10 hidden w-20 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4 lg:flex">
         <div className="space-y-4">
           {railItems.map((item) => (
             <button
               key={item.label}
               type="button"
               aria-label={item.label}
+              title={item.label}
               onClick={item.action}
-              className={`grid h-12 w-12 place-items-center rounded-xl transition ${item.active ? "bg-cyan-400/16 text-cyan-200 shadow-[0_0_22px_rgba(34,211,238,.18)]" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
+              className={`group relative grid h-12 w-12 place-items-center rounded-xl transition ${item.active ? "bg-cyan-400/16 text-cyan-200 shadow-[0_0_22px_rgba(34,211,238,.18)]" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
             >
               {item.icon}
+              <span className="pointer-events-none absolute left-14 top-1/2 z-50 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs font-semibold text-slate-100 opacity-0 shadow-xl transition group-hover:opacity-100 lg:block">
+                {item.label}
+              </span>
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => { window.location.href = "/logout"; }} className="mt-auto grid h-10 w-10 place-items-center rounded-lg border border-white/8 text-slate-500 hover:text-white" aria-label="Salir">
+        <button type="button" title="Cerrar sesión" onClick={() => { window.location.href = "/logout"; }} className="mt-auto grid h-10 w-10 place-items-center rounded-lg border border-white/8 text-slate-500 hover:text-white" aria-label="Salir">
           <LogOut className="h-5 w-5" />
         </button>
       </aside>
 
-      <main className="relative z-10 ml-20 grid h-[calc(100vh-102px)] grid-cols-[440px_minmax(0,1fr)] gap-5 overflow-hidden p-5">
-        <section className="min-h-0 space-y-3 overflow-hidden">
+      <main className="relative z-10 grid min-h-[calc(100vh-70px)] grid-cols-1 gap-4 overflow-visible px-3 py-4 pb-14 lg:ml-20 lg:h-[calc(100vh-102px)] lg:grid-cols-[440px_minmax(0,1fr)] lg:gap-5 lg:overflow-hidden lg:p-5">
+        <section className="order-2 min-h-0 space-y-3 overflow-hidden lg:order-1">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white">Visión ejecutiva en vivo</h2>
             <span className="flex items-center gap-2 text-xs text-slate-400"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> {connected ? "En vivo" : "Sincronizando"}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <MetricCard icon={<Radio className="h-5 w-5" />} label="Taps en vivo" value={formatNumber(metrics.total)} delta="↗ real" tone="cyan" data={velocitySeries} />
             <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Tasa válida" value={formatPercent(metrics.validRate)} delta="↗ limpio" tone="green" data={velocitySeries} dataKey="valid" />
             <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="Riesgo de fraude" value={formatPercent(metrics.fraudRate)} delta={metrics.risk ? "↗ revisar" : "0 alertas"} tone="red" data={velocitySeries} dataKey="risk" />
@@ -636,7 +488,7 @@ export function ExecutiveRealtimeCrm({
           <div className="rounded-lg border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-white">Velocidad de taps <span className="font-normal text-slate-400">(taps por minuto)</span></p>
-              <button type="button" onClick={() => setMapView("heat")} className="rounded-lg border border-white/8 bg-slate-950/60 px-3 py-1 text-xs text-slate-300">Últimas 24h</button>
+              <button type="button" title="Cambiar ventana temporal del CRM" onClick={cycleTimeRange} className="rounded-lg border border-white/8 bg-slate-950/60 px-3 py-1 text-xs text-slate-300">{timeRangeLabel(timeRange)}</button>
             </div>
             <div className="mt-3 h-[118px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -676,46 +528,48 @@ export function ExecutiveRealtimeCrm({
           </div>
         </section>
 
-        <section className="grid min-h-0 grid-rows-[minmax(0,1fr)_260px] gap-4">
-          <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)]">
-            <div className="mb-3 flex items-center justify-between">
+        <section className="order-1 grid min-h-0 grid-rows-none gap-4 lg:order-2 lg:grid-rows-[minmax(0,1fr)_260px]">
+          <div className="grid min-h-0 grid-rows-none lg:grid-rows-[auto_minmax(0,1fr)]">
+            <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-bold text-white">Mapa vivo de taps</h2>
                 <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">● En vivo</span>
               </div>
-              <div className="flex items-center gap-2">
-                <select value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="h-9 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
+              <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
+                <select size={1} title="Filtrar taps por tenant" value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white sm:col-span-1 sm:w-auto sm:min-w-[150px]">
                   <option value="all">Todos los tenants</option>
                   {tenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenant}</option>)}
                 </select>
-                <button type="button" onClick={() => setMapView("heat")} className="h-9 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white">Últimas 24h</button>
-                <button type="button" onClick={handleExport} className="flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50"><Download className="h-4 w-4" /> Exportar</button>
+                <select size={1} title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
+                  {TIME_RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <button type="button" title="Exportar eventos visibles a CSV" onClick={handleExport} className="flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50"><Download className="h-4 w-4" /> Exportar</button>
               </div>
             </div>
 
-            <div className="relative min-h-0 overflow-hidden rounded-xl border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)]">
+            <div className="relative min-h-[700px] overflow-hidden rounded-xl border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] sm:min-h-[650px] lg:min-h-0">
               <div className="absolute left-4 top-4 z-20 grid gap-2">
-                <button type="button" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
-                <button type="button" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">−</button>
-                <button type="button" onClick={() => setMapView("nearby")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200"><Crosshair className="h-4 w-4" /></button>
-                <button type="button" onClick={() => setMapView("points")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200"><Layers className="h-4 w-4" /></button>
+                <button type="button" title="Acercar mapa sin agrandar artificialmente los taps" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
+                <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">−</button>
+                <button type="button" title="Mostrar radio de cercanía por hotspot" onClick={() => setMapView("nearby")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar cercanías"><Crosshair className="h-4 w-4" /></button>
+                <button type="button" title="Mostrar puntos individuales de tap" onClick={() => setMapView("points")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar puntos"><Layers className="h-4 w-4" /></button>
               </div>
 
-              <div className="absolute right-5 top-4 z-30 flex items-center gap-2">
+              <div className="absolute left-[72px] right-3 top-4 z-30 flex flex-wrap items-center justify-end gap-2 lg:left-auto lg:right-5 lg:flex-nowrap">
                 {[
                   ["heat", <Activity key="heat" className="h-4 w-4" />, "Calor"],
                   ["points", <MapPin key="points" className="h-4 w-4" />, "Puntos"],
                   ["nearby", <Crosshair key="nearby" className="h-4 w-4" />, "Cercanías"],
                 ].map(([key, icon, label]) => (
-                  <button key={String(key)} type="button" onClick={() => setMapView(key as MapView)} className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${mapView === key ? "border-cyan-300 bg-cyan-400/12 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.22)]" : "border-white/10 bg-slate-950/65 text-slate-300"}`}>
+                  <button key={String(key)} type="button" title={key === "heat" ? "Ver concentración de actividad por ciudad" : key === "points" ? "Ver taps individuales como puntos chicos" : "Ver radios de cercanía accionables"} onClick={() => setMapView(key as MapView)} className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${mapView === key ? "border-cyan-300 bg-cyan-400/12 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.22)]" : "border-white/10 bg-slate-950/65 text-slate-300"}`}>
                     {icon}{label}
                   </button>
                 ))}
-                <button type="button" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
-                <button type="button" onClick={() => setMapZoom((value) => value < 1.12 ? 1.12 : 1)} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Alternar ampliación del mapa"><Expand className="h-4 w-4" /></button>
+                <button type="button" title="Restablecer mapa: calor y zoom normal" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
+                <button type="button" title="Alternar zoom ejecutivo del mapa" onClick={() => setMapZoom((value) => value < 1.12 ? 1.12 : 1)} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Alternar ampliación del mapa"><Expand className="h-4 w-4" /></button>
               </div>
 
-              <div className="absolute bottom-20 left-4 z-20 rounded-lg border border-white/10 bg-slate-950/75 p-3 text-xs text-slate-200 shadow-xl">
+              <div className="absolute bottom-[260px] left-4 z-20 rounded-lg border border-white/10 bg-slate-950/75 p-3 text-xs text-slate-200 shadow-xl lg:bottom-20">
                 {[
                   ["Muy alto", "bg-red-500"],
                   ["Alto", "bg-amber-400"],
@@ -726,11 +580,11 @@ export function ExecutiveRealtimeCrm({
                 ))}
               </div>
 
-              <div className="h-full w-full p-3 pr-[300px]">
-                <TapMapCanvas hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} />
+              <div className="h-[420px] w-full p-3 pt-[76px] lg:h-full lg:p-3 lg:pr-[300px]">
+                <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} />
               </div>
 
-              <div className="absolute bottom-4 right-4 top-[76px] z-20 w-[270px] rounded-xl border border-white/10 bg-slate-950/72 p-3 shadow-2xl backdrop-blur">
+              <div className="relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-xl border border-white/10 bg-slate-950/72 p-3 shadow-2xl backdrop-blur lg:absolute lg:bottom-4 lg:right-4 lg:top-[76px] lg:m-0 lg:w-[270px] lg:max-h-none">
                 <p className="text-sm font-semibold text-white">Eventos cercanos (5 km)</p>
                 <div className="mt-3 space-y-2">
                   {visibleEvents.slice(0, 4).map((event) => {
@@ -747,18 +601,19 @@ export function ExecutiveRealtimeCrm({
                     );
                   })}
                 </div>
-                <button type="button" onClick={() => { window.location.href = "/events"; }} className="mt-3 text-sm font-semibold text-cyan-300">Ver todos los eventos</button>
+                <button type="button" title="Abrir la auditoría completa de eventos" onClick={() => { window.location.href = "/events"; }} className="mt-3 text-sm font-semibold text-cyan-300">Ver todos los eventos</button>
               </div>
             </div>
           </div>
 
-          <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_392px] gap-4">
+          <div className="grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_392px]">
             <div className="rounded-xl border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-base font-bold text-white">Hotspots accionables <span className="text-sm font-normal text-slate-400">(top ciudades)</span></p>
-                <button type="button" onClick={() => { window.location.href = "/analytics"; }} className="text-sm font-semibold text-cyan-300">Ver todas las ciudades</button>
+                <button type="button" title="Abrir analítica completa por ciudad y hotspot" onClick={() => { window.location.href = "/analytics"; }} className="text-sm font-semibold text-cyan-300">Ver todas las ciudades</button>
               </div>
-              <div className="overflow-hidden rounded-lg border border-white/8">
+              <div className="overflow-x-auto rounded-lg border border-white/8">
+                <div className="min-w-[720px]">
                 <div className="grid grid-cols-[1.2fr_.7fr_.7fr_.8fr_.7fr_.9fr] bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-400">
                   <span>Ciudad</span><span>Taps (24h)</span><span>Tasa válida</span><span>Último UID</span><span>Riesgo</span><span>Acción</span>
                 </div>
@@ -777,13 +632,14 @@ export function ExecutiveRealtimeCrm({
                     </div>
                   );
                 })}
+                </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-base font-bold text-white">Alertas y excepciones <span className="ml-1 rounded-full bg-red-500 px-1.5 text-xs">{alerts.length}</span></p>
-                <button type="button" onClick={() => { window.location.href = "/events"; }} className="text-sm font-semibold text-cyan-300">Ver todas</button>
+                <button type="button" title="Abrir todas las alertas y excepciones" onClick={() => { window.location.href = "/events"; }} className="text-sm font-semibold text-cyan-300">Ver todas</button>
               </div>
               <div className="space-y-2">
                 {alerts.map((alert) => (
@@ -804,10 +660,10 @@ export function ExecutiveRealtimeCrm({
         </section>
       </main>
 
-      <footer className="absolute bottom-0 left-0 right-0 z-20 flex h-8 items-center justify-between border-t border-white/8 bg-[#06101d]/90 px-8 text-xs text-slate-400">
+      <footer className="fixed bottom-0 left-0 right-0 z-20 flex h-9 items-center justify-between gap-3 border-t border-white/8 bg-[#06101d]/95 px-3 text-[11px] text-slate-400 lg:absolute lg:h-8 lg:px-8 lg:text-xs">
         <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> {connected ? "Conectado al stream en tiempo real" : "Reconectando stream"}</span>
-        <span>Actualizado: {timeAgo(lastUpdateAt)}</span>
-        <span>Fuente: nexID Core · Precisión de ubicación: {latestEvent?.locationAccuracyM ? `±${Math.round(Number(latestEvent.locationAccuracyM))} m` : "según evento"}</span>
+        <span className="hidden sm:inline">Actualizado: {timeAgo(lastUpdateAt)}</span>
+        <span className="hidden md:inline">Fuente: nexID Core · Precisión de ubicación: {latestEvent?.locationAccuracyM ? `±${Math.round(Number(latestEvent.locationAccuracyM))} m` : "según evento"}</span>
       </footer>
     </div>
   );

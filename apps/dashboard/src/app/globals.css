@@ -926,3 +926,87 @@ html.theme-light .dashboard-auth-surface .ui-btn--primary {
 html.theme-light .admin-notification-bell__badge {
   border-color: #ffffff;
 }
+
+.nexid-map-popup .maplibregl-popup-content {
+  overflow: hidden;
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.92);
+  color: #e2e8f0;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+}
+
+.nexid-map-popup .maplibregl-popup-tip {
+  border-top-color: rgba(2, 6, 23, 0.92);
+  border-bottom-color: rgba(2, 6, 23, 0.92);
+}
+
+.nexid-map-popup-card {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 13rem;
+  padding: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.nexid-map-popup-card b {
+  color: #ffffff;
+  font-size: 0.84rem;
+}
+
+.nexid-map-popup-card span {
+  color: #67e8f9;
+  font-weight: 700;
+}
+
+.nexid-map-popup-card small {
+  color: #94a3b8;
+}
+
+.maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  background: rgba(2, 6, 23, 0.72) !important;
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.24) !important;
+  backdrop-filter: blur(14px);
+}
+
+.maplibregl-ctrl-group button {
+  background-color: transparent !important;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+.maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon,
+.maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon {
+  filter: invert(1) brightness(1.5);
+}
+
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-scale {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(2, 6, 23, 0.68) !important;
+  color: #cbd5e1 !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: #67e8f9 !important;
+}
+
+body.nexid-crm-overlay-active {
+  overflow-x: hidden;
+}
+
+body.nexid-crm-overlay-active .dashboard-sidebar,
+body.nexid-crm-overlay-active .dashboard-mobile-dock {
+  display: none !important;
+}
+
+body.nexid-crm-overlay-active .dashboard-main {
+  overflow-x: hidden;
+}
