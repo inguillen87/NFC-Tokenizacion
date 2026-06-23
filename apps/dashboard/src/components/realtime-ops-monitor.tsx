@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Badge, Card } from "@product/ui";
 import Link from "next/link";
 import { DemoOpsMap } from "./demo-ops-map";
 import { mergeRealtimeEvents, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 import { exportToCsv } from "../lib/export-utils";
+import { Maximize2, Minimize2, Clock, Terminal, Volume2, VolumeX, Activity, Globe } from "lucide-react";
 
 type MapMode = "tenant" | "global";
 
@@ -70,6 +71,36 @@ function toMapPoint(row: TenantTapRealtimeEvent) {
   };
 }
 
+function playPing(type: "success" | "warning") {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === "success") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } else {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(330, ctx.currentTime);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.6);
+    }
+  } catch {
+    // blocked or not supported
+  }
+}
+
 export function RealtimeOpsMonitor({
   initialEvents,
   tenantScope,
@@ -87,6 +118,15 @@ export function RealtimeOpsMonitor({
   const [lastUpdateAt, setLastUpdateAt] = useState<string>(initialEvents[0]?.occurredAt || "");
   const [latestEventId, setLatestEventId] = useState<string>("");
   const [selectedTenant, setSelectedTenant] = useState<string>("all");
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [timeStr, setTimeStr] = useState("");
+
+  const audioEnabledRef = useRef(audioEnabled);
+  useEffect(() => {
+    audioEnabledRef.current = audioEnabled;
+  }, [audioEnabled]);
 
   const [aiReport, setAiReport] = useState("");
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
@@ -188,6 +228,16 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
   }, [hydrated, events, selectedTenant]);
 
   useEffect(() => {
+    const updateTime = () => {
+      const d = new Date();
+      setTimeStr(d.toLocaleTimeString("es-AR"));
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
     streamUrl.searchParams.set("limit", "40");
     streamUrl.searchParams.set("range", "24h");
@@ -222,6 +272,13 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
             if (incomingId && incomingId !== prev) {
               setEvents((prevEvents) => mergeRealtimeEvents(prevEvents, payload, 40));
               setLastUpdateAt(new Date().toISOString());
+
+              // Audio chime
+              const verdict = String(payload.verdict || "").toLowerCase();
+              if (audioEnabledRef.current) {
+                playPing(verdict === "valid" ? "success" : "warning");
+              }
+
               return incomingId;
             }
             return prev;
@@ -327,6 +384,156 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
     return `hace ${Math.round(sec / 3600)}h`;
   }
 
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col bg-[#030712] font-mono text-cyan-400 select-none overflow-hidden p-4">
+        {/* NASA Header */}
+        <div className="flex flex-wrap items-center justify-between border-b border-cyan-500/30 pb-3 mb-4">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+            </span>
+            <div>
+              <h1 className="text-sm md:text-base font-black tracking-widest text-cyan-200">
+                NEXID TELEMETRY OPERATIONAL COMMAND CENTER
+              </h1>
+              <p className="text-[10px] text-cyan-500/80">
+                SATELLITE TRACING SYSTEM // MULTI-TENANT CRYPTO-LEDGER ANCHORING
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 text-xs">
+            <div className="hidden md:block text-[11px] bg-slate-900 border border-cyan-500/20 px-3 py-1.5 rounded-lg text-cyan-300">
+              UTC DEPLOYMENT MODE: <span className="text-emerald-400 font-bold">ACTIVE</span>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-900 border border-cyan-500/20 px-3 py-1.5 rounded-lg text-cyan-300">
+              <Clock className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
+              <span>{timeStr}</span>
+            </div>
+            
+            <button
+              onClick={() => setAudioEnabled(!audioEnabled)}
+              className={`p-1.5 rounded border transition-colors ${audioEnabled ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' : 'border-white/10 bg-slate-900 text-slate-500'}`}
+              title={audioEnabled ? "Silenciar pings de audio" : "Activar pings de audio"}
+            >
+              {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </button>
+            
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition-colors"
+            >
+              <Minimize2 className="h-4 w-4" />
+              <span>SALIR TV MODE</span>
+            </button>
+          </div>
+        </div>
+        
+        {/* HUD grid */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+          <div className="bg-slate-950/60 border border-cyan-500/20 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-slate-400 uppercase tracking-widest">Taps Totales</span>
+            <div className="text-2xl font-black text-cyan-200 mt-1">{visibleEvents.length}</div>
+          </div>
+          <div className="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-emerald-500/80 uppercase tracking-widest">Autenticados OK</span>
+            <div className="text-2xl font-black text-emerald-400 mt-1">{liveMetrics.valid}</div>
+          </div>
+          <div className="bg-slate-950/60 border border-rose-500/20 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-rose-500/80 uppercase tracking-widest">Alertas de Fraude</span>
+            <div className="text-2xl font-black text-rose-400 mt-1">{liveMetrics.risk}</div>
+          </div>
+          <div className="bg-slate-950/60 border border-indigo-500/20 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-indigo-400 uppercase tracking-widest">Zonas Activas</span>
+            <div className="text-2xl font-black text-indigo-300 mt-1">{liveMetrics.uniqueCities}</div>
+          </div>
+          <div className="bg-slate-950/60 border border-fuchsia-500/20 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-fuchsia-400 uppercase tracking-widest">Taps Recientes (5m)</span>
+            <div className="text-2xl font-black text-fuchsia-300 mt-1">{realtimePulse.recentCount}</div>
+          </div>
+          <div className="bg-slate-950/60 border border-sky-500/20 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-sky-400 uppercase tracking-widest">Velocidad TPM</span>
+            <div className="text-2xl font-black text-sky-300 mt-1">{realtimePulse.tapsPerMinute}</div>
+          </div>
+        </div>
+
+        {/* Main interactive area: Map and Logs */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 overflow-hidden">
+          {/* Map Column */}
+          <div className="lg:col-span-8 flex flex-col bg-slate-950/40 border border-cyan-500/20 rounded-xl p-3 min-h-0 overflow-hidden relative">
+            <div className="absolute top-4 left-4 z-10 bg-slate-950/80 border border-cyan-500/30 px-3 py-1.5 rounded-lg">
+              <span className="text-[10px] text-cyan-400 flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5 text-cyan-400 animate-spin" />
+                VISTA SATELITAL CONCENTRIS SYSTEM
+              </span>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <DemoOpsMap points={mapPoints} mode={mode} />
+            </div>
+          </div>
+
+          {/* Logs Column */}
+          <div className="lg:col-span-4 flex flex-col min-h-0 overflow-hidden gap-4">
+            {/* Live Feed Log Terminal */}
+            <div className="flex-1 flex flex-col bg-slate-950/80 border border-cyan-500/20 rounded-xl p-4 min-h-0 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-cyan-500/10 pb-2 mb-3">
+                <span className="text-xs font-black tracking-widest text-cyan-300 flex items-center gap-1.5">
+                  <Terminal className="h-4 w-4 text-cyan-400" />
+                  RAW TELEMETRY EVENT STREAM
+                </span>
+                <span className="text-[10px] text-cyan-500">LIVE FEED</span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2.5 text-xs">
+                {visibleEvents.map((event) => {
+                  const result = String(event.verdict || "valid").toUpperCase();
+                  const isRisk = result !== "VALID";
+                  const eventId = String(event.eventId || "");
+                  const isLatest = latestEventId && eventId === latestEventId;
+                  const time = event.occurredAtLocal || new Date(String(event.occurredAt)).toLocaleTimeString("es-AR");
+
+                  return (
+                    <div key={eventId} className={`p-2 rounded border transition-all ${isLatest ? 'bg-cyan-950/20 border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.15)]' : 'bg-slate-900/30 border-white/5'} ${isRisk ? 'border-rose-500/20 bg-rose-950/5' : ''}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`font-black ${isRisk ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          [{result}] {isLatest ? '● NEW_EVENT' : ''}
+                        </span>
+                        <span className="text-[10px] text-slate-500">{time}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-300 space-y-0.5">
+                        <div><span className="text-cyan-500 font-bold">TAG_UID:</span> {event.uidMasked}</div>
+                        <div><span className="text-cyan-500 font-bold">ZONA:</span> {event.city || "Geolocalizando..."}, {event.country || "AR"}</div>
+                        <div><span className="text-cyan-500 font-bold">DETALLES:</span> {event.productName || "Sin Producto"} - {event.batchId}</div>
+                        <div><span className="text-cyan-500 font-bold">CLIENT:</span> {locationSourceLabel(event)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {!visibleEvents.length ? (
+                  <p className="text-slate-500 text-center py-10">ESPERANDO SEÑALES DE DISPOSITIVOS...</p>
+                ) : null}
+              </div>
+            </div>
+
+            {/* AI Diagnosis block */}
+            <div className="bg-slate-950/80 border border-violet-500/20 rounded-xl p-4 text-xs">
+              <div className="flex items-center justify-between border-b border-violet-500/10 pb-2 mb-2">
+                <span className="text-xs font-black tracking-widest text-violet-300 flex items-center gap-1.5">
+                  <Activity className="h-4 w-4 text-violet-400" />
+                  CO-PILOT AI DIAGNOSIS ENGINE
+                </span>
+              </div>
+              <div className="text-slate-300 leading-5 text-[11px] whitespace-pre-line bg-violet-950/5 p-2 rounded border border-violet-500/10 h-24 overflow-y-auto">
+                {aiReport || "ANALIZANDO CONDICIONES DE SEGURIDAD EN TIEMPO REAL..."}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(640px,0.9fr)]">
       <style>{`
@@ -347,30 +554,6 @@ Ultimo evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || late
         }
       `}</style>
       <Card className="min-w-0 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">{labels.liveFeed}</h2>
-          <div className="flex items-center gap-2">
-            <button
-              suppressHydrationWarning
-              type="button"
-              className="rounded border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold text-cyan-100 transition hover:bg-cyan-500/20 no-print"
-              onClick={handleExportCsv}
-            >
-              Exportar Excel
-            </button>
-            <button
-              suppressHydrationWarning
-              type="button"
-              className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-100 transition hover:bg-emerald-500/20 no-print"
-              onClick={() => window.print()}
-            >
-              Exportar PDF
-            </button>
-            <label className="sr-only" htmlFor="tenant-live-filter">Filtrar tenant</label>
-            <select suppressHydrationWarning
-              id="tenant-live-filter"
-              value={selectedTenant}
-              onChange={(event) => setSelectedTenant(event.target.value)}
               className="rounded border border-white/20 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 no-print"
             >
               <option value="all">Todos los tenants</option>

@@ -895,6 +895,8 @@ export function PremiumVectorMap({
             const selected = selectedPoint?.id === point.id;
             const radius = selected ? 10 : tone === "origin" || tone === "tap" ? 8 : 6.2;
             const shouldLabel = chrome !== "minimal" && !isTightRouteView && (selected || tone === "origin" || tone === "tap" || tone === "risk");
+            const isFresh = point.lastSeen ? Math.abs(Date.now() - Date.parse(point.lastSeen)) < 25000 : false;
+
             return (
               <g
                 key={`point-${point.id}`}
@@ -905,33 +907,44 @@ export function PremiumVectorMap({
                 onKeyDown={(event) => handlePointKey(event, point)}
                 style={{ cursor: onPointSelect ? "pointer" : "default" }}
               >
-                {[0, 1, 2].map((ring) => (
-                  <circle
-                    key={`ripple-${point.id}-${ring}`}
-                    cx={dot.x}
-                    cy={dot.y}
-                    r={radius + 8 + ring * 4}
-                    fill="none"
-                    stroke={color}
-                    strokeWidth={selected ? "1.8" : "1.2"}
-                    opacity={selected ? "0.54" : "0.2"}
-                  >
-                    <animate
-                      attributeName="r"
-                      values={`${radius + 4};${radius + 18 + ring * 7};${radius + 4}`}
-                      dur={selected ? "2.2s" : "3.8s"}
-                      begin={`${ring * 0.42}s`}
-                      repeatCount="indefinite"
-                    />
-                    <animate
-                      attributeName="opacity"
-                      values={selected ? "0.72;0.06;0.72" : "0.32;0.03;0.32"}
-                      dur={selected ? "2.2s" : "3.8s"}
-                      begin={`${ring * 0.42}s`}
-                      repeatCount="indefinite"
-                    />
-                  </circle>
-                ))}
+                {[0, 1, 2].map((ring) => {
+                  const dur = isFresh ? "1.6s" : selected ? "2.2s" : "3.8s";
+                  const rValues = isFresh
+                    ? `${radius + 2};${radius + 36 + ring * 12};${radius + 2}`
+                    : `${radius + 4};${radius + 18 + ring * 7};${radius + 4}`;
+                  const opacityValues = isFresh
+                    ? "0.95;0.0;0.95"
+                    : selected
+                    ? "0.72;0.06;0.72"
+                    : "0.32;0.03;0.32";
+                  return (
+                    <circle
+                      key={`ripple-${point.id}-${ring}`}
+                      cx={dot.x}
+                      cy={dot.y}
+                      r={radius + 8 + ring * 4}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={isFresh ? "2.2" : selected ? "1.8" : "1.2"}
+                      opacity={isFresh ? "0.85" : selected ? "0.54" : "0.2"}
+                    >
+                      <animate
+                        attributeName="r"
+                        values={rValues}
+                        dur={dur}
+                        begin={`${ring * 0.42}s`}
+                        repeatCount="indefinite"
+                      />
+                      <animate
+                        attributeName="opacity"
+                        values={opacityValues}
+                        dur={dur}
+                        begin={`${ring * 0.42}s`}
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+                  );
+                })}
                 <circle cx={dot.x} cy={dot.y} r={radius + 3} fill={pointCenterFill} stroke={color} strokeWidth="1.2" />
                 <circle cx={dot.x} cy={dot.y} r={radius} fill={color} stroke="#f8fafc" strokeWidth={selected ? "3" : "2"} filter={`url(#${idPrefix}-soft-glow)`} />
                 

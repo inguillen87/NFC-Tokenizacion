@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { publishRealtimeEvent } from "../../../lib/realtime-events";
+import { findNearestCity } from "../../../lib/geo-utils";
 
 type ContextBody = {
   bid?: string;
@@ -204,6 +205,16 @@ export async function POST(req: Request): Promise<Response> {
   if (!target) return contextJson({ ok: false, reason: "recent event not found" }, 404);
   const matchedBy = eventId ? "event_id" : ctr === null ? "latest_uid_event" : "uid_and_ctr";
 
+  let resolvedCity: string | null = null;
+  let resolvedCountry: string | null = null;
+  if (lat !== null && lng !== null) {
+    const matchedCity = findNearestCity(lat, lng);
+    if (matchedCity) {
+      resolvedCity = matchedCity.city;
+      resolvedCountry = matchedCity.countryCode;
+    }
+  }
+
   try {
     await ensureEventLocationContextSchema();
     await sql/*sql*/`
@@ -216,8 +227,8 @@ export async function POST(req: Request): Promise<Response> {
           location_accuracy_m = COALESCE(${accuracy}, location_accuracy_m),
           location_source = ${locationSource},
           location_updated_at = now(),
-          city = COALESCE(city, geo_city),
-          country_code = COALESCE(country_code, geo_country),
+          city = COALESCE(${resolvedCity}, city, geo_city),
+          country_code = COALESCE(${resolvedCountry}, country_code, geo_country),
           device_label = COALESCE(device_label, ${String((body.client?.platform as string) || "").slice(0, 80) || null})
       WHERE id = ${target.id}
     `;
@@ -230,8 +241,8 @@ export async function POST(req: Request): Promise<Response> {
       bid: target.bid || bid,
       uid_hex: target.uid_hex || uid,
       result: target.result || String(body.contextStatus || "unknown").toUpperCase(),
-      city: target.city || null,
-      country_code: target.country_code || null,
+      city: resolvedCity || target.city || null,
+      country_code: resolvedCountry || target.country_code || null,
       lat: lat ?? firstNumber(target.lat),
       lng: lng ?? firstNumber(target.lng),
       location_source: locationSource,
