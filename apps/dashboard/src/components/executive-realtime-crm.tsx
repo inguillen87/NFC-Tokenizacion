@@ -27,23 +27,12 @@ import {
   Users,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { DemoOpsMap } from "./demo-ops-map";
 import { exportToCsv } from "../lib/export-utils";
 import { mergeRealtimeEvents, sortRealtimeEvents, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type MapMode = "tenant" | "global";
 type CrmSection = "summary" | "infra" | "loyalty";
 type MapView = "heat" | "points" | "nearby";
-
-const CITY_COORDS: Array<{ match: RegExp; country: string; lat: number; lng: number }> = [
-  { match: /san\s*martin/i, country: "AR", lat: -34.5744, lng: -58.5358 },
-  { match: /buenos\s*aires|caba/i, country: "AR", lat: -34.6037, lng: -58.3816 },
-  { match: /mendoza|valle\s+de\s+uco|tunuyan|tupungato|lujan/i, country: "AR", lat: -32.8895, lng: -68.8458 },
-  { match: /cordoba/i, country: "AR", lat: -31.4201, lng: -64.1888 },
-  { match: /rosario/i, country: "AR", lat: -32.9442, lng: -60.6505 },
-  { match: /neuquen/i, country: "AR", lat: -38.9516, lng: -68.0591 },
-  { match: /mar\s*del\s*plata/i, country: "AR", lat: -38.0055, lng: -57.5426 },
-];
 
 const CITY_HEAT_POSITIONS: Array<{ match: RegExp; country: string; x: number; y: number }> = [
   { match: /mendoza|valle\s+de\s+uco|tunuyan|tupungato|lujan/i, country: "AR", x: 25, y: 42 },
@@ -85,11 +74,6 @@ function timeAgo(value: unknown) {
   return `hace ${Math.round(sec / 3600)}h`;
 }
 
-function cityFallback(city: string, country: string) {
-  const normalizedCountry = country.toUpperCase();
-  return CITY_COORDS.find((item) => item.country === normalizedCountry && item.match.test(city)) || null;
-}
-
 function cityHeatPosition(city: string, country: string, index: number) {
   const normalizedCountry = country.toUpperCase();
   const match = CITY_HEAT_POSITIONS.find((item) => item.country === normalizedCountry && item.match.test(city));
@@ -97,6 +81,24 @@ function cityHeatPosition(city: string, country: string, index: number) {
   return {
     x: 38 + ((index * 11) % 34),
     y: 28 + ((index * 17) % 42),
+  };
+}
+
+function hashString(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+function jitteredPosition(city: string, country: string, seed: string, index: number) {
+  const base = cityHeatPosition(city, country, index);
+  const hash = hashString(seed || `${city}-${country}-${index}`);
+  const spread = 3.2;
+  return {
+    x: Math.max(9, Math.min(88, base.x + (((hash % 100) / 100) - 0.5) * spread)),
+    y: Math.max(12, Math.min(86, base.y + ((((hash >> 8) % 100) / 100) - 0.5) * spread)),
   };
 }
 
@@ -110,57 +112,6 @@ function locationSourceLabel(row: TenantTapRealtimeEvent) {
 
 function deviceSummary(row: TenantTapRealtimeEvent) {
   return [row.deviceLabel, row.deviceOs, row.deviceType].map((item) => String(item || "").trim()).filter(Boolean).join(" · ") || "Dispositivo sin clasificar";
-}
-
-function toMapPoint(row: TenantTapRealtimeEvent) {
-  const city = String(row.city || "Unknown");
-  const country = String(row.country || "--");
-  const fallback = cityFallback(city, country);
-  const lat = Number.isFinite(Number(row.lat)) ? Number(row.lat) : fallback?.lat ?? Number.NaN;
-  const lng = Number.isFinite(Number(row.lng)) ? Number(row.lng) : fallback?.lng ?? Number.NaN;
-  const status = String(row.verdict || "VALID").toUpperCase();
-  return {
-    city,
-    country,
-    lat,
-    lng,
-    scans: 1,
-    risk: status === "VALID" ? 0 : 1,
-    status,
-    source: String(row.source || "production"),
-    lastSeen: String(row.occurredAt || new Date().toISOString()),
-    tenantSlug: row.tenantSlug || undefined,
-    uid: row.uidMasked,
-    device: `${deviceSummary(row)} · ${locationSourceLabel(row)}`,
-  };
-}
-
-function aggregateMapPoints(rows: TenantTapRealtimeEvent[]) {
-  const buckets = new Map<string, ReturnType<typeof toMapPoint> & { latestMs: number }>();
-  rows.forEach((row) => {
-    const point = toMapPoint(row);
-    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return;
-    const key = `${point.tenantSlug || "global"}|${point.city.toLowerCase()}|${point.country}|${point.lat.toFixed(3)}|${point.lng.toFixed(3)}`;
-    const latestMs = safeDate(point.lastSeen);
-    const current = buckets.get(key);
-    if (!current) {
-      buckets.set(key, { ...point, scans: 1, risk: point.risk, latestMs });
-      return;
-    }
-    current.scans += 1;
-    current.risk += point.risk;
-    if (latestMs >= current.latestMs) {
-      current.latestMs = latestMs;
-      current.lastSeen = point.lastSeen;
-      current.status = point.status;
-      current.uid = point.uid;
-      current.device = point.device;
-    }
-  });
-  return [...buckets.values()]
-    .sort((a, b) => b.latestMs - a.latestMs || b.scans - a.scans)
-    .map(({ latestMs: _latestMs, ...point }) => ({ ...point, status: point.risk > 0 ? "RISK" : point.status }))
-    .slice(0, 50);
 }
 
 function buildHotspots(rows: TenantTapRealtimeEvent[]) {
@@ -274,6 +225,154 @@ function FunnelNode({ icon, label, value, pct, tone }: { icon: ReactNode; label:
   );
 }
 
+function TapMapCanvas({
+  hotspots,
+  events,
+  mapView,
+  mode,
+  zoom,
+}: {
+  hotspots: ReturnType<typeof buildHotspots>;
+  events: TenantTapRealtimeEvent[];
+  mapView: MapView;
+  mode: MapMode;
+  zoom: number;
+}) {
+  const maxTaps = Math.max(1, ...hotspots.map((item) => item.taps));
+  const hotspotNodes = hotspots.map((hotspot, index) => {
+    const pos = cityHeatPosition(hotspot.city, hotspot.country, index);
+    const intensity = hotspot.taps / maxTaps;
+    const riskRatio = hotspot.taps ? hotspot.risk / hotspot.taps : 0;
+    return {
+      ...hotspot,
+      ...pos,
+      pointSize: Math.min(10, 4 + Math.sqrt(hotspot.taps) * 1.15),
+      heatSize: Math.min(92, 38 + intensity * 36 + Math.log1p(hotspot.taps) * 8),
+      ringSize: Math.min(76, 38 + intensity * 28),
+      riskRatio,
+    };
+  });
+
+  const tapNodes = events.slice(0, 90).map((event, index) => {
+    const city = String(event.city || "Unknown");
+    const country = String(event.country || "--");
+    const pos = jitteredPosition(city, country, String(event.eventId || event.uidMasked || event.occurredAt), index);
+    const risk = String(event.verdict || "").toLowerCase() !== "valid";
+    return { ...pos, risk, id: String(event.eventId || `${event.uidMasked}-${event.occurredAt}-${index}`), fresh: index < 8 };
+  });
+
+  const routeNodes = hotspotNodes.slice(0, 4).flatMap((node, index, rows) => {
+    const next = rows[index + 1];
+    return next ? [{ id: `${node.key}-${next.key}`, from: node, to: next }] : [];
+  });
+
+  return (
+    <div className="relative h-full min-h-[300px] overflow-hidden rounded-xl border border-white/8 bg-[#061322] shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,.045)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.045)_1px,transparent_1px),radial-gradient(circle_at_42%_30%,rgba(34,211,238,.13),transparent_22%),radial-gradient(circle_at_58%_52%,rgba(20,184,166,.12),transparent_26%)] bg-[length:64px_64px,64px_64px,auto,auto]" />
+      <div className="absolute inset-0 transition-transform duration-300 ease-out" style={{ transform: `scale(${zoom})`, transformOrigin: "52% 48%" }}>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full opacity-90" aria-hidden="true">
+        <defs>
+          <linearGradient id="execLand" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor="rgba(23,37,84,.58)" />
+            <stop offset="100%" stopColor="rgba(15,23,42,.24)" />
+          </linearGradient>
+          <filter id="execMapGlow">
+            <feGaussianBlur stdDeviation="0.6" />
+          </filter>
+        </defs>
+        <rect width="100" height="100" fill="rgba(2,6,23,.28)" />
+        <path d="M17 0H100V100H20C23 89 29 79 30 68C31 55 22 45 25 34C28 23 38 16 41 4L17 0Z" fill="url(#execLand)" stroke="rgba(148,163,184,.16)" strokeWidth="0.25" />
+        <path d="M29 2C31 15 28 25 29 37C30 51 38 61 36 76C35 86 30 94 27 100" fill="none" stroke="rgba(125,211,252,.14)" strokeWidth="0.8" />
+        <path d="M55 20C62 25 69 31 76 34M58 50C67 49 76 50 84 55M47 64C54 70 61 75 68 82" fill="none" stroke="rgba(148,163,184,.1)" strokeWidth="0.35" strokeDasharray="1.4 1.4" />
+        {routeNodes.map((route) => (
+          <path
+            key={route.id}
+            d={`M ${route.from.x} ${route.from.y} Q ${(route.from.x + route.to.x) / 2} ${Math.min(route.from.y, route.to.y) - 8} ${route.to.x} ${route.to.y}`}
+            fill="none"
+            stroke={route.from.riskRatio > 0.1 || route.to.riskRatio > 0.1 ? "rgba(251,191,36,.72)" : "rgba(34,211,238,.56)"}
+            strokeDasharray="1.6 1.4"
+            strokeWidth="0.55"
+          />
+        ))}
+      </svg>
+
+      <div className="absolute left-[18%] top-[18%] text-[11px] text-slate-400">Mendoza</div>
+      <div className="absolute left-[39%] top-[23%] text-[11px] text-slate-300">Córdoba</div>
+      <div className="absolute left-[52%] top-[31%] text-[11px] text-slate-300">Rosario</div>
+      <div className="absolute left-[58%] top-[47%] text-[11px] text-slate-300">Buenos Aires</div>
+      <div className="absolute left-[66%] top-[57%] text-[10px] text-slate-500">Mar del Plata</div>
+
+      {mapView === "heat" && hotspotNodes.map((spot) => {
+        const core = spot.riskRatio > 0.18 ? "rgba(239,68,68,.72)" : spot.taps >= maxTaps ? "rgba(250,204,21,.76)" : "rgba(34,197,94,.58)";
+        const mid = spot.riskRatio > 0.18 ? "rgba(250,204,21,.48)" : "rgba(34,211,238,.32)";
+        return (
+          <div
+            key={`heat-${spot.key}`}
+            className="pointer-events-none absolute rounded-full mix-blend-screen"
+            style={{
+              left: `${spot.x}%`,
+              top: `${spot.y}%`,
+              width: `${spot.heatSize}px`,
+              height: `${spot.heatSize}px`,
+              transform: "translate(-50%, -50%)",
+              background: `radial-gradient(circle, ${core} 0%, ${core} 12%, ${mid} 42%, rgba(34,211,238,0) 72%)`,
+              opacity: 0.78,
+            }}
+          />
+        );
+      })}
+
+      {mapView === "nearby" && hotspotNodes.map((spot) => (
+        <div
+          key={`nearby-${spot.key}`}
+          className="pointer-events-none absolute rounded-full border border-cyan-200/55 bg-cyan-300/5 shadow-[0_0_24px_rgba(34,211,238,.18)]"
+          style={{
+            left: `${spot.x}%`,
+            top: `${spot.y}%`,
+            width: `${spot.ringSize}px`,
+            height: `${spot.ringSize}px`,
+            transform: "translate(-50%, -50%)",
+          }}
+        />
+      ))}
+
+      {tapNodes.map((tap) => (
+        <span
+          key={tap.id}
+          className={`absolute rounded-full ${tap.risk ? "bg-rose-300 shadow-[0_0_10px_rgba(251,113,133,.65)]" : "bg-cyan-200 shadow-[0_0_8px_rgba(34,211,238,.55)]"} ${tap.fresh ? "ring-2 ring-white/20" : ""}`}
+          style={{
+            left: `${tap.x}%`,
+            top: `${tap.y}%`,
+            width: tap.fresh ? 5 : 3,
+            height: tap.fresh ? 5 : 3,
+            transform: "translate(-50%, -50%)",
+            opacity: tap.fresh ? 0.95 : 0.62,
+          }}
+        />
+      ))}
+
+      {hotspotNodes.map((spot) => (
+        <div key={`point-${spot.key}`} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${spot.x}%`, top: `${spot.y}%` }}>
+          <span
+            className={`grid place-items-center rounded-full border-2 ${spot.riskRatio > 0.18 ? "border-rose-200 bg-rose-400" : "border-white/80 bg-cyan-300"} shadow-[0_0_16px_rgba(34,211,238,.45)]`}
+            style={{ width: `${spot.pointSize + 7}px`, height: `${spot.pointSize + 7}px` }}
+          >
+            <i className="h-1.5 w-1.5 rounded-full bg-white" />
+          </span>
+          <div className="mt-1 rounded-md border border-white/10 bg-slate-950/70 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg">
+            {spot.city} · {spot.taps}
+          </div>
+        </div>
+      ))}
+      </div>
+
+      <div className="absolute bottom-3 left-3 rounded-lg border border-white/8 bg-slate-950/72 px-3 py-2 text-xs text-slate-300 backdrop-blur">
+        <b className="text-cyan-200">{events.length}</b> taps visibles · {hotspots.length} hotspots · zoom {Math.round(zoom * 100)}% · {mode === "tenant" ? "scope tenant" : "scope global"}
+      </div>
+    </div>
+  );
+}
+
 export function ExecutiveRealtimeCrm({
   initialEvents,
   tenantScope,
@@ -290,6 +389,7 @@ export function ExecutiveRealtimeCrm({
   const [lastUpdateAt, setLastUpdateAt] = useState(initialEvents[0]?.occurredAt || new Date().toISOString());
   const [selectedTenant, setSelectedTenant] = useState("all");
   const [mapView, setMapView] = useState<MapView>("heat");
+  const [mapZoom, setMapZoom] = useState(1);
   const [clock, setClock] = useState("");
   const lastEventIdRef = useRef("");
 
@@ -401,24 +501,9 @@ export function ExecutiveRealtimeCrm({
     return buckets;
   }, [visibleEvents]);
 
-  const mapPoints = useMemo(() => aggregateMapPoints(visibleEvents), [visibleEvents]);
   const hotspots = useMemo(() => buildHotspots(visibleEvents), [visibleEvents]);
   const latestEvent = visibleEvents[0] || null;
   const todayLabel = useMemo(() => new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", ""), []);
-  const heatSpots = useMemo(() => {
-    const maxTaps = Math.max(1, ...hotspots.map((item) => item.taps));
-    return hotspots.map((hotspot, index) => {
-      const pos = cityHeatPosition(hotspot.city, hotspot.country, index);
-      const intensity = hotspot.taps / maxTaps;
-      const riskRatio = hotspot.taps ? hotspot.risk / hotspot.taps : 0;
-      return {
-        ...hotspot,
-        ...pos,
-        size: 118 + intensity * 122,
-        riskRatio,
-      };
-    });
-  }, [hotspots]);
 
   const alerts = useMemo(() => {
     const rows: Array<{ id: string; tone: "red" | "amber" | "blue"; title: string; detail: string; time: string }> = [];
@@ -610,8 +695,8 @@ export function ExecutiveRealtimeCrm({
 
             <div className="relative min-h-0 overflow-hidden rounded-xl border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)]">
               <div className="absolute left-4 top-4 z-20 grid gap-2">
-                <button type="button" onClick={() => setMapView("heat")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white">+</button>
-                <button type="button" onClick={() => setMapView("points")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white">−</button>
+                <button type="button" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
+                <button type="button" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">−</button>
                 <button type="button" onClick={() => setMapView("nearby")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200"><Crosshair className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setMapView("points")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200"><Layers className="h-4 w-4" /></button>
               </div>
@@ -626,8 +711,8 @@ export function ExecutiveRealtimeCrm({
                     {icon}{label}
                   </button>
                 ))}
-                <button type="button" onClick={() => setMapView("heat")} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300"><Settings className="h-4 w-4" /></button>
-                <button type="button" onClick={() => setMapView("nearby")} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300"><Expand className="h-4 w-4" /></button>
+                <button type="button" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
+                <button type="button" onClick={() => setMapZoom((value) => value < 1.12 ? 1.12 : 1)} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Alternar ampliación del mapa"><Expand className="h-4 w-4" /></button>
               </div>
 
               <div className="absolute bottom-20 left-4 z-20 rounded-lg border border-white/10 bg-slate-950/75 p-3 text-xs text-slate-200 shadow-xl">
@@ -642,34 +727,8 @@ export function ExecutiveRealtimeCrm({
               </div>
 
               <div className="h-full w-full p-3 pr-[300px]">
-                <DemoOpsMap points={mapPoints} mode={mode} chrome="compact" />
+                <TapMapCanvas hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} />
               </div>
-
-              {mapView === "heat" ? (
-                <div className="pointer-events-none absolute inset-y-0 left-0 right-[300px] z-10 overflow-hidden">
-                  {heatSpots.map((spot) => {
-                    const colorCore = spot.riskRatio > 0.18 ? "rgba(239,68,68,.9)" : "rgba(250,204,21,.9)";
-                    const colorMid = spot.riskRatio > 0.18 ? "rgba(250,204,21,.72)" : "rgba(34,197,94,.62)";
-                    return (
-                      <div
-                        key={spot.key}
-                        className="absolute rounded-full blur-[1px] mix-blend-screen"
-                        style={{
-                          left: `${spot.x}%`,
-                          top: `${spot.y}%`,
-                          width: `${spot.size}px`,
-                          height: `${spot.size}px`,
-                          transform: "translate(-50%, -50%)",
-                          background: `radial-gradient(circle, ${colorCore} 0%, ${colorCore} 8%, ${colorMid} 22%, rgba(34,211,238,.35) 42%, rgba(34,211,238,0) 70%)`,
-                          opacity: 0.72,
-                        }}
-                      >
-                        <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_18px_rgba(255,255,255,.9)]" />
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
 
               <div className="absolute bottom-4 right-4 top-[76px] z-20 w-[270px] rounded-xl border border-white/10 bg-slate-950/72 p-3 shadow-2xl backdrop-blur">
                 <p className="text-sm font-semibold text-white">Eventos cercanos (5 km)</p>
