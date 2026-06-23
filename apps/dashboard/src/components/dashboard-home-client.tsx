@@ -8,7 +8,7 @@ import { DataTable } from "./data-table";
 import { ModuleGrid } from "./module-grid";
 import { MultirubroOpsPanel } from "./multirubro-ops-panel";
 import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "./ops-command-center";
-import { RealtimeOpsMonitor } from "./realtime-ops-monitor";
+import { ExecutiveRealtimeCrm } from "./executive-realtime-crm";
 import { VerifiedExperiencesPanel } from "./verified-experiences-panel";
 import {
   LayoutDashboard,
@@ -124,11 +124,11 @@ export default function DashboardHomeClient({
         {/* SUMMARY TAB */}
         {activeTab === "summary" && (
           <div className="space-y-4">
-            <RealtimeOpsMonitor
+            <ExecutiveRealtimeCrm
               initialEvents={initialRealtimeEvents}
               tenantScope={tenantScope}
               mode={isTenantAdmin ? "tenant" : "global"}
-              labels={labels}
+              onSectionChange={(section) => setActiveTab(section)}
             />
           </div>
         )}
