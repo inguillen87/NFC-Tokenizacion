@@ -12,15 +12,19 @@ import {
   Download,
   Expand,
   Filter,
+  Gift,
   Globe,
   Layers,
   LogOut,
   MapPin,
+  Megaphone,
   MousePointerClick,
   Radio,
   Settings,
+  Send,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Tags,
   Target,
   Truck,
@@ -35,6 +39,24 @@ type MapMode = "tenant" | "global";
 type CrmSection = "summary" | "infra" | "loyalty";
 type MapView = "heat" | "points" | "nearby";
 type TimeRange = "5m" | "1h" | "24h";
+
+type MarketOpportunity = {
+  key: string;
+  city: string;
+  country: string;
+  taps: number;
+  validRate: number;
+  gpsRate: number;
+  riskRate: number;
+  crmReady: number;
+  audience: number;
+  score: number;
+  channel: string;
+  offer: string;
+  playbook: string;
+  reason: string;
+  campaignName: string;
+};
 
 const tooltipStyle = {
   backgroundColor: "rgba(5, 12, 25, 0.96)",
@@ -141,6 +163,74 @@ function buildHotspots(rows: TenantTapRealtimeEvent[]) {
   return [...buckets.values()].sort((a, b) => b.taps - a.taps || b.lastSeenMs - a.lastSeenMs).slice(0, 5);
 }
 
+function buildMarketOpportunities(
+  hotspots: ReturnType<typeof buildHotspots>,
+  rows: TenantTapRealtimeEvent[],
+): MarketOpportunity[] {
+  return hotspots.map((hotspot, index) => {
+    const cityRows = rows.filter((row) => {
+      const city = String(row.city || "Unknown");
+      const country = String(row.country || "--");
+      return city === hotspot.city && country === hotspot.country;
+    });
+    const validRate = hotspot.taps ? (hotspot.valid / hotspot.taps) * 100 : 0;
+    const gpsRate = hotspot.taps ? (hotspot.gps / hotspot.taps) * 100 : 0;
+    const riskRate = hotspot.taps ? (hotspot.risk / hotspot.taps) * 100 : 0;
+    const crmReady = cityRows.filter((row) => String(row.verdict || "").toLowerCase() === "valid" && Boolean(row.uidMasked)).length;
+    const audience = Math.max(crmReady, Math.round(hotspot.valid * 1.4 + hotspot.gps * 0.8));
+
+    let channel = "WhatsApp + voucher";
+    let offer = "15% club post-tap";
+    let playbook = "Enviar voucher de recompra a UIDs validos y medir canje por ciudad.";
+    let reason = "Alta senal valida para fidelizacion.";
+
+    if (riskRate > 12) {
+      channel = "Riesgo + retencion";
+      offer = "Beneficio con validacion";
+      playbook = "Separar taps sospechosos, auditar device y mandar promo solo a validos.";
+      reason = "La zona vende, pero necesita control antifraude antes de escalar.";
+    } else if (gpsRate < 60) {
+      channel = "Portal + WhatsApp";
+      offer = "Bono por activar GPS";
+      playbook = "Pedir opt-in de portal y mejorar precision antes de pauta paga.";
+      reason = "Hay demanda, pero falta ubicacion fina para cercanias.";
+    } else if (hotspot.taps >= 10) {
+      channel = "Instagram + WhatsApp";
+      offer = "Drop local 2x1";
+      playbook = "Activar pauta local, historias con QR/NFC y cupo limitado por barrio.";
+      reason = "Volumen suficiente para campana geolocalizada.";
+    } else if (validRate >= 90) {
+      channel = "Voucher premium";
+      offer = "Early access club";
+      playbook = "Premiar primeros compradores y pedir referido en portal de usuario.";
+      reason = "Pocos taps, pero de alta calidad comercial.";
+    }
+
+    const score = Math.max(
+      0,
+      Math.min(99, Math.round(validRate * 0.42 + gpsRate * 0.22 + Math.min(hotspot.taps * 7, 28) + crmReady * 2 - riskRate * 0.45)),
+    );
+
+    return {
+      key: hotspot.key,
+      city: hotspot.city,
+      country: hotspot.country,
+      taps: hotspot.taps,
+      validRate,
+      gpsRate,
+      riskRate,
+      crmReady,
+      audience,
+      score,
+      channel,
+      offer,
+      playbook,
+      reason,
+      campaignName: `Growth ${index + 1}: ${hotspot.city}`,
+    };
+  }).sort((a, b) => b.score - a.score || b.taps - a.taps).slice(0, 5);
+}
+
 function MiniSparkline({ data, color, dataKey = "taps" }: { data: Array<Record<string, number | string>>; color: string; dataKey?: string }) {
   return (
     <div className="h-7 w-full">
@@ -223,6 +313,7 @@ export function ExecutiveRealtimeCrm({
   const [mapZoom, setMapZoom] = useState(1);
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const [clock, setClock] = useState("");
+  const [campaignDraft, setCampaignDraft] = useState<string | null>(null);
   const lastEventIdRef = useRef("");
 
   useEffect(() => {
@@ -350,6 +441,8 @@ export function ExecutiveRealtimeCrm({
   }, [visibleEvents]);
 
   const hotspots = useMemo(() => buildHotspots(visibleEvents), [visibleEvents]);
+  const marketOpportunities = useMemo(() => buildMarketOpportunities(hotspots, visibleEvents), [hotspots, visibleEvents]);
+  const topOpportunity = marketOpportunities[0] || null;
   const latestEvent = visibleEvents[0] || null;
   const todayLabel = useMemo(() => new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", ""), []);
 
@@ -398,6 +491,61 @@ export function ExecutiveRealtimeCrm({
     );
   };
 
+  const rowsForOpportunity = (opportunity: MarketOpportunity) => {
+    return visibleEvents.filter((event) => {
+      const city = String(event.city || "Unknown");
+      const country = String(event.country || "--");
+      return city === opportunity.city && country === opportunity.country;
+    });
+  };
+
+  const handleCampaignExport = (opportunity: MarketOpportunity) => {
+    const rows = rowsForOpportunity(opportunity);
+    exportToCsv(
+      `nexid-growth-segment-${opportunity.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${new Date().toISOString().slice(0, 10)}`,
+      rows.map((event) => ({
+        campaign: opportunity.campaignName,
+        city: opportunity.city,
+        country: opportunity.country,
+        channel: opportunity.channel,
+        offer: opportunity.offer,
+        tenant: event.tenantSlug || "",
+        uid: event.uidMasked,
+        verdict: event.verdict,
+        occurredAt: event.occurredAt,
+        product: event.productName || "",
+        device: deviceSummary(event),
+        location: locationSourceLabel(event),
+      })),
+      [
+        { key: "campaign", label: "Campana" },
+        { key: "city", label: "Ciudad" },
+        { key: "country", label: "Pais" },
+        { key: "channel", label: "Canal sugerido" },
+        { key: "offer", label: "Promo sugerida" },
+        { key: "tenant", label: "Tenant" },
+        { key: "uid", label: "UID" },
+        { key: "verdict", label: "Veredicto" },
+        { key: "occurredAt", label: "Fecha" },
+        { key: "product", label: "Producto" },
+        { key: "device", label: "Dispositivo" },
+        { key: "location", label: "Ubicacion" },
+      ],
+    );
+    setCampaignDraft(`${opportunity.campaignName}: segmento ${opportunity.channel} exportado (${rows.length} taps).`);
+  };
+
+  const openCampaignStudio = (opportunity: MarketOpportunity) => {
+    const params = new URLSearchParams({
+      city: opportunity.city,
+      country: opportunity.country,
+      channel: opportunity.channel,
+      offer: opportunity.offer,
+      audience: String(opportunity.audience),
+    });
+    window.location.href = `/loyalty/campaigns?${params.toString()}`;
+  };
+
   const railItems = [
     { icon: <Activity className="h-6 w-6" />, active: true, label: "Realtime CRM", action: () => onSectionChange?.("summary") },
     { icon: <Globe className="h-5 w-5" />, label: "Mapa", action: () => setMapView("heat") },
@@ -409,8 +557,8 @@ export function ExecutiveRealtimeCrm({
   ];
 
   return (
-    <div className="fixed inset-0 z-[120] overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]" />
+    <div className="nexid-crm-shell fixed inset-0 z-[120] overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden">
+      <div className="nexid-crm-backdrop pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]" />
       <header className="relative z-10 flex min-h-[70px] flex-wrap items-center gap-3 border-b border-cyan-200/10 bg-[#06101d]/90 px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,.04)] lg:h-[70px] lg:flex-nowrap lg:px-4 lg:py-0">
         <div className="flex w-full items-center gap-4 sm:w-auto lg:w-[510px] lg:gap-5">
           <div className="pr-4 text-[24px] font-black tracking-[-0.04em] text-white lg:pr-6 lg:text-[28px]">
@@ -528,7 +676,7 @@ export function ExecutiveRealtimeCrm({
           </div>
         </section>
 
-        <section className="order-1 grid min-h-0 grid-rows-none gap-4 lg:order-2 lg:grid-rows-[minmax(0,1fr)_260px]">
+        <section className="order-1 grid min-h-0 grid-rows-none gap-4 lg:order-2 lg:grid-rows-[minmax(0,1fr)_300px]">
           <div className="grid min-h-0 grid-rows-none lg:grid-rows-[auto_minmax(0,1fr)]">
             <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
@@ -607,35 +755,70 @@ export function ExecutiveRealtimeCrm({
           </div>
 
           <div className="grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_392px]">
-            <div className="rounded-xl border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-base font-bold text-white">Hotspots accionables <span className="text-sm font-normal text-slate-400">(top ciudades)</span></p>
-                <button type="button" title="Abrir analítica completa por ciudad y hotspot" onClick={() => { window.location.href = "/analytics"; }} className="text-sm font-semibold text-cyan-300">Ver todas las ciudades</button>
+            <div className="rounded-xl border border-cyan-300/15 bg-[linear-gradient(180deg,rgba(10,24,43,.96),rgba(4,10,20,.94))] p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="flex min-w-0 items-center gap-2 text-base font-bold text-white">
+                  <Megaphone className="h-4 w-4 text-cyan-300" />
+                  <span className="truncate">Inteligencia comercial por zona</span>
+                  <span className="hidden text-sm font-normal text-slate-400 sm:inline">(promos, vouchers y logistica)</span>
+                </p>
+                <button type="button" title="Abrir Growth & BotIA para crear campanas con estas senales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Growth & BotIA</button>
               </div>
-              <div className="overflow-x-auto rounded-lg border border-white/8">
-                <div className="min-w-[720px]">
-                <div className="grid grid-cols-[1.2fr_.7fr_.7fr_.8fr_.7fr_.9fr] bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-400">
-                  <span>Ciudad</span><span>Taps (24h)</span><span>Tasa válida</span><span>Último UID</span><span>Riesgo</span><span>Acción</span>
+
+              {topOpportunity ? (
+                <div className="mb-2 grid gap-2 rounded-lg border border-cyan-300/15 bg-cyan-400/8 p-2.5 text-xs text-slate-300 sm:grid-cols-[minmax(0,1fr)_220px]">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 font-bold uppercase tracking-[0.08em] text-cyan-200"><Sparkles className="h-3.5 w-3.5" /> AI Growth Copilot</p>
+                    <p className="mt-1 line-clamp-2">
+                      Activar <b className="text-white">{topOpportunity.offer}</b> en <b className="text-white">{topOpportunity.city}</b> por {topOpportunity.channel}. Logistica: priorizar stock, QR/NFC activos y puntos de canje donde ya hay {topOpportunity.taps} taps.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <span className="rounded-lg border border-white/8 bg-slate-950/45 p-2"><b className="block text-base text-white">{topOpportunity.score}</b> score</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/45 p-2"><b className="block text-base text-white">{topOpportunity.audience}</b> audiencia</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/45 p-2"><b className="block text-base text-white">{formatPercent(topOpportunity.validRate)}</b> valido</span>
+                  </div>
                 </div>
-                {hotspots.map((hotspot) => {
-                  const validRate = hotspot.taps ? (hotspot.valid / hotspot.taps) * 100 : 0;
-                  const riskRate = hotspot.taps ? (hotspot.risk / hotspot.taps) * 100 : 0;
-                  const action = riskRate > 10 || validRate < 70 ? "Revisar riesgo" : "Impulsar oferta";
-                  return (
-                    <div key={hotspot.key} className="grid grid-cols-[1.2fr_.7fr_.7fr_.8fr_.7fr_.9fr] border-t border-white/8 px-3 py-2 text-sm">
-                      <b className="truncate text-white">{hotspot.city}, {hotspot.country}</b>
-                      <span>{hotspot.taps}</span>
-                      <span className="font-semibold text-emerald-300">{formatPercent(validRate)}</span>
-                      <span className="truncate text-slate-300">{hotspot.lastUid}</span>
-                      <span className="font-semibold text-amber-300">{formatPercent(riskRate)}</span>
-                      <span className={`w-fit rounded px-2 py-0.5 text-xs font-semibold ${action.includes("Revisar") ? "bg-amber-400/12 text-amber-300" : "bg-emerald-400/12 text-emerald-300"}`}>{action}</span>
+              ) : null}
+
+              {campaignDraft ? (
+                <div className="mb-2 flex items-center gap-2 rounded-lg border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-200">
+                  <BadgeCheck className="h-4 w-4" /> {campaignDraft}
+                </div>
+              ) : null}
+
+              <div className="max-h-[145px] space-y-2 overflow-y-auto pr-1 lg:max-h-[150px]">
+                {marketOpportunities.length ? marketOpportunities.map((opportunity) => (
+                  <div key={opportunity.key} className="rounded-lg border border-white/8 bg-slate-950/48 p-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <b className="block truncate text-sm text-white">{opportunity.city}, {opportunity.country}</b>
+                        <span className="block truncate text-[11px] text-slate-400">{opportunity.reason}</span>
+                      </span>
+                      <span className="shrink-0 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-xs font-bold text-cyan-200">{opportunity.score}/99</span>
                     </div>
-                  );
-                })}
-                </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-slate-400">
+                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block text-sm text-white">{opportunity.audience}</b> audiencia CRM</span>
+                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-white">{opportunity.channel}</b> canal</span>
+                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-emerald-200">{opportunity.offer}</b> promo</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button type="button" title={`Exportar audiencia de ${opportunity.city} con UIDs, canal y promo sugerida`} onClick={() => handleCampaignExport(opportunity)} className="rounded-md border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs font-semibold text-slate-100 hover:border-cyan-300/50">
+                        <Download className="mr-1 inline h-3.5 w-3.5" /> CSV
+                      </button>
+                      <button type="button" title={`Abrir campana para ${opportunity.city}: ${opportunity.playbook}`} onClick={() => openCampaignStudio(opportunity)} className="rounded-md border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-200 hover:border-emerald-200/60">
+                        <Send className="mr-1 inline h-3.5 w-3.5" /> Campana
+                      </button>
+                      <span className="min-w-0 truncate text-[11px] text-slate-500"><Gift className="mr-1 inline h-3.5 w-3.5 text-emerald-300" /> {opportunity.playbook}</span>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="rounded-lg border border-white/8 bg-slate-950/48 px-3 py-5 text-sm text-slate-400">
+                    Sin zonas accionables todavia. Apenas entren taps validos, la IA prioriza ciudad, canal, promo y logistica.
+                  </div>
+                )}
               </div>
             </div>
-
             <div className="rounded-xl border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-base font-bold text-white">Alertas y excepciones <span className="ml-1 rounded-full bg-red-500 px-1.5 text-xs">{alerts.length}</span></p>

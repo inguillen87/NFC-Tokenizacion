@@ -1,13 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Card, Badge, Button } from "@product/ui";
 import { 
+  AlertTriangle,
   Sparkles, 
   TrendingUp, 
   Gauge, 
   FileText, 
+  Gift,
+  MapPin,
+  MessageCircle,
+  Phone,
   Send, 
+  ShieldCheck,
   Check, 
   RotateCcw, 
   Plus, 
@@ -61,6 +67,182 @@ interface ChatMessage {
 interface ImprovementApplied {
   from: string;
   to: string;
+}
+
+interface AudienceMember {
+  consumer_id: string;
+  display_name?: string | null;
+  email_masked?: string | null;
+  phone_masked?: string | null;
+  city?: string | null;
+  country?: string | null;
+  tenant_slug?: string | null;
+  status?: string | null;
+  points_balance?: number | string | null;
+  lifetime_points?: number | string | null;
+  tap_count?: number | string | null;
+  valid_taps?: number | string | null;
+  risk_taps?: number | string | null;
+  saved_products?: number | string | null;
+  last_product?: string | null;
+  marketing_opt_in?: boolean | null;
+  whatsapp_opt_in?: boolean | null;
+  segment?: string | null;
+  last_tap_at?: string | null;
+}
+
+interface CampaignTemplate {
+  id: string;
+  name: string;
+  channel: "whatsapp" | "email" | "instagram";
+  category: "MARKETING" | "UTILITY" | "LOYALTY";
+  segment: string;
+  offer: string;
+  expectedLift: string;
+  body: string;
+  requirements: string[];
+}
+
+interface TwilioStatus {
+  ok: boolean;
+  message: string;
+  sid?: string | null;
+  mediaSid?: string | null;
+  contentSid?: string | null;
+  mediaUrl?: string | null;
+}
+
+interface RedemptionValidation {
+  ok: boolean;
+  reason?: string;
+  action?: string;
+  redemption?: {
+    redemption_code?: string;
+    status?: string;
+    seal?: string | null;
+    expires_at?: string | null;
+    reward?: { title?: string; code?: string };
+    consumer?: { name?: string; phone_masked?: string | null; email_masked?: string | null };
+    tenant?: { slug?: string };
+    staff_instruction?: string;
+  };
+}
+
+const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
+  {
+    id: "mendoza-near-winery",
+    name: "Voucher cercania bodega",
+    channel: "whatsapp",
+    category: "MARKETING",
+    segment: "Usuarios verificados cerca de Mendoza",
+    offer: "2x1 en copa de bienvenida + upgrade de visita",
+    expectedLift: "+14% visitas al portal",
+    body:
+      "Hola {{name}}, vimos tu tap verificado en {{city}} sobre {{product}}. Demo Bodega te reserva {{offer}} por 48h. Toca Quiero y nexID emite tu codigo de canje con respaldo por WhatsApp y email si lo tenes cargado. Stop para salir.",
+    requirements: ["phone_verified", "whatsapp_opt_in", "city_match"],
+  },
+  {
+    id: "post-tap-welcome",
+    name: "Bienvenida post-tap",
+    channel: "whatsapp",
+    category: "UTILITY",
+    segment: "Primer tap validado",
+    offer: "club digital con puntos iniciales",
+    expectedLift: "+22% registros completados",
+    body:
+      "Hola {{name}}, tu producto {{product}} quedo autenticado con nexID. Ya tenes {{points}} puntos y podes guardar el pasaporte, reclamar beneficios y recibir novedades de {{brand}}. Stop para salir.",
+    requirements: ["tap_valid", "consumer_session"],
+  },
+  {
+    id: "trust-recovery",
+    name: "Recuperacion de confianza",
+    channel: "whatsapp",
+    category: "UTILITY",
+    segment: "Usuarios con senales de riesgo",
+    offer: "validacion asistida y beneficio compensatorio",
+    expectedLift: "-18% abandono post-alerta",
+    body:
+      "Hola {{name}}, detectamos una verificacion que requiere revision para {{product}}. El equipo de {{brand}} puede validar el caso y activar un beneficio de confianza desde tu portal nexID. Stop para salir.",
+    requirements: ["risk_case", "support_ready"],
+  },
+  {
+    id: "vip-gamified",
+    name: "Reto gamificado VIP",
+    channel: "whatsapp",
+    category: "LOYALTY",
+    segment: "Clientes con 2+ taps o puntos",
+    offer: "bonus de 300 puntos + badge Vendimia Insider",
+    expectedLift: "+9% recompra esperada",
+    body:
+      "Hola {{name}}, por tus taps en {{city}} desbloqueaste el reto Vendimia Insider. Escanea otro producto de {{brand}} esta semana y gana {{offer}}. Ver bases en tu portal nexID. Stop para salir.",
+    requirements: ["loyalty_member", "marketing_opt_in"],
+  },
+];
+
+const DEMO_AUDIENCE: AudienceMember[] = [
+  {
+    consumer_id: "demo-mendoza-001",
+    display_name: "Marcelo Guillen",
+    email_masked: "g***@demo.local",
+    phone_masked: "+549***8608",
+    city: "Mendoza",
+    country: "AR",
+    tenant_slug: "demobodega",
+    status: "active",
+    points_balance: 420,
+    lifetime_points: 780,
+    tap_count: 5,
+    valid_taps: 5,
+    risk_taps: 0,
+    saved_products: 2,
+    last_product: "Gran Reserva Malbec",
+    marketing_opt_in: true,
+    whatsapp_opt_in: true,
+    segment: "promo_ready",
+  },
+  {
+    consumer_id: "demo-cordoba-001",
+    display_name: "Cliente Cordoba",
+    email_masked: "c***@demo.local",
+    phone_masked: "+549***2211",
+    city: "Cordoba",
+    country: "AR",
+    tenant_slug: "demobodega",
+    status: "active",
+    points_balance: 120,
+    lifetime_points: 120,
+    tap_count: 1,
+    valid_taps: 1,
+    risk_taps: 0,
+    saved_products: 1,
+    last_product: "Cabernet Franc Reserva",
+    marketing_opt_in: false,
+    whatsapp_opt_in: false,
+    segment: "post_tap_warm",
+  },
+];
+
+function asNumber(value: unknown) {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function firstName(name: string | null | undefined) {
+  const clean = String(name || "").trim();
+  return clean ? clean.split(/\s+/)[0] : "cliente";
+}
+
+function renderTemplateBody(template: CampaignTemplate, member: AudienceMember | undefined) {
+  const selected = member || DEMO_AUDIENCE[0];
+  const replacements: Record<string, string> = {
+    name: firstName(selected.display_name),
+    city: selected.city || "Mendoza",
+    product: selected.last_product || "tu producto autenticado",
+    brand: selected.tenant_slug === "demobodega" ? "Demo Bodega" : selected.tenant_slug || "tu marca",
+    offer: template.offer,
+    points: String(asNumber(selected.points_balance)),
+  };
+  return template.body.replace(/\{\{(name|city|product|brand|offer|points)\}\}/g, (_, key: string) => replacements[key] || "");
 }
 
 // Initial campaigns data
@@ -139,6 +321,91 @@ export default function LoyaltyCampaignsClient() {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isBotTyping, setIsBotTyping] = useState(false);
+  const [audienceMembers, setAudienceMembers] = useState<AudienceMember[]>([]);
+  const [audienceLoading, setAudienceLoading] = useState(true);
+  const [audienceError, setAudienceError] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(CAMPAIGN_TEMPLATES[0].id);
+  const [selectedCity, setSelectedCity] = useState("all");
+  const [sandboxRecipientName, setSandboxRecipientName] = useState("Marcelo");
+  const [twilioRecipient, setTwilioRecipient] = useState("+5492613168608");
+  const [twilioOptInConfirmed, setTwilioOptInConfirmed] = useState(false);
+  const [twilioSending, setTwilioSending] = useState(false);
+  const [twilioStatus, setTwilioStatus] = useState<TwilioStatus | null>(null);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherSeal, setVoucherSeal] = useState("");
+  const [voucherPhoneLast4, setVoucherPhoneLast4] = useState("");
+  const [voucherChecking, setVoucherChecking] = useState(false);
+  const [voucherResult, setVoucherResult] = useState<RedemptionValidation | null>(null);
+
+  const audience = audienceMembers.length ? audienceMembers : DEMO_AUDIENCE;
+  const selectedTemplate = CAMPAIGN_TEMPLATES.find((item) => item.id === selectedTemplateId) || CAMPAIGN_TEMPLATES[0];
+  const cityOptions = useMemo(() => {
+    return Array.from(new Set(audience.map((item) => item.city).filter(Boolean) as string[])).sort();
+  }, [audience]);
+  const filteredAudience = useMemo(() => {
+    return audience.filter((member) => selectedCity === "all" || member.city === selectedCity);
+  }, [audience, selectedCity]);
+  const previewMember = filteredAudience.find((member) => member.whatsapp_opt_in || member.marketing_opt_in) || filteredAudience[0] || audience[0];
+  const messagePreview = renderTemplateBody(selectedTemplate, {
+    ...previewMember,
+    display_name: sandboxRecipientName || previewMember?.display_name || "cliente",
+  });
+  const audienceKpis = useMemo(() => {
+    const total = audience.length;
+    const withPhone = audience.filter((member) => Boolean(member.phone_masked)).length;
+    const whatsappOptIn = audience.filter((member) => member.whatsapp_opt_in).length;
+    const mendoza = audience.filter((member) => String(member.city || "").toLowerCase().includes("mendoza")).length;
+    const taps = audience.reduce((sum, member) => sum + asNumber(member.tap_count), 0);
+    return { total, withPhone, whatsappOptIn, mendoza, taps };
+  }, [audience]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAudience() {
+      setAudienceLoading(true);
+      setAudienceError(null);
+      try {
+        const response = await fetch("/api/admin/consumer-network/members?tenant=demobodega", { cache: "no-store" });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(payload?.items)) {
+          throw new Error(payload?.reason || payload?.error || "audience_unavailable");
+        }
+        if (!cancelled) {
+          setAudienceMembers(payload.items as AudienceMember[]);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAudienceMembers([]);
+          setAudienceError(error instanceof Error ? error.message : "audience_unavailable");
+        }
+      } finally {
+        if (!cancelled) setAudienceLoading(false);
+      }
+    }
+    loadAudience();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const city = params.get("city");
+    const offer = params.get("offer");
+    const channel = params.get("channel");
+    if (city) setSelectedCity(city);
+    if (offer || channel) {
+      const preferred = CAMPAIGN_TEMPLATES.find((template) => {
+        return (offer && template.offer.toLowerCase().includes(offer.toLowerCase())) || (channel && template.channel === channel);
+      });
+      if (preferred) setSelectedTemplateId(preferred.id);
+      setDraftTitle(`Campana ${city || "segmentada"} - ${offer || "post tap"}`);
+      setDraftText(renderTemplateBody(preferred || selectedTemplate, previewMember));
+    }
+    // Only hydrate once from deep-link params.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-analyze draft text whenever it changes
   useEffect(() => {
@@ -467,6 +734,88 @@ export default function LoyaltyCampaignsClient() {
     setActiveTab("campaigns");
   }
 
+  function handleUseTemplate(template: CampaignTemplate) {
+    setSelectedTemplateId(template.id);
+    const body = renderTemplateBody(template, previewMember);
+    setDraftTitle(`${template.name} - ${previewMember?.city || "segmento activo"}`);
+    setDraftText(body);
+    setOptimizedText("");
+    setShowOptimizedResult(false);
+    setAppliedImprovements([]);
+  }
+
+  async function handleSendSandboxWhatsApp() {
+    setTwilioStatus(null);
+    setTwilioSending(true);
+    try {
+      const response = await fetch("/api/admin/campaigns/test-whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: twilioRecipient,
+          body: messagePreview,
+          confirmRecipientOptIn: twilioOptInConfirmed,
+          sandbox: true,
+          quickReplies: [
+            { title: "Quiero", id: "promo_yes" },
+            { title: "No gracias", id: "promo_no" },
+          ],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.ok === false) {
+        const twilioMessage = payload?.twilio?.message ? ` Twilio: ${payload.twilio.message}` : "";
+        throw new Error(`${payload?.reason || payload?.error || "sandbox_send_failed"}.${twilioMessage}`);
+      }
+      setTwilioStatus({
+        ok: true,
+        sid: payload?.sid || null,
+        mediaSid: payload?.mediaSid || null,
+        contentSid: payload?.contentSid || null,
+        mediaUrl: payload?.mediaUrl || null,
+        message: `Mensaje interactivo enviado a ${payload?.to || "destinatario verificado"}. Estado: ${payload?.status || "queued"}.`,
+      });
+    } catch (error) {
+      setTwilioStatus({
+        ok: false,
+        message: error instanceof Error ? error.message : "sandbox_send_failed",
+      });
+    } finally {
+      setTwilioSending(false);
+    }
+  }
+
+  async function handleValidateVoucher(action: "lookup" | "redeem") {
+    setVoucherChecking(true);
+    setVoucherResult(null);
+    try {
+      const response = await fetch("/api/admin/rewards/redemptions/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: voucherCode,
+          seal: voucherSeal,
+          phoneLast4: voucherPhoneLast4,
+          action,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      setVoucherResult({
+        ok: response.ok && payload?.ok !== false,
+        reason: payload?.reason || null,
+        action: payload?.action || action,
+        redemption: payload?.redemption || null,
+      });
+    } catch (error) {
+      setVoucherResult({
+        ok: false,
+        reason: error instanceof Error ? error.message : "voucher_validation_failed",
+      });
+    } finally {
+      setVoucherChecking(false);
+    }
+  }
+
   // Handle BotIA messages
   function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -539,6 +888,373 @@ export default function LoyaltyCampaignsClient() {
           </p>
         </div>
       </header>
+
+      <section className="rounded-2xl border border-cyan-500/20 bg-slate-950/70 p-4 shadow-[0_0_30px_rgba(6,182,212,0.06)]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
+              <MessageCircle className="h-4 w-4" />
+              Audience CRM live
+            </div>
+            <h2 className="mt-1 text-xl font-black text-white">Segmentos, vouchers y WhatsApp sandbox</h2>
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
+              De tap verificado a relacion comercial: usuario registrado, ciudad, producto, consentimiento, plantilla y envio de prueba controlado.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200">
+            <ShieldCheck className="h-4 w-4" />
+            {audienceLoading ? "Cargando audiencia" : audienceError ? "Fallback demo activo" : "Datos CRM activos"}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            { label: "Contactos CRM", value: audienceKpis.total, hint: "registrados", icon: Phone, color: "text-cyan-300" },
+            { label: "Con telefono", value: audienceKpis.withPhone, hint: "listos para canal", icon: MessageCircle, color: "text-sky-300" },
+            { label: "WhatsApp opt-in", value: audienceKpis.whatsappOptIn, hint: "consentidos", icon: ShieldCheck, color: "text-emerald-300" },
+            { label: "Mendoza", value: audienceKpis.mendoza, hint: "cercania bodega", icon: MapPin, color: "text-amber-300" },
+            { label: "Taps acumulados", value: audienceKpis.taps, hint: "senal comercial", icon: Gauge, color: "text-purple-300" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-xl border border-white/10 bg-slate-900/50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">{item.label}</span>
+                <item.icon className={`h-4 w-4 ${item.color}`} />
+              </div>
+              <div className="mt-2 text-2xl font-black text-white">{item.value.toLocaleString("es-AR")}</div>
+              <div className="mt-1 text-[10px] text-slate-500">{item.hint}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
+          <div className="rounded-2xl border border-white/10 bg-slate-900/35 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-black text-white">Plantillas profesionales</h3>
+                <p className="text-[11px] text-slate-400">Promos, fidelizacion, recuperacion de confianza y gamificacion.</p>
+              </div>
+              <Gift className="h-5 w-5 text-amber-300" />
+            </div>
+            <div className="grid gap-2">
+              {CAMPAIGN_TEMPLATES.map((template) => {
+                const active = template.id === selectedTemplateId;
+                return (
+                  <button
+                    key={template.id}
+                    type="button"
+                    title={`Usar plantilla ${template.name}: ${template.segment}`}
+                    onClick={() => handleUseTemplate(template)}
+                    className={`rounded-xl border p-3 text-left transition ${
+                      active
+                        ? "border-cyan-400/70 bg-cyan-400/10 shadow-[0_0_18px_rgba(34,211,238,0.12)]"
+                        : "border-white/10 bg-slate-950/50 hover:border-cyan-400/40"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-black text-white">{template.name}</div>
+                        <div className="mt-1 text-[11px] text-slate-400">{template.segment}</div>
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-200">
+                        {template.channel} · {template.category}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                      <span className="rounded-full bg-emerald-400/10 px-2 py-1 font-bold text-emerald-300">{template.expectedLift}</span>
+                      <span className="rounded-full bg-amber-400/10 px-2 py-1 font-bold text-amber-200">{template.offer}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-slate-900/35 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black text-white">Sandbox WhatsApp controlado</h3>
+                <p className="text-[11px] text-slate-400">Prueba manual con destinatario opt-in. Produccion requiere sender aprobado y plantillas Meta.</p>
+              </div>
+              <AlertTriangle className="h-5 w-5 text-amber-300" />
+            </div>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Ciudad / segmento
+                <select
+                  title="Filtra la audiencia por ciudad detectada en los taps"
+                  value={selectedCity}
+                  onChange={(event) => setSelectedCity(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
+                >
+                  <option value="all">Todas las ciudades</option>
+                  {cityOptions.map((city) => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Nombre preview
+                <input
+                  title="Nombre que se usa en el saludo del mensaje sandbox"
+                  value={sandboxRecipientName}
+                  onChange={(event) => setSandboxRecipientName(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
+                />
+              </label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Numero receptor sandbox
+                <input
+                  title="Numero WhatsApp verificado en el sandbox de Twilio"
+                  value={twilioRecipient}
+                  onChange={(event) => setTwilioRecipient(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
+                />
+              </label>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-cyan-400/20 bg-slate-950/70 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-200">Preview del mensaje</span>
+                <span className="text-[10px] text-slate-500">{messagePreview.length} caracteres · botones Quiero/No gracias</span>
+              </div>
+              <div className="mb-3 flex items-center gap-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-2">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/30 bg-slate-950 text-cyan-200">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-cyan-100">nexID Verified CRM</div>
+                  <div className="text-[10px] text-slate-400">WhatsApp no permite un logo chico inline con botones. La marca y el QR aparecen despues, en el pase de canje PNG.</div>
+                </div>
+              </div>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-white">{messagePreview}</p>
+            </div>
+
+            <div className="mt-3">
+              <label className="flex items-start gap-2 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={twilioOptInConfirmed}
+                  onChange={(event) => setTwilioOptInConfirmed(event.target.checked)}
+                  className="mt-0.5"
+                />
+                Confirmo que este numero ya hizo opt-in en el sandbox de Twilio y acepta recibir esta prueba.
+              </label>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                title="Enviar el preview al WhatsApp sandbox configurado"
+                onClick={handleSendSandboxWhatsApp}
+                disabled={twilioSending || !twilioOptInConfirmed}
+                className="gap-2 bg-cyan-400 text-slate-950 hover:bg-cyan-300 disabled:opacity-40"
+              >
+                {twilioSending ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" /> : <Send className="h-4 w-4" />}
+                Enviar sandbox
+              </Button>
+              <button
+                type="button"
+                title="Copiar esta plantilla al editor IA para ajustarla antes de lanzar"
+                onClick={() => handleUseTemplate(selectedTemplate)}
+                className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:border-cyan-400/50"
+              >
+                Llevar al editor
+              </button>
+            </div>
+            {twilioStatus && (
+              <div className={`mt-3 rounded-xl border p-3 text-xs ${
+                twilioStatus.ok
+                  ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                  : "border-rose-400/30 bg-rose-400/10 text-rose-200"
+              }`}>
+                {twilioStatus.message}
+                {twilioStatus.mediaSid ? <span className="block pt-1 font-mono text-[10px] opacity-80">Media SID: {twilioStatus.mediaSid}</span> : null}
+                {twilioStatus.sid ? <span className="block pt-1 font-mono text-[10px] opacity-80">SID: {twilioStatus.sid}</span> : null}
+                {twilioStatus.contentSid ? <span className="block pt-1 font-mono text-[10px] opacity-80">Content: {twilioStatus.contentSid}</span> : null}
+                {twilioStatus.mediaUrl ? <span className="block pt-1 font-mono text-[10px] opacity-80">Media: {twilioStatus.mediaUrl}</span> : null}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">
+                <BookmarkCheck className="h-4 w-4" />
+                Voucher desk
+              </div>
+              <h3 className="mt-1 text-sm font-black text-white">Validar codigo de canje en bodega / comercio</h3>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Pega el codigo que muestra el cliente. El sello y ultimos 4 digitos son control extra cuando el staff necesita mas seguridad.
+              </p>
+            </div>
+            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-200">
+              staff-ready
+            </span>
+          </div>
+
+          <div className="mt-3 grid gap-2 md:grid-cols-[1.2fr_.9fr_.7fr_auto]">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Codigo
+              <input
+                title="Codigo de canje recibido por WhatsApp o email"
+                placeholder="NXD-ABC123-9F8A"
+                value={voucherCode}
+                onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+              />
+            </label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Sello
+              <input
+                title="Sello nexID opcional para evitar canjes copiados"
+                placeholder="opcional"
+                value={voucherSeal}
+                onChange={(event) => setVoucherSeal(event.target.value.toUpperCase())}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+              />
+            </label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Tel. ultimos 4
+              <input
+                title="Ultimos cuatro digitos del telefono para control del staff"
+                placeholder="8608"
+                value={voucherPhoneLast4}
+                onChange={(event) => setVoucherPhoneLast4(event.target.value.replace(/[^\d]/g, "").slice(0, 4))}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+              />
+            </label>
+            <div className="flex items-end gap-2">
+              <button
+                type="button"
+                title="Consultar estado, beneficio, consumidor y vencimiento sin marcarlo como usado"
+                disabled={voucherChecking || !voucherCode.trim()}
+                onClick={() => handleValidateVoucher("lookup")}
+                className="rounded-lg border border-emerald-400/30 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-400/10 disabled:opacity-40"
+              >
+                Consultar
+              </button>
+              <button
+                type="button"
+                title="Marcar el voucher como canjeado despues de entregar premio, cena, experiencia o descuento"
+                disabled={voucherChecking || !voucherCode.trim()}
+                onClick={() => handleValidateVoucher("redeem")}
+                className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-300 disabled:opacity-40"
+              >
+                Canjear
+              </button>
+            </div>
+          </div>
+
+          {voucherResult && (
+            <div className={`mt-3 rounded-xl border p-3 text-xs ${
+              voucherResult.ok
+                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+                : "border-rose-400/30 bg-rose-400/10 text-rose-100"
+            }`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="font-black">
+                  {voucherResult.ok ? "Voucher valido" : `No validado: ${voucherResult.reason || "error"}`}
+                </div>
+                {voucherResult.redemption?.status ? (
+                  <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[10px] font-black uppercase">
+                    {voucherResult.redemption.status}
+                  </span>
+                ) : null}
+              </div>
+              {voucherResult.redemption ? (
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider opacity-60">Beneficio</div>
+                    <div className="font-bold">{voucherResult.redemption.reward?.title || "Voucher nexID"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider opacity-60">Consumidor</div>
+                    <div className="font-bold">{voucherResult.redemption.consumer?.name || "Usuario nexID"}</div>
+                    <div className="text-[10px] opacity-75">{voucherResult.redemption.consumer?.phone_masked || voucherResult.redemption.consumer?.email_masked || "contacto protegido"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider opacity-60">Sello</div>
+                    <div className="font-mono font-bold">{voucherResult.redemption.seal || "n/a"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider opacity-60">Vence</div>
+                    <div className="font-bold">{voucherResult.redemption.expires_at ? new Date(voucherResult.redemption.expires_at).toLocaleString("es-AR") : "sin vencimiento"}</div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
+            <div>
+              <h3 className="text-sm font-black text-white">Usuarios accionables del tenant</h3>
+              <p className="text-[11px] text-slate-400">Nombre, contacto enmascarado, ciudad, taps, puntos, opt-in y segmento.</p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-300">
+              {filteredAudience.length} perfiles
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-xs">
+              <thead className="bg-slate-900/70 text-[10px] uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-4 py-2">Usuario</th>
+                  <th className="px-4 py-2">Ciudad</th>
+                  <th className="px-4 py-2">Telefono</th>
+                  <th className="px-4 py-2">Taps</th>
+                  <th className="px-4 py-2">Puntos</th>
+                  <th className="px-4 py-2">Consentimiento</th>
+                  <th className="px-4 py-2">Accion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAudience.slice(0, 8).map((member) => (
+                  <tr key={member.consumer_id} className="border-t border-white/5 text-slate-300">
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-white">{member.display_name || "Usuario registrado"}</div>
+                      <div className="text-[10px] text-slate-500">{member.email_masked || member.consumer_id.slice(0, 8)}</div>
+                    </td>
+                    <td className="px-4 py-3">{member.city || "Sin ciudad"}{member.country ? `, ${member.country}` : ""}</td>
+                    <td className="px-4 py-3 font-mono text-cyan-200">{member.phone_masked || "no phone"}</td>
+                    <td className="px-4 py-3">{asNumber(member.tap_count)}</td>
+                    <td className="px-4 py-3">{asNumber(member.points_balance)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${
+                        member.whatsapp_opt_in
+                          ? "bg-emerald-400/10 text-emerald-300"
+                          : member.marketing_opt_in
+                            ? "bg-amber-400/10 text-amber-200"
+                            : "bg-slate-800 text-slate-400"
+                      }`}>
+                        {member.whatsapp_opt_in ? "whatsapp" : member.marketing_opt_in ? "marketing" : "pendiente"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        title="Usar este usuario como ejemplo de personalizacion del mensaje"
+                        onClick={() => {
+                          setSelectedCity(member.city || "all");
+                          setDraftText(renderTemplateBody(selectedTemplate, member));
+                          setDraftTitle(`${selectedTemplate.name} - ${member.city || "usuario"}`);
+                        }}
+                        className="rounded-lg border border-cyan-400/30 px-2.5 py-1 text-[10px] font-bold text-cyan-200 hover:bg-cyan-400/10"
+                      >
+                        Personalizar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       {/* Tabs Menu */}
       <div className="flex border-b border-white/10 mb-6">
