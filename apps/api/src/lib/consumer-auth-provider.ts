@@ -36,12 +36,33 @@ function maskContact(contact: string) {
   return `${phone.slice(0, 4)}***${phone.slice(-3)}`;
 }
 
+function isPublicHttpsOrigin(value: string) {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:") return "";
+    if (/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/i.test(parsed.hostname)) return "";
+    return parsed.origin;
+  } catch {
+    return "";
+  }
+}
+
 function getWebUrl() {
-  const envUrl = process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || process.env.VERCEL_URL;
-  if (!envUrl) return "https://nexid.lat";
-  const trimmed = envUrl.trim();
-  if (trimmed.startsWith("http")) return trimmed.replace(/\/$/, "");
-  return `https://${trimmed}`;
+  const candidates = [
+    process.env.CONSUMER_PORTAL_URL,
+    process.env.NEXID_PUBLIC_WEB_URL,
+    process.env.NEXT_PUBLIC_WEB_URL,
+    process.env.NEXT_PUBLIC_WEB_BASE_URL,
+    process.env.WEB_BASE_URL,
+    process.env.VERCEL_URL,
+  ];
+  for (const candidate of candidates) {
+    const trimmed = String(candidate || "").trim();
+    if (!trimmed) continue;
+    const origin = isPublicHttpsOrigin(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
+    if (origin) return origin;
+  }
+  return "https://nexid.lat";
 }
 
 function verificationLink(contact: string, code: string) {

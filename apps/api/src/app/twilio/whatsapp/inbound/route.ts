@@ -8,6 +8,7 @@ import { ensureConsumerPortalSchema, ensureLeadsSchema } from "../../../../lib/c
 import { publishRealtimeEvent } from "../../../../lib/realtime-events";
 
 const DEFAULT_NEXID_WHATSAPP_MEDIA_URL = "https://app.nexid.lat/nexid-mark-pulse-512.png";
+const PUBLIC_CONSUMER_WEB_FALLBACK = "https://nexid.lat";
 const CRM_VOUCHER_CODE = "CRM-WELCOME-2X1";
 
 function env(name: string) {
@@ -29,6 +30,30 @@ function normalizeHttpsUrl(value: string) {
   } catch {
     return "";
   }
+}
+
+function publicWebBase() {
+  const candidates = [
+    env("CONSUMER_PORTAL_URL"),
+    env("NEXID_PUBLIC_WEB_URL"),
+    env("NEXT_PUBLIC_WEB_URL"),
+    env("NEXT_PUBLIC_WEB_BASE_URL"),
+    env("WEB_BASE_URL"),
+    env("VERCEL_URL"),
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const raw = candidate.startsWith("http") ? candidate : `https://${candidate}`;
+    try {
+      const url = new URL(raw);
+      if (url.protocol !== "https:") continue;
+      if (/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/i.test(url.hostname)) continue;
+      return url.origin;
+    } catch {
+      continue;
+    }
+  }
+  return PUBLIC_CONSUMER_WEB_FALLBACK;
 }
 
 function getLogoUrl() {
@@ -75,9 +100,11 @@ function redemptionSeal(code: string, consumerId: string, tenantId: string) {
   return createHash("sha256").update(`${code}:${consumerId}:${tenantId}:${secret}`).digest("hex").slice(0, 12).toUpperCase();
 }
 
-function portalUrl() {
-  const base = env("NEXT_PUBLIC_WEB_URL") || env("NEXT_PUBLIC_WEB_BASE_URL") || "https://app.nexid.lat";
-  return `${base.replace(/\/$/, "")}/me/rewards`;
+function portalUrl(input?: { code?: string; tenantSlug?: string }) {
+  const url = new URL(`${publicWebBase()}/me/rewards`);
+  if (input?.code) url.searchParams.set("voucher", input.code);
+  if (input?.tenantSlug) url.searchParams.set("tenant", input.tenantSlug);
+  return url.toString();
 }
 
 function publicApiBase(req: Request) {
@@ -320,6 +347,7 @@ async function sendVoucherEmail(input: {
   if (!from) return "skipped_missing_from";
 
   const subject = `Tu voucher nexID ${input.code}`;
+  const rewardUrl = portalUrl({ code: input.code, tenantSlug: input.tenantSlug });
   const text = [
     `Hola ${input.displayName || "cliente"},`,
     "",
@@ -329,7 +357,7 @@ async function sendVoucherEmail(input: {
     `Valido hasta: ${formatArDate(input.expiresAt)}.`,
     "",
     "Mostra este codigo cuando llegues a la bodega o empresa. El staff lo valida desde el CRM nexID.",
-    `Portal: ${portalUrl()}`,
+    `Portal: ${rewardUrl}`,
   ].join("\n");
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;background:#020617;color:#f8fafc;padding:32px">
@@ -348,7 +376,7 @@ async function sendVoucherEmail(input: {
           </div>
           ${input.qrImageUrl ? `<div style="margin-top:18px;text-align:center"><img src="${input.qrImageUrl}" width="180" height="180" alt="QR voucher nexID" style="background:#ffffff;border-radius:18px;padding:10px" /></div>` : ""}
           <p style="margin:18px 0 0;color:#cbd5e1">Valido hasta <b>${formatArDate(input.expiresAt)}</b>. Mostra este email o WhatsApp en el comercio para validar el premio, cena, experiencia o descuento.</p>
-          <a href="${portalUrl()}" style="display:block;margin-top:22px;text-align:center;background:#22d3ee;color:#020617;text-decoration:none;font-weight:900;border-radius:14px;padding:14px">Abrir mis beneficios</a>
+          <a href="${rewardUrl}" style="display:block;margin-top:22px;text-align:center;background:#22d3ee;color:#020617;text-decoration:none;font-weight:900;border-radius:14px;padding:14px">Abrir mis beneficios</a>
         </div>
       </div>
     </div>
@@ -528,6 +556,28 @@ async function claimCampaignVoucher(input: {
       existing.metadata_json = { ...metadata, verification_seal: seal };
     }
     const expiresAt = String(metadata.expires_at || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString());
+    let emailDelivery = String(metadata.voucher_email_delivery || "previous");
+    if (input.context.email) {
+      emailDelivery = await sendVoucherEmail({
+        to: input.context.email || null,
+        displayName: input.context.display_name || null,
+        code,
+        seal,
+        rewardTitle: String(existing.reward_title || reward.title),
+        tenantSlug,
+        expiresAt,
+        qrImageUrl: voucherPassUrl({ req: input.req, code, seal, tenantSlug }),
+      });
+      await sql/*sql*/`
+        UPDATE consumer_reward_claims
+        SET metadata_json = metadata_json || ${JSON.stringify({
+          voucher_email_delivery: emailDelivery,
+          voucher_email_resent_at: new Date().toISOString(),
+        })}::jsonb,
+            updated_at = now()
+        WHERE id = ${existing.id}
+      `;
+    }
     return {
       claim: existing,
       code,
@@ -535,7 +585,7 @@ async function claimCampaignVoucher(input: {
       expiresAt,
       rewardTitle: String(existing.reward_title || reward.title),
       duplicate: true,
-      emailDelivery: String(metadata.voucher_email_delivery || "previous"),
+      emailDelivery,
     };
   }
 
@@ -578,7 +628,7 @@ async function claimCampaignVoucher(input: {
 
   await sql/*sql*/`
     INSERT INTO consumer_notifications (consumer_id, tenant_id, type, title, body, action_url)
-    VALUES (${consumerId}, ${tenantId}, 'reward_claimed', 'Voucher nexID activado', ${`Codigo ${code} - ${reward.title}`}, ${portalUrl()})
+    VALUES (${consumerId}, ${tenantId}, 'reward_claimed', 'Voucher nexID activado', ${`Codigo ${code} - ${reward.title}`}, ${portalUrl({ code, tenantSlug })})
   `;
 
   const emailDelivery = await sendVoucherEmail({

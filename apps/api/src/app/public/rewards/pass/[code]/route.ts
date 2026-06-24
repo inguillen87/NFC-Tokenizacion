@@ -97,7 +97,8 @@ async function renderVoucherPng(input: {
   const nameText = escapeXml(firstName(input.consumerName));
   const expiresText = escapeXml(formatArDate(input.expiresAt));
   const phoneText = input.phoneLast4 ? `****${escapeXml(input.phoneLast4)}` : "telefono verificado";
-  const statusText = escapeXml(input.status || "claimed");
+  const statusLabel = input.status === "redeemed" ? "canjeado" : input.status === "expired" ? "vencido" : "activo";
+  const statusText = escapeXml(statusLabel);
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
@@ -153,7 +154,7 @@ async function renderVoucherPng(input: {
         <image href="${qrDataUrl}" x="30" y="30" width="312" height="312"/>
         <g transform="translate(462 16)">
           <text x="0" y="0" fill="#94a3b8" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="900" letter-spacing="4">CODIGO DE CANJE</text>
-          <text x="0" y="70" fill="#67e8f9" font-family="Inter,Arial,sans-serif" font-size="68" font-weight="950" letter-spacing="6">${codeText}</text>
+          <text x="0" y="70" fill="#67e8f9" font-family="Inter,Arial,sans-serif" font-size="54" font-weight="950" letter-spacing="3">${codeText}</text>
           <rect x="0" y="112" width="320" height="70" rx="20" fill="#071827" stroke="#22d3ee" stroke-opacity=".28"/>
           <text x="22" y="156" fill="#e2e8f0" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="900">${phoneText}</text>
           <text x="0" y="232" fill="#94a3b8" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="900" letter-spacing="4">SELLO NEXID</text>
@@ -205,7 +206,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
     status: clean(claim?.status) || "claimed",
   });
 
-  return new Response(png, {
+  return new Response(new Uint8Array(png), {
     headers: {
       "content-type": "image/png",
       "cache-control": "public, max-age=300",

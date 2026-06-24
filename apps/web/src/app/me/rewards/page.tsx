@@ -1,14 +1,26 @@
 import Link from "next/link";
 import { Gift, Sparkles, Trophy } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { asArray, fetchConsumerPath, fetchMarketplacePath, requireConsumerSession } from "../_components/consumer-api";
+import { asArray, buildConsumerNextPath, fetchConsumerPath, fetchMarketplacePath, requireConsumerSession } from "../_components/consumer-api";
 import { buildBrandEngagement, type ConsumerBrand, type ConsumerPortalProduct, type ConsumerTap, type MarketplaceListing } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
 
-type Reward = { title?: string; points?: number; status?: string; brand?: string };
+type Reward = {
+  title?: string;
+  points?: number;
+  points_cost?: number;
+  status?: string;
+  state?: string;
+  brand?: string;
+  tenant_slug?: string;
+  redemption_code?: string | null;
+};
 
-export default async function RewardsPage() {
-  await requireConsumerSession("/me/rewards");
+export default async function RewardsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = (await searchParams) || {};
+  const voucher = typeof params.voucher === "string" ? params.voucher.replace(/[^\dA-Z-]/gi, "").slice(0, 32) : "";
+  const tenant = typeof params.tenant === "string" ? params.tenant.replace(/[^a-z0-9-]/gi, "").slice(0, 60) : "";
+  await requireConsumerSession(buildConsumerNextPath("/me/rewards", { voucher, tenant }));
   const [rewardsPayload, brandsPayload, productsPayload, tapsPayload, marketplacePayload] = await Promise.all([
     fetchConsumerPath("rewards"),
     fetchConsumerPath("brands"),
@@ -17,6 +29,9 @@ export default async function RewardsPage() {
     fetchMarketplacePath("products"),
   ]);
   const rewards = asArray<Reward>(rewardsPayload);
+  const highlightedReward = voucher
+    ? rewards.find((reward) => String(reward.redemption_code || "").replace(/\s+/g, "").toUpperCase() === voucher.toUpperCase())
+    : null;
   const brandEngagement = buildBrandEngagement({
     brands: asArray<ConsumerBrand>(brandsPayload),
     products: asArray<ConsumerPortalProduct>(productsPayload),
@@ -57,11 +72,32 @@ export default async function RewardsPage() {
         </div>
       </section>
 
+      {voucher ? (
+        <section className="rounded-3xl border border-cyan-400/25 bg-cyan-500/10 p-5 shadow-2xl">
+          <p className="text-[10px] font-black uppercase tracking-wider text-cyan-200">Voucher abierto desde email</p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black text-white">{highlightedReward?.title || "Voucher nexID"}</h2>
+              <p className="mt-1 text-xs text-slate-300">
+                Codigo: <span className="font-mono font-black text-cyan-100">{voucher}</span>
+                {tenant ? <> · Tenant: <span className="font-bold text-cyan-100">{tenant}</span></> : null}
+              </p>
+            </div>
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-100">
+              {highlightedReward ? String(highlightedReward.state || highlightedReward.status || "claimed") : "pendiente"}
+            </span>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-slate-300">
+            Mostra este codigo o el pase QR recibido por WhatsApp/email en el comercio. El staff valida el canje desde el CRM nexID.
+          </p>
+        </section>
+      ) : null}
+
       {/* Redeemed Vouchers list */}
       {rewards.length ? (
         <section className="grid gap-4 md:grid-cols-2">
           {rewards.map((reward, idx) => {
-            const status = String(reward.status || "available");
+            const status = String(reward.status || reward.state || "available");
             const isRedeemed = status === "redeemed";
             const tone = isRedeemed 
               ? "border-white/5 bg-slate-900/40 text-slate-500" 
@@ -80,6 +116,11 @@ export default async function RewardsPage() {
                 <p className="mt-1.5 text-[10px] text-slate-400">
                   Marca: <span className="font-bold text-slate-300">{reward.brand || "nexID Partner"}</span> · Costo: <span className="font-bold text-amber-200">{reward.points || 0} pts</span>
                 </p>
+                {reward.redemption_code ? (
+                  <p className="mt-1 text-[10px] text-cyan-100">
+                    Codigo de canje: <span className="font-mono font-black">{reward.redemption_code}</span>
+                  </p>
+                ) : null}
               </article>
             );
           })}

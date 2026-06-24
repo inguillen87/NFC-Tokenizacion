@@ -1100,7 +1100,7 @@ export default function LoyaltyCampaignsClient() {
               Codigo
               <input
                 title="Codigo de canje recibido por WhatsApp o email"
-                placeholder="NXD-ABC123-9F8A"
+                placeholder="12345678"
                 value={voucherCode}
                 onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
                 className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
