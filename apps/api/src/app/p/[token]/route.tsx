@@ -45,7 +45,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     logoUrl: `${publicApiBase(req)}/nexid-mark-transparent-512.png`,
   });
 
-  response.headers.set("cache-control", "public, max-age=300");
+  response.headers.set("cache-control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
   response.headers.set("x-robots-tag", "noindex, nofollow");
   return response;
 }
