@@ -13,7 +13,10 @@ export interface ConsumerOtpProvider {
 type TwilioChannel = "sms" | "whatsapp";
 
 function env(name: string) {
-  return String(process.env[name] || "").trim();
+  return String(process.env[name] || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .trim();
 }
 
 function isEmail(contact: string) {
@@ -49,12 +52,12 @@ function isPublicHttpsOrigin(value: string) {
 
 function getWebUrl() {
   const candidates = [
-    process.env.CONSUMER_PORTAL_URL,
-    process.env.NEXID_PUBLIC_WEB_URL,
-    process.env.NEXT_PUBLIC_WEB_URL,
-    process.env.NEXT_PUBLIC_WEB_BASE_URL,
-    process.env.WEB_BASE_URL,
-    process.env.VERCEL_URL,
+    env("CONSUMER_PORTAL_URL"),
+    env("NEXID_PUBLIC_WEB_URL"),
+    env("NEXT_PUBLIC_WEB_URL"),
+    env("NEXT_PUBLIC_WEB_BASE_URL"),
+    env("WEB_BASE_URL"),
+    env("VERCEL_URL"),
   ];
   for (const candidate of candidates) {
     const trimmed = String(candidate || "").trim();

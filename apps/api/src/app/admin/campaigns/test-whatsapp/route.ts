@@ -5,7 +5,10 @@ import { checkAdmin } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 
 function env(name: string) {
-  return String(process.env[name] || "").trim();
+  return String(process.env[name] || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .trim();
 }
 
 function normalizePhone(input: unknown) {

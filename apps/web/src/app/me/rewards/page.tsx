@@ -80,7 +80,7 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
               <h2 className="text-lg font-black text-white">{highlightedReward?.title || "Voucher nexID"}</h2>
               <p className="mt-1 text-xs text-slate-300">
                 Codigo: <span className="font-mono font-black text-cyan-100">{voucher}</span>
-                {tenant ? <> · Tenant: <span className="font-bold text-cyan-100">{tenant}</span></> : null}
+                {tenant ? <> · Emisor verificado por nexID</> : null}
               </p>
             </div>
             <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-100">
@@ -143,7 +143,7 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
             </div>
             
             <p className="mt-3.5 rounded-xl border border-white/5 bg-slate-900/30 p-3 text-[10px] leading-relaxed text-slate-400">
-              Canje disponible para miembros con botellas verificadas del tenant. Habilita el reclamo de voucher digital en el marketplace.
+              Canje disponible para miembros con botellas verificadas de la marca. Habilita el reclamo de voucher digital en el marketplace.
             </p>
             
             <Link href={`/me/marketplace?tenant=${encodeURIComponent(brand.slug)}`} className="mt-4 inline-flex rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-4 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/20 transition">

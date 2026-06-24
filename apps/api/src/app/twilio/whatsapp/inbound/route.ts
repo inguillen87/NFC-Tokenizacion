@@ -6,13 +6,17 @@ import nodemailer from "nodemailer";
 import { sql } from "../../../../lib/db";
 import { ensureConsumerPortalSchema, ensureLeadsSchema } from "../../../../lib/commercial-runtime-schema";
 import { publishRealtimeEvent } from "../../../../lib/realtime-events";
+import { ensureRewardPublicToken, publicRewardPassUrl, publicRewardUrl } from "../../../../lib/reward-public-links";
 
 const DEFAULT_NEXID_WHATSAPP_MEDIA_URL = "https://app.nexid.lat/nexid-mark-pulse-512.png";
 const PUBLIC_CONSUMER_WEB_FALLBACK = "https://nexid.lat";
 const CRM_VOUCHER_CODE = "CRM-WELCOME-2X1";
 
 function env(name: string) {
-  return String(process.env[name] || "").trim();
+  return String(process.env[name] || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .trim();
 }
 
 function escapeXml(value: string) {
@@ -339,6 +343,7 @@ async function sendVoucherEmail(input: {
   tenantSlug: string;
   expiresAt: string;
   qrImageUrl?: string | null;
+  publicToken?: string | null;
 }) {
   const to = String(input.to || "").trim();
   if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return "skipped_no_email";
@@ -347,7 +352,7 @@ async function sendVoucherEmail(input: {
   if (!from) return "skipped_missing_from";
 
   const subject = `Tu voucher nexID ${input.code}`;
-  const rewardUrl = portalUrl({ code: input.code, tenantSlug: input.tenantSlug });
+  const rewardUrl = input.publicToken ? publicRewardUrl(input.publicToken) : portalUrl({ code: input.code, tenantSlug: input.tenantSlug });
   const text = [
     `Hola ${input.displayName || "cliente"},`,
     "",
@@ -364,8 +369,8 @@ async function sendVoucherEmail(input: {
       <div style="max-width:560px;margin:0 auto;border:1px solid rgba(34,211,238,.25);border-radius:22px;overflow:hidden;background:#07111f">
         <div style="padding:28px;text-align:center;background:linear-gradient(135deg,#07111f,#0f172a)">
           <img src="${getLogoUrl()}" width="72" height="72" alt="nexID" style="border-radius:18px;display:block;margin:0 auto 14px" />
-          <div style="font-size:24px;font-weight:900">Voucher nexID activado</div>
-          <div style="margin-top:6px;color:#67e8f9;font-size:12px;letter-spacing:.16em;text-transform:uppercase">${input.tenantSlug}</div>
+          <div style="font-size:24px;font-weight:900">Reward Pass nexID activado</div>
+          <div style="margin-top:6px;color:#67e8f9;font-size:12px;letter-spacing:.16em;text-transform:uppercase">beneficio verificado</div>
         </div>
         <div style="padding:28px">
           <p style="margin:0 0 18px;color:#cbd5e1">Tu beneficio <b>${input.rewardTitle}</b> quedo reservado por 48h.</p>
@@ -374,9 +379,9 @@ async function sendVoucherEmail(input: {
             <div style="font-size:34px;font-weight:900;letter-spacing:.12em;color:#67e8f9;margin-top:8px">${input.code}</div>
             <div style="margin-top:10px;font-size:12px;color:#94a3b8">Sello nexID: <b style="color:#fff">${input.seal}</b></div>
           </div>
-          ${input.qrImageUrl ? `<div style="margin-top:18px;text-align:center"><img src="${input.qrImageUrl}" width="180" height="180" alt="QR voucher nexID" style="background:#ffffff;border-radius:18px;padding:10px" /></div>` : ""}
+          ${input.qrImageUrl ? `<div style="margin-top:18px;text-align:center"><img src="${input.qrImageUrl}" width="260" alt="Voucher nexID" style="max-width:100%;height:auto;border-radius:18px;border:1px solid rgba(34,211,238,.25)" /></div>` : ""}
           <p style="margin:18px 0 0;color:#cbd5e1">Valido hasta <b>${formatArDate(input.expiresAt)}</b>. Mostra este email o WhatsApp en el comercio para validar el premio, cena, experiencia o descuento.</p>
-          <a href="${rewardUrl}" style="display:block;margin-top:22px;text-align:center;background:#22d3ee;color:#020617;text-decoration:none;font-weight:900;border-radius:14px;padding:14px">Abrir mis beneficios</a>
+          <a href="${rewardUrl}" style="display:block;margin-top:22px;text-align:center;background:#22d3ee;color:#020617;text-decoration:none;font-weight:900;border-radius:14px;padding:14px">Abrir reward pass</a>
         </div>
       </div>
     </div>
@@ -398,17 +403,41 @@ async function sendVoucherEmail(input: {
   const smtpUser = env("SMTP_USER");
   const smtpPass = env("SMTP_PASSWORD");
   if (!smtpUser || !smtpPass) return "skipped_missing_provider";
-  const port = Number(env("SMTP_PORT") || "465");
-  const transporter = nodemailer.createTransport({
-    host: env("SMTP_HOST") || "mail.privateemail.com",
-    port,
-    secure: env("SMTP_SECURE") === "false" ? false : port === 465 || env("SMTP_SECURE") === "true",
-    auth: { user: smtpUser, pass: smtpPass },
-  });
+  const host = env("SMTP_HOST") || "mail.privateemail.com";
+  const configuredPort = Number(env("SMTP_PORT") || "465");
+  const configs = [
+    {
+      port: configuredPort,
+      secure: env("SMTP_SECURE") === "false" ? false : configuredPort === 465 || env("SMTP_SECURE") === "true",
+    },
+    { port: 587, secure: false },
+  ].filter((config, index, all) => all.findIndex((item) => item.port === config.port && item.secure === config.secure) === index);
   try {
-    await transporter.sendMail({ from, to, subject, text, html });
-    return "sent_smtp";
-  } catch {
+    let lastError = "";
+    for (const config of configs) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host,
+          port: config.port,
+          secure: config.secure,
+          auth: { user: smtpUser, pass: smtpPass },
+        });
+        await transporter.sendMail({ from, to, subject, text, html });
+        return config.port === configuredPort ? "sent_smtp" : `sent_smtp_${config.port}`;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+      }
+    }
+    console.warn("[nexid-voucher-email] smtp delivery failed", {
+      host,
+      ports: configs.map((config) => config.port),
+      error: lastError.slice(0, 180),
+    });
+    return "failed_smtp";
+  } catch (err) {
+    console.warn("[nexid-voucher-email] smtp delivery crashed", {
+      error: err instanceof Error ? err.message.slice(0, 180) : String(err).slice(0, 180),
+    });
     return "failed_smtp";
   }
 }
@@ -430,6 +459,7 @@ async function getLatestActiveVoucher(consumerId: string, tenantId: string) {
   if (!claim) return null;
   const metadata = claim.metadata_json || {};
   const code = String(claim.redemption_code || "");
+  const publicToken = await ensureRewardPublicToken(String(claim.id), metadata);
   return {
     claim,
     code,
@@ -437,6 +467,7 @@ async function getLatestActiveVoucher(consumerId: string, tenantId: string) {
     expiresAt: String(metadata.expires_at || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()),
     rewardTitle: String(claim.reward_title || "Voucher nexID"),
     tenantSlug: String(claim.tenant_slug || "demobodega"),
+    publicToken,
   };
 }
 
@@ -485,7 +516,8 @@ async function attachEmailAndSendVoucherCopy(input: {
     rewardTitle: voucher.rewardTitle,
     tenantSlug: voucher.tenantSlug,
     expiresAt: voucher.expiresAt,
-    qrImageUrl: voucherPassUrl({ req: input.req, code: voucher.code, seal: voucher.seal, tenantSlug: voucher.tenantSlug }),
+    qrImageUrl: publicRewardPassUrl(input.req, voucher.publicToken),
+    publicToken: voucher.publicToken,
   });
 
   await sql/*sql*/`
@@ -556,6 +588,7 @@ async function claimCampaignVoucher(input: {
       existing.metadata_json = { ...metadata, verification_seal: seal };
     }
     const expiresAt = String(metadata.expires_at || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString());
+    const publicToken = await ensureRewardPublicToken(String(existing.id), existing.metadata_json || metadata);
     let emailDelivery = String(metadata.voucher_email_delivery || "previous");
     if (input.context.email) {
       emailDelivery = await sendVoucherEmail({
@@ -566,7 +599,8 @@ async function claimCampaignVoucher(input: {
         rewardTitle: String(existing.reward_title || reward.title),
         tenantSlug,
         expiresAt,
-        qrImageUrl: voucherPassUrl({ req: input.req, code, seal, tenantSlug }),
+        qrImageUrl: publicRewardPassUrl(input.req, publicToken),
+        publicToken,
       });
       await sql/*sql*/`
         UPDATE consumer_reward_claims
@@ -586,6 +620,7 @@ async function claimCampaignVoucher(input: {
       rewardTitle: String(existing.reward_title || reward.title),
       duplicate: true,
       emailDelivery,
+      publicToken,
     };
   }
 
@@ -625,10 +660,11 @@ async function claimCampaignVoucher(input: {
     ON CONFLICT (idempotency_key) DO UPDATE SET updated_at = now()
     RETURNING *
   `;
+  const publicToken = await ensureRewardPublicToken(String(claimRows[0].id), claimRows[0].metadata_json || metadata);
 
   await sql/*sql*/`
     INSERT INTO consumer_notifications (consumer_id, tenant_id, type, title, body, action_url)
-    VALUES (${consumerId}, ${tenantId}, 'reward_claimed', 'Voucher nexID activado', ${`Codigo ${code} - ${reward.title}`}, ${portalUrl({ code, tenantSlug })})
+    VALUES (${consumerId}, ${tenantId}, 'reward_claimed', 'Voucher nexID activado', ${`Codigo ${code} - ${reward.title}`}, ${publicRewardUrl(publicToken)})
   `;
 
   const emailDelivery = await sendVoucherEmail({
@@ -639,7 +675,8 @@ async function claimCampaignVoucher(input: {
     rewardTitle: String(reward.title),
     tenantSlug,
     expiresAt,
-    qrImageUrl: voucherPassUrl({ req: input.req, code, seal, tenantSlug }),
+    qrImageUrl: publicRewardPassUrl(input.req, publicToken),
+    publicToken,
   });
 
   await sql/*sql*/`
@@ -649,7 +686,7 @@ async function claimCampaignVoucher(input: {
     WHERE id = ${claimRows[0].id}
   `;
 
-  return { claim: claimRows[0], code, seal, expiresAt, rewardTitle: String(reward.title), duplicate: false, emailDelivery };
+  return { claim: claimRows[0], code, seal, expiresAt, rewardTitle: String(reward.title), duplicate: false, emailDelivery, publicToken };
 }
 
 export async function POST(req: Request) {
@@ -707,11 +744,12 @@ export async function POST(req: Request) {
       return xml("Listo, guardamos tu email para respaldo de beneficios. Cuando quieras activar esta promo, toca Quiero y emitimos el codigo por WhatsApp y email.");
     }
     const voucher = "voucher" in delivery ? delivery.voucher : null;
-    const media = voucher ? voucherPassUrl({ req, code: voucher.code, seal: voucher.seal, tenantSlug: voucher.tenantSlug }) : undefined;
+    const media = voucher ? publicRewardPassUrl(req, voucher.publicToken) : undefined;
     return xml([
       "Listo, guardamos tu email y reenviamos una copia segura del voucher.",
       voucher ? `Codigo: ${voucher.code}` : "",
       voucher ? `Sello: ${voucher.seal}` : "",
+      voucher ? `Abrir reward pass: ${publicRewardUrl(voucher.publicToken)}` : "",
       "Tambien lo podes mostrar desde este WhatsApp.",
     ].filter(Boolean).join("\n"), 200, media);
   }
@@ -774,18 +812,14 @@ export async function POST(req: Request) {
       : context?.email
         ? "Lo dejamos guardado en tu wallet nexID; si el email falla, este WhatsApp tambien sirve como comprobante."
         : "Para tener una copia segura por email, responde tu correo. Es opcional; este WhatsApp ya sirve como comprobante.";
-    const media = voucherPassUrl({
-      req,
-      code: voucher.code,
-      seal: voucher.seal,
-      tenantSlug: String(context?.tenant_slug || "demobodega"),
-    });
+    const media = publicRewardPassUrl(req, voucher.publicToken);
     return xml([
       "Voucher nexID activado",
       `Codigo de canje: ${voucher.code}`,
       `Sello: ${voucher.seal}`,
       `Beneficio: ${voucher.rewardTitle}`,
       `Valido hasta: ${formatArDate(voucher.expiresAt)}.`,
+      `Abrir reward pass: ${publicRewardUrl(voucher.publicToken)}`,
       "Mostra este WhatsApp o el QR al llegar. El staff valida codigo y telefono en CRM.",
       emailLine,
     ].join("\n"), 200, media);
