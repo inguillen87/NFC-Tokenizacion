@@ -155,7 +155,38 @@ export async function getPublicRewardClaimByToken(token: string) {
     WHERE c.metadata_json->>'public_token' = ${safeToken}
     LIMIT 1
   `;
-  return rows[0] || null;
+  if (rows[0]) return rows[0];
+
+  const fallbackRows = await sql/*sql*/`
+    SELECT
+      c.id,
+      c.consumer_id,
+      c.tenant_id,
+      c.reward_id,
+      c.tap_event_id,
+      c.redemption_code,
+      c.status,
+      c.metadata_json,
+      c.created_at,
+      c.updated_at,
+      r.title AS reward_title,
+      r.code AS reward_code,
+      r.description AS reward_description,
+      con.display_name,
+      con.phone,
+      con.email,
+      t.slug AS tenant_slug,
+      t.name AS tenant_name,
+      COALESCE((c.metadata_json->>'expires_at')::timestamptz, c.created_at + interval '48 hours') AS expires_at
+    FROM consumer_reward_claims c
+    LEFT JOIN rewards r ON r.id = c.reward_id
+    LEFT JOIN consumers con ON con.id = c.consumer_id
+    LEFT JOIN tenants t ON t.id = c.tenant_id
+    WHERE c.metadata_json::text LIKE ${`%${safeToken}%`}
+    ORDER BY c.updated_at DESC NULLS LAST, c.created_at DESC
+    LIMIT 1
+  `;
+  return fallbackRows[0] || null;
 }
 
 export function formatPublicRewardClaim(row: PublicRewardClaim | null) {
@@ -169,7 +200,6 @@ export function formatPublicRewardClaim(row: PublicRewardClaim | null) {
     code: row.redemption_code,
     status: expired && row.status === "claimed" ? "expired" : row.status,
     seal: metadata.verification_seal || null,
-    publicToken: cleanPublicRewardToken(metadata.public_token),
     expiresAt,
     createdAt: row.created_at,
     reward: {

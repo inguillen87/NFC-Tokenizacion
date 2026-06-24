@@ -58,7 +58,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
     expiresAt: formatArDate(claim?.expires_at || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()),
     status: clean(claim?.status) || "claimed",
     validationUrl: publicRewardUrl(publicToken),
-    logoUrl: `${publicApiBase(req)}/nexid-mark-pulse-512.png`,
+    logoUrl: `${publicApiBase(req)}/nexid-mark-transparent-512.png`,
   });
 
   response.headers.set("cache-control", "public, max-age=300");

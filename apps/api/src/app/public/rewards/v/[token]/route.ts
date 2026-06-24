@@ -24,7 +24,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     ok: true,
     reward: {
       ...formatted,
-      publicToken,
       passImageUrl: publicRewardPassUrl(req, publicToken),
     },
   }, 200, {
