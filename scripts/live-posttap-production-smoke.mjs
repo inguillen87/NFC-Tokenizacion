@@ -116,15 +116,15 @@ async function main() {
   if (!adminKey || !databaseUrl) throw new Error("ADMIN_API_KEY_or_DATABASE_URL_missing");
 
   const sql = neon(databaseUrl);
-  const phone = process.env.LIVE_DEMO_PHONE || "+5492613168608";
-  const bid = process.env.LIVE_DEMO_BID || "DEMO-2026-02";
-  const uidHex = process.env.LIVE_DEMO_UID || "0474856A0B1090";
+  const phone = process.env.LIVE_PROD_PHONE || process.env.LIVE_DEMO_PHONE || "+5492613168608";
+  const bid = process.env.LIVE_PROD_BID || process.env.LIVE_DEMO_BID || "DEMO-2026-02";
+  const uidHex = process.env.LIVE_PROD_UID || process.env.LIVE_DEMO_UID || "0474856A0B1090";
   const location = {
-    city: process.env.LIVE_DEMO_CITY || "Mendoza",
-    countryCode: process.env.LIVE_DEMO_COUNTRY || "AR",
-    lat: Number(process.env.LIVE_DEMO_LAT || "-32.8895"),
-    lng: Number(process.env.LIVE_DEMO_LNG || "-68.8458"),
-    label: process.env.LIVE_DEMO_LOCATION_LABEL || "Feria de Vinos Mendoza - stand Demo Bodega",
+    city: process.env.LIVE_PROD_CITY || process.env.LIVE_DEMO_CITY || "Mendoza",
+    countryCode: process.env.LIVE_PROD_COUNTRY || process.env.LIVE_DEMO_COUNTRY || "AR",
+    lat: Number(process.env.LIVE_PROD_LAT || process.env.LIVE_DEMO_LAT || "-32.8895"),
+    lng: Number(process.env.LIVE_PROD_LNG || process.env.LIVE_DEMO_LNG || "-68.8458"),
+    label: process.env.LIVE_PROD_LOCATION_LABEL || process.env.LIVE_DEMO_LOCATION_LABEL || "Feria de Vinos Mendoza - stand Bodega Balmec",
   };
 
   const summary = {
@@ -150,7 +150,7 @@ async function main() {
       }
     : null;
 
-  const tap = await requireOk("demo scan", await requestJson(apiBase, "/internal/demo/scan", {
+  const tap = await requireOk("live scan", await requestJson(apiBase, "/internal/demo/scan", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${adminKey}` },
     body: JSON.stringify({
@@ -210,7 +210,7 @@ async function main() {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 nexID-live-demo",
+      "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 nexID-live-flow",
     },
     body: JSON.stringify({ phone, code: otp }),
   }));
@@ -227,7 +227,7 @@ async function main() {
   const join = await requireOk("join tenant", await requestJson(apiBase, `/mobile/passport/${event.id}/consumer/join-tenant`, {
     method: "POST",
     headers: { "content-type": "application/json", cookie: cookieHeader },
-    body: JSON.stringify({ tenantSlug: "demobodega", bid, marketingConsent: true }),
+    body: JSON.stringify({ tenantSlug: "bodegabalmec", bid, marketingConsent: true }),
   }));
   summary.joinTenant = {
     status: join.res.status,
@@ -236,7 +236,7 @@ async function main() {
   };
 
   const promptBody = [
-    "Hola Marcelo, tu tap verificado en Feria de Vinos Mendoza sobre Gran Reserva Malbec de Demo Bodega activo un beneficio:",
+    "Hola Marcelo, tu tap verificado en Feria de Vinos Mendoza sobre Gran Reserva Malbec de Bodega Balmec activo un beneficio:",
     "2x1 en copa de bienvenida por 48h.",
     "Toca Quiero para emitir codigo de canje con QR; toca No gracias para pausar esta promo. Stop para salir.",
   ].join(" ");
@@ -294,7 +294,7 @@ async function main() {
     JOIN rewards r ON r.id = c.reward_id
     JOIN tenants t ON t.id = c.tenant_id
     WHERE c.consumer_id = ${verify.json.consumer.id}
-      AND t.slug = 'demobodega'
+      AND t.slug IN ('bodegabalmec', 'demobodega')
     ORDER BY c.created_at DESC
     LIMIT 1
   `;
@@ -337,7 +337,7 @@ async function main() {
     SELECT points_balance, last_tap_event_id, last_activity_at
     FROM tenant_consumer_memberships
     WHERE consumer_id = ${verify.json.consumer.id}
-      AND tenant_id = (SELECT id FROM tenants WHERE slug='demobodega' LIMIT 1)
+      AND tenant_id = (SELECT id FROM tenants WHERE slug IN ('bodegabalmec', 'demobodega') ORDER BY (slug='bodegabalmec') DESC LIMIT 1)
     LIMIT 1
   `;
   summary.membershipAfter = membership[0] || null;
@@ -374,6 +374,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("LIVE_DEMO_ERROR", error?.stack || error);
+  console.error("LIVE_PRODUCTION_FLOW_ERROR", error?.stack || error);
   process.exit(1);
 });

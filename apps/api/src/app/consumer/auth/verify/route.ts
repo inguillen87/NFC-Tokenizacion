@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { sessionCookieHeader, verifyConsumerAuth } from "../../../../lib/consumer-auth";
+import { sessionCookieHeader, verifyConsumerAuth, verifyConsumerAuthToken } from "../../../../lib/consumer-auth";
 import { sql } from "../../../../lib/db";
 import { ensureTenantMembership } from "../../../../lib/consumer-portal-service";
 import { ensureConsumerAuthSchema } from "../../../../lib/commercial-runtime-schema";
@@ -12,8 +12,30 @@ function sha(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function canUseDemoBypass() {
+  const flag = String(process.env.DEMO_MODE || process.env.CONSUMER_AUTH_MODE || "").toLowerCase();
+  const vercelEnv = String(process.env.VERCEL_ENV || "").toLowerCase();
+  return ["1", "true", "yes", "demo"].includes(flag) && process.env.NODE_ENV !== "production" && vercelEnv !== "production";
+}
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
+  const magicToken = String(body.token || body.t || body.magicToken || "").trim();
+  if (magicToken) {
+    const verified = await verifyConsumerAuthToken(magicToken, { userAgent: req.headers.get("user-agent"), ip: req.headers.get("x-forwarded-for") });
+    if (!verified.ok) {
+      const status = verified.error === "rate_limited" ? 429 : verified.error === "locked" ? 423 : verified.error === "expired" ? 410 : verified.error === "unavailable" ? 503 : 401;
+      return new Response(JSON.stringify({ ok: false, error: verified.error }), { status });
+    }
+    return new Response(JSON.stringify({ ok: true, consumer: verified.consumer }, null, 2), {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "set-cookie": sessionCookieHeader(verified.sessionToken),
+      },
+    });
+  }
+
   const parsedContact = parseConsumerContact(body);
   const code = String(body.code || "").trim();
   if (!parsedContact.ok) {
@@ -24,6 +46,7 @@ export async function POST(req: Request) {
 
   const normalized = contact.toLowerCase();
   const demoBypassAllowed =
+    canUseDemoBypass() &&
     (normalized === "demo.consumer@nexid.local" || normalized.endsWith(".consumer@nexid.local")) &&
     code === "000000" &&
     (body.demoConsumer === true || String(body.consumerMode || "").toLowerCase() === "demo");

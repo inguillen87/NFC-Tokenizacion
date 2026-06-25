@@ -40,6 +40,26 @@ function normalizePhone(contact: string) {
   return digits.length >= 10 ? `+${digits}` : digits;
 }
 
+function normalizeContact(contact: string) {
+  const trimmed = contact.trim();
+  return trimmed.includes("@") ? trimmed.toLowerCase() : normalizePhone(trimmed);
+}
+
+function isEmailContact(contact: string) {
+  return contact.includes("@");
+}
+
+function createMagicToken() {
+  return `nxa_${randomBytes(24).toString("base64url")}`;
+}
+
+function cleanMagicToken(value: unknown) {
+  return String(value || "")
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, "")
+    .slice(0, 96);
+}
+
 function audit(event: string, payload: Record<string, unknown>) {
   console.log("[consumer_auth_audit]", JSON.stringify({ event, ...payload, at: new Date().toISOString() }));
 }
@@ -58,6 +78,95 @@ function normalizeOtpDeliveryError(error: unknown) {
   if (message.includes("smtp_credentials_missing")) return "smtp_credentials_missing";
   if (message.includes("smtp_delivery_failed")) return "smtp_delivery_failed";
   return "otp_delivery_failed";
+}
+
+async function linkedAuthContacts(contact: string) {
+  const primary = normalizeContact(contact);
+  const contacts = new Set<string>([primary]);
+  if (isEmailContact(primary)) {
+    const rows = await sql/*sql*/`SELECT phone FROM consumers WHERE email = ${primary} LIMIT 1`;
+    const phone = rows[0]?.phone ? normalizePhone(String(rows[0].phone)) : "";
+    if (phone) contacts.add(phone);
+  } else {
+    const rows = await sql/*sql*/`SELECT email FROM consumers WHERE phone = ${primary} LIMIT 1`;
+    const email = String(rows[0]?.email || "").trim().toLowerCase();
+    if (email) contacts.add(email);
+  }
+  return [...contacts];
+}
+
+async function getOrCreateConsumerForVerifiedContacts(contacts: string[]) {
+  const normalized = contacts.map(normalizeContact).filter(Boolean);
+  const email = normalized.find(isEmailContact) || null;
+  const phone = normalized.find((contact) => !isEmailContact(contact)) || null;
+
+  let consumer = null as Record<string, any> | null;
+  for (const contact of normalized) {
+    const rows = isEmailContact(contact)
+      ? await sql/*sql*/`SELECT * FROM consumers WHERE email = ${contact} LIMIT 1`
+      : await sql/*sql*/`SELECT * FROM consumers WHERE phone = ${contact} LIMIT 1`;
+    if (rows[0]) {
+      consumer = rows[0];
+      break;
+    }
+  }
+
+  if (consumer?.id) {
+    const rows = await sql/*sql*/`
+      UPDATE consumers
+      SET email = COALESCE(consumers.email, ${email}),
+          phone = COALESCE(consumers.phone, ${phone}),
+          status = 'registered',
+          last_login_at = now()
+      WHERE id = ${consumer.id}
+      RETURNING *
+    `;
+    consumer = rows[0] || consumer;
+  } else if (email) {
+    const rows = await sql/*sql*/`
+      INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
+      VALUES (${email}, ${phone}, ${null}, 'registered', 'es-AR', now())
+      ON CONFLICT (email)
+      DO UPDATE SET phone = COALESCE(consumers.phone, EXCLUDED.phone), last_login_at = now(), status = 'registered'
+      RETURNING *
+    `;
+    consumer = rows[0];
+  } else {
+    const rows = await sql/*sql*/`
+      INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
+      VALUES (${null}, ${phone}, ${null}, 'registered', 'es-AR', now())
+      ON CONFLICT (phone) WHERE phone IS NOT NULL
+      DO UPDATE SET last_login_at = now(), status = 'registered'
+      RETURNING *
+    `;
+    consumer = rows[0];
+  }
+
+  for (const contact of normalized) {
+    await sql/*sql*/`
+      INSERT INTO consumer_identities (consumer_id, provider, provider_subject, verified_at)
+      VALUES (${consumer.id}, ${isEmailContact(contact) ? "email_magic_link" : "phone_otp"}, ${contact}, now())
+      ON CONFLICT (provider, provider_subject)
+      DO UPDATE SET verified_at = now(), updated_at = now()
+    `;
+  }
+
+  return consumer;
+}
+
+async function createConsumerSession(consumer: Record<string, any>, meta?: { userAgent?: string | null; ip?: string | null }) {
+  const rawSession = randomBytes(24).toString("hex");
+  await sql/*sql*/`
+    INSERT INTO consumer_sessions (consumer_id, session_token_hash, expires_at, user_agent_hash, ip_hash)
+    VALUES (
+      ${consumer.id},
+      ${sha(rawSession)},
+      now() + interval '30 days',
+      ${meta?.userAgent ? sha(meta.userAgent) : null},
+      ${meta?.ip ? sha(meta.ip) : null}
+    )
+  `;
+  return rawSession;
 }
 
 export type ConsumerAuthDemoPayload = {
@@ -113,21 +222,27 @@ export async function getOrCreateDemoConsumer(contact = DEMO_CONSUMER_EMAIL) {
 export async function startConsumerAuth(contact: string, meta?: { ip?: string | null }) {
   await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
-  const allowedContact = consumeRate(startRate, `contact:${contact}`, 5, 10 * 60 * 1000);
+  const normalizedContact = normalizeContact(contact);
+  const allowedContact = consumeRate(startRate, `contact:${normalizedContact}`, 5, 10 * 60 * 1000);
   const allowedIp = consumeRate(startRate, `ip:${ip}`, 20, 10 * 60 * 1000);
   if (!allowedContact || !allowedIp) {
-    audit("consumer_auth_start_rate_limited", { contact, ip });
+    audit("consumer_auth_start_rate_limited", { contact: normalizedContact, ip });
     return { ok: false as const, error: "rate_limited" };
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
+  const magicToken = createMagicToken();
+  const magicTokenHash = sha(magicToken);
   const expiresMinutes = Number.isFinite(OTP_TTL_MINUTES) && OTP_TTL_MINUTES > 0 ? OTP_TTL_MINUTES : 10;
-  await sql/*sql*/`
-    INSERT INTO consumer_auth_challenges (contact, code_hash, expires_at, attempts, max_attempts, locked_until, ip_hash)
-    VALUES (${contact}, ${sha(code)}, now() + (${expiresMinutes} || ' minutes')::interval, 0, ${OTP_MAX_ATTEMPTS}, null, ${sha(ip)})
-  `;
+  const contacts = await linkedAuthContacts(normalizedContact);
+  for (const authContact of contacts) {
+    await sql/*sql*/`
+      INSERT INTO consumer_auth_challenges (contact, code_hash, expires_at, attempts, max_attempts, locked_until, ip_hash, magic_token_hash)
+      VALUES (${authContact}, ${sha(code)}, now() + (${expiresMinutes} || ' minutes')::interval, 0, ${OTP_MAX_ATTEMPTS}, null, ${sha(ip)}, ${magicTokenHash})
+    `;
+  }
 
-  const normalized = contact.trim().toLowerCase();
+  const normalized = normalizedContact.toLowerCase();
   const demoMode = String(process.env.DEMO_MODE || "").toLowerCase();
   const consumerAuthMode = String(process.env.CONSUMER_AUTH_MODE || "").toLowerCase();
   const demoBypassAllowed = ["1", "true", "yes", "demo"].includes(demoMode) || consumerAuthMode === "demo";
@@ -135,54 +250,44 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
 
   try {
     if (!isMockSocial) {
-      await resolveConsumerOtpProvider().sendOtp({ contact, code, ttlMinutes: expiresMinutes });
+      await resolveConsumerOtpProvider().sendOtp({ contact: normalizedContact, code, ttlMinutes: expiresMinutes, magicToken });
 
-      // Check for 2FA second factor to send OTP in parallel
-      const isMail = contact.includes("@");
-      let secondaryContact: string | null = null;
-      if (isMail) {
-        const rows = await sql/*sql*/`SELECT phone FROM consumers WHERE email = ${normalized} LIMIT 1`;
-        secondaryContact = rows[0]?.phone || null;
-      } else {
-        const phone = normalizePhone(contact);
-        const rows = await sql/*sql*/`SELECT email FROM consumers WHERE phone = ${phone} LIMIT 1`;
-        secondaryContact = rows[0]?.email || null;
-      }
-
-      if (secondaryContact) {
+      for (const secondaryContact of contacts.filter((item) => item !== normalizedContact)) {
         try {
-          await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes });
-          audit("consumer_auth_2fa_sent", { contact, secondaryContact });
+          await resolveConsumerOtpProvider().sendOtp({ contact: secondaryContact, code, ttlMinutes: expiresMinutes, magicToken });
+          audit("consumer_auth_2fa_sent", { contact: normalizedContact, secondaryContact });
         } catch (err) {
-          audit("consumer_auth_2fa_send_fail", { contact, secondaryContact, error: String(err) });
+          audit("consumer_auth_2fa_send_fail", { contact: normalizedContact, secondaryContact, error: String(err) });
         }
       }
     } else {
-      audit("consumer_auth_mock_social_start", { contact, ip });
+      audit("consumer_auth_mock_social_start", { contact: normalizedContact, ip });
     }
   } catch (error) {
     const reason = normalizeOtpDeliveryError(error);
-    audit("consumer_auth_delivery_fail", { contact, ip, mode: process.env.CONSUMER_AUTH_MODE || "demo", reason });
+    audit("consumer_auth_delivery_fail", { contact: normalizedContact, ip, mode: process.env.CONSUMER_AUTH_MODE || "demo", reason });
     return { ok: false as const, error: reason };
   }
-  audit("consumer_auth_start", { contact, ip, mode: process.env.CONSUMER_AUTH_MODE || "demo" });
+  audit("consumer_auth_start", { contact: normalizedContact, linkedContacts: contacts.length, ip, mode: process.env.CONSUMER_AUTH_MODE || "demo" });
   return { ok: true as const, code, challengeTtlMinutes: expiresMinutes };
 }
 
 export async function verifyConsumerAuth(contact: string, code: string, meta?: { userAgent?: string | null; ip?: string | null }) {
   await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
-  const allowedContact = consumeRate(verifyRate, `contact:${contact}`, 15, 10 * 60 * 1000);
+  const normalizedContact = normalizeContact(contact);
+  const allowedContact = consumeRate(verifyRate, `contact:${normalizedContact}`, 15, 10 * 60 * 1000);
   const allowedIp = consumeRate(verifyRate, `ip:${ip}`, 40, 10 * 60 * 1000);
   if (!allowedContact || !allowedIp) {
-    audit("consumer_auth_verify_fail", { contact, ip, reason: "rate_limited" });
+    audit("consumer_auth_verify_fail", { contact: normalizedContact, ip, reason: "rate_limited" });
     return { ok: false as const, error: "rate_limited" };
   }
 
   const challengeRows = await sql/*sql*/`
-    SELECT id, code_hash, expires_at, attempts, max_attempts, locked_until
+    SELECT id, contact, code_hash, expires_at, attempts, max_attempts, locked_until, magic_token_hash
     FROM consumer_auth_challenges
-    WHERE contact = ${contact}
+    WHERE contact = ${normalizedContact}
+      AND used_at IS NULL
     ORDER BY created_at DESC
     LIMIT 1
   `;
@@ -200,51 +305,63 @@ export async function verifyConsumerAuth(contact: string, code: string, meta?: {
     const maxAttempts = Number(challenge.max_attempts || OTP_MAX_ATTEMPTS);
     const lockedUntil = attempts >= maxAttempts ? new Date(Date.now() + OTP_LOCKOUT_MINUTES * 60 * 1000).toISOString() : null;
     await sql/*sql*/`UPDATE consumer_auth_challenges SET attempts = ${attempts}, locked_until = ${lockedUntil} WHERE id = ${challenge.id}`;
-    audit("consumer_auth_verify_fail", { contact, ip, reason: attempts >= maxAttempts ? "locked" : "invalid_code" });
+    audit("consumer_auth_verify_fail", { contact: normalizedContact, ip, reason: attempts >= maxAttempts ? "locked" : "invalid_code" });
     return { ok: false as const, error: attempts >= maxAttempts ? "locked" : "invalid_code" };
   }
 
-  const normalizedEmail = contact.includes("@") ? contact.toLowerCase() : null;
-  const normalizedPhone = contact.includes("@") ? null : contact;
-
-  const consumerRows = normalizedEmail
+  const tokenHash = String(challenge.magic_token_hash || "");
+  const linkedRows = tokenHash
     ? await sql/*sql*/`
-      INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
-      VALUES (${normalizedEmail}, ${null}, ${null}, 'registered', 'es-AR', now())
-      ON CONFLICT (email)
-      DO UPDATE SET last_login_at = now(), status = 'registered'
-      RETURNING *
+      SELECT contact
+      FROM consumer_auth_challenges
+      WHERE magic_token_hash = ${tokenHash}
+        AND used_at IS NULL
     `
-    : await sql/*sql*/`
-      INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
-      VALUES (${null}, ${normalizedPhone}, ${null}, 'registered', 'es-AR', now())
-      ON CONFLICT (phone) WHERE phone IS NOT NULL
-      DO UPDATE SET last_login_at = now(), status = 'registered'
-      RETURNING *
-    `;
-  const consumer = consumerRows[0];
+    : [];
+  const contacts = linkedRows.length ? linkedRows.map((row) => String(row.contact)) : [normalizedContact];
+  const consumer = await getOrCreateConsumerForVerifiedContacts(contacts);
+  const rawSession = await createConsumerSession(consumer, meta);
 
-  await sql/*sql*/`
-    INSERT INTO consumer_identities (consumer_id, provider, provider_subject, verified_at)
-    VALUES (${consumer.id}, ${normalizedEmail ? "email_magic_link" : "phone_otp"}, ${contact}, now())
-    ON CONFLICT (provider, provider_subject)
-    DO UPDATE SET verified_at = now(), updated_at = now()
+  if (tokenHash) {
+    await sql/*sql*/`UPDATE consumer_auth_challenges SET used_at = now() WHERE magic_token_hash = ${tokenHash} AND used_at IS NULL`;
+  } else {
+    await sql/*sql*/`UPDATE consumer_auth_challenges SET used_at = now() WHERE id = ${challenge.id}`;
+  }
+  audit("consumer_auth_verify_ok", { contact: normalizedContact, linkedContacts: contacts.length, ip, consumerId: consumer.id });
+  return { ok: true as const, consumer, sessionToken: rawSession };
+}
+
+export async function verifyConsumerAuthToken(token: string, meta?: { userAgent?: string | null; ip?: string | null }) {
+  await ensureConsumerAuthSchema();
+  const safeToken = cleanMagicToken(token);
+  const ip = pickIp(meta?.ip);
+  if (!safeToken) return { ok: false as const, error: "invalid_code" };
+
+  const allowedIp = consumeRate(verifyRate, `magic-ip:${ip}`, 50, 10 * 60 * 1000);
+  if (!allowedIp) {
+    audit("consumer_auth_token_verify_fail", { ip, reason: "rate_limited" });
+    return { ok: false as const, error: "rate_limited" };
+  }
+
+  const tokenHash = sha(safeToken);
+  const rows = await sql/*sql*/`
+    SELECT id, contact, expires_at, locked_until
+    FROM consumer_auth_challenges
+    WHERE magic_token_hash = ${tokenHash}
+      AND used_at IS NULL
+    ORDER BY created_at DESC
   `;
+  if (!rows.length) return { ok: false as const, error: "invalid_code" };
+  const expired = rows.every((row) => new Date(row.expires_at).getTime() < Date.now());
+  if (expired) return { ok: false as const, error: "expired" };
+  const locked = rows.some((row) => row.locked_until && new Date(row.locked_until).getTime() > Date.now());
+  if (locked) return { ok: false as const, error: "locked" };
 
-  const rawSession = randomBytes(24).toString("hex");
-  await sql/*sql*/`
-    INSERT INTO consumer_sessions (consumer_id, session_token_hash, expires_at, user_agent_hash, ip_hash)
-    VALUES (
-      ${consumer.id},
-      ${sha(rawSession)},
-      now() + interval '30 days',
-      ${meta?.userAgent ? sha(meta.userAgent) : null},
-      ${meta?.ip ? sha(meta.ip) : null}
-    )
-  `;
-
-  await sql/*sql*/`DELETE FROM consumer_auth_challenges WHERE id = ${challenge.id}`;
-  audit("consumer_auth_verify_ok", { contact, ip, consumerId: consumer.id });
+  const contacts = [...new Set(rows.map((row) => normalizeContact(String(row.contact))))];
+  const consumer = await getOrCreateConsumerForVerifiedContacts(contacts);
+  const rawSession = await createConsumerSession(consumer, meta);
+  await sql/*sql*/`UPDATE consumer_auth_challenges SET used_at = now() WHERE magic_token_hash = ${tokenHash} AND used_at IS NULL`;
+  audit("consumer_auth_token_verify_ok", { linkedContacts: contacts.length, ip, consumerId: consumer.id });
   return { ok: true as const, consumer, sessionToken: rawSession };
 }
 

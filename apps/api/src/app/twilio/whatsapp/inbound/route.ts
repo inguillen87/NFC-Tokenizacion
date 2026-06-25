@@ -11,6 +11,10 @@ import { ensureRewardPublicToken, publicRewardPassUrl, publicRewardUrl } from ".
 const DEFAULT_NEXID_WHATSAPP_MEDIA_URL = "https://app.nexid.lat/nexid-mark-pulse-512.png";
 const PUBLIC_CONSUMER_WEB_FALLBACK = "https://nexid.lat";
 const CRM_VOUCHER_CODE = "CRM-WELCOME-2X1";
+const PRIMARY_TENANT_SLUG = "bodegabalmec";
+const LEGACY_TENANT_SLUG = "demobodega";
+const PUBLIC_TENANT_NAME = "Bodega Balmec";
+const WELCOME_REWARD_TITLE = `2x1 copa bienvenida ${PUBLIC_TENANT_NAME}`;
 
 function env(name: string) {
   return String(process.env[name] || "")
@@ -76,6 +80,12 @@ function clean(value: unknown) {
   return String(value || "").trim();
 }
 
+function displayTenantName(value: unknown) {
+  const raw = clean(value);
+  if (!raw || /^demo\b/i.test(raw) || raw.toLowerCase() === LEGACY_TENANT_SLUG) return PUBLIC_TENANT_NAME;
+  return raw;
+}
+
 function normalizePhone(input: string) {
   const raw = input.replace(/^whatsapp:/i, "").trim();
   const digits = raw.replace(/[^\d]/g, "");
@@ -106,8 +116,6 @@ function redemptionSeal(code: string, consumerId: string, tenantId: string) {
 
 function portalUrl(input?: { code?: string; tenantSlug?: string }) {
   const url = new URL(`${publicWebBase()}/me/rewards`);
-  if (input?.code) url.searchParams.set("voucher", input.code);
-  if (input?.tenantSlug) url.searchParams.set("tenant", input.tenantSlug);
   return url.toString();
 }
 
@@ -124,13 +132,6 @@ function publicApiBase(req: Request) {
   if (host && !/localhost|127\.0\.0\.1|\[::1\]/i.test(host)) return `https://${host.replace(/\/$/, "")}`;
   const url = new URL(req.url);
   return url.origin;
-}
-
-function voucherPassUrl(input: { req: Request; code: string; seal: string; tenantSlug: string }) {
-  const url = new URL(`${publicApiBase(input.req)}/public/rewards/pass/${encodeURIComponent(input.code)}`);
-  url.searchParams.set("seal", input.seal);
-  url.searchParams.set("tenant", input.tenantSlug);
-  return url.toString();
 }
 
 function formatArDate(iso: string) {
@@ -159,21 +160,34 @@ async function resolveConsumerTenant(phone: string) {
       c.phone,
       t.id AS tenant_id,
       t.slug AS tenant_slug,
+      t.name AS tenant_name,
       m.last_tap_event_id,
       m.points_balance
     FROM consumers c
     LEFT JOIN tenant_consumer_memberships m ON m.consumer_id = c.id
     LEFT JOIN tenants t ON t.id = m.tenant_id
     WHERE c.phone = ${phone}
-    ORDER BY (t.slug = 'demobodega') DESC, m.last_activity_at DESC NULLS LAST
+    ORDER BY (t.slug = ${PRIMARY_TENANT_SLUG}) DESC, (t.slug = ${LEGACY_TENANT_SLUG}) DESC, m.last_activity_at DESC NULLS LAST
     LIMIT 1
   `;
   if (rows[0]?.consumer_id) {
     if (rows[0]?.tenant_id) return rows[0];
-    const tenantRows = await sql/*sql*/`SELECT id AS tenant_id, slug AS tenant_slug FROM tenants WHERE slug = 'demobodega' LIMIT 1`;
+    const tenantRows = await sql/*sql*/`
+      SELECT id AS tenant_id, slug AS tenant_slug, name AS tenant_name
+      FROM tenants
+      WHERE slug IN (${PRIMARY_TENANT_SLUG}, ${LEGACY_TENANT_SLUG})
+      ORDER BY (slug = ${PRIMARY_TENANT_SLUG}) DESC
+      LIMIT 1
+    `;
     return { ...rows[0], ...(tenantRows[0] || {}) };
   }
-  const tenantRows = await sql/*sql*/`SELECT id AS tenant_id, slug AS tenant_slug FROM tenants WHERE slug = 'demobodega' LIMIT 1`;
+  const tenantRows = await sql/*sql*/`
+    SELECT id AS tenant_id, slug AS tenant_slug, name AS tenant_name
+    FROM tenants
+    WHERE slug IN (${PRIMARY_TENANT_SLUG}, ${LEGACY_TENANT_SLUG})
+    ORDER BY (slug = ${PRIMARY_TENANT_SLUG}) DESC
+    LIMIT 1
+  `;
   return tenantRows[0] ? { consumer_id: null, display_name: null, email: null, phone, ...tenantRows[0] } : null;
 }
 
@@ -228,7 +242,7 @@ async function recordCampaignIntent(input: {
       ${input.phone},
       ${input.profileName || null},
       ${input.phone},
-      ${input.tenantSlug || "Demo Bodega"},
+      ${displayTenantName(input.tenantSlug)},
       'loyalty',
       ${input.intent === "promo_yes" ? "voucher_claim" : input.intent},
       'twilio_whatsapp_campaign',
@@ -252,7 +266,7 @@ async function recordCampaignIntent(input: {
     event_type: "lead.created",
     lead_id: String(rows[0]?.id || ""),
     contact: input.phone,
-    company: input.tenantSlug || "Demo Bodega",
+    company: displayTenantName(input.tenantSlug),
     source: "twilio_whatsapp_campaign",
     status,
     created_at: String(rows[0]?.created_at || new Date().toISOString()),
@@ -271,7 +285,7 @@ async function ensureCampaignReward(tenantId: string, tenantSlug: string) {
   `;
   const programId = programRows[0]?.id || (await sql/*sql*/`
     INSERT INTO loyalty_programs (tenant_id, name, vertical, status, mode, points_name, default_locale, allow_experience_booking, rules_json)
-    VALUES (${tenantId}, ${`Club CRM ${tenantSlug}`}, 'winery', 'active', 'production', 'Puntos', 'es-AR', true, '{"source":"twilio_whatsapp_campaign"}'::jsonb)
+    VALUES (${tenantId}, ${`Club CRM ${displayTenantName(tenantSlug)}`}, 'winery', 'active', 'production', 'Puntos', 'es-AR', true, '{"source":"twilio_whatsapp_campaign"}'::jsonb)
     RETURNING id
   `)[0]?.id;
 
@@ -300,7 +314,7 @@ async function ensureCampaignReward(tenantId: string, tenantSlug: string) {
       ${tenantId},
       ${programId},
       ${CRM_VOUCHER_CODE},
-      '2x1 copa bienvenida Demo Bodega',
+      ${WELCOME_REWARD_TITLE},
       'Voucher post-tap emitido por nexID CRM para convertir un tap real en visita, lead y fidelizacion.',
       'TASTING'::reward_type,
       'active',
@@ -466,7 +480,7 @@ async function getLatestActiveVoucher(consumerId: string, tenantId: string) {
     seal: String(metadata.verification_seal || redemptionSeal(code, consumerId, tenantId)),
     expiresAt: String(metadata.expires_at || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()),
     rewardTitle: String(claim.reward_title || "Voucher nexID"),
-    tenantSlug: String(claim.tenant_slug || "demobodega"),
+    tenantSlug: String(claim.tenant_slug || PRIMARY_TENANT_SLUG),
     publicToken,
   };
 }
@@ -549,7 +563,7 @@ async function claimCampaignVoucher(input: {
 }) {
   const consumerId = String(input.context.consumer_id || "");
   const tenantId = String(input.context.tenant_id || "");
-  const tenantSlug = String(input.context.tenant_slug || "demobodega");
+  const tenantSlug = String(input.context.tenant_slug || PRIMARY_TENANT_SLUG);
   if (!consumerId || !tenantId) return null;
 
   const reward = await ensureCampaignReward(tenantId, tenantSlug);
@@ -728,7 +742,7 @@ export async function POST(req: Request) {
       intent: "voucher_email_capture",
       consumerId: context?.consumer_id ? String(context.consumer_id) : null,
       tenantId: context?.tenant_id ? String(context.tenant_id) : null,
-      tenantSlug: context?.tenant_slug ? String(context.tenant_slug) : "demobodega",
+      tenantSlug: context?.tenant_slug ? String(context.tenant_slug) : PRIMARY_TENANT_SLUG,
       voucher: delivery && "voucher" in delivery && delivery.voucher ? {
         claimId: String(delivery.voucher.claim?.id || ""),
         redemptionCode: delivery.voucher.code,
@@ -790,7 +804,7 @@ export async function POST(req: Request) {
     intent,
     consumerId: context?.consumer_id ? String(context.consumer_id) : null,
     tenantId: context?.tenant_id ? String(context.tenant_id) : null,
-    tenantSlug: context?.tenant_slug ? String(context.tenant_slug) : "demobodega",
+    tenantSlug: context?.tenant_slug ? String(context.tenant_slug) : PRIMARY_TENANT_SLUG,
     voucher: voucher ? {
       claimId: String(voucher.claim?.id || ""),
       redemptionCode: voucher.code,
@@ -805,7 +819,7 @@ export async function POST(req: Request) {
       return xml("Para emitir tu codigo de canje necesito que completes la verificacion nexID con este telefono. Abri tu portal, validalo y volve a tocar QUIERO.");
     }
     if (!voucher) {
-      return xml("No pude emitir el voucher ahora. Tu interes quedo registrado para Demo Bodega y un operador puede reintentar desde CRM.");
+      return xml(`No pude emitir el voucher ahora. Tu interes quedo registrado para ${PUBLIC_TENANT_NAME} y un operador puede reintentar desde CRM.`);
     }
     const emailLine = voucher.emailDelivery?.startsWith("sent")
       ? "Tambien te lo enviamos por email."
@@ -825,7 +839,7 @@ export async function POST(req: Request) {
     ].join("\n"), 200, media);
   }
   if (intent === "promo_no") {
-    return xml("Gracias. No te enviaremos esta promo. Si mas adelante queres beneficios de Demo Bodega, responde QUIERO.");
+    return xml(`Gracias. No te enviaremos esta promo. Si mas adelante queres beneficios de ${PUBLIC_TENANT_NAME}, responde QUIERO.`);
   }
   return xml("Soy nexID CRM. Para activar el voucher con codigo de canje responde QUIERO o toca el boton Quiero. Para rechazar esta promo, responde NO GRACIAS.");
 }

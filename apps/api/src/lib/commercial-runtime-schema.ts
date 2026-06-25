@@ -119,7 +119,10 @@ export async function ensureConsumerAuthSchema() {
       await sql/*sql*/`ALTER TABLE consumer_auth_challenges ADD COLUMN IF NOT EXISTS max_attempts integer NOT NULL DEFAULT 5`;
       await sql/*sql*/`ALTER TABLE consumer_auth_challenges ADD COLUMN IF NOT EXISTS locked_until timestamptz`;
       await sql/*sql*/`ALTER TABLE consumer_auth_challenges ADD COLUMN IF NOT EXISTS ip_hash text`;
+      await sql/*sql*/`ALTER TABLE consumer_auth_challenges ADD COLUMN IF NOT EXISTS magic_token_hash text`;
+      await sql/*sql*/`ALTER TABLE consumer_auth_challenges ADD COLUMN IF NOT EXISTS used_at timestamptz`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumer_auth_challenges_contact_created_at ON consumer_auth_challenges(contact, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumer_auth_challenges_magic_token ON consumer_auth_challenges(magic_token_hash, created_at DESC)`;
     }, () => {
       authSchemaReady = null;
     });
