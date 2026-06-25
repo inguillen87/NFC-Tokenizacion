@@ -11,14 +11,24 @@ const roleDescriptions: Record<string, string> = {
   "super-admin": "Control total de tenants, seguridad, CRM, leads y analytics global.",
   "tenant-admin": "Gestiona lotes, tags, taps, portal consumidor y marketplace del tenant.",
   reseller: "Opera canal, clientes, revenue share y rollout comercial.",
-  viewer: "Solo lectura para auditoria, cliente o demo comercial.",
+  viewer: "Solo lectura para auditoria, cliente o revisión comercial.",
 };
+
+function dashboardOneClickAccessAllowed() {
+  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").toLowerCase();
+  if (explicitPublicSession === "1" || explicitPublicSession === "true") return true;
+  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  if (isProduction) return false;
+  const configured = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
+  if (configured === "") return true;
+  return configured === "1" || configured === "true";
+}
 
 export default async function LoginPage() {
   const { t, locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const profiles = getAccessProfiles();
-  const demoLoginAllowed = true;
+  const demoLoginAllowed = dashboardOneClickAccessAllowed();
   const session = await getDashboardSession();
   if (session) redirect("/");
 
@@ -52,8 +62,8 @@ export default async function LoginPage() {
               </p>
 
               <div className="mt-5 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-sm text-cyan-100">
-                Demo listo para venta: entra en 1 click, revisa metricas, exporta reportes y muestra el flujo completo sin depender
-                de credenciales locales.
+                Consola lista para venta: ingreso controlado, metricas en vivo, exportacion de reportes y flujo completo para operar
+                tenants, tags y clientes sin mezclar el portal consumidor.
               </div>
 
               <div className="mt-5 grid gap-2 text-xs">

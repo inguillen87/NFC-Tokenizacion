@@ -78,6 +78,28 @@ const BASEMAP_OPTIONS: Array<{ value: BaseMapLayer; label: string; title: string
   { value: "satellite", label: "Satélite", title: "Vista satelital para acercamiento urbano y territorio" },
 ];
 
+const DEFAULT_CONSOLE_TIMEZONE = "America/Argentina/Buenos_Aires";
+
+const TENANT_TIMEZONE_HINTS: Record<string, string> = {
+  demobodega: DEFAULT_CONSOLE_TIMEZONE,
+  bodegabalmec: DEFAULT_CONSOLE_TIMEZONE,
+  "bodega-balmec": DEFAULT_CONSOLE_TIMEZONE,
+};
+
+const COUNTRY_TIMEZONE_HINTS: Record<string, string> = {
+  AR: DEFAULT_CONSOLE_TIMEZONE,
+  UY: "America/Montevideo",
+  CL: "America/Santiago",
+  BR: "America/Sao_Paulo",
+  PY: "America/Asuncion",
+  BO: "America/La_Paz",
+  PE: "America/Lima",
+  CO: "America/Bogota",
+  MX: "America/Mexico_City",
+  US: "America/New_York",
+  ES: "Europe/Madrid",
+};
+
 function timeRangeLabel(value: TimeRange) {
   return TIME_RANGE_OPTIONS.find((item) => item.value === value)?.label || "Últimas 24h";
 }
@@ -96,8 +118,71 @@ function formatNumber(value: number) {
 }
 
 function safeDate(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
   const ms = Date.parse(String(value || ""));
   return Number.isFinite(ms) ? ms : 0;
+}
+
+function validTimeZone(value: unknown) {
+  const candidate = String(value || "").trim();
+  if (!candidate) return "";
+  try {
+    new Intl.DateTimeFormat("es-AR", { timeZone: candidate }).format(new Date());
+    return candidate;
+  } catch {
+    return "";
+  }
+}
+
+function formatInTimeZone(value: unknown, timeZone: string, options: Intl.DateTimeFormatOptions) {
+  const ms = safeDate(value) || Date.now();
+  return new Intl.DateTimeFormat("es-AR", { ...options, timeZone }).format(new Date(ms));
+}
+
+function formatTimeInZone(value: unknown, timeZone: string) {
+  return formatInTimeZone(value, timeZone, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function formatShortTimeInZone(value: unknown, timeZone: string) {
+  return formatInTimeZone(value, timeZone, { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDateInZone(value: unknown, timeZone: string) {
+  return formatInTimeZone(value, timeZone, { day: "2-digit", month: "short", year: "numeric" }).replace(".", "");
+}
+
+function formatDateTimeInZone(value: unknown, timeZone: string) {
+  return formatInTimeZone(value, timeZone, { dateStyle: "short", timeStyle: "medium" });
+}
+
+function timezoneLabel(timeZone: string) {
+  return timeZone.replace(/^America\//, "").replace(/^Europe\//, "").replace(/_/g, " ");
+}
+
+function tenantDisplayName(value?: string | null) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "demobodega" || normalized === "bodegabalmec" || normalized === "bodega-balmec") return "Bodega Balmec";
+  if (!value) return "Bodega Balmec";
+  return String(value);
+}
+
+function resolveConsoleTimezone(rows: TenantTapRealtimeEvent[], selectedTenant: string, tenantScope: string) {
+  const selectedSlug = selectedTenant !== "all" ? selectedTenant : tenantScope;
+  const tenantHint = TENANT_TIMEZONE_HINTS[String(selectedSlug || "").toLowerCase()];
+  if (tenantHint) return tenantHint;
+
+  for (const row of rows) {
+    const zone = validTimeZone(row.timezone);
+    if (zone) return zone;
+  }
+
+  for (const row of rows) {
+    const country = String(row.country || "").toUpperCase();
+    const zone = validTimeZone(COUNTRY_TIMEZONE_HINTS[country]);
+    if (zone) return zone;
+  }
+
+  return DEFAULT_CONSOLE_TIMEZONE;
 }
 
 function timeAgo(value: unknown) {
@@ -331,12 +416,6 @@ export function ExecutiveRealtimeCrm({
   }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => setClock(new Date().toLocaleTimeString("es-AR")), 1000);
-    setClock(new Date().toLocaleTimeString("es-AR"));
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     const onFullscreenChange = () => {
       setIsMapFullscreen(document.fullscreenElement === mapPanelRef.current);
     };
@@ -405,6 +484,19 @@ export function ExecutiveRealtimeCrm({
     [events, selectedTenant, timeRange],
   );
 
+  const consoleTimezone = useMemo(
+    () => resolveConsoleTimezone(visibleEvents, selectedTenant, tenantScope),
+    [selectedTenant, tenantScope, visibleEvents],
+  );
+  const consoleTimezoneLabel = useMemo(() => timezoneLabel(consoleTimezone), [consoleTimezone]);
+
+  useEffect(() => {
+    const updateClock = () => setClock(formatTimeInZone(Date.now(), consoleTimezone));
+    updateClock();
+    const timer = setInterval(updateClock, 1000);
+    return () => clearInterval(timer);
+  }, [consoleTimezone]);
+
   const cycleTimeRange = () => {
     setTimeRange((current) => current === "5m" ? "1h" : current === "1h" ? "24h" : "5m");
   };
@@ -438,7 +530,7 @@ export function ExecutiveRealtimeCrm({
     const buckets = Array.from({ length: 12 }, (_, index) => {
       const start = now - (11 - index) * 2 * 60_000;
       return {
-        label: new Date(start).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+        label: formatShortTimeInZone(start, consoleTimezone),
         taps: 0,
         risk: 0,
         valid: 0,
@@ -455,21 +547,21 @@ export function ExecutiveRealtimeCrm({
       else buckets[bucket].risk += 1;
     });
     return buckets;
-  }, [visibleEvents]);
+  }, [consoleTimezone, visibleEvents]);
 
   const hotspots = useMemo(() => buildHotspots(visibleEvents), [visibleEvents]);
   const marketOpportunities = useMemo(() => buildMarketOpportunities(hotspots, visibleEvents), [hotspots, visibleEvents]);
   const topOpportunity = marketOpportunities[0] || null;
   const latestEvent = visibleEvents[0] || null;
-  const todayLabel = useMemo(() => new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", ""), []);
+  const todayLabel = useMemo(() => formatDateInZone(Date.now(), consoleTimezone), [consoleTimezone]);
 
   const alerts = useMemo(() => {
     const rows: Array<{ id: string; tone: "red" | "amber" | "blue"; title: string; detail: string; time: string }> = [];
     if (metrics.fraudRate > 10) {
-      rows.push({ id: `risk-${hotspots[0]?.key || "operation"}`, tone: "red", title: `Riesgo elevado en ${hotspots[0]?.city || "la operación"}`, detail: `Tasa de riesgo ${formatPercent(metrics.fraudRate)} en la ventana visible`, time: new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) });
+      rows.push({ id: `risk-${hotspots[0]?.key || "operation"}`, tone: "red", title: `Riesgo elevado en ${hotspots[0]?.city || "la operación"}`, detail: `Tasa de riesgo ${formatPercent(metrics.fraudRate)} en la ventana visible`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
     }
     if (metrics.gpsCoverage < 60 && metrics.total > 0) {
-      rows.push({ id: `gps-${metrics.total}-${Math.round(metrics.gpsCoverage)}`, tone: "amber", title: "Cobertura GPS baja", detail: `Solo ${formatPercent(metrics.gpsCoverage)} de taps con GPS real`, time: new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) });
+      rows.push({ id: `gps-${metrics.total}-${Math.round(metrics.gpsCoverage)}`, tone: "amber", title: "Cobertura GPS baja", detail: `Solo ${formatPercent(metrics.gpsCoverage)} de taps con GPS real`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
     }
     visibleEvents.filter((event) => String(event.verdict || "").toLowerCase() !== "valid").slice(0, 3).forEach((event, index) => {
       rows.push({ id: `exception-${String(event.eventId || event.uidMasked || "uid")}-${index}`, tone: "amber", title: `UID con excepción ${event.uidMasked}`, detail: `${event.city || "sin ciudad"} · ${deviceSummary(event)}`, time: timeAgo(event.occurredAt) });
@@ -478,7 +570,7 @@ export function ExecutiveRealtimeCrm({
       rows.push({ id: `actionable-${String(latestEvent?.eventId || metrics.actionable)}`, tone: "blue", title: "Pico de actividad listo para CRM", detail: `${metrics.actionable} taps válidos tienen ubicación accionable`, time: timeAgo(latestEvent?.occurredAt) });
     }
     return rows.slice(0, 4);
-  }, [hotspots, latestEvent, metrics, visibleEvents]);
+  }, [consoleTimezone, hotspots, latestEvent, metrics, visibleEvents]);
 
   const handleExport = () => {
     exportToCsv(
@@ -488,6 +580,8 @@ export function ExecutiveRealtimeCrm({
         tenant: event.tenantSlug || "",
         uid: event.uidMasked,
         occurredAt: event.occurredAt,
+        occurredAtTenant: formatDateTimeInZone(event.occurredAt, consoleTimezone),
+        timezone: consoleTimezone,
         verdict: event.verdict,
         city: event.city || "",
         country: event.country || "",
@@ -498,7 +592,9 @@ export function ExecutiveRealtimeCrm({
         { key: "eventId", label: "Evento" },
         { key: "tenant", label: "Tenant" },
         { key: "uid", label: "UID" },
-        { key: "occurredAt", label: "Fecha" },
+        { key: "occurredAtTenant", label: "Fecha tenant" },
+        { key: "timezone", label: "Zona horaria" },
+        { key: "occurredAt", label: "Fecha UTC/origen" },
         { key: "verdict", label: "Veredicto" },
         { key: "city", label: "Ciudad" },
         { key: "country", label: "País" },
@@ -530,6 +626,8 @@ export function ExecutiveRealtimeCrm({
         uid: event.uidMasked,
         verdict: event.verdict,
         occurredAt: event.occurredAt,
+        occurredAtTenant: formatDateTimeInZone(event.occurredAt, consoleTimezone),
+        timezone: consoleTimezone,
         product: event.productName || "",
         device: deviceSummary(event),
         location: locationSourceLabel(event),
@@ -543,7 +641,9 @@ export function ExecutiveRealtimeCrm({
         { key: "tenant", label: "Tenant" },
         { key: "uid", label: "UID" },
         { key: "verdict", label: "Veredicto" },
-        { key: "occurredAt", label: "Fecha" },
+        { key: "occurredAtTenant", label: "Fecha tenant" },
+        { key: "timezone", label: "Zona horaria" },
+        { key: "occurredAt", label: "Fecha UTC/origen" },
         { key: "product", label: "Producto" },
         { key: "device", label: "Dispositivo" },
         { key: "location", label: "Ubicacion" },
@@ -623,11 +723,11 @@ export function ExecutiveRealtimeCrm({
 
         <div className="ml-0 flex w-full flex-wrap items-center justify-between gap-3 text-xs text-slate-300 lg:ml-auto lg:w-auto lg:flex-nowrap lg:justify-start lg:gap-5">
           <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> Sistema operativo</span>
-          <span className="flex items-center gap-2"><Clock className="h-4 w-4 text-slate-500" /> {clock}</span>
+          <span className="flex items-center gap-2" title={`Horario operativo del tenant: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="hidden text-[10px] uppercase tracking-[0.08em] text-slate-500 xl:inline">{consoleTimezoneLabel}</span></span>
           <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
           <button type="button" title="Filtrar la consola al tenant de tu sesión" className="flex items-center gap-3 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 text-left" onClick={() => setSelectedTenant(tenantScope || "all")}>
             <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">TA</span>
-            <span><b className="block text-white">Tenant Admin</b>{selectedTenant === "all" ? tenantScope || "Bodega Balmec" : selectedTenant}</span>
+            <span><b className="block text-white">Tenant Admin</b>{tenantDisplayName(selectedTenant === "all" ? tenantScope : selectedTenant)}</span>
             <ChevronDown className="h-4 w-4 text-slate-500" />
           </button>
         </div>
@@ -725,7 +825,7 @@ export function ExecutiveRealtimeCrm({
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
                 <select size={1} title="Filtrar taps por tenant" value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white sm:col-span-1 sm:w-auto sm:min-w-[150px]">
                   <option value="all">Todos los tenants</option>
-                  {tenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenant}</option>)}
+                  {tenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenantDisplayName(tenant)}</option>)}
                 </select>
                 <select size={1} title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
                   {TIME_RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -793,7 +893,7 @@ export function ExecutiveRealtimeCrm({
                     return (
                       <div key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className="rounded-lg border border-white/8 bg-slate-900/70 p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] text-slate-500">{new Date(String(event.occurredAt || Date.now())).toLocaleTimeString("es-AR")}</p>
+                          <p className="text-[11px] text-slate-500">{formatTimeInZone(event.occurredAt || Date.now(), consoleTimezone)}</p>
                           <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${valid ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>{valid ? "Válido" : "Riesgo"}</span>
                         </div>
                         <p className="mt-1 text-sm font-black text-white">UID: {event.uidMasked}</p>

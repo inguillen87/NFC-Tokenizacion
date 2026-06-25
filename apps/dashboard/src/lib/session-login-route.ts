@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "./session";
 import { getAccessProfiles } from "./access-profiles";
-import { shouldAllowDemoFallback } from "./admin-proxy-policy";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const AUTH_UPSTREAM_TIMEOUT_MS = Number(process.env.AUTH_UPSTREAM_TIMEOUT_MS || 8000);
@@ -48,12 +47,12 @@ function buildSnapshot(email: string, role: string, label?: string, permissions?
 
 function allowDemoLoginMode() {
   const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
-  const explicitDemoMode = String(process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
+  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").toLowerCase();
+  if (explicitPublicSession === "1" || explicitPublicSession === "true") return true;
+  if (isProduction) return false;
   const configured = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
-  const allowDemoLogin = configured === "" ? true : configured === "true";
-  if (allowDemoLogin && !isProduction && configured === "") return true;
-  if (allowDemoLogin && configured === "true") return true;
-  return shouldAllowDemoFallback({ allowDemoFallback: allowDemoLogin, isProduction, demoModeExplicit: explicitDemoMode });
+  if (configured === "") return true;
+  return configured === "1" || configured === "true";
 }
 
 type LoginDiagnostics = {
@@ -111,14 +110,14 @@ export async function handleSessionLogin(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          reason: "demo login disabled in this environment",
+          reason: "one-click access disabled in this environment",
           diagnostics: buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: canUseDemoLogin }),
         },
         { status: 403 },
       );
     }
     const demoEmail = `demo.${demoRole}@nexid.local`;
-    const demoLabel = demoRole === "viewer" ? "Readonly Demo Session" : `${demoRole} Demo Session`;
+    const demoLabel = demoRole === "viewer" ? "Readonly sandbox session" : `${demoRole} sandbox session`;
     const demoPermissions = demoRole === "viewer" ? ["read:*"] : ["*"];
     const response = NextResponse.json({
       ok: true,
@@ -165,7 +164,7 @@ export async function handleSessionLogin(req: Request) {
         ok: true,
         email: demoProfile.email,
         role: demoProfile.role,
-        label: `${demoProfile.label} (demo mode)`,
+        label: `${demoProfile.label} (sandbox)`,
         permissions: ["*"],
         mfaRequired: false,
       });
@@ -176,7 +175,7 @@ export async function handleSessionLogin(req: Request) {
         path: "/",
         maxAge: 60 * 60 * 12,
       });
-      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (demo mode)`, ["*"]), {
+      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (sandbox)`, ["*"]), {
         httpOnly: true,
         sameSite: "lax",
         secure: useSecureCookie(req),
@@ -199,7 +198,7 @@ export async function handleSessionLogin(req: Request) {
         ok: true,
         email: demoProfile.email,
         role: demoProfile.role,
-        label: `${demoProfile.label} (demo mode)`,
+        label: `${demoProfile.label} (sandbox)`,
         permissions: ["*"],
         mfaRequired: false,
       });
@@ -210,7 +209,7 @@ export async function handleSessionLogin(req: Request) {
         path: "/",
         maxAge: 60 * 60 * 12,
       });
-      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (demo mode)`, ["*"]), {
+      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (sandbox)`, ["*"]), {
         httpOnly: true,
         sameSite: "lax",
         secure: useSecureCookie(req),
@@ -223,7 +222,7 @@ export async function handleSessionLogin(req: Request) {
     const fallbackReason = normalizedStatus === 401
       ? "invalid credentials"
       : normalizedStatus === 403
-      ? "demo disabled or missing scope"
+      ? "temporary access disabled or missing scope"
       : normalizedStatus === 502
       ? "auth upstream unavailable"
       : "internal login error";

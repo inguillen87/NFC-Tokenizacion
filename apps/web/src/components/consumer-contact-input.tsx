@@ -117,7 +117,7 @@ export function ConsumerContactInput({
   channelLocked?: ConsumerContactDraft["channel"];
 }) {
   const activeDraft = channelLocked && draft.channel !== channelLocked ? { ...draft, channel: channelLocked } : draft;
-  const selectedOption = COUNTRY_OPTIONS.find((option) => option.code === draft.countryCode) || COUNTRY_OPTIONS[0];
+  const selectedOption = COUNTRY_OPTIONS.find((option) => option.code === activeDraft.countryCode) || COUNTRY_OPTIONS[0];
   const inputClass = compact
     ? "rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
     : "rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500";

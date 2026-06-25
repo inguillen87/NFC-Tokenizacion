@@ -36,8 +36,8 @@ const DEMO_ROLES: Array<{
   },
   {
     key: "tenant-admin",
-    title: "DemoBodega",
-    label: "Entrar como DemoBodega",
+    title: "Bodega Balmec",
+    label: "Entrar como Bodega Balmec",
     description: "Lotes, tags reales, taps, portal de cliente y marketplace.",
     tone: "border-cyan-300/30 bg-cyan-500/10 text-cyan-100 hover:border-cyan-300/50 hover:bg-cyan-500/15",
   },
@@ -81,7 +81,7 @@ export function LoginFormPanel({
     const parts: string[] = [];
     if (diagnostics.apiBaseConfigured === false) parts.push("API base no configurada.");
     if (diagnostics.upstreamReachable === false) parts.push("Upstream auth no disponible.");
-    if (diagnostics.demoLoginAllowed === false) parts.push("Demo login deshabilitado.");
+    if (diagnostics.demoLoginAllowed === false) parts.push("Acceso temporal deshabilitado.");
     if (missingEnvNames.length) parts.push(`Faltan env: ${missingEnvNames.join(", ")}`);
     return parts.join(" ");
   }
@@ -117,7 +117,7 @@ export function LoginFormPanel({
       } else if (res?.status === 502) {
         setStatus("Servicio de autenticacion no disponible temporalmente.");
       } else if (res?.status === 403) {
-        setStatus("Acceso denegado por politica de entorno (demo/scope).");
+        setStatus("Acceso denegado por politica y alcance del entorno.");
       } else if (res?.status === 401) {
         setStatus("Credenciales invalidas.");
       } else if (res?.status && res.status >= 500) {
@@ -146,7 +146,7 @@ export function LoginFormPanel({
     if (!res?.ok) {
       const diagnosticsNote = formatDiagnostics(data?.diagnostics);
       if (diagnosticsNote) setOpsStatus(diagnosticsNote);
-      setStatus(data?.reason || "No se pudo iniciar sesion demo.");
+      setStatus(data?.reason || "No se pudo iniciar la sesion temporal.");
       setPending(false);
       return;
     }
@@ -155,15 +155,16 @@ export function LoginFormPanel({
 
   return (
     <div>
+      {demoLoginAllowed ? (
       <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 shadow-[0_18px_60px_rgba(8,145,178,0.16)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Admin demo operativo</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Acceso sandbox operativo</p>
             <h2 className="mt-2 text-xl font-semibold text-white">Entrar en 1 click</h2>
-            <p className="mt-1 text-sm text-slate-300">Crea una sesion demo por 12h sin depender de credenciales locales.</p>
+            <p className="mt-1 text-sm text-slate-300">Crea una sesion temporal por 12h para QA y presentaciones controladas.</p>
           </div>
           <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-100">
-            listo para preview
+            sandbox activo
           </span>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -184,11 +185,6 @@ export function LoginFormPanel({
           ))}
         </div>
       </div>
-
-      {!demoLoginAllowed ? (
-        <p className="mt-3 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Login demo deshabilitado por politica del entorno. Activa DASHBOARD_ALLOW_DEMO_LOGIN para usar accesos 1-click.
-        </p>
       ) : null}
 
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -226,7 +222,7 @@ export function LoginFormPanel({
 
       {!hasAvailableProfiles ? (
         <p className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
-          Los presets solo completan email/password. El 1-click demo sigue disponible para preview, QA y reuniones comerciales.
+          Los presets solo completan email/password. Configura credenciales reales para habilitar acceso operativo.
         </p>
       ) : null}
 

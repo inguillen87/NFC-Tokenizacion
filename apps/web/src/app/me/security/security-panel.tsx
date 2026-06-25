@@ -32,6 +32,17 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
   const [statusMsg, setStatusMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
+  const hasEmail = !!consumer?.email;
+  const hasPhone = !!consumer?.phone;
+  const isVerified2FA = consumer?.status === "verified";
+  const missingType = !hasEmail ? "email" : !hasPhone ? "phone" : null;
+  const lockedChannel: ConsumerContactDraft["channel"] = missingType === "email" ? "email" : "whatsapp";
+  const effectiveContactDraft = useMemo(
+    () => (contactDraft.channel === lockedChannel ? contactDraft : { ...contactDraft, channel: lockedChannel }),
+    [contactDraft, lockedChannel],
+  );
+  const contactIsValid = consumerContactDraftIsValid(effectiveContactDraft);
+
   if (!consumer) {
     return (
       <div className="rounded-3xl border border-red-500/25 bg-red-950/10 p-6 text-center">
@@ -42,17 +53,6 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
       </div>
     );
   }
-
-  const hasEmail = !!consumer.email;
-  const hasPhone = !!consumer.phone;
-  const isVerified2FA = consumer.status === "verified";
-  const missingType = !hasEmail ? "email" : !hasPhone ? "phone" : null;
-  const lockedChannel: ConsumerContactDraft["channel"] = missingType === "email" ? "email" : "whatsapp";
-  const effectiveContactDraft = useMemo(
-    () => (contactDraft.channel === lockedChannel ? contactDraft : { ...contactDraft, channel: lockedChannel }),
-    [contactDraft, lockedChannel],
-  );
-  const contactIsValid = consumerContactDraftIsValid(effectiveContactDraft);
 
   async function startAssociation() {
     const payload = consumerContactPayload(effectiveContactDraft);

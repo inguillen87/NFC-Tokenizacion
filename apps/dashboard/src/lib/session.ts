@@ -24,15 +24,24 @@ export type DashboardSession = {
 function demoFallbackSession(): DashboardSession {
   return {
     id: "demo-tenant-admin-demobodega",
-    email: "demobodega@nexid.lat",
+    email: "bodegabalmec@nexid.lat",
     role: "tenant-admin",
     tenantId: "demo-tenant-demobodega",
     tenantSlug: "demobodega",
-    label: "tenant-admin demo",
+    label: "Bodega Balmec Admin",
     permissions: ["*"],
     mfaVerified: true,
     setupCompleted: true,
   };
+}
+
+function dashboardDemoSessionAllowed() {
+  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").toLowerCase();
+  if (explicitPublicSession === "1" || explicitPublicSession === "true") return true;
+
+  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+  const localOneClick = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").toLowerCase();
+  return !isProduction && (localOneClick === "1" || localOneClick === "true");
 }
 
 function parseDemoToken(token: string): DashboardSession | null {
@@ -57,7 +66,7 @@ function parseDemoToken(token: string): DashboardSession | null {
       role,
       tenantId: role === "tenant-admin" ? "demo-tenant-demobodega" : null,
       tenantSlug: role === "tenant-admin" ? "demobodega" : null,
-      label: `${role} demo`,
+      label: role === "tenant-admin" ? "Bodega Balmec Admin" : `${role} sandbox`,
       permissions: ["*"],
       mfaVerified: true,
       setupCompleted: true,
@@ -88,9 +97,13 @@ export async function getDashboardSession() {
   const snapshot = parseSnapshot(cookieStore.get(DASHBOARD_SESSION_SNAPSHOT_COOKIE)?.value);
 
   if (token) {
-    const demoSession = parseDemoToken(token);
-    if (demoSession) return demoSession;
-    if (token.startsWith("demo.")) return snapshot || demoFallbackSession();
+    const isDemoToken = token.startsWith("demo.");
+    if (isDemoToken) {
+      if (!dashboardDemoSessionAllowed()) return null;
+      const demoSession = parseDemoToken(token);
+      if (demoSession) return demoSession;
+      return snapshot || demoFallbackSession();
+    }
 
     const res = await fetch(`${API_BASE}/auth/session`, {
       headers: { authorization: `Bearer ${token}` },
@@ -170,7 +183,7 @@ export async function getDashboardSession() {
     }
   }
 
-  if (process.env.ENABLE_PUBLIC_DEMO_SESSION === "1") return demoFallbackSession();
+  if (dashboardDemoSessionAllowed()) return demoFallbackSession();
   return null;
 }
 
