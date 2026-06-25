@@ -31,7 +31,7 @@ import {
   Users,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { RealtimeMapLibreMap } from "./realtime-maplibre-map";
+import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map";
 import { exportToCsv } from "../lib/export-utils";
 import { mergeRealtimeEvents, sortRealtimeEvents, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
@@ -70,6 +70,12 @@ const TIME_RANGE_OPTIONS: Array<{ value: TimeRange; label: string; ms: number }>
   { value: "5m", label: "Últimos 5m", ms: 5 * 60_000 },
   { value: "1h", label: "Última 1h", ms: 60 * 60_000 },
   { value: "24h", label: "Últimas 24h", ms: 24 * 60 * 60_000 },
+];
+
+const BASEMAP_OPTIONS: Array<{ value: BaseMapLayer; label: string; title: string }> = [
+  { value: "dark", label: "Oscuro", title: "Mapa operativo oscuro para sala de control" },
+  { value: "light", label: "Calles", title: "Mapa claro con calles para ubicar comercios y barrios" },
+  { value: "satellite", label: "Satélite", title: "Vista satelital para acercamiento urbano y territorio" },
 ];
 
 function timeRangeLabel(value: TimeRange) {
@@ -181,13 +187,13 @@ function buildMarketOpportunities(
 
     let channel = "WhatsApp + voucher";
     let offer = "15% club post-tap";
-    let playbook = "Enviar voucher de recompra a UIDs validos y medir canje por ciudad.";
-    let reason = "Alta senal valida para fidelizacion.";
+    let playbook = "Enviar voucher de recompra a UIDs válidos y medir canje por ciudad.";
+    let reason = "Alta señal válida para fidelización.";
 
     if (riskRate > 12) {
       channel = "Riesgo + retencion";
       offer = "Beneficio con validacion";
-      playbook = "Separar taps sospechosos, auditar device y mandar promo solo a validos.";
+      playbook = "Separar taps sospechosos, auditar device y mandar promo solo a válidos.";
       reason = "La zona vende, pero necesita control antifraude antes de escalar.";
     } else if (gpsRate < 60) {
       channel = "Portal + WhatsApp";
@@ -310,11 +316,14 @@ export function ExecutiveRealtimeCrm({
   const [lastUpdateAt, setLastUpdateAt] = useState(initialEvents[0]?.occurredAt || new Date().toISOString());
   const [selectedTenant, setSelectedTenant] = useState("all");
   const [mapView, setMapView] = useState<MapView>("heat");
+  const [baseMap, setBaseMap] = useState<BaseMapLayer>("dark");
   const [mapZoom, setMapZoom] = useState(1);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const [clock, setClock] = useState("");
   const [campaignDraft, setCampaignDraft] = useState<string | null>(null);
   const lastEventIdRef = useRef("");
+  const mapPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     document.body.classList.add("nexid-crm-overlay-active");
@@ -325,6 +334,14 @@ export function ExecutiveRealtimeCrm({
     const timer = setInterval(() => setClock(new Date().toLocaleTimeString("es-AR")), 1000);
     setClock(new Date().toLocaleTimeString("es-AR"));
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsMapFullscreen(document.fullscreenElement === mapPanelRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);
 
   useEffect(() => {
@@ -546,6 +563,28 @@ export function ExecutiveRealtimeCrm({
     window.location.href = `/loyalty/campaigns?${params.toString()}`;
   };
 
+  const toggleMapFullscreen = async () => {
+    const panel = mapPanelRef.current;
+    if (!panel) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await panel.requestFullscreen();
+      }
+    } catch {
+      setIsMapFullscreen(false);
+    }
+  };
+
+  const openStreetView = () => {
+    const target = visibleEvents.find((event) => Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng)));
+    if (!target) return;
+    const lat = Number(target.lat);
+    const lng = Number(target.lng);
+    window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`, "_blank", "noopener,noreferrer");
+  };
+
   const railItems = [
     { icon: <Activity className="h-6 w-6" />, active: true, label: "Realtime CRM", action: () => onSectionChange?.("summary") },
     { icon: <Globe className="h-5 w-5" />, label: "Mapa", action: () => setMapView("heat") },
@@ -588,7 +627,7 @@ export function ExecutiveRealtimeCrm({
           <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
           <button type="button" title="Filtrar la consola al tenant de tu sesión" className="flex items-center gap-3 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 text-left" onClick={() => setSelectedTenant(tenantScope || "all")}>
             <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">TA</span>
-            <span><b className="block text-white">Tenant Admin</b>{selectedTenant === "all" ? tenantScope || "demo.bodega" : selectedTenant}</span>
+            <span><b className="block text-white">Tenant Admin</b>{selectedTenant === "all" ? tenantScope || "Bodega Balmec" : selectedTenant}</span>
             <ChevronDown className="h-4 w-4 text-slate-500" />
           </button>
         </div>
@@ -676,7 +715,7 @@ export function ExecutiveRealtimeCrm({
           </div>
         </section>
 
-        <section className="order-1 grid min-h-0 grid-rows-none gap-4 lg:order-2 lg:grid-rows-[minmax(0,1fr)_300px]">
+        <section className="order-1 grid min-h-0 grid-rows-none gap-4 lg:order-2 lg:grid-rows-[minmax(0,1fr)_340px]">
           <div className="grid min-h-0 grid-rows-none lg:grid-rows-[auto_minmax(0,1fr)]">
             <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
@@ -695,7 +734,7 @@ export function ExecutiveRealtimeCrm({
               </div>
             </div>
 
-            <div className="relative min-h-[700px] overflow-hidden rounded-xl border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] sm:min-h-[650px] lg:min-h-0">
+            <div ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713]" : "min-h-[700px] rounded-xl sm:min-h-[650px] lg:min-h-0"}`}>
               <div className="absolute left-4 top-4 z-20 grid gap-2">
                 <button type="button" title="Acercar mapa sin agrandar artificialmente los taps" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
                 <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">−</button>
@@ -713,8 +752,22 @@ export function ExecutiveRealtimeCrm({
                     {icon}{label}
                   </button>
                 ))}
+                <div className="hidden items-center gap-1 rounded-lg border border-white/10 bg-slate-950/70 p-1 xl:flex" title="Cambiar capa base del mapa">
+                  {BASEMAP_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      title={option.title}
+                      onClick={() => setBaseMap(option.value)}
+                      className={`h-7 rounded-md px-2 text-[11px] font-black uppercase tracking-[0.06em] ${baseMap === option.value ? "bg-cyan-300 text-slate-950" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" title="Abrir Google Maps Street View en la coordenada más reciente" onClick={openStreetView} className="hidden h-9 items-center gap-2 rounded-lg border border-white/10 bg-slate-950/65 px-3 text-sm font-semibold text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100 xl:flex"><Globe className="h-4 w-4" /> Street</button>
                 <button type="button" title="Restablecer mapa: calor y zoom normal" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
-                <button type="button" title="Alternar zoom ejecutivo del mapa" onClick={() => setMapZoom((value) => value < 1.12 ? 1.12 : 1)} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Alternar ampliación del mapa"><Expand className="h-4 w-4" /></button>
+                <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-4 w-4" /></button>
               </div>
 
               <div className="absolute bottom-[260px] left-4 z-20 rounded-lg border border-white/10 bg-slate-950/75 p-3 text-xs text-slate-200 shadow-xl lg:bottom-20">
@@ -729,7 +782,7 @@ export function ExecutiveRealtimeCrm({
               </div>
 
               <div className="h-[420px] w-full p-3 pt-[76px] lg:h-full lg:p-3 lg:pr-[300px]">
-                <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} />
+                <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} />
               </div>
 
               <div className="relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-xl border border-white/10 bg-slate-950/72 p-3 shadow-2xl backdrop-blur lg:absolute lg:bottom-4 lg:right-4 lg:top-[76px] lg:m-0 lg:w-[270px] lg:max-h-none">
@@ -755,28 +808,28 @@ export function ExecutiveRealtimeCrm({
           </div>
 
           <div className="grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_392px]">
-            <div className="rounded-xl border border-cyan-300/15 bg-[linear-gradient(180deg,rgba(10,24,43,.96),rgba(4,10,20,.94))] p-3">
+            <div className="rounded-xl border border-cyan-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_36%),linear-gradient(180deg,rgba(10,24,43,.98),rgba(4,10,20,.95))] p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="flex min-w-0 items-center gap-2 text-base font-bold text-white">
+                <p className="flex min-w-0 flex-wrap items-center gap-2 text-base font-bold text-white">
                   <Megaphone className="h-4 w-4 text-cyan-300" />
                   <span className="truncate">Inteligencia comercial por zona</span>
-                  <span className="hidden text-sm font-normal text-slate-400 sm:inline">(promos, vouchers y logistica)</span>
+                  <span className="hidden text-sm font-normal text-slate-400 sm:inline">(promos, vouchers, stock y logística)</span>
                 </p>
-                <button type="button" title="Abrir Growth & BotIA para crear campanas con estas senales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Growth & BotIA</button>
+                <button type="button" title="Abrir Growth & BotIA para crear campañas con estas señales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Growth & BotIA</button>
               </div>
 
               {topOpportunity ? (
-                <div className="mb-2 grid gap-2 rounded-lg border border-cyan-300/15 bg-cyan-400/8 p-2.5 text-xs text-slate-300 sm:grid-cols-[minmax(0,1fr)_220px]">
+                <div className="mb-3 grid gap-3 rounded-xl border border-cyan-300/20 bg-cyan-400/8 p-3 text-xs text-slate-300 sm:grid-cols-[minmax(0,1fr)_260px]">
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 font-bold uppercase tracking-[0.08em] text-cyan-200"><Sparkles className="h-3.5 w-3.5" /> AI Growth Copilot</p>
-                    <p className="mt-1 line-clamp-2">
-                      Activar <b className="text-white">{topOpportunity.offer}</b> en <b className="text-white">{topOpportunity.city}</b> por {topOpportunity.channel}. Logistica: priorizar stock, QR/NFC activos y puntos de canje donde ya hay {topOpportunity.taps} taps.
+                    <p className="flex items-center gap-2 font-bold uppercase tracking-[0.08em] text-cyan-200"><Sparkles className="h-3.5 w-3.5" /> Acción recomendada</p>
+                    <p className="mt-1 text-sm leading-5">
+                      Activar <b className="text-white">{topOpportunity.offer}</b> en <b className="text-white">{topOpportunity.city}</b> por {topOpportunity.channel}. Priorizar stock, QR/NFC activos y puntos de canje donde ya hay <b className="text-white">{topOpportunity.taps}</b> taps.
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <span className="rounded-lg border border-white/8 bg-slate-950/45 p-2"><b className="block text-base text-white">{topOpportunity.score}</b> score</span>
-                    <span className="rounded-lg border border-white/8 bg-slate-950/45 p-2"><b className="block text-base text-white">{topOpportunity.audience}</b> audiencia</span>
-                    <span className="rounded-lg border border-white/8 bg-slate-950/45 p-2"><b className="block text-base text-white">{formatPercent(topOpportunity.validRate)}</b> valido</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{topOpportunity.score}</b> score</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{topOpportunity.audience}</b> audiencia</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{formatPercent(topOpportunity.validRate)}</b> válido</span>
                   </div>
                 </div>
               ) : null}
@@ -787,9 +840,9 @@ export function ExecutiveRealtimeCrm({
                 </div>
               ) : null}
 
-              <div className="max-h-[145px] space-y-2 overflow-y-auto pr-1 lg:max-h-[150px]">
+              <div className="max-h-[210px] space-y-2 overflow-y-auto pr-1 lg:max-h-[220px]">
                 {marketOpportunities.length ? marketOpportunities.map((opportunity) => (
-                  <div key={opportunity.key} className="rounded-lg border border-white/8 bg-slate-950/48 p-2.5">
+                  <div key={opportunity.key} className="rounded-xl border border-white/8 bg-slate-950/55 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <span className="min-w-0">
                         <b className="block truncate text-sm text-white">{opportunity.city}, {opportunity.country}</b>
@@ -814,7 +867,7 @@ export function ExecutiveRealtimeCrm({
                   </div>
                 )) : (
                   <div className="rounded-lg border border-white/8 bg-slate-950/48 px-3 py-5 text-sm text-slate-400">
-                    Sin zonas accionables todavia. Apenas entren taps validos, la IA prioriza ciudad, canal, promo y logistica.
+                    Sin zonas accionables todavía. Apenas entren taps válidos, la IA prioriza ciudad, canal, promo y logística.
                   </div>
                 )}
               </div>

@@ -42,6 +42,7 @@ function shortAddress(address: string) {
 }
 
 function walletErrorMessage(error: unknown, fallback: string) {
+  const code = typeof error === "object" && error && "code" in error ? Number((error as { code?: unknown }).code) : 0;
   const message =
     error instanceof Error
       ? error.message
@@ -51,12 +52,12 @@ function walletErrorMessage(error: unknown, fallback: string) {
 
   const normalized = message.toLowerCase();
   if (normalized.includes("already processing") || normalized.includes("request already pending") || normalized.includes("already pending")) {
-    return "MetaMask ya tiene una solicitud pendiente. Abre la extension, confirma o cancela y vuelve a intentar.";
+    return "MetaMask ya tiene una solicitud pendiente. Abre la extensión, confirma o cancela y vuelve a intentar.";
   }
   if (normalized.includes("failed to connect to metamask")) {
-    return "No pudimos abrir MetaMask. Desbloquea la extension o continua con la opcion de demo.";
+    return "No pudimos abrir MetaMask. Desbloquea la extensión o continúa con la wallet de prueba.";
   }
-  if (normalized.includes("user rejected")) {
+  if (code === 4001 || normalized.includes("user rejected")) {
     return "Conexion cancelada por el usuario.";
   }
   return message || fallback;
@@ -69,7 +70,8 @@ async function requestWallet(provider: EthereumProvider, args: { method: string;
 function getInjectedProviders() {
   if (typeof window === "undefined" || !window.ethereum) return [] as EthereumProvider[];
   const root = window.ethereum;
-  return Array.isArray(root.providers) && root.providers.length ? root.providers : [root];
+  const providers = Array.isArray(root.providers) && root.providers.length ? root.providers : [];
+  return [...providers, root].filter((provider, index, list) => list.findIndex((item) => item === provider) === index);
 }
 
 function findMetaMaskProvider() {
@@ -78,8 +80,10 @@ function findMetaMaskProvider() {
 
 export function MetamaskSandboxCard({
   initialWallet,
+  autoConnect = false,
 }: {
   initialWallet?: { address?: string | null; chainId?: string | null; network?: string | null; verifiedAt?: string | null } | null;
+  autoConnect?: boolean;
 }) {
   const [address, setAddress] = useState(initialWallet?.address || "");
   const [chainId, setChainId] = useState(initialWallet?.chainId || "");
@@ -90,6 +94,7 @@ export function MetamaskSandboxCard({
       : "Web3 es opcional: conectalo solo para ownership, NFT, marketplace o transferencias."
   );
   const [hasMetaMask, setHasMetaMask] = useState(false);
+  const [autoConnectAttempted, setAutoConnectAttempted] = useState(false);
 
   const isAmoy = chainId.toLowerCase() === POLYGON_AMOY.chainId.toLowerCase();
   const isSandbox = address.toLowerCase() === "0xa11ce00000000000000000000000000000000424";
@@ -128,6 +133,7 @@ export function MetamaskSandboxCard({
     try {
       const response = await fetch("/api/consumer/wallet/connect", {
         method: "POST",
+        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ address: nextAddress, chainId: nextChainId, network }),
       });
@@ -138,7 +144,7 @@ export function MetamaskSandboxCard({
       }
       setMessage(`Wallet ${payload.wallet?.addressMasked || shortAddress(nextAddress)} asociada al Passport.`);
     } catch {
-      setMessage("Wallet conectada localmente. Hubo una demora al guardar la asociacion en la base de datos.");
+      setMessage("Wallet conectada localmente. Hubo una demora al guardar la asociación en la base de datos.");
     }
   }
 
@@ -149,8 +155,8 @@ export function MetamaskSandboxCard({
     if (!provider) {
       setMessage(
         injectedProviders.length
-          ? "Detectamos una billetera inyectada, pero no MetaMask. Para esta demo usa MetaMask o activa la wallet de prueba."
-          : "No detectamos MetaMask en este navegador. Podes conectar por Clerk si la extension esta disponible o usar la wallet de prueba."
+          ? "Detectamos una billetera inyectada, pero no MetaMask. Usa MetaMask o activa la wallet de prueba para la presentación."
+          : "No detectamos MetaMask en este navegador. Podés conectar por Clerk si la extensión está disponible o usar la wallet de prueba."
       );
       return;
     }
@@ -165,7 +171,7 @@ export function MetamaskSandboxCard({
       if (nextAddress) {
         await persistWallet(nextAddress, normalizedChain, "metamask");
       } else {
-        setMessage("MetaMask no devolvio una cuenta autorizada.");
+        setMessage("MetaMask no devolvió una cuenta autorizada.");
       }
     } catch (error) {
       setMessage(walletErrorMessage(error, "No se pudo conectar MetaMask."));
@@ -208,8 +214,14 @@ export function MetamaskSandboxCard({
     const sandboxAddress = "0xa11ce00000000000000000000000000000000424";
     setAddress(sandboxAddress);
     setChainId(POLYGON_AMOY.chainId);
-    void persistWallet(sandboxAddress, POLYGON_AMOY.chainId, "sandbox");
+    void persistWallet(sandboxAddress, POLYGON_AMOY.chainId, "presentation");
   }
+
+  useEffect(() => {
+    if (!autoConnect || autoConnectAttempted || pending || address) return;
+    setAutoConnectAttempted(true);
+    void connectWallet();
+  }, [address, autoConnect, autoConnectAttempted, pending]);
 
   return (
     <section className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.92))] shadow-[0_28px_90px_rgba(0,0,0,0.42)]">
@@ -231,7 +243,7 @@ export function MetamaskSandboxCard({
               ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200"
               : "border-white/10 bg-slate-950/60 text-slate-400"
           }`}>
-            {isSandbox ? "Demo activa" : address ? "Conectada" : "Sin wallet"}
+            {isSandbox ? "Presentación activa" : address ? "Conectada" : "Sin wallet"}
           </span>
         </div>
 
@@ -276,7 +288,7 @@ export function MetamaskSandboxCard({
             type="button"
             disabled={pending}
             onClick={() => void connectWallet()}
-            title="Conecta la extension MetaMask del navegador sin tocar el alta por WhatsApp/email."
+            title="Conecta la extensión MetaMask del navegador sin tocar el alta por WhatsApp/email."
             className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/55 p-4 text-left transition hover:border-white/25 hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <div className="flex items-start gap-3">
@@ -285,7 +297,7 @@ export function MetamaskSandboxCard({
               </div>
               <div>
                 <p className="text-sm font-black text-white">Conectar MetaMask en navegador</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">{hasMetaMask ? "MetaMask detectada." : "Si no aparece, instala o desbloquea la extension."}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{hasMetaMask ? "MetaMask detectada." : "Si no aparece, instala o desbloquea la extensión."}</p>
               </div>
             </div>
             {address && !isSandbox ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" /> : <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />}
@@ -304,7 +316,7 @@ export function MetamaskSandboxCard({
               </div>
               <div>
                 <p className="text-sm font-black text-white">Usar Polygon Amoy</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">Red de prueba para firmas, certificados y NFT demo.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">Red de prueba para firmas, certificados y NFT de presentación.</p>
               </div>
             </div>
             {isAmoy ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" /> : <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />}
@@ -316,9 +328,9 @@ export function MetamaskSandboxCard({
             <div className="flex items-start gap-3">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-emerald-200" aria-hidden="true" />
               <div>
-                <p className="text-sm font-black text-white">Demo sin friccion</p>
+                <p className="text-sm font-black text-white">Modo presentación sin fricción</p>
                 <p className="mt-1 text-xs leading-5 text-emerald-50/80">
-                  Para reuniones, la wallet de prueba muestra el flujo completo sin pedir extension. Queda marcada como demo y no reemplaza una firma real.
+                  Para reuniones, la wallet de prueba muestra el flujo completo sin pedir extensión. Queda marcada como entorno de presentación y no reemplaza una firma real.
                 </p>
               </div>
             </div>
@@ -326,9 +338,9 @@ export function MetamaskSandboxCard({
               type="button"
               onClick={continueSandbox}
               className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200/35 bg-emerald-300/10 px-4 py-2 text-xs font-black text-emerald-100 transition hover:bg-emerald-300/18"
-              title="Activa una wallet demo para mostrar ownership sin instalar MetaMask."
+              title="Activa una wallet de prueba para mostrar ownership sin instalar MetaMask."
             >
-              Activar wallet demo <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              Activar wallet de prueba <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
 

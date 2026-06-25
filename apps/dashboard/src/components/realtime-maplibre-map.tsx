@@ -6,7 +6,7 @@ import type { TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type MapMode = "tenant" | "global";
 type MapView = "heat" | "points" | "nearby";
-type ThemeTone = "dark" | "light";
+export type BaseMapLayer = "dark" | "light" | "satellite";
 
 type MapHotspot = {
   key: string;
@@ -30,6 +30,7 @@ type TapFeature = {
     device: string;
     occurredAt: string;
     weight: number;
+    localTaps: number;
   };
   geometry: {
     type: "Point";
@@ -74,10 +75,17 @@ const MAP_STYLE = {
       tileSize: 256,
       attribution: "© OpenStreetMap © CARTO",
     },
+    esriWorldImagery: {
+      type: "raster",
+      tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      tileSize: 256,
+      attribution: "© Esri",
+    },
   },
   layers: [
     { id: "carto-dark", type: "raster", source: "cartoDark" },
     { id: "carto-light", type: "raster", source: "cartoLight", layout: { visibility: "none" } },
+    { id: "esri-satellite", type: "raster", source: "esriWorldImagery", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
   ],
 };
 
@@ -141,7 +149,8 @@ function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature 
       risk,
       device: deviceSummary(row),
       occurredAt: String(row.occurredAt || ""),
-      weight: risk ? 2.4 : 1,
+      weight: risk ? 1.5 : 1,
+      localTaps: 1,
     },
     geometry: {
       type: "Point",
@@ -151,9 +160,31 @@ function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature 
 }
 
 function buildGeojson(events: TenantTapRealtimeEvent[]): TapFeatureCollection {
+  const features = events.map(eventToFeature).filter((item): item is TapFeature => Boolean(item));
+  const localBuckets = new Map<string, number>();
+
+  for (const feature of features) {
+    const [lng, lat] = feature.geometry.coordinates;
+    const key = `${Math.round(lng * 100) / 100}|${Math.round(lat * 100) / 100}|${feature.properties.tenant}`;
+    localBuckets.set(key, (localBuckets.get(key) || 0) + 1);
+  }
+
   return {
     type: "FeatureCollection",
-    features: events.map(eventToFeature).filter((item): item is TapFeature => Boolean(item)),
+    features: features.map((feature) => {
+      const [lng, lat] = feature.geometry.coordinates;
+      const key = `${Math.round(lng * 100) / 100}|${Math.round(lat * 100) / 100}|${feature.properties.tenant}`;
+      const localTaps = localBuckets.get(key) || 1;
+      const riskBoost = feature.properties.risk ? 1.15 : 1;
+      return {
+        ...feature,
+        properties: {
+          ...feature.properties,
+          localTaps,
+          weight: Math.min(5.5, (1 + Math.log2(localTaps)) * riskBoost),
+        },
+      };
+    }),
   };
 }
 
@@ -164,7 +195,7 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       data,
       cluster: true,
       clusterMaxZoom: 13,
-      clusterRadius: 42,
+      clusterRadius: 34,
     });
   }
 
@@ -173,26 +204,28 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       id: "tap-heat",
       type: "heatmap",
       source: "tap-events",
-      maxzoom: 13,
+      maxzoom: 14,
       paint: {
-        "heatmap-weight": ["interpolate", ["linear"], ["get", "weight"], 0, 0, 2.5, 1],
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.55, 9, 1.55],
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 12, 9, 26],
-        "heatmap-opacity": 0.72,
+        "heatmap-weight": ["interpolate", ["linear"], ["get", "weight"], 0, 0, 2, 0.38, 5.5, 1],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 9, 1.45, 13, 2.2],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 10, 8, 20, 12, 34],
+        "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0.68, 12, 0.82],
         "heatmap-color": [
           "interpolate",
           ["linear"],
           ["heatmap-density"],
           0,
           "rgba(2,6,23,0)",
-          0.22,
-          "rgba(34,211,238,.35)",
-          0.48,
-          "rgba(34,197,94,.55)",
-          0.72,
+          0.16,
+          "rgba(34,211,238,.28)",
+          0.38,
+          "rgba(34,197,94,.54)",
+          0.62,
           "rgba(250,204,21,.72)",
+          0.82,
+          "rgba(249,115,22,.82)",
           1,
-          "rgba(239,68,68,.78)",
+          "rgba(239,68,68,.9)",
         ],
       },
     });
@@ -206,7 +239,7 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       filter: ["has", "point_count"],
       paint: {
         "circle-color": ["step", ["get", "point_count"], "#0891b2", 8, "#22c55e", 25, "#facc15", 60, "#ef4444"],
-        "circle-radius": ["step", ["get", "point_count"], 13, 8, 16, 25, 20, 60, 24],
+        "circle-radius": ["step", ["get", "point_count"], 9, 8, 12, 25, 15, 60, 19],
         "circle-stroke-color": "rgba(255,255,255,.78)",
         "circle-stroke-width": 1.5,
         "circle-opacity": 0.9,
@@ -221,8 +254,8 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       source: "tap-events",
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 14, 10, 32],
-        "circle-color": "rgba(34,211,238,.06)",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 18, 10, 52, 13, 82],
+        "circle-color": "rgba(34,211,238,.055)",
         "circle-stroke-color": "rgba(125,211,252,.46)",
         "circle-stroke-width": 1,
       },
@@ -236,7 +269,7 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       source: "tap-events",
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-radius": ["case", ["==", ["get", "risk"], 1], 5, 4],
+        "circle-radius": ["interpolate", ["linear"], ["get", "localTaps"], 1, ["case", ["==", ["get", "risk"], 1], 5, 4], 8, 8, 18, 11],
         "circle-color": ["case", ["==", ["get", "risk"], 1], "#fb7185", "#67e8f9"],
         "circle-stroke-color": "#ffffff",
         "circle-stroke-width": 1,
@@ -256,16 +289,18 @@ function setLayerVisibility(map: MapLibreMap, view: MapView) {
   set("tap-points", true);
 }
 
-function currentThemeTone(): ThemeTone {
+function defaultBaseMapLayer(): BaseMapLayer {
   if (typeof document === "undefined") return "dark";
   return document.documentElement.classList.contains("theme-light") || document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
 }
 
-function setBasemapTheme(map: MapLibreMap, tone: ThemeTone) {
-  if (map.getLayer("carto-dark")) map.setLayoutProperty("carto-dark", "visibility", tone === "dark" ? "visible" : "none");
-  if (map.getLayer("carto-light")) map.setLayoutProperty("carto-light", "visibility", tone === "light" ? "visible" : "none");
-  if (map.getLayer("tap-points")) map.setPaintProperty("tap-points", "circle-stroke-color", tone === "light" ? "#0f172a" : "#ffffff");
-  if (map.getLayer("tap-clusters")) map.setPaintProperty("tap-clusters", "circle-stroke-color", tone === "light" ? "rgba(15,23,42,.72)" : "rgba(255,255,255,.78)");
+function setBasemapLayer(map: MapLibreMap, layer: BaseMapLayer) {
+  if (map.getLayer("carto-dark")) map.setLayoutProperty("carto-dark", "visibility", layer === "dark" ? "visible" : "none");
+  if (map.getLayer("carto-light")) map.setLayoutProperty("carto-light", "visibility", layer === "light" ? "visible" : "none");
+  if (map.getLayer("esri-satellite")) map.setLayoutProperty("esri-satellite", "visibility", layer === "satellite" ? "visible" : "none");
+  const pointStroke = layer === "light" ? "#0f172a" : "#ffffff";
+  if (map.getLayer("tap-points")) map.setPaintProperty("tap-points", "circle-stroke-color", pointStroke);
+  if (map.getLayer("tap-clusters")) map.setPaintProperty("tap-clusters", "circle-stroke-color", layer === "light" ? "rgba(15,23,42,.72)" : "rgba(255,255,255,.78)");
 }
 
 function fitData(maplibre: typeof import("maplibre-gl"), map: MapLibreMap, data: TapFeatureCollection, zoom: number) {
@@ -292,12 +327,14 @@ export function RealtimeMapLibreMap({
   hotspots,
   events,
   mapView,
+  baseMap,
   mode,
   zoom,
 }: {
   hotspots: MapHotspot[];
   events: TenantTapRealtimeEvent[];
   mapView: MapView;
+  baseMap?: BaseMapLayer;
   mode: MapMode;
   zoom: number;
 }) {
@@ -306,7 +343,7 @@ export function RealtimeMapLibreMap({
   const maplibreRef = useRef<typeof import("maplibre-gl") | null>(null);
   const popupRef = useRef<Popup | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [themeTone, setThemeTone] = useState<ThemeTone>("dark");
+  const [themeBaseMap, setThemeBaseMap] = useState<BaseMapLayer>("dark");
 
   const geojson = useMemo(() => buildGeojson(events), [events]);
   const signature = useMemo(
@@ -315,8 +352,8 @@ export function RealtimeMapLibreMap({
   );
 
   useEffect(() => {
-    setThemeTone(currentThemeTone());
-    const observer = new MutationObserver(() => setThemeTone(currentThemeTone()));
+    setThemeBaseMap(defaultBaseMapLayer());
+    const observer = new MutationObserver(() => setThemeBaseMap(defaultBaseMapLayer()));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
     return () => observer.disconnect();
   }, []);
@@ -347,7 +384,7 @@ export function RealtimeMapLibreMap({
       map.on("load", () => {
         ensureLayers(map, geojson);
         setLayerVisibility(map, mapView);
-        setBasemapTheme(map, currentThemeTone());
+        setBasemapLayer(map, baseMap || defaultBaseMapLayer());
         fitData(maplibre, map, geojson, zoom);
         setLoaded(true);
       });
@@ -375,6 +412,7 @@ export function RealtimeMapLibreMap({
               <b>${escapeHtml(props.uid)}</b>
               <span>${escapeHtml(props.city)}, ${escapeHtml(props.country)}</span>
               <small>${escapeHtml(props.verdict)} · ${escapeHtml(props.device)}</small>
+              <small>${escapeHtml(props.localTaps)} taps en la zona</small>
             </div>
           `)
           .addTo(map);
@@ -420,8 +458,8 @@ export function RealtimeMapLibreMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loaded) return;
-    setBasemapTheme(map, themeTone);
-  }, [loaded, themeTone]);
+    setBasemapLayer(map, baseMap || themeBaseMap);
+  }, [baseMap, loaded, themeBaseMap]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -435,6 +473,7 @@ export function RealtimeMapLibreMap({
     <div
       data-testid="crm-maplibre-map"
       data-map-view={mapView}
+      data-base-map={baseMap || themeBaseMap}
       data-zoom={zoom.toFixed(2)}
       className="nexid-realtime-map relative h-full min-h-[300px] overflow-hidden rounded-xl border border-white/8 bg-[#061322] shadow-[inset_0_1px_0_rgba(255,255,255,.04)]"
     >

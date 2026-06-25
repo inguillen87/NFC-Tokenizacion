@@ -34,6 +34,13 @@ function authStartErrorMessage(error: unknown) {
   return "No se pudo iniciar sesión.";
 }
 
+async function logoutConsumerSession() {
+  await fetch("/api/consumer/auth/logout", {
+    method: "POST",
+    credentials: "include",
+  }).catch(() => null);
+}
+
 export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const [contact, setContact] = useState("");
   const [code, setCode] = useState("");
@@ -41,6 +48,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   const [status, setStatus] = useState("");
   const [pending, setPending] = useState(false);
   const searchParams = useSearchParams();
+  const forceOtp = searchParams.get("forceOtp") === "1" || searchParams.get("fresh") === "1";
 
   const isTapReturn = nextPath.includes("fromTap=1") || nextPath.includes("eventId=");
   const tapReturnCopy = isTapReturn
@@ -48,6 +56,23 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     : "Ingresá con email o teléfono para abrir tu Pasaporte, marketplace contextual y beneficios opt-in.";
 
   useEffect(() => {
+    if (!forceOtp) return;
+    let cancelled = false;
+    setPending(true);
+    void logoutConsumerSession().finally(() => {
+      if (cancelled) return;
+      setStep("start");
+      setCode("");
+      setStatus("Sesión local reiniciada. Pedí un código real para continuar.");
+      setPending(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [forceOtp]);
+
+  useEffect(() => {
+    if (forceOtp) return;
     const magicToken = searchParams.get("t") || searchParams.get("token");
     const autoverify = searchParams.get("autoverify");
     const contactParam = searchParams.get("contact");
@@ -89,7 +114,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         setStatus("Error en la conexión de verificación automática.");
       })
       .finally(() => setPending(false));
-  }, [nextPath, searchParams]);
+  }, [forceOtp, nextPath, searchParams]);
 
   async function confirmSession() {
     const session = await fetch("/api/consumer/session", {
@@ -110,6 +135,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     setPending(true);
     setStatus("Enviando código...");
     setCode("");
+    await logoutConsumerSession();
     const payload = await fetch("/api/consumer/auth/start", {
       method: "POST",
       credentials: "include",
@@ -195,6 +221,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         {step === "start" ? (
           <button
             suppressHydrationWarning
+            type="button"
             disabled={pending || !parsed.valid}
             onClick={() => void start()}
             className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60"
@@ -204,6 +231,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
         ) : (
           <button
             suppressHydrationWarning
+            type="button"
             disabled={pending || !code.trim()}
             onClick={() => void verify()}
             className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60"

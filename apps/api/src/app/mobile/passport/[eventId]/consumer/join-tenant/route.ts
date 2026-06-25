@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { json } from "../../../../../../lib/http";
-import { canUseDemoConsumerForTap, getConsumerFromRequest, getOrCreateDemoConsumer } from "../../../../../../lib/consumer-auth";
+import { getConsumerFromRequest } from "../../../../../../lib/consumer-auth";
 import { ensureTenantMembership, saveTapForConsumer } from "../../../../../../lib/consumer-portal-service";
 import { getTapEvent } from "../../../../../../lib/loyalty-service";
 import { isClaimableOwnershipResult, matchesOwnershipBatch, matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
@@ -16,20 +16,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     tenant_slug?: string;
     tenant?: string;
     bid?: string;
-    demoConsumer?: boolean;
-    consumerMode?: string;
-    demoConsumerEmail?: string;
     email?: string;
     contact?: string;
   };
   const { eventId } = await params;
   const event = await getTapEvent(eventId);
   if (!event) return json({ ok: false, error: "event_not_found" }, 404);
-  const consumer =
-    (await getConsumerFromRequest(req)) ||
-    (canUseDemoConsumerForTap(body, event)
-      ? await getOrCreateDemoConsumer(String(body.demoConsumerEmail || body.email || body.contact || "demo.consumer@nexid.local"))
-      : null);
+  const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
   if (!matchesOwnershipTenant({
     eventTenantId: event.tenant_id,

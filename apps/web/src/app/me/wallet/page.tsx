@@ -56,6 +56,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
   const claimedProducts = products.filter((product) => String(product.ownership_record_status || product.ownership_status || "").toLowerCase() === "claimed");
   const onChainProducts = products.filter(hasOnChainProof);
   const selectedTenant = typeof params.tenant === "string" ? params.tenant : "";
+  const shouldAutoConnectMetaMask = params.connect === "metamask";
 
   return (
     <PortalShell
@@ -143,7 +144,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
          <div className="space-y-6">
             
             {/* Wallet Integration box */}
-            <MetamaskSandboxCard initialWallet={wallet?.blockchainWallet} />
+            <MetamaskSandboxCard initialWallet={wallet?.blockchainWallet} autoConnect={shouldAutoConnectMetaMask} />
 
             {/* Tenant Wallets/Points summary */}
             <div className="rounded-3xl border border-white/10 bg-slate-950/65 p-5">

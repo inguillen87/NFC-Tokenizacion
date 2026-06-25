@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type Step = "idle" | "code" | "done";
+type SessionState = "checking" | "active" | "none";
 
 type AssociationResult = {
   action: "join" | "save" | "claim" | "rewards";
@@ -12,8 +13,6 @@ type AssociationResult = {
   status: number;
   error?: string;
 };
-
-const DEMO_CONSUMER_EMAIL = "demo.consumer@nexid.local";
 
 function parseBoolean(value: string | null) {
   if (!value) return false;
@@ -40,53 +39,47 @@ function isValidContact(value: string) {
   return trimmed.includes("@") ? isValidEmail(trimmed) : isValidPhone(trimmed);
 }
 
+function maskId(value: string | null) {
+  const text = String(value || "");
+  if (text.length <= 8) return text || "tap verificado";
+  return `${text.slice(0, 4)}...${text.slice(-4)}`;
+}
+
 function summarizeAssociation(results: AssociationResult[]) {
   const success = results.filter((item) => item.ok).map((item) => item.action);
   const blocked = results.filter((item) => !item.ok && ["tap_not_claimable", "blocked_replay", "revoked", "snapshot_blocked"].includes(String(item.error || "")));
   const unauthorized = results.some((item) => item.status === 401);
-  if (unauthorized) return "La sesion no quedo activa. Verifica tu email o celular para terminar la asociacion.";
-  if (success.includes("claim")) return "Producto asociado, titularidad registrada y marketplace habilitado.";
-  if (success.includes("save") || success.includes("join")) return "Producto guardado y club habilitado. Titularidad/token pueden requerir compra o validacion del tenant.";
-  if (blocked.length) return "El tap fue verificado, pero las acciones comerciales quedaron protegidas por politica de seguridad.";
-  return "No se pudo completar la asociacion. Reintenta desde un tap fisico fresco.";
+  if (unauthorized) return "La sesión no quedó activa. Validá tu email o celular para terminar la asociación.";
+  if (success.includes("claim")) return "Producto asociado, titularidad registrada y beneficios habilitados.";
+  if (success.includes("save") || success.includes("join")) return "Producto guardado y club habilitado. Titularidad o tokenización pueden requerir validación del comercio.";
+  if (blocked.length) return "El tap fue verificado, pero las acciones comerciales quedaron protegidas por política de seguridad.";
+  return "No se pudo completar la asociación. Reintentá desde un tap físico fresco.";
 }
 
-async function loadConsumerMe() {
-  const response = await fetch("/api/consumer/me", {
+async function logoutConsumerSession() {
+  await fetch("/api/consumer/auth/logout", {
+    method: "POST",
+    credentials: "include",
+  }).catch(() => null);
+}
+
+async function hasConsumerSession() {
+  const response = await fetch("/api/consumer/session", {
     cache: "no-store",
     credentials: "include",
   }).catch(() => null);
-  return response?.json().catch(() => null);
+  const payload = await response?.json().catch(() => null);
+  return Boolean(response?.ok && payload?.ok);
 }
 
-async function ensureDemoConsumerSession() {
-  const start = await fetch("/api/consumer/auth/start", {
-    method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: DEMO_CONSUMER_EMAIL, source: "tap-association" }),
-  }).then((res) => res.json()).catch(() => null);
-
-  if (!start?.ok) return false;
-
-  const verify = await fetch("/api/consumer/auth/verify", {
-    method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      email: DEMO_CONSUMER_EMAIL,
-      code: "000000",
-      demoConsumer: true,
-      consumerMode: "demo",
-      displayName: "nexID Demo Consumer",
-    }),
-  }).then((res) => res.json()).catch(() => null);
-
-  return Boolean(verify?.ok);
-}
-
-function needsConsumerSession(results: AssociationResult[]) {
-  return results.some((item) => item.status === 401);
+function buildTapNextPath(eventId: string | null, tenant: string | null, bid: string | null, preferredAction: string) {
+  const next = new URLSearchParams();
+  next.set("fromTap", "1");
+  if (eventId) next.set("eventId", eventId);
+  if (tenant) next.set("tenant", tenant);
+  if (bid) next.set("bid", bid);
+  if (preferredAction) next.set("action", preferredAction);
+  return `/me?${next.toString()}`;
 }
 
 export function TapAssociationBanner() {
@@ -97,19 +90,31 @@ export function TapAssociationBanner() {
   const fromTap = parseBoolean(params.get("fromTap"));
   const preferredAction = params.get("action") || "portal";
   const [step, setStep] = useState<Step>("idle");
+  const [sessionState, setSessionState] = useState<SessionState>("checking");
   const [contact, setContact] = useState("");
   const [code, setCode] = useState("");
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("");
-  const autoStarted = useRef(false);
 
   const visible = useMemo(() => Boolean(fromTap && eventId), [fromTap, eventId]);
   const contactIsValid = useMemo(() => isValidContact(contact), [contact]);
-  const sandboxAllowed = useMemo(() => {
-    const tenantValue = String(tenant || "").toLowerCase();
-    const bidValue = String(bid || "").toUpperCase();
-    return tenantValue.startsWith("demo") || bidValue.startsWith("DEMO-");
-  }, [bid, tenant]);
+  const nextPath = useMemo(() => buildTapNextPath(eventId, tenant, bid, preferredAction), [bid, eventId, preferredAction, tenant]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    setSessionState("checking");
+    void hasConsumerSession().then((active) => {
+      if (cancelled) return;
+      setSessionState(active ? "active" : "none");
+      setStatus(active
+        ? "Hay una sesión activa en este navegador. Para una presentación limpia, reiniciá y pedí un código nuevo."
+        : "Validá WhatsApp, celular o email para asociar este tap a tu Passport.");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
 
   async function postAssociationAction(action: AssociationResult["action"], path: string, body?: Record<string, unknown>) {
     const response = await fetch(path, {
@@ -127,18 +132,11 @@ export function TapAssociationBanner() {
     } satisfies AssociationResult;
   }
 
-  async function associate(action: string, contactValue?: string, sandbox = false) {
+  async function associate(action: string, contactValue?: string) {
     if (!eventId) return { ok: false, results: [] as AssociationResult[] };
     const payload = {
       ...(tenant ? { tenantSlug: tenant } : {}),
       ...(bid ? { bid } : {}),
-      ...(sandbox
-        ? {
-            demoConsumer: true,
-            consumerMode: "demo",
-            demoConsumerEmail: DEMO_CONSUMER_EMAIL,
-          }
-        : {}),
     };
     const encodedEventId = encodeURIComponent(eventId);
     const results: AssociationResult[] = [];
@@ -151,27 +149,18 @@ export function TapAssociationBanner() {
     return { ok: results.some((item) => item.ok), results };
   }
 
-  async function associateWithRecovery(action: string, contactValue?: string, sandbox = false) {
-    let association = await associate(action, contactValue, sandbox);
-    if (needsConsumerSession(association.results) && sandbox) {
-      setStatus("Activando portal sandbox y reintentando...");
-      const ready = await ensureDemoConsumerSession();
-      if (ready) association = await associate(action, contactValue, true);
-    }
-    return association;
-  }
-
-  async function continueWithSession() {
-    if (!eventId) return;
+  async function continueWithCurrentSession() {
+    if (!eventId || pending) return;
     setPending(true);
-    setStatus("Asociando este tap verificado con tu cuenta...");
+    setStatus("Asociando este tap verificado con la sesión actual...");
     try {
-      let me = await loadConsumerMe();
-      if (!me?.ok) {
-        setStatus("Necesitamos validar tu email o celular para crear tu Passport y asociar este producto al tenant.");
+      const ready = await hasConsumerSession();
+      if (!ready) {
+        setSessionState("none");
+        setStatus("No hay una sesión consumer activa. Pedí un código para continuar.");
         return;
       }
-      const association = await associateWithRecovery(preferredAction);
+      const association = await associate(preferredAction);
       setStatus(summarizeAssociation(association.results));
       if (association.ok) setStep("done");
     } finally {
@@ -179,22 +168,40 @@ export function TapAssociationBanner() {
     }
   }
 
-  useEffect(() => {
-    if (!visible || autoStarted.current || step !== "idle") return;
-    autoStarted.current = true;
-    void continueWithSession();
-    // continueWithSession intentionally reads current query/state once when the tap banner appears.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, step]);
+  async function resetPresentation() {
+    setPending(true);
+    setStatus("Reiniciando sesión local para pedir un código real...");
+    try {
+      await logoutConsumerSession();
+      setSessionState("none");
+      setStep("idle");
+      setCode("");
+      setStatus("Sesión local reiniciada. Ingresá WhatsApp, celular o email y nexID enviará un código real.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function openCleanLogin() {
+    setPending(true);
+    try {
+      await logoutConsumerSession();
+      window.location.href = `/login?consumer=1&forceOtp=1&next=${encodeURIComponent(nextPath)}`;
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function sendCode() {
     if (!contactIsValid) {
-      setStatus("Ingresa un email valido o un telefono con 8 a 15 digitos.");
+      setStatus("Ingresá un email válido o un teléfono con 8 a 15 dígitos.");
       return;
     }
     setPending(true);
-    setStatus("Enviando codigo...");
+    setStatus("Enviando código real...");
     try {
+      await logoutConsumerSession();
+      setSessionState("none");
       const start = await fetch("/api/consumer/auth/start", {
         method: "POST",
         credentials: "include",
@@ -202,12 +209,12 @@ export function TapAssociationBanner() {
         body: JSON.stringify(parseContactPayload(contact)),
       }).then((res) => res.json()).catch(() => null);
       if (!start?.ok) {
-        setStatus("No se pudo iniciar verificacion. Proba con otro email o telefono.");
+        setStatus("No se pudo iniciar verificación. Probá con otro email o teléfono.");
         return;
       }
       setCode("");
       setStep("code");
-      setStatus("Codigo enviado. Verifica para terminar la asociacion.");
+      setStatus("Código enviado. Validá para asociar el tap, guardar el producto y habilitar beneficios.");
     } finally {
       setPending(false);
     }
@@ -215,41 +222,24 @@ export function TapAssociationBanner() {
 
   async function verifyAndAssociate() {
     if (!contactIsValid || !code.trim()) {
-      setStatus("Revisa el contacto y el codigo.");
+      setStatus("Revisá el contacto y el código.");
       return;
     }
     setPending(true);
-    setStatus("Verificando identidad y asociando...");
+    setStatus("Verificando identidad y asociando el tap...");
     try {
       const verify = await fetch("/api/consumer/auth/verify", {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...parseContactPayload(contact), code }),
+        body: JSON.stringify({ ...parseContactPayload(contact), code: code.trim() }),
       }).then((res) => res.json()).catch(() => null);
       if (!verify?.ok) {
-        setStatus("Codigo invalido o expirado.");
+        setStatus("Código inválido o expirado. Pedí uno nuevo si el anterior ya fue usado.");
         return;
       }
-      const association = await associateWithRecovery(preferredAction, contact);
-      setStatus(summarizeAssociation(association.results));
-      if (association.ok) setStep("done");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function useSandboxDemo() {
-    if (!sandboxAllowed) return;
-    setPending(true);
-    setStatus("Activando consumidor sandbox para demo y asociando el tap...");
-    try {
-      const ready = await ensureDemoConsumerSession();
-      if (!ready) {
-        setStatus("No se pudo activar el sandbox consumer. Usa email o telefono real.");
-        return;
-      }
-      const association = await associateWithRecovery(preferredAction, DEMO_CONSUMER_EMAIL, true);
+      setSessionState("active");
+      const association = await associate(preferredAction, contact);
       setStatus(summarizeAssociation(association.results));
       if (association.ok) setStep("done");
     } finally {
@@ -261,28 +251,55 @@ export function TapAssociationBanner() {
 
   return (
     <section className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Tap verificado detectado</p>
-      <h2 className="mt-1 text-lg font-semibold text-white">Activa tu experiencia de marca</h2>
+      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Tap físico verificado</p>
+      <h2 className="mt-1 text-lg font-semibold text-white">Activá tu Passport antes de recibir beneficios</h2>
       <p className="mt-1 text-sm text-cyan-50/90">
-        Evento: <span className="font-mono">{eventId}</span>{tenant ? <> - Tenant: <span className="font-semibold">{tenant}</span></> : null}
+        Evento seguro: <span className="font-mono">{maskId(eventId)}</span>
       </p>
-      <p className="mt-2 text-sm text-slate-200">Asocia este producto a tu cuenta para desbloquear promos, marketplace, puntos y passport post-tap.</p>
+      <p className="mt-2 text-sm text-slate-200">
+        nexID no emite voucher, ownership ni claim antes de validar identidad. Usá WhatsApp, celular o email para que el flujo sea auditable.
+      </p>
 
       {step !== "done" ? (
         <div className="mt-3 grid gap-2 md:grid-cols-2">
-          <button suppressHydrationWarning disabled={pending} onClick={() => void continueWithSession()} className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60">
-            Asociar con mi sesion
+          <button
+            suppressHydrationWarning
+            type="button"
+            disabled={pending}
+            onClick={() => void openCleanLogin()}
+            title="Cierra la sesión consumer local y abre el login con pedido de código real."
+            className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60"
+          >
+            Presentación limpia con código
           </button>
+          <button
+            suppressHydrationWarning
+            type="button"
+            disabled={pending}
+            onClick={() => void resetPresentation()}
+            title="Limpia la sesión guardada para que este navegador vuelva a pedir OTP."
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 disabled:opacity-60"
+          >
+            Reiniciar sesión local
+          </button>
+
           <input
             suppressHydrationWarning
             value={contact}
             onChange={(event) => setContact(event.target.value)}
-            placeholder="Email o telefono"
+            placeholder="WhatsApp, celular o email"
             className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
           />
           {step === "idle" ? (
-            <button suppressHydrationWarning disabled={pending || !contactIsValid} onClick={() => void sendCode()} className="rounded-lg border border-cyan-300/30 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60">
-              Enviar codigo rapido
+            <button
+              suppressHydrationWarning
+              type="button"
+              disabled={pending || !contactIsValid}
+              onClick={() => void sendCode()}
+              title="Envía un código OTP real por el canal configurado."
+              className="rounded-lg border border-emerald-300/30 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60"
+            >
+              Enviar código real
             </button>
           ) : (
             <>
@@ -290,20 +307,35 @@ export function TapAssociationBanner() {
                 suppressHydrationWarning
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
-                placeholder="Codigo recibido"
+                placeholder="Código recibido"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={8}
                 className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
               />
-              <button suppressHydrationWarning disabled={pending || !code.trim()} onClick={() => void verifyAndAssociate()} className="rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-violet-100 disabled:opacity-60">
-                Verificar y finalizar
+              <button
+                suppressHydrationWarning
+                type="button"
+                disabled={pending || !code.trim()}
+                onClick={() => void verifyAndAssociate()}
+                title="Valida identidad y recién ahí asocia el tap al Passport."
+                className="rounded-lg border border-violet-300/30 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-violet-100 disabled:opacity-60"
+              >
+                Verificar y asociar
               </button>
             </>
           )}
-          {sandboxAllowed ? (
-            <button suppressHydrationWarning disabled={pending} onClick={() => void useSandboxDemo()} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 disabled:opacity-60 md:col-span-2">
-              Usar sandbox demo
+
+          {sessionState === "active" ? (
+            <button
+              suppressHydrationWarning
+              type="button"
+              disabled={pending}
+              onClick={() => void continueWithCurrentSession()}
+              title="Usa la sesión consumer actual. Para una presentación limpia, elegí el botón de código."
+              className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-100 disabled:opacity-60 md:col-span-2"
+            >
+              Usar sesión actual de este navegador
             </button>
           ) : null}
         </div>
@@ -316,7 +348,7 @@ export function TapAssociationBanner() {
           <Link href={`/me/rewards?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-sm text-violet-100">Promos</Link>
         </div>
       )}
-      {contact.trim() && !contactIsValid ? <p className="mt-2 text-xs text-amber-200">Usa un email valido o un telefono con 8 a 15 digitos.</p> : null}
+      {contact.trim() && !contactIsValid ? <p className="mt-2 text-xs text-amber-200">Usá un email válido o un teléfono con 8 a 15 dígitos.</p> : null}
       {status ? <p className="mt-2 text-xs text-slate-200">{status}</p> : null}
     </section>
   );

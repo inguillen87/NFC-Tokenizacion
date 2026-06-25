@@ -79,7 +79,7 @@ function verificationLink(contact: string, code: string, magicToken?: string) {
 
 function otpText(contact: string, code: string, ttlMinutes: number, magicToken?: string) {
   const link = verificationLink(contact, code, magicToken);
-  return `Tu codigo nexID es ${code}. Vence en ${ttlMinutes} minutos. Ingresa automaticamente haciendo clic aca: ${link}`;
+  return `Tu código nexID es ${code}. Vence en ${ttlMinutes} minutos. Ingresá el código en el portal o abrí este enlace seguro: ${link}`;
 }
 
 function otpHtml(contact: string, code: string, ttlMinutes: number, magicToken?: string) {
@@ -110,9 +110,9 @@ function otpHtml(contact: string, code: string, ttlMinutes: number, magicToken?:
           
           <div style="text-align:center; margin-bottom:28px;">
             <a href="${link}" style="display:inline-block; width:100%; box-sizing:border-box; background:linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color:#020617; font-size:14px; font-weight:800; text-decoration:none; text-transform:uppercase; letter-spacing:0.08em; padding:16px 24px; border-radius:14px; transition:all 0.2s; box-shadow:0 8px 20px rgba(6,182,212,0.25);">
-              Ingresar automáticamente
+              Abrir Passport seguro
             </a>
-            <p style="margin:8px 0 0; font-size:11px; color:#64748b;">(Acceso seguro de un solo clic sin contraseñas)</p>
+            <p style="margin:8px 0 0; font-size:11px; color:#64748b;">También podés ingresar manualmente el código para una presentación limpia.</p>
           </div>
           
           <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:20px; font-size:12px; line-height:1.6; color:#64748b; text-align:center;">

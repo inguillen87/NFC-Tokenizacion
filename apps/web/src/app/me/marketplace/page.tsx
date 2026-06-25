@@ -110,9 +110,9 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/web3/sign-in?next=/me/marketplace"
+              href="/me/wallet?connect=metamask&next=/me/marketplace"
               className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-200"
-              title="Abrir autenticacion Web3 con Clerk y MetaMask para marketplace."
+              title="Abrir MetaMask desde la wallet del Passport para marketplace, NFT y reventa."
             >
               Conectar wallet <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
