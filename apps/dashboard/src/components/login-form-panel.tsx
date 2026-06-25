@@ -133,24 +133,11 @@ export function LoginFormPanel({
     window.location.href = "/";
   }
 
-  async function enterDemoRole(demoRole: DemoRole) {
+  function enterDemoRole(demoRole: DemoRole) {
     setPending(true);
     setStatus("");
     setOpsStatus("");
-    const res = await fetch("/api/session/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ demoLogin: true, demoRole }),
-    }).catch(() => null);
-    const data = await res?.json().catch(() => null);
-    if (!res?.ok) {
-      const diagnosticsNote = formatDiagnostics(data?.diagnostics);
-      if (diagnosticsNote) setOpsStatus(diagnosticsNote);
-      setStatus(data?.reason || "No se pudo iniciar la sesion temporal.");
-      setPending(false);
-      return;
-    }
-    window.location.href = "/";
+    window.location.assign(`/api/session/demo?role=${encodeURIComponent(demoRole)}`);
   }
 
   return (
@@ -173,7 +160,7 @@ export function LoginFormPanel({
               key={demoRole.key}
               type="button"
               disabled={pending || !demoLoginAllowed}
-              onClick={() => void enterDemoRole(demoRole.key)}
+              onClick={() => enterDemoRole(demoRole.key)}
               className={`rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${demoRole.tone}`}
             >
               <p className="text-sm font-semibold">{demoRole.title}</p>
