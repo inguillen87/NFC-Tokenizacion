@@ -325,7 +325,7 @@ const copy: Record<AppLocale, {
       electronics: { label: "Eletronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificavel", "Garantia por unidade", "Suporte pos-venda", "Reclamo antifraude"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta passport textil", visual: "textile-dpp-demo", proof: ["Origem e composicao", "Cuidado conectado", "Sustentabilidade", "Revenda verificavel"] },
     },
-    controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/prueba: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao Bodega Balmec...", synced: "Bodega Balmec sincronizada com backend.", unavailable: "Bodega Balmec indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no Bodega Balmec.", failedScan: "Nao foi possivel simular o toque.", configs: [
+    controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/validacao: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao Bodega Balmec...", synced: "Bodega Balmec sincronizada com backend.", unavailable: "Bodega Balmec indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no Bodega Balmec.", failedScan: "Nao foi possivel simular o toque.", configs: [
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
       { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
       { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
@@ -1444,7 +1444,7 @@ function getTrustSignals(beat: Beat) {
   return [
     { label: "Toque fisico", value: beat === 0 ? "pendiente" : beat === 2 ? "sospechoso" : "fresco", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
     { label: "SUN anti copia", value: beat === 2 ? "bloqueado" : beat === 0 ? "en espera" : "ok", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
-    { label: "Marca", value: "demobodega", tone: "ok" },
+    { label: "Marca", value: "Bodega Balmec", tone: "ok" },
     { label: "Dueño", value: beat === 3 ? "reclamo listo" : beat === 2 ? "bloqueado" : "con regla", tone: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
     { label: "Polygon", value: beat === 2 ? "sin NFT" : beat === 0 ? "antes de cadena" : "solicitud lista", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
     { label: "Tienda", value: beat === 2 ? "cerrada" : beat === 0 ? "publica" : "abierta", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
@@ -3200,7 +3200,7 @@ function DemoActionMatrix({
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <InfoCell label={txt.controls.distance} value={`${routeKm.toLocaleString(locale)} km`} />
         <InfoCell label="Estado" value={status} />
-        <InfoCell label="Marca" value={DEMO_TENANT_SLUG} />
+        <InfoCell label="Marca" value="Bodega Balmec" />
       </div>
       <p className="mt-3 text-xs text-slate-400">
         Ruta activa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian de politica segun estado fisico, copia y compra/reclamo.
