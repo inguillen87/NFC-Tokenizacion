@@ -2,22 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function isValidPhone(value: string) {
-  const digits = value.replace(/\D/g, "");
-  return digits.length >= 8 && digits.length <= 15;
-}
-
-function parseContact(value: string) {
-  const input = value.trim();
-  const email = input.includes("@");
-  const valid = email ? isValidEmail(input) : isValidPhone(input);
-  return { input, email, valid };
-}
+import {
+  ConsumerContactInput,
+  consumerContactDraftFromValue,
+  consumerContactDraftIsValid,
+  consumerContactPayload,
+  createEmptyConsumerContactDraft,
+} from "../../components/consumer-contact-input";
 
 function authStartErrorMessage(error: unknown) {
   const reason = String(error || "");
@@ -42,7 +33,7 @@ async function logoutConsumerSession() {
 }
 
 export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
-  const [contact, setContact] = useState("");
+  const [contactDraft, setContactDraft] = useState(() => createEmptyConsumerContactDraft());
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"start" | "verify">("start");
   const [status, setStatus] = useState("");
@@ -82,7 +73,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
 
     const legacyContact = contactParam || "";
     const legacyCode = codeParam || "";
-    setContact(legacyContact);
+    setContactDraft(consumerContactDraftFromValue(legacyContact));
     setCode(legacyCode);
     setStep("verify");
     setPending(true);
@@ -127,9 +118,9 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   }
 
   async function start() {
-    const parsed = parseContact(contact);
-    if (!parsed.valid) {
-      setStatus("Ingresá un email o teléfono válido.");
+    const contactPayload = consumerContactPayload(contactDraft);
+    if (!contactPayload) {
+      setStatus("Ingresá un email válido o WhatsApp con prefijo y número local.");
       return;
     }
     setPending(true);
@@ -140,7 +131,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       method: "POST",
       credentials: "include",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(parsed.email ? { email: parsed.input } : { phone: parsed.input }),
+      body: JSON.stringify(contactPayload),
     })
       .then((res) => res.json().catch(() => null))
       .catch(() => null);
@@ -158,8 +149,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   }
 
   async function verify() {
-    const parsed = parseContact(contact);
-    if (!parsed.valid || !code.trim()) {
+    const contactPayload = consumerContactPayload(contactDraft);
+    if (!contactPayload || !code.trim()) {
       setStatus("Revisá el contacto y el código.");
       return;
     }
@@ -169,7 +160,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       method: "POST",
       credentials: "include",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(parsed.email ? { email: parsed.input, code: code.trim() } : { phone: parsed.input, code: code.trim() }),
+      body: JSON.stringify({ ...contactPayload, code: code.trim() }),
     }).catch(() => null);
     if (!response?.ok) {
       setPending(false);
@@ -185,7 +176,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     window.location.href = nextPath || "/me";
   }
 
-  const parsed = parseContact(contact);
+  const contactIsValid = consumerContactDraftIsValid(contactDraft);
 
   return (
     <div className="mt-5 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
@@ -193,14 +184,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       <p className="mt-1 text-sm text-cyan-50/90">{tapReturnCopy}</p>
 
       <div className="mt-3 grid gap-2">
-        <input
-          suppressHydrationWarning
-          value={contact}
-          onChange={(e) => setContact(e.target.value)}
-          placeholder="Email o teléfono"
-          autoComplete="email"
-          className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500"
-        />
+        <ConsumerContactInput draft={contactDraft} onChange={setContactDraft} disabled={pending} idPrefix="consumer-login" />
 
         {step === "verify" ? (
           <div className="grid gap-1.5">
@@ -222,7 +206,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
           <button
             suppressHydrationWarning
             type="button"
-            disabled={pending || !parsed.valid}
+            disabled={pending || !contactIsValid}
             onClick={() => void start()}
             className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60"
           >

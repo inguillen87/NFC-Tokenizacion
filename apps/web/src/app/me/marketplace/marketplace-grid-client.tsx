@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Banknote, CheckCircle2, CreditCard, Minus, PackageCheck, Plus, Search, ShieldCheck, ShoppingCart, WalletCards } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Banknote, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, MapPin, Minus, PackageCheck, Plus, Search, ShieldCheck, ShoppingCart, Sparkles, WalletCards } from "lucide-react";
 import { resolveProductAssetProfile } from "../../../lib/product-asset-bank";
 
 type Listing = {
@@ -56,6 +56,33 @@ const paymentMethods: Array<{
   { id: "escrow", label: "P2P escrow", detail: "Reserva tipo Binance P2P", Icon: ShieldCheck },
 ];
 
+const MARKETPLACE_SHOWCASE_SLIDES = [
+  {
+    title: "Gran Reserva Malbec",
+    kicker: "Drop verificado por tap",
+    body: "Botella premium con trazabilidad, club, voucher post-tap y ownership listo para transferir.",
+    image: "/images/premium_wine_mendoza_nfc.png",
+    tag: "Wine pass",
+    place: "Mendoza",
+  },
+  {
+    title: "Cata privada + copa",
+    kicker: "Experiencia del club",
+    body: "Reserva desde el Passport, valida en el comercio y deja el lead listo para CRM.",
+    image: "/images/wine_tasting.png",
+    tag: "Experiencia",
+    place: "Bodega",
+  },
+  {
+    title: "Aceite de oliva premium",
+    kicker: "Producto cross-sell",
+    body: "Ideal para sumar regalos, bundles gastronómicos y recompra por WhatsApp/marketplace.",
+    image: "/images/wine_crate.png",
+    tag: "Oliva",
+    place: "Tienda",
+  },
+] as const;
+
 function priceValue(item: Listing) {
   return Number(item.cash_price || item.price_amount || 0);
 }
@@ -102,6 +129,14 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   const [checkoutMethod, setCheckoutMethod] = useState<PaymentMethod>("mercadopago");
   const [cartStatus, setCartStatus] = useState("");
   const [cartBusy, setCartBusy] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % MARKETPLACE_SHOWCASE_SLIDES.length);
+    }, 5200);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const stats = useMemo(() => {
     const available = items.filter((item) => String(item.stock_status || item.status || "available").toLowerCase() !== "out_of_stock").length;
@@ -142,6 +177,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   }, [cartLines]);
 
   const selectedPayment = paymentMethods.find((method) => method.id === checkoutMethod) || paymentMethods[0];
+  const showcase = MARKETPLACE_SHOWCASE_SLIDES[activeSlide] || MARKETPLACE_SHOWCASE_SLIDES[0];
 
   function addToCart(item: Listing) {
     if (!item.id) return;
@@ -283,6 +319,80 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
               <b className="mt-1 block text-lg text-white">{value}</b>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(5,12,24,0.98),rgba(7,24,36,0.94)_48%,rgba(21,13,42,0.92))] shadow-[0_28px_90px_rgba(0,0,0,0.42)]">
+        <div className="grid min-h-[360px] lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="relative flex min-h-[320px] items-end overflow-hidden p-5 sm:p-7">
+            <div className="absolute inset-0">
+              <img
+                src={showcase.image}
+                alt={showcase.title}
+                className="h-full w-full scale-105 object-cover opacity-70 transition duration-700"
+              />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_28%,rgba(34,211,238,0.18),transparent_30%),linear-gradient(90deg,rgba(2,6,23,0.84),rgba(2,6,23,0.2)_56%,rgba(2,6,23,0.9))]" />
+            </div>
+            <div className="relative z-10 max-w-xl">
+              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                {showcase.kicker}
+              </p>
+              <h3 className="mt-4 text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl">{showcase.title}</h3>
+              <p className="mt-4 max-w-lg text-sm leading-6 text-cyan-50/85">{showcase.body}</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">{showcase.tag}</span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-xs font-bold text-slate-200">
+                  <MapPin className="h-3.5 w-3.5 text-cyan-200" aria-hidden="true" />
+                  {showcase.place}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative grid content-between gap-5 border-t border-white/10 p-5 sm:p-7 lg:border-l lg:border-t-0">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Passport commerce</p>
+              <h3 className="mt-2 text-2xl font-black text-white">Marketplace vivo, carrito y leads comerciales desde cada tap.</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                El usuario compra, reserva o pide beneficios; la empresa recibe contexto de UID, zona, campaña, canal y método de pago preferido.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                ["Carrito", `${cartTotals.units} ítems`],
+                ["Pago", selectedPayment.label],
+                ["CRM", "Lead trazable"],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+                  <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</span>
+                  <b className="mt-2 block text-sm text-white">{value}</b>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex gap-1.5">
+                {MARKETPLACE_SHOWCASE_SLIDES.map((slide, index) => (
+                  <button
+                    key={slide.title}
+                    type="button"
+                    onClick={() => setActiveSlide(index)}
+                    title={`Ver ${slide.title}`}
+                    className={`h-2.5 rounded-full transition-all ${activeSlide === index ? "w-10 bg-cyan-300" : "w-2.5 bg-white/20 hover:bg-white/40"}`}
+                    aria-label={`Ver slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setActiveSlide((activeSlide + MARKETPLACE_SHOWCASE_SLIDES.length - 1) % MARKETPLACE_SHOWCASE_SLIDES.length)} title="Producto anterior" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-slate-950/70 text-slate-200 hover:border-cyan-300/40">
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <button type="button" onClick={() => setActiveSlide((activeSlide + 1) % MARKETPLACE_SHOWCASE_SLIDES.length)} title="Producto siguiente" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-slate-950/70 text-slate-200 hover:border-cyan-300/40">
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

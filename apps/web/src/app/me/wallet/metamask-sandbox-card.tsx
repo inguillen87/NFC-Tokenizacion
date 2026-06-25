@@ -16,6 +16,9 @@ import {
 
 type EthereumProvider = {
   isMetaMask?: boolean;
+  isCoinbaseWallet?: boolean;
+  isRabby?: boolean;
+  isOKXWallet?: boolean;
   providers?: EthereumProvider[];
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown> | unknown;
   on?: (event: "accountsChanged" | "chainChanged", handler: (...args: unknown[]) => void) => void;
@@ -52,13 +55,13 @@ function walletErrorMessage(error: unknown, fallback: string) {
 
   const normalized = message.toLowerCase();
   if (normalized.includes("already processing") || normalized.includes("request already pending") || normalized.includes("already pending")) {
-    return "MetaMask ya tiene una solicitud pendiente. Abre la extensión, confirma o cancela y vuelve a intentar.";
+    return "MetaMask ya tiene una solicitud pendiente. Abrí la extensión, confirmá o cancelá y volvé a intentar.";
   }
   if (normalized.includes("failed to connect to metamask")) {
-    return "No pudimos abrir MetaMask. Desbloquea la extensión o continúa con la wallet de prueba.";
+    return "No pudimos abrir MetaMask. Desbloqueá la extensión o abrí esta pantalla desde MetaMask Mobile.";
   }
   if (code === 4001 || normalized.includes("user rejected")) {
-    return "Conexion cancelada por el usuario.";
+    return "Conexión cancelada por el usuario.";
   }
   return message || fallback;
 }
@@ -78,6 +81,31 @@ function findMetaMaskProvider() {
   return getInjectedProviders().find((provider) => provider.isMetaMask) || null;
 }
 
+function findWalletProvider() {
+  return findMetaMaskProvider() || getInjectedProviders().find((provider) => typeof provider.request === "function") || null;
+}
+
+function walletProviderName(provider: EthereumProvider | null) {
+  if (!provider) return "Sin provider";
+  if (provider.isMetaMask) return "MetaMask";
+  if (provider.isCoinbaseWallet) return "Coinbase Wallet";
+  if (provider.isRabby) return "Rabby";
+  if (provider.isOKXWallet) return "OKX Wallet";
+  return "Wallet Ethereum";
+}
+
+function isMobileRuntime() {
+  if (typeof navigator === "undefined") return false;
+  return /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function openMetaMaskMobile() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("connect", "metamask");
+  window.location.assign(`https://metamask.app.link/dapp/${url.host}${url.pathname}${url.search}${url.hash}`);
+}
+
 export function MetamaskSandboxCard({
   initialWallet,
   autoConnect = false,
@@ -90,10 +118,11 @@ export function MetamaskSandboxCard({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState(
     initialWallet?.address
-      ? "Wallet asociada al Passport. Ya podes usar ownership, NFT y reventa."
+      ? "Wallet asociada al Passport. Ya podés usar ownership, NFT y reventa."
       : "Web3 es opcional: conectalo solo para ownership, NFT, marketplace o transferencias."
   );
-  const [hasMetaMask, setHasMetaMask] = useState(false);
+  const [hasWalletProvider, setHasWalletProvider] = useState(false);
+  const [walletProviderLabel, setWalletProviderLabel] = useState("Sin provider");
   const [autoConnectAttempted, setAutoConnectAttempted] = useState(false);
 
   const isAmoy = chainId.toLowerCase() === POLYGON_AMOY.chainId.toLowerCase();
@@ -105,27 +134,42 @@ export function MetamaskSandboxCard({
   }, [chainId, isAmoy]);
 
   useEffect(() => {
-    const provider = findMetaMaskProvider();
-    setHasMetaMask(Boolean(provider));
-    if (!provider) return;
+    let cleanup: (() => void) | undefined;
 
-    const onAccountsChanged = (...args: unknown[]) => {
-      const accounts = Array.isArray(args[0]) ? args[0] : [];
-      setAddress(typeof accounts[0] === "string" ? accounts[0] : "");
-    };
-    const onChainChanged = (...args: unknown[]) => {
-      setChainId(typeof args[0] === "string" ? args[0] : "");
+    const detect = () => {
+      const provider = findWalletProvider();
+      setHasWalletProvider(Boolean(provider));
+      setWalletProviderLabel(walletProviderName(provider));
+      if (!provider || cleanup) return;
+
+      const onAccountsChanged = (...args: unknown[]) => {
+        const accounts = Array.isArray(args[0]) ? args[0] : [];
+        setAddress(typeof accounts[0] === "string" ? accounts[0] : "");
+      };
+      const onChainChanged = (...args: unknown[]) => {
+        setChainId(typeof args[0] === "string" ? args[0] : "");
+      };
+
+      provider.on?.("accountsChanged", onAccountsChanged);
+      provider.on?.("chainChanged", onChainChanged);
+      void requestWallet(provider, { method: "eth_chainId" })
+        .then((nextChain) => setChainId(typeof nextChain === "string" ? nextChain : ""))
+        .catch(() => undefined);
+
+      cleanup = () => {
+        provider.removeListener?.("accountsChanged", onAccountsChanged);
+        provider.removeListener?.("chainChanged", onChainChanged);
+      };
     };
 
-    provider.on?.("accountsChanged", onAccountsChanged);
-    provider.on?.("chainChanged", onChainChanged);
-    void requestWallet(provider, { method: "eth_chainId" })
-      .then((nextChain) => setChainId(typeof nextChain === "string" ? nextChain : ""))
-      .catch(() => undefined);
+    detect();
+    const retry = window.setTimeout(detect, 800);
+    window.addEventListener("ethereum#initialized", detect, { once: true });
 
     return () => {
-      provider.removeListener?.("accountsChanged", onAccountsChanged);
-      provider.removeListener?.("chainChanged", onChainChanged);
+      window.clearTimeout(retry);
+      window.removeEventListener("ethereum#initialized", detect);
+      cleanup?.();
     };
   }, []);
 
@@ -139,7 +183,7 @@ export function MetamaskSandboxCard({
       });
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; wallet?: { addressMasked?: string | null } } | null;
       if (!response.ok || !payload?.ok) {
-        setMessage("Wallet detectada en el navegador. Inicia sesion en el Passport para guardarla permanentemente.");
+        setMessage("Wallet detectada en el navegador. Iniciá sesión en el Passport para guardarla permanentemente.");
         return;
       }
       setMessage(`Wallet ${payload.wallet?.addressMasked || shortAddress(nextAddress)} asociada al Passport.`);
@@ -149,14 +193,14 @@ export function MetamaskSandboxCard({
   }
 
   async function connectWallet() {
-    const injectedProviders = getInjectedProviders();
-    const provider = injectedProviders.find((entry) => entry.isMetaMask) || null;
-    setHasMetaMask(Boolean(provider));
+    const provider = findWalletProvider();
+    setHasWalletProvider(Boolean(provider));
+    setWalletProviderLabel(walletProviderName(provider));
     if (!provider) {
       setMessage(
-        injectedProviders.length
-          ? "Detectamos una billetera inyectada, pero no MetaMask. Usa MetaMask o activa la wallet de prueba para la presentación."
-          : "No detectamos MetaMask en este navegador. Podés conectar por Clerk si la extensión está disponible o usar la wallet de prueba."
+        isMobileRuntime()
+          ? "En mobile, abrí esta pantalla desde el navegador interno de MetaMask para que inyecte la wallet."
+          : "No detectamos una wallet Ethereum en este navegador. Instalá o desbloqueá MetaMask, o usá el botón de MetaMask Mobile."
       );
       return;
     }
@@ -169,21 +213,21 @@ export function MetamaskSandboxCard({
       setAddress(nextAddress);
       setChainId(normalizedChain);
       if (nextAddress) {
-        await persistWallet(nextAddress, normalizedChain, "metamask");
+        await persistWallet(nextAddress, normalizedChain, provider.isMetaMask ? "metamask" : "ethereum_wallet");
       } else {
-        setMessage("MetaMask no devolvió una cuenta autorizada.");
+        setMessage("La wallet no devolvió una cuenta autorizada.");
       }
     } catch (error) {
-      setMessage(walletErrorMessage(error, "No se pudo conectar MetaMask."));
+      setMessage(walletErrorMessage(error, "No se pudo conectar la wallet."));
     } finally {
       setPending(false);
     }
   }
 
   async function addAmoy() {
-    const provider = findMetaMaskProvider();
+    const provider = findWalletProvider();
     if (!provider) {
-      setMessage("MetaMask no esta disponible en este navegador.");
+      setMessage("No hay una wallet Ethereum disponible en este navegador.");
       return;
     }
     setPending(true);
@@ -199,9 +243,9 @@ export function MetamaskSandboxCard({
       const normalizedChain = typeof nextChain === "string" ? nextChain : POLYGON_AMOY.chainId;
       setChainId(normalizedChain);
       if (address) {
-        await persistWallet(address, normalizedChain, "metamask");
+        await persistWallet(address, normalizedChain, provider.isMetaMask ? "metamask" : "ethereum_wallet");
       } else {
-        setMessage("Polygon Amoy quedo listo. Conecta tu cuenta MetaMask para guardarla.");
+        setMessage("Polygon Amoy quedó listo. Conectá tu cuenta para guardarla.");
       }
     } catch (error) {
       setMessage(walletErrorMessage(error, "No se pudo cambiar a Polygon Amoy."));
@@ -234,7 +278,7 @@ export function MetamaskSandboxCard({
             </p>
             <h3 className="mt-2 text-lg font-black text-white">Wallet y ownership digital</h3>
             <p className="mt-2 max-w-xl text-xs leading-5 text-slate-300">
-              Email y WhatsApp siguen siendo el alta liviana post-tap. MetaMask se usa solo cuando queres reclamar propiedad,
+              Email y WhatsApp siguen siendo el alta liviana post-tap. MetaMask se usa solo cuando querés reclamar propiedad,
               tokenizar un producto premium, venderlo o transferirlo.
             </p>
           </div>
@@ -260,8 +304,8 @@ export function MetamaskSandboxCard({
           </div>
           <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
             <Activity className="h-5 w-5 text-emerald-200" aria-hidden="true" />
-            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Uso</p>
-            <p className="mt-1 text-sm font-black text-white">NFT / reventa / ownership</p>
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Provider</p>
+            <p className="mt-1 text-sm font-black text-white">{walletProviderLabel}</p>
           </div>
         </div>
       </div>
@@ -288,7 +332,7 @@ export function MetamaskSandboxCard({
             type="button"
             disabled={pending}
             onClick={() => void connectWallet()}
-            title="Conecta la extensión MetaMask del navegador sin tocar el alta por WhatsApp/email."
+            title="Conecta la wallet inyectada del navegador sin tocar el alta por WhatsApp/email."
             className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/55 p-4 text-left transition hover:border-white/25 hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <div className="flex items-start gap-3">
@@ -296,8 +340,8 @@ export function MetamaskSandboxCard({
                 <Wallet className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-black text-white">Conectar MetaMask en navegador</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">{hasMetaMask ? "MetaMask detectada." : "Si no aparece, instala o desbloquea la extensión."}</p>
+                <p className="text-sm font-black text-white">Conectar wallet del navegador</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{hasWalletProvider ? `${walletProviderLabel} detectada.` : "Si no aparece, instalá o desbloqueá MetaMask."}</p>
               </div>
             </div>
             {address && !isSandbox ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" /> : <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />}
@@ -305,9 +349,27 @@ export function MetamaskSandboxCard({
 
           <button
             type="button"
-            disabled={pending || !hasMetaMask || Boolean(address && isSandbox)}
+            onClick={openMetaMaskMobile}
+            title="Abrir esta wallet dentro del navegador seguro de MetaMask Mobile."
+            className="flex w-full items-center justify-between gap-4 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4 text-left transition hover:border-cyan-200/50 hover:bg-cyan-300/15"
+          >
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-200/25 bg-cyan-300/10 text-cyan-100">
+                <ExternalLink className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-white">Abrir en MetaMask Mobile</p>
+                <p className="mt-1 text-xs leading-5 text-slate-300">En iPhone/Android, MetaMask debe abrir la web para inyectar la wallet.</p>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 text-cyan-100" aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            disabled={pending || !hasWalletProvider || Boolean(address && isSandbox)}
             onClick={() => void addAmoy()}
-            title="Agrega o cambia MetaMask a Polygon Amoy para pruebas de tokenizacion."
+            title="Agrega o cambia la wallet a Polygon Amoy para pruebas de tokenización."
             className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/55 p-4 text-left transition hover:border-violet-300/30 hover:bg-violet-400/[0.06] disabled:cursor-not-allowed disabled:opacity-45"
           >
             <div className="flex items-start gap-3">

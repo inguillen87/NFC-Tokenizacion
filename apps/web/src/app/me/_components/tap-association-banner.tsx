@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import {
+  ConsumerContactInput,
+  type ConsumerContactPayload,
+  consumerContactDraftIsValid,
+  consumerContactPayload,
+  createEmptyConsumerContactDraft,
+} from "../../../components/consumer-contact-input";
 
 type Step = "idle" | "code" | "done";
 type SessionState = "checking" | "active" | "none";
@@ -17,26 +24,6 @@ type AssociationResult = {
 function parseBoolean(value: string | null) {
   if (!value) return false;
   return ["1", "true", "yes"].includes(value.toLowerCase());
-}
-
-function parseContactPayload(contactValue: string) {
-  const value = contactValue.trim();
-  return value.includes("@") ? { email: value } : { phone: value };
-}
-
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-function isValidPhone(value: string) {
-  const digits = value.replace(/\D/g, "");
-  return digits.length >= 8 && digits.length <= 15;
-}
-
-function isValidContact(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-  return trimmed.includes("@") ? isValidEmail(trimmed) : isValidPhone(trimmed);
 }
 
 function maskId(value: string | null) {
@@ -91,13 +78,13 @@ export function TapAssociationBanner() {
   const preferredAction = params.get("action") || "portal";
   const [step, setStep] = useState<Step>("idle");
   const [sessionState, setSessionState] = useState<SessionState>("checking");
-  const [contact, setContact] = useState("");
+  const [contactDraft, setContactDraft] = useState(() => createEmptyConsumerContactDraft());
   const [code, setCode] = useState("");
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("");
 
   const visible = useMemo(() => Boolean(fromTap && eventId), [fromTap, eventId]);
-  const contactIsValid = useMemo(() => isValidContact(contact), [contact]);
+  const contactIsValid = useMemo(() => consumerContactDraftIsValid(contactDraft), [contactDraft]);
   const nextPath = useMemo(() => buildTapNextPath(eventId, tenant, bid, preferredAction), [bid, eventId, preferredAction, tenant]);
 
   useEffect(() => {
@@ -132,7 +119,7 @@ export function TapAssociationBanner() {
     } satisfies AssociationResult;
   }
 
-  async function associate(action: string, contactValue?: string) {
+  async function associate(action: string, contactPayload?: ConsumerContactPayload | null) {
     if (!eventId) return { ok: false, results: [] as AssociationResult[] };
     const payload = {
       ...(tenant ? { tenantSlug: tenant } : {}),
@@ -143,8 +130,8 @@ export function TapAssociationBanner() {
     results.push(await postAssociationAction("join", `/api/mobile/passport/${encodedEventId}/consumer/join-tenant`, payload));
     results.push(await postAssociationAction("save", `/api/mobile/passport/${encodedEventId}/consumer/save-product`, payload));
     results.push(await postAssociationAction("claim", `/api/mobile/passport/${encodedEventId}/consumer/claim`, payload));
-    if (action === "rewards" && contactValue?.trim()) {
-      results.push(await postAssociationAction("rewards", `/api/mobile/passport/${encodedEventId}/loyalty/enroll`, parseContactPayload(contactValue)));
+    if (action === "rewards" && contactPayload) {
+      results.push(await postAssociationAction("rewards", `/api/mobile/passport/${encodedEventId}/loyalty/enroll`, contactPayload));
     }
     return { ok: results.some((item) => item.ok), results };
   }
@@ -193,8 +180,9 @@ export function TapAssociationBanner() {
   }
 
   async function sendCode() {
-    if (!contactIsValid) {
-      setStatus("Ingresá un email válido o un teléfono con 8 a 15 dígitos.");
+    const contactPayload = consumerContactPayload(contactDraft);
+    if (!contactPayload) {
+      setStatus("Ingresá un email válido o WhatsApp con prefijo y número local.");
       return;
     }
     setPending(true);
@@ -206,7 +194,7 @@ export function TapAssociationBanner() {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(parseContactPayload(contact)),
+        body: JSON.stringify(contactPayload),
       }).then((res) => res.json()).catch(() => null);
       if (!start?.ok) {
         setStatus("No se pudo iniciar verificación. Probá con otro email o teléfono.");
@@ -221,7 +209,8 @@ export function TapAssociationBanner() {
   }
 
   async function verifyAndAssociate() {
-    if (!contactIsValid || !code.trim()) {
+    const contactPayload = consumerContactPayload(contactDraft);
+    if (!contactPayload || !code.trim()) {
       setStatus("Revisá el contacto y el código.");
       return;
     }
@@ -232,14 +221,14 @@ export function TapAssociationBanner() {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...parseContactPayload(contact), code: code.trim() }),
+        body: JSON.stringify({ ...contactPayload, code: code.trim() }),
       }).then((res) => res.json()).catch(() => null);
       if (!verify?.ok) {
         setStatus("Código inválido o expirado. Pedí uno nuevo si el anterior ya fue usado.");
         return;
       }
       setSessionState("active");
-      const association = await associate(preferredAction, contact);
+      const association = await associate(preferredAction, contactPayload);
       setStatus(summarizeAssociation(association.results));
       if (association.ok) setStep("done");
     } finally {
@@ -283,13 +272,9 @@ export function TapAssociationBanner() {
             Reiniciar sesión local
           </button>
 
-          <input
-            suppressHydrationWarning
-            value={contact}
-            onChange={(event) => setContact(event.target.value)}
-            placeholder="WhatsApp, celular o email"
-            className="rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
-          />
+          <div className="md:col-span-1">
+            <ConsumerContactInput draft={contactDraft} onChange={setContactDraft} disabled={pending} idPrefix="tap-association" compact />
+          </div>
           {step === "idle" ? (
             <button
               suppressHydrationWarning
@@ -348,7 +333,7 @@ export function TapAssociationBanner() {
           <Link href={`/me/rewards?tenant=${encodeURIComponent(tenant || "")}`} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-center text-sm text-violet-100">Promos</Link>
         </div>
       )}
-      {contact.trim() && !contactIsValid ? <p className="mt-2 text-xs text-amber-200">Usá un email válido o un teléfono con 8 a 15 dígitos.</p> : null}
+      {!contactIsValid && (contactDraft.email.trim() || contactDraft.localPhone.trim()) ? <p className="mt-2 text-xs text-amber-200">Usá un email válido o WhatsApp con prefijo y número local.</p> : null}
       {status ? <p className="mt-2 text-xs text-slate-200">{status}</p> : null}
     </section>
   );
