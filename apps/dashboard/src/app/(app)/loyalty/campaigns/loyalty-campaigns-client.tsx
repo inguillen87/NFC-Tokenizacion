@@ -91,6 +91,21 @@ interface AudienceMember {
   last_tap_at?: string | null;
 }
 
+interface TriviaInsight {
+  summary: {
+    attempts: number;
+    completed: number;
+    pointsIssued: number;
+    avgScorePct: number;
+    topCity?: string | null;
+    topProduct?: string | null;
+    insight?: string | null;
+  };
+  cities: Array<{ city: string; attempts: number; avgScorePct: number; pointsIssued: number; topProduct?: string | null }>;
+  questions: Array<{ prompt: string; insightTag?: string | null; attempts: number; correctRatePct: number; dominantMiss?: string | null }>;
+  recent: Array<{ id: string; score: number; total: number; pointsAwarded: number; city?: string | null; productName?: string | null; displayName?: string | null; createdAt?: string | null }>;
+}
+
 interface CampaignTemplate {
   id: string;
   name: string;
@@ -222,6 +237,28 @@ const DEMO_AUDIENCE: AudienceMember[] = [
   },
 ];
 
+const TRIVIA_FALLBACK: TriviaInsight = {
+  summary: {
+    attempts: 0,
+    completed: 0,
+    pointsIssued: 0,
+    avgScorePct: 0,
+    topCity: "Mendoza",
+    topProduct: "Gran Reserva Malbec",
+    insight: "Apenas los clientes completen la trivia post-tap, este panel muestra conocimiento por ciudad, producto y pregunta para activar promociones o eventos.",
+  },
+  cities: [
+    { city: "Mendoza", attempts: 0, avgScorePct: 0, pointsIssued: 0, topProduct: "Gran Reserva Malbec" },
+    { city: "Cordoba", attempts: 0, avgScorePct: 0, pointsIssued: 0, topProduct: "Cabernet Franc Reserva" },
+  ],
+  questions: [
+    { prompt: "Origen verificado y lote del producto", insightTag: "origin-literacy", attempts: 0, correctRatePct: 0, dominantMiss: null },
+    { prompt: "Beneficios por cercania a bodega o feria", insightTag: "geo-campaign-understanding", attempts: 0, correctRatePct: 0, dominantMiss: null },
+    { prompt: "Experiencia premium post-tap", insightTag: "post-tap-experience-fit", attempts: 0, correctRatePct: 0, dominantMiss: null },
+  ],
+  recent: [],
+};
+
 function asNumber(value: unknown) {
   const parsed = Number(value || 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -352,6 +389,9 @@ export default function LoyaltyCampaignsClient() {
   const [audienceMembers, setAudienceMembers] = useState<AudienceMember[]>([]);
   const [audienceLoading, setAudienceLoading] = useState(true);
   const [audienceError, setAudienceError] = useState<string | null>(null);
+  const [triviaInsight, setTriviaInsight] = useState<TriviaInsight>(TRIVIA_FALLBACK);
+  const [triviaLoading, setTriviaLoading] = useState(true);
+  const [triviaError, setTriviaError] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState(CAMPAIGN_TEMPLATES[0].id);
   const [selectedCity, setSelectedCity] = useState("all");
   const [sandboxRecipientName, setSandboxRecipientName] = useState("Marcelo");
@@ -463,6 +503,40 @@ export default function LoyaltyCampaignsClient() {
       }
     }
     loadAudience();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTriviaInsight() {
+      setTriviaLoading(true);
+      setTriviaError(null);
+      try {
+        const response = await fetch("/api/admin/loyalty/trivia/overview?tenant=demobodega", { cache: "no-store" });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.ok === false || !payload?.summary) {
+          throw new Error(payload?.reason || payload?.error || "trivia_unavailable");
+        }
+        if (!cancelled) {
+          setTriviaInsight({
+            summary: payload.summary,
+            cities: Array.isArray(payload.cities) ? payload.cities : [],
+            questions: Array.isArray(payload.questions) ? payload.questions : [],
+            recent: Array.isArray(payload.recent) ? payload.recent : [],
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setTriviaInsight(TRIVIA_FALLBACK);
+          setTriviaError(error instanceof Error ? error.message : "trivia_unavailable");
+        }
+      } finally {
+        if (!cancelled) setTriviaLoading(false);
+      }
+    }
+    void loadTriviaInsight();
     return () => {
       cancelled = true;
     };
@@ -1086,6 +1160,111 @@ export default function LoyaltyCampaignsClient() {
                 <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-slate-400">{step.detail}</p>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-2xl border border-violet-400/20 bg-[radial-gradient(circle_at_0%_0%,rgba(168,85,247,.16),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.92),rgba(30,41,59,.52))] p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-violet-200">
+                <Sparkles className="h-4 w-4" />
+                Trivia & market research
+              </div>
+              <h3 className="mt-1 text-sm font-black text-white">Conocimiento real del cliente por tap</h3>
+              <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-400">
+                Cada respuesta convierte el producto físico en investigación de mercado: ciudad, producto, interés, educación de marca y puntos emitidos.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-violet-300/20 bg-violet-400/10 px-3 py-2 text-xs font-bold text-violet-100">
+              <Gauge className="h-4 w-4" />
+              {triviaLoading ? "Cargando trivia" : triviaError ? "Fallback market demo" : "Datos de trivia activos"}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: "Intentos", value: triviaInsight.summary.attempts, hint: "trivias post-tap", color: "text-violet-200" },
+              { label: "Score medio", value: `${triviaInsight.summary.avgScorePct}%`, hint: "conocimiento marca", color: "text-cyan-200" },
+              { label: "Puntos emitidos", value: triviaInsight.summary.pointsIssued, hint: "gamificacion", color: "text-emerald-200" },
+              { label: "Ciudad lider", value: triviaInsight.summary.topCity || "Sin datos", hint: triviaInsight.summary.topProduct || "producto pendiente", color: "text-amber-200" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/55 p-3">
+                <div className="text-[9px] font-black uppercase tracking-wider text-slate-500">{item.label}</div>
+                <div className={`mt-2 truncate text-2xl font-black ${item.color}`}>{typeof item.value === "number" ? item.value.toLocaleString("es-AR") : item.value}</div>
+                <div className="mt-1 truncate text-[10px] text-slate-500">{item.hint}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
+            <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-black text-white">Preguntas con oportunidad comercial</h4>
+                  <p className="text-[11px] text-slate-400">Las tasas bajas marcan dónde educar mejor al cliente o crear una promo.</p>
+                </div>
+                <span className="rounded-full bg-violet-400/10 px-2 py-1 text-[9px] font-black uppercase text-violet-200">
+                  {triviaInsight.questions.length} señales
+                </span>
+              </div>
+              <div className="space-y-2">
+                {(triviaInsight.questions.length ? triviaInsight.questions : TRIVIA_FALLBACK.questions).slice(0, 4).map((question, index) => (
+                  <div key={`${question.prompt}-${index}`} className="rounded-xl border border-white/10 bg-slate-900/45 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="line-clamp-2 text-xs font-bold text-white">{question.prompt}</div>
+                        <div className="mt-1 text-[10px] text-slate-500">{question.insightTag || "market-signal"} · {question.attempts} intentos</div>
+                      </div>
+                      <div className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black ${
+                        question.correctRatePct >= 70
+                          ? "bg-emerald-400/10 text-emerald-300"
+                          : question.correctRatePct > 0
+                            ? "bg-amber-400/10 text-amber-200"
+                            : "bg-slate-800 text-slate-400"
+                      }`}>
+                        {question.correctRatePct}%
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-black text-white">Acciones recomendadas</h4>
+                  <p className="text-[11px] text-slate-400">Qué haría el equipo comercial con estos datos.</p>
+                </div>
+                <MapPin className="h-5 w-5 text-violet-200" />
+              </div>
+              <div className="space-y-2">
+                {(triviaInsight.cities.length ? triviaInsight.cities : TRIVIA_FALLBACK.cities).slice(0, 4).map((city) => (
+                  <button
+                    key={city.city}
+                    type="button"
+                    title={`Usar ${city.city} como segmento de campaña`}
+                    onClick={() => {
+                      setSelectedCity(city.city === "Sin ciudad" ? "all" : city.city);
+                      setDraftTitle(`Trivia ${city.city} - ${city.topProduct || "post tap"}`);
+                      setDraftText(`Hola {{name}}, vimos tu tap y tu avance en la trivia de ${city.topProduct || "tu producto"}. Te reservamos un beneficio por 48h para completar la experiencia en ${city.city}.`);
+                    }}
+                    className="w-full rounded-xl border border-white/10 bg-slate-900/45 p-3 text-left transition hover:border-violet-300/40 hover:bg-violet-400/10"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-bold text-white">{city.city}</div>
+                      <div className="text-[10px] font-black text-violet-200">{city.avgScorePct}% score</div>
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-400">
+                      {city.attempts} intentos · {city.pointsIssued} puntos · {city.topProduct || "producto pendiente"}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 rounded-xl border border-violet-400/20 bg-violet-400/10 p-3 text-[11px] leading-relaxed text-violet-100">
+                {triviaInsight.summary.insight || TRIVIA_FALLBACK.summary.insight}
+              </p>
+            </div>
           </div>
         </div>
 
