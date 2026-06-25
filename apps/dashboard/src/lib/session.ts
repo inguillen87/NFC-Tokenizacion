@@ -47,6 +47,11 @@ function dashboardDemoSessionAllowed() {
   return true;
 }
 
+function dashboardAutoDemoSessionAllowed() {
+  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").trim().toLowerCase();
+  return explicitPublicSession === "1" || explicitPublicSession === "true";
+}
+
 function parseDemoToken(token: string): DashboardSession | null {
   if (!token.startsWith("demo.")) return null;
   const encoded = token.slice("demo.".length);
@@ -186,7 +191,7 @@ export async function getDashboardSession() {
     }
   }
 
-  if (dashboardDemoSessionAllowed()) return demoFallbackSession();
+  if (dashboardAutoDemoSessionAllowed()) return demoFallbackSession();
   return null;
 }
 
