@@ -50,7 +50,7 @@ export function demoConsumerPayload(path: string) {
     return {
       ok: true,
       items: [
-        { slug: "demobodega", name: "Demo Bodega", status: "active" },
+        { slug: "demobodega", name: "Bodega Balmec", status: "active" },
         { slug: "demoeventos", name: "Demo Eventos", status: "active" },
       ],
     };
@@ -71,8 +71,8 @@ export function demoMarketplacePayload(path: string) {
         {
           id: "demo-wine-001",
           title: "Gran Reserva Malbec - club release",
-          brand_name: "Demo Bodega",
-          brand: "Demo Bodega",
+          brand_name: "Bodega Balmec",
+          brand: "Bodega Balmec",
           points_price: 320,
           cash_price: 0,
           stock_status: "available",

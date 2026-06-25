@@ -112,8 +112,8 @@ export function MePortalInteractiveClient({
   ];
 
   const scannedDrops = [
-    { id: "drop-1", name: "Estuche Colección Ícono Malbec 2020", winery: "Demo Bodega", price: "4,000 pts", cashPrice: "$120 USDT", stock: "6 unidades", img: "/images/wine_crate.png", label: "Vino de Lote", rawPriceUsd: 120 },
-    { id: "drop-2", name: "Gran Reserva Cabernet Franc 2021", winery: "Demo Bodega", price: "3,000 pts", cashPrice: "$85 USDT", stock: "14 unidades", img: "/images/premium_magnum.png", label: "Preventa Limitada", rawPriceUsd: 85 },
+    { id: "drop-1", name: "Estuche Colección Ícono Malbec 2020", winery: "Bodega Balmec", price: "4,000 pts", cashPrice: "$120 USDT", stock: "6 unidades", img: "/images/wine_crate.png", label: "Vino de Lote", rawPriceUsd: 120 },
+    { id: "drop-2", name: "Gran Reserva Cabernet Franc 2021", winery: "Bodega Balmec", price: "3,000 pts", cashPrice: "$85 USDT", stock: "14 unidades", img: "/images/premium_magnum.png", label: "Preventa Limitada", rawPriceUsd: 85 },
   ];
 
   const synergyDrops = [
@@ -377,7 +377,7 @@ export function MePortalInteractiveClient({
                       <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-black text-white truncate max-w-40">{product.product_name || "Vino Premium"}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{product.brand_name || "Demo Bodega"}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{product.brand_name || "Bodega Balmec"}</p>
                         </div>
                         <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-300">
                           {product.ownership_status || "Reclamado"}
@@ -459,7 +459,7 @@ export function MePortalInteractiveClient({
                   <div className="mt-4 flex-1">
                     <div className="flex items-center justify-between gap-1.5">
                       <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-300 border border-amber-500/10">
-                        {product.brand_name || "Demo Bodega"}
+                        {product.brand_name || "Bodega Balmec"}
                       </span>
                       {hasOnChain && (
                         <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-violet-400 border border-violet-500/10">

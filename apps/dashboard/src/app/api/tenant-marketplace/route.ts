@@ -19,21 +19,39 @@ type MarketplaceStore = {
 
 const initialItems: MarketplaceItem[] = [
   {
-    id: "wine-01",
-    emoji: "🍷",
-    name: "Lote Experimental Malbec",
+    id: "balmec-malbec-2022",
+    emoji: "VI",
+    name: "Gran Reserva Malbec 2022",
     priceArs: 45000,
     vertical: "Vino Premium",
     checkout: "request",
     visibility: "network",
   },
   {
-    id: "box-01",
-    emoji: "📦",
-    name: "Caja Degustación Terroir",
+    id: "balmec-olive-arbequina",
+    emoji: "OL",
+    name: "Aceite de Oliva Extra Virgen Arbequina",
+    priceArs: 14500,
+    vertical: "Oliva Gourmet",
+    checkout: "direct",
+    visibility: "network",
+  },
+  {
+    id: "balmec-experience-private-tasting",
+    emoji: "EX",
+    name: "Cata privada para dos",
+    priceArs: 32000,
+    vertical: "Experiencia",
+    checkout: "request",
+    visibility: "network",
+  },
+  {
+    id: "balmec-terroir-box",
+    emoji: "BX",
+    name: "Caja Selección Terroir",
     priceArs: 120000,
     vertical: "Caja / Combo",
-    checkout: "external",
+    checkout: "request",
     visibility: "private",
   },
 ];
@@ -59,7 +77,7 @@ export async function POST(req: Request) {
     .filter((entry) => entry?.name?.trim() && entry?.vertical?.trim())
     .map((entry, index) => ({
       id: `item-${Date.now()}-${index}`,
-      emoji: entry.emoji || "🆕",
+      emoji: entry.emoji || "NX",
       name: entry.name.trim(),
       priceArs: Number(entry.priceArs) || 0,
       vertical: entry.vertical.trim(),

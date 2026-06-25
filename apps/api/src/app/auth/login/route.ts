@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     if (code === "42P01") {
       const fallback = {
         "super-admin": { email: "superadmin@nexid.lat", password: "nexid_demo_2026", role: "super-admin", label: "Super Admin Demo" },
-        "tenant-admin": { email: "demobodega@nexid.lat", password: "nexid_demo_2026", role: "tenant-admin", label: "DemoBodega Admin" },
+        "tenant-admin": { email: "demobodega@nexid.lat", password: "nexid_demo_2026", role: "tenant-admin", label: "Bodega Balmec Admin" },
       } as const;
       const matched = Object.values(fallback).find((entry) => entry.email === email && entry.password === password);
       if (matched) {

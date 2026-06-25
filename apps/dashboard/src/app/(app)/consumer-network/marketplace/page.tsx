@@ -250,7 +250,7 @@ export default function TenantMarketplacePage() {
 
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 text-sm text-slate-200">Items activos: <b className="text-white">{totals.total}</b></div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Publicos en network: <b>{totals.publicCount}</b></div>
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Públicos en network: <b>{totals.publicCount}</b></div>
         <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 text-sm text-cyan-100">Direct checkout listos: <b>{totals.directCount}</b></div>
       </div>
 
@@ -258,10 +258,10 @@ export default function TenantMarketplacePage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Marketplace con prueba social real</p>
-            <h2 className="mt-2 text-xl font-black text-white">Cada producto puede mostrar reputacion verificada, no reviews anonimas.</h2>
+            <h2 className="mt-2 text-xl font-black text-white">Cada producto puede mostrar reputación verificada, no reviews anónimas.</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-              Las experiencias se publican solo si el usuario paso por tap fisico, identidad y politica de compra o club.
-              Esto hace que la reputacion suba valor de marca, reventa, NFT y confianza del comprador.
+              Las experiencias se publican solo si el usuario pasó por tap físico, identidad y política de compra o club.
+              Esto hace que la reputación suba valor de marca, reventa, NFT y confianza del comprador.
             </p>
           </div>
           <button suppressHydrationWarning onClick={() => window.location.assign("/loyalty/experiences")} className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-100">
@@ -304,7 +304,7 @@ export default function TenantMarketplacePage() {
         <input suppressHydrationWarning value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar producto o vertical..." className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30" />
         <select suppressHydrationWarning value={visibilityFilter} onChange={(e) => setVisibilityFilter(e.target.value as "all" | Visibility)} className="rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/30">
           <option value="all">Todas las visibilidades</option>
-          <option value="network">Publico (Network)</option>
+          <option value="network">Público (Network)</option>
           <option value="private">Oculto</option>
         </select>
       </div>
@@ -315,7 +315,7 @@ export default function TenantMarketplacePage() {
         </div>
         <div>
           <h3 className="text-sm font-bold text-white">Estado de la Red: Activo</h3>
-          <p className="mt-1 max-w-2xl text-xs text-slate-400">Tus productos publicos son visibles para consumidores verificados de otras marcas. Sin exponer datos sensibles de tus clientes.</p>
+          <p className="mt-1 max-w-2xl text-xs text-slate-400">Tus productos públicos son visibles para consumidores verificados de otras marcas. Sin exponer datos sensibles de tus clientes.</p>
         </div>
       </div>
 
@@ -367,7 +367,7 @@ export default function TenantMarketplacePage() {
             ))}
             {!loading && filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Todavia no hay productos. Publica el primero.</td>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Todavía no hay productos. Publicá el primero.</td>
               </tr>
             ) : null}
           </tbody>
@@ -388,7 +388,7 @@ export default function TenantMarketplacePage() {
               <option value="external">External URL</option>
             </select>
             <select suppressHydrationWarning value={draft.visibility} onChange={(e) => setDraft((prev) => ({ ...prev, visibility: e.target.value as Visibility }))} className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40">
-              <option value="network">Publico (Network)</option>
+              <option value="network">Público (Network)</option>
               <option value="private">Oculto</option>
             </select>
           </div>

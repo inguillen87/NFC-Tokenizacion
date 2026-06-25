@@ -1104,7 +1104,7 @@ export async function ensureConsumerPortalSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_consumer_product_status ON marketplace_order_requests(consumer_id, marketplace_product_id, status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_source_tap ON marketplace_order_requests(source_tap_event_id)`;
 
-      await seedDemoMarketplaceRows();
+      await seedBalmecMarketplaceRows();
     }, () => {
       portalSchemaReady = null;
     });
@@ -1112,7 +1112,7 @@ export async function ensureConsumerPortalSchema() {
   return portalSchemaReady;
 }
 
-async function seedDemoMarketplaceRows() {
+async function seedBalmecMarketplaceRows() {
   await sql/*sql*/`
     INSERT INTO marketplace_brand_profiles (tenant_id, status, display_name, slug, vertical, description, country, city, visible_in_network, featured)
     SELECT t.id, 'active', 'Bodega Balmec', t.slug, 'winery', 'Bodega premium con pasaporte NFC, club, experiencias y ventas asistidas.', 'AR', 'Mendoza', true, true
@@ -1220,8 +1220,13 @@ async function seedDemoMarketplaceRows() {
   await sql/*sql*/`
     WITH seed(slug, title, description, vertical, category, image_url, price_amount, price_currency, age_gate_required, featured) AS (
       VALUES
+        ('demobodega', 'Gran Reserva Malbec 2022', 'Compra asistida con tap verificado, puntos de club y seguimiento comercial desde CRM. Ownership se transfiere solo con pago y validación de la marca.', 'winery', 'wine', '/images/premium_magnum.png', 19500.00, 'ARS', true, true),
         ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automáticamente.', 'winery', 'wine', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
-        ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal consumer y seguimiento en CRM tenant.', 'winery', 'experience', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),
+        ('demobodega', 'Chardonnay de Altura 2023', 'Vino de altura con lote trazable, recomendación gastronómica y venta asistida desde Passport.', 'winery', 'wine', '/images/premium_magnum.png', 16500.00, 'ARS', true, true),
+        ('demobodega', 'Blend de Finca 2021', 'Edición de guarda para clientes verificados, con club, preventa y prueba de autenticidad NFC.', 'winery', 'wine', '/images/premium_magnum.png', 22000.00, 'ARS', true, false),
+        ('demobodega', 'Aceite de Oliva Extra Virgen Arbequina', 'Aceite premium con procedencia de finca, lote trazable y cross-sell para visitantes de bodega.', 'gourmet', 'olive_oil', '/images/wine_crate.png', 14500.00, 'ARS', false, true),
+        ('demobodega', 'Aceite de Oliva Blend de Finca', 'Blend gourmet para club de clientes, regalo corporativo y campañas post-tap.', 'gourmet', 'olive_oil', '/images/wine_crate.png', 12500.00, 'ARS', false, false),
+        ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal del cliente y seguimiento en CRM de la marca.', 'winery', 'experience', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),
         ('demobodega', 'Paseo guiado Valle de Uco', 'Tour de viñedo con copa incluida para clientes que dejaron contacto tras un tap real.', 'winery', 'experience', '/images/wine_tasting.png', 45000.00, 'ARS', true, true),
         ('demobodega', 'Club VIP Vendimia - 30 días', 'Acceso a preventas, revista, promociones por email y beneficios de temporada.', 'winery', 'membership', '/images/premium_magnum.png', 12000.00, 'ARS', true, true),
         ('demobodega', 'Caja selección Bodega Balmec', 'Caja curada con seguimiento por lote, promociones y postventa para miembros.', 'winery', 'wine_box', '/images/wine_crate.png', 69000.00, 'ARS', true, true)
@@ -1272,8 +1277,13 @@ async function seedDemoMarketplaceRows() {
   await sql/*sql*/`
     WITH seed(slug, title, description, image_url, price_amount, price_currency, age_gate_required, featured) AS (
       VALUES
+        ('demobodega', 'Gran Reserva Malbec 2022', 'Compra asistida con tap verificado, puntos de club y seguimiento comercial desde CRM. Ownership se transfiere solo con pago y validación de la marca.', '/images/premium_magnum.png', 19500.00, 'ARS', true, true),
         ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automáticamente.', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
-        ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal consumer y seguimiento en CRM tenant.', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),
+        ('demobodega', 'Chardonnay de Altura 2023', 'Vino de altura con lote trazable, recomendación gastronómica y venta asistida desde Passport.', '/images/premium_magnum.png', 16500.00, 'ARS', true, true),
+        ('demobodega', 'Blend de Finca 2021', 'Edición de guarda para clientes verificados, con club, preventa y prueba de autenticidad NFC.', '/images/premium_magnum.png', 22000.00, 'ARS', true, false),
+        ('demobodega', 'Aceite de Oliva Extra Virgen Arbequina', 'Aceite premium con procedencia de finca, lote trazable y cross-sell para visitantes de bodega.', '/images/wine_crate.png', 14500.00, 'ARS', false, true),
+        ('demobodega', 'Aceite de Oliva Blend de Finca', 'Blend gourmet para club de clientes, regalo corporativo y campañas post-tap.', '/images/wine_crate.png', 12500.00, 'ARS', false, false),
+        ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal del cliente y seguimiento en CRM de la marca.', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),
         ('demobodega', 'Paseo guiado Valle de Uco', 'Tour de viñedo con copa incluida para clientes que dejaron contacto tras un tap real.', '/images/wine_tasting.png', 45000.00, 'ARS', true, true),
         ('demobodega', 'Club VIP Vendimia - 30 días', 'Acceso a preventas, revista, promociones por email y beneficios de temporada.', '/images/premium_magnum.png', 12000.00, 'ARS', true, true),
         ('demobodega', 'Caja selección Bodega Balmec', 'Caja curada con seguimiento por lote, promociones y postventa para miembros.', '/images/wine_crate.png', 69000.00, 'ARS', true, true),
@@ -1300,10 +1310,14 @@ async function seedDemoMarketplaceRows() {
   await sql/*sql*/`
     WITH seed(slug, title, product_title, reward_code, type, visibility, description, eligibility_json) AS (
       VALUES
+        ('demobodega', 'Malbec con 220 puntos de club', 'Gran Reserva Malbec 2022', 'DB-DISCOUNT-90', 'points_boost', 'verified_tappers', 'Convierte el tap de feria o vinoteca en pedido trazable: el usuario solicita compra, suma puntos y la bodega lo contacta.', '{"pointsAwarded":220,"requiresPurchaseProof":true,"ownershipNotGranted":true,"posOrPinRequiredForOwnership":true}'::jsonb),
         ('demobodega', 'Comprando Cabernet Franc sumás 180 puntos', 'Cabernet Franc Reserva 2022', 'DB-DISCOUNT-90', 'points_boost', 'verified_tappers', 'Convierte el tap de góndola en lead: el usuario pide compra, suma puntos y la bodega lo contacta.', '{"pointsAwarded":180,"requiresPurchaseProof":true,"ownershipNotGranted":true,"posOrPinRequiredForOwnership":true}'::jsonb),
+        ('demobodega', 'Chardonnay de altura para maridaje', 'Chardonnay de Altura 2023', 'DB-TASTING-120', 'request_to_buy', 'verified_tappers', 'Lead de compra recomendado para consumidores cercanos a restaurantes, hoteles o eventos de la marca.', '{"requiresVerifiedTap":true,"requiresSalesReview":true}'::jsonb),
+        ('demobodega', 'Aceite premium para club Balmec', 'Aceite de Oliva Extra Virgen Arbequina', 'DB-BOX-900', 'cross_sell', 'tenant_members_only', 'Cross-sell gastronómico para consumidores registrados por WhatsApp o email después del tap.', '{"requiresMembership":true,"requiresContactConsent":true}'::jsonb),
         ('demobodega', 'Cata privada 2x1 para miembros', 'Cata privada para dos', 'DB-TASTING-120', 'experience_booking', 'tenant_members_only', 'Beneficio para consumidores asociados al tenant, sin transferir propiedad del producto.', '{"requiresMembership":true,"requiresAgeGate":true}'::jsonb),
         ('demobodega', 'Club VIP por este mes', 'Club VIP Vendimia - 30 días', 'DB-VIP-MONTH-520', 'vip_access', 'verified_tappers', 'Promoción para taps reales: club, revista y descuentos por email con consentimiento.', '{"requiresVerifiedTap":true,"requiresContactConsent":true}'::jsonb),
-        ('demobodega', 'Caja selección con seguimiento de lote', 'Caja selección Bodega Balmec', 'DB-BOX-900', 'request_to_buy', 'tenant_members_only', 'Lead de compra premium para el equipo comercial del tenant.', '{"requiresMembership":true,"requiresSalesReview":true}'::jsonb)
+        ('demobodega', 'Caja selección con seguimiento de lote', 'Caja selección Bodega Balmec', 'DB-BOX-900', 'request_to_buy', 'tenant_members_only', 'Lead de compra premium para el equipo comercial de la marca.', '{"requiresMembership":true,"requiresSalesReview":true}'::jsonb),
+        ('demobodega', 'Carrito asistido por asesor Balmec', 'Caja selección Bodega Balmec', 'DB-BOX-900', 'assisted_checkout', 'tenant_members_only', 'El carrito del portal queda como solicitud comercial con método de pago preferido: MercadoPago, Stripe, transferencia, MetaMask o escrow P2P.', '{"requiresMembership":true,"requiresPaymentConfirmation":true,"ownershipNotGranted":true}'::jsonb)
     ),
     resolved AS (
       SELECT
@@ -1360,10 +1374,14 @@ async function seedDemoMarketplaceRows() {
         updated_at = now()
     WHERE tenant_id IN (SELECT id FROM tenants WHERE slug = 'demobodega')
       AND title IN (
-        'Comprando Cabernet Franc sumas 180 puntos',
+        'Malbec con 220 puntos de club',
+        'Comprando Cabernet Franc sumás 180 puntos',
+        'Chardonnay de altura para maridaje',
+        'Aceite premium para club Balmec',
         'Cata privada 2x1 para miembros',
         'Club VIP por este mes',
-        'Caja selección con seguimiento de lote'
+        'Caja selección con seguimiento de lote',
+        'Carrito asistido por asesor Balmec'
       )
   `;
 }

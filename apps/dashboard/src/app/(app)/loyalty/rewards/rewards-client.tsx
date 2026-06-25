@@ -333,7 +333,7 @@ export default function RewardsClient({ initialRewards, tenantScope }: RewardsCl
                     onChange={(e) => setCustomTenant(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   >
-                    <option value="demobodega">Demo Bodega (demobodega)</option>
+                    <option value="demobodega">Bodega Balmec (demobodega)</option>
                     <option value="demoevents">Demo Events (demoevents)</option>
                     <option value="democosmetics">Demo Cosmetics (democosmetics)</option>
                   </select>

@@ -217,7 +217,7 @@ function scoreFor(slots: ProductAssetSlot[]) {
 export function resolveProductAssetProfile(input: ProductAssetInput = {}): ProductAssetProfile {
   const kind = inferVisualKind(input);
   const tenantSlug = compactKey(useful(input.tenantSlug, input.brandName, "demobodega"));
-  const brandName = useful(input.brandName, input.tenantSlug, "DemoBodega");
+  const brandName = useful(input.brandName, input.tenantSlug, "Bodega Balmec");
   const productName = useful(input.productName, defaultProductName(kind));
   const batchLabel = useful(input.bid, kind === "wine" ? "MZA-2026-0424" : `${tenantSlug.toUpperCase()}-2026-DEMO`);
   const skuLabel = useful(input.sku, `${kind.toUpperCase()}-DEMO`);

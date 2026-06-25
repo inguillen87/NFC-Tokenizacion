@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 const { resolveMarketplaceTenant, ownershipTone, shouldRedirectToConsumerAuth } = await import("../src/app/me/_components/consumer-portal-model.ts");
 
@@ -33,4 +34,16 @@ test("unauthenticated session debe redirigir a consumer auth", () => {
   assert.equal(shouldRedirectToConsumerAuth({ ok: false, authenticated: false }), true);
   assert.equal(shouldRedirectToConsumerAuth({ ok: true, authenticated: false }), true);
   assert.equal(shouldRedirectToConsumerAuth({ ok: true, authenticated: true }), false);
+});
+
+test("marketplace consumer UI no expone textos de demo ni mojibake", () => {
+  const page = readFileSync(new URL("../src/app/me/marketplace/page.tsx", import.meta.url), "utf8");
+  const grid = readFileSync(new URL("../src/app/me/marketplace/marketplace-grid-client.tsx", import.meta.url), "utf8");
+  const visibleSurface = `${page}\n${grid}`;
+
+  assert.match(visibleSurface, /Bodega Balmec/);
+  assert.match(visibleSurface, /CRM-ready checkout/);
+  assert.match(visibleSurface, /MercadoPago/);
+  assert.match(visibleSurface, /MetaMask \/ USDC/);
+  assert.doesNotMatch(visibleSurface, /Ã|Â|�|Demo Bodega|sandbox commerce|Lote Experimental/);
 });

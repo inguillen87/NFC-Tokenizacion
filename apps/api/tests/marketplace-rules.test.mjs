@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 const {
   evaluateMarketplaceCheckoutAccess,
@@ -47,4 +48,18 @@ test('request-to-buy requires passport context unless explicitly public/demo', (
   assert.deepEqual(evaluateMarketplaceCheckoutAccess({ verifiedTap: true }), { ok: true, mode: 'verified_tapper' });
   assert.deepEqual(evaluateMarketplaceCheckoutAccess({ demoOverride: true }), { ok: true, mode: 'demo_passport_context' });
   assert.deepEqual(evaluateMarketplaceCheckoutAccess({ publicNetworkCheckout: true }), { ok: true, mode: 'public_network_checkout' });
+});
+
+test('Bodega Balmec marketplace seed includes production-grade catalog and offers', () => {
+  const schema = readFileSync(new URL('../src/lib/commercial-runtime-schema.ts', import.meta.url), 'utf8');
+  const start = schema.indexOf('async function seedBalmecMarketplaceRows()');
+  const end = schema.indexOf('export async function ensureOrderRequestsSchema()', start);
+  const segment = schema.slice(start, end);
+
+  assert.notEqual(start, -1);
+  assert.match(segment, /Gran Reserva Malbec 2022/);
+  assert.match(segment, /Chardonnay de Altura 2023/);
+  assert.match(segment, /Aceite de Oliva Extra Virgen Arbequina/);
+  assert.match(segment, /Carrito asistido por asesor Balmec/);
+  assert.doesNotMatch(segment, /Ã|Â|�|Demo Bodega|Lote Experimental/);
 });

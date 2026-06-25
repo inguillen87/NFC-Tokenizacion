@@ -26,7 +26,7 @@ const FALLBACK_KPIS = {
 
 function demoOverviewRows() {
   return [
-    { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", scans: 61, duplicates: 1, tamper: 0, created_at: new Date().toISOString() },
+    { id: "demo-tenant-001", slug: "demobodega", name: "Bodega Balmec", scans: 61, duplicates: 1, tamper: 0, created_at: new Date().toISOString() },
   ];
 }
 
@@ -125,7 +125,7 @@ function demoAnalyticsData() {
       { device: "Samsung Galaxy S24", scans: 90, countries: 3, validRate: 88.1, risk: 8.7 },
     ],
     products: [
-      { uidHex: "0474856A0B1090", bid: "DEMO-2026-02", productName: "Cabernet Franc Reserva 2022", winery: "Demo Bodega", region: "Valle de Uco", vintage: "2022", scanCount: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), lastVerifiedCity: "San Martin", lastVerifiedCountry: "AR", tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" } },
+      { uidHex: "0474856A0B1090", bid: "DEMO-2026-02", productName: "Cabernet Franc Reserva 2022", winery: "Bodega Balmec", region: "Valle de Uco", vintage: "2022", scanCount: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), lastVerifiedCity: "San Martin", lastVerifiedCountry: "AR", tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" } },
     ],
     tagJourney: [
       ...runtimeEvents.slice(0, 8).map((event) => ({
@@ -459,7 +459,7 @@ export default async function DashboardHome() {
   ];
 
   const demoPacks = [
-    { key: "wine-secure", label: "Demo Bodega", tenant: "demobodega", itemId: "demo-item-001" },
+    { key: "wine-secure", label: "Bodega Balmec", tenant: "demobodega", itemId: "demo-item-001" },
   ];
 
   return (

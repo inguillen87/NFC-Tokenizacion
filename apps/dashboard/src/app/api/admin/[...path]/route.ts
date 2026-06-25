@@ -19,7 +19,7 @@ const API_BASE = productUrls.api;
 const DEFAULT_DEMO_TENANT = { slug: "demo-sandbox", name: "Demo Sandbox" };
 const DEMO_TENANT_NAMES: Record<string, string> = {
   "demo-sandbox": "Demo Sandbox",
-  demobodega: "Demo Bodega",
+  demobodega: "Bodega Balmec",
   demoevents: "Demo Events",
 };
 const DEMO_BATCH = {
@@ -28,7 +28,7 @@ const DEMO_BATCH = {
   tenant_slug: DEFAULT_DEMO_TENANT.slug,
   sku: "GRM-2022-DEMO",
   product_name: "Gran Reserva Malbec",
-  winery: "Demo Bodega",
+  winery: "Bodega Balmec",
   region: "Valle de Uco",
   grape_varietal: "Malbec",
   vintage: "2022",
@@ -207,7 +207,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     });
     const rows = [
       { id: "demo-tenant-000", slug: DEFAULT_DEMO_TENANT.slug, name: DEFAULT_DEMO_TENANT.name, created_at: new Date().toISOString(), scans: 0, duplicates: 0, tamper: 0, risk_score: 0 },
-      { id: "demo-tenant-001", slug: "demobodega", name: "Demo Bodega", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: demobodegaMetrics.riskScore },
+      { id: "demo-tenant-001", slug: "demobodega", name: "Bodega Balmec", created_at: new Date().toISOString(), scans: 240, duplicates: 5, tamper: 1, risk_score: demobodegaMetrics.riskScore },
       { id: "demo-tenant-002", slug: "demoevents", name: "Demo Events", created_at: new Date().toISOString(), scans: 92, duplicates: 2, tamper: 0, risk_score: demoeventsMetrics.riskScore },
     ];
     return NextResponse.json(rows);
@@ -324,7 +324,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           uidHex: "04A1B2C3D4",
           bid: "DEMO-2026-02",
           productName: "Gran Reserva Malbec",
-          winery: "Demo Bodega",
+          winery: "Bodega Balmec",
           region: "Valle de Uco",
           vintage: "2022",
           scanCount: 41 + runtimeSummary.scans,
@@ -347,7 +347,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           type: "lead",
           id: "demo-lead-001",
           contact: "demo@nexid.lat",
-          title: "Demo Bodega",
+          title: "Bodega Balmec",
           status: "new",
           created_at: new Date().toISOString(),
         },
@@ -468,7 +468,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           uidHex: "04A1B2C3D4",
           bid: "DEMO-2026-02",
           tenantSlug: demoTenant.slug,
-          product: { name: "Gran Reserva Malbec", winery: "Demo Bodega", region: "Valle de Uco", vintage: "2022" },
+          product: { name: "Gran Reserva Malbec", winery: "Bodega Balmec", region: "Valle de Uco", vintage: "2022" },
           status: { tag: "active", lastResult: "ok" },
           scans: { count: 41, firstSeenAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(Date.now() - 9 * 60 * 1000).toISOString() },
           lastVerifiedLocation: { city: "Buenos Aires", country: "AR" },
@@ -493,7 +493,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           assetReadiness: "0 reales / 4 demo / 1 pendientes",
           profile: {
             productName: "Gran Reserva Malbec",
-            brandName: "Demo Bodega",
+            brandName: "Bodega Balmec",
             verticalLabel: "Vinos y bebidas premium",
             primaryImageUrl: null,
             labelImageUrl: null,
@@ -517,7 +517,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
         bid: String(payload?.bid || "DEMO-2026-02"),
         uidHex: payload?.uidHex ? String(payload.uidHex) : null,
         productName: String(payload?.productName || "Gran Reserva Malbec"),
-        brandName: String(payload?.brandName || "Demo Bodega"),
+        brandName: String(payload?.brandName || "Bodega Balmec"),
         imageUrl: payload?.imageUrl ? String(payload.imageUrl) : null,
         labelImageUrl: payload?.labelImageUrl ? String(payload.labelImageUrl) : null,
         modelUrl: payload?.modelUrl ? String(payload.modelUrl) : null,
@@ -640,7 +640,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       scope: { tenant: demoTenant.slug, source: "demo", range: "30d", country: "all" },
       passport: {
         identity: { uidHex: uid, bid: "DEMO-2026-02", tenantSlug: demoTenant.slug, tagStatus: "active", readCounter: 58, scanCount: 41 },
-        product: { productName: "Gran Reserva Malbec", winery: "Demo Bodega", region: "Valle de Uco", vintage: "2022", varietal: "Malbec" },
+        product: { productName: "Gran Reserva Malbec", winery: "Bodega Balmec", region: "Valle de Uco", vintage: "2022", varietal: "Malbec" },
         provenance: {
           origin: { harvestYear: "2022", barrelMonths: 12, temperatureStorage: 16 },
           firstVerified: { at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), city: "Mendoza", country: "AR" },

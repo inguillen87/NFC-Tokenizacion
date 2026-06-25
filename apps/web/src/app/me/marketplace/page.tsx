@@ -27,6 +27,13 @@ type VerifiedExperience = {
   moderation_status?: string | null;
 };
 
+function marketplaceBrandName(slug?: string | null) {
+  const normalized = String(slug || "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized === "demobodega" || normalized === "bodega-balmec" || normalized === "bodegabalmec") return "Bodega Balmec";
+  return String(slug || "").trim();
+}
+
 function averageRating(items: VerifiedExperience[]) {
   const ratings = items.map((item) => Number(item.rating || 0)).filter((value) => value > 0);
   if (!ratings.length) return "0.0";
@@ -48,12 +55,13 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
   const approvedExperiences = experiences.filter((item) => String(item.moderation_status || "").toLowerCase() === "approved");
   const proofCount = approvedExperiences.length || experiences.length;
   const rating = averageRating(approvedExperiences.length ? approvedExperiences : experiences);
+  const tenantDisplayName = marketplaceBrandName(contextualTenant);
 
   return (
     <PortalShell
       title="Marketplace verificado"
       subtitle={contextualTenant
-        ? `Productos, beneficios y reventa del tenant ${contextualTenant}, conectados a taps reales.`
+        ? `Productos, beneficios y reventa de ${tenantDisplayName}, conectados a taps reales.`
         : "Productos, beneficios y reventa para miembros nexID, sin comprar a ciegas."}
       notificationCount={items.length}
     >
@@ -65,14 +73,14 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
               Producto, certificado, club y experiencias reales antes de avanzar.
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              La marca puede publicar productos, drops, recompra o beneficios. El usuario entiende si el producto es autentico,
-              de que lote viene, que club activa y que dijeron otros compradores verificados.
+              La marca puede publicar productos, drops, recompra o beneficios. El usuario entiende si el producto es auténtico,
+              de qué lote viene, qué club activa y qué dijeron otros compradores verificados.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             {[
-              ["Catalogo", `${items.length}`, "Productos publicados para este contexto."],
-              ["Reputacion", rating, "Estrellas de experiencias verificadas."],
+              ["Catálogo", `${items.length}`, "Productos publicados para este contexto."],
+              ["Reputación", rating, "Estrellas de experiencias verificadas."],
               ["Prueba social", `${proofCount}`, "Opiniones con tap, contacto o ownership."],
             ].map(([label, value, detail]) => (
               <article key={label} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4">
@@ -95,7 +103,7 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Web3 solo cuando aporta valor</p>
               <h2 className="mt-1 text-xl font-black text-white">Conecta MetaMask para NFT, reventa y ownership.</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                WhatsApp/email siguen resolviendo el alta post-tap. La wallet aparece aca cuando el cliente quiere comprar,
+                WhatsApp/email siguen resolviendo el alta post-tap. La wallet aparece acá cuando el cliente quiere comprar,
                 transformar un producto premium en NFT, venderlo o transferir propiedad.
               </p>
             </div>
@@ -123,8 +131,8 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
       {!items.length ? (
         <section className="rounded-xl border border-violet-300/30 bg-violet-500/10 p-5 text-sm text-violet-100">
           {contextualTenant
-            ? `Todavia no hay catalogo publicado para ${contextualTenant}. Cuando la marca active productos, drops o recompra, van a aparecer aca.`
-            : "Todavia no hay un tenant activo para abrir marketplace contextual. Guarda o reclama un producto para ver beneficios reales."}
+            ? `Todavía no hay catálogo publicado para ${tenantDisplayName}. Cuando la marca active productos, drops o recompra, van a aparecer acá.`
+            : "Todavía no hay una marca activa para abrir marketplace contextual. Guardá o reclamá un producto para ver beneficios reales."}
         </section>
       ) : (
         <MarketplaceGridClient items={items} />
@@ -134,7 +142,7 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
         <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Experiencias verificadas</p>
         <h2 className="mt-2 text-xl font-black text-white">Reviews solo de personas con evidencia real.</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-cyan-50/82">
-          Para opinar se pide tap físico, producto guardado, contacto validado, ownership o política de compra según el tenant.
+          Para opinar se pide tap físico, producto guardado, contacto validado, ownership o política de compra según la marca.
           La marca modera y el comprador lee feedback confiable.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">

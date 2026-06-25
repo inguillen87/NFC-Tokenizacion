@@ -15,7 +15,7 @@ const DEMO_CARRIER_PROFILE_CODE = "ntag424_dna_tt";
 const DEMO_PRODUCT = {
   sku: "GRM-2022-DEMO",
   name: "Gran Reserva Malbec",
-  winery: "Demo Bodega",
+  winery: "Bodega Balmec",
   region: "Valle de Uco, Mendoza",
   varietal: "Malbec",
   vintage: "2022",
@@ -172,7 +172,7 @@ export async function seedDemoPack(options: SeedOptions = {}) {
   const bid = (options.forceBid || rows[0]?.batch_id || pack.batchId || "DEMO-2026-02").trim();
   const tenantSlug = DEMO_TENANT_SLUG;
 
-  await sql`INSERT INTO tenants (slug, name, type, status, root_key_ct) VALUES (${tenantSlug}, 'Demo Bodega', 'winery', 'active', 'demo-root-key') ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, type = 'winery', status = 'active'`;
+  await sql`INSERT INTO tenants (slug, name, type, status, root_key_ct) VALUES (${tenantSlug}, 'Bodega Balmec', 'winery', 'active', 'demo-root-key') ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, type = 'winery', status = 'active'`;
   const tenant = (await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`)[0];
 
   const metaCt = encryptKey16(Buffer.from(metaHex, "hex"));
@@ -356,7 +356,7 @@ export async function seedDemoPack(options: SeedOptions = {}) {
       updated_at = now()
   `;
 
-  // Phase 8: Seed Loyalty Vertical Template for Demo Bodega ("Club Terroir")
+  // Phase 8: Seed Loyalty Vertical Template for Bodega Balmec ("Club Terroir")
   await sql`
     INSERT INTO loyalty_programs (tenant_id, name, vertical, status, points_name)
     VALUES (${tenant.id}, 'Club Terroir', 'winery', 'active', 'Uvas')
