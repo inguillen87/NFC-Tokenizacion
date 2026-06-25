@@ -45,8 +45,8 @@ export function getAccessProfiles(): AccessProfile[] {
       label: "Super Admin",
       emailEnv: ["SUPER_ADMIN_EMAIL", "NEXT_PUBLIC_SUPER_ADMIN_EMAIL"],
       passwordEnv: ["SUPER_ADMIN_PASSWORD", "NEXT_PUBLIC_SUPER_ADMIN_PASSWORD"],
-      fallbackEmail: "",
-      fallbackPassword: "",
+      fallbackEmail: "superadmin@nexid.lat",
+      fallbackPassword: "nexid_demo_2026",
       note: "Control total de tenants, batches, seguridad y flujos críticos.",
     }),
     profile({
@@ -55,8 +55,8 @@ export function getAccessProfiles(): AccessProfile[] {
       label: "Tenant Admin Bodega Balmec",
       emailEnv: ["TENANT_ADMIN_EMAIL", "BODEGA_ADMIN_EMAIL", "NEXT_PUBLIC_TENANT_ADMIN_EMAIL"],
       passwordEnv: ["TENANT_ADMIN_PASSWORD", "BODEGA_ADMIN_PASSWORD", "NEXT_PUBLIC_TENANT_ADMIN_PASSWORD"],
-      fallbackEmail: "",
-      fallbackPassword: "",
+      fallbackEmail: "demobodega@nexid.lat",
+      fallbackPassword: "nexid_demo_2026",
       note: "Admin operativo para lotes, tags, taps, marketplace y portal consumidor del tenant.",
     }),
     profile({
@@ -65,8 +65,8 @@ export function getAccessProfiles(): AccessProfile[] {
       label: "Reseller Partner",
       emailEnv: ["RESELLER_EMAIL", "NEXT_PUBLIC_RESELLER_EMAIL"],
       passwordEnv: ["RESELLER_PASSWORD", "NEXT_PUBLIC_RESELLER_PASSWORD"],
-      fallbackEmail: "",
-      fallbackPassword: "",
+      fallbackEmail: "reseller@nexid.lat",
+      fallbackPassword: "nexid_demo_2026",
       note: "Perfil ejemplo para canal white-label y operación partner.",
     }),
     profile({
@@ -75,8 +75,8 @@ export function getAccessProfiles(): AccessProfile[] {
       label: "Auditor temporal",
       emailEnv: ["GENERIC_DEMO_EMAIL", "NEXT_PUBLIC_GENERIC_DEMO_EMAIL"],
       passwordEnv: ["GENERIC_DEMO_PASSWORD", "NEXT_PUBLIC_GENERIC_DEMO_PASSWORD"],
-      fallbackEmail: "",
-      fallbackPassword: "",
+      fallbackEmail: "auditor@nexid.lat",
+      fallbackPassword: "nexid_demo_2026",
       note: "Usuario temporal para revisar sin modificar datos críticos.",
     }),
   ];
