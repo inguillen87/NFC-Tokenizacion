@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3003",
-    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && next build",
+    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && next build",
     "start": "next start -p 3003",
     "db:new": "node scripts/db-new-migration.mjs",
     "db:migrate": "node scripts/db-apply.mjs",
@@ -25,6 +25,7 @@
     "contracts:deploy:amoy": "hardhat run scripts/deploy-nexid-amoy.mjs --network amoy",
     "bootstrap:tenant": "node scripts/bootstrap-enterprise-tenant.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
+    "test:rewards": "node --test tests/reward-public-links-security.test.mjs",
     "test:sun": "node --test tests/sun-*.test.mjs",
     "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",
     "test:demo-corpus": "node --test tests/demo-corpus-smoke.test.mjs",

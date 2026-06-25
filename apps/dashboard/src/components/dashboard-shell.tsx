@@ -495,11 +495,11 @@ export function DashboardShellInner({
                 <h1 className="text-xl font-bold text-white tracking-tight">{title}</h1>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end sm:gap-3">
               <AdminNotificationBell />
               <Badge tone={audienceCopy.tone}>{audienceCopy.label}</Badge>
               <Badge tone="green">{shell.apiConnected}</Badge>
-              <div className="h-6 w-px bg-white/10 mx-1" />
+              <div className="hidden h-6 w-px bg-white/10 mx-1 sm:block" />
               <LocaleSwitcher value={locale} options={[...locales]} />
               <SharedThemeToggle />
               <button

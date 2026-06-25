@@ -7,12 +7,16 @@ const HF_CHAT_URL = "https://router.huggingface.co/v1/chat/completions";
 const DEFAULT_CHAT_MODEL = "zai-org/GLM-5.2:together";
 const DEFAULT_FALLBACK_CHAT_MODEL = "google/gemma-4-26B-A4B-it:deepinfra";
 
+function isClubTone(tone?: string) {
+  return tone === "club-privado" || tone === "vip-club";
+}
+
 function fallbackOptimizedText(text: string, tone?: string) {
   const clean = String(text || "").replace(/\s+/g, " ").trim();
   if (tone === "sommelier") {
     return `Version premium: ${clean || "vino de bodega"} con origen claro, notas de cata, crianza y una invitacion concreta a la experiencia de marca.`;
   }
-  if (tone === "club-privado") {
+  if (isClubTone(tone)) {
     return `Invitacion cuidada: ${clean || "beneficio exclusivo"} con cupos limitados, acceso preferencial y trato directo de la marca.`;
   }
   if (tone === "modern-web3") {
@@ -48,7 +52,7 @@ function buildPrompt(tone?: string) {
   if (tone === "sommelier") {
     return "Sos un sommelier enologo de lujo. Reescribi el texto en espanol para una bodega premium. Usa solo datos presentes en el texto: no inventes bodega, finca, terroir, premios, certificaciones, origen, proceso, anada ni propiedad. No uses garantizado, 100%, certificado o autentico si el input no lo afirma. Mejora tono, claridad y utilidad.";
   }
-  if (tone === "club-privado") {
+  if (isClubTone(tone)) {
     return "Sos estratega de fidelizacion premium. Reescribi el texto en espanol con exclusividad, cupos limitados y acceso preferencial, sin prometer propiedad ni beneficios no verificados.";
   }
   if (tone === "modern-web3") {

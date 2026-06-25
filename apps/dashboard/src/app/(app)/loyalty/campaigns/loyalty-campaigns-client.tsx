@@ -282,6 +282,7 @@ export default function LoyaltyCampaignsClient() {
   const [selectedTone, setSelectedTone] = useState<"sommelier" | "vip-club" | "modern-web3">("sommelier");
   const [appliedImprovements, setAppliedImprovements] = useState<ImprovementApplied[]>([]);
   const [selectedModel, setSelectedModel] = useState("Qwen/Qwen2.5-7B-Instruct");
+  const [optimizerMode, setOptimizerMode] = useState<"idle" | "huggingface" | "server-fallback" | "local-fallback">("idle");
 
   // Custom Hugging Face Token state loaded from localStorage
   const [hfTokenInput, setHfTokenInput] = useState(() => {
@@ -292,9 +293,14 @@ export default function LoyaltyCampaignsClient() {
   });
 
   const handleSaveToken = (val: string) => {
-    setHfTokenInput(val);
+    const cleanValue = val.trim();
+    setHfTokenInput(cleanValue);
     if (typeof window !== "undefined") {
-      localStorage.setItem("hf_api_token", val);
+      if (cleanValue) {
+        localStorage.setItem("hf_api_token", cleanValue);
+      } else {
+        localStorage.removeItem("hf_api_token");
+      }
     }
   };
 
@@ -358,6 +364,58 @@ export default function LoyaltyCampaignsClient() {
     const taps = audience.reduce((sum, member) => sum + asNumber(member.tap_count), 0);
     return { total, withPhone, whatsappOptIn, mendoza, taps };
   }, [audience]);
+  const flowReadiness = useMemo(() => {
+    const selectedProfiles = filteredAudience.length;
+    const optInProfiles = filteredAudience.filter((member) => member.whatsapp_opt_in || member.marketing_opt_in).length;
+    const score =
+      (audienceKpis.taps > 0 ? 20 : 0) +
+      (selectedProfiles > 0 ? 20 : 0) +
+      (optInProfiles > 0 ? 20 : 0) +
+      (selectedTemplate ? 20 : 0) +
+      (twilioOptInConfirmed ? 20 : 0);
+    return {
+      score,
+      selectedProfiles,
+      optInProfiles,
+      steps: [
+        {
+          label: "Tap verificado",
+          value: `${audienceKpis.taps.toLocaleString("es-AR")} taps`,
+          detail: "Senal fisica del producto usada como disparador comercial.",
+          ready: audienceKpis.taps > 0,
+          Icon: Gauge,
+        },
+        {
+          label: "Segmento CRM",
+          value: `${selectedProfiles.toLocaleString("es-AR")} perfiles`,
+          detail: selectedCity === "all" ? "Todos los perfiles accionables." : `Filtrado por ${selectedCity}.`,
+          ready: selectedProfiles > 0,
+          Icon: Layers,
+        },
+        {
+          label: "Consentimiento",
+          value: `${optInProfiles.toLocaleString("es-AR")} opt-in`,
+          detail: "WhatsApp o marketing habilitado antes de enviar.",
+          ready: optInProfiles > 0,
+          Icon: ShieldCheck,
+        },
+        {
+          label: "Plantilla",
+          value: selectedTemplate.name,
+          detail: selectedTemplate.offer,
+          ready: Boolean(selectedTemplate),
+          Icon: MessageSquare,
+        },
+        {
+          label: "Canje staff",
+          value: voucherResult?.redemption?.status || "lookup/redeem",
+          detail: "Codigo, sello y telefono validables desde el CRM.",
+          ready: Boolean(voucherResult?.ok),
+          Icon: BookmarkCheck,
+        },
+      ],
+    };
+  }, [audienceKpis.taps, filteredAudience, selectedCity, selectedTemplate, twilioOptInConfirmed, voucherResult]);
 
   useEffect(() => {
     let cancelled = false;
@@ -620,7 +678,7 @@ export default function LoyaltyCampaignsClient() {
         body: JSON.stringify({ 
           text: draftText, 
           tone: selectedTone,
-          customToken: hfTokenInput,
+          customToken: hfTokenInput || undefined,
           model: selectedModel
         }),
       });
@@ -645,6 +703,7 @@ export default function LoyaltyCampaignsClient() {
 
       setAppliedImprovements(foundImprovements);
       setOptimizedText(data.optimizedText);
+      setOptimizerMode(data.fallback ? "server-fallback" : "huggingface");
       setShowOptimizedResult(true);
       setIsOptimizing(false);
     } catch (err) {
@@ -699,6 +758,7 @@ export default function LoyaltyCampaignsClient() {
 
         setAppliedImprovements(foundImprovements);
         setOptimizedText(optimized);
+        setOptimizerMode("local-fallback");
         setShowOptimizedResult(true);
         setIsOptimizing(false);
       }, 1000);
@@ -729,6 +789,7 @@ export default function LoyaltyCampaignsClient() {
     setOptimizedText("");
     setShowOptimizedResult(false);
     setAppliedImprovements([]);
+    setOptimizerMode("idle");
     
     // Back to list
     setActiveTab("campaigns");
@@ -876,6 +937,28 @@ export default function LoyaltyCampaignsClient() {
     }, 1000);
   }
 
+  const optimizerModeLabel =
+    optimizerMode === "huggingface"
+      ? "LLM Hugging Face"
+      : optimizerMode === "server-fallback"
+        ? "Fallback seguro"
+        : optimizerMode === "local-fallback"
+          ? "Motor local"
+          : hfTokenInput
+            ? "LLM listo"
+            : "Heuristicas locales";
+
+  const optimizerModeDetail =
+    optimizerMode === "huggingface"
+      ? "La reescritura salio por Hugging Face Router con el modelo seleccionado."
+      : optimizerMode === "server-fallback"
+        ? "No hubo respuesta util del proveedor o falta token; se uso fallback seguro del servidor."
+        : optimizerMode === "local-fallback"
+          ? "La API no respondio; se uso el diccionario premium local del navegador."
+          : hfTokenInput
+            ? "Hay token guardado en este navegador; al optimizar se intenta usar Hugging Face."
+            : "Sin token, la reescritura y los scores quedan en modo estimado/local.";
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -924,6 +1007,52 @@ export default function LoyaltyCampaignsClient() {
               <div className="mt-1 text-[10px] text-slate-500">{item.hint}</div>
             </div>
           ))}
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-2xl border border-cyan-400/20 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,.16),transparent_36%),linear-gradient(135deg,rgba(2,6,23,.92),rgba(8,47,73,.36))] p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">
+                <Sparkles className="h-4 w-4" />
+                Investor demo flow
+              </div>
+              <h3 className="mt-1 text-sm font-black text-white">Circuito post-tap listo para mostrar</h3>
+              <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-400">
+                De la lectura NFC al beneficio canjeable: segmento, consentimiento, plantilla, WhatsApp/email y validacion staff en un solo recorrido.
+              </p>
+            </div>
+            <div className="min-w-[150px] rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-3 text-right">
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Readiness</div>
+              <div className="mt-1 text-3xl font-black text-cyan-100">{flowReadiness.score}%</div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300 transition-all" style={{ width: `${flowReadiness.score}%` }} />
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-5">
+            {flowReadiness.steps.map((step, index) => (
+              <div key={step.label} className="relative rounded-2xl border border-white/10 bg-slate-950/55 p-3">
+                {index < flowReadiness.steps.length - 1 ? (
+                  <div className="absolute -right-2 top-1/2 hidden h-px w-4 bg-cyan-300/30 md:block" />
+                ) : null}
+                <div className="flex items-start justify-between gap-2">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
+                    step.ready ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-200" : "border-slate-600/50 bg-slate-900 text-slate-500"
+                  }`}>
+                    <step.Icon className="h-4 w-4" />
+                  </div>
+                  <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${
+                    step.ready ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-800 text-slate-500"
+                  }`}>
+                    {step.ready ? "ready" : "pendiente"}
+                  </span>
+                </div>
+                <div className="mt-3 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">{step.label}</div>
+                <div className="mt-1 line-clamp-1 text-sm font-black text-white">{step.value}</div>
+                <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-slate-400">{step.detail}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
@@ -1199,7 +1328,57 @@ export default function LoyaltyCampaignsClient() {
               {filteredAudience.length} perfiles
             </span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="grid gap-2 p-3 md:hidden">
+            {filteredAudience.slice(0, 8).map((member) => (
+              <div key={member.consumer_id} className="rounded-2xl border border-white/10 bg-slate-900/45 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-black text-white">{member.display_name || "Usuario registrado"}</div>
+                    <div className="truncate text-[10px] text-slate-500">{member.email_masked || member.consumer_id.slice(0, 8)}</div>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${
+                    member.whatsapp_opt_in
+                      ? "bg-emerald-400/10 text-emerald-300"
+                      : member.marketing_opt_in
+                        ? "bg-amber-400/10 text-amber-200"
+                        : "bg-slate-800 text-slate-400"
+                  }`}>
+                    {member.whatsapp_opt_in ? "wa" : member.marketing_opt_in ? "mkt" : "pendiente"}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] text-slate-400">
+                  <div className="rounded-xl bg-slate-950/55 p-2">
+                    <div className="uppercase tracking-wider text-slate-600">Ciudad</div>
+                    <div className="truncate font-bold text-slate-200">{member.city || "Sin ciudad"}</div>
+                  </div>
+                  <div className="rounded-xl bg-slate-950/55 p-2">
+                    <div className="uppercase tracking-wider text-slate-600">Taps</div>
+                    <div className="font-bold text-cyan-200">{asNumber(member.tap_count)}</div>
+                  </div>
+                  <div className="rounded-xl bg-slate-950/55 p-2">
+                    <div className="uppercase tracking-wider text-slate-600">Puntos</div>
+                    <div className="font-bold text-emerald-200">{asNumber(member.points_balance)}</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span className="truncate font-mono text-[10px] text-cyan-200">{member.phone_masked || "sin telefono"}</span>
+                  <button
+                    type="button"
+                    title="Usar este usuario como ejemplo de personalizacion del mensaje"
+                    onClick={() => {
+                      setSelectedCity(member.city || "all");
+                      setDraftText(renderTemplateBody(selectedTemplate, member));
+                      setDraftTitle(`${selectedTemplate.name} - ${member.city || "usuario"}`);
+                    }}
+                    className="shrink-0 rounded-lg border border-cyan-400/30 px-2.5 py-1 text-[10px] font-bold text-cyan-200 hover:bg-cyan-400/10"
+                  >
+                    Personalizar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[760px] text-left text-xs">
               <thead className="bg-slate-900/70 text-[10px] uppercase tracking-wider text-slate-500">
                 <tr>
@@ -1259,6 +1438,8 @@ export default function LoyaltyCampaignsClient() {
       {/* Tabs Menu */}
       <div className="flex border-b border-white/10 mb-6">
         <button
+          type="button"
+          title="Ver campanas activas, resultados y recompensas emitidas"
           onClick={() => setActiveTab("campaigns")}
           className={`pb-3 text-sm font-bold border-b-2 px-4 transition-colors flex items-center gap-2 ${
             activeTab === "campaigns" 
@@ -1270,6 +1451,8 @@ export default function LoyaltyCampaignsClient() {
           Campañas Activas ({campaigns.length})
         </button>
         <button
+          type="button"
+          title="Abrir el editor IA para redactar, optimizar y puntuar mensajes comerciales"
           onClick={() => setActiveTab("ai-optimizer")}
           className={`pb-3 text-sm font-bold border-b-2 px-4 transition-colors flex items-center gap-2 relative ${
             activeTab === "ai-optimizer" 
@@ -1294,6 +1477,8 @@ export default function LoyaltyCampaignsClient() {
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white">Listado de Campañas</h2>
                 <Button 
+                  type="button"
+                  title="Abrir el editor IA para crear una nueva campana"
                   onClick={() => setActiveTab("ai-optimizer")} 
                   variant="secondary"
                   className="gap-2 text-xs py-1.5 border border-purple-500/30 hover:border-purple-500/60"
@@ -1317,6 +1502,8 @@ export default function LoyaltyCampaignsClient() {
                   </div>
                 </div>
                 <button 
+                  type="button"
+                  title="Ir al editor de copy y optimizacion cognitiva"
                   onClick={() => setActiveTab("ai-optimizer")}
                   className="text-xs font-bold text-purple-300 hover:text-purple-200 flex items-center gap-1 shrink-0"
                 >
@@ -1372,18 +1559,22 @@ export default function LoyaltyCampaignsClient() {
                 <div className="rounded-xl border border-purple-500/20 bg-purple-950/5 p-4 space-y-2.5">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                      🤗 Configuración Hugging Face API
+                      Configuracion Hugging Face API
                     </span>
-                    <span className={`text-[8.5px] font-bold px-2 py-0.5 rounded font-mono ${hfTokenInput ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400 animate-pulse"}`}>
-                      {hfTokenInput ? "LLM LIVE CONECTADO" : "HEURÍSTICAS LOCALES"}
+                    <span
+                      title={optimizerModeDetail}
+                      className={`text-[8.5px] font-bold px-2 py-0.5 rounded font-mono ${hfTokenInput ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400 animate-pulse"}`}
+                    >
+                      {optimizerModeLabel.toUpperCase()}
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 leading-normal">
-                    Pega tu Hugging Face API Token (gratuito) para habilitar reescrituras reales en la nube con modelos instructores (ej. Qwen/Gemma). Si no tienes token, la plataforma usará el motor de heurísticas premium local.
+                    Hugging Face se usa solo si hay token local o variable de entorno del servidor. Sin token, el sistema no llama a modelos externos: usa fallback seguro y scores estimados por heuristicas de copy.
                   </p>
                   <div className="flex gap-2">
                     <input
                       type="password"
+                      title="Token Hugging Face opcional. Se guarda solo en este navegador para pruebas del editor AI."
                       placeholder="hf_..."
                       value={hfTokenInput}
                       onChange={(e) => handleSaveToken(e.target.value)}
@@ -1392,6 +1583,7 @@ export default function LoyaltyCampaignsClient() {
                     {hfTokenInput && (
                       <button
                         onClick={() => handleSaveToken("")}
+                        title="Eliminar el token Hugging Face guardado en este navegador"
                         className="text-[10px] px-2.5 py-1.5 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition font-bold"
                       >
                         Limpiar
@@ -1407,6 +1599,7 @@ export default function LoyaltyCampaignsClient() {
                     <div className="flex flex-col gap-1.5 md:flex-row md:items-center">
                       <select
                         value={selectedModel}
+                        title="Modelo que se enviara al Hugging Face Router cuando el modo LLM este activo"
                         onChange={(e) => setSelectedModel(e.target.value)}
                         className="bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-200 outline-none focus:border-purple-500 transition-colors cursor-pointer w-full"
                       >
@@ -1452,6 +1645,7 @@ export default function LoyaltyCampaignsClient() {
                           <button
                             key={t.id}
                             type="button"
+                            title={`Usar perfil de redaccion ${t.label}: ${t.desc}`}
                             onClick={() => setSelectedTone(t.id as "sommelier" | "vip-club" | "modern-web3")}
                             className={`p-2 rounded-xl border text-left transition-all duration-300 flex flex-col gap-0.5 ${
                               selectedTone === t.id
@@ -1500,10 +1694,11 @@ export default function LoyaltyCampaignsClient() {
                               </div>
                             </div>
                             <div>
-                              <span className="block text-[9px] uppercase tracking-wider text-purple-400 mb-1 font-bold">Optimizado por AI ({selectedTone})</span>
+                              <span className="block text-[9px] uppercase tracking-wider text-purple-400 mb-1 font-bold">Optimizado por {optimizerModeLabel} ({selectedTone})</span>
                               <div className="bg-slate-900/40 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.08)] rounded-xl p-3 text-xs text-white leading-relaxed min-h-[120px]">
                                 {optimizedText}
                               </div>
+                              <p className="mt-1 text-[9px] text-slate-500">{optimizerModeDetail}</p>
                             </div>
                           </div>
 
@@ -1528,6 +1723,8 @@ export default function LoyaltyCampaignsClient() {
                           
                           <div className="flex gap-2">
                             <button
+                              type="button"
+                              title="Mover el texto optimizado al editor para seguir ajustandolo"
                               onClick={() => {
                                 setDraftText(optimizedText);
                                 setShowOptimizedResult(false);
@@ -1537,6 +1734,8 @@ export default function LoyaltyCampaignsClient() {
                               <Check className="w-3.5 h-3.5" /> Editar este texto
                             </button>
                             <button
+                              type="button"
+                              title="Descartar la version optimizada y volver al borrador original"
                               onClick={() => {
                                 setShowOptimizedResult(false);
                                 setAppliedImprovements([]);
@@ -1553,6 +1752,8 @@ export default function LoyaltyCampaignsClient() {
 
                   {!showOptimizedResult && (
                     <Button
+                      type="button"
+                      title="Analizar el texto y generar una version premium segun el tono seleccionado"
                       onClick={handleOptimizeText}
                       disabled={isOptimizing || !draftText.trim()}
                       className="w-full gap-2 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 border-none text-white shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:brightness-110 disabled:opacity-50 disabled:pointer-events-none"
@@ -1573,6 +1774,8 @@ export default function LoyaltyCampaignsClient() {
 
                   <div className="pt-2">
                     <Button
+                      type="button"
+                      title="Registrar esta campana en el CRM local de la demo"
                       onClick={handleCreateCampaign}
                       disabled={!draftText.trim() && !optimizedText.trim()}
                       variant="primary"
@@ -1589,9 +1792,9 @@ export default function LoyaltyCampaignsClient() {
               <div className="space-y-4">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Gauge className="w-4 h-4 text-purple-400" /> Telemetría Cognitiva de IA
+                    <Gauge className="w-4 h-4 text-purple-400" /> Score de copy y conversion
                   </h3>
-                  <p className="text-xs text-slate-400">Indicadores de impacto en tiempo real del copy seleccionado.</p>
+                  <p className="text-xs text-slate-400">Estimacion local de prestigio, emocion y CTR probable. No es telemetria real de campana hasta que haya envios y aperturas medidos.</p>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-slate-900/30 p-5 space-y-5">
@@ -1615,6 +1818,7 @@ export default function LoyaltyCampaignsClient() {
                           strokeWidth="6"
                           fill="transparent"
                           strokeDasharray={2 * Math.PI * 34}
+                          style={{ strokeDashoffset: 2 * Math.PI * 34 }}
                           animate={{ strokeDashoffset: 2 * Math.PI * 34 * (1 - analysis.prestigeScore / 100) }}
                           transition={{ duration: 0.8, ease: "easeOut" }}
                           strokeLinecap="round"
@@ -1736,6 +1940,8 @@ export default function LoyaltyCampaignsClient() {
                 
                 {msg.sender === "bot" && msg.action && (
                   <button
+                    type="button"
+                    title="Usar esta recomendacion del asistente como borrador de campana"
                     onClick={() => {
                       setDraftTitle(msg.action?.title || "");
                       setDraftText(msg.action?.prompt || "");
@@ -1777,6 +1983,8 @@ export default function LoyaltyCampaignsClient() {
                 "Drop Tokenizado Web3"
               ].map((text, idx) => (
                 <button
+                  type="button"
+                  title={`Cargar sugerencia rapida: ${text}`}
                   key={idx}
                   onClick={() => {
                     setChatInput(text);
@@ -1801,6 +2009,8 @@ export default function LoyaltyCampaignsClient() {
               />
               <button
                 type="submit"
+                title="Enviar mensaje al asistente de fidelizacion"
+                aria-label="Enviar mensaje al asistente de fidelizacion"
                 className="absolute right-2 text-cyan-400 hover:text-cyan-300 transition"
               >
                 <Send className="w-4 h-4" />
