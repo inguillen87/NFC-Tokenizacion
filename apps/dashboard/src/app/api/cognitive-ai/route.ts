@@ -87,7 +87,19 @@ function tokenBudgetFor(model: string) {
   return /glm-5\.2/i.test(model) ? 1024 : 512;
 }
 
+export async function GET() {
+  const configured = Boolean(process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY);
+  return NextResponse.json({
+    ok: true,
+    provider: "huggingface-router",
+    configured,
+    defaultModel: process.env.HF_CHAT_MODEL || DEFAULT_CHAT_MODEL,
+    fallbackModel: process.env.HF_FALLBACK_CHAT_MODEL || DEFAULT_FALLBACK_CHAT_MODEL,
+  });
+}
+
 export async function POST(req: Request) {
+  const startedAt = Date.now();
   try {
     const { text, tone, customToken, model: reqModel } = await req.json();
 
@@ -97,6 +109,7 @@ export async function POST(req: Request) {
 
     const hfToken = customToken || process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY;
     if (!hfToken) {
+      console.info("[cognitive_ai]", JSON.stringify({ event: "fallback", reason: "hugging_face_token_missing", tone, durationMs: Date.now() - startedAt }));
       return NextResponse.json({ optimizedText: fallbackOptimizedText(text, tone), fallback: true, reason: "hugging_face_token_missing" });
     }
 
@@ -135,9 +148,11 @@ export async function POST(req: Request) {
         cleanText = cleanText.slice(1, -1);
       }
 
+      console.info("[cognitive_ai]", JSON.stringify({ event: "success", provider: "huggingface-router", model: candidateModel, tone, modelFallback: candidateModel !== model, durationMs: Date.now() - startedAt }));
       return NextResponse.json({ optimizedText: cleanText, model: candidateModel, modelFallback: candidateModel !== model });
     }
 
+    console.info("[cognitive_ai]", JSON.stringify({ event: "fallback", reason: lastReason, model, tone, durationMs: Date.now() - startedAt }));
     return NextResponse.json({ optimizedText: fallbackOptimizedText(text, tone), fallback: true, reason: lastReason, model });
   } catch (error: any) {
     console.error("Error in cognitive-ai route:", error);

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { resolveLocale, siteConfig } from "@product/config";
 import { ContextualHelpBot } from "../components/contextual-helpbot";
@@ -184,6 +185,16 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const theme = themeCookie === "light" ? "light" : "dark";
   const socialCopy = getSocialCopy(locale);
   const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
+  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "";
+  const content = (
+    <>
+      <MisconfigurationBanner />
+      <PwaSetup />
+      <WalletExtensionGuard />
+      {children}
+      <ContextualHelpBot locale={locale} />
+    </>
+  );
 
   return (
     <html lang={locale} suppressHydrationWarning className={theme === "light" ? "theme-light" : undefined} data-theme={theme}>
@@ -194,11 +205,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body>
         {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}
-        <MisconfigurationBanner />
-        <PwaSetup />
-        <WalletExtensionGuard />
-        {children}
-        <ContextualHelpBot locale={locale} />
+        {clerkKey ? (
+          <ClerkProvider publishableKey={clerkKey}>
+            {content}
+          </ClerkProvider>
+        ) : (
+          content
+        )}
       </body>
     </html>
   );

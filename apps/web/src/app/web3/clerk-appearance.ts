@@ -1,0 +1,32 @@
+export const web3ClerkAppearance = {
+  variables: {
+    colorPrimary: "#22d3ee",
+    colorBackground: "#020617",
+    colorText: "#f8fafc",
+    colorTextSecondary: "#94a3b8",
+    colorInputBackground: "#f8fafc",
+    colorInputText: "#020617",
+    colorDanger: "#fb7185",
+    borderRadius: "0.9rem",
+    fontFamily: "inherit",
+  },
+  elements: {
+    rootBox: "w-full",
+    cardBox: "w-full border border-white/10 bg-slate-950/90 shadow-none",
+    card: "w-full bg-slate-950/90 shadow-none",
+    headerTitle: "text-white",
+    headerSubtitle: "text-slate-400",
+    socialButtonsBlockButton:
+      "border border-white/10 bg-slate-900 text-white hover:border-cyan-300/30 hover:bg-slate-800",
+    socialButtonsBlockButtonText: "text-white",
+    dividerLine: "bg-white/10",
+    dividerText: "text-slate-500",
+    formFieldLabel: "text-slate-300",
+    formFieldInput: "border-slate-300 bg-white text-slate-950 placeholder:text-slate-500",
+    formButtonPrimary: "bg-cyan-300 font-black text-slate-950 hover:bg-cyan-200",
+    footerActionText: "text-slate-500",
+    footerActionLink: "font-bold text-cyan-300 hover:text-cyan-200",
+    identityPreviewText: "text-slate-200",
+    formResendCodeLink: "text-cyan-300",
+  },
+} as const;

@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, Info, CheckCircle2, ChevronRight, HelpCircle, Shield, ArrowRight, Activity } from "lucide-react";
+import Link from "next/link";
+import {
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  ExternalLink,
+  Info,
+  KeyRound,
+  Network,
+  Shield,
+  Wallet,
+} from "lucide-react";
 
 type EthereumProvider = {
   isMetaMask?: boolean;
@@ -35,21 +46,18 @@ function walletErrorMessage(error: unknown, fallback: string) {
     error instanceof Error
       ? error.message
       : typeof error === "object" && error && "message" in error
-      ? String((error as { message?: unknown }).message || "")
-      : "";
+        ? String((error as { message?: unknown }).message || "")
+        : "";
 
   const normalized = message.toLowerCase();
-  if (normalized.includes("already processing") || normalized.includes("request already pending")) {
-    return "Ya hay una solicitud de wallet pendiente. Abre MetaMask en tu navegador, confirma y vuelve a intentar.";
+  if (normalized.includes("already processing") || normalized.includes("request already pending") || normalized.includes("already pending")) {
+    return "MetaMask ya tiene una solicitud pendiente. Abre la extension, confirma o cancela y vuelve a intentar.";
   }
   if (normalized.includes("failed to connect to metamask")) {
-    return "No pudimos abrir MetaMask. Desbloquea la extensión o sigue en modo sandbox sin wallet.";
-  }
-  if (normalized.includes("already pending")) {
-    return "MetaMask ya tiene una solicitud pendiente. Revísala en la extensión.";
+    return "No pudimos abrir MetaMask. Desbloquea la extension o continua con la opcion de demo.";
   }
   if (normalized.includes("user rejected")) {
-    return "Conexión cancelada por el usuario.";
+    return "Conexion cancelada por el usuario.";
   }
   return message || fallback;
 }
@@ -76,11 +84,15 @@ export function MetamaskSandboxCard({
   const [address, setAddress] = useState(initialWallet?.address || "");
   const [chainId, setChainId] = useState(initialWallet?.chainId || "");
   const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState(initialWallet?.address ? "Billetera vinculada correctamente a tu Pasaporte." : "Tu billetera está lista para ser configurada.");
+  const [message, setMessage] = useState(
+    initialWallet?.address
+      ? "Wallet asociada al Passport. Ya podes usar ownership, NFT y reventa."
+      : "Web3 es opcional: conectalo solo para ownership, NFT, marketplace o transferencias."
+  );
   const [hasMetaMask, setHasMetaMask] = useState(false);
+
   const isAmoy = chainId.toLowerCase() === POLYGON_AMOY.chainId.toLowerCase();
   const isSandbox = address.toLowerCase() === "0xa11ce00000000000000000000000000000000424";
-  
   const networkLabel = useMemo(() => {
     if (!chainId) return "Sin red";
     if (isAmoy) return "Polygon Amoy";
@@ -112,15 +124,34 @@ export function MetamaskSandboxCard({
     };
   }, []);
 
+  async function persistWallet(nextAddress: string, nextChainId: string, network: string) {
+    try {
+      const response = await fetch("/api/consumer/wallet/connect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address: nextAddress, chainId: nextChainId, network }),
+      });
+      const payload = (await response.json().catch(() => null)) as { ok?: boolean; wallet?: { addressMasked?: string | null } } | null;
+      if (!response.ok || !payload?.ok) {
+        setMessage("Wallet detectada en el navegador. Inicia sesion en el Passport para guardarla permanentemente.");
+        return;
+      }
+      setMessage(`Wallet ${payload.wallet?.addressMasked || shortAddress(nextAddress)} asociada al Passport.`);
+    } catch {
+      setMessage("Wallet conectada localmente. Hubo una demora al guardar la asociacion en la base de datos.");
+    }
+  }
+
   async function connectWallet() {
     const injectedProviders = getInjectedProviders();
     const provider = injectedProviders.find((entry) => entry.isMetaMask) || null;
-    const hasInjectedProvider = injectedProviders.length > 0;
     setHasMetaMask(Boolean(provider));
     if (!provider) {
-      setMessage(hasInjectedProvider
-        ? "Detectamos una billetera inyectada, pero no MetaMask. Puedes continuar usando la Billetera Sandbox rápida."
-        : "No detectamos la extensión de MetaMask. No te preocupes, puedes usar el botón Sandbox de abajo para simular.");
+      setMessage(
+        injectedProviders.length
+          ? "Detectamos una billetera inyectada, pero no MetaMask. Para esta demo usa MetaMask o activa la wallet de prueba."
+          : "No detectamos MetaMask en este navegador. Podes conectar por Clerk si la extension esta disponible o usar la wallet de prueba."
+      );
       return;
     }
     setPending(true);
@@ -128,13 +159,13 @@ export function MetamaskSandboxCard({
       const accounts = await requestWallet(provider, { method: "eth_requestAccounts" });
       const nextAddress = Array.isArray(accounts) && typeof accounts[0] === "string" ? accounts[0] : "";
       const nextChain = await requestWallet(provider, { method: "eth_chainId" });
-      setAddress(nextAddress);
       const normalizedChain = typeof nextChain === "string" ? nextChain : "";
+      setAddress(nextAddress);
       setChainId(normalizedChain);
       if (nextAddress) {
         await persistWallet(nextAddress, normalizedChain, "metamask");
       } else {
-        setMessage("No se recibió una cuenta autorizada.");
+        setMessage("MetaMask no devolvio una cuenta autorizada.");
       }
     } catch (error) {
       setMessage(walletErrorMessage(error, "No se pudo conectar MetaMask."));
@@ -146,7 +177,7 @@ export function MetamaskSandboxCard({
   async function addAmoy() {
     const provider = findMetaMaskProvider();
     if (!provider) {
-      setMessage("MetaMask no está disponible. Activa el modo Sandbox rápido.");
+      setMessage("MetaMask no esta disponible en este navegador.");
       return;
     }
     setPending(true);
@@ -164,30 +195,12 @@ export function MetamaskSandboxCard({
       if (address) {
         await persistWallet(address, normalizedChain, "metamask");
       } else {
-        setMessage("Polygon Amoy listo. Conecta tu cuenta MetaMask para guardarla.");
+        setMessage("Polygon Amoy quedo listo. Conecta tu cuenta MetaMask para guardarla.");
       }
     } catch (error) {
       setMessage(walletErrorMessage(error, "No se pudo cambiar a Polygon Amoy."));
     } finally {
       setPending(false);
-    }
-  }
-
-  async function persistWallet(nextAddress: string, nextChainId: string, network: string) {
-    try {
-      const response = await fetch("/api/consumer/wallet/connect", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address: nextAddress, chainId: nextChainId, network }),
-      });
-      const payload = await response.json().catch(() => null) as { ok?: boolean; wallet?: { addressMasked?: string | null } } | null;
-      if (!response.ok || !payload?.ok) {
-        setMessage("Wallet conectada en navegador, pero inicia sesión en el Pasaporte para guardarla permanentemente.");
-        return;
-      }
-      setMessage(`Billetera ${payload.wallet?.addressMasked || shortAddress(nextAddress)} asociada exitosamente.`);
-    } catch {
-      setMessage("Conectado localmente. Ocurrió una demora al guardarla en la base de datos.");
     }
   }
 
@@ -199,159 +212,131 @@ export function MetamaskSandboxCard({
   }
 
   return (
-    <section className="rounded-3xl border border-violet-500/20 bg-gradient-to-b from-slate-950 to-slate-900/90 p-5 shadow-2xl">
-      {/* Stepper Header */}
-      <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-2 w-2 rounded-full bg-violet-400 animate-pulse" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Vinculación Web3</p>
+    <section className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.92))] shadow-[0_28px_90px_rgba(0,0,0,0.42)]">
+      <div className="border-b border-white/10 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">
+              <Shield className="h-4 w-4" aria-hidden="true" />
+              Web3 opcional
+            </p>
+            <h3 className="mt-2 text-lg font-black text-white">Wallet y ownership digital</h3>
+            <p className="mt-2 max-w-xl text-xs leading-5 text-slate-300">
+              Email y WhatsApp siguen siendo el alta liviana post-tap. MetaMask se usa solo cuando queres reclamar propiedad,
+              tokenizar un producto premium, venderlo o transferirlo.
+            </p>
           </div>
-          <h3 className="mt-1.5 text-base font-black text-white">Tu Caja Fuerte Digital (Wallet)</h3>
-          <p className="mt-1 text-xs leading-5 text-slate-400">
-            Asocia tu cuenta para guardar certificados criptográficos de tus vinos o productos premium.
+          <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+            address
+              ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200"
+              : "border-white/10 bg-slate-950/60 text-slate-400"
+          }`}>
+            {isSandbox ? "Demo activa" : address ? "Conectada" : "Sin wallet"}
+          </span>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+            <Wallet className="h-5 w-5 text-cyan-200" aria-hidden="true" />
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Wallet</p>
+            <p className="mt-1 truncate font-mono text-sm font-black text-white">{address ? shortAddress(address) : "No conectada"}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+            <Network className="h-5 w-5 text-violet-200" aria-hidden="true" />
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Red</p>
+            <p className="mt-1 text-sm font-black text-white">{networkLabel}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+            <Activity className="h-5 w-5 text-emerald-200" aria-hidden="true" />
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Uso</p>
+            <p className="mt-1 text-sm font-black text-white">NFT / reventa / ownership</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-0 lg:grid-cols-[1fr_0.92fr]">
+        <div className="space-y-3 p-5">
+          <Link
+            href="/web3/sign-in?next=/me/wallet"
+            className="group flex items-center justify-between gap-4 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-4 text-left transition hover:border-cyan-200/60 hover:bg-cyan-300/15"
+          >
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-200/30 bg-cyan-300/10 text-cyan-100">
+                <KeyRound className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-white">Verificar con Clerk + MetaMask</p>
+                <p className="mt-1 text-xs leading-5 text-slate-300">Alta Web3 controlada para wallet, NFT y marketplace.</p>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 text-cyan-100 transition group-hover:translate-x-0.5" aria-hidden="true" />
+          </Link>
+
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void connectWallet()}
+            title="Conecta la extension MetaMask del navegador sin tocar el alta por WhatsApp/email."
+            className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/55 p-4 text-left transition hover:border-white/25 hover:bg-white/[0.04] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-900 text-orange-200">
+                <Wallet className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-white">Conectar MetaMask en navegador</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{hasMetaMask ? "MetaMask detectada." : "Si no aparece, instala o desbloquea la extension."}</p>
+              </div>
+            </div>
+            {address && !isSandbox ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" /> : <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />}
+          </button>
+
+          <button
+            type="button"
+            disabled={pending || !hasMetaMask || Boolean(address && isSandbox)}
+            onClick={() => void addAmoy()}
+            title="Agrega o cambia MetaMask a Polygon Amoy para pruebas de tokenizacion."
+            className="flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/55 p-4 text-left transition hover:border-violet-300/30 hover:bg-violet-400/[0.06] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-900 text-violet-200">
+                <Network className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-white">Usar Polygon Amoy</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">Red de prueba para firmas, certificados y NFT demo.</p>
+              </div>
+            </div>
+            {isAmoy ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" /> : <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />}
+          </button>
+        </div>
+
+        <div className="border-t border-white/10 p-5 lg:border-l lg:border-t-0">
+          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-4">
+            <div className="flex items-start gap-3">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-emerald-200" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-black text-white">Demo sin friccion</p>
+                <p className="mt-1 text-xs leading-5 text-emerald-50/80">
+                  Para reuniones, la wallet de prueba muestra el flujo completo sin pedir extension. Queda marcada como demo y no reemplaza una firma real.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={continueSandbox}
+              className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200/35 bg-emerald-300/10 px-4 py-2 text-xs font-black text-emerald-100 transition hover:bg-emerald-300/18"
+              title="Activa una wallet demo para mostrar ownership sin instalar MetaMask."
+            >
+              Activar wallet demo <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+
+          <p className="mt-4 rounded-2xl border border-white/10 bg-slate-950/65 p-4 text-xs leading-5 text-slate-300">
+            {message}
           </p>
         </div>
-        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${
-          address 
-            ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-300" 
-            : "border-white/10 bg-slate-950/60 text-slate-400"
-        }`}>
-          {isSandbox ? "Sandbox" : address ? "Conectada" : "Sin Vincular"}
-        </span>
       </div>
-
-      {/* Explicador simple para no técnicos (ej. bodegueros, clientes de vinos) */}
-      <div className="mt-4 rounded-2xl border border-white/5 bg-slate-900/40 p-3 text-[11px] leading-5 text-slate-300 flex items-start gap-2.5">
-        <Info className="h-4 w-4 shrink-0 text-violet-400 mt-0.5" />
-        <div>
-          <span className="font-bold text-white">¿Qué es una Billetera (Wallet)?</span>
-          <p className="mt-0.5">
-            Es tu caja fuerte digital. Te permite demostrar que eres el dueño legítimo de las botellas autenticadas por nexID y participar de preventas exclusivas sin intermediarios.
-          </p>
-        </div>
-      </div>
-
-      {/* 3 Guided Interactive Steps */}
-      <div className="mt-6 space-y-4">
-        {/* Step 1: Connect MetaMask */}
-        <div className={`relative rounded-2xl border p-4 transition duration-300 ${
-          address && !isSandbox 
-            ? "border-emerald-500/25 bg-emerald-500/5" 
-            : "border-white/5 bg-slate-950/30"
-        }`}>
-          <div className="flex items-start gap-3">
-            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-black ${
-              address && !isSandbox
-                ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-300"
-                : "border-white/10 bg-slate-900 text-slate-400"
-            }`}>
-              {address && !isSandbox ? <CheckCircle2 className="h-4 w-4" /> : "1"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-black text-white flex items-center gap-1.5">
-                Conectar Billetera Real (MetaMask)
-                <span className="text-slate-500 font-normal">🦊</span>
-              </h4>
-              <p className="mt-1 text-[11px] leading-4 text-slate-400">
-                Abre la extensión para autorizar la conexión.
-              </p>
-              {address && !isSandbox ? (
-                <div className="mt-2 text-[11px] font-mono text-emerald-300 bg-emerald-950/30 rounded px-2 py-1 inline-block">
-                  Cuenta: {shortAddress(address)}
-                </div>
-              ) : (
-                <button suppressHydrationWarning
-                  type="button"
-                  disabled={pending}
-                  onClick={() => void connectWallet()}
-                  className="mt-2.5 rounded-lg border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed"
-                >
-                  Conectar 🦊
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Step 2: Switch Network */}
-        <div className={`relative rounded-2xl border p-4 transition duration-300 ${
-          isAmoy 
-            ? "border-emerald-500/25 bg-emerald-500/5" 
-            : "border-white/5 bg-slate-950/30"
-        }`}>
-          <div className="flex items-start gap-3">
-            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-black ${
-              isAmoy
-                ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-300"
-                : "border-white/10 bg-slate-900 text-slate-400"
-            }`}>
-              {isAmoy ? <CheckCircle2 className="h-4 w-4" /> : "2"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-black text-white">Configurar Red Criptográfica</h4>
-              <p className="mt-1 text-[11px] leading-4 text-slate-400">
-                Utiliza la red Polygon Amoy para firmar tus certificados.
-              </p>
-              {isAmoy ? (
-                <div className="mt-2 text-[11px] font-bold text-emerald-300 bg-emerald-950/30 rounded px-2 py-1 inline-block uppercase tracking-wider">
-                  Red: Polygon Amoy OK 💜
-                </div>
-              ) : (
-                <button suppressHydrationWarning
-                  type="button"
-                  disabled={pending || !hasMetaMask || Boolean(address && isSandbox)}
-                  onClick={() => void addAmoy()}
-                  className="mt-2.5 rounded-lg border border-violet-400/35 bg-violet-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Cambiar Red 💜
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Step 3: Sandbox mode alternative */}
-        <div className={`relative rounded-2xl border p-4 transition duration-300 ${
-          isSandbox 
-            ? "border-emerald-500/25 bg-emerald-500/5" 
-            : "border-white/5 bg-slate-950/30"
-        }`}>
-          <div className="flex items-start gap-3">
-            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-black ${
-              isSandbox
-                ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-300"
-                : "border-white/10 bg-slate-900 text-slate-400"
-            }`}>
-              {isSandbox ? <CheckCircle2 className="h-4 w-4" /> : "3"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-black text-white">¿No tienes MetaMask? Usa Billetera de Pruebas</h4>
-              <p className="mt-1 text-[11px] leading-4 text-slate-400">
-                Activa una billetera virtual de nexID en 1 segundo para ver el flujo de propiedad sin instalar nada.
-              </p>
-              {isSandbox ? (
-                <div className="mt-2 text-[11px] font-bold text-emerald-300 bg-emerald-950/30 rounded px-2 py-1 inline-block uppercase tracking-wider">
-                  Billetera Sandbox Activa ⚡
-                </div>
-              ) : (
-                <button suppressHydrationWarning
-                  type="button"
-                  onClick={continueSandbox}
-                  className="mt-2.5 rounded-lg border border-emerald-400/35 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200 transition hover:bg-emerald-500/20"
-                >
-                  Activar Sandbox Rápido ⚡
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Info status logs */}
-      <p className="mt-5 rounded-xl border border-white/5 bg-slate-950/60 p-3 text-[11px] leading-5 text-slate-300 italic text-center">
-        {message}
-      </p>
     </section>
   );
 }

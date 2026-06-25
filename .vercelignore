@@ -1,0 +1,34 @@
+.git
+.vercel
+node_modules
+.next
+apps/*/.next
+apps/*/.vercel
+apps/*/.env
+apps/*/.env.*
+.turbo
+coverage
+test-results
+
+# Local Codex/dev artifacts that should never be uploaded to Vercel.
+artifacts
+tmp
+.codex
+.codex-logs
+.codex-run-logs
+.codex-*.log
+*.log
+
+# Local one-off NFC/debug helpers.
+api_all.txt
+KEYS_FLOW.md
+KEYS_ONE_FLOW.md
+nfc_key_tool.ps1
+nfc_key_tool.bat
+nfc_keys.ps1
+nfc_keys.bat
+nfc_keys_final.ps1
+nfc_keys_final.bat
+tmp-dev-web.out.log
+tmp-dev-web.err.log
+web-dev.log

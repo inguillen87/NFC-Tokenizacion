@@ -283,6 +283,9 @@ export default function LoyaltyCampaignsClient() {
   const [appliedImprovements, setAppliedImprovements] = useState<ImprovementApplied[]>([]);
   const [selectedModel, setSelectedModel] = useState("Qwen/Qwen2.5-7B-Instruct");
   const [optimizerMode, setOptimizerMode] = useState<"idle" | "huggingface" | "server-fallback" | "local-fallback">("idle");
+  const [serverAiConfigured, setServerAiConfigured] = useState<boolean | null>(null);
+  const [serverAiModel, setServerAiModel] = useState("");
+  const [lastOptimizerModel, setLastOptimizerModel] = useState("");
 
   // Custom Hugging Face Token state loaded from localStorage
   const [hfTokenInput, setHfTokenInput] = useState(() => {
@@ -303,6 +306,25 @@ export default function LoyaltyCampaignsClient() {
       }
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAiStatus() {
+      try {
+        const response = await fetch("/api/cognitive-ai", { cache: "no-store" });
+        const payload = await response.json().catch(() => null);
+        if (cancelled) return;
+        setServerAiConfigured(Boolean(payload?.configured));
+        setServerAiModel(String(payload?.defaultModel || ""));
+      } catch {
+        if (!cancelled) setServerAiConfigured(false);
+      }
+    }
+    void loadAiStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [analysis, setAnalysis] = useState<AnalysisResult>({
     prestigeScore: 0,
@@ -704,6 +726,7 @@ export default function LoyaltyCampaignsClient() {
       setAppliedImprovements(foundImprovements);
       setOptimizedText(data.optimizedText);
       setOptimizerMode(data.fallback ? "server-fallback" : "huggingface");
+      setLastOptimizerModel(String(data.model || selectedModel || ""));
       setShowOptimizedResult(true);
       setIsOptimizing(false);
     } catch (err) {
@@ -759,6 +782,7 @@ export default function LoyaltyCampaignsClient() {
         setAppliedImprovements(foundImprovements);
         setOptimizedText(optimized);
         setOptimizerMode("local-fallback");
+        setLastOptimizerModel("");
         setShowOptimizedResult(true);
         setIsOptimizing(false);
       }, 1000);
@@ -790,6 +814,7 @@ export default function LoyaltyCampaignsClient() {
     setShowOptimizedResult(false);
     setAppliedImprovements([]);
     setOptimizerMode("idle");
+    setLastOptimizerModel("");
     
     // Back to list
     setActiveTab("campaigns");
@@ -945,8 +970,12 @@ export default function LoyaltyCampaignsClient() {
         : optimizerMode === "local-fallback"
           ? "Motor local"
           : hfTokenInput
-            ? "LLM listo"
-            : "Heuristicas locales";
+            ? "LLM override listo"
+            : serverAiConfigured === true
+              ? "LLM servidor listo"
+              : serverAiConfigured === null
+                ? "Verificando IA"
+                : "Heuristicas locales";
 
   const optimizerModeDetail =
     optimizerMode === "huggingface"
@@ -956,8 +985,13 @@ export default function LoyaltyCampaignsClient() {
         : optimizerMode === "local-fallback"
           ? "La API no respondio; se uso el diccionario premium local del navegador."
           : hfTokenInput
-            ? "Hay token guardado en este navegador; al optimizar se intenta usar Hugging Face."
-            : "Sin token, la reescritura y los scores quedan en modo estimado/local.";
+            ? `Hay token guardado en este navegador; al optimizar se intenta usar ${selectedModel}.`
+            : serverAiConfigured === true
+              ? `El servidor tiene IA configurada${serverAiModel ? ` (${serverAiModel})` : ""}. El editor usa esa configuracion sin exponer tokens al navegador.`
+              : serverAiConfigured === null
+                ? "Consultando el estado del proveedor de IA del servidor."
+                : "Sin proveedor configurado, la reescritura y los scores quedan en modo estimado/local.";
+  const optimizerIsConfigured = Boolean(hfTokenInput || serverAiConfigured === true);
 
   return (
     <div className="space-y-6">
@@ -1555,26 +1589,27 @@ export default function LoyaltyCampaignsClient() {
                   <p className="text-xs text-slate-400">Escribí tu propuesta comercial técnica y analizala en tiempo real.</p>
                 </div>
 
-                {/* Hugging Face Settings Card */}
+                {/* AI provider settings */}
                 <div className="rounded-xl border border-purple-500/20 bg-purple-950/5 p-4 space-y-2.5">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                      Configuracion Hugging Face API
+                      Motor IA de campanas
                     </span>
                     <span
                       title={optimizerModeDetail}
-                      className={`text-[8.5px] font-bold px-2 py-0.5 rounded font-mono ${hfTokenInput ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400 animate-pulse"}`}
+                      className={`text-[8.5px] font-bold px-2 py-0.5 rounded font-mono ${optimizerIsConfigured ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400 animate-pulse"}`}
                     >
                       {optimizerModeLabel.toUpperCase()}
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 leading-normal">
-                    Hugging Face se usa solo si hay token local o variable de entorno del servidor. Sin token, el sistema no llama a modelos externos: usa fallback seguro y scores estimados por heuristicas de copy.
+                    El editor usa el proveedor configurado en el servidor y, solo para pruebas, permite un token local opcional.
+                    Sin proveedor activo, no llama modelos externos: usa fallback seguro y scores estimados de copy.
                   </p>
                   <div className="flex gap-2">
                     <input
                       type="password"
-                      title="Token Hugging Face opcional. Se guarda solo en este navegador para pruebas del editor AI."
+                      title="Override opcional para pruebas del editor AI. Se guarda solo en este navegador."
                       placeholder="hf_..."
                       value={hfTokenInput}
                       onChange={(e) => handleSaveToken(e.target.value)}
@@ -1594,12 +1629,12 @@ export default function LoyaltyCampaignsClient() {
                   {/* Model Selector below the token input */}
                   <div className="space-y-1.5 pt-1 border-t border-white/5">
                     <label className="block text-[8px] font-bold uppercase tracking-wider text-slate-400">
-                      Modelo LLM Hugging Face
+                      Modelo LLM
                     </label>
                     <div className="flex flex-col gap-1.5 md:flex-row md:items-center">
                       <select
                         value={selectedModel}
-                        title="Modelo que se enviara al Hugging Face Router cuando el modo LLM este activo"
+                        title="Modelo solicitado al proveedor LLM cuando el modo IA este activo"
                         onChange={(e) => setSelectedModel(e.target.value)}
                         className="bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-200 outline-none focus:border-purple-500 transition-colors cursor-pointer w-full"
                       >
@@ -1610,7 +1645,7 @@ export default function LoyaltyCampaignsClient() {
                       </select>
                       
                       <span className="text-[7.5px] text-slate-550 leading-normal font-mono uppercase bg-white/5 px-2 py-1 rounded w-fit shrink-0">
-                        {selectedModel.split("/")[0]} Engine
+                        {(lastOptimizerModel || serverAiModel || selectedModel).split("/")[0]} Engine
                       </span>
                     </div>
                   </div>
@@ -1818,6 +1853,7 @@ export default function LoyaltyCampaignsClient() {
                           strokeWidth="6"
                           fill="transparent"
                           strokeDasharray={2 * Math.PI * 34}
+                          initial={{ strokeDashoffset: 2 * Math.PI * 34 }}
                           style={{ strokeDashoffset: 2 * Math.PI * 34 }}
                           animate={{ strokeDashoffset: 2 * Math.PI * 34 * (1 - analysis.prestigeScore / 100) }}
                           transition={{ duration: 0.8, ease: "easeOut" }}

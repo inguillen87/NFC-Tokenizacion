@@ -7,7 +7,13 @@ import { usePathname } from "next/navigation";
 export function ContextualHelpBot({ locale }: { locale: AppLocale }) {
   const pathname = usePathname() || "";
 
-  if (pathname.startsWith("/sun") || pathname.startsWith("/me") || pathname.startsWith("/demo-lab") || pathname.startsWith("/r")) {
+  if (
+    pathname.startsWith("/sun") ||
+    pathname.startsWith("/me") ||
+    pathname.startsWith("/web3") ||
+    pathname.startsWith("/demo-lab") ||
+    pathname.startsWith("/r")
+  ) {
     return null;
   }
 

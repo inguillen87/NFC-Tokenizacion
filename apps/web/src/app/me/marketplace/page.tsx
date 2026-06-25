@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowRight, ShieldCheck, WalletCards } from "lucide-react";
 import { asArray, buildConsumerNextPath, fetchConsumerPath, fetchMarketplacePath, requireConsumerSession } from "../_components/consumer-api";
 import { resolveMarketplaceTenant } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
@@ -60,17 +62,17 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">Compra con contexto</p>
             <h2 className="mt-2 text-2xl font-black tracking-tight text-white">
-              Ves producto, certificado, club y experiencias reales antes de avanzar.
+              Producto, certificado, club y experiencias reales antes de avanzar.
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              La marca puede publicar productos, drops, recompra o beneficios. El usuario entiende si el producto es auténtico,
-              de qué lote viene, qué club activa y qué dijeron otros compradores verificados.
+              La marca puede publicar productos, drops, recompra o beneficios. El usuario entiende si el producto es autentico,
+              de que lote viene, que club activa y que dijeron otros compradores verificados.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             {[
-              ["Catálogo", `${items.length}`, "Productos publicados para este contexto."],
-              ["Reputación", rating, "Estrellas de experiencias verificadas."],
+              ["Catalogo", `${items.length}`, "Productos publicados para este contexto."],
+              ["Reputacion", rating, "Estrellas de experiencias verificadas."],
               ["Prueba social", `${proofCount}`, "Opiniones con tap, contacto o ownership."],
             ].map(([label, value, detail]) => (
               <article key={label} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4">
@@ -79,6 +81,41 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
                 <p className="mt-1 text-xs leading-5 text-slate-400">{detail}</p>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.13),transparent_32%),linear-gradient(135deg,rgba(2,6,23,0.94),rgba(8,13,30,0.92))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
+        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-200/25 bg-cyan-300/10 text-cyan-100">
+              <WalletCards className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Web3 solo cuando aporta valor</p>
+              <h2 className="mt-1 text-xl font-black text-white">Conecta MetaMask para NFT, reventa y ownership.</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                WhatsApp/email siguen resolviendo el alta post-tap. La wallet aparece aca cuando el cliente quiere comprar,
+                transformar un producto premium en NFT, venderlo o transferir propiedad.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/web3/sign-in?next=/me/marketplace"
+              className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-200"
+              title="Abrir autenticacion Web3 con Clerk y MetaMask para marketplace."
+            >
+              Conectar wallet <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+            <Link
+              href="/me/wallet"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/5"
+              title="Administrar certificados, ownership y transferencias del Passport."
+            >
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              Ver ownership
+            </Link>
           </div>
         </div>
       </section>
@@ -97,8 +134,8 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
         <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Experiencias verificadas</p>
         <h2 className="mt-2 text-xl font-black text-white">Reviews solo de personas con evidencia real.</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-cyan-50/82">
-          No cualquiera puede lastimar una marca premium: para opinar se pide tap fisico, producto guardado, contacto validado,
-          ownership o politica de compra segun el tenant. La marca modera y el comprador lee feedback confiable.
+          Para opinar se pide tap fisico, producto guardado, contacto validado, ownership o politica de compra segun el tenant.
+          La marca modera y el comprador lee feedback confiable.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {["Tap fisico confirmado", "Contacto o dueno verificado", "Moderacion de marca"].map((item) => (

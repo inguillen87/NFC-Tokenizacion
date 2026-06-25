@@ -2,20 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { 
-  Search, 
-  Layers, 
-  CheckCircle, 
-  ExternalLink, 
-  Send, 
-  ArrowRight, 
-  Plus, 
-  ShieldCheck,
-  HelpCircle,
-  Clock,
-  Sparkles,
-  Info
-} from "lucide-react";
+import { Clock, ExternalLink, Search, Send, ShieldCheck } from "lucide-react";
 import type { ConsumerPortalProduct } from "./consumer-portal-model";
 
 type Product = ConsumerPortalProduct & {
@@ -33,6 +20,15 @@ type WalletInteractiveClientProps = {
   selectedTenant: string;
 };
 
+type TransferNotice = {
+  type: "success" | "error";
+  text: string;
+};
+
+function shortAddress(value: string) {
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
 export function WalletInteractiveClient({ initialProducts, selectedTenant }: WalletInteractiveClientProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [filter, setFilter] = useState<"all" | "claimed" | "blockchain">("all");
@@ -40,6 +36,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
   const [transferringUid, setTransferringUid] = useState<string | null>(null);
   const [recipientAddress, setRecipientAddress] = useState("");
   const [recentTransfers, setRecentTransfers] = useState<Array<{ id: string; name: string; to: string; time: string; txHash: string }>>([]);
+  const [transferNotice, setTransferNotice] = useState<TransferNotice | null>(null);
 
   const hasOnChainProof = (product: Product) => {
     const txHash = String(product.tokenization_tx_hash || "");
@@ -53,43 +50,44 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
   };
 
   const handleTransfer = (bid: string, productName: string) => {
-    if (!recipientAddress.trim()) {
-      alert("Por favor, introduce una dirección válida de destino.");
+    const normalizedRecipient = recipientAddress.trim();
+    if (!/^0x[a-fA-F0-9]{40}$/.test(normalizedRecipient)) {
+      setTransferNotice({ type: "error", text: "Ingresa una direccion 0x valida para preparar la transferencia." });
       return;
     }
 
-    const txHash = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-    
-    // Simulate updating state: mark product as transferred (remove from claimed list or change ownership status)
+    const txHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
+
     setProducts((prev) =>
-      prev.map((p) =>
-        (p.bid === bid || p.batch === bid)
-          ? { ...p, ownership_record_status: "transferred", ownership_status: "transferred" }
-          : p
+      prev.map((product) =>
+        product.bid === bid || product.batch === bid
+          ? { ...product, ownership_record_status: "transferred", ownership_status: "transferred" }
+          : product
       )
     );
-
     setRecentTransfers((prev) => [
       {
         id: `tx-${Math.random().toString(36).substring(2, 8)}`,
         name: productName,
-        to: recipientAddress,
+        to: normalizedRecipient,
         time: "Hace unos segundos",
         txHash,
       },
       ...prev,
     ]);
-
     setTransferringUid(null);
     setRecipientAddress("");
-    alert(`¡Transferencia de NFT simulada con éxito!\nFirma registrada en Polygon Amoy.\nHash: ${txHash.slice(0, 16)}...`);
+    setTransferNotice({
+      type: "success",
+      text: `Solicitud P2P preparada en Polygon Amoy. Hash demo: ${txHash.slice(0, 16)}...`,
+    });
   };
 
+  const normalizedSearch = search.toLowerCase();
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
-      (product.product_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (product.bid || "").toLowerCase().includes(search.toLowerCase());
-
+      (product.product_name || "").toLowerCase().includes(normalizedSearch) ||
+      (product.bid || "").toLowerCase().includes(normalizedSearch);
     const isClaimed = String(product.ownership_record_status || product.ownership_status || "").toLowerCase() === "claimed";
     const isOnChain = hasOnChainProof(product);
 
@@ -100,52 +98,66 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
 
   return (
     <div className="space-y-6">
-      
-      {/* Header, Search & Filter Options */}
       <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <h3 className="text-sm font-black text-white">Tus Certificados Digitales (NFTs)</h3>
-            <p className="text-xs text-slate-400">Administra, filtra y transfiere tus botellas autenticadas.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
+              {selectedTenant ? `${selectedTenant} ownership` : "nexID ownership"}
+            </p>
+            <h3 className="mt-1 text-sm font-black text-white">Certificados digitales y NFTs</h3>
+            <p className="text-xs text-slate-400">Administra, filtra y prepara transferencias de productos autenticados.</p>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-3">
-            {/* Search Input */}
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+              <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <input
                 type="text"
                 placeholder="Buscar por nombre o lote..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full md:w-60 bg-slate-900 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                onChange={(event) => setSearch(event.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-slate-900 py-2 pl-9 pr-4 text-xs text-white focus:border-amber-400 focus:outline-none md:w-60"
               />
             </div>
-            
-            {/* Filter Buttons */}
-            <div className="flex bg-slate-900 p-1 rounded-xl border border-white/5">
+
+            <div className="flex rounded-xl border border-white/5 bg-slate-900 p-1">
               {[
                 { id: "all", label: "Todos" },
                 { id: "claimed", label: "Reclamados" },
-                { id: "blockchain", label: "En Blockchain" }
-              ].map((btn) => (
+                { id: "blockchain", label: "Blockchain" },
+              ].map((button) => (
                 <button
-                  key={btn.id}
-                  onClick={() => setFilter(btn.id as any)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
-                    filter === btn.id
-                      ? "bg-amber-500 text-slate-950"
-                      : "text-slate-400 hover:text-white"
+                  key={button.id}
+                  type="button"
+                  title={`Filtrar activos: ${button.label}`}
+                  onClick={() => setFilter(button.id as "all" | "claimed" | "blockchain")}
+                  className={`rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition ${
+                    filter === button.id ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  {btn.label}
+                  {button.label}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Product Cards Grid */}
+        {transferNotice ? (
+          <div
+            className={`mt-5 flex items-start gap-3 rounded-2xl border p-4 text-xs leading-5 ${
+              transferNotice.type === "success"
+                ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-50"
+                : "border-rose-300/25 bg-rose-400/10 text-rose-50"
+            }`}
+          >
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-black">{transferNotice.type === "success" ? "Operacion preparada" : "Revisa la direccion"}</p>
+              <p className="mt-0.5 text-slate-300">{transferNotice.text}</p>
+            </div>
+          </div>
+        ) : null}
+
         {!filteredProducts.length ? (
           <div className="mt-6 rounded-2xl border border-dashed border-white/10 bg-slate-900/10 p-8 text-center text-slate-400">
             <p className="text-xs">No se encontraron activos digitales con los filtros aplicados.</p>
@@ -160,112 +172,118 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
               const txHash = String(product.tokenization_tx_hash || "");
               const explorerHref = isOnChain ? `https://amoy.polygonscan.com/tx/${encodeURIComponent(txHash)}` : "";
               const certificateUrl = certificateHref(product);
-
               const isBottle = !product.product_name?.toLowerCase().includes("crate") && !product.product_name?.toLowerCase().includes("caja");
               const thumbnailImg = isBottle ? "/images/premium_magnum.png" : "/images/wine_crate.png";
 
               return (
-                <div 
-                  key={`${bid}-${index}`} 
-                  className={`rounded-2xl border bg-slate-950/80 p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${
-                    isTransferred 
-                      ? "border-white/5 opacity-50" 
-                      : "border-white/5 hover:border-amber-500/20 hover:shadow-[0_8px_24px_rgba(245,158,11,0.03)]"
+                <div
+                  key={`${bid}-${index}`}
+                  className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-slate-950/80 p-4 transition-all duration-300 ${
+                    isTransferred
+                      ? "border-white/5 opacity-55"
+                      : "border-white/5 hover:border-amber-500/20 hover:shadow-[0_8px_24px_rgba(245,158,11,0.05)]"
                   }`}
                 >
                   <div className="flex gap-4">
-                    {/* Thumbnail */}
-                    <div className="h-20 w-16 shrink-0 rounded-xl border border-white/10 bg-black/40 p-1 flex items-center justify-center overflow-hidden">
+                    <div className="flex h-20 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/40 p-1">
                       <img
                         src={thumbnailImg}
-                        alt={product.product_name || "Vino"}
+                        alt={product.product_name || "Producto autentico"}
                         className="h-16 w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]"
                       />
                     </div>
 
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <span className="rounded-full border border-amber-400/20 bg-amber-400/5 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-300">
                           {product.brand_name || "nexID Partner"}
                         </span>
-                        <span className={`rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${
-                          isTransferred
-                            ? "border-red-500/20 bg-red-500/10 text-red-400"
-                            : isOnChain
-                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                            : isClaimed
-                            ? "border-cyan-500/20 bg-cyan-500/10 text-cyan-300"
-                            : "border-white/5 bg-slate-900 text-slate-400"
-                        }`}>
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${
+                            isTransferred
+                              ? "border-red-500/20 bg-red-500/10 text-red-400"
+                              : isOnChain
+                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                                : isClaimed
+                                  ? "border-cyan-500/20 bg-cyan-500/10 text-cyan-300"
+                                  : "border-white/5 bg-slate-900 text-slate-400"
+                          }`}
+                        >
                           {isTransferred ? "Transferido" : isOnChain ? "Blockchain NFT" : isClaimed ? "Propietario" : "Registrado"}
                         </span>
                       </div>
-                      
-                      <h4 className="mt-1 text-xs font-black text-white truncate leading-snug">{product.product_name || "Vino Auténtico"}</h4>
-                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">Lote: {bid}</p>
+
+                      <h4 className="mt-1 truncate text-xs font-black leading-snug text-white">{product.product_name || "Producto autentico"}</h4>
+                      <p className="mt-0.5 font-mono text-[10px] text-slate-500">Lote: {bid}</p>
                     </div>
                   </div>
 
-                  {/* Actions / Public Cert */}
-                  <div className="mt-4 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex gap-2">
-                      {certificateUrl && (
-                        <Link 
-                          href={certificateUrl} 
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 hover:text-white transition"
-                        >
-                          Firma Digital <ExternalLink className="h-3 w-3" />
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
+                    <div className="flex flex-wrap gap-2">
+                      {certificateUrl ? (
+                        <Link href={certificateUrl} className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 transition hover:text-white">
+                          Firma digital <ExternalLink className="h-3 w-3" aria-hidden="true" />
                         </Link>
-                      )}
-                      
-                      {isOnChain && explorerHref && (
-                        <a 
-                          href={explorerHref} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-400 hover:text-white transition"
+                      ) : null}
+
+                      {isOnChain && explorerHref ? (
+                        <a
+                          href={explorerHref}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-400 transition hover:text-white"
                         >
-                          Ver en Polygonscan <ExternalLink className="h-3 w-3" />
+                          Polygonscan <ExternalLink className="h-3 w-3" aria-hidden="true" />
                         </a>
-                      )}
+                      ) : null}
                     </div>
 
-                    {isClaimed && !isTransferred && (
+                    {isClaimed && !isTransferred ? (
                       <div>
                         {transferringUid === bid ? (
-                          <div className="mt-2 flex flex-col gap-2 w-full">
+                          <div className="mt-2 flex w-full flex-col gap-2">
                             <input
                               type="text"
-                              placeholder="Dirección 0x..."
+                              placeholder="Direccion 0x..."
                               value={recipientAddress}
-                              onChange={(e) => setRecipientAddress(e.target.value)}
-                              className="bg-slate-900 border border-white/15 rounded-lg px-2.5 py-1 text-[10px] text-white focus:outline-none focus:border-amber-400 min-w-40"
+                              onChange={(event) => setRecipientAddress(event.target.value)}
+                              className="min-w-40 rounded-lg border border-white/15 bg-slate-900 px-2.5 py-1 text-[10px] text-white focus:border-amber-400 focus:outline-none"
                             />
-                            <div className="flex gap-1.5 justify-end">
+                            <div className="flex justify-end gap-1.5">
                               <button
-                                onClick={() => setTransferringUid(null)}
-                                className="px-2 py-1 rounded bg-slate-800 text-slate-400 text-[9px] font-black uppercase"
+                                type="button"
+                                onClick={() => {
+                                  setTransferringUid(null);
+                                  setRecipientAddress("");
+                                }}
+                                className="rounded bg-slate-800 px-2 py-1 text-[9px] font-black uppercase text-slate-400"
                               >
                                 Cancelar
                               </button>
                               <button
-                                onClick={() => handleTransfer(bid, product.product_name || "Vino")}
-                                className="px-2.5 py-1 rounded bg-amber-500 text-slate-950 text-[9px] font-black uppercase flex items-center gap-1"
+                                type="button"
+                                onClick={() => handleTransfer(bid, product.product_name || "Producto")}
+                                className="flex items-center gap-1 rounded bg-amber-500 px-2.5 py-1 text-[9px] font-black uppercase text-slate-950"
                               >
-                                Confirmar <Send className="h-2.5 w-2.5" />
+                                Confirmar <Send className="h-2.5 w-2.5" aria-hidden="true" />
                               </button>
                             </div>
                           </div>
                         ) : (
                           <button
-                            onClick={() => setTransferringUid(bid)}
-                            className="rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-amber-200 hover:bg-amber-500/25 transition flex items-center gap-1"
+                            type="button"
+                            title="Prepara una transferencia P2P de ownership. En produccion debe firmarse con wallet antes de mover el NFT."
+                            onClick={() => {
+                              setTransferringUid(bid);
+                              setTransferNotice(null);
+                            }}
+                            className="flex items-center gap-1 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-amber-200 transition hover:bg-amber-500/25"
                           >
-                            Transferir P2P <Send className="h-2.5 w-2.5" />
+                            Transferir P2P <Send className="h-2.5 w-2.5" aria-hidden="true" />
                           </button>
                         )}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               );
@@ -274,37 +292,37 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
         )}
       </div>
 
-      {/* Recent Transfers Log Ledger */}
-      {recentTransfers.length > 0 && (
+      {recentTransfers.length > 0 ? (
         <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-4">
-            <Clock className="h-3.5 w-3.5 text-amber-400" />
-            Transferencias P2P Recientes (Sesión)
+          <h3 className="mb-4 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-400">
+            <Clock className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+            Transferencias P2P recientes
           </h3>
           <div className="space-y-2">
-            {recentTransfers.map((tx) => (
-              <div key={tx.id} className="rounded-xl border border-white/5 bg-slate-900/30 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[10px]">
+            {recentTransfers.map((transfer) => (
+              <div key={transfer.id} className="flex flex-col gap-3 rounded-xl border border-white/5 bg-slate-900/30 p-3 text-[10px] sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-black text-white">{tx.name}</p>
-                  <p className="text-slate-500 mt-0.5">Destino: <span className="font-mono text-slate-300">{tx.to}</span></p>
+                  <p className="font-black text-white">{transfer.name}</p>
+                  <p className="mt-0.5 text-slate-500">
+                    Destino: <span className="font-mono text-slate-300">{shortAddress(transfer.to)}</span>
+                  </p>
                 </div>
-                <div className="sm:text-right shrink-0">
-                  <span className="text-amber-400 font-bold uppercase block">Enviado</span>
-                  <a 
-                    href={`https://amoy.polygonscan.com/tx/${tx.txHash}`} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="font-mono text-slate-500 hover:text-slate-300 flex items-center gap-1 mt-0.5 justify-end"
+                <div className="shrink-0 sm:text-right">
+                  <span className="block font-bold uppercase text-amber-400">Preparado</span>
+                  <a
+                    href={`https://amoy.polygonscan.com/tx/${transfer.txHash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-0.5 flex items-center gap-1 font-mono text-slate-500 hover:text-slate-300 sm:justify-end"
                   >
-                    Hash: {tx.txHash.slice(0, 10)}... <ExternalLink className="h-2.5 w-2.5" />
+                    Hash: {transfer.txHash.slice(0, 10)}... <ExternalLink className="h-2.5 w-2.5" aria-hidden="true" />
                   </a>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      )}
-      
+      ) : null}
     </div>
   );
 }
