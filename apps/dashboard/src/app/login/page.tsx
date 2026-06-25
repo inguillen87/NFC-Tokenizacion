@@ -15,13 +15,15 @@ const roleDescriptions: Record<string, string> = {
 };
 
 function dashboardOneClickAccessAllowed() {
-  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").toLowerCase();
+  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").trim().toLowerCase();
   if (explicitPublicSession === "1" || explicitPublicSession === "true") return true;
-  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
-  if (isProduction) return false;
+  if (explicitPublicSession === "0" || explicitPublicSession === "false") return false;
+
   const configured = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
-  if (configured === "") return true;
-  return configured === "1" || configured === "true";
+  if (configured === "0" || configured === "false") return false;
+  if (configured === "1" || configured === "true") return true;
+
+  return true;
 }
 
 export default async function LoginPage() {
