@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { json } from "../../../../../../lib/http";
 import { canUseDemoConsumerForTap, getConsumerFromRequest, getOrCreateDemoConsumer } from "../../../../../../lib/consumer-auth";
-import { ensureTenantMembership } from "../../../../../../lib/consumer-portal-service";
+import { ensureTenantMembership, saveTapForConsumer } from "../../../../../../lib/consumer-portal-service";
 import { getTapEvent } from "../../../../../../lib/loyalty-service";
 import { isClaimableOwnershipResult, matchesOwnershipBatch, matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
 import { ensureConsumerPortalSchema } from "../../../../../../lib/commercial-runtime-schema";
@@ -42,6 +42,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   }
   if (!matchesOwnershipBatch({ eventBid: event.bid, requestedBid: body.bid })) return json({ ok: false, error: "tenant_batch_mismatch" }, 403);
   if (!isClaimableOwnershipResult(String(event.result || ""))) return json({ ok: false, error: "tap_not_claimable" }, 409);
+  await saveTapForConsumer({ consumerId: consumer.id, eventId: String(event.id) });
   const membership = await ensureTenantMembership({ consumerId: consumer.id, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
   return json({ ok: true, membership });
 }

@@ -11,8 +11,8 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
     lead: "Respuestas cortas para que cualquiera entienda la demo y el rollout sin reunión técnica.",
     items: [
       {
-        q: "Que recibe una persona despues de tocar el producto?",
-        a: "Una respuesta simple: si el producto es autentico, de donde viene, que lote tiene y cual es el siguiente paso disponible: garantia, beneficio, certificado, portal o reclamo de dueno.",
+        q: "¿Qué recibe una persona después de tocar el producto?",
+        a: "Una respuesta simple: si el producto es auténtico, de dónde viene, qué lote tiene y cuál es el siguiente paso disponible: garantía, beneficio, certificado, portal o reclamo de dueño.",
       },
       {
         q: "Esto obliga al cliente a entender blockchain o NFT?",

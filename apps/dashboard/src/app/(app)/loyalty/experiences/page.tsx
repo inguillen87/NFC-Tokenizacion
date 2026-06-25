@@ -8,23 +8,23 @@ import { headers } from "next/headers";
 
 const clubControls = [
   {
-    title: "Quien puede opinar",
-    body: "Tap fisico fresco, contacto validado y producto guardado, reclamado o comprado segun politica del lote.",
+    title: "Quién puede opinar",
+    body: "Tap físico fresco, contacto validado y producto guardado, reclamado o comprado según política del lote.",
     status: "Owner-safe",
   },
   {
-    title: "Que puede publicar",
-    body: "Estrellas, comentario, fotos opcionales, pais aproximado, idioma original y traduccion automatica.",
+    title: "Qué puede publicar",
+    body: "Estrellas, comentario, fotos opcionales, país aproximado, idioma original y traducción automática.",
     status: "Privacidad",
   },
   {
-    title: "Como se protege la marca",
-    body: "Moderacion previa, filtro de lenguaje, score anti-spam, derecho de respuesta y bloqueo por riesgo.",
+    title: "Cómo se protege la marca",
+    body: "Moderación previa, filtro de lenguaje, score anti-spam, derecho de respuesta y bloqueo por riesgo.",
     status: "Brand-safe",
   },
   {
-    title: "Que gana el negocio",
-    body: "Prueba social real, feedback por lote, club VIP, marketplace mas confiable y mas valor para el certificado.",
+    title: "Qué gana el negocio",
+    body: "Prueba social real, feedback por lote, club VIP, marketplace más confiable y más valor para el certificado.",
     status: "Growth",
   },
 ];
@@ -35,14 +35,14 @@ const eventClubs = [
     product: "Vinos premium",
     members: "842 miembros",
     signal: "4.9 estrellas verificadas",
-    body: "Duenos y compradores comparten experience, apertura, guarda, reventa y recomendaciones.",
+    body: "Dueños y compradores comparten experiencia, apertura, guarda, reventa y recomendaciones.",
   },
   {
     name: "Beauty Passport",
-    product: "Cosmetica y perfume",
+    product: "Cosmética y perfume",
     members: "510 miembros",
     signal: "87% compra validada",
-    body: "Comentarios visibles solo si existe tap, ticket, garantia o producto guardado.",
+    body: "Comentarios visibles solo si existe tap, ticket, garantía o producto guardado.",
   },
   {
     name: "VIP Access",

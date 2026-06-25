@@ -134,11 +134,11 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
         <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Experiencias verificadas</p>
         <h2 className="mt-2 text-xl font-black text-white">Reviews solo de personas con evidencia real.</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-cyan-50/82">
-          Para opinar se pide tap fisico, producto guardado, contacto validado, ownership o politica de compra segun el tenant.
+          Para opinar se pide tap físico, producto guardado, contacto validado, ownership o política de compra según el tenant.
           La marca modera y el comprador lee feedback confiable.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {["Tap fisico confirmado", "Contacto o dueno verificado", "Moderacion de marca"].map((item) => (
+          {["Tap físico confirmado", "Contacto o dueño verificado", "Moderación de marca"].map((item) => (
             <div key={item} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-sm font-black text-white">
               {item}
             </div>

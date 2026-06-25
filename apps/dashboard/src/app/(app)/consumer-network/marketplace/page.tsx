@@ -29,21 +29,21 @@ const emptyDraft: Draft = {
 const verifiedSignals = [
   { label: "Experiencias verificadas", value: "Owner-only", body: "Solo usuarios con tap, contacto o ownership." },
   { label: "Trust visible", value: "0-100", body: "Score visible para marca y auditor." },
-  { label: "Feedback global", value: "Multi-idioma", body: "Traduccion automatica por mercado." },
+  { label: "Feedback global", value: "Multi-idioma", body: "Traducción automática por mercado." },
 ];
 
 const socialPreview = [
   {
     product: "Gran Reserva Malbec",
     stars: "5.0",
-    badge: "Dueno verificado",
-    quote: "Veo origen, apertura y certificado; no es una opinion anonima.",
+    badge: "Dueño verificado",
+    quote: "Veo origen, apertura y certificado; no es una opinión anónima.",
   },
   {
     product: "Serum premium",
     stars: "4.8",
     badge: "Compra validada",
-    quote: "La garantia quedo guardada y el sello me mostro autenticidad.",
+    quote: "La garantía quedó guardada y el sello me mostró autenticidad.",
   },
 ];
 
@@ -59,7 +59,7 @@ function checkoutChip(mode: CheckoutMode) {
 
 function visibilityChip(visibility: Visibility) {
   if (visibility === "network") {
-    return <span className="inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">Publico (Network)</span>;
+    return <span className="inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">Público (Network)</span>;
   }
   return <span className="inline-flex rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-400">Oculto</span>;
 }

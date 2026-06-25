@@ -32,56 +32,56 @@ type VerifiedExperiencesPanelProps = {
 };
 
 const rules = [
-  { step: "01", title: "Tap fisico", body: "La persona toca el producto real. Si hay replay o clon, no puede opinar." },
+  { step: "01", title: "Tap físico", body: "La persona toca el producto real. Si hay replay o clon, no puede opinar." },
   { step: "02", title: "Identidad", body: "Email, celular, wallet o cuenta nexID validada antes de publicar." },
-  { step: "03", title: "Vinculo", body: "Producto guardado, club activo, ticket, retailer o ownership segun politica." },
-  { step: "04", title: "Review segura", body: "Estrellas, comentario, fotos opcionales, idioma y pais aproximado." },
-  { step: "05", title: "Marca protegida", body: "Moderacion, respuesta de marca, score anti-spam y privacidad." },
+  { step: "03", title: "Vínculo", body: "Producto guardado, club activo, ticket, retailer u ownership según política." },
+  { step: "04", title: "Review segura", body: "Estrellas, comentario, fotos opcionales, idioma y país aproximado." },
+  { step: "05", title: "Marca protegida", body: "Moderación, respuesta de marca, score anti-spam y privacidad." },
 ];
 
 const fallbackExperiences = [
   {
     product: "Gran Reserva Malbec",
-    tenant: "Demo Bodega",
+    tenant: "Bodega Balmec",
     stars: "5.0",
-    location: "Zurich, CH",
-    badge: "Dueno verificado",
-    quote: "La botella llego intacta, pude ver origen, apertura y certificado desde el telefono.",
+    location: "Zúrich, CH",
+    badge: "Dueño verificado",
+    quote: "La botella llegó intacta, pude ver origen, apertura y certificado desde el teléfono.",
     trust: 96,
     status: "Aprobada",
   },
   {
     product: "Serum premium",
-    tenant: "Demo Cosmetica",
+    tenant: "Cosmética Lumina",
     stars: "4.8",
-    location: "Sao Paulo, BR",
+    location: "São Paulo, BR",
     badge: "Compra validada",
-    quote: "El sello me mostro que era autentico antes de abrir la caja. La garantia quedo guardada.",
+    quote: "El sello me mostró que era auténtico antes de abrir la caja. La garantía quedó guardada.",
     trust: 91,
     status: "Traducida",
   },
   {
     product: "Pulsera VIP evento",
-    tenant: "Demo Eventos",
+    tenant: "Arena Passport",
     stars: "4.7",
     location: "Miami, US",
-    badge: "Tap fisico confirmado",
-    quote: "Entre al evento con el tap y despues vi beneficios del club sin pedir soporte.",
+    badge: "Tap físico confirmado",
+    quote: "Entré al evento con el tap y después vi beneficios del club sin pedir soporte.",
     trust: 88,
     status: "Pendiente marca",
   },
 ];
 
 const moderationQueue = [
-  { item: "Whisky edicion limitada", reason: "Foto real pendiente", action: "Solicitar evidencia", tone: "warn" },
-  { item: "Perfume coleccion", reason: "Comentario negativo con compra real", action: "Responder marca", tone: "good" },
-  { item: "Entrada corporate", reason: "Lenguaje detectado", action: "Revisar texto", tone: "risk" },
+  { item: "Whisky edición limitada", reason: "Foto real pendiente", action: "Solicitar evidencia", tone: "warn" },
+  { item: "Perfume colección", reason: "Comentario negativo con compra real", action: "Responder marca", tone: "good" },
+  { item: "Entrada corporativa", reason: "Lenguaje detectado", action: "Revisar texto", tone: "risk" },
 ];
 
 const socialProof = [
-  "Marketplace con estrellas verificadas por duenos reales.",
+  "Marketplace con estrellas verificadas por dueños reales.",
   "Passport con historia del producto y experiencias de usuarios.",
-  "Club VIP con reputacion, paises, lotes y feedback por segmento.",
+  "Club VIP con reputación, países, lotes y feedback por segmento.",
   "NFT/certificado con eventos verificables, sin comentarios completos on-chain.",
 ];
 
@@ -104,13 +104,13 @@ function normalizeExperience(item: VerifiedExperienceItem) {
     product: String(item.product_name || item.product || "Producto verificado"),
     tenant: String(item.tenant_slug || item.tenant || "tenant"),
     stars: Number(item.rating || 0) ? Number(item.rating || 0).toFixed(1) : "-",
-    location: [item.city, item.country].filter(Boolean).join(", ") || "ubicacion privada",
+    location: [item.city, item.country].filter(Boolean).join(", ") || "ubicación privada",
     badge: badges.includes("dueno_verificado")
-      ? "Dueno verificado"
+      ? "Dueño verificado"
       : badges.includes("tap_fisico_confirmado")
-        ? "Tap fisico confirmado"
+        ? "Tap físico confirmado"
         : "Evidencia validada",
-    quote: String(item.body || item.quote || item.title || "Experiencia pendiente de moderacion."),
+    quote: String(item.body || item.quote || item.title || "Experiencia pendiente de moderación."),
     trust: Math.max(0, Math.min(100, Number(item.trust_score || 0))),
     status: String(item.moderation_status || "pending"),
   };
@@ -119,9 +119,9 @@ function normalizeExperience(item: VerifiedExperienceItem) {
 function buildStats(items: VerifiedExperienceItem[], moderation?: VerifiedExperiencesPanelProps["moderation"]) {
   if (!items.length) {
     return [
-      { label: "Modulo listo", value: "Owner-only", detail: "Solo publica quien tiene evidencia real" },
+      { label: "Módulo listo", value: "Owner-only", detail: "Solo publica quien tiene evidencia real" },
       { label: "Regla central", value: "Tap + ID", detail: "Tap fresco y contacto validado antes de opinar" },
-      { label: "Moderacion", value: "Activa", detail: "La marca aprueba, responde o mantiene privado" },
+      { label: "Moderación", value: "Activa", detail: "La marca aprueba, responde o mantiene privado" },
       { label: "Privacidad", value: "Hash/DB", detail: "Blockchain para eventos, no comentarios completos" },
     ];
   }
@@ -129,10 +129,10 @@ function buildStats(items: VerifiedExperienceItem[], moderation?: VerifiedExperi
   const avgTrust = items.reduce((acc, item) => acc + Number(item.trust_score || 0), 0) / items.length;
   const locales = new Set(items.map((item) => String(item.original_locale || "").trim()).filter(Boolean));
   return [
-    { label: "Experiencias verificadas", value: String(items.length), detail: "Solo con tap, contacto u ownership valido" },
+    { label: "Experiencias verificadas", value: String(items.length), detail: "Solo con tap, contacto u ownership válido" },
     { label: "Promedio club", value: `${avgRating.toFixed(1)}/5`, detail: `Trust medio ${Math.round(avgTrust)}/100` },
-    { label: "Moderacion pendiente", value: String(moderation?.pending ?? items.filter((item) => item.moderation_status === "pending").length), detail: "Nada se publica sin politica de marca" },
-    { label: "Idiomas activos", value: String(Math.max(1, locales.size)), detail: "Original + traduccion para el pais del tap" },
+    { label: "Moderación pendiente", value: String(moderation?.pending ?? items.filter((item) => item.moderation_status === "pending").length), detail: "Nada se publica sin política de marca" },
+    { label: "Idiomas activos", value: String(Math.max(1, locales.size)), detail: "Original + traducción para el país del tap" },
   ];
 }
 
@@ -154,10 +154,10 @@ export function VerifiedExperiencesPanel({ mode = "overview", items = [], modera
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">nexID Club</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Experiencias verificadas por duenos reales</h2>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Experiencias verificadas por dueños reales</h2>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
-              No son reviews abiertas de internet. Cada opinion nace de una prueba: tap fresco, contacto validado, producto guardado,
-              compra o ownership segun politica del tenant. La marca gana prueba social sin perder control.
+              No son reviews abiertas de internet. Cada opinión nace de una prueba: tap fresco, contacto validado, producto guardado,
+              compra u ownership según política del tenant. La marca gana prueba social sin perder control.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -183,11 +183,11 @@ export function VerifiedExperiencesPanel({ mode = "overview", items = [], modera
           <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Politica de publicacion</p>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Política de publicación</p>
                 <h3 className="mt-1 text-lg font-black text-white">De tap real a experiencia publicada</h3>
               </div>
               <Link href="/loyalty/experiences" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100">
-                Abrir modulo
+                Abrir módulo
               </Link>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-5">
@@ -225,7 +225,7 @@ export function VerifiedExperiencesPanel({ mode = "overview", items = [], modera
 
         <aside className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Cola de moderacion</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Cola de moderación</p>
             <div className="mt-4 space-y-3">
               {moderationQueue.map((item) => (
                 <div key={item.item} className={`rounded-2xl border p-3 text-xs ${toneClass(item.tone)}`}>

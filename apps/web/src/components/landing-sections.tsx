@@ -375,7 +375,7 @@ export function PlainLanguageValueSection({ locale }: { locale: string }) {
       story: [
         "El producto nace con lote, origen y banco visual.",
         "El cliente toca NFC o QR y ve una respuesta clara: autentico, observado o bloqueado.",
-        "Despues de la compra, contacto validado y score de riesgo habilitan dueno, garantia y beneficios.",
+        "Después de la compra, contacto validado y score de riesgo habilitan dueño, garantía y beneficios.",
         "Si el caso lo necesita, el certificado puede anclarse en Polygon y conectarse a wallet o marketplace.",
       ],
       note: "El usuario no necesita entender blockchain. La pantalla tiene que explicar que paso, por que importa y cual es el proximo paso.",
