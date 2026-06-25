@@ -11,8 +11,34 @@ export function TapClientExperience({ result }: { result: any }) {
   const isReplay = result.status?.code === "REPLAY_SUSPECT";
   const isTamper = result.status?.tone === "risk" && !isReplay;
 
-  const primaryColor = isValid ? "emerald" : isReplay ? "amber" : "rose";
   const statusLabel = isValid ? "AUTÉNTICO" : isReplay ? "REPLAY SUSPECT" : "ALERTA DE SEGURIDAD";
+  const tone = isValid ? "valid" : isReplay ? "replay" : "risk";
+  const toneStyles = {
+    valid: {
+      glowA: "bg-emerald-500",
+      glowB: "bg-emerald-600",
+      badge: "bg-emerald-500/20 border-emerald-500/30 text-emerald-300",
+      status: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]",
+      dot: "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]",
+      icon: "OK",
+    },
+    replay: {
+      glowA: "bg-amber-500",
+      glowB: "bg-amber-600",
+      badge: "bg-amber-500/20 border-amber-500/30 text-amber-300",
+      status: "bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.1)]",
+      dot: "bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]",
+      icon: "!",
+    },
+    risk: {
+      glowA: "bg-rose-500",
+      glowB: "bg-rose-600",
+      badge: "bg-rose-500/20 border-rose-500/30 text-rose-300",
+      status: "bg-rose-500/10 border-rose-500/20 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.1)]",
+      dot: "bg-rose-400 shadow-[0_0_10px_rgba(251,113,133,0.5)]",
+      icon: "X",
+    },
+  }[tone];
 
   return (
     <div className="flex-1 flex flex-col pt-4 px-4 w-full max-w-[480px] mx-auto">
@@ -24,8 +50,8 @@ export function TapClientExperience({ result }: { result: any }) {
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className={`relative rounded-[2rem] border border-white/10 bg-slate-900/40 p-1 backdrop-blur-2xl shadow-2xl mb-6`}
       >
-         <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-40 bg-${primaryColor}-500 pointer-events-none`} />
-         <div className={`absolute bottom-0 left-0 w-40 h-40 rounded-full blur-[60px] opacity-20 bg-${primaryColor}-600 pointer-events-none`} />
+         <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-40 ${toneStyles.glowA} pointer-events-none`} />
+         <div className={`absolute bottom-0 left-0 w-40 h-40 rounded-full blur-[60px] opacity-20 ${toneStyles.glowB} pointer-events-none`} />
 
          <div className="relative z-10 bg-slate-950/80 rounded-[1.75rem] border border-white/5 p-6 flex flex-col items-center text-center">
 
@@ -36,14 +62,14 @@ export function TapClientExperience({ result }: { result: any }) {
                   transition={{ type: "spring", bounce: 0.5 }}
                   className={`w-24 h-24 rounded-full border-[4px] border-slate-800 bg-slate-900 flex items-center justify-center text-4xl shadow-inner relative z-10`}
                >
-                  {isValid ? "🍷" : isReplay ? "⚠️" : "❌"}
+                  <span className="text-lg font-black tracking-tight text-white">{toneStyles.icon}</span>
                </motion.div>
                {/* Trust score badge */}
                <motion.div
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className={`absolute -bottom-2 -right-2 px-2 py-0.5 rounded-full border text-[10px] font-bold shadow-xl bg-${primaryColor}-500/20 border-${primaryColor}-500/30 text-${primaryColor}-300 z-20`}
+                  className={`absolute -bottom-2 -right-2 px-2 py-0.5 rounded-full border text-[10px] font-bold shadow-xl ${toneStyles.badge} z-20`}
                >
                   Score: {trustScore}
                </motion.div>
@@ -54,7 +80,7 @@ export function TapClientExperience({ result }: { result: any }) {
             <p className="text-xs text-slate-400">{result.product?.region || "Región no especificada"} · {result.product?.varietal || "Blend"}</p>
 
             <div className="mt-6 inline-flex flex-col items-center">
-               <span className={`px-3 py-1 rounded bg-${primaryColor}-500/10 border border-${primaryColor}-500/20 text-[11px] font-bold uppercase tracking-widest text-${primaryColor}-400 shadow-[0_0_15px_rgba(var(--color-${primaryColor}-500),0.1)]`}>
+               <span className={`px-3 py-1 rounded border text-[11px] font-bold uppercase tracking-widest ${toneStyles.status}`}>
                   {statusLabel}
                </span>
                <span className="text-[10px] text-slate-500 mt-2">NFC Tap #{result.identity?.scanCount ?? 1}</span>
@@ -187,7 +213,7 @@ export function TapClientExperience({ result }: { result: any }) {
 
                      <div className="relative pl-4 space-y-6 before:absolute before:inset-y-0 before:left-[7px] before:w-[2px] before:bg-slate-800">
                         <div className="relative">
-                           <div className={`absolute -left-[20px] top-1 w-3 h-3 rounded-full border-2 border-slate-900 bg-${primaryColor}-400 shadow-[0_0_10px_rgba(var(--color-${primaryColor}-400),0.5)]`} />
+                           <div className={`absolute -left-[20px] top-1 w-3 h-3 rounded-full border-2 border-slate-900 ${toneStyles.dot}`} />
                            <p className="text-[10px] text-slate-500 font-mono mb-0.5">Ahora</p>
                            <p className="text-xs font-bold text-white">Escaneo Actual</p>
                            <p className="text-[11px] text-slate-400 mt-1">Verificación en vivo. {isValid ? "Resultado seguro." : "Riesgo detectado."}</p>

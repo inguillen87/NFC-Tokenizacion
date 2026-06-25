@@ -299,7 +299,11 @@ async function main() {
   inboundForm.set("ButtonText", "Quiero");
   inboundForm.set("ButtonPayload", "promo_yes");
   inboundForm.set("MessageSid", `SM_codex_live_${Date.now()}`);
-  const inboundRes = await fetch(`${apiBase}/twilio/whatsapp/inbound`, { method: "POST", body: inboundForm });
+  const inboundRes = await fetch(`${apiBase}/twilio/whatsapp/inbound`, {
+    method: "POST",
+    headers: { "x-nexid-internal-key": adminKey },
+    body: inboundForm,
+  });
   const inboundText = await inboundRes.text();
   if (!inboundRes.ok) throw new Error(`twilio inbound failed ${inboundRes.status}: ${inboundText.slice(0, 600)}`);
   const inbound = extractMessageXml(inboundText);

@@ -1,6 +1,8 @@
 node_modules
 .next
 .vercel
+/artifacts/
+/tmp/
 .env
 .env.*
 !.env.example

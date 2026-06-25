@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { createHash, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
+import twilio from "twilio";
 import { sql } from "../../../../lib/db";
 import { ensureConsumerPortalSchema, ensureLeadsSchema } from "../../../../lib/commercial-runtime-schema";
 import { publishRealtimeEvent } from "../../../../lib/realtime-events";
@@ -132,6 +133,45 @@ function publicApiBase(req: Request) {
   if (host && !/localhost|127\.0\.0\.1|\[::1\]/i.test(host)) return `https://${host.replace(/\/$/, "")}`;
   const url = new URL(req.url);
   return url.origin;
+}
+
+function isFalseEnv(value: string) {
+  return /^(0|false|no|off)$/i.test(value.trim());
+}
+
+function shouldValidateTwilioWebhook() {
+  if (isFalseEnv(env("TWILIO_VALIDATE_WEBHOOKS"))) return false;
+  return Boolean(env("TWILIO_AUTH_TOKEN")) && (process.env.NODE_ENV === "production" || env("VERCEL_ENV") === "production");
+}
+
+function hasInternalWebhookBypass(req: Request) {
+  const expected = env("ADMIN_API_KEY");
+  const received = clean(req.headers.get("x-nexid-internal-key"));
+  return Boolean(expected && received && received === expected);
+}
+
+function twilioWebhookUrl(req: Request) {
+  const url = new URL(req.url);
+  const forwardedHost = clean(req.headers.get("x-forwarded-host")).split(",")[0]?.trim();
+  const forwardedProto = clean(req.headers.get("x-forwarded-proto")).split(",")[0]?.trim();
+  if (forwardedHost) {
+    url.host = forwardedHost.replace(/\/$/, "");
+    url.protocol = forwardedProto === "http" ? "http:" : "https:";
+  }
+  return url.toString();
+}
+
+function formParamsObject(params: URLSearchParams) {
+  const output: Record<string, string> = {};
+  for (const [key, value] of params.entries()) output[key] = value;
+  return output;
+}
+
+function verifyTwilioWebhook(req: Request, params: URLSearchParams) {
+  if (!shouldValidateTwilioWebhook() || hasInternalWebhookBypass(req)) return true;
+  const signature = clean(req.headers.get("x-twilio-signature"));
+  if (!signature) return false;
+  return twilio.validateRequest(env("TWILIO_AUTH_TOKEN"), signature, twilioWebhookUrl(req), formParamsObject(params));
 }
 
 function formatArDate(iso: string) {
@@ -705,7 +745,8 @@ async function claimCampaignVoucher(input: {
 
 export async function POST(req: Request) {
   await ensureConsumerPortalSchema();
-  const form = await req.formData();
+  const form = new URLSearchParams(await req.text());
+  if (!verifyTwilioWebhook(req, form)) return xml("Firma Twilio invalida.", 403);
   const from = normalizePhone(clean(form.get("From")));
   const body = clean(form.get("Body"));
   const profileName = clean(form.get("ProfileName"));

@@ -34,6 +34,12 @@
     "pilot:check:full": "node scripts/pilot-check.mjs --full"
   },
   "packageManager": "npm@10.9.0",
+  "overrides": {
+    "postcss": "8.5.15",
+    "next@16.2.9": {
+      "postcss": "8.5.15"
+    }
+  },
   "engines": {
     "node": ">=20.11.1"
   }
