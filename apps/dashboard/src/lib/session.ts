@@ -24,7 +24,7 @@ export type DashboardSession = {
 function demoFallbackSession(): DashboardSession {
   return {
     id: "demo-tenant-admin-demobodega",
-    email: "bodegabalmec@nexid.lat",
+    email: "demobodega@nexid.lat",
     role: "tenant-admin",
     tenantId: "demo-tenant-demobodega",
     tenantSlug: "demobodega",
@@ -36,12 +36,15 @@ function demoFallbackSession(): DashboardSession {
 }
 
 function dashboardDemoSessionAllowed() {
-  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").toLowerCase();
+  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").trim().toLowerCase();
   if (explicitPublicSession === "1" || explicitPublicSession === "true") return true;
+  if (explicitPublicSession === "0" || explicitPublicSession === "false") return false;
 
-  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
-  const localOneClick = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").toLowerCase();
-  return !isProduction && (localOneClick === "1" || localOneClick === "true");
+  const localOneClick = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
+  if (localOneClick === "0" || localOneClick === "false") return false;
+  if (localOneClick === "1" || localOneClick === "true") return true;
+
+  return true;
 }
 
 function parseDemoToken(token: string): DashboardSession | null {
