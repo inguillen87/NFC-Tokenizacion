@@ -65,3 +65,11 @@ test('Bodega Balmec marketplace seed includes production-grade catalog and offer
   assert.match(segment, /request_to_buy_enabled = CASE/);
   assert.doesNotMatch(segment, /Ã|Â|�|Demo Bodega|Lote Experimental/);
 });
+
+test('marketplace offers endpoint supports tenant scoping', () => {
+  const route = readFileSync(new URL('../src/app/marketplace/offers/route.ts', import.meta.url), 'utf8');
+
+  assert.match(route, /normalizeMarketplaceTenantSlug/);
+  assert.match(route, /url\.searchParams\.get\("tenant"\)/);
+  assert.match(route, /OR t\.slug = \$\{tenant\}/);
+});

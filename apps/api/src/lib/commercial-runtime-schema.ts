@@ -1426,4 +1426,64 @@ async function seedBalmecMarketplaceRows() {
         'Carrito asistido por asesor Balmec'
       )
   `;
+
+  await sql/*sql*/`
+    UPDATE marketplace_offers o
+    SET
+      title = CASE
+        WHEN o.title ILIKE 'Comprando Cabernet Franc sum%s 180 puntos' THEN 'Comprando Cabernet Franc sumás 180 puntos'
+        WHEN o.title ILIKE 'Caja seleccion con seguimiento de lote' THEN 'Caja selección con seguimiento de lote'
+        ELSE o.title
+      END,
+      description = CASE
+        WHEN o.description ILIKE '%' || 'g' || 'ondola%' THEN replace(o.description, 'gondola', 'góndola')
+        WHEN o.description ILIKE '%' || 'metodo de pago%' THEN replace(o.description, 'metodo de pago', 'método de pago')
+        ELSE o.description
+      END,
+      updated_at = now()
+    FROM tenants t
+    WHERE o.tenant_id = t.id
+      AND t.slug = 'demobodega'
+      AND (
+        o.title ILIKE 'Comprando Cabernet Franc sum%s 180 puntos'
+        OR o.title ILIKE 'Caja seleccion con seguimiento de lote'
+        OR o.description ILIKE '%' || 'g' || 'ondola%'
+        OR o.description ILIKE '%' || 'metodo de pago%'
+      )
+  `;
+
+  await sql/*sql*/`
+    WITH canonical AS (
+      SELECT
+        o.id,
+        row_number() OVER (
+          PARTITION BY o.title
+          ORDER BY
+            (o.marketplace_product_id IS NOT NULL) DESC,
+            (o.reward_id IS NOT NULL) DESC,
+            o.created_at DESC,
+            o.id DESC
+        ) AS keep_rank
+      FROM marketplace_offers o
+      JOIN tenants t ON t.id = o.tenant_id
+      WHERE t.slug = 'demobodega'
+        AND o.status = 'active'
+        AND o.title IN (
+          'Malbec con 220 puntos de club',
+          'Comprando Cabernet Franc sumás 180 puntos',
+          'Chardonnay de altura para maridaje',
+          'Aceite premium para club Balmec',
+          'Cata privada 2x1 para miembros',
+          'Club VIP por este mes',
+          'Caja selección con seguimiento de lote',
+          'Carrito asistido por asesor Balmec'
+        )
+    )
+    UPDATE marketplace_offers o
+    SET status = 'draft',
+        updated_at = now()
+    FROM canonical c
+    WHERE o.id = c.id
+      AND c.keep_rank > 1
+  `;
 }
