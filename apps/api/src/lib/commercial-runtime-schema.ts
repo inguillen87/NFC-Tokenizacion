@@ -1350,6 +1350,78 @@ async function seedBalmecMarketplaceRows() {
   `;
 
   await sql/*sql*/`
+    WITH curated(title) AS (
+      VALUES
+        ('Gran Reserva Malbec 2022'),
+        ('Cabernet Franc Reserva 2022'),
+        ('Chardonnay de Altura 2023'),
+        ('Blend de Finca 2021'),
+        ('Aceite de Oliva Extra Virgen Arbequina'),
+        ('Aceite de Oliva Blend de Finca'),
+        ('Cata privada para dos'),
+        ('Paseo guiado Valle de Uco'),
+        ('Club VIP Vendimia - 30 días'),
+        ('Caja selección Bodega Balmec'),
+        ('Gran Reserva Malbec - club release')
+    )
+    UPDATE marketplace_products p
+    SET status = 'draft',
+        request_to_buy_enabled = false,
+        featured = false,
+        updated_at = now()
+    FROM tenants t
+    WHERE p.tenant_id = t.id
+      AND t.slug = 'demobodega'
+      AND p.status = 'active'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM curated c
+        WHERE c.title = p.title
+      )
+  `;
+
+  await sql/*sql*/`
+    WITH ranked AS (
+      SELECT
+        p.id,
+        row_number() OVER (
+          PARTITION BY p.title
+          ORDER BY
+            p.featured DESC,
+            COALESCE(p.price_amount, 0) DESC,
+            p.updated_at DESC,
+            p.created_at DESC,
+            p.id DESC
+        ) AS keep_rank
+      FROM marketplace_products p
+      JOIN tenants t ON t.id = p.tenant_id
+      WHERE t.slug = 'demobodega'
+        AND p.status = 'active'
+        AND p.title IN (
+          'Gran Reserva Malbec 2022',
+          'Cabernet Franc Reserva 2022',
+          'Chardonnay de Altura 2023',
+          'Blend de Finca 2021',
+          'Aceite de Oliva Extra Virgen Arbequina',
+          'Aceite de Oliva Blend de Finca',
+          'Cata privada para dos',
+          'Paseo guiado Valle de Uco',
+          'Club VIP Vendimia - 30 días',
+          'Caja selección Bodega Balmec',
+          'Gran Reserva Malbec - club release'
+        )
+    )
+    UPDATE marketplace_products p
+    SET status = 'draft',
+        request_to_buy_enabled = false,
+        featured = false,
+        updated_at = now()
+    FROM ranked r
+    WHERE p.id = r.id
+      AND r.keep_rank > 1
+  `;
+
+  await sql/*sql*/`
     WITH seed(slug, title, product_title, reward_code, type, visibility, description, eligibility_json) AS (
       VALUES
         ('demobodega', 'Malbec con 220 puntos de club', 'Gran Reserva Malbec 2022', 'DB-DISCOUNT-90', 'points_boost', 'verified_tappers', 'Convierte el tap de feria o vinoteca en pedido trazable: el usuario solicita compra, suma puntos y la bodega lo contacta.', '{"pointsAwarded":220,"requiresPurchaseProof":true,"ownershipNotGranted":true,"posOrPinRequiredForOwnership":true}'::jsonb),

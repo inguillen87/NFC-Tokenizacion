@@ -63,6 +63,8 @@ test('Bodega Balmec marketplace seed includes production-grade catalog and offer
   assert.match(segment, /Carrito asistido por asesor Balmec/);
   assert.match(segment, /COALESCE\(p\.vertical, ''\) NOT IN \('winery', 'gourmet'\)/);
   assert.match(segment, /request_to_buy_enabled = CASE/);
+  assert.match(segment, /WITH curated\(title\) AS/);
+  assert.match(segment, /PARTITION BY p\.title/);
   assert.doesNotMatch(segment, /Ã|Â|�|Demo Bodega|Lote Experimental/);
 });
 
