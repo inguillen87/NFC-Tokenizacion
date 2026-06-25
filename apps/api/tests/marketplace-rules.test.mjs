@@ -61,5 +61,7 @@ test('Bodega Balmec marketplace seed includes production-grade catalog and offer
   assert.match(segment, /Chardonnay de Altura 2023/);
   assert.match(segment, /Aceite de Oliva Extra Virgen Arbequina/);
   assert.match(segment, /Carrito asistido por asesor Balmec/);
+  assert.match(segment, /COALESCE\(p\.vertical, ''\) NOT IN \('winery', 'gourmet'\)/);
+  assert.match(segment, /request_to_buy_enabled = CASE/);
   assert.doesNotMatch(segment, /Ã|Â|�|Demo Bodega|Lote Experimental/);
 });

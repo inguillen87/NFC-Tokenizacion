@@ -1308,6 +1308,48 @@ async function seedBalmecMarketplaceRows() {
   `;
 
   await sql/*sql*/`
+    UPDATE marketplace_products p
+    SET
+      title = CASE
+        WHEN p.title ILIKE 'Caja selecci%n%' THEN 'Caja selección Bodega Balmec'
+        WHEN p.title ILIKE 'Club VIP Vendimia%' THEN 'Club VIP Vendimia - 30 días'
+        WHEN p.title ILIKE '%' || 'Demo' || ' Bodega%' THEN replace(p.title, 'Demo' || ' Bodega', 'Bodega Balmec')
+        WHEN p.title ILIKE '%' || 'Demo' || 'Bodega%' THEN replace(p.title, 'Demo' || 'Bodega', 'Bodega Balmec')
+        ELSE p.title
+      END,
+      description = CASE
+        WHEN p.description ILIKE '%' || 'Demo' || ' Bodega%' THEN replace(p.description, 'Demo' || ' Bodega', 'Bodega Balmec')
+        WHEN p.description ILIKE '%' || 'Demo' || 'Bodega%' THEN replace(p.description, 'Demo' || 'Bodega', 'Bodega Balmec')
+        ELSE p.description
+      END,
+      status = CASE
+        WHEN p.title ILIKE 'Demo %'
+          OR COALESCE(p.vertical, '') NOT IN ('winery', 'gourmet')
+          OR COALESCE(p.category, '') IN ('retail', 'ticketing', 'beauty', 'cosmetics', 'luxury', 'events')
+        THEN 'draft'
+        ELSE p.status
+      END,
+      request_to_buy_enabled = CASE
+        WHEN p.title ILIKE 'Demo %'
+          OR COALESCE(p.vertical, '') NOT IN ('winery', 'gourmet')
+          OR COALESCE(p.category, '') IN ('retail', 'ticketing', 'beauty', 'cosmetics', 'luxury', 'events')
+        THEN false
+        ELSE p.request_to_buy_enabled
+      END,
+      featured = CASE
+        WHEN p.title ILIKE 'Demo %'
+          OR COALESCE(p.vertical, '') NOT IN ('winery', 'gourmet')
+          OR COALESCE(p.category, '') IN ('retail', 'ticketing', 'beauty', 'cosmetics', 'luxury', 'events')
+        THEN false
+        ELSE p.featured
+      END,
+      updated_at = now()
+    FROM tenants t
+    WHERE p.tenant_id = t.id
+      AND t.slug = 'demobodega'
+  `;
+
+  await sql/*sql*/`
     WITH seed(slug, title, product_title, reward_code, type, visibility, description, eligibility_json) AS (
       VALUES
         ('demobodega', 'Malbec con 220 puntos de club', 'Gran Reserva Malbec 2022', 'DB-DISCOUNT-90', 'points_boost', 'verified_tappers', 'Convierte el tap de feria o vinoteca en pedido trazable: el usuario solicita compra, suma puntos y la bodega lo contacta.', '{"pointsAwarded":220,"requiresPurchaseProof":true,"ownershipNotGranted":true,"posOrPinRequiredForOwnership":true}'::jsonb),
