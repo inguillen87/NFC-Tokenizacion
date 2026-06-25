@@ -30,15 +30,43 @@ function useSecureCookie(req: Request) {
   return process.env.NODE_ENV === "production";
 }
 
-function buildSnapshot(email: string, role: string, label?: string, permissions?: string[]) {
+function demoTenantScope(role: string) {
+  return role === "tenant-admin"
+    ? { tenantId: "demo-tenant-demobodega", tenantSlug: "demobodega" }
+    : { tenantId: null, tenantSlug: null };
+}
+
+function demoAccountForRole(role: string) {
+  if (role === "super-admin") {
+    return { email: "superadmin@nexid.lat", label: "Super Admin Demo", permissions: ["*"] };
+  }
+  if (role === "tenant-admin") {
+    return { email: "demobodega@nexid.lat", label: "Bodega Balmec Admin", permissions: ["*"] };
+  }
+  if (role === "reseller") {
+    return { email: "reseller@nexid.lat", label: "Reseller Partner Demo", permissions: ["*"] };
+  }
+  return { email: "auditor@nexid.lat", label: "Readonly sandbox session", permissions: ["read:*"] };
+}
+
+function buildSnapshot(
+  email: string,
+  role: string,
+  label?: string,
+  permissions?: string[],
+  scope?: { tenantId?: string | null; tenantSlug?: string | null },
+) {
   return Buffer.from(
     JSON.stringify({
       id: `${role}-${email}`,
       email,
       role,
+      tenantId: scope?.tenantId ?? null,
+      tenantSlug: scope?.tenantSlug ?? null,
       label: label || `${role} session`,
       permissions: permissions || ["*"],
       mfaVerified: true,
+      setupCompleted: true,
       expiresAt: new Date(Date.now() + 60 * 60 * 12 * 1000).toISOString(),
     }),
     "utf8",
@@ -46,13 +74,15 @@ function buildSnapshot(email: string, role: string, label?: string, permissions?
 }
 
 function allowDemoLoginMode() {
-  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
-  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").toLowerCase();
+  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").trim().toLowerCase();
   if (explicitPublicSession === "1" || explicitPublicSession === "true") return true;
-  if (isProduction) return false;
+  if (explicitPublicSession === "0" || explicitPublicSession === "false") return false;
+
   const configured = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
-  if (configured === "") return true;
-  return configured === "1" || configured === "true";
+  if (configured === "0" || configured === "false") return false;
+  if (configured === "1" || configured === "true") return true;
+
+  return true;
 }
 
 type LoginDiagnostics = {
@@ -116,32 +146,32 @@ export async function handleSessionLogin(req: Request) {
         { status: 403 },
       );
     }
-    const demoEmail = `demo.${demoRole}@nexid.local`;
-    const demoLabel = demoRole === "viewer" ? "Readonly sandbox session" : `${demoRole} sandbox session`;
-    const demoPermissions = demoRole === "viewer" ? ["read:*"] : ["*"];
+    const demoAccount = demoAccountForRole(demoRole);
+    const demoScope = demoTenantScope(demoRole);
     const response = NextResponse.json({
       ok: true,
-      email: demoEmail,
+      email: demoAccount.email,
       role: demoRole,
-      label: demoLabel,
-      permissions: demoPermissions,
+      ...demoScope,
+      label: demoAccount.label,
+      permissions: demoAccount.permissions,
       mfaRequired: false,
     });
-    response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(demoEmail, demoRole), {
+    response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(demoAccount.email, demoRole), {
       httpOnly: true,
       sameSite: "lax",
       secure: useSecureCookie(req),
       path: "/",
       maxAge: 60 * 60 * 12,
     });
-    response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoEmail, demoRole, demoLabel, demoPermissions), {
+    response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoAccount.email, demoRole, demoAccount.label, demoAccount.permissions, demoScope), {
       httpOnly: true,
       sameSite: "lax",
       secure: useSecureCookie(req),
       path: "/",
       maxAge: 60 * 60 * 12,
     });
-    console.info("[dashboard_login_audit]", JSON.stringify({ event: "demo_login_ok", email: demoEmail, role: demoRole }));
+    console.info("[dashboard_login_audit]", JSON.stringify({ event: "demo_login_ok", email: demoAccount.email, role: demoRole }));
     return response;
   }
 
@@ -160,10 +190,12 @@ export async function handleSessionLogin(req: Request) {
   const unreachableDiagnostics = buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: canUseDemoLogin });
   if (!upstream) {
     if (demoProfile && canUseDemoLogin) {
+      const demoScope = demoTenantScope(demoProfile.role);
       const response = NextResponse.json({
         ok: true,
         email: demoProfile.email,
         role: demoProfile.role,
+        ...demoScope,
         label: `${demoProfile.label} (sandbox)`,
         permissions: ["*"],
         mfaRequired: false,
@@ -175,7 +207,7 @@ export async function handleSessionLogin(req: Request) {
         path: "/",
         maxAge: 60 * 60 * 12,
       });
-      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (sandbox)`, ["*"]), {
+      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (sandbox)`, ["*"], demoScope), {
         httpOnly: true,
         sameSite: "lax",
         secure: useSecureCookie(req),
@@ -194,10 +226,12 @@ export async function handleSessionLogin(req: Request) {
   const baseDiagnostics = buildDiagnostics({ upstreamReachable: true, upstreamStatus, demoLoginAllowed: canUseDemoLogin });
   if (!upstream.ok || !data?.ok || !data?.sessionToken) {
     if (demoProfile && canUseDemoLogin) {
+      const demoScope = demoTenantScope(demoProfile.role);
       const response = NextResponse.json({
         ok: true,
         email: demoProfile.email,
         role: demoProfile.role,
+        ...demoScope,
         label: `${demoProfile.label} (sandbox)`,
         permissions: ["*"],
         mfaRequired: false,
@@ -209,7 +243,7 @@ export async function handleSessionLogin(req: Request) {
         path: "/",
         maxAge: 60 * 60 * 12,
       });
-      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (sandbox)`, ["*"]), {
+      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (sandbox)`, ["*"], demoScope), {
         httpOnly: true,
         sameSite: "lax",
         secure: useSecureCookie(req),
@@ -241,7 +275,7 @@ export async function handleSessionLogin(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 12,
   });
-  response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(String(data.email || submittedEmail || ""), String(data.role || "viewer"), String(data.label || ""), Array.isArray(data.permissions) ? data.permissions : ["*"]), {
+  response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(String(data.email || submittedEmail || ""), String(data.role || "viewer"), String(data.label || ""), Array.isArray(data.permissions) ? data.permissions : ["*"], { tenantId: data.tenantId || null, tenantSlug: data.tenantSlug || null }), {
     httpOnly: true,
     sameSite: "lax",
     secure: useSecureCookie(req),
