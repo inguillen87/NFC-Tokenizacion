@@ -146,12 +146,12 @@ export function LoginFormPanel({
       <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 shadow-[0_18px_60px_rgba(8,145,178,0.16)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Acceso sandbox operativo</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Acceso rapido autorizado</p>
             <h2 className="mt-2 text-xl font-semibold text-white">Entrar en 1 click</h2>
-            <p className="mt-1 text-sm text-slate-300">Crea una sesion temporal por 12h para QA y presentaciones controladas.</p>
+            <p className="mt-1 text-sm text-slate-300">Crea una sesion controlada por 12h para QA, ventas y presentaciones.</p>
           </div>
           <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-100">
-            sandbox activo
+            habilitado
           </span>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -160,7 +160,8 @@ export function LoginFormPanel({
               key={demoRole.key}
               type="button"
               disabled={pending || !demoLoginAllowed}
-              onClick={() => enterDemoRole(demoRole.key)}
+              onClick={() => void enterDemoRole(demoRole.key)}
+              title={demoRole.label}
               className={`rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${demoRole.tone}`}
             >
               <p className="text-sm font-semibold">{demoRole.title}</p>
@@ -216,10 +217,17 @@ export function LoginFormPanel({
       {clerkEnabled && (
         <div className="mt-4 grid gap-3">
           <SignInButton mode="modal">
-            <button type="button" className="flex items-center justify-center gap-3 w-full rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 font-semibold text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] hover:border-cyan-200 hover:bg-cyan-400/20 transition">
+            <button type="button" title="Abrir login social con Clerk, Google o Facebook." className="flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 font-semibold text-[0px] text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition after:text-sm after:content-['Ingresar_con_Google_o_Facebook'] hover:border-cyan-200 hover:bg-cyan-400/20">
               <span>🔐 Ingresar con Google o Facebook</span>
             </button>
           </SignInButton>
+          <Link
+            href="/sign-in"
+            title="Abrir la pantalla completa de Clerk si el modal social no aparece."
+            className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
+          >
+            Abrir login seguro en pantalla completa
+          </Link>
           <div className="flex items-center gap-2 px-2 py-1">
             <div className="h-px flex-1 bg-white/10" />
             <span className="text-[10px] text-slate-500 uppercase tracking-wider">o con credenciales locales</span>

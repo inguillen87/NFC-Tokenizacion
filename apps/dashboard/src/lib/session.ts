@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserRole } from "./dashboard-content";
+import { dashboardFallbackSessionAllowed, dashboardOneClickAccessAllowed } from "./dashboard-access-flags";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
 export const DASHBOARD_SESSION_SNAPSHOT_COOKIE = "nexid_dashboard_session_snapshot";
@@ -33,23 +34,6 @@ function demoFallbackSession(): DashboardSession {
     mfaVerified: true,
     setupCompleted: true,
   };
-}
-
-function dashboardDemoSessionAllowed() {
-  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").trim().toLowerCase();
-  if (explicitPublicSession === "1" || explicitPublicSession === "true") return true;
-  if (explicitPublicSession === "0" || explicitPublicSession === "false") return false;
-
-  const localOneClick = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
-  if (localOneClick === "0" || localOneClick === "false") return false;
-  if (localOneClick === "1" || localOneClick === "true") return true;
-
-  return true;
-}
-
-function dashboardAutoDemoSessionAllowed() {
-  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").trim().toLowerCase();
-  return explicitPublicSession === "1" || explicitPublicSession === "true";
 }
 
 function parseDemoToken(token: string): DashboardSession | null {
@@ -107,7 +91,7 @@ export async function getDashboardSession() {
   if (token) {
     const isDemoToken = token.startsWith("demo.");
     if (isDemoToken) {
-      if (!dashboardDemoSessionAllowed()) return null;
+      if (!dashboardOneClickAccessAllowed()) return null;
       const demoSession = parseDemoToken(token);
       if (demoSession) return demoSession;
       return snapshot || demoFallbackSession();
@@ -191,7 +175,7 @@ export async function getDashboardSession() {
     }
   }
 
-  if (dashboardAutoDemoSessionAllowed()) return demoFallbackSession();
+  if (dashboardFallbackSessionAllowed()) return demoFallbackSession();
   return null;
 }
 

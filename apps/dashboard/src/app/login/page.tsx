@@ -6,25 +6,14 @@ import { dashboardContent } from "../../lib/dashboard-content";
 import { getAccessProfiles } from "../../lib/access-profiles";
 import { LoginFormPanel } from "../../components/login-form-panel";
 import { getDashboardSession } from "../../lib/session";
+import { dashboardOneClickAccessAllowed } from "../../lib/dashboard-access-flags";
 
 const roleDescriptions: Record<string, string> = {
   "super-admin": "Control total de tenants, seguridad, CRM, leads y analytics global.",
   "tenant-admin": "Gestiona lotes, tags, taps, portal consumidor y marketplace del tenant.",
   reseller: "Opera canal, clientes, revenue share y rollout comercial.",
-  viewer: "Solo lectura para auditoria, cliente o revisión comercial.",
+  viewer: "Solo lectura para auditoria, cliente o revision comercial.",
 };
-
-function dashboardOneClickAccessAllowed() {
-  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").trim().toLowerCase();
-  if (explicitPublicSession === "1" || explicitPublicSession === "true") return true;
-  if (explicitPublicSession === "0" || explicitPublicSession === "false") return false;
-
-  const configured = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
-  if (configured === "0" || configured === "false") return false;
-  if (configured === "1" || configured === "true") return true;
-
-  return true;
-}
 
 export default async function LoginPage() {
   const { t, locale } = await getDashboardI18n();

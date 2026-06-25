@@ -163,19 +163,19 @@ export function ConsumerContactInput({
           className={inputClass}
         />
       ) : (
-        <div className="grid grid-cols-[minmax(108px,0.34fr)_minmax(0,1fr)] gap-2">
+        <div className="grid gap-2 sm:grid-cols-[minmax(132px,0.36fr)_minmax(0,1fr)]">
           <select
             suppressHydrationWarning
             id={`${idPrefix}-country`}
             value={draft.countryCode}
             onChange={(event) => onChange({ ...draft, countryCode: event.target.value })}
             disabled={disabled}
-            title="Prefijo internacional. Para Argentina movil, usa +549."
+            title="Codigo pais. Para Argentina movil usa +549 y escribi solo el numero local al lado."
             className={selectClass}
           >
             {COUNTRY_OPTIONS.map((option) => (
               <option key={option.code} value={option.code}>
-                {option.label} {option.code}
+                {option.label} - {option.code}
               </option>
             ))}
           </select>
@@ -195,7 +195,7 @@ export function ConsumerContactInput({
             autoComplete="tel-national"
             inputMode="tel"
             disabled={disabled}
-            title="Numero local sin prefijo, espacios ni guiones."
+            title="Numero local sin codigo pais, espacios ni guiones."
             className={inputClass}
           />
         </div>
@@ -203,7 +203,7 @@ export function ConsumerContactInput({
 
       {activeDraft.channel === "whatsapp" ? (
         <p className="text-[11px] leading-4 text-slate-400">
-          Se envia como <span className="font-mono text-cyan-100">{consumerContactDraftValue(activeDraft) || `${activeDraft.countryCode}${selectedOption.example}`}</span>.
+          Codigo pais separado + numero local. Se envia como <span className="font-mono text-cyan-100">{consumerContactDraftValue(activeDraft) || `${activeDraft.countryCode}${selectedOption.example}`}</span>.
         </p>
       ) : null}
     </div>

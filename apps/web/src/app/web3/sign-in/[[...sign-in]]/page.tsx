@@ -48,6 +48,13 @@ export default async function Web3SignInPage({ searchParams }: { searchParams?: 
                 <div className="mt-4">
                   <MetamaskPrimaryButton redirectUrl={completeUrl} />
                 </div>
+                <Link
+                  href={`/me/wallet?connect=metamask&next=${encodeURIComponent(nextPath)}`}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/65 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
+                  title="Usar la conexion directa de wallet del Passport si Clerk o la extension bloquean el popup."
+                >
+                  Usar conexion directa de wallet
+                </Link>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
                 <p className="px-1 pb-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">O usa el flujo completo de Clerk</p>

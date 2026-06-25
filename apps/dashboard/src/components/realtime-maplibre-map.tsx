@@ -63,7 +63,7 @@ const MAP_STYLE = {
         "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
-      attribution: "© OpenStreetMap © CARTO",
+      attribution: "OpenStreetMap / CARTO",
     },
     cartoLight: {
       type: "raster",
@@ -73,13 +73,13 @@ const MAP_STYLE = {
         "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
-      attribution: "© OpenStreetMap © CARTO",
+      attribution: "OpenStreetMap / CARTO",
     },
     esriWorldImagery: {
       type: "raster",
       tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
       tileSize: 256,
-      attribution: "© Esri",
+      attribution: "Esri",
     },
   },
   layers: [
@@ -120,7 +120,7 @@ function jitter(lng: number, lat: number, seed: string, fallbackUsed: boolean): 
 }
 
 function deviceSummary(row: TenantTapRealtimeEvent) {
-  return [row.deviceLabel, row.deviceOs, row.deviceType].map((item) => String(item || "").trim()).filter(Boolean).join(" · ") || "Dispositivo sin clasificar";
+  return [row.deviceLabel, row.deviceOs, row.deviceType].map((item) => String(item || "").trim()).filter(Boolean).join(" / ") || "Dispositivo sin clasificar";
 }
 
 function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature | null {
@@ -195,7 +195,7 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       data,
       cluster: true,
       clusterMaxZoom: 13,
-      clusterRadius: 34,
+      clusterRadius: 30,
     });
   }
 
@@ -239,7 +239,7 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       filter: ["has", "point_count"],
       paint: {
         "circle-color": ["step", ["get", "point_count"], "#0891b2", 8, "#22c55e", 25, "#facc15", 60, "#ef4444"],
-        "circle-radius": ["step", ["get", "point_count"], 9, 8, 12, 25, 15, 60, 19],
+        "circle-radius": ["step", ["get", "point_count"], 7, 8, 10, 25, 13, 60, 16],
         "circle-stroke-color": "rgba(255,255,255,.78)",
         "circle-stroke-width": 1.5,
         "circle-opacity": 0.9,
@@ -254,7 +254,7 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       source: "tap-events",
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 18, 10, 52, 13, 82],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 12, 10, 38, 13, 60],
         "circle-color": "rgba(34,211,238,.055)",
         "circle-stroke-color": "rgba(125,211,252,.46)",
         "circle-stroke-width": 1,
@@ -269,7 +269,7 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       source: "tap-events",
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-radius": ["interpolate", ["linear"], ["get", "localTaps"], 1, ["case", ["==", ["get", "risk"], 1], 5, 4], 8, 8, 18, 11],
+        "circle-radius": ["interpolate", ["linear"], ["get", "localTaps"], 1, ["case", ["==", ["get", "risk"], 1], 4.5, 3.5], 8, 6.5, 18, 9],
         "circle-color": ["case", ["==", ["get", "risk"], 1], "#fb7185", "#67e8f9"],
         "circle-stroke-color": "#ffffff",
         "circle-stroke-width": 1,
@@ -411,7 +411,7 @@ export function RealtimeMapLibreMap({
             <div class="nexid-map-popup-card">
               <b>${escapeHtml(props.uid)}</b>
               <span>${escapeHtml(props.city)}, ${escapeHtml(props.country)}</span>
-              <small>${escapeHtml(props.verdict)} · ${escapeHtml(props.device)}</small>
+              <small>${escapeHtml(props.verdict)} / ${escapeHtml(props.device)}</small>
               <small>${escapeHtml(props.localTaps)} taps en la zona</small>
             </div>
           `)
@@ -478,14 +478,14 @@ export function RealtimeMapLibreMap({
       className="nexid-realtime-map relative h-full min-h-[300px] overflow-hidden rounded-xl border border-white/8 bg-[#061322] shadow-[inset_0_1px_0_rgba(255,255,255,.04)]"
     >
       <div ref={containerRef} className="h-full w-full" />
-      <div className="nexid-map-status pointer-events-none absolute left-3 top-3 rounded-lg border border-white/10 bg-slate-950/72 px-3 py-2 text-xs text-slate-300 shadow-xl backdrop-blur">
-        <b className="text-cyan-200">{events.length}</b> taps · {hotspots.length} hotspots · {mode === "tenant" ? "tenant" : "global"}
+      <div className="nexid-map-status pointer-events-none absolute left-16 top-20 max-w-[calc(100%-5rem)] rounded-lg border border-white/10 bg-slate-950/72 px-3 py-2 text-xs text-slate-300 shadow-xl backdrop-blur sm:top-16 lg:top-20">
+        <b className="text-cyan-200">{events.length}</b> taps / {hotspots.length} hotspots / {mode === "tenant" ? "tenant" : "global"}
       </div>
       {!geojson.features.length ? (
         <div className="absolute inset-0 grid place-items-center bg-slate-950/55 text-center text-sm text-slate-300">
           <div>
             <b className="block text-white">Sin taps geolocalizados en esta ventana</b>
-            Cambiá tenant o rango temporal para poblar el mapa.
+            Cambia tenant o rango temporal para poblar el mapa.
           </div>
         </div>
       ) : null}

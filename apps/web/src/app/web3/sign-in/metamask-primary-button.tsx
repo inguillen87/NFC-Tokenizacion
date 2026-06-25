@@ -19,7 +19,7 @@ function metamaskMobileLink(path: string) {
   return `https://metamask.app.link/dapp/${url.host}${url.pathname}${url.search}${url.hash}`;
 }
 
-function signInErrorMessage(error: unknown) {
+function cleanWeb3SignInError(error: unknown) {
   const message =
     error instanceof Error
       ? error.message
@@ -28,13 +28,13 @@ function signInErrorMessage(error: unknown) {
         : "";
   const normalized = message.toLowerCase();
   if (normalized.includes("metamask") && (normalized.includes("not found") || normalized.includes("not installed"))) {
-    return "MetaMask no está disponible en este navegador. Abrí esta pantalla desde MetaMask Mobile o desbloqueá la extensión.";
+    return "MetaMask no esta disponible en este navegador. Abri esta pantalla desde MetaMask Mobile o desbloquea la extension.";
   }
   if (normalized.includes("already pending") || normalized.includes("already processing")) {
-    return "MetaMask ya tiene una firma pendiente. Abrí la extensión, confirmá o cancelá, y volvé a intentar.";
+    return "MetaMask ya tiene una firma pendiente. Abri la extension, confirma o cancela, y volve a intentar.";
   }
   if (normalized.includes("user rejected") || normalized.includes("rejected")) {
-    return "Firma cancelada. No se vinculó ninguna wallet.";
+    return "Firma cancelada. No se vinculo ninguna wallet.";
   }
   return message || "No se pudo iniciar la firma Web3 con Clerk.";
 }
@@ -48,6 +48,10 @@ export function MetamaskPrimaryButton({ redirectUrl }: { redirectUrl: string }) 
   const mobileUrl = useMemo(() => metamaskMobileLink(redirectUrl), [redirectUrl]);
 
   async function signWithMetamask() {
+    if (typeof window !== "undefined" && !window.ethereum) {
+      setMessage("No detectamos wallet Ethereum. En mobile, toca Abrir en MetaMask Mobile; en desktop, instala o desbloquea MetaMask.");
+      return;
+    }
     setPending(true);
     setMessage("Abriendo MetaMask para firmar ownership...");
     try {
@@ -60,7 +64,7 @@ export function MetamaskPrimaryButton({ redirectUrl }: { redirectUrl: string }) 
         },
       });
     } catch (error) {
-      setMessage(signInErrorMessage(error));
+      setMessage(cleanWeb3SignInError(error));
     } finally {
       setPending(false);
     }

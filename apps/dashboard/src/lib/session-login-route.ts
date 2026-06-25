@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "./session";
 import { getAccessProfiles } from "./access-profiles";
+import { dashboardOneClickAccessAllowed } from "./dashboard-access-flags";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const AUTH_UPSTREAM_TIMEOUT_MS = Number(process.env.AUTH_UPSTREAM_TIMEOUT_MS || 8000);
@@ -73,18 +74,6 @@ function buildSnapshot(
   ).toString("base64url");
 }
 
-function allowDemoLoginMode() {
-  const explicitPublicSession = String(process.env.ENABLE_PUBLIC_DEMO_SESSION || "").trim().toLowerCase();
-  if (explicitPublicSession === "1" || explicitPublicSession === "true") return true;
-  if (explicitPublicSession === "0" || explicitPublicSession === "false") return false;
-
-  const configured = String(process.env.DASHBOARD_ALLOW_DEMO_LOGIN || "").trim().toLowerCase();
-  if (configured === "0" || configured === "false") return false;
-  if (configured === "1" || configured === "true") return true;
-
-  return true;
-}
-
 type LoginDiagnostics = {
   upstreamReachable: boolean;
   upstreamStatus: number | null;
@@ -132,7 +121,7 @@ export async function handleSessionLogin(req: Request) {
   const wantsDemoLogin = submitted["demoLogin"] === true;
   const requestedDemoRole = String(submitted["demoRole"] || "viewer").trim().toLowerCase();
   const demoRole = requestedDemoRole === "super-admin" || requestedDemoRole === "tenant-admin" || requestedDemoRole === "reseller" ? requestedDemoRole : "viewer";
-  const canUseDemoLogin = allowDemoLoginMode();
+  const canUseDemoLogin = dashboardOneClickAccessAllowed();
 
   if (wantsDemoLogin) {
     if (!canUseDemoLogin) {
