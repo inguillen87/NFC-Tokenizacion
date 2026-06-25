@@ -16,6 +16,7 @@ test('public reward links use opaque tokens and never querystring tenant/code da
   assert.ok(links.includes('.replace(/[^A-Za-z0-9_-]/g, "")'));
   assert.match(links, /slice\(0,\s*96\)/);
   assert.match(links, /return `\$\{publicWebBase\(\)\}\/r\/\$\{encodeURIComponent\(token\)\}`/);
+  assert.match(links, /return `\$\{publicWebBase\(\)\}\/s\/\$\{encodeURIComponent\(token\)\}`/);
   assert.doesNotMatch(links, /publicRewardUrl[\s\S]*voucher=/);
   assert.doesNotMatch(links, /publicRewardUrl[\s\S]*tenant=/);
 });
@@ -50,7 +51,8 @@ test('public reward API and QR pass stay noindex and token-only', async () => {
   assert.match(publicRoute, /"cache-control":\s*"no-store"/);
   assert.match(publicRoute, /"x-robots-tag":\s*"noindex,\s*nofollow"/);
 
-  assert.match(passRoute, /validationUrl:\s*publicRewardUrl\(publicToken\)/);
+  assert.match(passRoute, /validationUrl:\s*publicRewardStaffUrl\(publicToken\)/);
+  assert.match(passRoute, /cache-control",\s*"no-store,\s*max-age=0"/);
   assert.match(passRoute, /response\.headers\.set\("x-robots-tag",\s*"noindex,\s*nofollow"\)/);
   assert.doesNotMatch(passRoute, /validationUrl:[\s\S]*redemption_code/);
   assert.doesNotMatch(passRoute, /validationUrl:[\s\S]*tenant_slug/);

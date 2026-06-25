@@ -21,17 +21,17 @@ function parseContact(value: string) {
 
 function authStartErrorMessage(error: unknown) {
   const reason = String(error || "");
-  if (reason === "rate_limited") return "Demasiados intentos. Espera unos minutos y proba de nuevo.";
+  if (reason === "rate_limited") return "Demasiados intentos. Esperá unos minutos y probá de nuevo.";
   if (reason === "resend_api_key_missing" || reason === "consumer_auth_from_email_missing" || reason === "smtp_credentials_missing") {
-    return "No se pudo enviar el email porque falta configurar el proveedor de correo en produccion.";
+    return "No se pudo enviar el email porque falta configurar el proveedor de correo en producción.";
   }
   if (reason === "twilio_credentials_missing" || reason === "twilio_sender_missing") {
-    return "No se pudo enviar el codigo por telefono porque falta configurar Twilio.";
+    return "No se pudo enviar el código por teléfono porque falta configurar Twilio.";
   }
   if (reason === "twilio_delivery_failed" || reason === "resend_delivery_failed" || reason === "smtp_delivery_failed") {
-    return "El proveedor de mensajes rechazo el envio. Revisa el email/telefono o la configuracion del tenant.";
+    return "El proveedor de mensajes rechazó el envío. Revisá el email/teléfono o la configuración del tenant.";
   }
-  return "No se pudo iniciar sesion de consumidor.";
+  return "No se pudo iniciar sesión.";
 }
 
 export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
@@ -44,8 +44,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
 
   const isTapReturn = nextPath.includes("fromTap=1") || nextPath.includes("eventId=");
   const tapReturnCopy = isTapReturn
-    ? "Valida email o telefono para volver al producto. Garantia, ownership, wallet/NFT y puntos sensibles requieren compra validada, POS/PIN o politica de la marca."
-    : "Ingresa con email o telefono para abrir tu Passport, marketplace contextual y beneficios opt-in.";
+    ? "Validá email o teléfono para volver al producto. Garantía, ownership, wallet/NFT y puntos sensibles requieren compra validada, POS/PIN o política de la marca."
+    : "Ingresá con email o teléfono para abrir tu Pasaporte, marketplace contextual y beneficios opt-in.";
 
   useEffect(() => {
     const magicToken = searchParams.get("t") || searchParams.get("token");
@@ -61,7 +61,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     setCode(legacyCode);
     setStep("verify");
     setPending(true);
-    setStatus("Autenticando automaticamente...");
+    setStatus("Autenticando automáticamente...");
 
     fetch("/api/consumer/auth/verify", {
       method: "POST",
@@ -75,18 +75,18 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     })
       .then(async (res) => {
         if (!res?.ok) {
-          setStatus("El link de verificacion automatica fallo o expiro.");
+          setStatus("El link de verificación falló o expiró. Pedí un nuevo código y volvé a intentar.");
           return;
         }
         const ready = await confirmSession();
         if (!ready) {
-          setStatus("Verificacion exitosa, pero la sesion no quedo activa.");
+          setStatus("Verificación exitosa, pero la sesión no quedó activa. Revisá cookies o intentá de nuevo.");
           return;
         }
         window.location.href = nextPath || "/me";
       })
       .catch(() => {
-        setStatus("Error en la conexion de verificacion automatica.");
+        setStatus("Error en la conexión de verificación automática.");
       })
       .finally(() => setPending(false));
   }, [nextPath, searchParams]);
@@ -104,11 +104,11 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
   async function start() {
     const parsed = parseContact(contact);
     if (!parsed.valid) {
-      setStatus("Ingresa un email o telefono valido.");
+      setStatus("Ingresá un email o teléfono válido.");
       return;
     }
     setPending(true);
-    setStatus("Enviando codigo...");
+    setStatus("Enviando código...");
     setCode("");
     const payload = await fetch("/api/consumer/auth/start", {
       method: "POST",
@@ -125,16 +125,16 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     }
     setStep("verify");
     setStatus(payload.twoFactor
-      ? "Doble factor activo. Enviamos el codigo por los canales configurados de tu cuenta."
+      ? "Doble factor activo. Enviamos el código por los canales configurados de tu cuenta."
       : isTapReturn
-        ? "Codigo enviado. Al validar volvemos al producto; cualquier claim queda sujeto a compra validada o POS/PIN."
-        : "Codigo enviado. Ingresa el codigo recibido para entrar al portal.");
+        ? "Código enviado. Al validar volvemos al producto; cualquier claim queda sujeto a compra validada o POS/PIN."
+        : "Código enviado. Ingresá el código recibido para entrar a tu Pasaporte.");
   }
 
   async function verify() {
     const parsed = parseContact(contact);
     if (!parsed.valid || !code.trim()) {
-      setStatus("Revisa el contacto y el codigo.");
+      setStatus("Revisá el contacto y el código.");
       return;
     }
     setPending(true);
@@ -147,13 +147,13 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
     }).catch(() => null);
     if (!response?.ok) {
       setPending(false);
-      setStatus("Codigo invalido o expirado.");
+      setStatus("Código inválido o expirado. Pedí un nuevo código si el link anterior ya fue usado.");
       return;
     }
     const ready = await confirmSession();
     setPending(false);
     if (!ready) {
-      setStatus("La identidad fue validada, pero el navegador no guardo la sesion. Proba de nuevo o revisa cookies.");
+      setStatus("La identidad fue validada, pero el navegador no guardó la sesión. Probá de nuevo o revisá cookies.");
       return;
     }
     window.location.href = nextPath || "/me";
@@ -163,7 +163,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
 
   return (
     <div className="mt-5 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-      <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Portal consumidor</p>
+      <p className="text-xs uppercase tracking-[0.14em] text-cyan-200">Pasaporte nexID</p>
       <p className="mt-1 text-sm text-cyan-50/90">{tapReturnCopy}</p>
 
       <div className="mt-3 grid gap-2">
@@ -171,7 +171,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
           suppressHydrationWarning
           value={contact}
           onChange={(e) => setContact(e.target.value)}
-          placeholder="Email o telefono"
+          placeholder="Email o teléfono"
           autoComplete="email"
           className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500"
         />
@@ -182,13 +182,13 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
               suppressHydrationWarning
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="Codigo recibido"
+              placeholder="Código recibido"
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={8}
               className="rounded-xl border border-white/15 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500"
             />
-            <p className="text-[11px] leading-4 text-slate-400">Por seguridad nexID no muestra ni completa el codigo por vos.</p>
+            <p className="text-[11px] leading-4 text-slate-400">Por seguridad nexID no muestra ni completa el código por vos.</p>
           </div>
         ) : null}
 
@@ -199,7 +199,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
             onClick={() => void start()}
             className="rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-3 py-2.5 text-sm font-semibold text-cyan-100 disabled:opacity-60"
           >
-            Recibir codigo
+            Recibir código
           </button>
         ) : (
           <button
@@ -208,7 +208,7 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
             onClick={() => void verify()}
             className="rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-3 py-2.5 text-sm font-semibold text-emerald-100 disabled:opacity-60"
           >
-            {isTapReturn ? "Validar y continuar" : "Entrar al portal"}
+            {isTapReturn ? "Validar y continuar" : "Entrar a mi Pasaporte"}
           </button>
         )}
       </div>

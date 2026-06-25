@@ -119,6 +119,9 @@ async function main() {
   const phone = process.env.LIVE_PROD_PHONE || process.env.LIVE_DEMO_PHONE || "+5492613168608";
   const bid = process.env.LIVE_PROD_BID || process.env.LIVE_DEMO_BID || "DEMO-2026-02";
   const uidHex = process.env.LIVE_PROD_UID || process.env.LIVE_DEMO_UID || "0474856A0B1090";
+  const automateFlow = process.env.LIVE_AUTOMATE_FLOW === "1";
+  const automateLogin = automateFlow || process.env.LIVE_AUTOMATE_LOGIN === "1";
+  const automateReply = automateFlow || process.env.LIVE_AUTOMATE_REPLY === "1";
   const location = {
     city: process.env.LIVE_PROD_CITY || process.env.LIVE_DEMO_CITY || "Mendoza",
     countryCode: process.env.LIVE_PROD_COUNTRY || process.env.LIVE_DEMO_COUNTRY || "AR",
@@ -133,6 +136,11 @@ async function main() {
     bid,
     uidHex,
     location: location.label,
+    automation: {
+      login: automateLogin,
+      replyQuiero: automateReply,
+      mode: automateFlow ? "full-automation" : automateLogin ? "login-only" : "human-safe",
+    },
   };
 
   const beforeConsumer = await sql`
@@ -203,6 +211,17 @@ async function main() {
     ttlMinutes: authStart.json?.ttlMinutes,
   };
 
+  if (!automateLogin) {
+    summary.nextHumanStep = [
+      "OTP enviado al usuario. El script se detuvo antes de leer/consumir el codigo.",
+      "Abrir el link recibido por WhatsApp/email y completar login manual.",
+      "Para automatizar login en un entorno controlado: LIVE_AUTOMATE_LOGIN=1.",
+      "Para automatizar tambien la respuesta Quiero y emitir voucher: LIVE_AUTOMATE_FLOW=1.",
+    ];
+    console.log(JSON.stringify(summary, null, 2));
+    return;
+  }
+
   const otp = await latestOtp(sql, phone);
   summary.otpRetrievedFromDbHash = true;
 
@@ -238,7 +257,7 @@ async function main() {
   const promptBody = [
     "Hola Marcelo, tu tap verificado en Feria de Vinos Mendoza sobre Gran Reserva Malbec de Bodega Balmec activo un beneficio:",
     "2x1 en copa de bienvenida por 48h.",
-    "Toca Quiero para emitir codigo de canje con QR; toca No gracias para pausar esta promo. Stop para salir.",
+    "Toca Quiero para emitir código de canje con QR; toca No gracias para pausar esta promo. Stop para salir.",
   ].join(" ");
   const campaign = await requireOk("whatsapp campaign prompt", await requestJson(apiBase, "/admin/campaigns/test-whatsapp", {
     method: "POST",
@@ -261,6 +280,16 @@ async function main() {
     twilioStatus: campaign.json?.status,
     to: campaign.json?.to,
   };
+
+  if (!automateReply) {
+    summary.nextHumanStep = [
+      "Prompt enviado por WhatsApp con botones Quiero/No gracias.",
+      "El script se detuvo antes de simular Quiero para que el voucher solo salga por accion humana.",
+      "Para automatizar el click Quiero en un entorno controlado: LIVE_AUTOMATE_REPLY=1.",
+    ];
+    console.log(JSON.stringify(summary, null, 2));
+    return;
+  }
 
   const inboundForm = new URLSearchParams();
   inboundForm.set("From", `whatsapp:${phone}`);

@@ -1115,7 +1115,7 @@ export async function ensureConsumerPortalSchema() {
 async function seedDemoMarketplaceRows() {
   await sql/*sql*/`
     INSERT INTO marketplace_brand_profiles (tenant_id, status, display_name, slug, vertical, description, country, city, visible_in_network, featured)
-    SELECT t.id, 'active', 'Demo Bodega', t.slug, 'winery', 'Bodega piloto con pasaporte NFC, club, experiencias y ventas asistidas.', 'AR', 'Mendoza', true, true
+    SELECT t.id, 'active', 'Bodega Balmec', t.slug, 'winery', 'Bodega premium con pasaporte NFC, club, experiencias y ventas asistidas.', 'AR', 'Mendoza', true, true
     FROM tenants t
     WHERE t.slug = 'demobodega'
     ON CONFLICT (tenant_id) DO UPDATE SET
@@ -1130,7 +1130,7 @@ async function seedDemoMarketplaceRows() {
     INSERT INTO loyalty_programs (tenant_id, name, vertical, status, mode, points_name, default_locale, age_gate_required, allow_experience_booking, rules_json)
     SELECT
       t.id,
-      'Club Demo Bodega',
+      'Club Bodega Balmec',
       'winery',
       'active',
       'production',
@@ -1161,11 +1161,11 @@ async function seedDemoMarketplaceRows() {
     ),
     seed(code, title, description, type, points_cost, stock_total, image_url, requires_age_gate, eligibility_json, fulfillment_json) AS (
       VALUES
-        ('DB-TASTING-120', 'Cata express en bodega', 'Degustacion guiada para conocer el lote y sumar al club despues de un tap valido.', 'TASTING', 120, 120, '/images/wine_tasting.png', true, '{"requiresVerifiedTap":true}'::jsonb, '{"mode":"booking_request","channel":"tenant_crm"}'::jsonb),
-        ('DB-TOUR-280', 'Paseo guiado por vinedo + copa', 'Reserva una visita guiada y conecta la experiencia fisica con el pasaporte digital.', 'TOUR', 280, 80, '/images/wine_tasting.png', true, '{"requiresVerifiedTap":true}'::jsonb, '{"mode":"booking_request","channel":"tenant_crm"}'::jsonb),
-        ('DB-VIP-MONTH-520', 'Club VIP vendimia por 30 dias', 'Acceso mensual a preventas, revista digital, descuentos y eventos privados.', 'VIP_ACCESS', 520, 250, '/images/premium_magnum.png', true, '{"requiresVerifiedTap":true,"requiresContact":true}'::jsonb, '{"mode":"manual_approval","channel":"tenant_crm"}'::jsonb),
-        ('DB-BOX-900', 'Caja seleccion terroir', 'Caja curada para clientes verificados con trazabilidad del lote y atencion comercial.', 'WINE_BOX', 900, 40, '/images/wine_crate.png', true, '{"requiresVerifiedTap":true,"requiresRequestToBuy":true}'::jsonb, '{"mode":"sales_request","channel":"tenant_crm"}'::jsonb),
-        ('DB-DISCOUNT-90', '15% off en compra directa', 'Beneficio de primera compra para convertir interes de gondola en lead del tenant.', 'DISCOUNT', 90, 500, '/images/wine_crate.png', true, '{"requiresVerifiedTap":true,"requiresEmail":true}'::jsonb, '{"mode":"coupon","channel":"email"}'::jsonb)
+        ('DB-TASTING-120', 'Cata express en bodega', 'Degustación guiada para conocer el lote y sumar al club después de un tap válido.', 'TASTING', 120, 120, '/images/wine_tasting.png', true, '{"requiresVerifiedTap":true}'::jsonb, '{"mode":"booking_request","channel":"tenant_crm"}'::jsonb),
+        ('DB-TOUR-280', 'Paseo guiado por viñedo + copa', 'Reserva una visita guiada y conecta la experiencia física con el pasaporte digital.', 'TOUR', 280, 80, '/images/wine_tasting.png', true, '{"requiresVerifiedTap":true}'::jsonb, '{"mode":"booking_request","channel":"tenant_crm"}'::jsonb),
+        ('DB-VIP-MONTH-520', 'Club VIP vendimia por 30 días', 'Acceso mensual a preventas, revista digital, descuentos y eventos privados.', 'VIP_ACCESS', 520, 250, '/images/premium_magnum.png', true, '{"requiresVerifiedTap":true,"requiresContact":true}'::jsonb, '{"mode":"manual_approval","channel":"tenant_crm"}'::jsonb),
+        ('DB-BOX-900', 'Caja selección terroir', 'Caja curada para clientes verificados con trazabilidad del lote y atención comercial.', 'WINE_BOX', 900, 40, '/images/wine_crate.png', true, '{"requiresVerifiedTap":true,"requiresRequestToBuy":true}'::jsonb, '{"mode":"sales_request","channel":"tenant_crm"}'::jsonb),
+        ('DB-DISCOUNT-90', '15% off en compra directa', 'Beneficio de primera compra para convertir interés de góndola en lead del tenant.', 'DISCOUNT', 90, 500, '/images/wine_crate.png', true, '{"requiresVerifiedTap":true,"requiresEmail":true}'::jsonb, '{"mode":"coupon","channel":"email"}'::jsonb)
     )
     INSERT INTO rewards (
       tenant_id,
@@ -1220,11 +1220,11 @@ async function seedDemoMarketplaceRows() {
   await sql/*sql*/`
     WITH seed(slug, title, description, vertical, category, image_url, price_amount, price_currency, age_gate_required, featured) AS (
       VALUES
-        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automaticamente.', 'winery', 'wine', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
+        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automáticamente.', 'winery', 'wine', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
         ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal consumer y seguimiento en CRM tenant.', 'winery', 'experience', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),
-        ('demobodega', 'Paseo guiado Valle de Uco', 'Tour de vinedo con copa incluida para clientes que dejaron contacto tras un tap real.', 'winery', 'experience', '/images/wine_tasting.png', 45000.00, 'ARS', true, true),
-        ('demobodega', 'Club VIP Vendimia - 30 dias', 'Acceso a preventas, revista, promociones por email y beneficios de temporada.', 'winery', 'membership', '/images/premium_magnum.png', 12000.00, 'ARS', true, true),
-        ('demobodega', 'Caja seleccion Demo Bodega', 'Caja curada con seguimiento por lote, promociones y postventa para miembros.', 'winery', 'wine_box', '/images/wine_crate.png', 69000.00, 'ARS', true, true)
+        ('demobodega', 'Paseo guiado Valle de Uco', 'Tour de viñedo con copa incluida para clientes que dejaron contacto tras un tap real.', 'winery', 'experience', '/images/wine_tasting.png', 45000.00, 'ARS', true, true),
+        ('demobodega', 'Club VIP Vendimia - 30 días', 'Acceso a preventas, revista, promociones por email y beneficios de temporada.', 'winery', 'membership', '/images/premium_magnum.png', 12000.00, 'ARS', true, true),
+        ('demobodega', 'Caja selección Bodega Balmec', 'Caja curada con seguimiento por lote, promociones y postventa para miembros.', 'winery', 'wine_box', '/images/wine_crate.png', 69000.00, 'ARS', true, true)
     )
     INSERT INTO marketplace_products (
       tenant_id,
@@ -1272,12 +1272,12 @@ async function seedDemoMarketplaceRows() {
   await sql/*sql*/`
     WITH seed(slug, title, description, image_url, price_amount, price_currency, age_gate_required, featured) AS (
       VALUES
-        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automaticamente.', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
+        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automáticamente.', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
         ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal consumer y seguimiento en CRM tenant.', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),
-        ('demobodega', 'Paseo guiado Valle de Uco', 'Tour de vinedo con copa incluida para clientes que dejaron contacto tras un tap real.', '/images/wine_tasting.png', 45000.00, 'ARS', true, true),
-        ('demobodega', 'Club VIP Vendimia - 30 dias', 'Acceso a preventas, revista, promociones por email y beneficios de temporada.', '/images/premium_magnum.png', 12000.00, 'ARS', true, true),
-        ('demobodega', 'Caja seleccion Demo Bodega', 'Caja curada con seguimiento por lote, promociones y postventa para miembros.', '/images/wine_crate.png', 69000.00, 'ARS', true, true),
-        ('demobodega', 'Gran Reserva Malbec - club release', 'Demo comercial mejorada: oferta de club, puntos y venta asistida desde un tap valido.', '/images/premium_magnum.png', 19500.00, 'ARS', true, false)
+        ('demobodega', 'Paseo guiado Valle de Uco', 'Tour de viñedo con copa incluida para clientes que dejaron contacto tras un tap real.', '/images/wine_tasting.png', 45000.00, 'ARS', true, true),
+        ('demobodega', 'Club VIP Vendimia - 30 días', 'Acceso a preventas, revista, promociones por email y beneficios de temporada.', '/images/premium_magnum.png', 12000.00, 'ARS', true, true),
+        ('demobodega', 'Caja selección Bodega Balmec', 'Caja curada con seguimiento por lote, promociones y postventa para miembros.', '/images/wine_crate.png', 69000.00, 'ARS', true, true),
+        ('demobodega', 'Gran Reserva Malbec - club release', 'Oferta de club, puntos y venta asistida desde un tap válido.', '/images/premium_magnum.png', 19500.00, 'ARS', true, false)
     )
     UPDATE marketplace_products p
     SET
@@ -1300,10 +1300,10 @@ async function seedDemoMarketplaceRows() {
   await sql/*sql*/`
     WITH seed(slug, title, product_title, reward_code, type, visibility, description, eligibility_json) AS (
       VALUES
-        ('demobodega', 'Comprando Cabernet Franc sumas 180 puntos', 'Cabernet Franc Reserva 2022', 'DB-DISCOUNT-90', 'points_boost', 'verified_tappers', 'Convierte el tap de gondola en lead: el usuario pide compra, suma puntos y la bodega lo contacta.', '{"pointsAwarded":180,"requiresPurchaseProof":true,"ownershipNotGranted":true,"posOrPinRequiredForOwnership":true}'::jsonb),
+        ('demobodega', 'Comprando Cabernet Franc sumás 180 puntos', 'Cabernet Franc Reserva 2022', 'DB-DISCOUNT-90', 'points_boost', 'verified_tappers', 'Convierte el tap de góndola en lead: el usuario pide compra, suma puntos y la bodega lo contacta.', '{"pointsAwarded":180,"requiresPurchaseProof":true,"ownershipNotGranted":true,"posOrPinRequiredForOwnership":true}'::jsonb),
         ('demobodega', 'Cata privada 2x1 para miembros', 'Cata privada para dos', 'DB-TASTING-120', 'experience_booking', 'tenant_members_only', 'Beneficio para consumidores asociados al tenant, sin transferir propiedad del producto.', '{"requiresMembership":true,"requiresAgeGate":true}'::jsonb),
-        ('demobodega', 'Club VIP por este mes', 'Club VIP Vendimia - 30 dias', 'DB-VIP-MONTH-520', 'vip_access', 'verified_tappers', 'Promocion para taps reales: club, revista y descuentos por email con consentimiento.', '{"requiresVerifiedTap":true,"requiresContactConsent":true}'::jsonb),
-        ('demobodega', 'Caja seleccion con seguimiento de lote', 'Caja seleccion Demo Bodega', 'DB-BOX-900', 'request_to_buy', 'tenant_members_only', 'Lead de compra premium para el equipo comercial del tenant.', '{"requiresMembership":true,"requiresSalesReview":true}'::jsonb)
+        ('demobodega', 'Club VIP por este mes', 'Club VIP Vendimia - 30 días', 'DB-VIP-MONTH-520', 'vip_access', 'verified_tappers', 'Promoción para taps reales: club, revista y descuentos por email con consentimiento.', '{"requiresVerifiedTap":true,"requiresContactConsent":true}'::jsonb),
+        ('demobodega', 'Caja selección con seguimiento de lote', 'Caja selección Bodega Balmec', 'DB-BOX-900', 'request_to_buy', 'tenant_members_only', 'Lead de compra premium para el equipo comercial del tenant.', '{"requiresMembership":true,"requiresSalesReview":true}'::jsonb)
     ),
     resolved AS (
       SELECT
@@ -1363,7 +1363,7 @@ async function seedDemoMarketplaceRows() {
         'Comprando Cabernet Franc sumas 180 puntos',
         'Cata privada 2x1 para miembros',
         'Club VIP por este mes',
-        'Caja seleccion con seguimiento de lote'
+        'Caja selección con seguimiento de lote'
       )
   `;
 }

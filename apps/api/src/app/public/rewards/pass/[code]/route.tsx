@@ -6,7 +6,7 @@ import {
   ensureRewardPublicToken,
   getPublicRewardClaimByCode,
   publicApiBase,
-  publicRewardUrl,
+  publicRewardStaffUrl,
 } from "../../../../../lib/reward-public-links";
 
 function clean(value: unknown) {
@@ -57,11 +57,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
     phoneLast4: clean(claim?.phone).replace(/[^\d]/g, "").slice(-4),
     expiresAt: formatArDate(claim?.expires_at || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()),
     status: clean(claim?.status) || "claimed",
-    validationUrl: publicRewardUrl(publicToken),
+    validationUrl: publicRewardStaffUrl(publicToken),
     logoUrl: `${publicApiBase(req)}/nexid-mark-transparent-512.png`,
   });
 
-  response.headers.set("cache-control", "public, max-age=300");
+  response.headers.set("cache-control", "no-store, max-age=0");
   response.headers.set("x-robots-tag", "noindex, nofollow");
   return response;
 }

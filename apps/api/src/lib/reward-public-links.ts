@@ -59,6 +59,10 @@ export function publicRewardUrl(token: string) {
   return `${publicWebBase()}/r/${encodeURIComponent(token)}`;
 }
 
+export function publicRewardStaffUrl(token: string) {
+  return `${publicWebBase()}/s/${encodeURIComponent(token)}`;
+}
+
 export function publicRewardPassUrl(req: Request, token: string) {
   return `${publicApiBase(req)}/p/${encodeURIComponent(token)}`;
 }

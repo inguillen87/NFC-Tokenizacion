@@ -325,7 +325,7 @@ async function ensureCampaignReward(tenantId: string, tenantSlug: string) {
       now() + interval '365 days',
       1,
       '{"requiresVerifiedPhone":true,"requiresTenantMembership":true,"source":"whatsapp"}'::jsonb,
-      '{"mode":"staff_code_validation","channel":"crm","instructions":"Validar codigo, telefono y sello nexID en bodega."}'::jsonb,
+      '{"mode":"staff_code_validation","channel":"crm","instructions":"Validar código, teléfono y sello nexID en bodega."}'::jsonb,
       ${getLogoUrl()},
       false,
       true
@@ -373,9 +373,9 @@ async function sendVoucherEmail(input: {
     `Tu voucher ${input.rewardTitle} quedo activado.`,
     `Codigo de canje: ${input.code}`,
     `Sello nexID: ${input.seal}`,
-    `Valido hasta: ${formatArDate(input.expiresAt)}.`,
+    `Válido hasta: ${formatArDate(input.expiresAt)}.`,
     "",
-    "Mostra este codigo cuando llegues a la bodega o empresa. El staff lo valida desde el CRM nexID.",
+    "Mostrá este código cuando llegues a la bodega o empresa. El staff lo valida desde el CRM nexID.",
     `Portal: ${rewardUrl}`,
   ].join("\n");
   const html = `
@@ -394,7 +394,7 @@ async function sendVoucherEmail(input: {
             <div style="margin-top:10px;font-size:12px;color:#94a3b8">Sello nexID: <b style="color:#fff">${input.seal}</b></div>
           </div>
           ${input.qrImageUrl ? `<div style="margin-top:18px;text-align:center"><img src="${input.qrImageUrl}" width="260" alt="Voucher nexID" style="max-width:100%;height:auto;border-radius:18px;border:1px solid rgba(34,211,238,.25)" /></div>` : ""}
-          <p style="margin:18px 0 0;color:#cbd5e1">Valido hasta <b>${formatArDate(input.expiresAt)}</b>. Mostra este email o WhatsApp en el comercio para validar el premio, cena, experiencia o descuento.</p>
+          <p style="margin:18px 0 0;color:#cbd5e1">Válido hasta <b>${formatArDate(input.expiresAt)}</b>. Mostrá este email o WhatsApp en el comercio para validar el premio, cena, experiencia o descuento.</p>
           <a href="${rewardUrl}" style="display:block;margin-top:22px;text-align:center;background:#22d3ee;color:#020617;text-decoration:none;font-weight:900;border-radius:14px;padding:14px">Abrir reward pass</a>
         </div>
       </div>
@@ -666,7 +666,7 @@ async function claimCampaignVoucher(input: {
     phone: input.phone,
     expires_at: expiresAt,
     verification_seal: seal,
-    staff_instruction: "Validar codigo, telefono y sello nexID antes de entregar beneficio.",
+    staff_instruction: "Validar código, teléfono y sello nexID antes de entregar beneficio.",
   };
   const claimRows = await sql/*sql*/`
     INSERT INTO consumer_reward_claims (consumer_id, tenant_id, reward_id, tap_event_id, status, points_spent, redemption_code, idempotency_key, metadata_json)
@@ -755,7 +755,7 @@ export async function POST(req: Request) {
       return xml("No pude asociar ese email a tu cuenta nexID. Proba con otro correo o abri tu portal para actualizarlo.");
     }
     if (delivery.reason === "email_saved_no_active_voucher") {
-      return xml("Listo, guardamos tu email para respaldo de beneficios. Cuando quieras activar esta promo, toca Quiero y emitimos el codigo por WhatsApp y email.");
+      return xml("Listo, guardamos tu email para respaldo de beneficios. Cuando quieras activar esta promo, toca Quiero y emitimos el código por WhatsApp y email.");
     }
     const voucher = "voucher" in delivery ? delivery.voucher : null;
     const media = voucher ? publicRewardPassUrl(req, voucher.publicToken) : undefined;
@@ -764,7 +764,7 @@ export async function POST(req: Request) {
       voucher ? `Codigo: ${voucher.code}` : "",
       voucher ? `Sello: ${voucher.seal}` : "",
       voucher ? `Abrir reward pass: ${publicRewardUrl(voucher.publicToken)}` : "",
-      "Tambien lo podes mostrar desde este WhatsApp.",
+      "También lo podés mostrar desde este WhatsApp.",
     ].filter(Boolean).join("\n"), 200, media);
   }
 
@@ -816,7 +816,7 @@ export async function POST(req: Request) {
 
   if (intent === "promo_yes") {
     if (!context?.consumer_id) {
-      return xml("Para emitir tu codigo de canje necesito que completes la verificacion nexID con este telefono. Abri tu portal, validalo y volve a tocar QUIERO.");
+      return xml("Para emitir tu código de canje necesito que completes la verificación nexID con este teléfono. Abrí tu Pasaporte nexID, validalo y volvé a tocar QUIERO.");
     }
     if (!voucher) {
       return xml(`No pude emitir el voucher ahora. Tu interes quedo registrado para ${PUBLIC_TENANT_NAME} y un operador puede reintentar desde CRM.`);
@@ -827,19 +827,24 @@ export async function POST(req: Request) {
         ? "Lo dejamos guardado en tu wallet nexID; si el email falla, este WhatsApp tambien sirve como comprobante."
         : "Para tener una copia segura por email, responde tu correo. Es opcional; este WhatsApp ya sirve como comprobante.";
     const media = publicRewardPassUrl(req, voucher.publicToken);
+    const title = voucher.duplicate ? "Ya tenés un voucher nexID activo" : "Voucher nexID activado";
+    const duplicateLine = voucher.duplicate
+      ? "No generamos otro código: reenviamos el mismo pase vigente para evitar duplicados."
+      : "Emitimos tu código de canje seguro.";
     return xml([
-      "Voucher nexID activado",
-      `Codigo de canje: ${voucher.code}`,
+      title,
+      duplicateLine,
+      `Código de canje: ${voucher.code}`,
       `Sello: ${voucher.seal}`,
       `Beneficio: ${voucher.rewardTitle}`,
-      `Valido hasta: ${formatArDate(voucher.expiresAt)}.`,
+      `Válido hasta: ${formatArDate(voucher.expiresAt)}.`,
       `Abrir reward pass: ${publicRewardUrl(voucher.publicToken)}`,
-      "Mostra este WhatsApp o el QR al llegar. El staff valida codigo y telefono en CRM.",
+      "Mostrá este WhatsApp o el QR al llegar. El staff valida código, teléfono y sello en CRM.",
       emailLine,
     ].join("\n"), 200, media);
   }
   if (intent === "promo_no") {
     return xml(`Gracias. No te enviaremos esta promo. Si mas adelante queres beneficios de ${PUBLIC_TENANT_NAME}, responde QUIERO.`);
   }
-  return xml("Soy nexID CRM. Para activar el voucher con codigo de canje responde QUIERO o toca el boton Quiero. Para rechazar esta promo, responde NO GRACIAS.");
+  return xml("Soy nexID CRM. Para activar el voucher con código de canje respondé QUIERO o tocá el botón Quiero. Para rechazar esta promo, respondé NO GRACIAS.");
 }

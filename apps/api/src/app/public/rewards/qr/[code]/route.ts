@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import {
   ensureRewardPublicToken,
   getPublicRewardClaimByCode,
-  publicRewardUrl,
+  publicRewardStaffUrl,
 } from "../../../../../lib/reward-public-links";
 
 function clean(value: unknown) {
@@ -33,7 +33,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
   }
 
   const publicToken = await ensureRewardPublicToken(String(claim.id), metadata);
-  const svg = await QRCode.toString(publicRewardUrl(publicToken), {
+  const svg = await QRCode.toString(publicRewardStaffUrl(publicToken), {
     type: "svg",
     errorCorrectionLevel: "H",
     margin: 2,
@@ -47,7 +47,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
   return new Response(svg, {
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": "public, max-age=300",
+      "cache-control": "no-store, max-age=0",
       "x-robots-tag": "noindex, nofollow",
     },
   });

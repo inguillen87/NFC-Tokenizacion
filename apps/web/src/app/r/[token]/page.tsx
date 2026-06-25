@@ -33,7 +33,7 @@ type PublicReward = {
 
 function formatDate(value?: string) {
   const date = value ? new Date(value) : null;
-  if (!date || Number.isNaN(date.getTime())) return "48h desde emision";
+  if (!date || Number.isNaN(date.getTime())) return "48h desde emisión";
   return new Intl.DateTimeFormat("es-AR", {
     timeZone: "America/Argentina/Buenos_Aires",
     dateStyle: "medium",
@@ -80,7 +80,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
             <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">nexID reward pass</p>
             <h1 className="mt-4 text-3xl font-black tracking-tight text-white">Voucher no disponible</h1>
             <p className="mt-3 text-sm leading-relaxed text-slate-300">
-              Este enlace no existe, vencio o fue reemplazado por un pase mas nuevo.
+              Este enlace no existe, venció o fue reemplazado por un pase más nuevo.
             </p>
             <Link href="/" className="btn-neon-glass mt-6 inline-flex rounded-xl px-4 py-2 text-sm font-black">
               Volver a nexID
@@ -99,7 +99,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
       tone: "border-cyan-300/20 bg-cyan-400/[0.07] text-cyan-200",
     },
     {
-      label: "Valido hasta",
+      label: "Válido hasta",
       value: formatDate(reward.expiresAt),
       Icon: CalendarClock,
       tone: "border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-200",
@@ -113,8 +113,8 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
   ];
 
   const validationSteps = [
-    { label: "QR opaco", detail: "El enlace no muestra IDs internos ni variables de base.", Icon: QrCode },
-    { label: "Codigo manual", detail: "El staff puede validar aunque falle la camara.", Icon: WalletCards },
+    { label: "QR para comercio", detail: "El QR del pase abre validación staff, no datos internos.", Icon: QrCode },
+    { label: "Código manual", detail: "El staff puede validar aunque falle la cámara.", Icon: WalletCards },
     { label: "Backup doble", detail: "WhatsApp y email conservan el beneficio para el cliente.", Icon: MailCheck },
   ];
 
@@ -149,10 +149,10 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
           </div>
 
           <h1 className="mt-5 max-w-3xl text-4xl font-black leading-[0.95] tracking-tight text-white md:text-6xl">
-            Tu experiencia esta lista para canjear.
+            Tu experiencia está lista para canjear.
           </h1>
           <p className="mt-5 max-w-2xl text-sm leading-relaxed text-slate-300 md:text-base">
-            Mostra este pase al llegar. El comercio confirma el codigo, tu telefono enmascarado y el sello nexID antes de entregar el premio, cena, experiencia o descuento.
+            Mostrá este pase al llegar. El comercio confirma el código, tu teléfono enmascarado y el sello nexID antes de entregar el premio, cena, experiencia o descuento.
           </p>
 
           <div className="mt-8 grid gap-3 md:grid-cols-3">
@@ -168,7 +168,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
           <div className="mt-6 overflow-hidden rounded-2xl border border-cyan-300/15 bg-[linear-gradient(135deg,rgba(8,47,73,.28),rgba(15,23,42,.78))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.06)]">
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Codigo de canje</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Código de canje</p>
                 <p className="mt-2 font-mono text-3xl font-black tracking-[0.18em] text-cyan-100 md:text-4xl">{formatCode(reward.code)}</p>
               </div>
               <div className="text-left md:text-right">
@@ -185,7 +185,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Titular</p>
               </div>
               <p className="mt-3 text-sm font-black text-white">{reward.consumer?.name || "Cliente nexID"}</p>
-              <p className="mt-1 text-xs text-slate-400">{reward.consumer?.phoneMasked || "Telefono verificado"}</p>
+              <p className="mt-1 text-xs text-slate-400">{reward.consumer?.phoneMasked || "Teléfono verificado"}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
               <div className="flex items-center gap-2 text-emerald-200">
@@ -249,8 +249,8 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
             <div className="flex items-start gap-3">
               <LockKeyhole className="mt-0.5 h-5 w-5 text-emerald-300" aria-hidden="true" />
               <div>
-                <p className="text-sm font-black text-white">Validacion segura</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-300">{reward.staffInstruction || "Validar codigo, telefono y sello nexID antes de entregar beneficio."}</p>
+                <p className="text-sm font-black text-white">Validación segura</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-300">{reward.staffInstruction || "Validar código, teléfono y sello nexID antes de entregar beneficio."}</p>
               </div>
             </div>
           </div>
@@ -263,7 +263,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
           <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Checklist staff</p>
             <div className="mt-3 space-y-2">
-              {["Escanear QR o ingresar codigo", "Confirmar telefono enmascarado", "Aplicar premio y marcar canjeado"].map((item) => (
+              {["Escanear QR o ingresar código", "Confirmar teléfono enmascarado", "Aplicar premio y marcar canjeado"].map((item) => (
                 <div key={item} className="flex items-center gap-2 text-xs font-bold text-slate-300">
                   <CheckCircle2 className="h-4 w-4 text-emerald-300" aria-hidden="true" />
                   {item}
@@ -273,7 +273,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-2xl border border-violet-300/15 bg-violet-400/5 p-4 text-xs font-bold text-violet-100">
             <MapPin className="h-4 w-4" aria-hidden="true" />
-            Listo para campanas por cercania, vouchers y fidelizacion post-tap.
+            Listo para campañas por cercanía, vouchers y fidelización post-tap.
           </div>
         </aside>
       </section>

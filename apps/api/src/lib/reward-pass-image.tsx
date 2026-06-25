@@ -50,7 +50,7 @@ export async function renderRewardPassImage(input: {
   const rewardTitle = truncate(input.rewardTitle, 62);
   const brandName = truncate(input.brandName || "nexID Partner", 34);
   const state = statusLabel(input.status);
-  const phoneLabel = input.phoneLast4 ? `**** ${input.phoneLast4}` : "telefono verificado";
+  const phoneLabel = input.phoneLast4 ? `**** ${input.phoneLast4}` : "teléfono verificado";
   const panel = "linear-gradient(135deg, rgba(8,28,49,.96), rgba(4,13,29,.92))";
   const border = "1px solid rgba(103,232,249,.22)";
 
@@ -189,7 +189,7 @@ export async function renderRewardPassImage(input: {
               {customerName}, tu premio esta listo.
             </span>
             <span style={{ marginTop: 16, width: 590, textAlign: "center", fontSize: 21, lineHeight: 1.32, color: "#cbd5e1" }}>
-              Mostra este pase al llegar. El staff valida QR, codigo y sello nexID.
+              Mostrá este pase al llegar. El staff valida QR, código y sello nexID.
             </span>
           </div>
 
@@ -280,8 +280,8 @@ export async function renderRewardPassImage(input: {
             >
               <img src={qrDataUrl} width="268" height="268" alt="QR voucher nexID" />
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <span style={{ fontSize: 18, fontWeight: 900, color: "#020617", letterSpacing: 3 }}>SCAN TO VERIFY</span>
-                <span style={{ marginTop: 5, fontSize: 15, color: "#334155", fontWeight: 800 }}>nexid.lat/r/...</span>
+                <span style={{ fontSize: 18, fontWeight: 900, color: "#020617", letterSpacing: 3 }}>VALIDAR STAFF</span>
+                <span style={{ marginTop: 5, fontSize: 15, color: "#334155", fontWeight: 800 }}>nexid.lat/s/...</span>
               </div>
             </div>
             <div
@@ -304,9 +304,9 @@ export async function renderRewardPassImage(input: {
                 }}
               >
                 <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: 5, color: "#94a3b8" }}>VALIDACION EN COMERCIO</span>
-                <span style={{ marginTop: 10, fontSize: 28, fontWeight: 900, lineHeight: 1.08 }}>QR o codigo manual</span>
+                <span style={{ marginTop: 10, fontSize: 28, fontWeight: 900, lineHeight: 1.08 }}>QR staff o código manual</span>
                 <span style={{ marginTop: 12, width: 370, fontSize: 17, lineHeight: 1.34, color: "#cbd5e1" }}>
-                  Confirma telefono {phoneLabel}, codigo y sello antes de entregar la experiencia.
+                  Confirma teléfono {phoneLabel}, código y sello antes de entregar la experiencia.
                 </span>
               </div>
               <div

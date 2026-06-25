@@ -131,14 +131,14 @@ interface RedemptionValidation {
 const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
   {
     id: "mendoza-near-winery",
-    name: "Voucher cercania bodega",
+    name: "Voucher cercanía bodega",
     channel: "whatsapp",
     category: "MARKETING",
     segment: "Usuarios verificados cerca de Mendoza",
     offer: "2x1 en copa de bienvenida + upgrade de visita",
     expectedLift: "+14% visitas al portal",
     body:
-      "Hola {{name}}, vimos tu tap verificado en {{city}} sobre {{product}}. Demo Bodega te reserva {{offer}} por 48h. Toca Quiero y nexID emite tu codigo de canje con respaldo por WhatsApp y email si lo tenes cargado. Stop para salir.",
+      "Hola {{name}}, vimos tu tap verificado en {{city}} sobre {{product}}. Bodega Balmec te reserva {{offer}} por 48h. Toca Quiero y nexID emite tu código de canje con respaldo por WhatsApp y email si lo tenés cargado. Stop para salir.",
     requirements: ["phone_verified", "whatsapp_opt_in", "city_match"],
   },
   {
@@ -150,19 +150,19 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     offer: "club digital con puntos iniciales",
     expectedLift: "+22% registros completados",
     body:
-      "Hola {{name}}, tu producto {{product}} quedo autenticado con nexID. Ya tenes {{points}} puntos y podes guardar el pasaporte, reclamar beneficios y recibir novedades de {{brand}}. Stop para salir.",
+      "Hola {{name}}, tu producto {{product}} quedó autenticado con nexID. Ya tenés {{points}} puntos y podés guardar el pasaporte, reclamar beneficios y recibir novedades de {{brand}}. Stop para salir.",
     requirements: ["tap_valid", "consumer_session"],
   },
   {
     id: "trust-recovery",
-    name: "Recuperacion de confianza",
+    name: "Recuperación de confianza",
     channel: "whatsapp",
     category: "UTILITY",
-    segment: "Usuarios con senales de riesgo",
-    offer: "validacion asistida y beneficio compensatorio",
+    segment: "Usuarios con señales de riesgo",
+    offer: "validación asistida y beneficio compensatorio",
     expectedLift: "-18% abandono post-alerta",
     body:
-      "Hola {{name}}, detectamos una verificacion que requiere revision para {{product}}. El equipo de {{brand}} puede validar el caso y activar un beneficio de confianza desde tu portal nexID. Stop para salir.",
+      "Hola {{name}}, detectamos una verificación que requiere revisión para {{product}}. El equipo de {{brand}} puede validar el caso y activar un beneficio de confianza desde tu Pasaporte nexID. Stop para salir.",
     requirements: ["risk_case", "support_ready"],
   },
   {
@@ -183,7 +183,7 @@ const DEMO_AUDIENCE: AudienceMember[] = [
   {
     consumer_id: "demo-mendoza-001",
     display_name: "Marcelo Guillen",
-    email_masked: "g***@demo.local",
+    email_masked: "m***@gmail.com",
     phone_masked: "+549***8608",
     city: "Mendoza",
     country: "AR",
@@ -203,7 +203,7 @@ const DEMO_AUDIENCE: AudienceMember[] = [
   {
     consumer_id: "demo-cordoba-001",
     display_name: "Cliente Cordoba",
-    email_masked: "c***@demo.local",
+    email_masked: "c***@gmail.com",
     phone_masked: "+549***2211",
     city: "Cordoba",
     country: "AR",
@@ -238,7 +238,7 @@ function renderTemplateBody(template: CampaignTemplate, member: AudienceMember |
     name: firstName(selected.display_name),
     city: selected.city || "Mendoza",
     product: selected.last_product || "tu producto autenticado",
-    brand: selected.tenant_slug === "demobodega" ? "Demo Bodega" : selected.tenant_slug || "tu marca",
+    brand: selected.tenant_slug === "demobodega" ? "Bodega Balmec" : selected.tenant_slug || "tu marca",
     offer: template.offer,
     points: String(asNumber(selected.points_balance)),
   };
@@ -431,7 +431,7 @@ export default function LoyaltyCampaignsClient() {
         {
           label: "Canje staff",
           value: voucherResult?.redemption?.status || "lookup/redeem",
-          detail: "Codigo, sello y telefono validables desde el CRM.",
+          detail: "Código, sello y teléfono validables desde el CRM.",
           ready: Boolean(voucherResult?.ok),
           Icon: BookmarkCheck,
         },
@@ -1013,24 +1013,24 @@ export default function LoyaltyCampaignsClient() {
               <MessageCircle className="h-4 w-4" />
               Audience CRM live
             </div>
-            <h2 className="mt-1 text-xl font-black text-white">Segmentos, vouchers y WhatsApp sandbox</h2>
+            <h2 className="mt-1 text-xl font-black text-white">Segmentos, vouchers y WhatsApp</h2>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
-              De tap verificado a relacion comercial: usuario registrado, ciudad, producto, consentimiento, plantilla y envio de prueba controlado.
+              De tap verificado a relación comercial: usuario registrado, ciudad, producto, consentimiento, plantilla y envío controlado.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200">
             <ShieldCheck className="h-4 w-4" />
-            {audienceLoading ? "Cargando audiencia" : audienceError ? "Fallback demo activo" : "Datos CRM activos"}
+            {audienceLoading ? "Cargando audiencia" : audienceError ? "Fallback offline activo" : "Datos CRM activos"}
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {[
             { label: "Contactos CRM", value: audienceKpis.total, hint: "registrados", icon: Phone, color: "text-cyan-300" },
-            { label: "Con telefono", value: audienceKpis.withPhone, hint: "listos para canal", icon: MessageCircle, color: "text-sky-300" },
+            { label: "Con teléfono", value: audienceKpis.withPhone, hint: "listos para canal", icon: MessageCircle, color: "text-sky-300" },
             { label: "WhatsApp opt-in", value: audienceKpis.whatsappOptIn, hint: "consentidos", icon: ShieldCheck, color: "text-emerald-300" },
-            { label: "Mendoza", value: audienceKpis.mendoza, hint: "cercania bodega", icon: MapPin, color: "text-amber-300" },
-            { label: "Taps acumulados", value: audienceKpis.taps, hint: "senal comercial", icon: Gauge, color: "text-purple-300" },
+            { label: "Mendoza", value: audienceKpis.mendoza, hint: "cercanía bodega", icon: MapPin, color: "text-amber-300" },
+            { label: "Taps acumulados", value: audienceKpis.taps, hint: "señal comercial", icon: Gauge, color: "text-purple-300" },
           ].map((item) => (
             <div key={item.label} className="rounded-xl border border-white/10 bg-slate-900/50 p-3">
               <div className="flex items-center justify-between gap-2">
@@ -1048,11 +1048,11 @@ export default function LoyaltyCampaignsClient() {
             <div>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">
                 <Sparkles className="h-4 w-4" />
-                Investor demo flow
+                Investor flow
               </div>
               <h3 className="mt-1 text-sm font-black text-white">Circuito post-tap listo para mostrar</h3>
               <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-400">
-                De la lectura NFC al beneficio canjeable: segmento, consentimiento, plantilla, WhatsApp/email y validacion staff en un solo recorrido.
+                De la lectura NFC al beneficio canjeable: segmento, consentimiento, plantilla, WhatsApp/email y validación staff en un solo recorrido.
               </p>
             </div>
             <div className="min-w-[150px] rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-3 text-right">
@@ -1159,16 +1159,16 @@ export default function LoyaltyCampaignsClient() {
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Nombre preview
                 <input
-                  title="Nombre que se usa en el saludo del mensaje sandbox"
+                  title="Nombre que se usa en el saludo del mensaje de prueba"
                   value={sandboxRecipientName}
                   onChange={(event) => setSandboxRecipientName(event.target.value)}
                   className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
                 />
               </label>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Numero receptor sandbox
+                Número receptor
                 <input
-                  title="Numero WhatsApp verificado en el sandbox de Twilio"
+                  title="Número WhatsApp verificado para recibir la prueba"
                   value={twilioRecipient}
                   onChange={(event) => setTwilioRecipient(event.target.value)}
                   className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
@@ -1187,7 +1187,7 @@ export default function LoyaltyCampaignsClient() {
                 </div>
                 <div>
                   <div className="text-xs font-black text-cyan-100">nexID Verified CRM</div>
-                  <div className="text-[10px] text-slate-400">WhatsApp no permite un logo chico inline con botones. La marca y el QR aparecen despues, en el pase de canje PNG.</div>
+                  <div className="text-[10px] text-slate-400">WhatsApp no permite un logo chico inline con botones. La marca y el QR aparecen después, en el pase de canje PNG.</div>
                 </div>
               </div>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-white">{messagePreview}</p>
@@ -1201,20 +1201,20 @@ export default function LoyaltyCampaignsClient() {
                   onChange={(event) => setTwilioOptInConfirmed(event.target.checked)}
                   className="mt-0.5"
                 />
-                Confirmo que este numero ya hizo opt-in en el sandbox de Twilio y acepta recibir esta prueba.
+                Confirmo que este número ya hizo opt-in en WhatsApp y acepta recibir esta prueba.
               </label>
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                title="Enviar el preview al WhatsApp sandbox configurado"
+                title="Enviar el preview al WhatsApp configurado"
                 onClick={handleSendSandboxWhatsApp}
                 disabled={twilioSending || !twilioOptInConfirmed}
                 className="gap-2 bg-cyan-400 text-slate-950 hover:bg-cyan-300 disabled:opacity-40"
               >
                 {twilioSending ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" /> : <Send className="h-4 w-4" />}
-                Enviar sandbox
+                Enviar prueba
               </Button>
               <button
                 type="button"
@@ -1248,9 +1248,9 @@ export default function LoyaltyCampaignsClient() {
                 <BookmarkCheck className="h-4 w-4" />
                 Voucher desk
               </div>
-              <h3 className="mt-1 text-sm font-black text-white">Validar codigo de canje en bodega / comercio</h3>
+              <h3 className="mt-1 text-sm font-black text-white">Validar código de canje en bodega / comercio</h3>
               <p className="mt-1 text-[11px] text-slate-400">
-                Pega el codigo que muestra el cliente. El sello y ultimos 4 digitos son control extra cuando el staff necesita mas seguridad.
+                Pegá el código que muestra el cliente. El sello y últimos 4 dígitos son control extra cuando el staff necesita más seguridad.
               </p>
             </div>
             <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-200">
@@ -1260,9 +1260,9 @@ export default function LoyaltyCampaignsClient() {
 
           <div className="mt-3 grid gap-2 md:grid-cols-[1.2fr_.9fr_.7fr_auto]">
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Codigo
+              Código
               <input
-                title="Codigo de canje recibido por WhatsApp o email"
+                title="Código de canje recibido por WhatsApp o email"
                 placeholder="12345678"
                 value={voucherCode}
                 onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
@@ -1280,9 +1280,9 @@ export default function LoyaltyCampaignsClient() {
               />
             </label>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Tel. ultimos 4
+              Tel. últimos 4
               <input
-                title="Ultimos cuatro digitos del telefono para control del staff"
+                title="Últimos cuatro dígitos del teléfono para control del staff"
                 placeholder="8608"
                 value={voucherPhoneLast4}
                 onChange={(event) => setVoucherPhoneLast4(event.target.value.replace(/[^\d]/g, "").slice(0, 4))}
@@ -1301,7 +1301,7 @@ export default function LoyaltyCampaignsClient() {
               </button>
               <button
                 type="button"
-                title="Marcar el voucher como canjeado despues de entregar premio, cena, experiencia o descuento"
+                title="Marcar el voucher como canjeado después de entregar premio, cena, experiencia o descuento"
                 disabled={voucherChecking || !voucherCode.trim()}
                 onClick={() => handleValidateVoucher("redeem")}
                 className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-300 disabled:opacity-40"
@@ -1319,7 +1319,7 @@ export default function LoyaltyCampaignsClient() {
             }`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="font-black">
-                  {voucherResult.ok ? "Voucher valido" : `No validado: ${voucherResult.reason || "error"}`}
+                  {voucherResult.ok ? "Voucher válido" : `No validado: ${voucherResult.reason || "error"}`}
                 </div>
                 {voucherResult.redemption?.status ? (
                   <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[10px] font-black uppercase">
@@ -1395,7 +1395,7 @@ export default function LoyaltyCampaignsClient() {
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2">
-                  <span className="truncate font-mono text-[10px] text-cyan-200">{member.phone_masked || "sin telefono"}</span>
+                  <span className="truncate font-mono text-[10px] text-cyan-200">{member.phone_masked || "sin teléfono"}</span>
                   <button
                     type="button"
                     title="Usar este usuario como ejemplo de personalizacion del mensaje"
@@ -1473,7 +1473,7 @@ export default function LoyaltyCampaignsClient() {
       <div className="flex border-b border-white/10 mb-6">
         <button
           type="button"
-          title="Ver campanas activas, resultados y recompensas emitidas"
+          title="Ver campañas activas, resultados y recompensas emitidas"
           onClick={() => setActiveTab("campaigns")}
           className={`pb-3 text-sm font-bold border-b-2 px-4 transition-colors flex items-center gap-2 ${
             activeTab === "campaigns" 
@@ -1512,7 +1512,7 @@ export default function LoyaltyCampaignsClient() {
                 <h2 className="text-lg font-bold text-white">Listado de Campañas</h2>
                 <Button 
                   type="button"
-                  title="Abrir el editor IA para crear una nueva campana"
+                  title="Abrir el editor IA para crear una nueva campaña"
                   onClick={() => setActiveTab("ai-optimizer")} 
                   variant="secondary"
                   className="gap-2 text-xs py-1.5 border border-purple-500/30 hover:border-purple-500/60"
@@ -1593,7 +1593,7 @@ export default function LoyaltyCampaignsClient() {
                 <div className="rounded-xl border border-purple-500/20 bg-purple-950/5 p-4 space-y-2.5">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                      Motor IA de campanas
+                      Motor IA de campañas
                     </span>
                     <span
                       title={optimizerModeDetail}
@@ -1810,7 +1810,7 @@ export default function LoyaltyCampaignsClient() {
                   <div className="pt-2">
                     <Button
                       type="button"
-                      title="Registrar esta campana en el CRM local de la demo"
+                      title="Registrar esta campaña en el CRM"
                       onClick={handleCreateCampaign}
                       disabled={!draftText.trim() && !optimizedText.trim()}
                       variant="primary"
@@ -1829,7 +1829,7 @@ export default function LoyaltyCampaignsClient() {
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Gauge className="w-4 h-4 text-purple-400" /> Score de copy y conversion
                   </h3>
-                  <p className="text-xs text-slate-400">Estimacion local de prestigio, emocion y CTR probable. No es telemetria real de campana hasta que haya envios y aperturas medidos.</p>
+                  <p className="text-xs text-slate-400">Estimación local de prestigio, emoción y CTR probable. No es telemetría real de campaña hasta que haya envíos y aperturas medidos.</p>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-slate-900/30 p-5 space-y-5">
@@ -1977,7 +1977,7 @@ export default function LoyaltyCampaignsClient() {
                 {msg.sender === "bot" && msg.action && (
                   <button
                     type="button"
-                    title="Usar esta recomendacion del asistente como borrador de campana"
+                    title="Usar esta recomendación del asistente como borrador de campaña"
                     onClick={() => {
                       setDraftTitle(msg.action?.title || "");
                       setDraftText(msg.action?.prompt || "");
