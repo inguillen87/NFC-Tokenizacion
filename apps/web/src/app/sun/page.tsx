@@ -955,7 +955,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const protectedBannerCopy = isSnapshotView
     ? "Autenticidad y trazabilidad visibles. Puntos, club, garantia y tokenizacion quedan protegidos hasta un nuevo tap fisico."
     : isSunProfileMismatch
-      ? "El lote fue detectado como DemoBodega, pero la lectura SUN no descifra a un UID autorizado. Hay que corregir claves/layout o registrar el payload fisico del proveedor."
+      ? "El lote fue detectado como Bodega Balmec, pero la lectura SUN no descifra a un UID autorizado. Hay que corregir claves/layout o registrar el payload fisico del proveedor."
     : isReplay
       ? "La URL/SUN ya fue usada. Conservamos la evidencia y pedimos un nuevo tap fisico para acciones comerciales."
       : "Por seguridad, este producto no puede guardarse en la coleccion ni sumar puntos con esta lectura.";

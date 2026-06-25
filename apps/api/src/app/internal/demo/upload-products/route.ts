@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       galleryUrls: item.galleryUrls || [],
     };
     await sql`INSERT INTO tag_profiles (tag_id, sku, product_name, vintage, grape_varietal, alcohol_pct, barrel_months, harvest_year, vineyard_humidity, soil_humidity, region, winery, temperature_storage, notes, image_url, locale_data)
-    VALUES (${tag.id}, ${item.sku || null}, ${item.productName || null}, ${item.vintage || null}, ${item.grapeVarietal || null}, ${item.alcoholPct || null}, ${item.barrelMonths || null}, ${item.harvestYear || null}, ${item.vineyardHumidity || null}, ${item.soilHumidity || null}, ${item.region || null}, 'Demo Bodega', ${item.temperatureStorage || null}, ${item.notes || null}, ${item.imageUrl || null}, ${JSON.stringify({ 'es-AR': item, 'pt-BR': item, en: item, media })}::jsonb)
+    VALUES (${tag.id}, ${item.sku || null}, ${item.productName || null}, ${item.vintage || null}, ${item.grapeVarietal || null}, ${item.alcoholPct || null}, ${item.barrelMonths || null}, ${item.harvestYear || null}, ${item.vineyardHumidity || null}, ${item.soilHumidity || null}, ${item.region || null}, 'Bodega Balmec', ${item.temperatureStorage || null}, ${item.notes || null}, ${item.imageUrl || null}, ${JSON.stringify({ 'es-AR': item, 'pt-BR': item, en: item, media })}::jsonb)
     ON CONFLICT (tag_id) DO UPDATE SET sku=EXCLUDED.sku, product_name=EXCLUDED.product_name, image_url=COALESCE(EXCLUDED.image_url, tag_profiles.image_url), locale_data=EXCLUDED.locale_data, updated_at=now()`;
     updated += 1;
   }

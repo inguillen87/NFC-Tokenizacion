@@ -775,7 +775,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   function applyDemobodegaPilot() {
     setTenantSlug("demobodega");
-    setTenantName("Demo Bodega");
+    setTenantName("Bodega Balmec");
     setVertical("wine");
     setClubName("Club Gran Reserva");
     setProductLabel("Gran Reserva Malbec");

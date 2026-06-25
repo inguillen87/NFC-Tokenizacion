@@ -136,7 +136,7 @@ async function migrateSunTenantProfilesSchema() {
         '{
           "product":{
             "name":"Gran Reserva Malbec",
-            "producer":"Demo Bodega",
+            "producer":"Bodega Balmec",
             "varietal":"Malbec",
             "vintage":"2022",
             "alcohol":"14.5%",
@@ -164,7 +164,7 @@ async function migrateSunTenantProfilesSchema() {
       || '{
         "product_name":"Gran Reserva Malbec",
         "sku":"GRM-2022-DEMO",
-        "winery":"Demo Bodega",
+        "winery":"Bodega Balmec",
         "region":"Valle de Uco, Mendoza",
         "grape_varietal":"Malbec",
         "vintage":"2022",
@@ -223,7 +223,7 @@ async function migrateSunTenantProfilesSchema() {
       12,
       2022,
       'Valle de Uco, Mendoza',
-      'Demo Bodega',
+      'Bodega Balmec',
       '16C',
       'Perfil SUN real del piloto demobodega para lote DEMO-2026-02.',
       '{"vertical":"wine","lot":"MZA-2026-0424","origin":{"label":"Valle de Uco, Mendoza","address":"Finca Altamira, Mendoza, AR","lat":-33.3667,"lng":-69.15},"claimPolicy":"purchase_proof_required","tokenizationMode":"valid_and_opened"}'::jsonb

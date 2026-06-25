@@ -207,7 +207,7 @@ export function resolveSunTenantProfile(input: {
   const tenantSlug = normalizeTenantSlug(firstString(passport?.tenant_slug, result?.tenant_slug, result?.tenant));
   const isDemoBodega = input.bid === DEMO_BODEGA_BID && tenantSlug === "demobodega";
   const tenantId = firstString(passport?.tenant_id, result?.tenant_id, isDemoBodega ? "demobodega" : null);
-  const tenantName = firstString(passport?.tenant_name, result?.tenant_name, isDemoBodega ? "Demo Bodega" : null);
+  const tenantName = firstString(passport?.tenant_name, result?.tenant_name, isDemoBodega ? "Bodega Balmec" : null);
   const vertical = normalizeSunVertical(passport?.sun_profile_vertical)
     || normalizeSunVertical(readPath(config, ["sun", "vertical"]))
     || (isDemoBodega ? "wine" : null);

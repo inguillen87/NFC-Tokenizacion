@@ -49,7 +49,7 @@ const MOCK_PACKS = [
 ];
 
 const state = {
-  tenant: { slug: "demobodega", name: "Demo Bodega" },
+  tenant: { slug: "demobodega", name: "Bodega Balmec" },
   batch: { bid: "DEMO-2026-02", status: "active" },
   tagCount: 120,
   crm: { leads: 0, tickets: 0, orders: 0 },
@@ -215,7 +215,7 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
     const lat = toNumberOrNull(payload.lat) ?? 40.7831;
     const lng = toNumberOrNull(payload.lng) ?? -73.9712;
     const tenant = String(payload.tenant_slug || payload.tenant || "demobodega");
-    const tenantName = String(payload.tenant_name || payload.tenantName || "Demo Bodega");
+    const tenantName = String(payload.tenant_name || payload.tenantName || "Bodega Balmec");
     const bid = String(payload.bid || "DEMO-2026-02");
     const productName = String(payload.product_name || payload.productName || "Gran Reserva Malbec");
     const device = String(payload.device || "iPhone 15 Pro");

@@ -13,7 +13,7 @@ export function OnboardDemoButton({ bid }: { bid: string }) {
       const response = await fetch("/api/demo/onboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bid, tenant_slug: "demobodega", tenant_name: "Demo Bodega" }),
+        body: JSON.stringify({ bid, tenant_slug: "demobodega", tenant_name: "Bodega Balmec" }),
       });
       const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
       if (!response.ok || data?.ok === false) {

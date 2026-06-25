@@ -180,7 +180,7 @@ const BID_PASSPORT_PRESETS: Record<string, {
 }> = {
   "DEMO-2026-02": {
     name: "Gran Reserva Malbec",
-    winery: "Demo Bodega",
+    winery: "Bodega Balmec",
     region: "Valle de Uco, Mendoza",
     varietal: "Malbec",
     vintage: "2022",
@@ -199,7 +199,7 @@ const BID_PASSPORT_PRESETS: Record<string, {
   },
   "DEMO-2026-08": {
     name: "Single Vineyard Cabernet Franc",
-    winery: "Demo Bodega",
+    winery: "Bodega Balmec",
     region: "Luján de Cuyo, Mendoza",
     varietal: "Cabernet Franc",
     vintage: "2023",
@@ -724,7 +724,7 @@ async function handleQrScan(input: {
   geoLng: number;
 }) {
   const requestedProduct = firstParam(input.url, ["product", "productName", "name"], "Gran Reserva Malbec");
-  const requestedWinery = firstParam(input.url, ["winery", "brand"], "Demo Bodega");
+  const requestedWinery = firstParam(input.url, ["winery", "brand"], "Bodega Balmec");
   const requestedRegion = firstParam(input.url, ["region", "origin"], "Mendoza, Argentina");
   const browserLat = parseCoordinate(input.url.searchParams.get("lat") || input.url.searchParams.get("gps_lat"), input.geoLat);
   const browserLng = parseCoordinate(input.url.searchParams.get("lng") || input.url.searchParams.get("gps_lng"), input.geoLng);
@@ -888,7 +888,7 @@ async function handleQrScan(input: {
       name: tenantName,
       vertical: String(sdmConfig.vertical || "wine"),
       productLabel: "vino",
-      clubName: String(sdmConfig.club_name || "Club Demo Bodega"),
+      clubName: String(sdmConfig.club_name || "Club Bodega Balmec"),
       tokenizationMode: "nfc_only",
     },
     product: {

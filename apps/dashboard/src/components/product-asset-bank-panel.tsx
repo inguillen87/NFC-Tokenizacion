@@ -46,7 +46,7 @@ const initialForm: AssetForm = {
   bid: "DEMO-2026-02",
   uidHex: "",
   productName: "Gran Reserva Malbec",
-  brandName: "Demo Bodega",
+  brandName: "Bodega Balmec",
   imageUrl: "",
   labelImageUrl: "",
   modelUrl: "",

@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const bid = clean(body.bid).toUpperCase();
   const tenantSlug = clean(body.tenant_slug || "demobodega").toLowerCase();
-  const tenantName = clean(body.tenant_name || "Demo Bodega");
+  const tenantName = clean(body.tenant_name || "Bodega Balmec");
 
   if (!/^DEMO-[A-Z0-9-]{3,40}$/.test(bid)) {
     return NextResponse.json({ ok: false, reason: "Auto-onboarding only enabled for DEMO-* bids" }, { status: 400 });

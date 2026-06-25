@@ -10,5 +10,5 @@ export async function POST(req: Request) {
   if (auth) return auth;
 
   await sql`DELETE FROM tenants WHERE slug='demobodega'`;
-  return json({ ok: true, message: 'Demo Bodega reset complete' });
+  return json({ ok: true, message: 'Bodega Balmec reset complete' });
 }

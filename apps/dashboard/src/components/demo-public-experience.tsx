@@ -172,7 +172,7 @@ export function DemoPublicExperience() {
         vertical,
         source: "consumer_tap",
         tenant: "demobodega",
-        tenantName: "Demo Bodega",
+        tenantName: "Bodega Balmec",
         bid: "DEMO-2026-02",
         city: "New York",
         country: "US",

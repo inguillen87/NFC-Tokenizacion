@@ -87,7 +87,7 @@ export function normalizeDemoBodegaSunResult(input: {
       tenant_id: body.tenant_id || passport.tenant_id || "demobodega",
       tenant_slug: "demobodega",
       tenant: "demobodega",
-      tenant_name: body.tenant_name || passport.tenant_name || "Demo Bodega",
+      tenant_name: body.tenant_name || passport.tenant_name || "Bodega Balmec",
       bid: body.bid || input.bid,
       tag_tamper_config_detected: body.tag_tamper_config_detected ?? true,
       tamper_supported: body.tamper_supported ?? body.tag_tamper_config_detected ?? true,

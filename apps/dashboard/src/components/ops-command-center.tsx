@@ -49,7 +49,7 @@ const roles = {
     action: "Detecta que tenant esta listo para escalar, cual necesita auditoria y donde hay oportunidad comercial.",
   },
   tenant: {
-    label: "DemoBodega / marca",
+    label: "Bodega Balmec / marca",
     icon: Store,
     headline: "Pasar de lote recibido a producto pegado, probado, publicado y vendiendo.",
     action: "La persona no tecnica ve que completar, que esta bloqueado y cual es el proximo paso.",
