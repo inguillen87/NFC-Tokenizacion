@@ -336,16 +336,16 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     ok: true,
     status: {
       code: "AUTH_OK",
-      label: "Autentico, sello abierto",
+      label: "Auténtico, sello abierto",
       tone: "good",
-      summary: "Demo SUN validado con TagTamper y trazabilidad de origen.",
+      summary: "SUN validado con TagTamper y trazabilidad de origen.",
       reason: "demo_preview",
       productState: "VALID_OPENED",
       tamperSupported: true,
       tamperStatus: "OPENED",
     },
     identity: {
-      bid: "DEMO-BODEGA-0424",
+      bid: "BALMEC-2026-02",
       uid: "04A7****1090",
       readCounter: 7,
       tagStatus: "active",
@@ -355,7 +355,7 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
     },
     product: {
       name: demoProduct.name,
-      winery: "Demo Bodega",
+      winery: "Bodega Balmec",
       region: "Valle de Uco, Mendoza",
       varietal: demoProduct.vertical === "vino" ? "Malbec" : demoProduct.category,
       vintage: "2021",
@@ -378,7 +378,7 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
       wineryCoordinates: { lat: -33.2095, lng: -69.1211 },
     },
     tapContext: { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
-    tokenization: { status: "sandbox_ready", network: "Polygon Amoy", txHash: "0xDEMO", tokenId: "NX-DEMO-0424" },
+    tokenization: { status: "sandbox_ready", network: "Polygon Amoy", txHash: "0xBALMEC", tokenId: "NX-BALMEC-0424" },
     tag_tamper: { available: true, status: "opened", raw: "4F4F" },
     cta: { claimOwnership: true, registerWarranty: true, provenance: true, tokenize: true },
     troubleshooting: [],
@@ -427,7 +427,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   if (isQrScan) {
     const requestedProduct = readParam(params, "product") || readParam(params, "productName") || "Gran Reserva Malbec";
-    const requestedWinery = readParam(params, "winery") || readParam(params, "brand") || "Demo Bodega";
+    const requestedWinery = readParam(params, "winery") || readParam(params, "brand") || "Bodega Balmec";
     const requestedTenant = readParam(params, "tenant") || "demobodega";
     const incomingHeaders = await headers();
     const qrQuery = new URLSearchParams();
@@ -571,6 +571,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const isFreshCommercialTap = isActionableTap && (isFreshHandoff || !isSnapshotView);
   const isValid = isTechnicallyAuthentic && !isVerifiedOpenedState && ["VALID", "AUTH_OK"].includes(statusCode);
   const isRiskBlocked = isReplay || isTamperRisk || isSunProfileMismatch || !isTechnicallyAuthentic;
+  const showEngagementSuite = (isQrScan || isFreshCommercialTap || isVerifiedOpenedState) && !isRiskBlocked && !isSnapshotView;
   const troubleshooting = result.troubleshooting || [];
   const canAutoOnboard = String(result.status?.reason || "").toLowerCase().includes("unknown batch") && /^DEMO-[A-Z0-9-]{3,40}$/.test(bid);
   const timelinePoints = (result.provenance?.timelineSummary || [])
@@ -1118,9 +1119,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : Array.isArray(productMedia.gallery_urls)
       ? productMedia.gallery_urls.map((item) => String(item || "").trim()).filter(Boolean)
       : [];
+  const requestedBrandDisplay = readParam(params, "winery") || readParam(params, "brand") || "";
   const assetProfile = resolveProductAssetProfile({
     tenantSlug: result.tenant?.slug || result.identity?.tenantSlug,
-    brandName: result.product?.winery || result.tenant?.name || result.tenant?.slug,
+    brandName: requestedBrandDisplay || result.product?.winery || result.tenant?.name || result.tenant?.slug,
     productName,
     bid: result.identity?.bid,
     vertical: result.product?.vertical || result.rightsPolicy?.vertical || verticalLabel,
@@ -1134,6 +1136,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const assetReadinessLabel = summarizeAssetReadiness(assetProfile);
   const productVisualKind = (assetProfile.visualKind || resolveSunVisualKind(result)) as SunVisualKind;
   const productDisplayName = assetProfile.productName || productName;
+  const engagementWineryName = requestedBrandDisplay || result.product?.winery || "Bodega Premium";
+  const engagementTenantSlug = readParam(params, "tenant") || tenantSlug || "demobodega";
   const productHeroImageUrl = assetProfile.primaryImageUrl || productImageUrl;
   const productVisualState = (isReplay || isRiskBlocked)
     ? "blocked"
@@ -1203,7 +1207,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             ? 5
             : 0;
 
-  const tenantDisplayName = result.tenant?.name || result.product?.winery || result.tenant?.slug || result.identity?.tenantSlug || "Demo Bodega";
+  const tenantDisplayName = requestedBrandDisplay || result.tenant?.name || result.product?.winery || result.tenant?.slug || result.identity?.tenantSlug || "Bodega Premium";
   const batchDisplay = bid || result.identity?.bid || "Batch activo";
   const productLine = [result.product?.region, result.product?.varietal || result.product?.category || verticalLabel]
     .map((item) => String(item || "").trim())
@@ -1281,7 +1285,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isSunProfileMismatch
     ? { label: "Avisar a soporte", href: reportProblemHref, tone: "trace" }
     : isFreshCommercialTap
-      ? { label: "Ver opciones del producto", href: "#consumer-choice", tone: "trace" }
+      ? { label: "Ver trivia y beneficios", href: showEngagementSuite ? "#qr-engagement" : "#consumer-choice", tone: "trace" }
       : isSnapshotView
         ? { label: "Hacer nuevo tap fisico", href: "#fresh-tap-required", tone: "fresh" }
         : isRiskBlocked
@@ -1665,13 +1669,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
           )}
 
-          {/* Sommelier / QRengagementSuite integration if QR mode is active */}
-          {isQrScan && (
+          {/* Sommelier and trivia for QR or verified NFC taps */}
+          {showEngagementSuite && (
             <div id="qr-engagement">
               <QREngagementSuite
-                wineryName={result.product?.winery || "Bodega Premium"}
+                wineryName={engagementWineryName}
                 productName={productDisplayName}
-                tenantSlug={tenantSlug || "demobodega"}
+                tenantSlug={engagementTenantSlug}
                 eventId={eventId || null}
                 bid={bid || null}
               />
@@ -1901,7 +1905,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       </div>
 
       {/* Floating sommelier trigger for mobile */}
-      {isQrScan && (
+      {showEngagementSuite && (
         <a 
           href="#qr-engagement" 
           className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-violet-600 px-4 py-3 text-xs font-black text-white shadow-lg hover:bg-violet-500 active:scale-95 transition-all lg:hidden"
@@ -1917,7 +1921,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <span className="text-xs">🍷</span>
             <span className="text-[8px] font-bold mt-0.5">Ficha</span>
           </a>
-          <a href={isQrScan ? "#qr-engagement" : "#geo-trace"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
+          <a href={showEngagementSuite ? "#qr-engagement" : "#geo-trace"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
             <span className="text-xs">📍</span>
             <span className="text-[8px] font-bold mt-0.5">Ruta</span>
           </a>
@@ -1925,7 +1929,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <span className="text-xs">🛒</span>
             <span className="text-[8px] font-bold mt-0.5">Comprar</span>
           </Link>
-          <a href={isQrScan ? "#qr-engagement" : "#consumer-choice"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
+          <a href={showEngagementSuite ? "#qr-engagement" : "#consumer-choice"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
             <span className="text-xs">🔒</span>
             <span className="text-[8px] font-bold mt-0.5">Acciones</span>
           </a>

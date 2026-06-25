@@ -207,7 +207,13 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
       setTriviaLoading(true);
       setTriviaError(null);
       try {
-        const response = await fetch(`/api/mobile/passport/${encodeURIComponent(triviaEventId)}/loyalty/trivia?locale=es-AR`, { cache: "no-store" });
+        const triviaParams = new URLSearchParams({
+          locale: "es-AR",
+          tenant: tenantSlug || "",
+          product: productName,
+          winery: wineryName,
+        });
+        const response = await fetch(`/api/mobile/passport/${encodeURIComponent(triviaEventId)}/loyalty/trivia?${triviaParams.toString()}`, { cache: "no-store" });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || payload?.ok === false || !Array.isArray(payload?.quiz?.questions)) {
           throw new Error(payload?.error || "trivia_unavailable");
@@ -334,7 +340,7 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
       const response = await fetch(`/api/mobile/passport/${encodeURIComponent(triviaEventId)}/loyalty/trivia`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale: "es-AR", answers }),
+        body: JSON.stringify({ locale: "es-AR", tenantSlug, productName, brandName: wineryName, answers }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload?.ok === false) {

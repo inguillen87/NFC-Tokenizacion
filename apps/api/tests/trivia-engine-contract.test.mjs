@@ -24,3 +24,15 @@ test("completed trivia awards points through the loyalty ledger only once", () =
   assert.match(service, /const idempotencyKey = `quiz:\$\{quiz\.id\}:event:\$\{event\.id\}:member:\$\{member\.id\}`/);
   assert.match(service, /WHERE idempotency_key = \$\{idempotencyKey\}/);
 });
+
+test("preview trivia handles non uuid tap ids without touching event storage", () => {
+  assert.match(service, /if \(!isUuid\(input\.eventId\)\) return previewTrivia\(input\)/);
+  assert.match(service, /preview:\s*true/);
+  assert.match(service, /Bodega Balmec/);
+});
+
+test("trivia copy stays clean spanish without mojibake", () => {
+  assert.doesNotMatch(service, /Ã|Â|�/);
+  assert.match(service, /¿Qué dato confirma mejor/);
+  assert.match(service, /campañas por cercanía/);
+});
