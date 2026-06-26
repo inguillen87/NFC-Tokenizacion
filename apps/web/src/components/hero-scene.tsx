@@ -916,6 +916,26 @@ function HeroTraceMap({
 
   return (
     <div className="hero-trace-map hero-trace-map--clear flex items-center justify-center" aria-label={txt.routeTitle}>
+      <div className="hero-trace-map__globe" aria-label={`${origin.city} a ${tap.city}`}>
+        <Globe3dMap
+          theme="dark"
+          points={[
+            { city: origin.city, country: origin.country, lat: origin.lat, lng: origin.lng, scans: 1, status: "origin", vertical: "origen" },
+            { city: tap.city, country: tap.country, lat: tap.lat, lng: tap.lng, scans: 1, status: "tap", vertical: "cliente" },
+          ]}
+          routes={[{
+            fromLat: origin.lat,
+            fromLng: origin.lng,
+            toLat: tap.lat,
+            toLng: tap.lng,
+            tone: "success",
+            label: `${origin.city} -> ${tap.city} / ${formattedDistance} km`,
+          }]}
+          width={480}
+          height={330}
+          className="border-0 bg-transparent shadow-none"
+        />
+      </div>
       <svg viewBox="0 0 100 100" role="img" aria-label={`${origin.city} a ${tap.city}`}>
         <defs>
           <linearGradient id="hero-route-gradient" x1="0" x2="1">

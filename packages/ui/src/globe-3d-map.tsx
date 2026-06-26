@@ -23,21 +23,30 @@ const CITY_COUNTRY_HINTS: Record<string, string> = {
 
 const COUNTRY_NAME_ALIASES: Record<string, string> = {
   argentina: "argentina",
+  ar: "argentina",
   brasil: "brazil",
   brazil: "brazil",
+  br: "brazil",
+  cl: "chile",
   usa: "united states of america",
+  us: "united states of america",
   "united states": "united states of america",
   "united states of america": "united states of america",
   suiza: "switzerland",
   switzerland: "switzerland",
+  ch: "switzerland",
   espana: "spain",
   spain: "spain",
+  es: "spain",
   chile: "chile",
   france: "france",
   francia: "france",
+  fr: "france",
   "united kingdom": "united kingdom",
+  gb: "united kingdom",
   uk: "united kingdom",
   china: "china",
+  cn: "china",
 };
 
 export type GlobePoint = {
@@ -714,7 +723,7 @@ export function Globe3dMap({
         arcEndLat="toLat"
         arcEndLng="toLng"
         arcLabel={(route: any) => route.label || "Ruta verificada"}
-        arcColor={(r: any) => (r.tone === "warn" ? "#fb7185" : "#22d3ee")}
+        arcColor={(r: any) => (r.tone === "warn" ? "#fb7185" : r.tone === "success" ? "#34d399" : "#22d3ee")}
         arcDashLength={0.45}
         arcDashGap={0.15}
         arcDashAnimateTime={1800}

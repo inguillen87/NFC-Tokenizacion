@@ -22411,6 +22411,7 @@ html.theme-light .landing-hero-section .hero-object-map-pane .hero-trace-map {
     radial-gradient(circle at 24% 72%, rgba(45, 212, 191, 0.18), transparent 28%),
     radial-gradient(circle at 74% 36%, rgba(56, 189, 248, 0.16), transparent 30%),
     linear-gradient(135deg, rgba(8, 47, 73, 0.76), rgba(2, 6, 23, 0.68));
+  pointer-events: auto;
 }
 
 .landing-hero-section .hero-trace-map--clear::after {
@@ -22422,6 +22423,25 @@ html.theme-light .landing-hero-section .hero-object-map-pane .hero-trace-map {
   background:
     linear-gradient(180deg, rgba(2, 6, 23, 0.08), transparent 24%, transparent 64%, rgba(2, 6, 23, 0.2)),
     radial-gradient(circle at 50% 52%, transparent 0 46%, rgba(2, 6, 23, 0.22) 100%);
+}
+
+.landing-hero-section .hero-trace-map--clear .hero-trace-map__globe {
+  position: absolute;
+  inset: -0.35rem;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.landing-hero-section .hero-trace-map--clear .hero-trace-map__globe > div {
+  max-width: none !important;
+}
+
+.landing-hero-section .hero-trace-map--clear > svg {
+  opacity: 0.08;
+  pointer-events: none;
+  filter: blur(0.2px);
 }
 
 .landing-hero-section .hero-trace-map--clear .hero-map-intel {
