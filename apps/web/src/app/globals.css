@@ -23164,6 +23164,20 @@ html.theme-light .landing-hero-section .hero-trace-map--clear [data-nexid-map="p
   filter: saturate(1.2) contrast(1.08) drop-shadow(0 18px 44px rgba(8, 47, 73, 0.34)) !important;
 }
 
+[data-globe-mode="interactive"] .scene-container {
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+[data-globe-mode="interactive"] .scene-container .scene-nav-info {
+  display: none !important;
+}
+
+[data-globe-mode="interactive"] .scene-container canvas {
+  display: block !important;
+}
+
 html.theme-light .landing-hero-section .hero-scene {
   background:
     linear-gradient(135deg, rgba(224, 242, 254, 0.92), rgba(248, 250, 252, 0.82)),

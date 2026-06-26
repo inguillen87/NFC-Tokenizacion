@@ -296,7 +296,7 @@ function routeTitle(route: GlobeRoute, points: GlobePoint[]) {
   if (route.label) return route.label;
   const from = closestPoint(points, route.fromLat, route.fromLng);
   const to = closestPoint(points, route.toLat, route.toLng);
-  if (from && to) return `${from.city} → ${to.city}`;
+  if (from && to) return `${from.city} -> ${to.city}`;
   return "Ruta verificada";
 }
 
@@ -306,8 +306,38 @@ function routeMeta(route: GlobeRoute, points: GlobePoint[]) {
   const distance = haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng);
   const fromCountry = displayCountryName(inferCountryName(from || ({ city: "", lat: 0, lng: 0 } as GlobePoint)));
   const toCountry = displayCountryName(inferCountryName(to || ({ city: "", lat: 0, lng: 0 } as GlobePoint)));
-  const endpoints = from && to ? `${from.city}, ${fromCountry} → ${to.city}, ${toCountry}` : "Origen y destino auditados";
-  return `${endpoints} · ${formatKm(distance)}`;
+  if (from && to) return `${from.city}, ${fromCountry} -> ${to.city}, ${toCountry} - ${formatKm(distance)}`;
+  return `Origen y destino auditados - ${formatKm(distance)}`;
+}
+
+function routeDistanceLabel(route?: GlobeRoute) {
+  if (!route) return "";
+  return formatKm(haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng));
+}
+
+function GlobeLoadingBackdrop({
+  isLightTheme,
+  className = "",
+}: {
+  isLightTheme: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`absolute inset-0 z-0 overflow-hidden rounded-2xl transition-opacity duration-500 ${className}`}
+      aria-hidden="true"
+    >
+      <div
+        className={`absolute inset-0 ${
+          isLightTheme
+            ? "bg-[radial-gradient(circle_at_45%_36%,rgba(14,165,233,.18),transparent_34%),linear-gradient(135deg,rgba(224,242,254,.78),rgba(248,250,252,.72))]"
+            : "bg-[radial-gradient(circle_at_44%_34%,rgba(34,211,238,.18),transparent_34%),radial-gradient(circle_at_68%_70%,rgba(52,211,153,.1),transparent_30%),linear-gradient(135deg,rgba(2,6,23,.72),rgba(8,47,73,.48))]"
+        }`}
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(125,211,252,.07)_1px,transparent_1px),linear-gradient(rgba(125,211,252,.07)_1px,transparent_1px)] bg-[size:3rem_3rem] opacity-55" />
+      <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-200/18 bg-cyan-300/5 blur-2xl" />
+    </div>
+  );
 }
 
 function projectPoint(lat: number, lng: number) {
@@ -513,6 +543,23 @@ export function Globe3dMap({
   }, [theme]);
 
   useEffect(() => {
+    if (!mounted || !containerRef.current) return;
+
+    const scrubGlobeNavText = () => {
+      containerRef.current?.querySelectorAll(".scene-nav-info").forEach((node) => {
+        node.textContent = "";
+        node.setAttribute("aria-hidden", "true");
+      });
+    };
+
+    scrubGlobeNavText();
+    const observer = new MutationObserver(scrubGlobeNavText);
+    observer.observe(containerRef.current, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, [mounted]);
+
+  useEffect(() => {
     const node = containerRef.current;
     if (!node) return;
 
@@ -655,7 +702,7 @@ export function Globe3dMap({
     setHoverCard({
       eyebrow: route.tone === "warn" ? "Ruta con alerta" : "Ruta de trazabilidad",
       title: route.label || "Ruta verificada",
-      subtitle: "Origen, toque fisico y evidencia comercial unidos",
+      subtitle: "Origen, tap fisico y evidencia comercial unidos",
       meta: `${route.fromLat.toFixed(2)}, ${route.fromLng.toFixed(2)} -> ${route.toLat.toFixed(2)}, ${route.toLng.toFixed(2)}`,
       tone: route.tone === "warn" ? "#fb7185" : route.tone === "success" ? "#34d399" : "#22d3ee",
     });
@@ -746,6 +793,23 @@ export function Globe3dMap({
     return list;
   }, [points]);
 
+  const visibleLabelPoints = useMemo(() => {
+    const labelLimit = compactHud ? 3 : 9;
+    return [...labelPoints]
+      .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+      .sort((left, right) => (right.scans || 1) - (left.scans || 1))
+      .slice(0, labelLimit);
+  }, [compactHud, labelPoints]);
+
+  const primaryRoute = routes[0];
+  const primaryFrom = primaryRoute ? closestPoint(points, primaryRoute.fromLat, primaryRoute.fromLng) : null;
+  const primaryTo = primaryRoute ? closestPoint(points, primaryRoute.toLat, primaryRoute.toLng) : null;
+  const primaryDistance = routeDistanceLabel(primaryRoute);
+  const totalScans = points.reduce((sum, point) => sum + (point.scans || 0), 0);
+  const routeCaption = primaryRoute
+    ? `${primaryFrom?.city || "Origen"} -> ${primaryTo?.city || "Destino"}`
+    : `${points.length.toLocaleString("es-AR")} nodos activos`;
+
   if (!mounted) {
     return (
       <div
@@ -753,7 +817,7 @@ export function Globe3dMap({
         className={`relative flex items-center justify-center overflow-hidden bg-black/10 rounded-2xl border border-white/5 shadow-2xl p-0 ${className}`}
         style={{ width: "100%", maxWidth: width, height: renderHeight }}
       >
-        <GlobeFallbackVisual points={points} routes={routes} isLightTheme={isLightTheme} />
+        <GlobeLoadingBackdrop isLightTheme={isLightTheme} />
         <div className="relative z-10 rounded-full border border-cyan-200/20 bg-slate-950/70 px-3 py-1 text-xs text-slate-200 font-mono animate-pulse">
           Cargando globo 3D...
         </div>
@@ -787,18 +851,10 @@ export function Globe3dMap({
       data-globe-ready={globeReady ? "true" : "false"}
       data-globe-mode="interactive"
     >
-      <GlobeFallbackVisual
-        points={points}
-        routes={routes}
+      <GlobeLoadingBackdrop
         isLightTheme={isLightTheme}
-        className={globeReady ? "opacity-10 transition-opacity duration-700" : "opacity-100 transition-opacity duration-700"}
+        className={globeReady ? "opacity-0 pointer-events-none" : "opacity-100"}
       />
-
-      {!compactHud ? (
-        <div className="absolute bottom-4 right-4 z-20 text-[9px] text-slate-500 font-mono pointer-events-none bg-slate-950/80 px-2 py-1 rounded border border-white/5 backdrop-blur">
-          Arrastra para rotar
-        </div>
-      ) : null}
 
       {hoverCard ? (
         <div
@@ -824,6 +880,24 @@ export function Globe3dMap({
           style={{ borderColor: `${defaultHoverCard.tone}44` }}
         >
           {defaultHoverCard.meta}
+        </div>
+      ) : null}
+
+      {primaryRoute && !compactHud ? (
+        <div
+          className={`absolute z-20 pointer-events-none rounded-2xl border border-cyan-200/18 bg-slate-950/70 text-left shadow-[0_18px_54px_rgba(0,0,0,.34)] backdrop-blur-xl ${
+            compactHud ? "bottom-3 left-3 right-3 px-3 py-2" : "bottom-4 left-4 max-w-[min(88%,24rem)] px-4 py-3"
+          }`}
+        >
+          <p className="text-[0.56rem] font-black uppercase tracking-[0.18em] text-cyan-200">
+            Ruta trazable
+          </p>
+          <strong className="mt-1 block truncate text-sm font-black leading-tight text-white">
+            {routeCaption}
+          </strong>
+          <span className="mt-1 block truncate text-[0.66rem] font-bold text-slate-300">
+            {primaryDistance || "Distancia auditada"} - {totalScans.toLocaleString("es-AR")} taps visibles
+          </span>
         </div>
       ) : null}
 
@@ -868,8 +942,13 @@ export function Globe3dMap({
         pointLat="lat"
         pointLng="lng"
         pointColor={(p: any) => pointTone(p)}
-        pointAltitude={(p: any) => (p.risk || p.status === "risk" ? 0.048 : 0.032)}
-        pointRadius={(p: any) => Math.min(0.28, 0.12 + Math.sqrt(Math.max(1, p.scans || 1)) * 0.012 + (p.risk ? 0.05 : 0))}
+        pointAltitude={(p: any) => (p.risk || p.status === "risk" ? (compactHud ? 0.038 : 0.048) : (compactHud ? 0.024 : 0.032))}
+        pointRadius={(p: any) =>
+          Math.min(
+            compactHud ? 0.14 : 0.28,
+            (compactHud ? 0.07 : 0.12) + Math.sqrt(Math.max(1, p.scans || 1)) * (compactHud ? 0.006 : 0.012) + (p.risk ? (compactHud ? 0.022 : 0.05) : 0),
+          )
+        }
         pointResolution={18}
         pointLabel={(p: any) => `<b>${p.city}</b>${inferCountryName(p) ? `<br/>${displayCountryName(inferCountryName(p))}` : ""}${p.scans ? `<br/>${p.scans} taps` : ""}`}
         onPointHover={(point: any) => setPointHover(point || null)}
@@ -891,15 +970,15 @@ export function Globe3dMap({
         hexLabel={(hex: any) => `${hex.points?.length || 0} nodos<br/>peso comercial ${hex.sumWeight || 1}`}
         
         // Labels
-        labelsData={compactHud ? [] : labelPoints}
+        labelsData={visibleLabelPoints}
         labelLat="lat"
         labelLng="lng"
         labelText="city"
         labelLabel={(p: any) => `${p.city}${inferCountryName(p) ? `, ${displayCountryName(inferCountryName(p))}` : ""}`}
         labelColor={() => (isLightTheme ? "#020617" : "#ffffff")}
-        labelSize={1.35}
-        labelDotRadius={0}
-        labelAltitude={0.045}
+        labelSize={compactHud ? 0.72 : 1.28}
+        labelDotRadius={compactHud ? 0.06 : 0}
+        labelAltitude={compactHud ? 0.055 : 0.048}
         
         // Arcs
         arcsData={routes}
@@ -909,11 +988,11 @@ export function Globe3dMap({
         arcEndLng="toLng"
         arcLabel={(route: any) => `${routeTitle(route, points)}<br/>${routeMeta(route, points)}`}
         arcColor={(r: any) => (r.tone === "warn" ? "#fb7185" : r.tone === "success" ? "#34d399" : "#22d3ee")}
-        arcDashLength={0.45}
-        arcDashGap={0.15}
-        arcDashAnimateTime={1800}
-        arcStroke={(r: any) => (r.tone === "warn" ? 1.6 : 1.2)}
-        arcAltitudeAutoScale={0.4}
+        arcDashLength={compactHud ? 0.34 : 0.45}
+        arcDashGap={compactHud ? 0.22 : 0.15}
+        arcDashAnimateTime={compactHud ? 1350 : 1800}
+        arcStroke={(r: any) => (r.tone === "warn" ? (compactHud ? 1.1 : 1.6) : (compactHud ? 0.85 : 1.2))}
+        arcAltitudeAutoScale={compactHud ? 0.28 : 0.4}
         arcCurveResolution={96}
         arcCircularResolution={10}
         onArcHover={(route: any) => setRouteHover(route || null)}
@@ -925,10 +1004,10 @@ export function Globe3dMap({
         ringLng="lng"
         ringAltitude={0.012}
         ringColor={(p: any) => (t: number) => rgbaFromHex(p.tone, 1 - t)}
-        ringMaxRadius={(p: any) => (p.risk || p.status === "risk" ? 4.4 : 3.1)}
-        ringPropagationSpeed={(p: any) => (p.risk || p.status === "risk" ? 1.7 : 1.25)}
+        ringMaxRadius={(p: any) => (p.risk || p.status === "risk" ? (compactHud ? 2.4 : 4.4) : (compactHud ? 1.8 : 3.1))}
+        ringPropagationSpeed={(p: any) => (p.risk || p.status === "risk" ? (compactHud ? 1.25 : 1.7) : (compactHud ? 0.95 : 1.25))}
         ringRepeatPeriod={(p: any) => (p.risk || p.status === "risk" ? 950 : 1400)}
-        ringResolution={96}
+        ringResolution={compactHud ? 48 : 96}
       />
     </div>
   );

@@ -236,7 +236,7 @@ export default async function HomePage() {
             <BrandLockup size={52} variant="ripple" theme="dark" className="site-brand-lockup" />
           </Link>
 
-          <nav className="hidden gap-6 text-sm lg:flex site-nav">
+          <nav className="hidden gap-6 text-sm xl:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
@@ -262,13 +262,13 @@ export default async function HomePage() {
             <div className="hidden lg:inline-flex">
               <ThemeToggle />
             </div>
-            <a href={meetingHref} target="_blank" rel="noreferrer" className="hidden sm:inline-flex">
+            <a href={meetingHref} target="_blank" rel="noreferrer" className="hidden xl:inline-flex">
               <Button variant="secondary">{labels.scheduleMeeting}</Button>
             </a>
-            <ProductExitLink kind="demoLab" className="hidden sm:inline-flex">
+            <ProductExitLink kind="demoLab" className="hidden lg:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
-            <Link href="/login?next=/me" className="hidden sm:inline-flex">
+            <Link href="/login?next=/me" className="hidden xl:inline-flex">
               <Button variant="secondary" className="border-purple-500/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20">
                 {labels.consumerPortal}
               </Button>

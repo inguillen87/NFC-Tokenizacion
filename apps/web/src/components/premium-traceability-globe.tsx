@@ -245,8 +245,10 @@ export function PremiumTraceabilityGlobe({
         {primaryRoute ? (
           <div className="traceability-globe__routebar">
             <span>Ruta activa</span>
-            <strong>{primaryFrom?.city || "Origen"} → {primaryTo?.city || "Tap verificado"}</strong>
-            <small>{primaryRoute.label || "Ruta de producto"} · {primaryDistance} km</small>
+            <strong>
+              {primaryFrom?.city || "Origen"} {"->"} {primaryTo?.city || "Tap verificado"}
+            </strong>
+            <small>Ruta comercial auditada - {primaryDistance} km</small>
           </div>
         ) : null}
 
