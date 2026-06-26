@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
-import { PremiumVectorMap, Globe3dMap } from "@product/ui";
 import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 
 type Vertical = PlatformDemoVertical;
@@ -95,20 +94,20 @@ const labels: Record<AppLocale, {
   items: Record<Vertical, Scene>;
 }> = {
   "es-AR": {
-    selectorTitle: "Elegi vertical",
-    microcopy: "Cada toque convierte seguridad en relacion: prueba de origen, club, garantia, puntos, recompra y tienda contextual para la marca.",
-    commercialRail: "Capa comercial que se activa despues del toque",
-    valuePills: ["Club VIP", "Puntos", "Garantia", "Dato para CRM", "Tienda", "Token opcional"],
-    ctaBands: ["Bodegas", "Eventos", "Cosmetica", "Agro", "Moda", "Salud"],
+    selectorTitle: "Elegí vertical",
+    microcopy: "Cada toque convierte seguridad en relación: prueba de origen, club, garantía, puntos, recompra y tienda contextual para la marca.",
+    commercialRail: "Capa comercial que se activa después del toque",
+    valuePills: ["Club VIP", "Puntos", "Garantía", "Dato para CRM", "Tienda", "Token opcional"],
+    ctaBands: ["Bodegas", "Eventos", "Cosmética", "Agro", "Moda", "Salud"],
     phoneLabel: "Salida celular",
     swapTap: "Cambiar toque",
     liveTap: "Toque simulado",
-    whatHappened: "Que esta pasando",
+    whatHappened: "Qué está pasando",
     routeTitle: "Ruta de confianza",
     originMap: "Origen",
     tapMap: "Toque",
     openOriginMap: "Ver origen en Maps",
-    custody: "Origen, distancia y accion quedan unidos al evento.",
+    custody: "Origen, distancia y acción quedan unidos al evento.",
     assetBank: "Banco visual",
     realAsset: "Foto real",
     renderFallback: "Render interactivo",
@@ -121,7 +120,7 @@ const labels: Record<AppLocale, {
       uid: "UID",
       batch: "Lote",
       security: "Seguridad",
-      nextAction: "Siguiente accion",
+      nextAction: "Siguiente acción",
       marketplace: "Tienda",
       loyalty: "Beneficios",
       businessValue: "Valor para marca",
@@ -135,16 +134,16 @@ const labels: Record<AppLocale, {
       seeds: {
         label: "Agro",
         profile: "QR + NFC UID",
-        action: "Bolsa abierta en campo: lote, ficha tecnica y custodia visibles.",
+        action: "Bolsa abierta en campo: lote, ficha técnica y custodia visibles.",
         result: "Lote y origen verificados",
         product: "Semilla premium",
         batch: "AG-903",
         uid: "QRF-903-17",
         origin: { city: "Rosario", country: "Argentina", label: "planta", lat: -32.9442, lng: -60.6505 },
-        security: "QR/NFC UID + trazabilidad logistica",
-        nextAction: "Ficha tecnica, soporte y reclamo",
-        marketplace: "Reposicion, asesor tecnico y cupon rural",
-        loyalty: "Soporte tecnico, reposicion y beneficios por lote",
+        security: "QR/NFC UID + trazabilidad logística",
+        nextAction: "Ficha técnica, soporte y reclamo",
+        marketplace: "Reposición, asesor técnico y cupón rural",
+        loyalty: "Soporte técnico, reposición y beneficios por lote",
         businessValue: "Trazabilidad + asistencia + canal rural",
         objectClass: "agro-demo tampered scanning",
         phoneTag: "AGRO - LOT_OK",
@@ -179,48 +178,48 @@ const labels: Record<AppLocale, {
         origin: { city: "Bogota", country: "Colombia", label: "laboratorio", lat: 4.711, lng: -74.0721 },
         security: "SUN anticopia + recall unitario",
         nextAction: "Ver prospecto digital o reporte de lote",
-        marketplace: "Canal farmacia + soporte medico",
-        loyalty: "Garantia de autenticidad, prospecto y recordatorios de dosis",
-        businessValue: "Auditoria de lote + alerta recall + first party CRM",
+        marketplace: "Canal farmacia + soporte médico",
+        loyalty: "Garantía de autenticidad, prospecto y recordatorios de dosis",
+        businessValue: "Auditoría de lote + alerta recall + first party CRM",
         objectClass: "pharma-demo scanning",
         phoneTag: "PHARMA - AUTH_OK",
         steps: ["Lectura en caja", "SUN valida origen", "Verifica estado de recall", "Abre prospecto digital"],
       },
       perfume: {
-        label: "Cosmetica",
+        label: "Cosmética",
         profile: "NTAG 424 DNA",
-        action: "Tapa o sello validado: el producto demuestra lote, origen y garantia.",
+        action: "Tapa o sello validado: el producto demuestra lote, origen y garantía.",
         result: "Producto genuino",
         product: "Serum premium",
         batch: "COS-CS-442",
         uid: "04B2****72C1",
         origin: { city: "Santiago", country: "Chile", label: "laboratorio", lat: -33.4489, lng: -70.6693 },
-        security: "SUN dinamico + lote + garantia",
-        nextAction: "Registro de garantia y recompra",
+        security: "SUN dinámico + lote + garantía",
+        nextAction: "Registro de garantía y recompra",
         marketplace: "Venta cruzada, muestras y beneficios",
-        loyalty: "Garantia, muestras y recompra",
-        businessValue: "Antifalsificacion + datos propios + venta cruzada",
+        loyalty: "Garantía, muestras y recompra",
+        businessValue: "Antifalsificación + datos propios + venta cruzada",
         objectClass: "cosmetic-demo scanning",
         phoneTag: "COSMETIC - VERIFIED",
-        steps: ["Toque en tapa", "SUN verifica autenticidad", "Muestra lote", "Activa garantia"],
+        steps: ["Toque en tapa", "SUN verifica autenticidad", "Muestra lote", "Activa garantía"],
       },
       wine: {
         label: "Vino",
         profile: "NTAG 424 DNA TT",
         action: "Descorche o sello abierto: la etiqueta cambia estado y el SUN valida el toque.",
-        result: "Autentico, sello abierto",
+        result: "Auténtico, sello abierto",
         product: "Gran Reserva Malbec",
         batch: "MZA-2026-0424",
         uid: "04A7****1090",
         origin: { city: "Valle de Uco", country: "Argentina", label: "bodega", lat: -33.6131, lng: -69.2075 },
-        security: "SUN dinamico + sello fisico + anti copia",
-        nextAction: "Club, garantia, reclamo de dueño o token premium",
-        marketplace: "Voucher post-compra + trazabilidad de coleccion",
+        security: "SUN dinámico + sello físico + anticopia",
+        nextAction: "Club, garantía, reclamo de dueño o token premium",
+        marketplace: "Voucher post-compra + trazabilidad de colección",
         loyalty: "320 pts, club de cosecha, voucher y recompra premium",
-        businessValue: "CRM post-toque + tienda + tokenizacion opcional",
+        businessValue: "CRM post-toque + tienda + tokenización opcional",
         objectClass: "hero-bottle scanning tampered",
         phoneTag: "VINO - AUT_OK",
-        steps: ["Se lee UID fisico", "SUN evita copia", "El sello queda abierto", "Se abre club y tienda"],
+        steps: ["Se lee UID físico", "SUN evita copia", "El sello queda abierto", "Se abre club y tienda"],
       },
       sneaker: {
         label: "Zapatillas",
@@ -234,8 +233,8 @@ const labels: Record<AppLocale, {
         security: "SUN dinámico + UID + reclamo de dueño",
         nextAction: "Verificar dueño, garantía, reventa o token premium",
         marketplace: "Drop exclusivo, reventa controlada y beneficios de comunidad",
-        loyalty: "Acceso a drops, puntos y certificado de coleccion",
-        businessValue: "Anti copia + ownership + canal de resale",
+        loyalty: "Acceso a drops, puntos y certificado de colección",
+        businessValue: "Anticopia + ownership + canal de resale",
         objectClass: "sneaker-demo scanning",
         phoneTag: "SNEAKER - OWNER_OK",
         steps: ["Toque en lengueta", "SUN valida pieza", "Rareza visible", "Dueño/token habilitado"],
@@ -244,50 +243,50 @@ const labels: Record<AppLocale, {
         label: "Logística",
         profile: "UHF + NFC",
         action: "Pallet escaneado en distribuidora: temperatura, ruta de custodia y lote confirmados.",
-        result: "Cadena de frio OK",
+        result: "Cadena de frío OK",
         product: "Pallet Vacunas Co-19",
         batch: "LOG-VAC-884",
         uid: "04E9****4820",
-        origin: { city: "Mendoza", country: "Argentina", label: "centro logistico", lat: -32.8895, lng: -68.8458 },
+        origin: { city: "Mendoza", country: "Argentina", label: "centro logístico", lat: -32.8895, lng: -68.8458 },
         security: "Sensores IoT + UID + cadena de custodia",
-        nextAction: "Ficha de temperatura y auditoria",
-        marketplace: "Servicios logisticos premium + seguros de carga",
+        nextAction: "Ficha de temperatura y auditoría",
+        marketplace: "Servicios logísticos premium + seguros de carga",
         loyalty: "Historial de ruta, temperatura promedio y reporte de conformidad",
-        businessValue: "Auditoria en tiempo real + reclamos automatizados + control de calidad",
+        businessValue: "Auditoría en tiempo real + reclamos automatizados + control de calidad",
         objectClass: "logistics-demo scanning",
         phoneTag: "LOGISTICS - COLD_OK",
-        steps: ["Lectura en pallet", "Check de temperatura IoT", "Valida ruta", "Confirma recepcion"],
+        steps: ["Lectura en pallet", "Check de temperatura IoT", "Valida ruta", "Confirma recepción"],
       },
       electronics: {
         label: "Electrónica",
         profile: "NFC + QR",
-        action: "Dispositivo electronico validado: propiedad, numero de serie y garantia activados.",
-        result: "Garantía Activa",
+        action: "Dispositivo electrónico validado: propiedad, número de serie y garantía activados.",
+        result: "Garantía activa",
         product: "Smartwatch Nex-V",
         batch: "ELE-NX-2026",
         uid: "04D8****1024",
         origin: { city: "Miami", country: "USA", label: "distribuidora", lat: 25.7617, lng: -80.1918 },
-        security: "UID unico + firma digital + tracking de garantia",
+        security: "UID único + firma digital + tracking de garantía",
         nextAction: "Soporte oficial, registro o reclamo",
-        marketplace: "Accesorios oficiales + extension de garantia",
-        loyalty: "Garantia digital activa, soporte prioritario y club de upgrades",
-        businessValue: "Antifraude de garantia + registro post-venta + ofertas de upgrade",
+        marketplace: "Accesorios oficiales + extensión de garantía",
+        loyalty: "Garantía digital activa, soporte prioritario y club de upgrades",
+        businessValue: "Antifraude de garantía + registro post-venta + ofertas de upgrade",
         objectClass: "electronics-demo scanning",
         phoneTag: "ELECTRONICS - WARRANTY_OK",
-        steps: ["Toque en caja/equipo", "SUN valida serie", "Garantia se activa", "Habilita soporte"],
+        steps: ["Toque en caja/equipo", "SUN valida serie", "Garantía se activa", "Habilita soporte"],
       },
       textile: {
         label: "Textil",
         profile: "NFC + QR DPP",
         action: "Pasaporte digital textil escaneado: origen, materiales y reventa verificados.",
-        result: "Pasaporte DPP Válido",
+        result: "Pasaporte DPP válido",
         product: "Campera Denim Premium",
         batch: "TEX-DEN-021",
         uid: "048A****3920",
-        origin: { city: "Madrid", country: "España", label: "fabrica textil", lat: 40.4168, lng: -3.7038 },
+        origin: { city: "Madrid", country: "España", label: "fábrica textil", lat: 40.4168, lng: -3.7038 },
         security: "Pasaporte digital europeo + UID NFC + certificado de propiedad",
         nextAction: "Ver circularidad y reclamar dueño",
-        marketplace: "Canal de recompra circular + guia de cuidados",
+        marketplace: "Canal de recompra circular + guía de cuidados",
         loyalty: "Acceso a pre-ventas, club de circularidad y descuento por reciclado",
         businessValue: "Cumplimiento regulatorio EU DPP + reventa de marca + engagement circular",
         objectClass: "textile-demo scanning",
@@ -299,7 +298,7 @@ const labels: Record<AppLocale, {
         profile: "NTAG 424 DNA",
         action: "Reloj cronógrafo escaneado: certificado de propiedad, garantía y autenticidad validados en el servidor.",
         result: "Autenticado con dueño",
-        product: "Reloj Cronógrafo Premium",
+        product: "Reloj cronógrafo premium",
         batch: "LUX-CH-2026",
         uid: "04C2****99B4",
         origin: { city: "Miami", country: "USA", label: "distribuidora", lat: 25.7617, lng: -80.1918 },
@@ -897,47 +896,77 @@ function HeroTraceMap({
     : tapPoint;
   const formattedDistance = distance.toLocaleString(numberLocale);
   const routeHeadline = txt.routeTitle === "Trust route" ? "Live route" : txt.routeTitle.startsWith("Rota") ? "Rota viva" : "Ruta viva";
-  const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque fisico" : "Tap fisico";
+  const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque físico" : "Tap físico";
   const distanceCopy = txt.routeTitle === "Trust route" ? "Distance" : txt.routeTitle.startsWith("Rota") ? "Distancia" : "Distancia";
+  const routeMidX = (originPoint.x + tapPoint.x) / 2;
+  const routeMidY = Math.max(16, Math.min(originPoint.y, tapPoint.y) - 16);
+  const cityDots = [
+    { x: 18, y: 24, label: origin.country },
+    { x: 38, y: 38, label: origin.city },
+    { x: 65, y: 34, label: tap.country },
+    { x: 78, y: 62, label: tap.city },
+    { x: 28, y: 74, label: "CRM" },
+  ];
   const evidenceCopy = txt.routeTitle === "Trust route"
     ? `${formattedDistance} km with physical tap, SUN and channel evidence.`
     : txt.routeTitle.startsWith("Rota")
       ? `${formattedDistance} km com evidencia de toque, SUN e canal.`
-      : `${formattedDistance} km con evidencia de toque fisico, SUN y canal.`;
+    : `${formattedDistance} km con evidencia de toque físico, SUN y canal.`;
 
   return (
     <div className="hero-trace-map hero-trace-map--clear flex items-center justify-center" aria-label={txt.routeTitle}>
-      <Globe3dMap
-        offset={[0, 0]}
-        points={[
-          {
-            city: origin.city,
-            country: origin.country,
-            lat: origin.lat,
-            lng: origin.lng,
-            scans: 1,
-            status: "origin"
-          },
-          {
-            city: tap.city,
-            country: tap.country,
-            lat: tap.lat,
-            lng: tap.lng,
-            scans: 1,
-            status: "tap"
-          }
-        ]}
-        routes={[{
-          fromLat: origin.lat,
-          fromLng: origin.lng,
-          toLat: tap.lat,
-          toLng: tap.lng,
-          tone: "info"
-        }]}
-        width={420}
-        height={320}
-        className="border-0 bg-transparent shadow-none"
-      />
+      <svg viewBox="0 0 100 100" role="img" aria-label={`${origin.city} a ${tap.city}`}>
+        <defs>
+          <linearGradient id="hero-route-gradient" x1="0" x2="1">
+            <stop offset="0%" stopColor="#22d3ee" stopOpacity=".18" />
+            <stop offset="45%" stopColor="#67e8f9" stopOpacity=".96" />
+            <stop offset="100%" stopColor="#34d399" stopOpacity=".22" />
+          </linearGradient>
+          <radialGradient id="hero-node-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#67e8f9" stopOpacity=".75" />
+            <stop offset="55%" stopColor="#22d3ee" stopOpacity=".2" />
+            <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+          </radialGradient>
+          <filter id="hero-route-soft-glow">
+            <feGaussianBlur stdDeviation="1.8" />
+          </filter>
+        </defs>
+        <rect className="hero-trace-map__water" x="0" y="0" width="100" height="100" rx="4" />
+        <g className="hero-trace-map__grid">
+          {[14, 28, 42, 56, 70, 84].map((value) => (
+            <path key={`grid-v-${value}`} d={`M${value} 6 V94`} />
+          ))}
+          {[16, 32, 48, 64, 80].map((value) => (
+            <path key={`grid-h-${value}`} d={`M6 ${value} H94`} />
+          ))}
+        </g>
+        <g>
+          <path className="hero-trace-map__land" d="M8 72 C18 58 28 54 43 58 C58 62 68 51 82 45 C91 41 96 48 91 58 C82 76 64 85 43 82 C27 80 18 83 8 72Z" />
+          <path className="hero-trace-map__land hero-trace-map__land--europe" d="M48 21 C58 14 75 16 86 25 C94 32 88 43 76 40 C66 38 63 47 54 45 C43 42 38 29 48 21Z" />
+          <path className="hero-trace-map__coast" d="M10 68 C24 58 34 59 50 62 C66 65 72 52 91 50" />
+          <path className="hero-trace-map__road" d="M12 38 C26 29 42 31 55 38 C68 45 78 43 91 34" />
+          <path className="hero-trace-map__road hero-trace-map__road--secondary" d="M16 84 C32 68 49 67 66 72 C78 75 86 70 94 61" />
+        </g>
+        {cityDots.map((dot, index) => (
+          <g key={`${dot.label}-${index}`}>
+            <circle className="hero-trace-map__city" cx={dot.x} cy={dot.y} r="0.85" />
+            <text className="hero-trace-map__label" x={dot.x + 2.2} y={dot.y + 1.4}>{dot.label}</text>
+          </g>
+        ))}
+        <path
+          className="hero-trace-map__route-shadow"
+          d={`M${originPoint.x.toFixed(1)} ${originPoint.y.toFixed(1)} Q${routeMidX.toFixed(1)} ${routeMidY.toFixed(1)} ${tapPoint.x.toFixed(1)} ${tapPoint.y.toFixed(1)}`}
+        />
+        <path
+          className="hero-trace-map__route"
+          d={`M${originPoint.x.toFixed(1)} ${originPoint.y.toFixed(1)} Q${routeMidX.toFixed(1)} ${routeMidY.toFixed(1)} ${tapPoint.x.toFixed(1)} ${tapPoint.y.toFixed(1)}`}
+        />
+        <circle cx={originPoint.x} cy={originPoint.y} r="7.4" fill="url(#hero-node-glow)" filter="url(#hero-route-soft-glow)" />
+        <circle cx={tapPoint.x} cy={tapPoint.y} r="8.6" fill="#34d399" opacity=".12" filter="url(#hero-route-soft-glow)" />
+        <circle className="hero-trace-map__origin" cx={originPoint.x} cy={originPoint.y} r="1.7" />
+        <circle className="hero-trace-map__tap" cx={tapPoint.x} cy={tapPoint.y} r="2.05" />
+        <circle cx={tapPoint.x} cy={tapPoint.y} r="5.6" fill="none" stroke="#34d399" strokeWidth=".45" opacity=".42" />
+      </svg>
       <div className="hero-map-intel">
         <p>{routeHeadline}</p>
         <strong>{origin.city} / {tap.city}</strong>
