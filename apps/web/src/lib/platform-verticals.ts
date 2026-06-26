@@ -76,7 +76,7 @@ export const platformVerticals: PlatformVertical[] = [
     shortTitle: "Agro",
     body: "Semillas, fitosanitarios, biológicos y alimentos con autenticidad física, canal seguro, uso responsable post-tap y datos de campo para CRM, ERP o Cropwise.",
     bodyEn: "Seeds, crop protection, biologicals and food with physical authenticity, channel control, responsible-use support and field data for CRM, ERP or Cropwise.",
-    bodyPt: "Sementes, defensivos, biologicos e alimentos com autenticidade fisica, canal seguro, suporte de uso responsavel e dados de campo para CRM, ERP ou Cropwise.",
+    bodyPt: "Sementes, defensivos, biológicos e alimentos com autenticidade física, canal seguro, suporte de uso responsável e dados de campo para CRM, ERP ou Cropwise.",
     image: "/sdk/verticals/agro-nfc-qr-traceability.webp",
     tags: ["424 DNA", "Tamper", "Webhook"],
     metric: "Canal + soporte",
@@ -249,17 +249,17 @@ export const platformTrustedBy = ["Bodegas", "Agro empresas", "Farmalab", "Retai
 
 export const traceabilityGlobePoints = [
   { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 4820, risk: 0, status: "origin", vertical: "wine" },
-  { city: "Cordoba", country: "Argentina", lat: -31.4201, lng: -64.1888, scans: 1240, risk: 0, status: "tap", vertical: "agro" },
-  { city: "Sao Paulo", country: "Brasil", lat: -23.5505, lng: -46.6333, scans: 2190, risk: 3, status: "risk", vertical: "events" },
-  { city: "Miami", country: "USA", lat: 25.7617, lng: -80.1918, scans: 3180, risk: 0, status: "export", vertical: "luxury" },
-  { city: "Zurich", country: "Suiza", lat: 47.3769, lng: 8.5417, scans: 980, risk: 0, status: "passport", vertical: "wine" },
-  { city: "Madrid", country: "Espana", lat: 40.4168, lng: -3.7038, scans: 1680, risk: 0, status: "dpp", vertical: "textile" },
-  { city: "Bogota", country: "Colombia", lat: 4.711, lng: -74.0721, scans: 740, risk: 1, status: "cold-chain", vertical: "pharma" },
+  { city: "Córdoba", country: "Argentina", lat: -31.4201, lng: -64.1888, scans: 1240, risk: 0, status: "tap", vertical: "agro" },
+  { city: "São Paulo", country: "Brasil", lat: -23.5505, lng: -46.6333, scans: 2190, risk: 3, status: "risk", vertical: "events" },
+  { city: "Miami", country: "Estados Unidos", lat: 25.7617, lng: -80.1918, scans: 3180, risk: 0, status: "export", vertical: "luxury" },
+  { city: "Zúrich", country: "Suiza", lat: 47.3769, lng: 8.5417, scans: 980, risk: 0, status: "passport", vertical: "wine" },
+  { city: "Madrid", country: "España", lat: 40.4168, lng: -3.7038, scans: 1680, risk: 0, status: "dpp", vertical: "textile" },
+  { city: "Bogotá", country: "Colombia", lat: 4.711, lng: -74.0721, scans: 740, risk: 1, status: "cold-chain", vertical: "pharma" },
 ] as const;
 
 export const traceabilityGlobeRoutes = [
-  { fromLat: -32.8895, fromLng: -68.8458, toLat: 47.3769, toLng: 8.5417, tone: "info" as const, label: "Wine export" },
-  { fromLat: -31.4201, fromLng: -64.1888, toLat: -23.5505, toLng: -46.6333, tone: "warn" as const, label: "Replay watch" },
-  { fromLat: -32.8895, fromLng: -68.8458, toLat: 25.7617, toLng: -80.1918, tone: "info" as const, label: "Retail route" },
-  { fromLat: 4.711, fromLng: -74.0721, toLat: 40.4168, toLng: -3.7038, tone: "info" as const, label: "DPP route" },
+  { fromLat: -32.8895, fromLng: -68.8458, toLat: 47.3769, toLng: 8.5417, tone: "info" as const, label: "Exportación premium" },
+  { fromLat: -31.4201, fromLng: -64.1888, toLat: -23.5505, toLng: -46.6333, tone: "warn" as const, label: "Riesgo de canal" },
+  { fromLat: -32.8895, fromLng: -68.8458, toLat: 25.7617, toLng: -80.1918, tone: "info" as const, label: "Ruta retail" },
+  { fromLat: 4.711, fromLng: -74.0721, toLat: 40.4168, toLng: -3.7038, tone: "info" as const, label: "Pasaporte digital" },
 ] as const;

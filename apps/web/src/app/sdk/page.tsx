@@ -60,7 +60,7 @@ const pillars = [
   {
     icon: ShieldCheck,
     title: "Claim seguro, no scan oportunista",
-    body: "Leer una etiqueta en gondola no te hace dueno. El ownership automatico exige tag fisico seguro, token POS y, si la marca quiere, PIN.",
+    body: "Leer una etiqueta en góndola no te hace dueño. El ownership automático exige tag físico seguro, token POS y, si la marca quiere, PIN.",
   },
   {
     icon: Webhook,
@@ -78,7 +78,7 @@ const flow = [
   "1. La marca empieza con QR, NFC existente o lote nuevo de tags nexID.",
   "2. El SDK lee producto, passport, marketplace, beneficios y asistente IA.",
   "3. Si hay compra, el POS emite un token nxpos de un solo uso.",
-  "4. El claim usa token POS + PIN opcional + tag fisico seguro.",
+  "4. El claim usa token POS + PIN opcional + tag físico seguro.",
   "5. El CRM recibe analytics, mapa, leads y webhooks en tiempo real.",
 ];
 
@@ -144,7 +144,7 @@ function SdkGlobalHeroScene() {
     <PremiumTraceabilityGlobe
       title="Infraestructura viva para productos reales"
       subtitle="Taps, rutas, origen, riesgo y canales QR/NFC/UHF conectados al CRM y al SDK."
-      caption="Una capa visual y operativa para mostrarle a cualquier empresa que nexID no es solo vino: es identidad fisica verificable."
+      caption="Una capa visual y operativa para mostrarle a cualquier empresa que nexID no es solo vino: es identidad física verificable."
       points={traceabilityGlobePoints}
       routes={traceabilityGlobeRoutes}
       ctaHref="/demo-lab?vertical=wine"
@@ -200,7 +200,7 @@ export default function SdkPage() {
               <span>mueves y vendes.</span>
             </h1>
             <p>
-              nexID SDK y APIs convierten cualquier producto, empaque, evento o activo fisico en una identidad digital verificable. Integracion en horas, preparada para millones de interacciones, sin depender de integraciones caras y dificiles de cambiar.
+              nexID SDK y APIs convierten cualquier producto, empaque, evento o activo físico en una identidad digital verificable. Integración en horas, preparada para millones de interacciones, sin depender de integraciones caras y difíciles de cambiar.
             </p>
             <div className="sdk-hero-actions">
               <Link href="/docs">

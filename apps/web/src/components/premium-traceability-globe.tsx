@@ -41,18 +41,51 @@ type TraceabilityGlobeProps = {
 
 const fallbackPoints: TraceabilityGlobePoint[] = [
   { city: "Mendoza", country: "Argentina", lat: -32.8895, lng: -68.8458, scans: 4820, risk: 0, status: "origin", vertical: "wine" },
-  { city: "Cordoba", country: "Argentina", lat: -31.4201, lng: -64.1888, scans: 1240, risk: 0, status: "tap", vertical: "agro" },
-  { city: "Sao Paulo", country: "Brasil", lat: -23.5505, lng: -46.6333, scans: 2190, risk: 3, status: "risk", vertical: "events" },
-  { city: "Miami", country: "USA", lat: 25.7617, lng: -80.1918, scans: 3180, risk: 0, status: "export", vertical: "luxury" },
-  { city: "Zurich", country: "Suiza", lat: 47.3769, lng: 8.5417, scans: 980, risk: 0, status: "passport", vertical: "wine" },
-  { city: "Madrid", country: "Espana", lat: 40.4168, lng: -3.7038, scans: 1680, risk: 0, status: "dpp", vertical: "textile" },
+  { city: "Córdoba", country: "Argentina", lat: -31.4201, lng: -64.1888, scans: 1240, risk: 0, status: "tap", vertical: "agro" },
+  { city: "São Paulo", country: "Brasil", lat: -23.5505, lng: -46.6333, scans: 2190, risk: 3, status: "risk", vertical: "events" },
+  { city: "Miami", country: "Estados Unidos", lat: 25.7617, lng: -80.1918, scans: 3180, risk: 0, status: "export", vertical: "luxury" },
+  { city: "Zúrich", country: "Suiza", lat: 47.3769, lng: 8.5417, scans: 980, risk: 0, status: "passport", vertical: "wine" },
+  { city: "Madrid", country: "España", lat: 40.4168, lng: -3.7038, scans: 1680, risk: 0, status: "dpp", vertical: "textile" },
 ];
 
 const fallbackRoutes: TraceabilityGlobeRoute[] = [
-  { fromLat: -32.8895, fromLng: -68.8458, toLat: 47.3769, toLng: 8.5417, tone: "info", label: "Wine export" },
-  { fromLat: -31.4201, fromLng: -64.1888, toLat: -23.5505, toLng: -46.6333, tone: "warn", label: "Replay watch" },
-  { fromLat: -32.8895, fromLng: -68.8458, toLat: 25.7617, toLng: -80.1918, tone: "info", label: "Retail route" },
+  { fromLat: -32.8895, fromLng: -68.8458, toLat: 47.3769, toLng: 8.5417, tone: "info", label: "Exportación premium" },
+  { fromLat: -31.4201, fromLng: -64.1888, toLat: -23.5505, toLng: -46.6333, tone: "warn", label: "Alerta de canal" },
+  { fromLat: -32.8895, fromLng: -68.8458, toLat: 25.7617, toLng: -80.1918, tone: "info", label: "Ruta retail" },
 ];
+
+const countryFromCode: Record<string, string> = {
+  AR: "Argentina",
+  BR: "Brasil",
+  CL: "Chile",
+  ES: "España",
+  FR: "Francia",
+  GB: "Reino Unido",
+  US: "Estados Unidos",
+  UY: "Uruguay",
+};
+
+function routeDistanceKm(route: TraceabilityGlobeRoute) {
+  const earthRadiusKm = 6371;
+  const dLat = ((route.toLat - route.fromLat) * Math.PI) / 180;
+  const dLng = ((route.toLng - route.fromLng) * Math.PI) / 180;
+  const lat1 = (route.fromLat * Math.PI) / 180;
+  const lat2 = (route.toLat * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function nearestTracePoint(points: readonly TraceabilityGlobePoint[], lat: number, lng: number) {
+  return points.reduce<{ point: TraceabilityGlobePoint | null; distance: number }>(
+    (best, point) => {
+      const distance = Math.hypot(point.lat - lat, point.lng - lng);
+      return distance < best.distance ? { point, distance } : best;
+    },
+    { point: null, distance: Number.POSITIVE_INFINITY },
+  ).point;
+}
 
 export function PremiumTraceabilityGlobe({
   title = "Mapa 3D de trazabilidad",
@@ -129,7 +162,7 @@ export function PremiumTraceabilityGlobe({
 
             pointsList.push({
               city: event.city,
-              country: event.country_code || "UNK",
+              country: countryFromCode[String(event.country_code || "").toUpperCase()] || event.country || "",
               lat: tapLat,
               lng: tapLng,
               scans: 1,
@@ -144,7 +177,7 @@ export function PremiumTraceabilityGlobe({
               toLat: tapLat,
               toLng: tapLng,
               tone: isRisk ? "warn" : "info",
-              label: `${event.product_name || "Product"} route`
+              label: `${event.product_name || "Producto"} · ${origin.city} → ${event.city}`
             });
           });
 
@@ -161,6 +194,10 @@ export function PremiumTraceabilityGlobe({
   const totalScans = safePoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const totalRisk = safePoints.reduce((acc, point) => acc + (point.risk || 0), 0);
   const regions = new Set(safePoints.map((point) => point.country || point.city)).size;
+  const primaryRoute = safeRoutes[0];
+  const primaryFrom = primaryRoute ? nearestTracePoint(safePoints, primaryRoute.fromLat, primaryRoute.fromLng) : null;
+  const primaryTo = primaryRoute ? nearestTracePoint(safePoints, primaryRoute.toLat, primaryRoute.toLng) : null;
+  const primaryDistance = primaryRoute ? Math.round(routeDistanceKm(primaryRoute)).toLocaleString("es-AR") : "";
 
   return (
     <section className={`traceability-globe ${compact ? "traceability-globe--compact" : ""} ${className}`} aria-label={title}>
@@ -199,11 +236,19 @@ export function PremiumTraceabilityGlobe({
               tone: r.tone === "warn" ? ("warn" as const) : ("info" as const),
               label: r.label,
             }))}
-            width={450}
-            height={350}
+            width={compact ? 420 : 720}
+            height={compact ? 300 : 440}
             className="border-0 bg-transparent shadow-none"
           />
         </div>
+
+        {primaryRoute ? (
+          <div className="traceability-globe__routebar">
+            <span>Ruta activa</span>
+            <strong>{primaryFrom?.city || "Origen"} → {primaryTo?.city || "Tap verificado"}</strong>
+            <small>{primaryRoute.label || "Ruta de producto"} · {primaryDistance} km</small>
+          </div>
+        ) : null}
 
         <div className="traceability-globe__floating traceability-globe__floating--left z-20 pointer-events-none">
           <span>Canales</span>

@@ -25,32 +25,57 @@ const CITY_COUNTRY_HINTS: Record<string, string> = {
   shanghai: "China",
 };
 
-const COUNTRY_NAME_ALIASES: Record<string, string> = {
-  argentina: "argentina",
-  ar: "argentina",
-  brasil: "brazil",
-  brazil: "brazil",
-  br: "brazil",
-  cl: "chile",
-  usa: "united states of america",
-  us: "united states of america",
-  "united states": "united states of america",
-  "united states of america": "united states of america",
-  suiza: "switzerland",
-  switzerland: "switzerland",
-  ch: "switzerland",
-  espana: "spain",
-  spain: "spain",
-  es: "spain",
-  chile: "chile",
-  france: "france",
-  francia: "france",
-  fr: "france",
-  "united kingdom": "united kingdom",
-  gb: "united kingdom",
-  uk: "united kingdom",
-  china: "china",
-  cn: "china",
+const COUNTRY_ALIASES: Record<string, string> = {
+  argentina: "Argentina",
+  ar: "Argentina",
+  brasil: "Brazil",
+  brazil: "Brazil",
+  br: "Brazil",
+  chile: "Chile",
+  cl: "Chile",
+  china: "China",
+  cn: "China",
+  espana: "Spain",
+  españa: "Spain",
+  es: "Spain",
+  france: "France",
+  francia: "France",
+  fr: "France",
+  reino_unido: "United Kingdom",
+  "reino unido": "United Kingdom",
+  spain: "Spain",
+  suiza: "Switzerland",
+  switzerland: "Switzerland",
+  ch: "Switzerland",
+  usa: "United States of America",
+  us: "United States of America",
+  "united states": "United States of America",
+  "united states of america": "United States of America",
+  "estados unidos": "United States of America",
+  gb: "United Kingdom",
+  uk: "United Kingdom",
+  "united kingdom": "United Kingdom",
+};
+
+const COUNTRY_DISPLAY_NAMES: Record<string, string> = {
+  Argentina: "Argentina",
+  Brazil: "Brasil",
+  Chile: "Chile",
+  China: "China",
+  France: "Francia",
+  Spain: "España",
+  Switzerland: "Suiza",
+  "United Kingdom": "Reino Unido",
+  "United States of America": "Estados Unidos",
+};
+
+const CONTINENT_DISPLAY_NAMES: Record<string, string> = {
+  Africa: "África",
+  Asia: "Asia",
+  Europe: "Europa",
+  "North America": "Norteamérica",
+  Oceania: "Oceanía",
+  "South America": "Sudamérica",
 };
 
 export type GlobePoint = {
@@ -203,24 +228,84 @@ function hexHeatColor(weight: number, alpha = 0.88) {
 }
 
 function normalizeCountryName(value?: string) {
-  const normalized = (value || "")
+  return (value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase();
-  return COUNTRY_NAME_ALIASES[normalized] || normalized;
+}
+
+function canonicalCountryName(value?: string) {
+  const normalized = normalizeCountryName(value);
+  if (!normalized) return "";
+  return COUNTRY_ALIASES[normalized] || value || "";
+}
+
+function displayCountryName(value?: string) {
+  const canonical = canonicalCountryName(value);
+  return COUNTRY_DISPLAY_NAMES[canonical] || value || "";
+}
+
+function displayContinentName(value?: string) {
+  if (!value) return "Cobertura global";
+  return CONTINENT_DISPLAY_NAMES[value] || value;
 }
 
 function inferCountryName(point: GlobePoint) {
-  if (point.country) return point.country;
+  if (point.country) return canonicalCountryName(point.country);
 
   const city = normalizeCountryName(point.city);
   const matchedCity = Object.keys(CITY_COUNTRY_HINTS).find((key) => city.includes(key));
-  return matchedCity ? CITY_COUNTRY_HINTS[matchedCity] : "";
+  return matchedCity ? canonicalCountryName(CITY_COUNTRY_HINTS[matchedCity]) : "";
 }
 
 function featureCountryName(feature: CountryFeature) {
   return feature.properties?.ADMIN || feature.properties?.NAME || "";
+}
+
+function formatKm(value: number) {
+  if (!Number.isFinite(value)) return "";
+  return `${Math.round(value).toLocaleString("es-AR")} km`;
+}
+
+function haversineKm(fromLat: number, fromLng: number, toLat: number, toLng: number) {
+  const earthRadiusKm = 6371;
+  const dLat = ((toLat - fromLat) * Math.PI) / 180;
+  const dLng = ((toLng - fromLng) * Math.PI) / 180;
+  const lat1 = (fromLat * Math.PI) / 180;
+  const lat2 = (toLat * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function closestPoint(points: GlobePoint[], lat: number, lng: number) {
+  return points.reduce<{ point: GlobePoint | null; distance: number }>(
+    (best, point) => {
+      const distance = Math.hypot(point.lat - lat, point.lng - lng);
+      return distance < best.distance ? { point, distance } : best;
+    },
+    { point: null, distance: Number.POSITIVE_INFINITY },
+  ).point;
+}
+
+function routeTitle(route: GlobeRoute, points: GlobePoint[]) {
+  if (route.label) return route.label;
+  const from = closestPoint(points, route.fromLat, route.fromLng);
+  const to = closestPoint(points, route.toLat, route.toLng);
+  if (from && to) return `${from.city} → ${to.city}`;
+  return "Ruta verificada";
+}
+
+function routeMeta(route: GlobeRoute, points: GlobePoint[]) {
+  const from = closestPoint(points, route.fromLat, route.fromLng);
+  const to = closestPoint(points, route.toLat, route.toLng);
+  const distance = haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng);
+  const fromCountry = displayCountryName(inferCountryName(from || ({ city: "", lat: 0, lng: 0 } as GlobePoint)));
+  const toCountry = displayCountryName(inferCountryName(to || ({ city: "", lat: 0, lng: 0 } as GlobePoint)));
+  const endpoints = from && to ? `${from.city}, ${fromCountry} → ${to.city}, ${toCountry}` : "Origen y destino auditados";
+  return `${endpoints} · ${formatKm(distance)}`;
 }
 
 function projectPoint(lat: number, lng: number) {
@@ -251,10 +336,14 @@ function GlobeFallbackVisual({
   const visiblePoints = points.slice(0, 10);
   const visibleRoutes = routes.slice(0, 8);
   const stroke = isLightTheme ? "rgba(37, 99, 235, .34)" : "rgba(34, 211, 238, .42)";
+  const primaryRoute = visibleRoutes[0];
+  const primaryFrom = primaryRoute ? closestPoint(points, primaryRoute.fromLat, primaryRoute.fromLng) : null;
+  const primaryTo = primaryRoute ? closestPoint(points, primaryRoute.toLat, primaryRoute.toLng) : null;
+  const primaryKm = primaryRoute ? haversineKm(primaryRoute.fromLat, primaryRoute.fromLng, primaryRoute.toLat, primaryRoute.toLng) : 0;
 
   return (
     <div className={`absolute inset-0 z-0 grid place-items-center overflow-hidden rounded-2xl ${className}`} aria-hidden="true">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_24%,rgba(34,211,238,.22),transparent_34%),radial-gradient(circle_at_72%_72%,rgba(52,211,153,.16),transparent_36%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(8,47,73,.48),rgba(2,6,23,.74)),radial-gradient(circle_at_28%_24%,rgba(34,211,238,.18),transparent_34%),radial-gradient(circle_at_72%_72%,rgba(52,211,153,.13),transparent_36%)]" />
       <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-200/24 to-transparent" />
       <div className="absolute left-1/2 top-8 h-[78%] w-px bg-gradient-to-b from-transparent via-cyan-200/14 to-transparent" />
       <svg className="relative h-[84%] w-[84%] overflow-visible opacity-95" viewBox="0 0 100 100">
@@ -322,7 +411,52 @@ function GlobeFallbackVisual({
             </g>
           );
         })}
+        {visiblePoints.slice(0, 5).map((point, index) => {
+          const pos = projectPoint(point.lat, point.lng);
+          const country = displayCountryName(inferCountryName(point));
+          const anchor = pos.x > 68 ? "end" : "start";
+          const dx = pos.x > 68 ? -3.2 : 3.2;
+          return (
+            <g key={`${point.city}-label-${index}`} opacity=".92">
+              <text
+                x={pos.x + dx}
+                y={pos.y - 1.2}
+                textAnchor={anchor}
+                fill="#e0f2fe"
+                fontSize="3.1"
+                fontWeight="900"
+                letterSpacing=".02em"
+              >
+                {point.city}
+              </text>
+              {country ? (
+                <text
+                  x={pos.x + dx}
+                  y={pos.y + 2.5}
+                  textAnchor={anchor}
+                  fill="#67e8f9"
+                  fontSize="2"
+                  fontWeight="800"
+                  opacity=".72"
+                >
+                  {country}
+                </text>
+              ) : null}
+            </g>
+          );
+        })}
       </svg>
+      {primaryRoute ? (
+        <div className="absolute left-4 right-4 top-4 z-10 rounded-2xl border border-cyan-200/18 bg-slate-950/72 px-3 py-2 text-left shadow-[0_16px_46px_rgba(0,0,0,.28)] backdrop-blur-xl">
+          <p className="text-[0.56rem] font-black uppercase tracking-[0.2em] text-cyan-200">Ruta activa</p>
+          <strong className="mt-1 block truncate text-sm font-black leading-tight text-white">
+            {primaryFrom?.city || "Origen"} → {primaryTo?.city || "Tap"}
+          </strong>
+          <span className="mt-1 block truncate text-[0.66rem] font-bold text-slate-300">
+            {routeTitle(primaryRoute, points)} · {formatKm(primaryKm)}
+          </span>
+        </div>
+      ) : null}
       <div className="absolute bottom-5 left-1/2 h-8 w-[62%] -translate-x-1/2 rounded-full bg-cyan-400/8 blur-xl" />
     </div>
   );
@@ -418,6 +552,7 @@ export function Globe3dMap({
   const minRenderHeight = compactRequested ? 220 : mediumRequested ? 300 : 360;
   const renderHeight = Math.max(minRenderHeight, Math.round(renderWidth * (height / Math.max(width, 1))));
   const compactHud = renderWidth < 500 || height <= 360;
+  const routePreviewOnly = compactRequested || (height <= 360 && renderWidth < 560);
   const globeImageUrl = useMemo(() => PROFESSIONAL_GLOBE_IMAGE_URL || localGlobeTexture(isLightTheme), [isLightTheme]);
   const globeBumpUrl = useMemo(() => PROFESSIONAL_GLOBE_BUMP_URL || localGlobeBumpTexture(isLightTheme), [isLightTheme]);
   const activeCountryNames = useMemo(
@@ -445,11 +580,26 @@ export function Globe3dMap({
     return {
       eyebrow: "nexID Global Trust Mesh",
       title: "Red global de producto",
-      subtitle: "Pasa el mouse por un pais, ciudad, ruta o hotspot.",
+      subtitle: "Pasá el mouse por un país, ciudad, ruta o hotspot.",
       meta: `${points.length} nodos - ${routes.length} rutas - ${scans.toLocaleString("es-AR")} taps - ${regions} regiones`,
       tone: "#22d3ee",
     };
   }, [points, routes]);
+
+  const globeFocus = useMemo(() => {
+    const validPoints = points.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+    if (!validPoints.length) return { lat: 10, lng: -28, altitude: 2.15 };
+
+    const latMin = Math.min(...validPoints.map((point) => point.lat));
+    const latMax = Math.max(...validPoints.map((point) => point.lat));
+    const lngMin = Math.min(...validPoints.map((point) => point.lng));
+    const lngMax = Math.max(...validPoints.map((point) => point.lng));
+    const lat = (latMin + latMax) / 2;
+    const lng = (lngMin + lngMax) / 2;
+    const span = Math.max(latMax - latMin, lngMax - lngMin);
+    const altitude = span > 96 ? 2.45 : span > 56 ? 2.08 : span > 22 ? 1.68 : 1.34;
+    return { lat, lng, altitude };
+  }, [points]);
 
   const setPointHover = useCallback((point?: GlobePoint | null) => {
     if (!point) {
@@ -457,12 +607,12 @@ export function Globe3dMap({
       return;
     }
 
-    const country = inferCountryName(point);
+    const country = displayCountryName(inferCountryName(point));
     const risk = point.risk || point.status === "risk";
     setHoverCard({
       eyebrow: risk ? "Riesgo operativo" : point.status === "origin" ? "Origen verificado" : "Tap en vivo",
       title: point.city,
-      subtitle: country || "Ubicacion verificada",
+      subtitle: country || "Ubicación verificada",
       meta: `${point.scans || 1} taps${risk ? ` - riesgo ${point.risk || 1}` : ""}${point.vertical ? ` - ${point.vertical}` : ""}`,
       tone: pointTone(point),
     });
@@ -475,15 +625,16 @@ export function Globe3dMap({
     }
 
     const country = featureCountryName(feature);
-    const normalized = normalizeCountryName(country);
+    const canonicalCountry = canonicalCountryName(country);
+    const normalized = normalizeCountryName(canonicalCountry);
     const activePoints = points.filter((point) => normalizeCountryName(inferCountryName(point)) === normalized);
     const scans = activePoints.reduce((sum, point) => sum + (point.scans || 0), 0);
     const active = activeCountryNames.has(normalized);
 
     setHoverCard({
-      eyebrow: active ? "Pais con actividad nexID" : "Capa geografica",
-      title: country || "Pais",
-      subtitle: feature.properties?.CONTINENT || "Cobertura global",
+      eyebrow: active ? "País con actividad nexID" : "Capa geográfica",
+      title: displayCountryName(canonicalCountry) || "País",
+      subtitle: displayContinentName(feature.properties?.CONTINENT),
       meta: active
         ? `${activePoints.length} nodos - ${scans.toLocaleString("es-AR")} taps verificados`
         : "Sin taps visibles en la ventana actual",
@@ -510,8 +661,7 @@ export function Globe3dMap({
     const globe = globeRef.current;
     if (globe) {
       setGlobeReady(true);
-      // Center the camera over the Atlantic between origin, channels and destination markets.
-      globe.pointOfView({ lat: 10, lng: -28, altitude: 2.15 }, 0);
+      globe.pointOfView(globeFocus, 0);
 
       const controls = globe.controls();
       if (controls) {
@@ -522,7 +672,7 @@ export function Globe3dMap({
         controls.dampingFactor = 0.05;
       }
     }
-  }, []);
+  }, [globeFocus]);
 
   // react-globe.gl can initialize the ref before onGlobeReady fires on fast cached loads.
   useEffect(() => {
@@ -600,6 +750,24 @@ export function Globe3dMap({
     );
   }
 
+  if (routePreviewOnly) {
+    return (
+      <div
+        ref={containerRef}
+        className={`relative select-none flex items-center justify-center overflow-hidden rounded-2xl border border-cyan-200/10 bg-slate-950/40 shadow-2xl p-0 pointer-events-auto ${className}`}
+        style={{ width: "100%", maxWidth: width, height: renderHeight }}
+        data-globe-ready="route-preview"
+        data-globe-mode="route-preview"
+      >
+        <GlobeFallbackVisual points={points} routes={routes} isLightTheme={isLightTheme} className="opacity-100" />
+        <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-slate-950/74 px-3 py-2 text-[0.68rem] font-bold text-slate-200 shadow-[0_14px_40px_rgba(0,0,0,.24)] backdrop-blur-xl">
+          <span className="text-cyan-100">{points.length.toLocaleString("es-AR")} nodos · {routes.length.toLocaleString("es-AR")} rutas</span>
+          <span className="text-emerald-200">Ruta verificada</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -670,16 +838,16 @@ export function Globe3dMap({
         // while the active countries lift slightly when taps exist there.
         polygonsData={countryPolygons}
         polygonGeoJsonGeometry="geometry"
-        polygonAltitude={(feature: any) => (activeCountryNames.has(normalizeCountryName(featureCountryName(feature))) ? 0.012 : 0.002)}
+        polygonAltitude={(feature: any) => (activeCountryNames.has(normalizeCountryName(canonicalCountryName(featureCountryName(feature)))) ? 0.012 : 0.002)}
         polygonCapColor={(feature: any) =>
-          activeCountryNames.has(normalizeCountryName(featureCountryName(feature)))
-            ? (isLightTheme ? "rgba(20,184,166,.56)" : "rgba(34,211,238,.42)")
-            : (isLightTheme ? "rgba(15,23,42,.14)" : "rgba(14,165,233,.13)")
+          activeCountryNames.has(normalizeCountryName(canonicalCountryName(featureCountryName(feature))))
+            ? (isLightTheme ? "rgba(20,184,166,.42)" : "rgba(34,211,238,.34)")
+            : (isLightTheme ? "rgba(15,23,42,.06)" : "rgba(14,165,233,.045)")
         }
         polygonSideColor={() => (isLightTheme ? "rgba(14,116,144,.2)" : "rgba(34,211,238,.16)")}
         polygonStrokeColor={() => (isLightTheme ? "rgba(15,23,42,.34)" : "rgba(186,230,253,.38)")}
         polygonCapCurvatureResolution={5}
-        polygonLabel={(feature: any) => featureCountryName(feature)}
+        polygonLabel={(feature: any) => displayCountryName(featureCountryName(feature))}
         onPolygonHover={(feature: any) => setCountryHover(feature || null)}
         polygonsTransitionDuration={900}
         
@@ -691,7 +859,7 @@ export function Globe3dMap({
         pointAltitude={(p: any) => (p.risk || p.status === "risk" ? 0.048 : 0.032)}
         pointRadius={(p: any) => Math.min(0.28, 0.12 + Math.sqrt(Math.max(1, p.scans || 1)) * 0.012 + (p.risk ? 0.05 : 0))}
         pointResolution={18}
-        pointLabel={(p: any) => `<b>${p.city}</b>${p.country ? `<br/>${p.country}` : ""}${p.scans ? `<br/>${p.scans} taps` : ""}`}
+        pointLabel={(p: any) => `<b>${p.city}</b>${inferCountryName(p) ? `<br/>${displayCountryName(inferCountryName(p))}` : ""}${p.scans ? `<br/>${p.scans} taps` : ""}`}
         onPointHover={(point: any) => setPointHover(point || null)}
         pointsMerge={false}
         pointsTransitionDuration={900}
@@ -715,7 +883,7 @@ export function Globe3dMap({
         labelLat="lat"
         labelLng="lng"
         labelText="city"
-        labelLabel={(p: any) => `${p.city}${p.country ? `, ${p.country}` : ""}`}
+        labelLabel={(p: any) => `${p.city}${inferCountryName(p) ? `, ${displayCountryName(inferCountryName(p))}` : ""}`}
         labelColor={() => (isLightTheme ? "#020617" : "#ffffff")}
         labelSize={1.35}
         labelDotRadius={0}
@@ -727,7 +895,7 @@ export function Globe3dMap({
         arcStartLng="fromLng"
         arcEndLat="toLat"
         arcEndLng="toLng"
-        arcLabel={(route: any) => route.label || "Ruta verificada"}
+        arcLabel={(route: any) => `${routeTitle(route, points)}<br/>${routeMeta(route, points)}`}
         arcColor={(r: any) => (r.tone === "warn" ? "#fb7185" : r.tone === "success" ? "#34d399" : "#22d3ee")}
         arcDashLength={0.45}
         arcDashGap={0.15}

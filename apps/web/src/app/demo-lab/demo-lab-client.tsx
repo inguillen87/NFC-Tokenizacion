@@ -1301,7 +1301,7 @@ function DemoLiveOpsMap({
         toLat: p.lat,
         toLng: p.lng,
         tone: p.risk ? ("warn" as const) : ("info" as const),
-        label: `${p.city} route`,
+        label: `Ruta ${originPoint.city} → ${p.city}`,
       }))
     : [];
 
