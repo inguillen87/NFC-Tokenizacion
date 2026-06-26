@@ -116,6 +116,8 @@ type GlobeHoverCard = {
   tone: string;
 };
 
+type GlobeRenderMode = "auto" | "globe" | "preview";
+
 function encodeSvg(svg: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
@@ -469,7 +471,8 @@ export function Globe3dMap({
   height = 500,
   className = "",
   offset = [0, 0],
-  theme = "auto"
+  theme = "auto",
+  mode = "auto",
 }: {
   points?: GlobePoint[];
   routes?: GlobeRoute[];
@@ -478,6 +481,7 @@ export function Globe3dMap({
   className?: string;
   offset?: [number, number];
   theme?: "light" | "dark" | "auto";
+  mode?: GlobeRenderMode;
 }) {
   const globeRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -552,7 +556,7 @@ export function Globe3dMap({
   const minRenderHeight = compactRequested ? 220 : mediumRequested ? 300 : 360;
   const renderHeight = Math.max(minRenderHeight, Math.round(renderWidth * (height / Math.max(width, 1))));
   const compactHud = renderWidth < 500 || height <= 360;
-  const routePreviewOnly = compactRequested || (height <= 360 && renderWidth < 560);
+  const routePreviewOnly = mode === "preview" || (mode === "auto" && renderWidth < 220 && height < 180);
   const globeImageUrl = useMemo(() => PROFESSIONAL_GLOBE_IMAGE_URL || localGlobeTexture(isLightTheme), [isLightTheme]);
   const globeBumpUrl = useMemo(() => PROFESSIONAL_GLOBE_BUMP_URL || localGlobeBumpTexture(isLightTheme), [isLightTheme]);
   const activeCountryNames = useMemo(
@@ -661,18 +665,25 @@ export function Globe3dMap({
     const globe = globeRef.current;
     if (globe) {
       setGlobeReady(true);
-      globe.pointOfView(globeFocus, 0);
+      globe.pointOfView(globeFocus, 900);
 
       const controls = globe.controls();
       if (controls) {
         controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.55;
+        controls.autoRotateSpeed = compactHud ? 0.22 : 0.38;
         controls.enableZoom = true;
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
+        controls.minDistance = 180;
+        controls.maxDistance = 620;
       }
     }
-  }, [globeFocus]);
+  }, [compactHud, globeFocus]);
+
+  useEffect(() => {
+    if (!globeReady || !globeRef.current || routePreviewOnly) return;
+    globeRef.current.pointOfView(globeFocus, 1100);
+  }, [globeFocus, globeReady, routePreviewOnly]);
 
   // react-globe.gl can initialize the ref before onGlobeReady fires on fast cached loads.
   useEffect(() => {
@@ -774,6 +785,7 @@ export function Globe3dMap({
       className={`relative select-none flex items-center justify-center overflow-hidden rounded-2xl border border-white/5 shadow-2xl p-0 pointer-events-auto ${className}`}
       style={{ width: "100%", maxWidth: width, height: renderHeight }}
       data-globe-ready={globeReady ? "true" : "false"}
+      data-globe-mode="interactive"
     >
       <GlobeFallbackVisual
         points={points}
@@ -821,12 +833,12 @@ export function Globe3dMap({
         height={renderHeight}
         globeOffset={offset}
         backgroundColor="rgba(0,0,0,0)"
-        backgroundImageUrl={compactHud ? undefined : PROFESSIONAL_GLOBE_BACKGROUND_URL}
+        backgroundImageUrl={!compactHud ? PROFESSIONAL_GLOBE_BACKGROUND_URL : undefined}
         rendererConfig={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         waitForGlobeReady={false}
         animateIn={true}
         showAtmosphere={true}
-        showGraticules={true}
+        showGraticules={!compactHud}
         atmosphereColor={isLightTheme ? "#3b82f6" : "#22d3ee"}
         atmosphereAltitude={0.16}
         globeImageUrl={globeImageUrl}
@@ -879,7 +891,7 @@ export function Globe3dMap({
         hexLabel={(hex: any) => `${hex.points?.length || 0} nodos<br/>peso comercial ${hex.sumWeight || 1}`}
         
         // Labels
-        labelsData={labelPoints}
+        labelsData={compactHud ? [] : labelPoints}
         labelLat="lat"
         labelLng="lng"
         labelText="city"

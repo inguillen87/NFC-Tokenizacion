@@ -23147,12 +23147,18 @@ html.theme-light .landing-hero-section .hero-trace-map--clear [data-nexid-map="p
     linear-gradient(135deg, rgba(8, 47, 73, 0.78), rgba(2, 6, 23, 0.72)) !important;
 }
 
-.landing-hero-section .hero-object-map-pane .hero-trace-map.hero-trace-map--atlas .scene-container,
-.landing-hero-section .hero-object-map-pane .hero-trace-map.hero-trace-map--atlas .hero-trace-map__globe {
+.landing-hero-section .hero-trace-map.hero-trace-map--atlas .scene-container,
+.landing-hero-section .hero-trace-map.hero-trace-map--atlas canvas,
+.landing-hero-section .hero-trace-map.hero-trace-map--atlas [data-globe-ready],
+.landing-hero-section .hero-trace-map.hero-trace-map--atlas [data-globe-mode],
+.landing-hero-section .hero-trace-map.hero-trace-map--atlas .hero-trace-map__globe {
   display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-.landing-hero-section .hero-object-map-pane .hero-trace-map.hero-trace-map--atlas .hero-premium-atlas {
+.landing-hero-section .hero-trace-map.hero-trace-map--atlas .hero-premium-atlas {
+  display: block !important;
   opacity: 1 !important;
   pointer-events: auto !important;
   filter: saturate(1.2) contrast(1.08) drop-shadow(0 18px 44px rgba(8, 47, 73, 0.34)) !important;
