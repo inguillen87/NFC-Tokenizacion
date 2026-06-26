@@ -863,10 +863,10 @@ function HeroPremiumAtlas({
   const routePath = "M106 238 C212 98 430 98 614 238";
   const corridorPath = "M74 266 C200 78 456 72 646 268";
   const routeStops = [
-    { id: "origin", label: "Origen verificado", sub: origin.city, x: 150, y: 288, color: "#34d399" },
-    { id: "crm", label: "CRM + beneficio", sub: "lead listo", x: 586, y: 288, color: "#a78bfa" },
     { id: "origin", label: "Origen verificado", sub: origin.city, x: 106, y: 238, color: "#34d399" },
+    { id: "sun", label: "SUN dinámico", sub: "anti-replay", x: 264, y: 132, color: "#67e8f9" },
     { id: "tap", label: "Tap físico", sub: tap.city, x: 448, y: 132, color: "#22d3ee" },
+    { id: "crm", label: "CRM + beneficio", sub: "lead listo", x: 614, y: 238, color: "#a78bfa" },
   ];
 
   return (
