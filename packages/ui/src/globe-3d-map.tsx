@@ -241,16 +241,11 @@ function GlobeFallbackVisual({
 
   return (
     <div className={`absolute inset-0 z-0 grid place-items-center overflow-hidden rounded-2xl ${className}`} aria-hidden="true">
-      <div className="absolute h-[88%] w-[88%] rounded-full bg-[radial-gradient(circle_at_35%_25%,rgba(125,245,255,.36),rgba(14,165,233,.18)_32%,rgba(2,6,23,.78)_68%,rgba(2,6,23,0)_72%)] blur-sm" />
-      <div className="absolute h-[74%] w-[74%] rounded-full border border-cyan-200/20 shadow-[0_0_80px_rgba(34,211,238,.24),inset_0_0_70px_rgba(34,211,238,.12)]" />
-      <svg className="relative h-[82%] w-[82%] overflow-visible opacity-95" viewBox="0 0 100 100">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_24%,rgba(34,211,238,.22),transparent_34%),radial-gradient(circle_at_72%_72%,rgba(52,211,153,.16),transparent_36%)]" />
+      <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-200/24 to-transparent" />
+      <div className="absolute left-1/2 top-8 h-[78%] w-px bg-gradient-to-b from-transparent via-cyan-200/14 to-transparent" />
+      <svg className="relative h-[84%] w-[84%] overflow-visible opacity-95" viewBox="0 0 100 100">
         <defs>
-          <radialGradient id="nexid-fallback-globe" cx="38%" cy="28%" r="74%">
-            <stop offset="0%" stopColor={isLightTheme ? "#dff4ff" : "#1dd9ff"} stopOpacity=".72" />
-            <stop offset="36%" stopColor={isLightTheme ? "#78bdf9" : "#0874a8"} stopOpacity=".48" />
-            <stop offset="76%" stopColor={isLightTheme ? "#0f5bb8" : "#03172d"} stopOpacity=".92" />
-            <stop offset="100%" stopColor="#020617" stopOpacity=".98" />
-          </radialGradient>
           <linearGradient id="nexid-fallback-route" x1="0" x2="1">
             <stop offset="0%" stopColor="#22d3ee" stopOpacity=".05" />
             <stop offset="52%" stopColor="#67e8f9" stopOpacity=".94" />
@@ -261,17 +256,23 @@ function GlobeFallbackVisual({
             <stop offset="54%" stopColor="#facc15" stopOpacity=".94" />
             <stop offset="100%" stopColor="#fb7185" stopOpacity=".08" />
           </linearGradient>
+          <filter id="nexid-fallback-soft-glow">
+            <feGaussianBlur stdDeviation="1.7" />
+          </filter>
         </defs>
-        <circle cx="50" cy="50" r="40" fill="url(#nexid-fallback-globe)" />
-        {[18, 31, 44, 56, 69, 82].map((x) => (
-          <path key={`lon-${x}`} d={`M${x} 12 C${50 + (x - 50) * 0.34} 32 ${50 + (x - 50) * 0.34} 68 ${x} 88`} fill="none" stroke={stroke} strokeWidth=".28" />
-        ))}
-        {[22, 34, 46, 58, 70, 82].map((y) => (
-          <ellipse key={`lat-${y}`} cx="50" cy="50" rx="40" ry={Math.abs(50 - y) + 2} fill="none" stroke={stroke} strokeWidth=".26" opacity=".58" />
-        ))}
-        <path d="M26 31c8-8 20-7 26 0 3 4 2 10-3 12-5 2-10-1-14 3-4 4 1 10-5 14-6 4-17 0-21-8-4-8 2-16 17-21Z" fill="#34d399" opacity=".42" />
-        <path d="M51 25c11-5 26-4 35 3 8 7 6 15-3 17-7 2-15-1-20 4-5 6 1 13-6 17-8 5-22 0-28-9-8-12 1-25 22-32Z" fill="#22d3ee" opacity=".34" />
-        <path d="M56 62c7-4 19-4 26 0 6 4 7 11 1 15-5 3-14 1-19 4-6 4-1 10-6 13-7 4-19-1-23-8-5-8 3-17 21-24Z" fill="#a78bfa" opacity=".24" />
+        <g opacity=".34" stroke={stroke} strokeWidth=".34">
+          {[18, 31, 44, 57, 70, 83].map((x) => (
+            <path key={`mesh-x-${x}`} d={`M${x} 8 V92`} />
+          ))}
+          {[18, 31, 44, 57, 70, 83].map((y) => (
+            <path key={`mesh-y-${y}`} d={`M8 ${y} H92`} />
+          ))}
+        </g>
+        <g opacity=".24" fill="none" stroke="#67e8f9" strokeWidth=".45">
+          <path d="M14 78 C27 56 36 45 53 39 C69 34 78 26 88 14" />
+          <path d="M12 44 C25 31 44 28 58 33 C73 38 82 51 91 70" />
+          <path d="M25 88 C34 72 48 64 63 61 C75 58 84 50 92 39" />
+        </g>
         {visibleRoutes.map((route, index) => {
           const from = projectPoint(route.fromLat, route.fromLng);
           const to = projectPoint(route.toLat, route.toLng);
@@ -289,6 +290,13 @@ function GlobeFallbackVisual({
             />
           );
         })}
+        <g opacity=".28" filter="url(#nexid-fallback-soft-glow)">
+          {visiblePoints.map((point, index) => {
+            const pos = projectPoint(point.lat, point.lng);
+            const color = pointTone(point);
+            return <circle key={`${point.city}-glow-${index}`} cx={pos.x} cy={pos.y} r="7.2" fill={color} />;
+          })}
+        </g>
         {visiblePoints.map((point, index) => {
           const pos = projectPoint(point.lat, point.lng);
           const color = pointTone(point);
@@ -302,7 +310,7 @@ function GlobeFallbackVisual({
           );
         })}
       </svg>
-      <div className="absolute bottom-5 left-1/2 h-8 w-[62%] -translate-x-1/2 rounded-full bg-cyan-400/10 blur-xl" />
+      <div className="absolute bottom-5 left-1/2 h-8 w-[62%] -translate-x-1/2 rounded-full bg-cyan-400/8 blur-xl" />
     </div>
   );
 }
@@ -393,8 +401,10 @@ export function Globe3dMap({
 
   const renderWidth = Math.max(280, Math.min(width, containerWidth || width));
   const compactRequested = height <= 240;
-  const minRenderHeight = compactRequested ? 280 : 360;
+  const mediumRequested = height <= 360;
+  const minRenderHeight = compactRequested ? 220 : mediumRequested ? 300 : 360;
   const renderHeight = Math.max(minRenderHeight, Math.round(renderWidth * (height / Math.max(width, 1))));
+  const compactHud = renderWidth < 500 || height <= 360;
   const globeImageUrl = useMemo(() => localGlobeTexture(isLightTheme), [isLightTheme]);
   const globeBumpUrl = useMemo(() => localGlobeBumpTexture(isLightTheme), [isLightTheme]);
   const activeCountryNames = useMemo(
@@ -422,8 +432,8 @@ export function Globe3dMap({
     return {
       eyebrow: "nexID Global Trust Mesh",
       title: "Red global de producto",
-      subtitle: "Pasá el mouse por un país, ciudad, ruta o hotspot.",
-      meta: `${points.length} nodos · ${routes.length} rutas · ${scans.toLocaleString("es-AR")} taps · ${regions} regiones`,
+      subtitle: "Pasa el mouse por un pais, ciudad, ruta o hotspot.",
+      meta: `${points.length} nodos - ${routes.length} rutas - ${scans.toLocaleString("es-AR")} taps - ${regions} regiones`,
       tone: "#22d3ee",
     };
   }, [points, routes]);
@@ -439,8 +449,8 @@ export function Globe3dMap({
     setHoverCard({
       eyebrow: risk ? "Riesgo operativo" : point.status === "origin" ? "Origen verificado" : "Tap en vivo",
       title: point.city,
-      subtitle: country || "Ubicación verificada",
-      meta: `${point.scans || 1} taps${risk ? ` · riesgo ${point.risk || 1}` : ""}${point.vertical ? ` · ${point.vertical}` : ""}`,
+      subtitle: country || "Ubicacion verificada",
+      meta: `${point.scans || 1} taps${risk ? ` - riesgo ${point.risk || 1}` : ""}${point.vertical ? ` - ${point.vertical}` : ""}`,
       tone: pointTone(point),
     });
   }, []);
@@ -458,11 +468,11 @@ export function Globe3dMap({
     const active = activeCountryNames.has(normalized);
 
     setHoverCard({
-      eyebrow: active ? "País con actividad nexID" : "Capa geográfica",
-      title: country || "País",
+      eyebrow: active ? "Pais con actividad nexID" : "Capa geografica",
+      title: country || "Pais",
       subtitle: feature.properties?.CONTINENT || "Cobertura global",
       meta: active
-        ? `${activePoints.length} nodos · ${scans.toLocaleString("es-AR")} taps verificados`
+        ? `${activePoints.length} nodos - ${scans.toLocaleString("es-AR")} taps verificados`
         : "Sin taps visibles en la ventana actual",
       tone: active ? "#34d399" : "#67e8f9",
     });
@@ -588,30 +598,41 @@ export function Globe3dMap({
         points={points}
         routes={routes}
         isLightTheme={isLightTheme}
-        className={globeReady ? "opacity-0 transition-opacity duration-700" : "opacity-100 transition-opacity duration-700"}
+        className={globeReady ? "opacity-10 transition-opacity duration-700" : "opacity-100 transition-opacity duration-700"}
       />
 
-      <div className="absolute bottom-4 right-4 z-20 text-[9px] text-slate-500 font-mono pointer-events-none bg-slate-950/80 px-2 py-1 rounded border border-white/5 backdrop-blur">
-        Arrastrá para rotar
-      </div>
+      {!compactHud ? (
+        <div className="absolute bottom-4 right-4 z-20 text-[9px] text-slate-500 font-mono pointer-events-none bg-slate-950/80 px-2 py-1 rounded border border-white/5 backdrop-blur">
+          Arrastra para rotar
+        </div>
+      ) : null}
 
-      <div
-        className="absolute left-4 top-4 z-20 max-w-[min(88%,21rem)] rounded-2xl border bg-slate-950/78 px-4 py-3 text-left shadow-[0_18px_60px_rgba(0,0,0,.42)] backdrop-blur-xl pointer-events-none"
-        style={{ borderColor: `${(hoverCard || defaultHoverCard).tone}66` }}
-      >
-        <p className="text-[0.62rem] font-black uppercase tracking-[0.18em] text-cyan-200">
-          {(hoverCard || defaultHoverCard).eyebrow}
-        </p>
-        <strong className="mt-1 block text-lg font-black leading-tight text-white">
-          {(hoverCard || defaultHoverCard).title}
-        </strong>
-        <span className="mt-1 block text-xs font-semibold leading-5 text-slate-300">
-          {(hoverCard || defaultHoverCard).subtitle}
-        </span>
-        <small className="mt-2 inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.68rem] font-bold text-slate-100">
-          {(hoverCard || defaultHoverCard).meta}
-        </small>
-      </div>
+      {hoverCard ? (
+        <div
+          className="absolute left-4 top-4 z-20 max-w-[min(88%,21rem)] rounded-2xl border bg-slate-950/82 px-4 py-3 text-left shadow-[0_18px_60px_rgba(0,0,0,.42)] backdrop-blur-xl pointer-events-none"
+          style={{ borderColor: `${hoverCard.tone}66` }}
+        >
+          <p className="text-[0.62rem] font-black uppercase tracking-[0.18em] text-cyan-200">
+            {hoverCard.eyebrow}
+          </p>
+          <strong className="mt-1 block text-lg font-black leading-tight text-white">
+            {hoverCard.title}
+          </strong>
+          <span className="mt-1 block text-xs font-semibold leading-5 text-slate-300">
+            {hoverCard.subtitle}
+          </span>
+          <small className="mt-2 inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.68rem] font-bold text-slate-100">
+            {hoverCard.meta}
+          </small>
+        </div>
+      ) : !compactHud ? (
+        <div
+          className="absolute left-4 top-4 z-20 max-w-[min(88%,17rem)] rounded-full border bg-slate-950/54 px-3 py-1.5 text-left text-[0.66rem] font-bold text-cyan-50 shadow-[0_12px_40px_rgba(0,0,0,.28)] backdrop-blur-xl pointer-events-none"
+          style={{ borderColor: `${defaultHoverCard.tone}44` }}
+        >
+          {defaultHoverCard.meta}
+        </div>
+      ) : null}
 
       <Globe
         ref={globeRef}

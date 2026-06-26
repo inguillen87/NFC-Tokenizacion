@@ -83,27 +83,6 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
                 </Link>
               </div>
             </div>
-            <PremiumTraceabilityGlobe
-              title={isEn ? "Live global trust map" : isBr ? "Mapa global de confiança" : "Mapa global de confianza"}
-              subtitle={
-                isEn
-                  ? "Countries, cities, routes and verified product taps in one interactive 3D atlas."
-                  : isBr
-                    ? "Países, cidades, rotas e toques verificados em um atlas 3D interativo."
-                    : "Países, ciudades, rutas y taps verificados en un atlas 3D interactivo."
-              }
-              caption={
-                isEn
-                  ? "Hover a country or city to inspect active regions, verified taps and commercial routes."
-                  : isBr
-                    ? "Passe o mouse por um país ou cidade para ver regiões ativas, toques verificados e rotas comerciais."
-                    : "Pasá el mouse por un país o ciudad para ver regiones activas, taps verificados y rutas comerciales."
-              }
-              points={traceabilityGlobePoints}
-              routes={traceabilityGlobeRoutes}
-              compact
-              className="landing-global-trust-globe mb-5"
-            />
             <HeroScene locale={locale as any} />
             <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" />
           </div>
