@@ -6440,6 +6440,34 @@ html.theme-light #fresh-tap-required p {
   animation: heroRouteDash 2.4s linear infinite;
 }
 
+.hero-premium-atlas__route-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 28;
+  stroke-linecap: round;
+  cursor: crosshair;
+  pointer-events: stroke;
+}
+
+.hero-premium-atlas__country-hit,
+.hero-premium-atlas__dot,
+.hero-premium-atlas__stop {
+  cursor: pointer;
+  transition: opacity 180ms ease, filter 180ms ease;
+}
+
+.hero-premium-atlas__country-hit:hover,
+.hero-premium-atlas__dot:hover,
+.hero-premium-atlas__stop:hover {
+  filter: url("#hero-atlas-glow");
+  opacity: 1;
+}
+
+.hero-premium-atlas__stop circle:last-child {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 1.4;
+}
+
 .hero-premium-atlas__pulse {
   fill: none;
   stroke-width: 2;

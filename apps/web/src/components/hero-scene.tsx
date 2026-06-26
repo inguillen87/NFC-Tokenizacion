@@ -872,17 +872,33 @@ function mapsHref(point: LocationPoint) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.lat},${point.lng}`)}`;
 }
 
+type HeroAtlasHover = {
+  eyebrow: string;
+  title: string;
+  detail: string;
+  tone: "origin" | "tap" | "route" | "country";
+};
+
 function HeroPremiumAtlas({
   origin,
   tap,
   routeHeadline,
   formattedDistance,
+  onHover,
 }: {
   origin: LocationPoint;
   tap: LocationPoint;
   routeHeadline: string;
   formattedDistance: string;
+  onHover: (hover: HeroAtlasHover | null) => void;
 }) {
+  const routeStops = [
+    { id: "origin", label: "Origen verificado", x: 286, y: 288, color: "#34d399" },
+    { id: "sun", label: "SUN dinamico", x: 350, y: 212, color: "#67e8f9" },
+    { id: "tap", label: "Tap fisico", x: 430, y: 205, color: "#22d3ee" },
+    { id: "crm", label: "CRM / beneficio", x: 506, y: 252, color: "#a78bfa" },
+  ];
+
   return (
     <svg className="hero-premium-atlas" viewBox="0 0 720 430" role="img" aria-label={`${routeHeadline}: ${origin.city} a ${tap.city}`}>
       <defs>
@@ -923,19 +939,68 @@ function HeroPremiumAtlas({
       <circle cx="360" cy="216" r="166" fill="url(#hero-atlas-ocean)" />
 
       <g clipPath="url(#hero-atlas-sphere)">
-        <path d="M204 156 C232 108 302 88 350 112 C385 130 396 168 374 196 C350 226 306 218 284 244 C258 274 290 318 252 348 C214 377 158 346 148 294 C139 246 174 207 204 156 Z" fill="url(#hero-atlas-land)" stroke="rgba(186,230,253,.34)" strokeWidth="2" />
+        <path
+          className="hero-premium-atlas__country-hit"
+          d="M204 156 C232 108 302 88 350 112 C385 130 396 168 374 196 C350 226 306 218 284 244 C258 274 290 318 252 348 C214 377 158 346 148 294 C139 246 174 207 204 156 Z"
+          fill="url(#hero-atlas-land)"
+          stroke="rgba(186,230,253,.34)"
+          strokeWidth="2"
+          onMouseEnter={() => onHover({ eyebrow: "Pais de origen", title: origin.country, detail: `${origin.city} - lote y UID nacen aca`, tone: "country" })}
+          onMouseLeave={() => onHover(null)}
+        />
         <path d="M294 254 C338 270 368 318 356 360 C344 402 298 420 260 398 C224 377 232 332 248 300 C260 276 272 260 294 254 Z" fill="url(#hero-atlas-land)" stroke="rgba(186,230,253,.34)" strokeWidth="2" />
-        <path d="M392 118 C462 82 562 104 604 164 C636 210 598 252 540 242 C502 236 482 256 452 286 C420 318 370 292 364 246 C358 198 348 144 392 118 Z" fill="url(#hero-atlas-land)" stroke="rgba(186,230,253,.24)" strokeWidth="2" opacity="0.84" />
+        <path
+          className="hero-premium-atlas__country-hit"
+          d="M392 118 C462 82 562 104 604 164 C636 210 598 252 540 242 C502 236 482 256 452 286 C420 318 370 292 364 246 C358 198 348 144 392 118 Z"
+          fill="url(#hero-atlas-land)"
+          stroke="rgba(186,230,253,.24)"
+          strokeWidth="2"
+          opacity="0.84"
+          onMouseEnter={() => onHover({ eyebrow: "Pais de destino", title: tap.country, detail: `${tap.city} - tap fisico del comprador`, tone: "country" })}
+          onMouseLeave={() => onHover(null)}
+        />
         <path d="M180 314 C260 250 346 246 428 286 C494 318 568 296 632 232" fill="none" stroke="rgba(125,245,255,.28)" strokeWidth="2" strokeDasharray="8 12" />
         <path d="M218 196 C318 170 422 188 540 162" fill="none" stroke="rgba(94,234,212,.22)" strokeWidth="1.5" strokeDasharray="4 10" />
       </g>
 
       <path className="hero-premium-atlas__route-shadow" d="M286 288 C332 188 430 174 506 252" />
       <path className="hero-premium-atlas__route" d="M286 288 C332 188 430 174 506 252" />
+      <path
+        className="hero-premium-atlas__route-hit"
+        d="M286 288 C332 188 430 174 506 252"
+        onMouseEnter={() => onHover({ eyebrow: "Trazabilidad viva", title: `${origin.city} -> ${tap.city}`, detail: `${formattedDistance} km - UID, SUN, tap fisico y CRM`, tone: "route" })}
+        onMouseLeave={() => onHover(null)}
+      />
+      {routeStops.map((stop, index) => (
+        <g
+          key={stop.id}
+          className="hero-premium-atlas__stop"
+          transform={`translate(${stop.x} ${stop.y})`}
+          onMouseEnter={() => onHover({ eyebrow: `Paso ${index + 1}`, title: stop.label, detail: index === 0 ? origin.city : index === routeStops.length - 1 ? tap.city : "Evidencia firmada en la ruta", tone: "route" })}
+          onMouseLeave={() => onHover(null)}
+        >
+          <circle r="15" fill={stop.color} opacity="0.13" />
+          <circle r="4.2" fill={stop.color} />
+        </g>
+      ))}
       <circle className="hero-premium-atlas__pulse hero-premium-atlas__pulse--origin" cx="286" cy="288" r="28" />
       <circle className="hero-premium-atlas__pulse hero-premium-atlas__pulse--tap" cx="506" cy="252" r="34" />
-      <circle className="hero-premium-atlas__dot hero-premium-atlas__dot--origin" cx="286" cy="288" r="8" />
-      <circle className="hero-premium-atlas__dot hero-premium-atlas__dot--tap" cx="506" cy="252" r="9" />
+      <circle
+        className="hero-premium-atlas__dot hero-premium-atlas__dot--origin"
+        cx="286"
+        cy="288"
+        r="8"
+        onMouseEnter={() => onHover({ eyebrow: "Ciudad de origen", title: origin.city, detail: `${origin.country} - producto, UID y lote`, tone: "origin" })}
+        onMouseLeave={() => onHover(null)}
+      />
+      <circle
+        className="hero-premium-atlas__dot hero-premium-atlas__dot--tap"
+        cx="506"
+        cy="252"
+        r="9"
+        onMouseEnter={() => onHover({ eyebrow: "Ciudad de tap", title: tap.city, detail: `${tap.country} - lectura fisica del consumidor`, tone: "tap" })}
+        onMouseLeave={() => onHover(null)}
+      />
       <g className="hero-premium-atlas__label" transform="translate(156 136)">
         <text>ARGENTINA</text>
       </g>
@@ -998,9 +1063,11 @@ function HeroTraceMap({
       ? `${formattedDistance} km com evidencia de toque, SUN e canal.`
     : `${formattedDistance} km con evidencia de toque físico, SUN y canal.`;
 
+  const [atlasHover, setAtlasHover] = useState<HeroAtlasHover | null>(null);
+
   return (
     <div className="hero-trace-map hero-trace-map--clear hero-trace-map--globe flex items-center justify-center" aria-label={txt.routeTitle}>
-      <HeroPremiumAtlas origin={origin} tap={tap} routeHeadline={routeHeadline} formattedDistance={formattedDistance} />
+      <HeroPremiumAtlas origin={origin} tap={tap} routeHeadline={routeHeadline} formattedDistance={formattedDistance} onHover={setAtlasHover} />
       <div className="hero-trace-map__globe" aria-label={`${origin.city} a ${tap.city}`}>
         <Globe3dMap
           theme="dark"
@@ -1022,9 +1089,9 @@ function HeroTraceMap({
         />
       </div>
       <div className="hero-map-intel">
-        <p>{routeHeadline}</p>
-        <strong>{origin.city} / {tap.city}</strong>
-        <span>{evidenceCopy}</span>
+        <p>{atlasHover?.eyebrow || routeHeadline}</p>
+        <strong>{atlasHover?.title || `${origin.city} / ${tap.city}`}</strong>
+        <span>{atlasHover?.detail || evidenceCopy}</span>
       </div>
       <div className="hero-route-summary-card">
         <div className="hero-route-summary-grid">
