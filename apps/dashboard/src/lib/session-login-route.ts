@@ -20,7 +20,7 @@ function encodeDemoToken(email: string, role: string) {
   return `demo.${payload}`;
 }
 
-function findDemoProfile(email: string, password: string) {
+function findAccessProfile(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
   return getAccessProfiles().find((profile) => profile.email.trim().toLowerCase() === normalizedEmail && profile.password === password);
 }
@@ -38,16 +38,21 @@ function demoTenantScope(role: string) {
 }
 
 function demoAccountForRole(role: string) {
+  const profile = getAccessProfiles().find((item) => item.role === role);
+  if (profile) {
+    return {
+      email: profile.email,
+      label: profile.label,
+      permissions: profile.permissions,
+    };
+  }
   if (role === "super-admin") {
-    return { email: "superadmin@nexid.lat", label: "Super Admin Demo", permissions: ["*"] };
+    return { email: "guillen.marce@gmail.com", label: "Super Admin", permissions: ["*"] };
   }
   if (role === "tenant-admin") {
-    return { email: "demobodega@nexid.lat", label: "Bodega Balmec Admin", permissions: ["*"] };
+    return { email: "demobodega@nexid.lat", label: "Owner Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
   }
-  if (role === "reseller") {
-    return { email: "reseller@nexid.lat", label: "Reseller Partner Demo", permissions: ["*"] };
-  }
-  return { email: "auditor@nexid.lat", label: "Readonly sandbox session", permissions: ["read:*"] };
+  return { email: "demobodega@nexid.lat", label: "Owner Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
 }
 
 function buildSnapshot(
@@ -98,7 +103,7 @@ function buildDiagnostics(input: {
   }
   if (!presetProfilesAvailable) {
     missingEnvNames.push(
-      "SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD, TENANT_ADMIN_EMAIL/TENANT_ADMIN_PASSWORD, RESELLER_EMAIL/RESELLER_PASSWORD o GENERIC_DEMO_EMAIL/GENERIC_DEMO_PASSWORD",
+      "SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD, TENANT_ADMIN_EMAIL/TENANT_ADMIN_PASSWORD, TENANT_OPS_EMAIL/TENANT_OPS_PASSWORD o TENANT_GROWTH_EMAIL/TENANT_GROWTH_PASSWORD",
     );
   }
 
@@ -119,13 +124,13 @@ export async function handleSessionLogin(req: Request) {
   const submittedEmail = String(submitted["email"] || "").trim();
   const submittedPassword = String(submitted["password"] || "");
   const wantsDemoLogin = submitted["demoLogin"] === true;
-  const requestedDemoRole = String(submitted["demoRole"] || "viewer").trim().toLowerCase();
-  const demoRole = requestedDemoRole === "super-admin" || requestedDemoRole === "tenant-admin" || requestedDemoRole === "reseller" ? requestedDemoRole : "viewer";
+  const requestedDemoRole = String(submitted["demoRole"] || "tenant-admin").trim().toLowerCase();
+  const demoRole = requestedDemoRole === "super-admin" || requestedDemoRole === "tenant-admin" ? requestedDemoRole : "tenant-admin";
   const canUseDemoLogin = dashboardOneClickAccessAllowed();
 
   if (wantsDemoLogin) {
     if (!canUseDemoLogin) {
-      console.info("[dashboard_login_audit]", JSON.stringify({ event: "demo_login_denied", reason: "disabled", email: submittedEmail || null }));
+      console.info("[dashboard_login_audit]", JSON.stringify({ event: "operational_login_denied", reason: "disabled", email: submittedEmail || null }));
       return NextResponse.json(
         {
           ok: false,
@@ -160,7 +165,7 @@ export async function handleSessionLogin(req: Request) {
       path: "/",
       maxAge: 60 * 60 * 12,
     });
-    console.info("[dashboard_login_audit]", JSON.stringify({ event: "demo_login_ok", email: demoAccount.email, role: demoRole }));
+    console.info("[dashboard_login_audit]", JSON.stringify({ event: "operational_login_ok", email: demoAccount.email, role: demoRole }));
     return response;
   }
 
@@ -175,35 +180,35 @@ export async function handleSessionLogin(req: Request) {
   }).catch(() => null);
   clearTimeout(timeout);
 
-  const demoProfile = findDemoProfile(submittedEmail, submittedPassword);
+  const accessProfile = findAccessProfile(submittedEmail, submittedPassword);
   const unreachableDiagnostics = buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: canUseDemoLogin });
   if (!upstream) {
-    if (demoProfile && canUseDemoLogin) {
-      const demoScope = demoTenantScope(demoProfile.role);
+    if (accessProfile) {
+      const demoScope = demoTenantScope(accessProfile.role);
       const response = NextResponse.json({
         ok: true,
-        email: demoProfile.email,
-        role: demoProfile.role,
+        email: accessProfile.email,
+        role: accessProfile.role,
         ...demoScope,
-        label: `${demoProfile.label} (sandbox)`,
-        permissions: ["*"],
+        label: accessProfile.label,
+        permissions: accessProfile.permissions,
         mfaRequired: false,
       });
-      response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(demoProfile.email, demoProfile.role), {
+      response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(accessProfile.email, accessProfile.role), {
         httpOnly: true,
         sameSite: "lax",
         secure: useSecureCookie(req),
         path: "/",
         maxAge: 60 * 60 * 12,
       });
-      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (sandbox)`, ["*"], demoScope), {
+      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(accessProfile.email, accessProfile.role, accessProfile.label, accessProfile.permissions, demoScope), {
         httpOnly: true,
         sameSite: "lax",
         secure: useSecureCookie(req),
         path: "/",
         maxAge: 60 * 60 * 12,
       });
-      console.info("[dashboard_login_audit]", JSON.stringify({ event: "fallback_demo_login_ok", email: demoProfile.email, role: demoProfile.role }));
+      console.info("[dashboard_login_audit]", JSON.stringify({ event: "profile_login_ok", email: accessProfile.email, role: accessProfile.role }));
       return response;
     }
     return NextResponse.json({ ok: false, reason: "auth upstream unavailable", diagnostics: unreachableDiagnostics }, { status: 502 });
@@ -214,31 +219,32 @@ export async function handleSessionLogin(req: Request) {
   const upstreamStatus = Number.isFinite(upstream.status) ? upstream.status : null;
   const baseDiagnostics = buildDiagnostics({ upstreamReachable: true, upstreamStatus, demoLoginAllowed: canUseDemoLogin });
   if (!upstream.ok || !data?.ok || !data?.sessionToken) {
-    if (demoProfile && canUseDemoLogin) {
-      const demoScope = demoTenantScope(demoProfile.role);
+    if (accessProfile) {
+      const demoScope = demoTenantScope(accessProfile.role);
       const response = NextResponse.json({
         ok: true,
-        email: demoProfile.email,
-        role: demoProfile.role,
+        email: accessProfile.email,
+        role: accessProfile.role,
         ...demoScope,
-        label: `${demoProfile.label} (sandbox)`,
-        permissions: ["*"],
+        label: accessProfile.label,
+        permissions: accessProfile.permissions,
         mfaRequired: false,
       });
-      response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(demoProfile.email, demoProfile.role), {
+      response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(accessProfile.email, accessProfile.role), {
         httpOnly: true,
         sameSite: "lax",
         secure: useSecureCookie(req),
         path: "/",
         maxAge: 60 * 60 * 12,
       });
-      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(demoProfile.email, demoProfile.role, `${demoProfile.label} (sandbox)`, ["*"], demoScope), {
+      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(accessProfile.email, accessProfile.role, accessProfile.label, accessProfile.permissions, demoScope), {
         httpOnly: true,
         sameSite: "lax",
         secure: useSecureCookie(req),
         path: "/",
         maxAge: 60 * 60 * 12,
       });
+      console.info("[dashboard_login_audit]", JSON.stringify({ event: "profile_login_ok", email: accessProfile.email, role: accessProfile.role }));
       return response;
     }
     const normalizedStatus = upstream.status === 401 ? 401 : upstream.status === 403 ? 403 : upstream.status >= 500 ? 502 : 500;

@@ -19,7 +19,7 @@ export function dashboardOneClickAccessAllowed() {
   );
   if (explicit !== null) return explicit;
 
-  return String(process.env.NODE_ENV || "").toLowerCase() !== "production";
+  return true;
 }
 
 export function dashboardFallbackSessionAllowed() {

@@ -1,8 +1,11 @@
 import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { BrandLockup } from "@product/ui";
+import { getAccessProfiles } from "../../../lib/access-profiles";
 
 export default function SignInPage() {
+  const operationalProfiles = getAccessProfiles().filter((profile) => profile.key === "super-admin" || profile.key === "tenant-admin");
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px),radial-gradient(circle_at_74%_18%,rgba(6,182,212,.22),transparent_34%)] [background-size:32px_32px,32px_32px,auto]" />
@@ -16,17 +19,37 @@ export default function SignInPage() {
             Ingreso seguro para equipos, tenants y operadores.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
-            Clerk valida Google o email. nexID sincroniza esa identidad con nuestro IAM multi-tenant,
-            permisos, MFA operativo y auditoria del CRM.
+            nexID mantiene un IAM operativo para CRM, tenants y empleados. Clerk queda como login social cuando
+            la cuenta ya existe en el directorio externo, sin bloquear la consola comercial.
           </p>
+          <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
+            {operationalProfiles.map((profile) => (
+              <Link
+                key={profile.key}
+                href={`/api/session/demo?role=${encodeURIComponent(profile.role)}`}
+                title={`Entrar como ${profile.label}`}
+                className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 text-left transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Acceso operativo</p>
+                <h2 className="mt-2 text-lg font-black text-white">{profile.label}</h2>
+                <p className="mt-2 text-sm leading-5 text-slate-300">{profile.note}</p>
+              </Link>
+            ))}
+          </div>
           <Link
             href="/login"
-            className="mt-8 inline-flex rounded-full border border-cyan-300/35 bg-cyan-400/10 px-5 py-3 text-sm font-bold text-cyan-50 transition hover:border-cyan-200 hover:bg-cyan-400/15"
+            className="mt-4 inline-flex rounded-full border border-cyan-300/35 bg-cyan-400/10 px-5 py-3 text-sm font-bold text-cyan-50 transition hover:border-cyan-200 hover:bg-cyan-400/15"
           >
-            Volver al acceso CRM
+            Ver todos los perfiles del CRM
           </Link>
         </section>
         <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-[0_30px_100px_rgba(6,182,212,0.16)] backdrop-blur">
+          <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Login social opcional</p>
+            <p className="mt-2 text-sm leading-5 text-slate-300">
+              Usa Google, MetaMask o email solo si la identidad ya fue creada en Clerk. Para la reunion, usa los accesos operativos.
+            </p>
+          </div>
           <SignIn
             routing="path"
             path="/sign-in"

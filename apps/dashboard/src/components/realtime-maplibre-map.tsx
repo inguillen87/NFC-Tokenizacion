@@ -6,7 +6,7 @@ import type { TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type MapMode = "tenant" | "global";
 type MapView = "heat" | "points" | "nearby";
-export type BaseMapLayer = "dark" | "light" | "satellite";
+export type BaseMapLayer = "dark" | "light" | "satellite" | "terrain";
 
 type MapHotspot = {
   key: string;
@@ -81,11 +81,31 @@ const MAP_STYLE = {
       tileSize: 256,
       attribution: "Esri",
     },
+    terrainSource: {
+      type: "raster-dem",
+      url: "https://tiles.mapterhorn.com/tilejson.json",
+    },
+    hillshadeSource: {
+      type: "raster-dem",
+      url: "https://tiles.mapterhorn.com/tilejson.json",
+    },
   },
   layers: [
     { id: "carto-dark", type: "raster", source: "cartoDark" },
     { id: "carto-light", type: "raster", source: "cartoLight", layout: { visibility: "none" } },
     { id: "esri-satellite", type: "raster", source: "esriWorldImagery", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
+    {
+      id: "terrain-hillshade",
+      type: "hillshade",
+      source: "hillshadeSource",
+      layout: { visibility: "none" },
+      paint: {
+        "hillshade-exaggeration": 0.55,
+        "hillshade-shadow-color": "#020617",
+        "hillshade-highlight-color": "#67e8f9",
+        "hillshade-accent-color": "#0f766e",
+      },
+    },
   ],
 };
 
@@ -207,9 +227,9 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       maxzoom: 14,
       paint: {
         "heatmap-weight": ["interpolate", ["linear"], ["get", "weight"], 0, 0, 2, 0.38, 5.5, 1],
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 9, 1.45, 13, 2.2],
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 10, 8, 20, 12, 34],
-        "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0.68, 12, 0.82],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 9, 1.45, 13, 2.05],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 10, 8, 20, 12, 32],
+        "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0.7, 9, 0.82, 12, 0.48, 14, 0.12],
         "heatmap-color": [
           "interpolate",
           ["linear"],
@@ -227,6 +247,24 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
           1,
           "rgba(239,68,68,.9)",
         ],
+      },
+    });
+  }
+
+  if (!map.getLayer("tap-bubbles")) {
+    map.addLayer({
+      id: "tap-bubbles",
+      type: "circle",
+      source: "tap-events",
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["get", "localTaps"], 1, 3, 4, 5, 12, 8, 30, 12],
+        "circle-color": ["case", ["==", ["get", "risk"], 1], "#fb7185", "#22d3ee"],
+        "circle-blur": ["interpolate", ["linear"], ["zoom"], 7, 1.15, 11, 0.32],
+        "circle-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0, 9, 0.12, 11, 0.58, 13, 0.78],
+        "circle-stroke-color": "rgba(255,255,255,.8)",
+        "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 1],
+        "circle-stroke-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 0.72],
       },
     });
   }
@@ -262,6 +300,22 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
     });
   }
 
+  if (!map.getLayer("tap-pulse")) {
+    map.addLayer({
+      id: "tap-pulse",
+      type: "circle",
+      source: "tap-events",
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 0, 10, 12, 13, 22],
+        "circle-color": "rgba(34,211,238,0)",
+        "circle-stroke-color": ["case", ["==", ["get", "risk"], 1], "#fb7185", "#22d3ee"],
+        "circle-stroke-width": 1,
+        "circle-stroke-opacity": 0.28,
+      },
+    });
+  }
+
   if (!map.getLayer("tap-points")) {
     map.addLayer({
       id: "tap-points",
@@ -284,9 +338,11 @@ function setLayerVisibility(map: MapLibreMap, view: MapView) {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
   };
   set("tap-heat", view === "heat");
+  set("tap-bubbles", view === "heat");
   set("tap-nearby-radius", view === "nearby");
-  set("tap-clusters", true);
-  set("tap-points", true);
+  set("tap-clusters", view !== "nearby");
+  set("tap-pulse", view === "points" || view === "nearby");
+  set("tap-points", view === "points" || view === "nearby");
 }
 
 function defaultBaseMapLayer(): BaseMapLayer {
@@ -295,9 +351,16 @@ function defaultBaseMapLayer(): BaseMapLayer {
 }
 
 function setBasemapLayer(map: MapLibreMap, layer: BaseMapLayer) {
-  if (map.getLayer("carto-dark")) map.setLayoutProperty("carto-dark", "visibility", layer === "dark" ? "visible" : "none");
+  if (map.getLayer("carto-dark")) map.setLayoutProperty("carto-dark", "visibility", layer === "dark" || layer === "terrain" ? "visible" : "none");
   if (map.getLayer("carto-light")) map.setLayoutProperty("carto-light", "visibility", layer === "light" ? "visible" : "none");
   if (map.getLayer("esri-satellite")) map.setLayoutProperty("esri-satellite", "visibility", layer === "satellite" ? "visible" : "none");
+  if (map.getLayer("terrain-hillshade")) map.setLayoutProperty("terrain-hillshade", "visibility", layer === "terrain" ? "visible" : "none");
+  try {
+    map.setTerrain(layer === "terrain" && map.getSource("terrainSource") ? { source: "terrainSource", exaggeration: 0.65 } : null);
+  } catch {
+    // Terrain is a progressive enhancement; keep the live map usable if the DEM source is unavailable.
+  }
+  map.easeTo({ pitch: layer === "terrain" ? 52 : 0, bearing: layer === "terrain" ? -18 : 0, duration: 500 });
   const pointStroke = layer === "light" ? "#0f172a" : "#ffffff";
   if (map.getLayer("tap-points")) map.setPaintProperty("tap-points", "circle-stroke-color", pointStroke);
   if (map.getLayer("tap-clusters")) map.setPaintProperty("tap-clusters", "circle-stroke-color", layer === "light" ? "rgba(15,23,42,.72)" : "rgba(255,255,255,.78)");
@@ -361,6 +424,7 @@ export function RealtimeMapLibreMap({
   useEffect(() => {
     let cancelled = false;
     let cleanupResize: (() => void) | null = null;
+    let cleanupAnimation: (() => void) | null = null;
 
     const boot = async () => {
       const maplibre = await import("maplibre-gl");
@@ -386,6 +450,16 @@ export function RealtimeMapLibreMap({
         setLayerVisibility(map, mapView);
         setBasemapLayer(map, baseMap || defaultBaseMapLayer());
         fitData(maplibre, map, geojson, zoom);
+        let frame = 0;
+        const animatePulse = () => {
+          const wave = (Math.sin((performance.now() / 900) * Math.PI) + 1) / 2;
+          if (map.getLayer("tap-pulse")) {
+            map.setPaintProperty("tap-pulse", "circle-stroke-opacity", 0.12 + wave * 0.28);
+          }
+          frame = requestAnimationFrame(animatePulse);
+        };
+        frame = requestAnimationFrame(animatePulse);
+        cleanupAnimation = () => cancelAnimationFrame(frame);
         setLoaded(true);
       });
 
@@ -434,6 +508,7 @@ export function RealtimeMapLibreMap({
     return () => {
       cancelled = true;
       cleanupResize?.();
+      cleanupAnimation?.();
       popupRef.current?.remove();
       mapRef.current?.remove();
       mapRef.current = null;

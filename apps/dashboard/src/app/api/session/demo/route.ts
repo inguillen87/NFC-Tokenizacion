@@ -1,21 +1,28 @@
 import { NextResponse } from "next/server";
 import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "../../../../lib/session";
+import { getAccessProfiles } from "../../../../lib/access-profiles";
 
 export const runtime = "nodejs";
 
-type DemoRole = "super-admin" | "tenant-admin" | "reseller" | "viewer";
+type DemoRole = "super-admin" | "tenant-admin";
 
 function normalizeRole(rawRole: string | null): DemoRole {
   const role = String(rawRole || "tenant-admin").trim().toLowerCase();
-  if (role === "super-admin" || role === "tenant-admin" || role === "reseller" || role === "viewer") return role;
+  if (role === "super-admin" || role === "tenant-admin") return role;
   return "tenant-admin";
 }
 
 function demoAccountForRole(role: DemoRole) {
-  if (role === "super-admin") return { email: "superadmin@nexid.lat", label: "Super Admin Demo", permissions: ["*"] };
-  if (role === "tenant-admin") return { email: "demobodega@nexid.lat", label: "Bodega Balmec Admin", permissions: ["*"] };
-  if (role === "reseller") return { email: "reseller@nexid.lat", label: "Reseller Partner Demo", permissions: ["*"] };
-  return { email: "auditor@nexid.lat", label: "Readonly sandbox session", permissions: ["read:*"] };
+  const profile = getAccessProfiles().find((item) => item.role === role);
+  if (profile) {
+    return {
+      email: profile.email,
+      label: profile.label,
+      permissions: profile.permissions,
+    };
+  }
+  if (role === "super-admin") return { email: "guillen.marce@gmail.com", label: "Super Admin", permissions: ["*"] };
+  return { email: "demobodega@nexid.lat", label: "Owner Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
 }
 
 function demoTenantScope(role: DemoRole) {
@@ -75,6 +82,6 @@ export async function GET(req: Request) {
     maxAge: 60 * 60 * 12,
   });
 
-  console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_demo_login_ok", email: account.email, role }));
+  console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_operational_login_ok", email: account.email, role }));
   return response;
 }

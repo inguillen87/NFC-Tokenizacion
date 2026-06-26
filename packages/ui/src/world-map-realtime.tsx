@@ -230,7 +230,7 @@ export function WorldMapRealtime({
               <p className="text-[11px] font-black uppercase tracking-[0.14em] text-cyan-200">Historia del mapa</p>
               <p className="mt-1 font-semibold text-white">{activePoint.city}, {activePoint.country || "--"}</p>
               <p className="mt-1 text-[11px] text-slate-300">
-                {activePoint.scans || 0} lecturas, {riskSignals} senales de riesgo y {visibleRoutes.length} rutas listas para explicar origen, token, ownership y acciones comerciales.
+                {activePoint.scans || 0} lecturas, {riskSignals} señales de riesgo y {visibleRoutes.length} rutas listas para explicar origen, token, ownership y acciones comerciales.
               </p>
             </div>
             {rankedPoints.slice(0, 30).map((point, index) => (

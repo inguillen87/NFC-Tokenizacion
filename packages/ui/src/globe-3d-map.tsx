@@ -43,8 +43,10 @@ export function Globe3dMap({
   theme?: "light" | "dark" | "auto";
 }) {
   const globeRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isLightTheme, setIsLightTheme] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(width);
 
   useEffect(() => {
     setMounted(true);
@@ -65,6 +67,31 @@ export function Globe3dMap({
     observer.observe(root, { attributes: true, attributeFilter: ["class", "data-theme", "data-nexid-theme"] });
     return () => observer.disconnect();
   }, [theme]);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+
+    const syncSize = () => {
+      const nextWidth = Math.floor(node.getBoundingClientRect().width || width);
+      if (nextWidth > 0) setContainerWidth(Math.max(280, Math.min(width, nextWidth)));
+    };
+
+    syncSize();
+    const observer = new ResizeObserver(syncSize);
+    observer.observe(node);
+    window.addEventListener("resize", syncSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncSize);
+    };
+  }, [width]);
+
+  const renderWidth = Math.max(280, Math.min(width, containerWidth || width));
+  const renderHeight = Math.max(260, Math.round(renderWidth * (height / Math.max(width, 1))));
+  const globeImageUrl = isLightTheme
+    ? "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+    : "https://unpkg.com/three-globe/example/img/earth-night.jpg";
 
   const handleGlobeReady = () => {
     if (globeRef.current) {
@@ -128,40 +155,38 @@ export function Globe3dMap({
 
   if (!mounted) {
     return (
-      <div 
+      <div
+        ref={containerRef}
         className={`relative flex items-center justify-center bg-black/10 rounded-2xl border border-white/5 shadow-2xl p-0 ${className}`}
-        style={{ width, height }}
+        style={{ width: "100%", maxWidth: width, height: renderHeight }}
       >
         <div className="text-xs text-slate-400 font-mono animate-pulse">
-          Loading 3D Globe...
+          Cargando globo 3D...
         </div>
       </div>
     );
   }
 
   return (
-    <div 
+    <div
+      ref={containerRef}
       className={`relative select-none flex items-center justify-center overflow-hidden rounded-2xl border border-white/5 shadow-2xl p-0 pointer-events-auto ${className}`}
-      style={{ width, height }}
+      style={{ width: "100%", maxWidth: width, height: renderHeight }}
     >
 
       <div className="absolute bottom-4 right-4 z-20 text-[9px] text-slate-500 font-mono pointer-events-none bg-slate-950/80 px-2 py-1 rounded border border-white/5 backdrop-blur">
-        Drag to rotate
+        Arrastrá para rotar
       </div>
 
       <Globe
         ref={globeRef}
-        width={width}
-        height={height}
+        width={renderWidth}
+        height={renderHeight}
         backgroundColor="rgba(0,0,0,0)"
         showAtmosphere={true}
         atmosphereColor={isLightTheme ? "#3b82f6" : "#22d3ee"}
         atmosphereAltitude={0.16}
-        globeImageUrl={
-          isLightTheme
-            ? "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-            : "//unpkg.com/three-globe/example/img/earth-night.jpg"
-        }
+        globeImageUrl={globeImageUrl}
         onGlobeReady={handleGlobeReady}
         
         // Points

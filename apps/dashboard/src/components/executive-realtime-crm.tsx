@@ -67,15 +67,16 @@ const tooltipStyle = {
 };
 
 const TIME_RANGE_OPTIONS: Array<{ value: TimeRange; label: string; ms: number }> = [
-  { value: "5m", label: "Ultimos 5m", ms: 5 * 60_000 },
-  { value: "1h", label: "Ultima 1h", ms: 60 * 60_000 },
-  { value: "24h", label: "Ultimas 24h", ms: 24 * 60 * 60_000 },
+  { value: "5m", label: "Últimos 5m", ms: 5 * 60_000 },
+  { value: "1h", label: "Última 1h", ms: 60 * 60_000 },
+  { value: "24h", label: "Últimas 24h", ms: 24 * 60 * 60_000 },
 ];
 
 const BASEMAP_OPTIONS: Array<{ value: BaseMapLayer; label: string; title: string }> = [
   { value: "dark", label: "Oscuro", title: "Mapa operativo oscuro para sala de control" },
   { value: "light", label: "Calles", title: "Mapa claro con calles para ubicar comercios y barrios" },
-  { value: "satellite", label: "Satelite", title: "Vista satelital para acercamiento urbano y territorio" },
+  { value: "satellite", label: "Satélite", title: "Vista satelital para acercamiento urbano y territorio" },
+  { value: "terrain", label: "Terreno", title: "Relieve, pitch y sombreado para lectura territorial premium" },
 ];
 
 const AGRO_ENTERPRISE_PLAYBOOK = [
@@ -116,7 +117,7 @@ const COUNTRY_TIMEZONE_HINTS: Record<string, string> = {
 };
 
 function timeRangeLabel(value: TimeRange) {
-  return TIME_RANGE_OPTIONS.find((item) => item.value === value)?.label || "Ultimas 24h";
+  return TIME_RANGE_OPTIONS.find((item) => item.value === value)?.label || "Últimas 24h";
 }
 
 function timeRangeMs(value: TimeRange) {
@@ -292,19 +293,19 @@ function buildMarketOpportunities(
 
     if (riskRate > 12) {
       channel = "Riesgo + retencion";
-      offer = "Beneficio con validacion";
+      offer = "Beneficio con validación";
       playbook = "Separar taps sospechosos, auditar device y mandar promo solo a válidos.";
       reason = "La zona vende, pero necesita control antifraude antes de escalar.";
     } else if (gpsRate < 60) {
       channel = "Portal + WhatsApp";
       offer = "Bono por activar GPS";
       playbook = "Pedir opt-in de portal y mejorar precision antes de pauta paga.";
-      reason = "Hay demanda, pero falta ubicacion fina para cercanias.";
+      reason = "Hay demanda, pero falta ubicación fina para cercanías.";
     } else if (hotspot.taps >= 10) {
       channel = "Instagram + WhatsApp";
       offer = "Drop local 2x1";
       playbook = "Activar pauta local, historias con QR/NFC y cupo limitado por barrio.";
-      reason = "Volumen suficiente para campana geolocalizada.";
+      reason = "Volumen suficiente para campaña geolocalizada.";
     } else if (validRate >= 90) {
       channel = "Voucher premium";
       offer = "Early access club";
@@ -648,9 +649,9 @@ export function ExecutiveRealtimeCrm({
         location: locationSourceLabel(event),
       })),
       [
-        { key: "campaign", label: "Campana" },
+        { key: "campaign", label: "Campaña" },
         { key: "city", label: "Ciudad" },
-        { key: "country", label: "Pais" },
+        { key: "country", label: "País" },
         { key: "channel", label: "Canal sugerido" },
         { key: "offer", label: "Promo sugerida" },
         { key: "tenant", label: "Tenant" },
@@ -701,13 +702,13 @@ export function ExecutiveRealtimeCrm({
   };
 
   const railItems = [
-    { icon: <Activity className="h-6 w-6" />, active: true, label: "Realtime CRM", title: "Cockpit ejecutivo: taps, riesgo, mapa, conversion y accion comercial.", action: () => onSectionChange?.("summary") },
-    { icon: <Globe className="h-5 w-5" />, label: "Mapa de calor", title: "Ver concentracion de taps por ciudad y territorio.", action: () => setMapView("heat") },
-    { icon: <Target className="h-5 w-5" />, label: "Cercanias", title: "Ver radios de cercania para activar promos, staff o stock local.", action: () => setMapView("nearby") },
-    { icon: <Users className="h-5 w-5" />, label: "Clientes", title: "Abrir clientes, loyalty, vouchers y campanas post-tap.", action: () => onSectionChange?.("loyalty") },
-    { icon: <ShieldCheck className="h-5 w-5" />, label: "Riesgo", title: "Ver puntos individuales y revisar anomalias, replay o GPS dudoso.", action: () => setMapView("points") },
-    { icon: <BarChart3 className="h-5 w-5" />, label: "Analitica", title: "Volver a la vision ejecutiva con KPIs y funnel post-tap.", action: () => onSectionChange?.("summary") },
-    { icon: <Settings className="h-5 w-5" />, label: "Reset vista", title: "Restablecer tenant, calor y zoom para presentacion.", action: () => { setSelectedTenant("all"); setMapView("heat"); setMapZoom(1); } },
+    { icon: <Activity className="h-5 w-5" />, active: false, label: "Realtime CRM", short: "CRM", title: "Cockpit ejecutivo: taps, riesgo, mapa, conversión y acción comercial.", action: () => onSectionChange?.("summary") },
+    { icon: <Globe className="h-5 w-5" />, active: mapView === "heat", label: "Mapa de calor", short: "Calor", title: "Ver concentración de taps por ciudad y territorio.", action: () => setMapView("heat") },
+    { icon: <Target className="h-5 w-5" />, active: mapView === "nearby", label: "Cercanías", short: "Cerca", title: "Ver radios de cercanía para activar promos, staff o stock local.", action: () => setMapView("nearby") },
+    { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes", short: "Clientes", title: "Abrir clientes, loyalty, vouchers y campañas post-tap.", action: () => onSectionChange?.("loyalty") },
+    { icon: <ShieldCheck className="h-5 w-5" />, active: mapView === "points", label: "Riesgo", short: "Riesgo", title: "Ver puntos individuales y revisar anomalías, replay o GPS dudoso.", action: () => setMapView("points") },
+    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Analítica", short: "KPIs", title: "Volver a la visión ejecutiva con KPIs y funnel post-tap.", action: () => onSectionChange?.("summary") },
+    { icon: <Settings className="h-5 w-5" />, active: false, label: "Reset vista", short: "Reset", title: "Restablecer tenant, calor y zoom para presentación.", action: () => { setSelectedTenant("all"); setMapView("heat"); setMapZoom(1); setBaseMap("dark"); } },
   ];
 
   return (
@@ -728,10 +729,10 @@ export function ExecutiveRealtimeCrm({
           <button type="button" title="Volver al cockpit de CRM realtime" onClick={() => onSectionChange?.("summary")} className="flex items-center justify-center gap-2 border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200">
             <Activity className="h-4 w-4" /> Realtime CRM
           </button>
-          <button type="button" title="Abrir rollout operativo: lotes, tags, preflight y tokenizacion" onClick={() => onSectionChange?.("infra")} className="flex items-center justify-center gap-2 hover:bg-white/5">
+          <button type="button" title="Abrir rollout operativo: lotes, tags, preflight y tokenización" onClick={() => onSectionChange?.("infra")} className="flex items-center justify-center gap-2 hover:bg-white/5">
             <Truck className="h-4 w-4" /> Rollout
           </button>
-          <button type="button" title="Abrir clientes, loyalty y campanas post-tap" onClick={() => onSectionChange?.("loyalty")} className="flex items-center justify-center gap-2 hover:bg-white/5">
+          <button type="button" title="Abrir clientes, loyalty y campañas post-tap" onClick={() => onSectionChange?.("loyalty")} className="flex items-center justify-center gap-2 hover:bg-white/5">
             <Users className="h-4 w-4" /> Customers
           </button>
         </nav>
@@ -748,18 +749,20 @@ export function ExecutiveRealtimeCrm({
         </div>
       </header>
 
-      <aside className="absolute bottom-0 left-0 top-[70px] z-10 hidden w-20 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4 lg:flex">
-        <div className="space-y-4">
+      <aside className="absolute bottom-0 left-0 top-[70px] z-10 hidden w-24 flex-col items-center border-r border-cyan-200/10 bg-[#07111e]/92 py-4 lg:flex">
+        <div className="space-y-3">
           {railItems.map((item) => (
             <button
               key={item.label}
               type="button"
               aria-label={item.label}
+              aria-pressed={Boolean(item.active)}
               title={item.title}
               onClick={item.action}
-              className={`group relative grid h-12 w-12 place-items-center rounded-xl transition ${item.active ? "bg-cyan-400/16 text-cyan-200 shadow-[0_0_22px_rgba(34,211,238,.18)]" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
+              className={`group relative flex h-14 w-16 flex-col items-center justify-center gap-1 rounded-xl border text-[9px] font-black uppercase tracking-[0.04em] transition ${item.active ? "border-cyan-300/50 bg-cyan-400/16 text-cyan-100 shadow-[0_0_22px_rgba(34,211,238,.18)]" : "border-white/6 text-slate-400 hover:border-cyan-300/25 hover:bg-white/5 hover:text-white"}`}
             >
               {item.icon}
+              <span className="max-w-full truncate">{item.short}</span>
               <span className="pointer-events-none absolute left-14 top-1/2 z-50 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs font-semibold text-slate-100 opacity-0 shadow-xl transition group-hover:opacity-100 lg:block">
                 {item.label}
               </span>
@@ -771,20 +774,20 @@ export function ExecutiveRealtimeCrm({
         </button>
       </aside>
 
-      <main className="relative z-10 grid min-h-[calc(100vh-70px)] grid-cols-1 gap-4 overflow-visible px-3 py-4 pb-14 lg:ml-20 lg:h-[calc(100vh-102px)] lg:grid-cols-[minmax(330px,0.58fr)_minmax(0,1.42fr)] lg:gap-4 lg:overflow-hidden lg:p-4 2xl:grid-cols-[440px_minmax(0,1fr)] 2xl:gap-5 2xl:p-5">
+      <main className="relative z-10 grid min-h-[calc(100vh-70px)] grid-cols-1 gap-4 overflow-visible px-3 py-4 pb-14 lg:ml-24 lg:h-[calc(100vh-102px)] lg:grid-cols-[minmax(330px,0.58fr)_minmax(0,1.42fr)] lg:gap-4 lg:overflow-hidden lg:p-4 2xl:grid-cols-[440px_minmax(0,1fr)] 2xl:gap-5 2xl:p-5">
         <section className="order-2 min-h-0 space-y-3 overflow-hidden lg:order-1">
           <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">Vision ejecutiva en vivo</h2>
+              <h2 className="text-lg font-bold text-white">Visión ejecutiva en vivo</h2>
             <span className="flex items-center gap-2 text-xs text-slate-400"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> {connected ? "En vivo" : "Sincronizando"}</span>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <MetricCard icon={<Radio className="h-5 w-5" />} label="Taps en vivo" value={formatNumber(metrics.total)} delta="↗ real" tone="cyan" data={velocitySeries} />
-            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Tasa valida" value={formatPercent(metrics.validRate)} delta="real" tone="green" data={velocitySeries} dataKey="valid" />
+            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Tasa válida" value={formatPercent(metrics.validRate)} delta="real" tone="green" data={velocitySeries} dataKey="valid" />
             <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="Riesgo de fraude" value={formatPercent(metrics.fraudRate)} delta={metrics.risk ? "↗ revisar" : "0 alertas"} tone="red" data={velocitySeries} dataKey="risk" />
             <MetricCard icon={<MapPin className="h-5 w-5" />} label="Cobertura GPS real" value={formatPercent(metrics.gpsCoverage)} delta="GPS" tone="green" data={velocitySeries} />
             <MetricCard icon={<Users className="h-5 w-5" />} label="Leads capturados" value={formatNumber(metrics.actionable)} delta="CRM listo" tone="blue" data={velocitySeries} dataKey="valid" />
-            <MetricCard icon={<Filter className="h-5 w-5" />} label="Conversion a lead" value={formatPercent(metrics.leadConversion)} delta="post-tap" tone="green" data={velocitySeries} dataKey="valid" />
+            <MetricCard icon={<Filter className="h-5 w-5" />} label="Conversión a lead" value={formatPercent(metrics.leadConversion)} delta="post-tap" tone="green" data={velocitySeries} dataKey="valid" />
           </div>
 
           <div className="rounded-lg border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
@@ -819,7 +822,7 @@ export function ExecutiveRealtimeCrm({
             <div className="mt-4 flex items-start gap-2 overflow-x-auto pb-1">
               <FunnelNode icon={<MousePointerClick className="h-6 w-6" />} label="Tap" value={metrics.total} pct={100} tone="#22d3ee" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<ShieldCheck className="h-6 w-6" />} label="Valido" value={metrics.valid} pct={metrics.validRate} tone="#22c55e" />
+              <FunnelNode icon={<ShieldCheck className="h-6 w-6" />} label="Válido" value={metrics.valid} pct={metrics.validRate} tone="#22c55e" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
               <FunnelNode icon={<BadgeCheck className="h-6 w-6" />} label="Claim" value={metrics.gps} pct={metrics.gpsCoverage} tone="#facc15" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
@@ -845,6 +848,9 @@ export function ExecutiveRealtimeCrm({
                 <select size={1} title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
                   {TIME_RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
+                <select size={1} title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white xl:hidden">
+                  {BASEMAP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
                 <button type="button" title="Exportar eventos visibles a CSV" onClick={handleExport} className="flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50"><Download className="h-4 w-4" /> Exportar</button>
               </div>
             </div>
@@ -852,8 +858,8 @@ export function ExecutiveRealtimeCrm({
             <div ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713]" : "min-h-[560px] rounded-xl sm:min-h-[620px] lg:min-h-0"}`}>
               <div className="absolute left-4 top-4 z-20 grid gap-2">
                 <button type="button" title="Acercar mapa sin agrandar artificialmente los taps" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
-                <button type="button" title="Alejar mapa para ver mas territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">-</button>
-                <button type="button" title="Mostrar radio de cercania por hotspot" onClick={() => setMapView("nearby")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar cercanias"><Crosshair className="h-4 w-4" /></button>
+                <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">-</button>
+                <button type="button" title="Mostrar radio de cercanía por hotspot" onClick={() => setMapView("nearby")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar cercanías"><Crosshair className="h-4 w-4" /></button>
                 <button type="button" title="Mostrar puntos individuales de tap" onClick={() => setMapView("points")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar puntos"><Layers className="h-4 w-4" /></button>
               </div>
 
@@ -861,9 +867,9 @@ export function ExecutiveRealtimeCrm({
                 {[
                   ["heat", <Activity key="heat" className="h-4 w-4" />, "Calor"],
                   ["points", <MapPin key="points" className="h-4 w-4" />, "Puntos"],
-                  ["nearby", <Crosshair key="nearby" className="h-4 w-4" />, "Cercanias"],
+                  ["nearby", <Crosshair key="nearby" className="h-4 w-4" />, "Cercanías"],
                 ].map(([key, icon, label]) => (
-                  <button key={String(key)} type="button" title={key === "heat" ? "Ver concentracion de actividad por ciudad" : key === "points" ? "Ver taps individuales como puntos chicos" : "Ver radios de cercania accionables"} onClick={() => setMapView(key as MapView)} className={`flex h-9 items-center gap-2 rounded-lg border px-2 text-sm font-semibold sm:px-3 ${mapView === key ? "border-cyan-300 bg-cyan-400/12 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.22)]" : "border-white/10 bg-slate-950/65 text-slate-300"}`}>
+                  <button key={String(key)} type="button" aria-pressed={mapView === key} title={key === "heat" ? "Ver concentración de actividad por ciudad" : key === "points" ? "Ver taps individuales como puntos chicos" : "Ver radios de cercanía accionables"} onClick={() => setMapView(key as MapView)} className={`flex h-9 items-center gap-2 rounded-lg border px-2 text-sm font-semibold sm:px-3 ${mapView === key ? "border-cyan-300 bg-cyan-400/12 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.22)]" : "border-white/10 bg-slate-950/65 text-slate-300"}`}>
                     {icon}<span className="hidden sm:inline">{label}</span>
                   </button>
                 ))}
@@ -880,7 +886,7 @@ export function ExecutiveRealtimeCrm({
                     </button>
                   ))}
                 </div>
-                <button type="button" title="Abrir Google Maps Street View en la coordenada mas reciente" onClick={openStreetView} className="hidden h-9 items-center gap-2 rounded-lg border border-white/10 bg-slate-950/65 px-3 text-sm font-semibold text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100 xl:flex"><Globe className="h-4 w-4" /> Street</button>
+                <button type="button" title="Abrir Google Maps Street View en la coordenada más reciente" onClick={openStreetView} className="hidden h-9 items-center gap-2 rounded-lg border border-white/10 bg-slate-950/65 px-3 text-sm font-semibold text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100 xl:flex"><Globe className="h-4 w-4" /> Street</button>
                 <button type="button" title="Restablecer mapa: calor y zoom normal" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
                 <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-4 w-4" /></button>
               </div>
@@ -927,18 +933,18 @@ export function ExecutiveRealtimeCrm({
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="flex min-w-0 flex-wrap items-center gap-2 text-base font-bold text-white">
                   <Megaphone className="h-4 w-4 text-cyan-300" />
-                  <span className="truncate">Inteligencia comercial por zona</span>
-                  <span className="hidden text-sm font-normal text-slate-400 sm:inline">(promos, vouchers, stock y logistica)</span>
+                  <span className="truncate">IA de cercanía comercial</span>
+                  <span className="hidden text-sm font-normal text-slate-400 sm:inline">(dónde vender más, promos, stock y logística)</span>
                 </p>
-                <button type="button" title="Abrir Growth & BotIA para crear campanas con estas senales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Growth & BotIA</button>
+                <button type="button" title="Abrir Growth & BotIA para crear campañas con estas señales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Growth & BotIA</button>
               </div>
 
               {topOpportunity ? (
                 <div className="mb-3 grid gap-3 rounded-xl border border-cyan-300/20 bg-cyan-400/8 p-3 text-xs text-slate-300 sm:grid-cols-[minmax(0,1fr)_260px]">
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 font-bold uppercase tracking-[0.08em] text-cyan-200"><Sparkles className="h-3.5 w-3.5" /> Accion recomendada</p>
+                    <p className="flex items-center gap-2 font-bold uppercase tracking-[0.08em] text-cyan-200"><Sparkles className="h-3.5 w-3.5" /> Dónde vender más ahora</p>
                     <p className="mt-1 text-sm leading-5">
-                      Activar <b className="text-white">{topOpportunity.offer}</b> en <b className="text-white">{topOpportunity.city}</b> por {topOpportunity.channel}. Priorizar stock, QR/NFC activos y puntos de canje donde ya hay <b className="text-white">{topOpportunity.taps}</b> taps.
+                      Activar <b className="text-white">{topOpportunity.offer}</b> en <b className="text-white">{topOpportunity.city}</b> por {topOpportunity.channel}. Priorizar stock, QR/NFC activos, puntos de canje y pauta local donde ya hay <b className="text-white">{topOpportunity.taps}</b> taps.
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
@@ -984,15 +990,15 @@ export function ExecutiveRealtimeCrm({
                       <button type="button" title={`Exportar audiencia de ${opportunity.city} con UIDs, canal y promo sugerida`} onClick={() => handleCampaignExport(opportunity)} className="rounded-md border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs font-semibold text-slate-100 hover:border-cyan-300/50">
                         <Download className="mr-1 inline h-3.5 w-3.5" /> CSV
                       </button>
-                      <button type="button" title={`Abrir campana para ${opportunity.city}: ${opportunity.playbook}`} onClick={() => openCampaignStudio(opportunity)} className="rounded-md border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-200 hover:border-emerald-200/60">
-                        <Send className="mr-1 inline h-3.5 w-3.5" /> Campana
+                      <button type="button" title={`Abrir campaña para ${opportunity.city}: ${opportunity.playbook}`} onClick={() => openCampaignStudio(opportunity)} className="rounded-md border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-200 hover:border-emerald-200/60">
+                        <Send className="mr-1 inline h-3.5 w-3.5" /> Campaña
                       </button>
                       <span className="min-w-0 truncate text-[11px] text-slate-500"><Gift className="mr-1 inline h-3.5 w-3.5 text-emerald-300" /> {opportunity.playbook}</span>
                     </div>
                   </div>
                 )) : (
                   <div className="rounded-lg border border-white/8 bg-slate-950/48 px-3 py-5 text-sm text-slate-400">
-                    Sin zonas accionables todavia. Apenas entren taps validos, la IA prioriza ciudad, canal, promo y logistica.
+                    Sin zonas accionables todavía. Apenas entren taps válidos, la IA prioriza ciudad, canal, promo y logística.
                   </div>
                 )}
               </div>

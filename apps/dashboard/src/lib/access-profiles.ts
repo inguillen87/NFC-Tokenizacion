@@ -7,6 +7,7 @@ export type AccessProfile = {
   email: string;
   password: string;
   note: string;
+  permissions: string[];
   available: boolean;
 };
 
@@ -31,6 +32,7 @@ function profile(base: Omit<AccessProfile, "email" | "password" | "available"> &
     role: base.role,
     label: base.label,
     note: base.note,
+    permissions: base.permissions,
     email,
     password,
     available: Boolean(email && password),
@@ -45,39 +47,43 @@ export function getAccessProfiles(): AccessProfile[] {
       label: "Super Admin",
       emailEnv: ["SUPER_ADMIN_EMAIL", "NEXT_PUBLIC_SUPER_ADMIN_EMAIL"],
       passwordEnv: ["SUPER_ADMIN_PASSWORD", "NEXT_PUBLIC_SUPER_ADMIN_PASSWORD"],
-      fallbackEmail: "superadmin@nexid.lat",
+      fallbackEmail: "guillen.marce@gmail.com",
       fallbackPassword: "nexid_demo_2026",
-      note: "Control total de tenants, batches, seguridad y flujos críticos.",
+      note: "Control total de tenants, batches, seguridad y flujos criticos.",
+      permissions: ["*"],
     }),
     profile({
       key: "tenant-admin",
       role: "tenant-admin",
-      label: "Tenant Admin Bodega Balmec",
+      label: "Owner Bodega Balmec",
       emailEnv: ["TENANT_ADMIN_EMAIL", "BODEGA_ADMIN_EMAIL", "NEXT_PUBLIC_TENANT_ADMIN_EMAIL"],
       passwordEnv: ["TENANT_ADMIN_PASSWORD", "BODEGA_ADMIN_PASSWORD", "NEXT_PUBLIC_TENANT_ADMIN_PASSWORD"],
       fallbackEmail: "demobodega@nexid.lat",
       fallbackPassword: "nexid_demo_2026",
-      note: "Admin operativo para lotes, tags, taps, marketplace y portal consumidor del tenant.",
+      note: "Dueño operativo del tenant: lotes, tags, taps, marketplace, rewards y empleados.",
+      permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"],
     }),
     profile({
-      key: "reseller",
-      role: "reseller",
-      label: "Reseller Partner",
-      emailEnv: ["RESELLER_EMAIL", "NEXT_PUBLIC_RESELLER_EMAIL"],
-      passwordEnv: ["RESELLER_PASSWORD", "NEXT_PUBLIC_RESELLER_PASSWORD"],
-      fallbackEmail: "reseller@nexid.lat",
+      key: "tenant-ops",
+      role: "tenant-admin",
+      label: "Empleado Operaciones NFC",
+      emailEnv: ["TENANT_OPS_EMAIL", "NEXT_PUBLIC_TENANT_OPS_EMAIL"],
+      passwordEnv: ["TENANT_OPS_PASSWORD", "NEXT_PUBLIC_TENANT_OPS_PASSWORD"],
+      fallbackEmail: "ops.balmec@nexid.lat",
       fallbackPassword: "nexid_demo_2026",
-      note: "Perfil ejemplo para canal white-label y operación partner.",
+      note: "Puede operar lotes, tags, taps, validación en tienda y alertas sin tocar facturación ni seguridad global.",
+      permissions: ["batches:read", "batches:write", "tags:read", "tags:write", "events:read", "analytics:read", "rewards:validate"],
     }),
     profile({
-      key: "sandbox-generic",
-      role: "viewer",
-      label: "Auditor temporal",
-      emailEnv: ["GENERIC_DEMO_EMAIL", "NEXT_PUBLIC_GENERIC_DEMO_EMAIL"],
-      passwordEnv: ["GENERIC_DEMO_PASSWORD", "NEXT_PUBLIC_GENERIC_DEMO_PASSWORD"],
-      fallbackEmail: "auditor@nexid.lat",
+      key: "tenant-growth",
+      role: "tenant-admin",
+      label: "Empleado CRM & Growth",
+      emailEnv: ["TENANT_GROWTH_EMAIL", "NEXT_PUBLIC_TENANT_GROWTH_EMAIL"],
+      passwordEnv: ["TENANT_GROWTH_PASSWORD", "NEXT_PUBLIC_TENANT_GROWTH_PASSWORD"],
+      fallbackEmail: "growth.balmec@nexid.lat",
       fallbackPassword: "nexid_demo_2026",
-      note: "Usuario temporal para revisar sin modificar datos críticos.",
+      note: "Puede ver clientes, segmentos, campañas, vouchers y performance comercial del tenant.",
+      permissions: ["events:read", "analytics:read", "crm:read", "campaigns:read", "campaigns:write", "rewards:read", "marketplace:read"],
     }),
   ];
 }

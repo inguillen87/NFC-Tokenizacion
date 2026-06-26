@@ -8,12 +8,24 @@ import { LoginFormPanel } from "../../components/login-form-panel";
 import { getDashboardSession } from "../../lib/session";
 import { dashboardOneClickAccessAllowed } from "../../lib/dashboard-access-flags";
 
-const roleDescriptions: Record<string, string> = {
-  "super-admin": "Control total de tenants, seguridad, CRM, leads y analytics global.",
-  "tenant-admin": "Gestiona lotes, tags, taps, portal consumidor y marketplace del tenant.",
-  reseller: "Opera canal, clientes, revenue share y rollout comercial.",
-  viewer: "Solo lectura para auditoria, cliente o revision comercial.",
-};
+const visibleRoleCards = [
+  {
+    label: "Super Admin",
+    description: "Control global de tenants, seguridad, permisos, infraestructura, CRM, leads y analytics cross-tenant.",
+  },
+  {
+    label: "Owner del tenant",
+    description: "Dueño operativo de la empresa: lotes, tags, taps, marketplace, rewards, empleados y reportes del tenant.",
+  },
+  {
+    label: "Empleado Operaciones NFC",
+    description: "Opera batches, tags, validaciones, eventos en vivo y canjes sin tocar seguridad global ni facturación.",
+  },
+  {
+    label: "Empleado CRM & Growth",
+    description: "Trabaja sobre clientes, campañas, vouchers, segmentos, marketplace y performance comercial del tenant.",
+  },
+];
 
 export default async function LoginPage() {
   const { t, locale } = await getDashboardI18n();
@@ -59,16 +71,16 @@ export default async function LoginPage() {
 
               <div className="mt-5 grid gap-2 text-xs">
                 <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-3 py-2 text-violet-100">
-                  Buscas el portal de consumidor con wallet, rewards y marketplace? Entra en{" "}
+                  ¿Buscás el portal de consumidor con wallet, rewards y marketplace? Entrá en{" "}
                   <a className="font-semibold text-cyan-200 underline-offset-2 hover:underline" href="https://nexid.lat/login">
                     nexid.lat/login
                   </a>
                   .
                 </div>
-                {Object.entries(copy.roles).map(([key, label]) => (
-                  <div key={key} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-300">
-                    <span className="font-semibold text-cyan-300">{label}</span>
-                    <span className="ml-2">{roleDescriptions[key] || "Acceso operativo segun permisos configurados."}</span>
+                {visibleRoleCards.map((item) => (
+                  <div key={item.label} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-slate-300">
+                    <span className="font-semibold text-cyan-300">{item.label}</span>
+                    <span className="ml-2">{item.description}</span>
                   </div>
                 ))}
               </div>

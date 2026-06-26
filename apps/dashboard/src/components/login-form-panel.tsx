@@ -18,7 +18,7 @@ type Props = {
   clerkEnabled?: boolean;
 };
 
-type DemoRole = "super-admin" | "tenant-admin" | "viewer";
+type DemoRole = "super-admin" | "tenant-admin";
 
 const DEMO_ROLES: Array<{
   key: DemoRole;
@@ -29,7 +29,7 @@ const DEMO_ROLES: Array<{
 }> = [
   {
     key: "super-admin",
-    title: "SuperAdmin",
+    title: "Super Admin",
     label: "Entrar como SuperAdmin",
     description: "Tenants, CRM, analiticas, seguridad y operaciones globales.",
     tone: "border-emerald-300/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-300/50 hover:bg-emerald-500/15",
@@ -40,13 +40,6 @@ const DEMO_ROLES: Array<{
     label: "Entrar como Bodega Balmec",
     description: "Lotes, tags reales, taps, portal de cliente y marketplace.",
     tone: "border-cyan-300/30 bg-cyan-500/10 text-cyan-100 hover:border-cyan-300/50 hover:bg-cyan-500/15",
-  },
-  {
-    key: "viewer",
-    title: "Auditor",
-    label: "Entrar solo lectura",
-    description: "Vista segura para revisar sin modificar datos.",
-    tone: "border-violet-300/30 bg-violet-500/10 text-violet-100 hover:border-violet-300/50 hover:bg-violet-500/15",
   },
 ];
 
@@ -67,6 +60,7 @@ export function LoginFormPanel({
   const [email, setEmail] = useState(firstAvailable?.email || "");
   const [password, setPassword] = useState(firstAvailable?.password || "");
   const [role, setRole] = useState(firstAvailable?.role || "super-admin");
+  const [profileLabel, setProfileLabel] = useState(firstAvailable?.label || "Super Admin");
   const [mfaCode, setMfaCode] = useState("");
   const [status, setStatus] = useState("");
   const [opsStatus, setOpsStatus] = useState("");
@@ -90,21 +84,25 @@ export function LoginFormPanel({
     setEmail(profile.email);
     setPassword(profile.password);
     setRole(profile.role);
+    setProfileLabel(profile.label);
     setMfaCode("");
     setStatus("");
     setOpsStatus("");
+    void submit({ email: profile.email, password: profile.password });
   }
 
-  async function submit() {
+  async function submit(input?: { email?: string; password?: string }) {
     setPending(true);
     setStatus("");
     setOpsStatus("");
+    const loginEmail = input?.email ?? email;
+    const loginPassword = input?.password ?? password;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS);
     const res = await fetch("/api/session/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, mfaCode }),
+      body: JSON.stringify({ email: loginEmail, password: loginPassword, mfaCode }),
       signal: controller.signal,
     }).catch(() => null);
     clearTimeout(timeout);
@@ -123,9 +121,9 @@ export function LoginFormPanel({
       } else if (res?.status && res.status >= 500) {
         setStatus("Error interno al autenticar.");
       } else if (!res) {
-        setStatus("El login tardo demasiado o no hubo respuesta. Reintenta en unos segundos.");
+        setStatus("El login tardó demasiado o no hubo respuesta. Reintenta en unos segundos.");
       } else {
-        setStatus(data?.reason || "Credenciales invalidas.");
+        setStatus(data?.reason || "Credenciales inválidas.");
       }
       setPending(false);
       return;
@@ -146,15 +144,15 @@ export function LoginFormPanel({
       <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 shadow-[0_18px_60px_rgba(8,145,178,0.16)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Acceso rapido autorizado</p>
-            <h2 className="mt-2 text-xl font-semibold text-white">Entrar en 1 click</h2>
-            <p className="mt-1 text-sm text-slate-300">Crea una sesion controlada por 12h para QA, ventas y presentaciones.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Acceso operativo autorizado</p>
+            <h2 className="mt-2 text-xl font-semibold text-white">Entrar al cockpit</h2>
+            <p className="mt-1 text-sm text-slate-300">Sesion controlada por 12h para operacion, ventas y presentaciones con permisos definidos.</p>
           </div>
           <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-100">
             habilitado
           </span>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {DEMO_ROLES.map((demoRole) => (
             <button suppressHydrationWarning
               key={demoRole.key}
@@ -179,7 +177,7 @@ export function LoginFormPanel({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Presets de credenciales</p>
-            <p className="mt-1 text-xs text-slate-400">Opcional: autocompleta usuarios reales si las variables del server estan configuradas.</p>
+            <p className="mt-1 text-xs text-slate-400">Toca un perfil para entrar con una cuenta operativa autorizada.</p>
           </div>
           <span
             className={`rounded-full border px-3 py-1 text-xs font-semibold ${
@@ -198,6 +196,7 @@ export function LoginFormPanel({
               type="button"
               disabled={!profile.available}
               onClick={() => useProfile(profile)}
+              title={`Entrar como ${profile.label}`}
               className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-left transition hover:border-cyan-300/30 hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <p className="text-sm font-semibold text-white">{profile.label}</p>
@@ -218,7 +217,7 @@ export function LoginFormPanel({
         <div className="mt-4 grid gap-3">
           <SignInButton mode="modal">
             <button type="button" title="Abrir login social con Clerk, Google o Facebook." className="flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 font-semibold text-[0px] text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition after:text-sm after:content-['Ingresar_con_Google_o_Facebook'] hover:border-cyan-200 hover:bg-cyan-400/20">
-              <span>🔐 Ingresar con Google o Facebook</span>
+              <span>Ingresar con Google o Facebook</span>
             </button>
           </SignInButton>
           <Link
@@ -260,9 +259,10 @@ export function LoginFormPanel({
           onChange={(event) => setMfaCode(event.target.value)}
         />
         <div className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300">
-          Role preset: <span className="text-cyan-200">{role}</span>
+          Perfil activo: <span className="text-cyan-200">{profileLabel}</span>
+          <span className="ml-2 text-slate-500">({role})</span>
         </div>
-        <Button className="w-full" onClick={submit} disabled={pending}>
+        <Button className="w-full" onClick={() => void submit()} disabled={pending}>
           {loginAction}
         </Button>
         {status ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{status}</p> : null}
