@@ -6386,6 +6386,36 @@ html.theme-light #fresh-tap-required p {
   pointer-events: none;
 }
 
+.hero-trace-map--globe {
+  pointer-events: auto;
+  background:
+    radial-gradient(circle at 38% 34%, rgba(34, 211, 238, 0.2), transparent 32%),
+    radial-gradient(circle at 68% 68%, rgba(52, 211, 153, 0.16), transparent 34%),
+    linear-gradient(145deg, rgba(2, 6, 23, 0.86), rgba(8, 47, 73, 0.64));
+}
+
+.hero-trace-map--globe::before {
+  opacity: 0.16;
+}
+
+.hero-trace-map--globe .hero-trace-map__globe {
+  position: absolute;
+  inset: -2.8rem -2.2rem -2.2rem -2.2rem;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.hero-trace-map--globe .hero-trace-map__globe > div {
+  max-width: none !important;
+}
+
+.hero-trace-map--globe .hero-map-intel,
+.hero-trace-map--globe .hero-route-summary-card {
+  z-index: 12;
+}
+
 .hero-trace-map::before {
   content: "";
   position: absolute;

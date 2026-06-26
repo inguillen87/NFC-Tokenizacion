@@ -5,6 +5,10 @@ import dynamic from "next/dynamic";
 
 const Globe = dynamic(() => import("react-globe.gl"), { ssr: false });
 const COUNTRY_GEOJSON_URL = "/assets/geo/ne_110m_admin_0_countries.geojson";
+const THREE_GLOBE_ASSET_BASE = "https://cdn.jsdelivr.net/npm/three-globe/example/img";
+const PROFESSIONAL_GLOBE_IMAGE_URL = `${THREE_GLOBE_ASSET_BASE}/earth-blue-marble.jpg`;
+const PROFESSIONAL_GLOBE_BUMP_URL = `${THREE_GLOBE_ASSET_BASE}/earth-topology.png`;
+const PROFESSIONAL_GLOBE_BACKGROUND_URL = `${THREE_GLOBE_ASSET_BASE}/night-sky.png`;
 const CITY_COUNTRY_HINTS: Record<string, string> = {
   mendoza: "Argentina",
   "san martin": "Argentina",
@@ -414,8 +418,8 @@ export function Globe3dMap({
   const minRenderHeight = compactRequested ? 220 : mediumRequested ? 300 : 360;
   const renderHeight = Math.max(minRenderHeight, Math.round(renderWidth * (height / Math.max(width, 1))));
   const compactHud = renderWidth < 500 || height <= 360;
-  const globeImageUrl = useMemo(() => localGlobeTexture(isLightTheme), [isLightTheme]);
-  const globeBumpUrl = useMemo(() => localGlobeBumpTexture(isLightTheme), [isLightTheme]);
+  const globeImageUrl = useMemo(() => PROFESSIONAL_GLOBE_IMAGE_URL || localGlobeTexture(isLightTheme), [isLightTheme]);
+  const globeBumpUrl = useMemo(() => PROFESSIONAL_GLOBE_BUMP_URL || localGlobeBumpTexture(isLightTheme), [isLightTheme]);
   const activeCountryNames = useMemo(
     () => new Set(points.map((point) => normalizeCountryName(inferCountryName(point))).filter(Boolean)),
     [points],
@@ -649,6 +653,7 @@ export function Globe3dMap({
         height={renderHeight}
         globeOffset={offset}
         backgroundColor="rgba(0,0,0,0)"
+        backgroundImageUrl={compactHud ? undefined : PROFESSIONAL_GLOBE_BACKGROUND_URL}
         rendererConfig={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         waitForGlobeReady={false}
         animateIn={true}

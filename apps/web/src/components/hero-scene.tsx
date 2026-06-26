@@ -915,6 +915,55 @@ function HeroTraceMap({
     : `${formattedDistance} km con evidencia de toque físico, SUN y canal.`;
 
   return (
+    <div className="hero-trace-map hero-trace-map--clear hero-trace-map--globe flex items-center justify-center" aria-label={txt.routeTitle}>
+      <div className="hero-trace-map__globe" aria-label={`${origin.city} a ${tap.city}`}>
+        <Globe3dMap
+          theme="dark"
+          points={[
+            { city: origin.city, country: origin.country, lat: origin.lat, lng: origin.lng, scans: 1, status: "origin", vertical: "origen" },
+            { city: tap.city, country: tap.country, lat: tap.lat, lng: tap.lng, scans: 1, status: "tap", vertical: "cliente" },
+          ]}
+          routes={[{
+            fromLat: origin.lat,
+            fromLng: origin.lng,
+            toLat: tap.lat,
+            toLng: tap.lng,
+            tone: "success",
+            label: `${origin.city} -> ${tap.city} / ${formattedDistance} km`,
+          }]}
+          width={640}
+          height={430}
+          className="border-0 bg-transparent shadow-none"
+        />
+      </div>
+      <div className="hero-map-intel">
+        <p>{routeHeadline}</p>
+        <strong>{origin.city} / {tap.city}</strong>
+        <span>{evidenceCopy}</span>
+      </div>
+      <div className="hero-route-summary-card">
+        <div className="hero-route-summary-grid">
+          <span>
+            <small>{txt.originMap}</small>
+            <strong>{origin.city}</strong>
+          </span>
+          <span>
+            <small>{tapCopy}</small>
+            <strong>{tap.city}</strong>
+          </span>
+          <span>
+            <small>{distanceCopy}</small>
+            <strong>{formattedDistance} km</strong>
+          </span>
+        </div>
+        <a className="hero-route-map-link" href={mapsHref(origin)} target="_blank" rel="noreferrer">
+          {txt.openOriginMap}
+        </a>
+      </div>
+    </div>
+  );
+
+  return (
     <div className="hero-trace-map hero-trace-map--clear flex items-center justify-center" aria-label={txt.routeTitle}>
       <div className="hero-trace-map__globe" aria-label={`${origin.city} a ${tap.city}`}>
         <Globe3dMap
