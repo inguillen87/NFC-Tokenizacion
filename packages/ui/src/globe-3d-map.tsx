@@ -468,6 +468,21 @@ export function Globe3dMap({
     });
   }, [activeCountryNames, points]);
 
+  const setRouteHover = useCallback((route?: GlobeRoute | null) => {
+    if (!route) {
+      setHoverCard(null);
+      return;
+    }
+
+    setHoverCard({
+      eyebrow: route.tone === "warn" ? "Ruta con alerta" : "Ruta de trazabilidad",
+      title: route.label || "Ruta verificada",
+      subtitle: "Origen, toque fisico y evidencia comercial unidos",
+      meta: `${route.fromLat.toFixed(2)}, ${route.fromLng.toFixed(2)} -> ${route.toLat.toFixed(2)}, ${route.toLng.toFixed(2)}`,
+      tone: route.tone === "warn" ? "#fb7185" : route.tone === "success" ? "#34d399" : "#22d3ee",
+    });
+  }, []);
+
   const handleGlobeReady = useCallback(() => {
     const globe = globeRef.current;
     if (globe) {
