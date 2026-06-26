@@ -872,6 +872,90 @@ function mapsHref(point: LocationPoint) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.lat},${point.lng}`)}`;
 }
 
+function HeroPremiumAtlas({
+  origin,
+  tap,
+  routeHeadline,
+  formattedDistance,
+}: {
+  origin: LocationPoint;
+  tap: LocationPoint;
+  routeHeadline: string;
+  formattedDistance: string;
+}) {
+  return (
+    <svg className="hero-premium-atlas" viewBox="0 0 720 430" role="img" aria-label={`${routeHeadline}: ${origin.city} a ${tap.city}`}>
+      <defs>
+        <radialGradient id="hero-atlas-ocean" cx="38%" cy="30%" r="72%">
+          <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.62" />
+          <stop offset="32%" stopColor="#0891b2" stopOpacity="0.42" />
+          <stop offset="72%" stopColor="#082f49" stopOpacity="0.92" />
+          <stop offset="100%" stopColor="#020617" stopOpacity="1" />
+        </radialGradient>
+        <linearGradient id="hero-atlas-land" x1="0%" x2="100%">
+          <stop offset="0%" stopColor="#34d399" stopOpacity="0.42" />
+          <stop offset="48%" stopColor="#5eead4" stopOpacity="0.7" />
+          <stop offset="100%" stopColor="#0f766e" stopOpacity="0.46" />
+        </linearGradient>
+        <linearGradient id="hero-atlas-route" x1="0%" x2="100%">
+          <stop offset="0%" stopColor="#34d399" stopOpacity="0.2" />
+          <stop offset="42%" stopColor="#67e8f9" stopOpacity="1" />
+          <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.86" />
+        </linearGradient>
+        <filter id="hero-atlas-glow">
+          <feGaussianBlur stdDeviation="5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <clipPath id="hero-atlas-sphere">
+          <circle cx="360" cy="216" r="166" />
+        </clipPath>
+      </defs>
+
+      <rect width="720" height="430" rx="30" fill="rgba(2,6,23,.18)" />
+      <g opacity="0.28" stroke="#67e8f9" strokeWidth="1" fill="none">
+        {[140, 206, 272, 338, 404, 470, 536].map((x) => <path key={`atlas-meridian-${x}`} d={`M${x} 54 C${310 + (x - 360) * 0.22} 142 ${310 + (x - 360) * 0.22} 288 ${x} 378`} />)}
+        {[86, 132, 178, 224, 270, 316, 362].map((y) => <ellipse key={`atlas-parallel-${y}`} cx="360" cy="216" rx="166" ry={Math.max(12, Math.abs(216 - y) * 0.82)} />)}
+      </g>
+      <circle cx="360" cy="216" r="173" fill="rgba(34,211,238,.08)" filter="url(#hero-atlas-glow)" />
+      <circle cx="360" cy="216" r="166" fill="url(#hero-atlas-ocean)" />
+
+      <g clipPath="url(#hero-atlas-sphere)">
+        <path d="M204 156 C232 108 302 88 350 112 C385 130 396 168 374 196 C350 226 306 218 284 244 C258 274 290 318 252 348 C214 377 158 346 148 294 C139 246 174 207 204 156 Z" fill="url(#hero-atlas-land)" stroke="rgba(186,230,253,.34)" strokeWidth="2" />
+        <path d="M294 254 C338 270 368 318 356 360 C344 402 298 420 260 398 C224 377 232 332 248 300 C260 276 272 260 294 254 Z" fill="url(#hero-atlas-land)" stroke="rgba(186,230,253,.34)" strokeWidth="2" />
+        <path d="M392 118 C462 82 562 104 604 164 C636 210 598 252 540 242 C502 236 482 256 452 286 C420 318 370 292 364 246 C358 198 348 144 392 118 Z" fill="url(#hero-atlas-land)" stroke="rgba(186,230,253,.24)" strokeWidth="2" opacity="0.84" />
+        <path d="M180 314 C260 250 346 246 428 286 C494 318 568 296 632 232" fill="none" stroke="rgba(125,245,255,.28)" strokeWidth="2" strokeDasharray="8 12" />
+        <path d="M218 196 C318 170 422 188 540 162" fill="none" stroke="rgba(94,234,212,.22)" strokeWidth="1.5" strokeDasharray="4 10" />
+      </g>
+
+      <path className="hero-premium-atlas__route-shadow" d="M286 288 C332 188 430 174 506 252" />
+      <path className="hero-premium-atlas__route" d="M286 288 C332 188 430 174 506 252" />
+      <circle className="hero-premium-atlas__pulse hero-premium-atlas__pulse--origin" cx="286" cy="288" r="28" />
+      <circle className="hero-premium-atlas__pulse hero-premium-atlas__pulse--tap" cx="506" cy="252" r="34" />
+      <circle className="hero-premium-atlas__dot hero-premium-atlas__dot--origin" cx="286" cy="288" r="8" />
+      <circle className="hero-premium-atlas__dot hero-premium-atlas__dot--tap" cx="506" cy="252" r="9" />
+      <g className="hero-premium-atlas__label" transform="translate(156 136)">
+        <text>ARGENTINA</text>
+      </g>
+      <g className="hero-premium-atlas__label hero-premium-atlas__label--tap" transform="translate(490 142)">
+        <text>{tap.country.toUpperCase()}</text>
+      </g>
+      <g className="hero-premium-atlas__city" transform="translate(112 310)">
+        <rect width="160" height="48" rx="14" />
+        <text x="14" y="20">{origin.city}</text>
+        <text x="14" y="36">{origin.country}</text>
+      </g>
+      <g className="hero-premium-atlas__city hero-premium-atlas__city--tap" transform="translate(492 268)">
+        <rect width="152" height="48" rx="14" />
+        <text x="14" y="20">{tap.city}</text>
+        <text x="14" y="36">{formattedDistance} km</text>
+      </g>
+    </svg>
+  );
+}
+
 function HeroTraceMap({
   origin,
   tap,
@@ -916,6 +1000,7 @@ function HeroTraceMap({
 
   return (
     <div className="hero-trace-map hero-trace-map--clear hero-trace-map--globe flex items-center justify-center" aria-label={txt.routeTitle}>
+      <HeroPremiumAtlas origin={origin} tap={tap} routeHeadline={routeHeadline} formattedDistance={formattedDistance} />
       <div className="hero-trace-map__globe" aria-label={`${origin.city} a ${tap.city}`}>
         <Globe3dMap
           theme="dark"

@@ -6401,14 +6401,108 @@ html.theme-light #fresh-tap-required p {
 .hero-trace-map--globe .hero-trace-map__globe {
   position: absolute;
   inset: -2.8rem -2.2rem -2.2rem -2.2rem;
-  z-index: 5;
+  z-index: 6;
   display: grid;
   place-items: center;
   pointer-events: auto;
+  opacity: 0.72;
+  mix-blend-mode: screen;
 }
 
 .hero-trace-map--globe .hero-trace-map__globe > div {
   max-width: none !important;
+}
+
+.hero-premium-atlas {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  filter: saturate(1.12) contrast(1.08);
+}
+
+.hero-premium-atlas__route-shadow {
+  fill: none;
+  stroke: rgba(2, 6, 23, 0.74);
+  stroke-width: 14;
+  stroke-linecap: round;
+  opacity: 0.78;
+}
+
+.hero-premium-atlas__route {
+  fill: none;
+  stroke: url("#hero-atlas-route");
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 18 14;
+  filter: url("#hero-atlas-glow");
+  animation: heroRouteDash 2.4s linear infinite;
+}
+
+.hero-premium-atlas__pulse {
+  fill: none;
+  stroke-width: 2;
+  opacity: 0.72;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: heroAtlasPulse 2.6s ease-in-out infinite;
+}
+
+.hero-premium-atlas__pulse--origin {
+  stroke: #34d399;
+}
+
+.hero-premium-atlas__pulse--tap {
+  stroke: #a78bfa;
+  animation-delay: 0.5s;
+}
+
+.hero-premium-atlas__dot {
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 3;
+  filter: url("#hero-atlas-glow");
+}
+
+.hero-premium-atlas__dot--origin {
+  fill: #34d399;
+}
+
+.hero-premium-atlas__dot--tap {
+  fill: #a78bfa;
+}
+
+.hero-premium-atlas__label text {
+  fill: rgba(186, 230, 253, 0.48);
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+}
+
+.hero-premium-atlas__label--tap text {
+  fill: rgba(221, 214, 254, 0.46);
+}
+
+.hero-premium-atlas__city rect {
+  fill: rgba(2, 6, 23, 0.72);
+  stroke: rgba(52, 211, 153, 0.36);
+  stroke-width: 1.5;
+}
+
+.hero-premium-atlas__city--tap rect {
+  stroke: rgba(167, 139, 250, 0.42);
+}
+
+.hero-premium-atlas__city text {
+  fill: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.hero-premium-atlas__city text + text {
+  fill: rgba(186, 230, 253, 0.72);
+  font-size: 11px;
+  font-weight: 750;
 }
 
 .hero-trace-map--globe .hero-map-intel,
@@ -6822,6 +6916,17 @@ html.theme-light #fresh-tap-required p {
 
 @keyframes heroRouteDash {
   to { stroke-dashoffset: -28; }
+}
+
+@keyframes heroAtlasPulse {
+  0%, 100% {
+    transform: scale(0.78);
+    opacity: 0.22;
+  }
+  45% {
+    transform: scale(1.18);
+    opacity: 0.72;
+  }
 }
 
 .demo-request-card {
