@@ -934,8 +934,8 @@ function HeroTraceMap({
           toLng: tap.lng,
           tone: "info"
         }]}
-        width={420}
-        height={320}
+        width={540}
+        height={410}
         className="border-0 bg-transparent shadow-none"
       />
       <div className="hero-map-intel">

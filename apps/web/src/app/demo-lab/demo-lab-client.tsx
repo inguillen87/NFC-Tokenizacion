@@ -1317,8 +1317,8 @@ function DemoLiveOpsMap({
             theme="dark"
             points={globePoints}
             routes={globeRoutes}
-            width={340}
-            height={200}
+            width={520}
+            height={360}
             className="border-0 bg-transparent shadow-none"
           />
         </div>

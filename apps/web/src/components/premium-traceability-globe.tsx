@@ -199,8 +199,8 @@ export function PremiumTraceabilityGlobe({
               tone: r.tone === "warn" ? ("warn" as const) : ("info" as const),
               label: r.label,
             }))}
-            width={450}
-            height={350}
+            width={compact ? 540 : 660}
+            height={compact ? 390 : 480}
             className="border-0 bg-transparent shadow-none"
           />
         </div>
@@ -213,7 +213,7 @@ export function PremiumTraceabilityGlobe({
         <div className="traceability-globe__floating traceability-globe__floating--right z-20 pointer-events-none">
           <span>Confianza</span>
           <strong>98.7%</strong>
-          <small>Lecturas limpias en ventana demo.</small>
+          <small>Lecturas limpias en ventana activa.</small>
         </div>
       </div>
 

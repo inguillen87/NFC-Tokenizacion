@@ -51,6 +51,14 @@ type CountryFeature = {
   geometry?: unknown;
 };
 
+type GlobeHoverCard = {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  meta: string;
+  tone: string;
+};
+
 function encodeSvg(svg: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
@@ -323,6 +331,7 @@ export function Globe3dMap({
   const [containerWidth, setContainerWidth] = useState(width);
   const [globeReady, setGlobeReady] = useState(false);
   const [countryPolygons, setCountryPolygons] = useState<CountryFeature[]>([]);
+  const [hoverCard, setHoverCard] = useState<GlobeHoverCard | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -383,7 +392,9 @@ export function Globe3dMap({
   }, [mounted, countryPolygons.length]);
 
   const renderWidth = Math.max(280, Math.min(width, containerWidth || width));
-  const renderHeight = Math.max(260, Math.round(renderWidth * (height / Math.max(width, 1))));
+  const compactRequested = height <= 240;
+  const minRenderHeight = compactRequested ? 280 : 360;
+  const renderHeight = Math.max(minRenderHeight, Math.round(renderWidth * (height / Math.max(width, 1))));
   const globeImageUrl = useMemo(() => localGlobeTexture(isLightTheme), [isLightTheme]);
   const globeBumpUrl = useMemo(() => localGlobeBumpTexture(isLightTheme), [isLightTheme]);
   const activeCountryNames = useMemo(
@@ -405,6 +416,57 @@ export function Globe3dMap({
         })),
     [points],
   );
+  const defaultHoverCard = useMemo<GlobeHoverCard>(() => {
+    const scans = points.reduce((sum, point) => sum + (point.scans || 0), 0);
+    const regions = new Set(points.map((point) => inferCountryName(point) || point.city).filter(Boolean)).size;
+    return {
+      eyebrow: "nexID Global Trust Mesh",
+      title: "Red global de producto",
+      subtitle: "Pasá el mouse por un país, ciudad, ruta o hotspot.",
+      meta: `${points.length} nodos · ${routes.length} rutas · ${scans.toLocaleString("es-AR")} taps · ${regions} regiones`,
+      tone: "#22d3ee",
+    };
+  }, [points, routes]);
+
+  const setPointHover = useCallback((point?: GlobePoint | null) => {
+    if (!point) {
+      setHoverCard(null);
+      return;
+    }
+
+    const country = inferCountryName(point);
+    const risk = point.risk || point.status === "risk";
+    setHoverCard({
+      eyebrow: risk ? "Riesgo operativo" : point.status === "origin" ? "Origen verificado" : "Tap en vivo",
+      title: point.city,
+      subtitle: country || "Ubicación verificada",
+      meta: `${point.scans || 1} taps${risk ? ` · riesgo ${point.risk || 1}` : ""}${point.vertical ? ` · ${point.vertical}` : ""}`,
+      tone: pointTone(point),
+    });
+  }, []);
+
+  const setCountryHover = useCallback((feature?: CountryFeature | null) => {
+    if (!feature) {
+      setHoverCard(null);
+      return;
+    }
+
+    const country = featureCountryName(feature);
+    const normalized = normalizeCountryName(country);
+    const activePoints = points.filter((point) => normalizeCountryName(inferCountryName(point)) === normalized);
+    const scans = activePoints.reduce((sum, point) => sum + (point.scans || 0), 0);
+    const active = activeCountryNames.has(normalized);
+
+    setHoverCard({
+      eyebrow: active ? "País con actividad nexID" : "Capa geográfica",
+      title: country || "País",
+      subtitle: feature.properties?.CONTINENT || "Cobertura global",
+      meta: active
+        ? `${activePoints.length} nodos · ${scans.toLocaleString("es-AR")} taps verificados`
+        : "Sin taps visibles en la ventana actual",
+      tone: active ? "#34d399" : "#67e8f9",
+    });
+  }, [activeCountryNames, points]);
 
   const handleGlobeReady = useCallback(() => {
     const globe = globeRef.current;
@@ -518,6 +580,24 @@ export function Globe3dMap({
         Arrastrá para rotar
       </div>
 
+      <div
+        className="absolute left-4 top-4 z-20 max-w-[min(88%,21rem)] rounded-2xl border bg-slate-950/78 px-4 py-3 text-left shadow-[0_18px_60px_rgba(0,0,0,.42)] backdrop-blur-xl pointer-events-none"
+        style={{ borderColor: `${(hoverCard || defaultHoverCard).tone}66` }}
+      >
+        <p className="text-[0.62rem] font-black uppercase tracking-[0.18em] text-cyan-200">
+          {(hoverCard || defaultHoverCard).eyebrow}
+        </p>
+        <strong className="mt-1 block text-lg font-black leading-tight text-white">
+          {(hoverCard || defaultHoverCard).title}
+        </strong>
+        <span className="mt-1 block text-xs font-semibold leading-5 text-slate-300">
+          {(hoverCard || defaultHoverCard).subtitle}
+        </span>
+        <small className="mt-2 inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.68rem] font-bold text-slate-100">
+          {(hoverCard || defaultHoverCard).meta}
+        </small>
+      </div>
+
       <Globe
         ref={globeRef}
         width={renderWidth}
@@ -550,6 +630,7 @@ export function Globe3dMap({
         polygonStrokeColor={() => (isLightTheme ? "rgba(15,23,42,.24)" : "rgba(186,230,253,.22)")}
         polygonCapCurvatureResolution={5}
         polygonLabel={(feature: any) => featureCountryName(feature)}
+        onPolygonHover={(feature: any) => setCountryHover(feature || null)}
         polygonsTransitionDuration={900}
         
         // Points
@@ -561,6 +642,7 @@ export function Globe3dMap({
         pointRadius={(p: any) => Math.min(0.28, 0.12 + Math.sqrt(Math.max(1, p.scans || 1)) * 0.012 + (p.risk ? 0.05 : 0))}
         pointResolution={18}
         pointLabel={(p: any) => `<b>${p.city}</b>${p.country ? `<br/>${p.country}` : ""}${p.scans ? `<br/>${p.scans} taps` : ""}`}
+        onPointHover={(point: any) => setPointHover(point || null)}
         pointsMerge={false}
         pointsTransitionDuration={900}
 

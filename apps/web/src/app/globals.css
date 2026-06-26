@@ -1504,12 +1504,12 @@ button.traceability-globe__node {
 }
 
 .traceability-globe--compact {
-  min-height: 430px;
+  min-height: 520px;
   border-radius: 24px;
 }
 
 .traceability-globe--compact .traceability-globe__stage {
-  min-height: 292px;
+  min-height: 380px;
 }
 
 .traceability-globe--compact .traceability-globe__header h2 {
@@ -1518,6 +1518,10 @@ button.traceability-globe__node {
 
 .traceability-globe--compact .traceability-globe__floating {
   display: none;
+}
+
+.landing-global-trust-globe {
+  min-height: 560px;
 }
 
 .sdk-global-hero-globe {
@@ -1553,6 +1557,11 @@ button.traceability-globe__node {
     min-height: 640px;
   }
 
+  .traceability-globe--compact,
+  .landing-global-trust-globe {
+    min-height: 620px;
+  }
+
   .traceability-globe__header {
     display: grid;
   }
@@ -1564,6 +1573,10 @@ button.traceability-globe__node {
 
   .traceability-globe__stage {
     min-height: 420px;
+  }
+
+  .traceability-globe--compact .traceability-globe__stage {
+    min-height: 430px;
   }
 
   .traceability-globe__orb {
@@ -1579,6 +1592,11 @@ button.traceability-globe__node {
   .traceability-globe {
     min-height: 680px;
     border-radius: 22px;
+  }
+
+  .traceability-globe--compact,
+  .landing-global-trust-globe {
+    min-height: 660px;
   }
 
   .traceability-globe__header,
@@ -19533,7 +19551,7 @@ html.theme-light .demo-lab-studio-top-actions button:hover {
 
 .demo-lab-mini-map {
   position: relative;
-  min-height: 13rem;
+  min-height: clamp(18rem, 30vw, 24rem);
   margin-top: 0.85rem;
   overflow: hidden;
   border: 1px solid rgba(125, 211, 252, 0.18);
@@ -25755,5 +25773,3 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 .animate-stagger-step {
   animation: slide-in-fade 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-
-
