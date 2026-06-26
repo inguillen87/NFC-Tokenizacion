@@ -118,6 +118,34 @@ type GlobeHoverCard = {
 
 type GlobeRenderMode = "auto" | "globe" | "preview";
 
+type GlobeRoutePathPoint = {
+  lat: number;
+  lng: number;
+  altitude: number;
+  color: string;
+};
+
+type GlobeRoutePath = {
+  label: string;
+  tone: NonNullable<GlobeRoute["tone"]>;
+  color: string;
+  distance: string;
+  coords: GlobeRoutePathPoint[];
+};
+
+type GlobeHeatmapLayer = {
+  id: string;
+  points: GlobePoint[];
+};
+
+type GlobeHtmlMarker = GlobePoint & {
+  id: string;
+  rank: number;
+  toneColor: string;
+  countryLabel: string;
+  markerKind: "origen" | "tap" | "riesgo" | "pasaporte" | "hotspot";
+};
+
 function encodeSvg(svg: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
@@ -313,6 +341,125 @@ function routeMeta(route: GlobeRoute, points: GlobePoint[]) {
 function routeDistanceLabel(route?: GlobeRoute) {
   if (!route) return "";
   return formatKm(haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng));
+}
+
+function routeTone(route?: GlobeRoute): NonNullable<GlobeRoute["tone"]> {
+  return route?.tone || "info";
+}
+
+function routeColor(route?: GlobeRoute) {
+  const tone = routeTone(route);
+  if (tone === "warn") return "#fb7185";
+  if (tone === "success") return "#34d399";
+  return "#22d3ee";
+}
+
+function toCartesian(lat: number, lng: number) {
+  const latRad = (lat * Math.PI) / 180;
+  const lngRad = (lng * Math.PI) / 180;
+  const cosLat = Math.cos(latRad);
+  return {
+    x: cosLat * Math.cos(lngRad),
+    y: Math.sin(latRad),
+    z: cosLat * Math.sin(lngRad),
+  };
+}
+
+function toLatLng(point: { x: number; y: number; z: number }) {
+  const hyp = Math.sqrt(point.x * point.x + point.z * point.z);
+  return {
+    lat: (Math.atan2(point.y, hyp) * 180) / Math.PI,
+    lng: (Math.atan2(point.z, point.x) * 180) / Math.PI,
+  };
+}
+
+function interpolateGreatCircle(fromLat: number, fromLng: number, toLat: number, toLng: number, t: number) {
+  const from = toCartesian(fromLat, fromLng);
+  const to = toCartesian(toLat, toLng);
+  const dot = Math.max(-1, Math.min(1, from.x * to.x + from.y * to.y + from.z * to.z));
+  const omega = Math.acos(dot);
+
+  if (omega < 0.0001) {
+    return {
+      lat: fromLat + (toLat - fromLat) * t,
+      lng: fromLng + (toLng - fromLng) * t,
+    };
+  }
+
+  const sinOmega = Math.sin(omega);
+  const a = Math.sin((1 - t) * omega) / sinOmega;
+  const b = Math.sin(t * omega) / sinOmega;
+  return toLatLng({
+    x: a * from.x + b * to.x,
+    y: a * from.y + b * to.y,
+    z: a * from.z + b * to.z,
+  });
+}
+
+function buildRoutePath(route: GlobeRoute, points: GlobePoint[], compactHud: boolean): GlobeRoutePath {
+  const color = routeColor(route);
+  const steps: number = compactHud ? 22 : 34;
+  const coords = Array.from({ length: steps }, (_, index) => {
+    const t = steps === 1 ? 0 : index / (steps - 1);
+    const position = interpolateGreatCircle(route.fromLat, route.fromLng, route.toLat, route.toLng, t);
+    const peak = Math.sin(Math.PI * t);
+    return {
+      ...position,
+      altitude: (compactHud ? 0.014 : 0.018) + peak * (compactHud ? 0.048 : 0.075),
+      color,
+    };
+  });
+
+  return {
+    label: routeTitle(route, points),
+    tone: routeTone(route),
+    color,
+    distance: routeDistanceLabel(route),
+    coords,
+  };
+}
+
+function markerKind(point: GlobePoint): GlobeHtmlMarker["markerKind"] {
+  if (point.risk || point.status === "risk") return "riesgo";
+  if (point.status === "origin") return "origen";
+  if (point.status === "passport") return "pasaporte";
+  return (point.scans || 0) > 500 ? "hotspot" : "tap";
+}
+
+function makeGlobeMarkerElement(marker: GlobeHtmlMarker, compactHud: boolean) {
+  const el = document.createElement("div");
+  const size = compactHud ? "10px" : "11px";
+  const labelSize = compactHud ? "10px" : "11px";
+  const titleSize = compactHud ? "12px" : "13px";
+  el.className = "nexid-globe-marker";
+  el.style.cssText = [
+    "pointer-events:none",
+    "transform:translate(-50%,-112%)",
+    "transition:opacity 220ms ease, transform 220ms ease",
+    `--nexid-marker-tone:${marker.toneColor}`,
+  ].join(";");
+  el.innerHTML = `
+    <span style="
+      display:inline-flex;align-items:center;gap:6px;
+      border:1px solid ${rgbaFromHex(marker.toneColor, 0.48)};
+      border-radius:999px;
+      background:linear-gradient(135deg,rgba(2,6,23,.88),rgba(8,47,73,.74));
+      box-shadow:0 12px 34px rgba(0,0,0,.38),0 0 22px ${rgbaFromHex(marker.toneColor, 0.24)};
+      color:#e0f2fe;
+      padding:${compactHud ? "5px 7px" : "6px 9px"};
+      backdrop-filter:blur(14px);
+      white-space:nowrap;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    ">
+      <i style="width:${size};height:${size};border-radius:999px;background:${marker.toneColor};box-shadow:0 0 14px ${marker.toneColor};display:inline-block;flex:0 0 auto;"></i>
+      <b style="display:grid;gap:1px;text-align:left;line-height:1;">
+        <small style="color:${marker.toneColor};font-size:${labelSize};font-weight:950;letter-spacing:.14em;text-transform:uppercase;">${marker.markerKind}</small>
+        <strong style="color:#fff;font-size:${titleSize};font-weight:950;letter-spacing:0;">${marker.city}</strong>
+        <em style="color:#bae6fd;font-size:${compactHud ? "9px" : "10px"};font-style:normal;font-weight:750;">${marker.countryLabel || `${marker.scans || 1} taps`}</em>
+      </b>
+    </span>
+  `;
+  return el;
 }
 
 function GlobeLoadingBackdrop({
@@ -546,9 +693,22 @@ export function Globe3dMap({
     if (!mounted || !containerRef.current) return;
 
     const scrubGlobeNavText = () => {
-      containerRef.current?.querySelectorAll(".scene-nav-info").forEach((node) => {
+      const root = containerRef.current;
+      if (!root) return;
+      const navTextPattern = /(left-click|mouse-wheel|middle-click|right-click|arrastr[aá]|rotar|zoom|pan)/i;
+
+      root.querySelectorAll(".scene-nav-info").forEach((node) => {
         node.textContent = "";
         node.setAttribute("aria-hidden", "true");
+        if (node instanceof HTMLElement) node.style.display = "none";
+      });
+
+      root.querySelectorAll("div, span").forEach((node) => {
+        const text = node.textContent?.trim() || "";
+        if (!text || node.children.length > 0 || !navTextPattern.test(text)) return;
+        node.textContent = "";
+        node.setAttribute("aria-hidden", "true");
+        if (node instanceof HTMLElement) node.style.display = "none";
       });
     };
 
@@ -809,6 +969,62 @@ export function Globe3dMap({
   const routeCaption = primaryRoute
     ? `${primaryFrom?.city || "Origen"} -> ${primaryTo?.city || "Destino"}`
     : `${points.length.toLocaleString("es-AR")} nodos activos`;
+  const routePaths = useMemo(
+    () =>
+      routes
+        .filter(
+          (route) =>
+            Number.isFinite(route.fromLat) &&
+            Number.isFinite(route.fromLng) &&
+            Number.isFinite(route.toLat) &&
+            Number.isFinite(route.toLng),
+        )
+        .slice(0, compactHud ? 7 : 14)
+        .map((route) => buildRoutePath(route, points, compactHud)),
+    [compactHud, points, routes],
+  );
+  const routeParticles = useMemo(
+    () =>
+      routePaths.map((route, index) => ({
+        id: `${route.label}-${index}`,
+        label: route.label,
+        color: route.color,
+        particles: route.coords
+          .filter((_, pointIndex) => pointIndex % (compactHud ? 4 : 5) === 0)
+          .map((point, pointIndex) => ({
+            ...point,
+            color: route.color,
+            size: pointIndex === 0 || pointIndex === route.coords.length - 1 ? 0.7 : 1,
+          })),
+      })),
+    [compactHud, routePaths],
+  );
+  const heatmapLayers = useMemo<GlobeHeatmapLayer[]>(
+    () => (hexPoints.length ? [{ id: "tap-density", points: hexPoints }] : []),
+    [hexPoints],
+  );
+  const htmlMarkers = useMemo<GlobeHtmlMarker[]>(() => {
+    const seen = new Set<string>();
+    const candidates = [primaryFrom, primaryTo, ...visibleLabelPoints].filter(Boolean) as GlobePoint[];
+
+    return candidates
+      .filter((point) => {
+        const key = `${point.city}-${point.lat.toFixed(3)}-${point.lng.toFixed(3)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return Number.isFinite(point.lat) && Number.isFinite(point.lng);
+      })
+      .sort((left, right) => (right.scans || 1) - (left.scans || 1))
+      .slice(0, compactHud ? 4 : 8)
+      .map((point, index) => ({
+        ...point,
+        id: `${point.city}-${index}`,
+        rank: index + 1,
+        toneColor: pointTone(point),
+        countryLabel: displayCountryName(inferCountryName(point)),
+        markerKind: markerKind(point),
+      }));
+  }, [compactHud, primaryFrom, primaryTo, visibleLabelPoints]);
 
   if (!mounted) {
     return (
@@ -834,7 +1050,14 @@ export function Globe3dMap({
         data-globe-ready="route-preview"
         data-globe-mode="route-preview"
       >
-        <GlobeFallbackVisual points={points} routes={routes} isLightTheme={isLightTheme} className="opacity-100" />
+        <GlobeLoadingBackdrop isLightTheme={isLightTheme} className="opacity-100" />
+        <div className="relative z-20 mx-4 max-w-[22rem] rounded-2xl border border-cyan-200/18 bg-slate-950/74 px-4 py-3 text-left text-slate-100 shadow-[0_18px_54px_rgba(0,0,0,.34)] backdrop-blur-xl">
+          <p className="text-[0.58rem] font-black uppercase tracking-[0.2em] text-cyan-200">Ruta verificada</p>
+          <strong className="mt-1 block text-base font-black leading-tight text-white">{routeCaption}</strong>
+          <span className="mt-1 block text-xs font-bold text-slate-300">
+            {primaryDistance || `${routes.length.toLocaleString("es-AR")} rutas`} - ruta compacta segura
+          </span>
+        </div>
         <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-slate-950/74 px-3 py-2 text-[0.68rem] font-bold text-slate-200 shadow-[0_14px_40px_rgba(0,0,0,.24)] backdrop-blur-xl">
           <span className="text-cyan-100">{points.length.toLocaleString("es-AR")} nodos · {routes.length.toLocaleString("es-AR")} rutas</span>
           <span className="text-emerald-200">Ruta verificada</span>
@@ -936,6 +1159,25 @@ export function Globe3dMap({
         polygonLabel={(feature: any) => displayCountryName(featureCountryName(feature))}
         onPolygonHover={(feature: any) => setCountryHover(feature || null)}
         polygonsTransitionDuration={900}
+
+        // Soft heat surface over verified tap density. This is native globe.gl
+        // heatmap rendering, not a static background illustration.
+        heatmapsData={heatmapLayers}
+        heatmapPoints="points"
+        heatmapPointLat="lat"
+        heatmapPointLng="lng"
+        heatmapPointWeight={(point: any) => Math.max(1, pointWeight(point))}
+        heatmapBandwidth={compactHud ? 0.55 : 0.9}
+        heatmapColorSaturation={compactHud ? 1.8 : 2.45}
+        heatmapBaseAltitude={0.004}
+        heatmapTopAltitude={compactHud ? 0.035 : 0.065}
+        heatmapColorFn={() => (t: number) => {
+          if (t > 0.78) return `rgba(248, 113, 113, ${Math.min(0.95, t)})`;
+          if (t > 0.52) return `rgba(251, 191, 36, ${Math.min(0.9, t)})`;
+          if (t > 0.28) return `rgba(163, 230, 53, ${Math.min(0.82, t + 0.18)})`;
+          return `rgba(34, 211, 238, ${Math.min(0.7, t + 0.18)})`;
+        }}
+        heatmapsTransitionDuration={900}
         
         // Points
         pointsData={points}
@@ -979,6 +1221,50 @@ export function Globe3dMap({
         labelSize={compactHud ? 0.72 : 1.28}
         labelDotRadius={compactHud ? 0.06 : 0}
         labelAltitude={compactHud ? 0.055 : 0.048}
+        labelResolution={2}
+        
+        // Route paths: geodesic polylines with animated dashes, closer to an
+        // enterprise logistics/NFC control-room view than a decorative arc.
+        pathsData={routePaths}
+        pathPoints="coords"
+        pathPointLat="lat"
+        pathPointLng="lng"
+        pathPointAlt="altitude"
+        pathColor={(route: any) => [
+          rgbaFromHex(route.color, 0.04),
+          rgbaFromHex(route.color, 0.92),
+          rgbaFromHex(route.color, 0.12),
+        ]}
+        pathStroke={(route: any) => route.tone === "warn" ? (compactHud ? 0.42 : 0.62) : (compactHud ? 0.32 : 0.5)}
+        pathDashLength={(route: any) => route.tone === "warn" ? 0.18 : 0.13}
+        pathDashGap={0.035}
+        pathDashAnimateTime={(route: any) => route.tone === "warn" ? 1350 : 2100}
+        pathLabel={(route: any) => `<b>${route.label}</b><br/>${route.distance || "Ruta auditada"}`}
+        onPathHover={(route: any) => {
+          if (!route) {
+            setHoverCard(null);
+            return;
+          }
+          setHoverCard({
+            eyebrow: route.tone === "warn" ? "Ruta con alerta" : "Ruta comercial",
+            title: route.label,
+            subtitle: "Trazabilidad de producto, canal y tap",
+            meta: route.distance || "Distancia auditada",
+            tone: route.color,
+          });
+        }}
+        pathTransitionDuration={900}
+
+        // Moving evidence points along every route.
+        particlesData={routeParticles}
+        particlesList="particles"
+        particleLat="lat"
+        particleLng="lng"
+        particleAltitude="altitude"
+        particlesColor={(particle: any) => particle.color || "#67e8f9"}
+        particlesSize={(particle: any) => (compactHud ? 0.55 : 0.85) * (particle.size || 1)}
+        particlesSizeAttenuation={true}
+        particleLabel={(particle: any) => `Señal de ruta ${particle.color || ""}`}
         
         // Arcs
         arcsData={routes}

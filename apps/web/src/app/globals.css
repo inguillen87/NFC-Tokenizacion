@@ -23174,6 +23174,13 @@ html.theme-light .landing-hero-section .hero-trace-map--clear [data-nexid-map="p
   display: none !important;
 }
 
+[data-globe-ready] .scene-container .scene-nav-info,
+.scene-container .scene-nav-info {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 [data-globe-mode="interactive"] .scene-container canvas {
   display: block !important;
 }

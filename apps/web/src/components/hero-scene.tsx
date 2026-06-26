@@ -896,11 +896,16 @@ function HeroPremiumAtlas({
         {[98, 142, 186, 230, 274, 318].map((y) => <path key={`atlas-grid-h-${y}`} d={`M70 ${y} H650`} />)}
       </g>
       <g>
-        <path d="M96 260 C176 196 248 190 330 220 C404 247 486 206 614 148" fill="none" stroke="rgba(125,245,255,.18)" strokeWidth="44" strokeLinecap="round" />
-        <path d="M96 260 C176 196 248 190 330 220 C404 247 486 206 614 148" fill="none" stroke="rgba(103,232,249,.26)" strokeWidth="2" strokeDasharray="10 14" />
-        <circle cx="250" cy="278" r="94" fill="rgba(52,211,153,.12)" />
-        <circle cx="514" cy="154" r="104" fill="rgba(167,139,250,.12)" />
-        <circle cx="430" cy="210" r="58" fill="rgba(34,211,238,.12)" />
+        <path d="M86 284 C152 224 240 188 322 205 C392 219 464 184 628 124" fill="none" stroke="rgba(125,245,255,.13)" strokeWidth="30" strokeLinecap="round" />
+        <path d="M86 284 C152 224 240 188 322 205 C392 219 464 184 628 124" fill="none" stroke="rgba(103,232,249,.24)" strokeWidth="2" strokeDasharray="10 14" />
+        <path d="M104 144 H304 C326 144 340 158 340 180 V286 C340 308 326 322 304 322 H104 C82 322 68 308 68 286 V180 C68 158 82 144 104 144Z" fill="rgba(15,118,110,.08)" stroke="rgba(52,211,153,.18)" />
+        <path d="M416 112 H624 C646 112 660 126 660 148 V284 C660 306 646 320 624 320 H416 C394 320 380 306 380 284 V148 C380 126 394 112 416 112Z" fill="rgba(30,64,175,.08)" stroke="rgba(167,139,250,.18)" />
+        <g opacity=".34" stroke="rgba(125,211,252,.26)" strokeWidth=".8" fill="none">
+          <path d="M110 176 H306 M110 218 H306 M110 260 H306 M110 302 H306" />
+          <path d="M152 154 V322 M204 154 V322 M256 154 V322" />
+          <path d="M422 152 H636 M422 196 H636 M422 240 H636 M422 284 H636" />
+          <path d="M470 122 V320 M526 122 V320 M582 122 V320" />
+        </g>
         <rect
           className="hero-premium-atlas__country-hit"
           x="78"
