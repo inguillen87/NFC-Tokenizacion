@@ -6472,9 +6472,11 @@ html.theme-light #fresh-tap-required p {
 .hero-trace-map--atlas {
   pointer-events: auto;
   background:
-    radial-gradient(circle at 38% 34%, rgba(34, 211, 238, 0.2), transparent 32%),
-    radial-gradient(circle at 68% 68%, rgba(52, 211, 153, 0.16), transparent 34%),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(34, 211, 238, 0.08), transparent 42%),
     linear-gradient(145deg, rgba(2, 6, 23, 0.86), rgba(8, 47, 73, 0.64));
+  background-size: 48px 48px, 48px 48px, auto, auto;
 }
 
 .hero-trace-map--globe::before,
@@ -6507,6 +6509,59 @@ html.theme-light #fresh-tap-required p {
   filter: saturate(1.12) contrast(1.08);
 }
 
+.hero-premium-atlas__grid {
+  opacity: 0.22;
+}
+
+.hero-premium-atlas__regions rect {
+  fill: rgba(8, 47, 73, 0.38);
+  stroke: rgba(125, 211, 252, 0.16);
+  stroke-width: 1.2;
+}
+
+.hero-premium-atlas__regions rect:first-child {
+  fill: rgba(20, 83, 45, 0.16);
+  stroke: rgba(52, 211, 153, 0.24);
+}
+
+.hero-premium-atlas__regions rect:last-child {
+  fill: rgba(88, 28, 135, 0.12);
+  stroke: rgba(167, 139, 250, 0.24);
+}
+
+.hero-premium-atlas__region-lines {
+  fill: none;
+  stroke: rgba(186, 230, 253, 0.22);
+  stroke-width: 0.8;
+}
+
+.hero-premium-atlas__country-code text {
+  fill: rgba(125, 211, 252, 0.66);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+}
+
+.hero-premium-atlas__country-code--tap text {
+  fill: rgba(196, 181, 253, 0.66);
+}
+
+.hero-premium-atlas__signal-band {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.hero-premium-atlas__signal-band path:first-child {
+  stroke: rgba(125, 245, 255, 0.1);
+  stroke-width: 32;
+}
+
+.hero-premium-atlas__signal-band path:last-child {
+  stroke: rgba(103, 232, 249, 0.28);
+  stroke-width: 1.8;
+  stroke-dasharray: 9 13;
+}
+
 .hero-premium-atlas__route-shadow {
   fill: none;
   stroke: rgba(2, 6, 23, 0.74);
@@ -6517,12 +6572,16 @@ html.theme-light #fresh-tap-required p {
 
 .hero-premium-atlas__route {
   fill: none;
-  stroke: url("#hero-atlas-route");
   stroke-width: 5;
   stroke-linecap: round;
   stroke-dasharray: 18 14;
-  filter: url("#hero-atlas-glow");
   animation: heroRouteDash 2.4s linear infinite;
+}
+
+.hero-premium-atlas__packet {
+  opacity: 0.94;
+  stroke: rgba(236, 254, 255, 0.86);
+  stroke-width: 1.6;
 }
 
 .hero-premium-atlas__route-hit {
@@ -6551,6 +6610,24 @@ html.theme-light #fresh-tap-required p {
 .hero-premium-atlas__stop circle:last-child {
   stroke: rgba(255, 255, 255, 0.9);
   stroke-width: 1.4;
+}
+
+.hero-premium-atlas__step-label rect {
+  fill: rgba(2, 6, 23, 0.76);
+  stroke: rgba(125, 211, 252, 0.18);
+}
+
+.hero-premium-atlas__step-label text {
+  fill: #e0f2fe;
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.hero-premium-atlas__step-label text:last-child {
+  fill: #93c5fd;
+  font-size: 7.2px;
+  font-weight: 800;
 }
 
 .hero-premium-atlas__pulse {
@@ -23142,9 +23219,11 @@ html.theme-light .landing-hero-section .hero-trace-map--clear [data-nexid-map="p
 .landing-hero-section .hero-object-map-pane .hero-trace-map.hero-trace-map--atlas {
   pointer-events: auto !important;
   background:
-    radial-gradient(circle at 26% 68%, rgba(45, 212, 191, 0.16), transparent 28%),
-    radial-gradient(circle at 74% 34%, rgba(56, 189, 248, 0.13), transparent 30%),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.09) 1px, transparent 1px),
+    linear-gradient(rgba(125, 211, 252, 0.09) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(45, 212, 191, 0.1), transparent 42%),
     linear-gradient(135deg, rgba(8, 47, 73, 0.78), rgba(2, 6, 23, 0.72)) !important;
+  background-size: 44px 44px, 44px 44px, auto, auto !important;
 }
 
 .landing-hero-section .hero-trace-map.hero-trace-map--atlas .scene-container,

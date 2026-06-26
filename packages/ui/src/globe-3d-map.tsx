@@ -324,7 +324,7 @@ function routeTitle(route: GlobeRoute, points: GlobePoint[]) {
   if (route.label) return route.label;
   const from = closestPoint(points, route.fromLat, route.fromLng);
   const to = closestPoint(points, route.toLat, route.toLng);
-  if (from && to) return `${from.city} -> ${to.city}`;
+  if (from && to) return `${from.city} → ${to.city}`;
   return "Ruta verificada";
 }
 
@@ -334,7 +334,7 @@ function routeMeta(route: GlobeRoute, points: GlobePoint[]) {
   const distance = haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng);
   const fromCountry = displayCountryName(inferCountryName(from || ({ city: "", lat: 0, lng: 0 } as GlobePoint)));
   const toCountry = displayCountryName(inferCountryName(to || ({ city: "", lat: 0, lng: 0 } as GlobePoint)));
-  if (from && to) return `${from.city}, ${fromCountry} -> ${to.city}, ${toCountry} - ${formatKm(distance)}`;
+  if (from && to) return `${from.city}, ${fromCountry} → ${to.city}, ${toCountry} · ${formatKm(distance)}`;
   return `Origen y destino auditados - ${formatKm(distance)}`;
 }
 
@@ -862,11 +862,11 @@ export function Globe3dMap({
     setHoverCard({
       eyebrow: route.tone === "warn" ? "Ruta con alerta" : "Ruta de trazabilidad",
       title: route.label || "Ruta verificada",
-      subtitle: "Origen, tap fisico y evidencia comercial unidos",
-      meta: `${route.fromLat.toFixed(2)}, ${route.fromLng.toFixed(2)} -> ${route.toLat.toFixed(2)}, ${route.toLng.toFixed(2)}`,
+      subtitle: "Origen, tap físico y evidencia comercial unidos",
+      meta: routeMeta(route, points),
       tone: route.tone === "warn" ? "#fb7185" : route.tone === "success" ? "#34d399" : "#22d3ee",
     });
-  }, []);
+  }, [points]);
 
   const handleGlobeReady = useCallback(() => {
     const globe = globeRef.current;
@@ -967,7 +967,7 @@ export function Globe3dMap({
   const primaryDistance = routeDistanceLabel(primaryRoute);
   const totalScans = points.reduce((sum, point) => sum + (point.scans || 0), 0);
   const routeCaption = primaryRoute
-    ? `${primaryFrom?.city || "Origen"} -> ${primaryTo?.city || "Destino"}`
+    ? `${primaryFrom?.city || "Origen"} → ${primaryTo?.city || "Destino"}`
     : `${points.length.toLocaleString("es-AR")} nodos activos`;
   const routePaths = useMemo(
     () =>
