@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BadgeCheck, Boxes, ClipboardCheck, PackageCheck, Radar, ShieldCheck, Store, UserCog } from "lucide-react";
+import { BadgeCheck, Boxes, ClipboardCheck, PackageCheck, QrCode, Radar, ShieldCheck, ShoppingBag, Store, UserCog } from "lucide-react";
 import { Card, StatusChip } from "@product/ui";
 
 export type OpsCommandMetric = {
@@ -17,7 +17,7 @@ export type OpsCommandStep = {
   label: string;
   body: string;
   status: "ready" | "working" | "blocked";
-  owner: "Superadmin" | "Tenant" | "Reseller" | "Auditor";
+  owner: "Super Admin" | "Owner" | "Operaciones" | "Growth" | "Seguridad";
 };
 
 export type OpsCommandTenantRow = {
@@ -43,22 +43,22 @@ export type OpsCommandCenterProps = {
 
 const roles = {
   global: {
-    label: "Superadmin",
+    label: "Super Admin",
     icon: UserCog,
-    headline: "Gobernar tenants, resellers, riesgo y monetizacion desde una sola consola.",
-    action: "Detecta que tenant esta listo para escalar, cual necesita auditoria y donde hay oportunidad comercial.",
+    headline: "Gobernar tenants, permisos, riesgo y expansión comercial desde una sola consola.",
+    action: "Decidís qué cuenta escalar, cuál pausar, qué lote auditar y dónde hay oportunidad real de revenue.",
   },
   tenant: {
-    label: "Bodega Balmec / marca",
+    label: "Owner tenant",
     icon: Store,
-    headline: "Pasar de lote recibido a producto pegado, probado, publicado y vendiendo.",
-    action: "La persona no tecnica ve que completar, que esta bloqueado y cual es el proximo paso.",
+    headline: "Convertir tags físicos en productos vendibles sin perder control.",
+    action: "La marca ve qué lote está listo, qué bloqueo impide vender y qué equipo debe resolverlo hoy.",
   },
   auditor: {
-    label: "Auditor",
+    label: "Equipo operativo",
     icon: ShieldCheck,
-    headline: "Validar evidencia por lote, carrier, UID, SUN, tap fisico, ownership y tokenizacion.",
-    action: "Nada se publica como premium sin preflight, trazabilidad y prueba de campo.",
+    headline: "Ejecutar encoding, QA de campo, anclaje y publicación con trazabilidad.",
+    action: "Nada pasa a producción comercial sin manifest, UID, prueba física, eventos y salida post-tap.",
   },
 } as const;
 
@@ -79,6 +79,11 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(value);
 }
 
+function tenantSlugLabel(slug: string) {
+  if (slug.toLowerCase() === "demobodega") return "bodega-balmec";
+  return slug;
+}
+
 function riskTone(value: number): "good" | "warn" | "risk" | "neutral" {
   if (value >= 65) return "risk";
   if (value >= 30) return "warn";
@@ -88,11 +93,11 @@ function riskTone(value: number): "good" | "warn" | "risk" | "neutral" {
 
 function MiniIconRail() {
   const items = [
-    { icon: Boxes, label: "Batch" },
-    { icon: PackageCheck, label: "Tags" },
-    { icon: ClipboardCheck, label: "Preflight" },
+    { icon: Boxes, label: "Lote" },
+    { icon: PackageCheck, label: "Encoding" },
+    { icon: ClipboardCheck, label: "QA campo" },
     { icon: BadgeCheck, label: "Passport" },
-    { icon: Radar, label: "Auditoria" },
+    { icon: Radar, label: "Salida" },
   ];
   return (
     <div className="grid grid-cols-5 gap-2">
@@ -111,7 +116,7 @@ function MiniIconRail() {
 
 export function OpsCommandCenter({
   title = "Centro de mando operativo",
-  subtitle = "Una consola para que superadmin, reseller, marca y auditor entiendan que esta listo, que falta y que bloquea el rollout.",
+  subtitle = "Esta solapa responde una pregunta concreta: qué falta para que un lote NFC pase de depósito a producto activo, vendible, medible y seguro.",
   metrics,
   steps,
   tenants = [],
@@ -121,8 +126,8 @@ export function OpsCommandCenter({
 }: OpsCommandCenterProps) {
   const [selectedMode, setSelectedMode] = useState<keyof typeof roles>(mode);
   const [pausedTenants, setPausedTenants] = useState<Set<string>>(new Set());
-  const [networkModes, setNetworkModes] = useState<Record<string, "Simulated" | "Polygon">>(
-    tenants.reduce((acc, t) => ({ ...acc, [t.slug]: "Simulated" }), {})
+  const [networkModes, setNetworkModes] = useState<Record<string, "Interno" | "Polygon">>(
+    tenants.reduce((acc, t) => ({ ...acc, [t.slug]: "Interno" }), {})
   );
   const [actionAlert, setActionAlert] = useState<string | null>(null);
 
@@ -143,9 +148,9 @@ export function OpsCommandCenter({
 
   const handleToggleMode = (slug: string) => {
     setNetworkModes((prev) => {
-      const current = prev[slug] || "Simulated";
-      const nextMode = current === "Simulated" ? "Polygon" : "Simulated";
-      setActionAlert(`Tenant ${slug}: Red cambiada a modo ${nextMode === "Polygon" ? "Polygon Blockchain" : "Simulado local"}.`);
+      const current = prev[slug] || "Interno";
+      const nextMode = current === "Interno" ? "Polygon" : "Interno";
+      setActionAlert(`Tenant ${slug}: anclaje cambiado a ${nextMode === "Polygon" ? "Polygon Blockchain" : "cola interna controlada"}.`);
       return { ...prev, [slug]: nextMode };
     });
     setTimeout(() => setActionAlert(null), 4000);
@@ -172,6 +177,43 @@ export function OpsCommandCenter({
   ];
   const readySteps = useMemo(() => steps.filter((step) => step.status === "ready").length, [steps]);
   const stepCompletion = steps.length ? Math.round((readySteps / steps.length) * 100) : 0;
+  const runbook = [
+    {
+      icon: Boxes,
+      title: "1. Recibir lote",
+      body: "Crear batch, proveedor, SKU, cantidad esperada y manifest auditable.",
+      href: "/batches/supplier",
+      cta: "Cargar lote",
+    },
+    {
+      icon: QrCode,
+      title: "2. Activar tags",
+      body: "Ver UIDs, estado, producto asociado y tags pendientes o sospechosos.",
+      href: "/tags",
+      cta: "Ver tags",
+    },
+    {
+      icon: ShieldCheck,
+      title: "3. QA de campo",
+      body: "Revisar taps reales, replay, tamper, ubicación y dispositivo por UID.",
+      href: "/events",
+      cta: "Auditar eventos",
+    },
+    {
+      icon: BadgeCheck,
+      title: "4. Passport",
+      body: "Publicar certificado, ownership, wallet y prueba visible para consumidor.",
+      href: "/tokenization",
+      cta: "Anclar",
+    },
+    {
+      icon: ShoppingBag,
+      title: "5. Salida comercial",
+      body: "Habilitar beneficio, marketplace, campaña o reward post-tap.",
+      href: "/loyalty/rewards",
+      cta: "Activar venta",
+    },
+  ];
 
   return (
     <Card className="relative overflow-hidden p-0">
@@ -235,6 +277,29 @@ export function OpsCommandCenter({
             </article>
           ))}
         </div>
+
+        <div className="mt-5 rounded-3xl border border-cyan-300/15 bg-slate-950/45 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Runbook de producción</p>
+              <p className="mt-1 text-xs text-slate-400">Cada bloque abre una pantalla donde se hace trabajo real, no una descripción decorativa.</p>
+            </div>
+            <StatusChip label={stepCompletion >= 80 ? "listo para operar" : "requiere atención"} tone={stepCompletion >= 80 ? "good" : "warn"} />
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-5">
+            {runbook.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link key={item.title} href={item.href} className="group rounded-2xl border border-white/10 bg-slate-950/65 p-3 transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-cyan-500/10">
+                  <Icon className="h-5 w-5 text-cyan-200" aria-hidden="true" />
+                  <p className="mt-3 text-sm font-black text-white">{item.title}</p>
+                  <p className="mt-2 min-h-[54px] text-xs leading-5 text-slate-400">{item.body}</p>
+                  <span className="mt-3 inline-flex rounded-lg border border-cyan-300/25 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100 group-hover:bg-cyan-300 group-hover:text-slate-950">{item.cta}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-5 p-5 sm:p-6 xl:grid-cols-[0.95fr_1.05fr]">
@@ -242,7 +307,7 @@ export function OpsCommandCenter({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Camino guiado</h3>
-              <p className="mt-1 text-xs text-slate-400">Lo que ve un operador que no sabe de llaves, SUN ni blockchain.</p>
+              <p className="mt-1 text-xs text-slate-400">Responsable, estado y próximo paso para destrabar la operación.</p>
             </div>
             <StatusChip label={`${readySteps}/${steps.length || 0} listo`} tone={stepCompletion >= 80 ? "good" : stepCompletion >= 40 ? "warn" : "risk"} />
           </div>
@@ -308,7 +373,7 @@ export function OpsCommandCenter({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Tenants / lotes bajo control</h3>
-                <p className="mt-1 text-xs text-slate-400">Vista de auditoria para no perderse entre marcas, lotes y estados.</p>
+                <p className="mt-1 text-xs text-slate-400">Vista operativa para decidir qué activar, investigar o escalar.</p>
               </div>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-slate-200">{tenants.length} registros</span>
             </div>
@@ -322,7 +387,7 @@ export function OpsCommandCenter({
                     <th className="px-3 py-2">Tags</th>
                     <th className="px-3 py-2">Riesgo</th>
                     <th className="px-3 py-2">Estado</th>
-                    <th className="px-3 py-2 text-right">Acciones (Superadmin)</th>
+                    <th className="px-3 py-2 text-right">Acciones operativas</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -330,7 +395,7 @@ export function OpsCommandCenter({
                     <tr key={`${tenant.slug}-${tenant.name}`} className="border-b border-white/5 text-slate-200">
                       <td className="py-3 pr-3">
                         <b className="text-white">{tenant.name}</b>
-                        <span className="mt-1 block text-slate-500">{tenant.slug}</span>
+                        <span className="mt-1 block text-slate-500">{tenantSlugLabel(tenant.slug)}</span>
                       </td>
                       <td className="px-3 py-3">{formatNumber(tenant.scans)}</td>
                       <td className="px-3 py-3">{formatNumber(tenant.batches)}</td>
@@ -338,32 +403,40 @@ export function OpsCommandCenter({
                       <td className="px-3 py-3"><StatusChip label={`${tenant.riskScore}/100`} tone={riskTone(tenant.riskScore)} /></td>
                       <td className="px-3 py-3"><StatusChip label={pausedTenants.has(tenant.slug) ? "pausado" : tenant.status} tone={pausedTenants.has(tenant.slug) ? "risk" : tenant.status === "risk" ? "risk" : tenant.status === "pending" ? "warn" : "good"} /></td>
                       <td className="px-3 py-3 text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <button suppressHydrationWarning
-                            type="button"
-                            onClick={() => handleTogglePause(tenant.slug)}
-                            className={`rounded-xl border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition ${
-                              pausedTenants.has(tenant.slug)
-                                ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20"
-                                : "border-rose-300/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
-                            }`}
-                          >
-                            {pausedTenants.has(tenant.slug) ? "Activar" : "Pausar"}
-                          </button>
-                          <Link
-                            href={`/?tenant=${encodeURIComponent(tenant.slug)}`}
-                            className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-500/20"
-                          >
-                            Impersonar
-                          </Link>
-                          <button suppressHydrationWarning
-                            type="button"
-                            onClick={() => handleToggleMode(tenant.slug)}
-                            className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-violet-100 transition hover:bg-violet-500/20"
-                          >
-                            {networkModes[tenant.slug] || "Simulated"}
-                          </button>
-                        </div>
+                        {selectedMode === "global" ? (
+                          <div className="flex justify-end gap-1.5">
+                            <button suppressHydrationWarning
+                              type="button"
+                              onClick={() => handleTogglePause(tenant.slug)}
+                              className={`rounded-xl border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition ${
+                                pausedTenants.has(tenant.slug)
+                                  ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20"
+                                  : "border-rose-300/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
+                              }`}
+                            >
+                              {pausedTenants.has(tenant.slug) ? "Activar" : "Pausar"}
+                            </button>
+                            <Link
+                              href={`/?tenant=${encodeURIComponent(tenant.slug)}`}
+                              className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-500/20"
+                            >
+                              Abrir tenant
+                            </Link>
+                            <button suppressHydrationWarning
+                              type="button"
+                              onClick={() => handleToggleMode(tenant.slug)}
+                              className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-violet-100 transition hover:bg-violet-500/20"
+                            >
+                              {networkModes[tenant.slug] || "Interno"}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-1.5">
+                            <Link href="/batches" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-500/20">Lotes</Link>
+                            <Link href="/tags" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-100 transition hover:bg-emerald-500/20">Tags</Link>
+                            <Link href="/events" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-100 transition hover:bg-amber-500/20">Eventos</Link>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )) : (

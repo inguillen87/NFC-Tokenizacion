@@ -128,37 +128,37 @@ export default async function SuperadminConsumerNetworkPage() {
       label: "Tenants listos para operar",
       body: "Cada marca debe tener origen, reglas de claim, portal, assets y permisos antes de recibir tags masivos.",
       status: scopedTenants.length ? "ready" : "blocked",
-      owner: "Superadmin",
+      owner: "Super Admin",
     },
     {
       label: "Batches con carrier declarado",
       body: "El dashboard separa QR, NFC UID, NTAG424 DNA y TT para vender la seguridad correcta.",
       status: secureBatches > 0 ? "ready" : batches.length ? "working" : "blocked",
-      owner: "Auditor",
+      owner: "Seguridad",
     },
     {
       label: "Tags activos y testeables",
       body: "El reseller o tenant puede ver cuantos tags ya estan listos para pegar y cuantos faltan.",
       status: activeTags > 0 ? "ready" : importedTags > 0 ? "working" : "blocked",
-      owner: "Reseller",
+      owner: "Operaciones",
     },
     {
       label: "Banco visual listo",
       body: "Cada lote premium debe tener foto real, etiqueta frontal, tag aplicado y ficha comercial antes de publicar /sun y marketplace.",
       status: readyAssets > 0 ? "ready" : productAssets.length ? "working" : "blocked",
-      owner: "Tenant",
+      owner: "Owner",
     },
     {
       label: "Riesgo bajo control",
       body: "Duplicados, replay y tamper se tratan como bloqueo comercial, no como dato tecnico escondido.",
       status: totalDuplicates + totalTamper > Math.max(totalScans * 0.12, 4) ? "blocked" : totalScans > 0 ? "ready" : "working",
-      owner: "Auditor",
+      owner: "Seguridad",
     },
     {
       label: "Club y experiencias verificadas",
       body: "La red B2C queda moderada: no hay reviews anonimas que puedan danar marcas premium.",
       status: approvedExperiences > 0 ? "ready" : pendingExperiences > 0 ? "working" : "working",
-      owner: "Tenant",
+      owner: "Growth",
     },
   ];
 
@@ -271,7 +271,7 @@ export default async function SuperadminConsumerNetworkPage() {
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Accesos rapidos</h2>
-          <span className="text-xs text-slate-500">Superadmin / demobodega / auditor</span>
+          <span className="text-xs text-slate-500">Super Admin / Bodega Balmec / equipos operativos</span>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           {[

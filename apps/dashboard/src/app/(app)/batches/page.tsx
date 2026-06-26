@@ -137,7 +137,7 @@ export default async function BatchesPage() {
   const unitMetadataRows = batchRows.reduce((sum, row) => sum + Number(row.unit_metadata_rows || 0), 0);
   const iotMetadataRows = batchRows.reduce((sum, row) => sum + Number(row.iot_metadata_rows || 0), 0);
   const unitProductOverrides = batchRows.reduce((sum, row) => sum + Number(row.unit_product_overrides || 0), 0);
-  const defaultOpsBid = String(batchRows.find((row) => row.bid)?.bid || (tenantScope ? "" : "DEMO-2026-02"));
+  const defaultOpsBid = String(batchRows.find((row) => row.bid)?.bid || (tenantScope ? "" : "BALMEC-2026-02"));
   const statusCounts = batchRows.reduce((acc, row) => {
     const status = String(row.status || "pending").toLowerCase();
     acc[status] = Number(acc[status] || 0) + 1;
@@ -157,31 +157,31 @@ export default async function BatchesPage() {
       label: "Tenant passport completo",
       body: "Antes de importar tags, el tenant necesita rubro, origen, politica de claim, portal, marketplace y copy simple.",
       status: tenantScope || batchRows.length ? "ready" : "working",
-      owner: isTenantAdmin ? "Tenant" : "Superadmin",
+      owner: isTenantAdmin ? "Owner" : "Super Admin",
     },
     {
       label: "Carrier y seguridad elegidos",
       body: "QR, NFC UID, NTAG424 DNA o TT deben quedar declarados para no vender seguridad que el soporte no tiene.",
       status: secureBatches > 0 ? "ready" : batchRows.length ? "working" : "blocked",
-      owner: "Auditor",
+      owner: "Seguridad",
     },
     {
       label: "Manifest de unidades",
       body: "El producto vive en la ficha del lote. El manifest agrega UID, seriales, cajas, pallets, sensores y excepciones auditadas.",
       status: importedTags > 0 ? "ready" : "blocked",
-      owner: "Reseller",
+      owner: "Operaciones",
     },
     {
       label: "Activacion y prueba fisica",
       body: "El operador pega una muestra, hace tap real y confirma que el producto se ve bien antes de entregar miles de unidades.",
       status: activeTags > 0 ? "ready" : importedTags > 0 ? "working" : "blocked",
-      owner: "Tenant",
+      owner: "Operaciones",
     },
     {
       label: "Salida comercial",
       body: "Portal, club, NFT opcional, experiencias verificadas y marketplace quedan habilitados por politica del tenant.",
       status: activeTags > 0 && secureBatches > 0 ? "ready" : "working",
-      owner: "Superadmin",
+      owner: "Growth",
     },
   ];
 

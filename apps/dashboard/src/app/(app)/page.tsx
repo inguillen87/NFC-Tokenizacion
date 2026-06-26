@@ -26,29 +26,29 @@ const FALLBACK_KPIS = {
 
 function demoOverviewRows() {
   return [
-    { id: "demo-tenant-001", slug: "demobodega", name: "Bodega Balmec", scans: 61, duplicates: 1, tamper: 0, created_at: new Date().toISOString() },
+    { id: "balmec-tenant-001", slug: "demobodega", name: "Bodega Balmec", scans: 61, duplicates: 1, tamper: 0, created_at: new Date().toISOString() },
   ];
 }
 
 function demoLiveEventRows() {
   return [
     ...getDashboardDemoEvents(18).map(toDemoAdminEventRow),
-    { id: "home-demo-001", result: "VALID", reason: "sun_ok", uid_hex: "0474856A0B1090", created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(), city: "San Martin", country_code: "AR", lat: -34.5744, lng: -58.5358, bid: "DEMO-2026-02", tenant_slug: "demobodega", product_name: "Cabernet Franc Reserva 2022", source: "demo" },
-    { id: "home-demo-002", result: "CLAIMED", reason: "ownership_claimed", uid_hex: "04A1B2C3D5", created_at: new Date(Date.now() - 18 * 60 * 1000).toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "DEMO-2026-02", tenant_slug: "demobodega", product_name: "Gran Reserva Malbec", source: "demo" },
-    { id: "home-demo-003", result: "REPLAY_SUSPECT", reason: "replay_detected", uid_hex: "0487856A0B1090", created_at: new Date(Date.now() - 32 * 60 * 1000).toISOString(), city: "Cordoba", country_code: "AR", lat: -31.4201, lng: -64.1888, bid: "DEMO-2026-02", tenant_slug: "demobodega", product_name: "Reserva Malbec 2022", source: "demo" },
+    { id: "home-balmec-001", result: "VALID", reason: "sun_ok", uid_hex: "0474856A0B1090", created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(), city: "San Martin", country_code: "AR", lat: -34.5744, lng: -58.5358, bid: "BALMEC-2026-02", tenant_slug: "demobodega", product_name: "Cabernet Franc Reserva 2022", source: "seed" },
+    { id: "home-balmec-002", result: "CLAIMED", reason: "ownership_claimed", uid_hex: "04A1B2C3D5", created_at: new Date(Date.now() - 18 * 60 * 1000).toISOString(), city: "Buenos Aires", country_code: "AR", lat: -34.6037, lng: -58.3816, bid: "BALMEC-2026-02", tenant_slug: "demobodega", product_name: "Gran Reserva Malbec", source: "seed" },
+    { id: "home-balmec-003", result: "REPLAY_SUSPECT", reason: "replay_detected", uid_hex: "0487856A0B1090", created_at: new Date(Date.now() - 32 * 60 * 1000).toISOString(), city: "Cordoba", country_code: "AR", lat: -31.4201, lng: -64.1888, bid: "BALMEC-2026-02", tenant_slug: "demobodega", product_name: "Reserva Malbec 2022", source: "seed" },
   ];
 }
 
 function demoTokenizationRows() {
   return [
-    { id: "tok-demo-001", tenant_slug: "demobodega", bid: "DEMO-2026-02", uid_hex: "04A1B2C3D4", status: "anchored", network: "polygon-amoy", tx_hash: "0xabc123demo", token_id: "8841", requested_at: new Date(Date.now() - 40 * 60 * 1000).toISOString() },
-    { id: "tok-demo-002", tenant_slug: "demobodega", bid: "DEMO-2026-02", uid_hex: "04FFEEDDCC", status: "pending", network: "polygon-amoy", tx_hash: null, token_id: null, requested_at: new Date(Date.now() - 6 * 60 * 1000).toISOString() },
+    { id: "tok-balmec-001", tenant_slug: "demobodega", bid: "BALMEC-2026-02", uid_hex: "04A1B2C3D4", status: "anchored", network: "polygon-amoy", tx_hash: "0xabc1234f7a9e", token_id: "8841", requested_at: new Date(Date.now() - 40 * 60 * 1000).toISOString() },
+    { id: "tok-balmec-002", tenant_slug: "demobodega", bid: "BALMEC-2026-02", uid_hex: "04FFEEDDCC", status: "pending", network: "polygon-amoy", tx_hash: null, token_id: null, requested_at: new Date(Date.now() - 6 * 60 * 1000).toISOString() },
   ];
 }
 
 function demoBatchRows() {
   return [
-    { bid: "DEMO-2026-02", tenant_slug: "demobodega", tenant_id: "demobodega", status: "active", qty: 10, requested_quantity: 10, imported_tags: 10, active_tags: 10, type: "NTAG 424 DNA TT" },
+    { bid: "BALMEC-2026-02", tenant_slug: "demobodega", tenant_id: "demobodega", status: "active", qty: 10, requested_quantity: 10, imported_tags: 10, active_tags: 10, type: "NTAG 424 DNA TT" },
   ];
 }
 
@@ -117,15 +117,15 @@ function demoAnalyticsData() {
     },
     feed: [
       ...runtimeEvents.slice(0, 12).map((event) => ({ ...toDemoFeedRow(event), id: 100000 + event.sequence })),
-      { id: 9012, uidHex: "0474856A0B1090", bid: "DEMO-2026-02", result: "ok", city: "San Martin", country: "AR", device: "Android NFC", createdAt: new Date(now - 8 * 60 * 1000).toISOString() },
-      { id: 9011, uidHex: "0487856A0B1090", bid: "DEMO-2026-02", result: "replay", city: "Cordoba", country: "AR", device: "Android Pixel 9", createdAt: new Date(now - 25 * 60 * 1000).toISOString() },
+      { id: 9012, uidHex: "0474856A0B1090", bid: "BALMEC-2026-02", result: "ok", city: "San Martin", country: "AR", device: "Android NFC", createdAt: new Date(now - 8 * 60 * 1000).toISOString() },
+      { id: 9011, uidHex: "0487856A0B1090", bid: "BALMEC-2026-02", result: "replay", city: "Cordoba", country: "AR", device: "Android Pixel 9", createdAt: new Date(now - 25 * 60 * 1000).toISOString() },
     ],
     deviceSignals: [
       { device: "iPhone 15 Pro", scans: 114, countries: 3, validRate: 95.6, risk: 2.9 },
       { device: "Samsung Galaxy S24", scans: 90, countries: 3, validRate: 88.1, risk: 8.7 },
     ],
     products: [
-      { uidHex: "0474856A0B1090", bid: "DEMO-2026-02", productName: "Cabernet Franc Reserva 2022", winery: "Bodega Balmec", region: "Valle de Uco", vintage: "2022", scanCount: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), lastVerifiedCity: "San Martin", lastVerifiedCountry: "AR", tokenization: { status: "minted", network: "Polygon", txHash: "0xabc123demo", tokenId: "8841" } },
+      { uidHex: "0474856A0B1090", bid: "BALMEC-2026-02", productName: "Cabernet Franc Reserva 2022", winery: "Bodega Balmec", region: "Valle de Uco", vintage: "2022", scanCount: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), lastVerifiedCity: "San Martin", lastVerifiedCountry: "AR", tokenization: { status: "minted", network: "Polygon", txHash: "0xabc1234f7a9e", tokenId: "8841" } },
     ],
     tagJourney: [
       ...runtimeEvents.slice(0, 8).map((event) => ({
@@ -328,23 +328,23 @@ export default async function DashboardHome() {
         liveFeed: "Live operations feed",
         mission: "Mission control",
         mapTitle: "Live scan map",
-        mapSubtitle: isTenantAdmin ? "Geolocated scans for your tenant operations." : "Geolocated scans from tenants, demo packs and reseller simulations",
-        roleNote: isTenantAdmin ? "Tenant-level operations scope with no cross-tenant demo noise." : "Contextual permissions visible across tenants, CRM and demo orchestration.",
+        mapSubtitle: isTenantAdmin ? "Geolocated scans for your tenant operations." : "Geolocated scans from tenants, commercial showcases and partner operations.",
+        roleNote: isTenantAdmin ? "Tenant-level operations scope with no cross-tenant noise." : "Contextual permissions visible across tenants, CRM and commercial orchestration.",
       }
     : locale === "pt-BR"
     ? {
         liveFeed: "Feed de operações ao vivo",
         mission: "Mission control",
         mapTitle: "Mapa de scans ao vivo",
-        mapSubtitle: isTenantAdmin ? "Scans geolocalizados das operações do seu tenant." : "Scans geolocalizados de tenants, packs demo e simulações reseller",
-        roleNote: isTenantAdmin ? "Escopo operacional por tenant, sem ruído de demos cross-tenant." : "Permissões contextuais visíveis em tenants, CRM e orquestração demo.",
+        mapSubtitle: isTenantAdmin ? "Scans geolocalizados das operações do seu tenant." : "Scans geolocalizados de tenants, vitrines comerciais e operações parceiras",
+        roleNote: isTenantAdmin ? "Escopo operacional por tenant, sem ruído cross-tenant." : "Permissões contextuais visíveis em tenants, CRM e orquestração comercial.",
       }
     : {
         liveFeed: "Feed operativo en vivo",
         mission: "Mission control",
         mapTitle: "Mapa de escaneos en vivo",
-        mapSubtitle: isTenantAdmin ? "Escaneos geolocalizados de la operación de tu tenant." : "Escaneos geolocalizados de tenants, packs demo y simulaciones reseller",
-        roleNote: isTenantAdmin ? "Alcance operativo por tenant, sin ruido de demos cross-tenant." : "Permisos contextuales visibles en tenants, CRM y orquestación demo.",
+        mapSubtitle: isTenantAdmin ? "Escaneos geolocalizados de la operación de tu tenant." : "Escaneos geolocalizados de tenants, showrooms comerciales y operaciones partner",
+        roleNote: isTenantAdmin ? "Alcance operativo por tenant, sin ruido cross-tenant." : "Permisos contextuales visibles en tenants, CRM y orquestación comercial.",
       };
 
   const scopedOverviewRaw = tenantScope
@@ -430,31 +430,31 @@ export default async function DashboardHome() {
       label: "Tenant y reglas comerciales",
       body: tenantScope ? "El tenant está acotado a una marca. Revisar ownership, portal y marketplace antes de publicar." : "Superadmin ve todos los tenants y detecta quién está listo para rollout.",
       status: scopedOverviewRaw.length ? "ready" : "blocked",
-      owner: "Superadmin",
+      owner: "Super Admin",
     },
     {
       label: "Batch supplier cargado",
       body: "El lote debe traer carrier, BID, SKU, llaves cuando aplique y manifest auditable.",
       status: scopedBatchRows.length ? "ready" : "working",
-      owner: "Reseller",
+      owner: "Operaciones",
     },
     {
       label: "Tags importados y activos",
       body: "Una persona no técnica necesita ver cantidad planeada, importada, activa y pendiente sin consola.",
       status: activeTags > 0 ? "ready" : importedTags > 0 ? "working" : "blocked",
-      owner: "Tenant",
+      owner: "Owner",
     },
     {
       label: "Tap físico + riesgo",
-      body: "Auditoría confirma taps reales, replay bajo, tamper coherente y mapa de confianza.",
+      body: "QA operativo confirma taps reales, replay bajo, tamper coherente y mapa de confianza.",
       status: totalScans > 0 && totalDuplicates + totalTamper < Math.max(totalScans * 0.12, 3) ? "ready" : totalScans > 0 ? "working" : "blocked",
-      owner: "Auditor",
+      owner: "Seguridad",
     },
     {
       label: "Ownership, NFT y experiencia",
       body: "Portal, wallet, tokenización y experiencias verificadas quedan como salida comercial del tap.",
       status: mintedTokens > 0 ? "ready" : "working",
-      owner: "Tenant",
+      owner: "Growth",
     },
   ];
 

@@ -10,6 +10,7 @@ import { MultirubroOpsPanel } from "./multirubro-ops-panel";
 import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "./ops-command-center";
 import { ExecutiveRealtimeCrm } from "./executive-realtime-crm";
 import { VerifiedExperiencesPanel } from "./verified-experiences-panel";
+import { CustomerGrowthCommandCenter } from "./customer-growth-command-center";
 import {
   LayoutDashboard,
   Cpu,
@@ -46,6 +47,13 @@ interface DashboardHomeClientProps {
   activeTags: number;
   plannedTags: number;
   mintedTokens: number;
+}
+
+function displayBatchId(value: unknown) {
+  const bid = String(value || "");
+  if (!bid) return "BID pendiente";
+  if (bid.startsWith("DEMO-")) return bid.replace(/^DEMO-/, "BALMEC-");
+  return bid;
 }
 
 export default function DashboardHomeClient({
@@ -93,22 +101,22 @@ export default function DashboardHomeClient({
     <div className="space-y-6">
       {/* Dynamic Tab Navigation */}
       <nav className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5 backdrop-blur-xl sticky top-[72px] z-40">
-        <button type="button" title="Abrir CRM realtime: mapa vivo, taps, riesgo, hotspots y métricas ejecutivas" aria-label="Abrir CRM realtime" onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
+        <button type="button" title="CRM realtime: mapa vivo, taps, riesgo, ventas y decisiones por zona" aria-label="Abrir CRM realtime" onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
           <LayoutDashboard className="h-4 w-4" />
-          {tabText("CRM en vivo", "taps, mapa, riesgo")}
+          {tabText("CRM realtime", "mapa, riesgo, ventas")}
         </button>
-        <button type="button" title="Abrir operación NFC: lotes, tags, anclaje, rollout y auditoría" aria-label="Abrir operación NFC" onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
+        <button type="button" title="Rollout NFC: recibir lote, activar tags, auditar campo, anclar y publicar producto" aria-label="Abrir rollout NFC" onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
           <Cpu className="h-4 w-4" />
-          {tabText("Operación NFC", "lotes, tags, anclaje")}
+          {tabText("Rollout NFC", "lotes, QA, anclaje")}
         </button>
-        <button type="button" title="Abrir clientes y campañas: leads post-tap, loyalty y conversión" aria-label="Abrir clientes y campañas" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
+        <button type="button" title="Growth post-tap: convertir taps reales en clientes, vouchers, campañas y recompra" aria-label="Abrir growth post-tap" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
           <Trophy className="h-4 w-4" />
-          {tabText(isTenantAdmin ? "Clientes & campañas" : "Marketing & loyalty", "conversión post-tap")}
+          {tabText(isTenantAdmin ? "Growth post-tap" : "Marketing & loyalty", "leads, vouchers, club")}
         </button>
         {!isTenantAdmin && (
-          <button type="button" title="Abrir demo lab: escenarios guiados de validación, replay y tamper" aria-label="Abrir demo lab" onClick={() => setActiveTab("demo")} className={tabClass("demo")}>
+          <button type="button" title="Abrir showroom: escenarios guiados de validación, replay y tamper" aria-label="Abrir showroom" onClick={() => setActiveTab("demo")} className={tabClass("demo")}>
             <Terminal className="h-4 w-4" />
-            {tabText("Demo lab", "escenarios guiados")}
+            {tabText("Showroom", "flujo guiado")}
           </button>
         )}
         {!isTenantAdmin && (
@@ -169,9 +177,9 @@ export default function DashboardHomeClient({
                   <ShieldCheck className="h-4 w-4 text-emerald-400" />
                   Anclaje blockchain y estado de seguridad
                 </h2>
-                <Badge tone="cyan">Simulación Polygon Amoy</Badge>
+                <Badge tone="cyan">Polygon / cola de anclaje</Badge>
               </div>
-              <p className="mt-2 text-xs text-slate-400">Estado en tiempo real de transacciones de anclaje de autenticidad en Polygon.</p>
+              <p className="mt-2 text-xs text-slate-400">Estado de transacciones de autenticidad, cola interna y anclaje blockchain cuando el tenant lo tiene habilitado.</p>
               
               <div className="mt-4 grid gap-3 grid-cols-2 md:grid-cols-4">
                 <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3 text-xs text-slate-300">
@@ -197,9 +205,9 @@ export default function DashboardHomeClient({
                     <div key={String(row.id)} className="rounded-xl border border-white/5 bg-slate-900/30 px-3 py-2 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <StatusChip label={statusLabel} tone={tone} />
-                        <span className="font-mono">{row.bid} · {row.uid_hex}</span>
+                        <span className="font-mono">{displayBatchId(row.bid)} · {row.uid_hex}</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 break-all">{row.tx_hash || "Sin hash de transacción (simulado)"}</span>
+                      <span className="text-[10px] text-slate-500 break-all">{row.tx_hash || "Sin hash de transacción registrado"}</span>
                     </div>
                   );
                 })}
@@ -217,21 +225,28 @@ export default function DashboardHomeClient({
         {activeTab === "loyalty" && (
           <div className="space-y-8">
             {!isTenantAdmin ? <MultirubroOpsPanel /> : null}
-            <VerifiedExperiencesPanel />
+            <CustomerGrowthCommandCenter
+              events={initialRealtimeEvents}
+              tenantScope={tenantScope}
+              successfulTaps={successfulTaps}
+              failedTaps={failedTaps}
+            />
+            <VerifiedExperiencesPanel mode="loyalty" />
             
             {/* Quick access grid for marketing features */}
             <ModuleGrid
               actionLabel={copy.shell.openModule}
               modules={isTenantAdmin
                 ? [
-                    { title: "Catálogo de Beneficios", description: "Configurá premios y descuentos para tus usuarios.", href: "/loyalty/rewards", status: "activo", tone: "green" as const },
-                    { title: "Loyalty Studio", description: "Diseñá las reglas comerciales de acumulación de puntos.", href: "/loyalty", status: "activo", tone: "green" as const },
-                    { title: "Onboarding Setup", description: "Configuración guiada para nuevos tenants.", href: "/onboarding", status: "activo", tone: "green" as const },
+                    { title: "Growth & BotIA", description: "Crear campañas WhatsApp/email desde señales de tap, ciudad y producto.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
+                    { title: "Beneficios y vouchers", description: "Configurar premios, canjes, códigos QR y reglas de expiración.", href: "/loyalty/rewards", status: "activo", tone: "green" as const },
+                    { title: "Portal de usuarios", description: "Ver usuarios, opt-in, taps, wallet, rewards y marketplace conectado.", href: "/consumer-network/overview", status: "activo", tone: "green" as const },
+                    { title: "Experiencias verificadas", description: "Reviews owner-only con moderación de marca y evidencia de tap real.", href: "/loyalty/experiences", status: "activo", tone: "green" as const },
                   ]
                 : [
-                    { title: "Catálogo de Beneficios", description: "Configurá premios y descuentos para tus usuarios.", href: "/loyalty/rewards", status: "activo", tone: "green" as const },
-                    { title: "Loyalty Studio", description: "Diseñá las reglas comerciales de acumulación de puntos.", href: "/loyalty", status: "activo", tone: "green" as const },
-                    { title: "Configuración Multirubros", description: "Alternar entre bodegas, cosmética, farma y eventos.", href: "/onboarding", status: "activo", tone: "green" as const },
+                    { title: "Portfolio growth", description: "Comparar tenants por audiencia, campaña, canje, recurrencia y riesgo.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
+                    { title: "Beneficios y vouchers", description: "Gobernar catálogos de premios por marca, ciudad, campaña y segmento.", href: "/loyalty/rewards", status: "activo", tone: "green" as const },
+                    { title: "Marketplace opt-in", description: "Usuarios habilitados para comprar, vender, tokenizar o reclamar ownership.", href: "/consumer-network/marketplace", status: "activo", tone: "green" as const },
                   ]}
             />
           </div>
@@ -277,21 +292,21 @@ export default function DashboardHomeClient({
 
             <Card className="p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Guía de Simulación del Ciclo de Vida</h2>
-                <span className="text-xs text-slate-400">Simulación interactiva paso a paso</span>
+                <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Guía operativa del ciclo de vida</h2>
+                <span className="text-xs text-slate-400">Flujo completo para venta enterprise</span>
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl border border-white/5 bg-slate-900/50 p-4 text-xs text-slate-300">
                   <p className="font-bold text-white mb-1">1) Elegí el vertical</p>
-                  <p className="leading-relaxed">Selecciona el pack de demostración de bodega, eventos o farma en Marketing & Loyalty.</p>
+                  <p className="leading-relaxed">Seleccioná bodega, agro, eventos o farma y definí qué experiencia comercial activa cada tap.</p>
                 </div>
                 <div className="rounded-2xl border border-white/5 bg-slate-900/50 p-4 text-xs text-slate-300">
                   <p className="font-bold text-white mb-1">2) Importá y activá</p>
-                  <p className="leading-relaxed">Ve a la pestaña de Infraestructura NFC y simula el import de lotes y activación de llaves NTAG.</p>
+                  <p className="leading-relaxed">Abrí Rollout NFC para cargar lote, activar tags, auditar campo, anclar y publicar salida comercial.</p>
                 </div>
                 <div className="rounded-2xl border border-white/5 bg-slate-900/50 p-4 text-xs text-slate-300">
                   <p className="font-bold text-white mb-1">3) Hacé el Tap</p>
-                  <p className="leading-relaxed">Escanea simulado en la vista móvil y mira en vivo cómo impacta la geolocalización en el mapa.</p>
+                  <p className="leading-relaxed">Hacé un tap real, verificá el mapa vivo y convertí la señal en voucher, lead, venta o soporte.</p>
                 </div>
               </div>
             </Card>

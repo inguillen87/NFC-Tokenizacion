@@ -177,8 +177,8 @@ function timezoneLabel(timeZone: string) {
 
 function tenantDisplayName(value?: string | null) {
   const normalized = String(value || "").toLowerCase();
+  if (!value || normalized === "all") return "Todos los tenants";
   if (normalized === "demobodega" || normalized === "bodegabalmec" || normalized === "bodega-balmec") return "Bodega Balmec";
-  if (!value) return "Bodega Balmec";
   return String(value);
 }
 
@@ -435,8 +435,15 @@ export function ExecutiveRealtimeCrm({
     const onFullscreenChange = () => {
       setIsMapFullscreen(document.fullscreenElement === mapPanelRef.current);
     };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMapFullscreen(false);
+    };
     document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   useEffect(() => {
@@ -685,11 +692,15 @@ export function ExecutiveRealtimeCrm({
     try {
       if (document.fullscreenElement) {
         await document.exitFullscreen();
+        setIsMapFullscreen(false);
+      } else if (isMapFullscreen) {
+        setIsMapFullscreen(false);
       } else {
         await panel.requestFullscreen();
+        setIsMapFullscreen(true);
       }
     } catch {
-      setIsMapFullscreen(false);
+      setIsMapFullscreen((value) => !value);
     }
   };
 
@@ -742,8 +753,8 @@ export function ExecutiveRealtimeCrm({
           <span className="flex items-center gap-2" title={`Horario operativo del tenant: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="hidden text-[10px] uppercase tracking-[0.08em] text-slate-500 xl:inline">{consoleTimezoneLabel}</span></span>
           <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
           <button type="button" title="Filtrar la consola al tenant de tu sesion" className="flex items-center gap-3 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 text-left" onClick={() => setSelectedTenant(tenantScope || "all")}>
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">TA</span>
-            <span><b className="block text-white">Tenant Admin</b>{tenantDisplayName(selectedTenant === "all" ? tenantScope : selectedTenant)}</span>
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">{mode === "global" ? "SA" : "TA"}</span>
+            <span><b className="block text-white">{mode === "global" ? "Super Admin" : "Tenant Admin"}</b>{tenantDisplayName(selectedTenant === "all" ? tenantScope : selectedTenant)}</span>
             <ChevronDown className="h-4 w-4 text-slate-500" />
           </button>
         </div>
@@ -855,7 +866,7 @@ export function ExecutiveRealtimeCrm({
               </div>
             </div>
 
-            <div ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713]" : "min-h-[560px] rounded-xl sm:min-h-[620px] lg:min-h-0"}`}>
+            <div ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "min-h-[560px] rounded-xl sm:min-h-[620px] lg:min-h-0"}`}>
               <div className="absolute left-4 top-4 z-20 grid gap-2">
                 <button type="button" title="Acercar mapa sin agrandar artificialmente los taps" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
                 <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">-</button>
@@ -902,7 +913,7 @@ export function ExecutiveRealtimeCrm({
                 ))}
               </div>
 
-              <div className="h-[420px] w-full p-3 pt-[76px] lg:h-full lg:p-3 lg:pr-[300px]">
+              <div className={`${isMapFullscreen ? "h-full" : "h-[460px] sm:h-[520px]"} w-full p-3 pt-[76px] lg:h-full lg:p-3 lg:pr-[300px]`}>
                 <RealtimeMapLibreMap hotspots={hotspots} events={visibleEvents} mapView={mapView} mode={mode} zoom={mapZoom} baseMap={baseMap} />
               </div>
 
