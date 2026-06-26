@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
+import { Globe3dMap } from "@product/ui";
 import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 
 type Vertical = PlatformDemoVertical;
