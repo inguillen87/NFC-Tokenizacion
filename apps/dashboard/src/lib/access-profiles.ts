@@ -55,12 +55,12 @@ export function getAccessProfiles(): AccessProfile[] {
     profile({
       key: "tenant-admin",
       role: "tenant-admin",
-      label: "Owner Bodega Balmec",
+      label: "Admin tenant Bodega Balmec",
       emailEnv: ["TENANT_ADMIN_EMAIL", "BODEGA_ADMIN_EMAIL", "NEXT_PUBLIC_TENANT_ADMIN_EMAIL"],
       passwordEnv: ["TENANT_ADMIN_PASSWORD", "BODEGA_ADMIN_PASSWORD", "NEXT_PUBLIC_TENANT_ADMIN_PASSWORD"],
       fallbackEmail: "demobodega@nexid.lat",
       fallbackPassword: "nexid_demo_2026",
-      note: "Dueño operativo del tenant: lotes, tags, taps, marketplace, rewards y empleados.",
+      note: "Administrador operativo del tenant: lotes, tags, taps, marketplace, rewards y empleados.",
       permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"],
     }),
     profile({

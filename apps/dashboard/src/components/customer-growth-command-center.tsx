@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, StatusChip } from "@product/ui";
-import { AlertTriangle, Bot, Download, Gift, Mail, MapPin, MessageCircle, MousePointerClick, Send, ShieldCheck, ShoppingBag, Sparkles, Users } from "lucide-react";
+import { AlertTriangle, Bot, ClipboardCheck, Download, Gift, Mail, MapPin, MessageCircle, MousePointerClick, Route, Send, ShieldCheck, ShoppingBag, Sparkles, Sprout, Users } from "lucide-react";
 import type { TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type SegmentTone = "cyan" | "green" | "amber" | "rose" | "violet";
@@ -144,6 +144,30 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
     { label: "Compra", value: Math.max(Math.round((successfulTaps || insights.valid) * 0.22), 0), pct: insights.total ? Math.round((Math.max(Math.round((successfulTaps || insights.valid) * 0.22), 0) / insights.total) * 100) : 0, icon: ShoppingBag },
   ];
 
+  const enterpriseGrowthPlays = [
+    {
+      icon: Sprout,
+      title: "Soporte técnico desde producto real",
+      body: "Después del tap válido se abre ficha técnica, EPP, dosificación, soporte y confirmación de lectura. No reemplaza sistemas agro: les entrega una señal verificable.",
+      metric: `${formatNumber(insights.valid)} lecturas confiables`,
+      href: "/loyalty/campaigns?template=agro_soporte",
+    },
+    {
+      icon: Route,
+      title: "Canal gris y distribución",
+      body: "Cruza ciudad, lote y repetición de UID para detectar producto fuera de zona, vendedor no previsto o concentración sospechosa de taps.",
+      metric: `${formatNumber(insights.risk)} alertas`,
+      href: "/events?view=channel-risk",
+    },
+    {
+      icon: ClipboardCheck,
+      title: "Trivia técnica y first-party data",
+      body: "Encuestas cortas post-tap miden conocimiento real del productor y activan beneficios sin pedir datos antes de entregar valor.",
+      metric: `${formatNumber(Math.max(insights.unique, successfulTaps))} perfiles`,
+      href: "/loyalty/campaigns?template=agro_trivia",
+    },
+  ];
+
   return (
     <Card className="relative overflow-hidden p-0">
       {notice ? (
@@ -187,6 +211,37 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-100">Tenant activo</p>
             <p className="mt-2 text-3xl font-black text-white">{tenantScope ? "1" : "multi"}</p>
             <p className="mt-1 text-xs text-violet-100/80">{activeTenantLabel}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-3xl border border-emerald-300/15 bg-slate-950/45 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Modo agro enterprise</p>
+              <h3 className="mt-1 text-lg font-black text-white">De tap verificado a campaña útil para productor, canal y equipo técnico.</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-400">
+                Esta capa evita vender un CRM genérico: convierte señales físicas en acciones comerciales, soporte y aprendizaje de mercado.
+              </p>
+            </div>
+            <Badge tone="green">Syngenta-ready</Badge>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {enterpriseGrowthPlays.map((play) => {
+              const Icon = play.icon;
+              return (
+                <Link key={play.title} href={play.href} className="group rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(6,78,59,.16),rgba(15,23,42,.72))] p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/35">
+                  <div className="flex items-start justify-between gap-3">
+                    <Icon className="h-5 w-5 text-emerald-200" aria-hidden="true" />
+                    <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100">{play.metric}</span>
+                  </div>
+                  <h4 className="mt-3 text-sm font-black text-white">{play.title}</h4>
+                  <p className="mt-2 min-h-[72px] text-xs leading-5 text-slate-400">{play.body}</p>
+                  <span className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300/25 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-100 group-hover:bg-emerald-300 group-hover:text-slate-950">
+                    <Send className="h-3.5 w-3.5" /> Activar play
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>

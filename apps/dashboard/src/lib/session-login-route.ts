@@ -50,9 +50,9 @@ function demoAccountForRole(role: string) {
     return { email: "guillen.marce@gmail.com", label: "Super Admin", permissions: ["*"] };
   }
   if (role === "tenant-admin") {
-    return { email: "demobodega@nexid.lat", label: "Owner Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
+    return { email: "demobodega@nexid.lat", label: "Admin tenant Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
   }
-  return { email: "demobodega@nexid.lat", label: "Owner Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
+  return { email: "demobodega@nexid.lat", label: "Admin tenant Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
 }
 
 function buildSnapshot(

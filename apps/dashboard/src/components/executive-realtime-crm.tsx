@@ -79,20 +79,89 @@ const BASEMAP_OPTIONS: Array<{ value: BaseMapLayer; label: string; title: string
   { value: "terrain", label: "Terreno", title: "Relieve, pitch y sombreado para lectura territorial premium" },
 ];
 
-const AGRO_ENTERPRISE_PLAYBOOK = [
-  {
-    title: "Unidad fisica verificada",
-    body: "Bolsa, bidon, caja o ticket queda unido a NFC/QR, lote, canal y geografia real del tap.",
+type CommercialContext = {
+  key: "wine" | "agro" | "general";
+  panelTitle: string;
+  panelSubtitle: string;
+  headline: string;
+  noData: string;
+  playbooks: Array<{ eyebrow: string; title: string; body: string }>;
+};
+
+const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> = {
+  wine: {
+    key: "wine",
+    panelTitle: "IA comercial para bodega",
+    panelSubtitle: "dónde vender más, activar club, reponer stock y medir canjes",
+    headline: "Próxima acción recomendada",
+    noData: "Apenas entren taps válidos, la IA prioriza ciudad, club, voucher, stock y punto de canje.",
+    playbooks: [
+      {
+        eyebrow: "Bodega 1",
+        title: "Producto premium verificado",
+        body: "Cada botella, caja o ticket queda unido a NFC/QR, lote, producto, ciudad y momento real del tap.",
+      },
+      {
+        eyebrow: "Bodega 2",
+        title: "Zona con intención",
+        body: "El CRM muestra dónde hay lecturas válidas, conversión a cliente y demanda para reponer o pautar.",
+      },
+      {
+        eyebrow: "Bodega 3",
+        title: "Club y recompra",
+        body: "Activa voucher, cata, visita guiada, WhatsApp/email y recompra desde el mismo evento.",
+      },
+    ],
   },
-  {
-    title: "Canal y territorio",
-    body: "El CRM muestra ciudades con demanda, GPS bajo, riesgo y audiencia lista para WhatsApp/email.",
+  agro: {
+    key: "agro",
+    panelTitle: "IA comercial agro",
+    panelSubtitle: "canal, territorio, uso responsable, stock y logística",
+    headline: "Zona agro accionable",
+    noData: "Apenas entren taps válidos, la IA prioriza lote, canal, región, uso responsable y soporte técnico.",
+    playbooks: [
+      {
+        eyebrow: "Agro 1",
+        title: "Unidad física verificada",
+        body: "Bolsa, bidón, caja o ticket queda unido a NFC/QR, lote, canal y geografía real del tap.",
+      },
+      {
+        eyebrow: "Agro 2",
+        title: "Canal y territorio",
+        body: "El CRM muestra demanda, GPS bajo, riesgo, canal gris y audiencia lista para soporte o campaña.",
+      },
+      {
+        eyebrow: "Agro 3",
+        title: "Post-venta accionable",
+        body: "Activa capacitación, uso responsable, reclamos, garantía, recompra y logística desde el mismo evento.",
+      },
+    ],
   },
-  {
-    title: "Post-venta accionable",
-    body: "Activa vouchers, capacitacion, stewardship, reclamos, garantia y recompra desde el mismo evento.",
+  general: {
+    key: "general",
+    panelTitle: "IA comercial por zona",
+    panelSubtitle: "promos, stock, soporte, campañas y logística",
+    headline: "Dónde actuar ahora",
+    noData: "Apenas entren taps válidos, la IA prioriza ciudad, segmento, canal y acción comercial.",
+    playbooks: [
+      {
+        eyebrow: "Operacion 1",
+        title: "Producto real",
+        body: "Cada unidad queda unida a NFC/QR, lote, ubicación, evento y contexto de cliente.",
+      },
+      {
+        eyebrow: "Operacion 2",
+        title: "Demanda por zona",
+        body: "El CRM muestra ciudades con actividad, riesgo, conversión y audiencia accionable.",
+      },
+      {
+        eyebrow: "Operacion 3",
+        title: "Accion post-tap",
+        body: "Activa beneficio, soporte, encuesta, ticket, recompra o campaña desde el mismo tap.",
+      },
+    ],
   },
-];
+};
 
 const DEFAULT_CONSOLE_TIMEZONE = "America/Argentina/Buenos_Aires";
 
@@ -338,9 +407,39 @@ function buildMarketOpportunities(
   }).sort((a, b) => b.score - a.score || b.taps - a.taps).slice(0, 5);
 }
 
+function resolveCommercialContext(
+  rows: TenantTapRealtimeEvent[],
+  tenantScope: string,
+  selectedTenant: string,
+): CommercialContext {
+  const haystack = [
+    tenantScope,
+    selectedTenant,
+    ...rows.flatMap((row) => [row.tenantSlug, row.productName, row.batchId, row.city, row.country]),
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  if (/(syngenta|agro|semilla|seed|campo|bidon|bidón|fertiliz|crop|soja|maiz|maíz)/.test(haystack)) {
+    return COMMERCIAL_CONTEXTS.agro;
+  }
+  if (/(bodega|balmec|vino|wine|malbec|cabernet|chardonnay|pinot|cata|viñedo|vinedo)/.test(haystack)) {
+    return COMMERCIAL_CONTEXTS.wine;
+  }
+  return COMMERCIAL_CONTEXTS.general;
+}
+
+function commercialRecommendation(context: CommercialContext, opportunity: MarketOpportunity) {
+  if (context.key === "wine") {
+    return `Activar ${opportunity.offer} en ${opportunity.city}: cata, visita o beneficio para UIDs válidos. Reponer producto, habilitar QR/NFC de canje y pauta local donde ya hay ${opportunity.taps} taps.`;
+  }
+  if (context.key === "agro") {
+    return `Priorizar ${opportunity.city}: revisar canal, disponibilidad de lote, soporte técnico y uso responsable. Activar comunicación por ${opportunity.channel} donde ya hay ${opportunity.taps} taps.`;
+  }
+  return `Activar ${opportunity.offer} en ${opportunity.city} por ${opportunity.channel}. Priorizar stock, QR/NFC activos, puntos de canje y pauta local donde ya hay ${opportunity.taps} taps.`;
+}
+
 function MiniSparkline({ data, color, dataKey = "taps" }: { data: Array<Record<string, number | string>>; color: string; dataKey?: string }) {
   return (
-    <div className="h-7 w-full">
+    <div className="h-6 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
           <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={false} />
@@ -369,7 +468,7 @@ function MetricCard({
 }) {
   const color = tone === "red" ? "#ef4444" : tone === "green" ? "#22c55e" : tone === "blue" ? "#60a5fa" : "#22d3ee";
   return (
-    <div className="rounded-lg border border-slate-700/70 bg-[linear-gradient(180deg,rgba(17,31,52,.92),rgba(7,15,29,.94))] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
+    <div className="rounded-lg border border-slate-700/70 bg-[linear-gradient(180deg,rgba(17,31,52,.92),rgba(7,15,29,.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-300">
           <span style={{ color }}>{icon}</span>
@@ -378,8 +477,8 @@ function MetricCard({
         <span className={tone === "red" ? "text-[11px] font-semibold text-red-300" : "text-[11px] font-semibold text-emerald-300"}>{delta}</span>
       </div>
       <div className="mt-2 flex items-end justify-between gap-3">
-        <p className="text-2xl font-black tracking-[-0.02em] text-white">{value}</p>
-        <p className="pb-1 text-[10px] text-slate-500">vs ventana previa</p>
+        <p className="text-[22px] font-black tracking-[-0.02em] text-white">{value}</p>
+        <p className="pb-1 text-[10px] text-slate-500">ventana activa</p>
       </div>
       <div className="mt-1">
         <MiniSparkline data={data} color={color} dataKey={dataKey} />
@@ -391,10 +490,10 @@ function MetricCard({
 function FunnelNode({ icon, label, value, pct, tone }: { icon: ReactNode; label: string; value: number; pct: number; tone: string }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center text-center">
-      <div className="grid h-12 w-12 place-items-center rounded-full border shadow-[0_0_26px_rgba(34,211,238,.18)]" style={{ borderColor: tone, background: `${tone}22`, color: tone }}>
+      <div className="grid h-10 w-10 place-items-center rounded-full border shadow-[0_0_22px_rgba(34,211,238,.16)]" style={{ borderColor: tone, background: `${tone}22`, color: tone }}>
         {icon}
       </div>
-      <p className="mt-1 text-xs font-semibold text-slate-200">{label}</p>
+      <p className="mt-1 text-[11px] font-semibold text-slate-200">{label}</p>
       <p className="text-sm font-black text-white">{formatNumber(value)}</p>
       <p className="text-xs text-slate-400">{formatPercent(pct)}</p>
     </div>
@@ -575,6 +674,10 @@ export function ExecutiveRealtimeCrm({
   const hotspots = useMemo(() => buildHotspots(visibleEvents), [visibleEvents]);
   const marketOpportunities = useMemo(() => buildMarketOpportunities(hotspots, visibleEvents), [hotspots, visibleEvents]);
   const topOpportunity = marketOpportunities[0] || null;
+  const commercialContext = useMemo(
+    () => resolveCommercialContext(visibleEvents, tenantScope, selectedTenant),
+    [selectedTenant, tenantScope, visibleEvents],
+  );
   const latestEvent = visibleEvents[0] || null;
   const todayLabel = useMemo(() => formatDateInZone(Date.now(), consoleTimezone), [consoleTimezone]);
 
@@ -713,13 +816,13 @@ export function ExecutiveRealtimeCrm({
   };
 
   const railItems = [
-    { icon: <Activity className="h-5 w-5" />, active: false, label: "Realtime CRM", short: "CRM", title: "Cockpit ejecutivo: taps, riesgo, mapa, conversión y acción comercial.", action: () => onSectionChange?.("summary") },
-    { icon: <Globe className="h-5 w-5" />, active: mapView === "heat", label: "Mapa de calor", short: "Calor", title: "Ver concentración de taps por ciudad y territorio.", action: () => setMapView("heat") },
-    { icon: <Target className="h-5 w-5" />, active: mapView === "nearby", label: "Cercanías", short: "Cerca", title: "Ver radios de cercanía para activar promos, staff o stock local.", action: () => setMapView("nearby") },
-    { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes", short: "Clientes", title: "Abrir clientes, loyalty, vouchers y campañas post-tap.", action: () => onSectionChange?.("loyalty") },
-    { icon: <ShieldCheck className="h-5 w-5" />, active: mapView === "points", label: "Riesgo", short: "Riesgo", title: "Ver puntos individuales y revisar anomalías, replay o GPS dudoso.", action: () => setMapView("points") },
-    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Analítica", short: "KPIs", title: "Volver a la visión ejecutiva con KPIs y funnel post-tap.", action: () => onSectionChange?.("summary") },
-    { icon: <Settings className="h-5 w-5" />, active: false, label: "Reset vista", short: "Reset", title: "Restablecer tenant, calor y zoom para presentación.", action: () => { setSelectedTenant("all"); setMapView("heat"); setMapZoom(1); setBaseMap("dark"); } },
+    { icon: <Activity className="h-5 w-5" />, active: true, label: "Resumen CRM", short: "CRM", title: "Ver KPIs de la ventana activa, funnel y mapa en vivo.", action: () => onSectionChange?.("summary") },
+    { icon: <Globe className="h-5 w-5" />, active: false, label: "Enfocar mapa", short: "Mapa", title: "Centrar la vista operativa sin cambiar la capa seleccionada.", action: () => { setMapZoom(1); document.getElementById("live-tap-map")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
+    { icon: <Megaphone className="h-5 w-5" />, active: false, label: "Growth IA", short: "Growth", title: "Ver recomendacion comercial por zona y crear campana.", action: () => document.getElementById("commercial-ai-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" }) },
+    { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes", short: "Clientes", title: "Abrir clientes, loyalty, vouchers y campanas post-tap.", action: () => onSectionChange?.("loyalty") },
+    { icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgo", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { window.location.href = "/events?filter=risk"; } },
+    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar CSV", short: "CSV", title: "Exportar la ventana activa con horario del tenant.", action: handleExport },
+    { icon: <Settings className="h-5 w-5" />, active: false, label: "Reset vista", short: "Reset", title: "Restablecer tenant, calor, zoom y capa base para presentacion.", action: () => { setSelectedTenant("all"); setMapView("heat"); setMapZoom(1); setBaseMap("dark"); } },
   ];
 
   return (
@@ -738,13 +841,13 @@ export function ExecutiveRealtimeCrm({
 
         <nav className="order-3 grid h-11 w-full grid-cols-3 overflow-hidden rounded-xl border border-white/8 bg-slate-950/45 text-xs font-semibold text-slate-300 sm:text-sm lg:order-none lg:mx-auto lg:h-12 lg:w-[470px]">
           <button type="button" title="Volver al cockpit de CRM realtime" onClick={() => onSectionChange?.("summary")} className="flex items-center justify-center gap-2 border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200">
-            <Activity className="h-4 w-4" /> Realtime CRM
+            <Activity className="h-4 w-4" /> CRM en vivo
           </button>
           <button type="button" title="Abrir rollout operativo: lotes, tags, preflight y tokenización" onClick={() => onSectionChange?.("infra")} className="flex items-center justify-center gap-2 hover:bg-white/5">
-            <Truck className="h-4 w-4" /> Rollout
+            <Truck className="h-4 w-4" /> Operación NFC
           </button>
           <button type="button" title="Abrir clientes, loyalty y campañas post-tap" onClick={() => onSectionChange?.("loyalty")} className="flex items-center justify-center gap-2 hover:bg-white/5">
-            <Users className="h-4 w-4" /> Customers
+            <Users className="h-4 w-4" /> Clientes
           </button>
         </nav>
 
@@ -754,7 +857,7 @@ export function ExecutiveRealtimeCrm({
           <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
           <button type="button" title="Filtrar la consola al tenant de tu sesion" className="flex items-center gap-3 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 text-left" onClick={() => setSelectedTenant(tenantScope || "all")}>
             <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">{mode === "global" ? "SA" : "TA"}</span>
-            <span><b className="block text-white">{mode === "global" ? "Super Admin" : "Tenant Admin"}</b>{tenantDisplayName(selectedTenant === "all" ? tenantScope : selectedTenant)}</span>
+            <span><b className="block text-white">{mode === "global" ? "Super Admin" : "Admin tenant"}</b>{tenantDisplayName(selectedTenant === "all" ? tenantScope : selectedTenant)}</span>
             <ChevronDown className="h-4 w-4 text-slate-500" />
           </button>
         </div>
@@ -785,20 +888,23 @@ export function ExecutiveRealtimeCrm({
         </button>
       </aside>
 
-      <main className="relative z-10 grid min-h-[calc(100vh-70px)] grid-cols-1 gap-4 overflow-visible px-3 py-4 pb-14 lg:ml-24 lg:h-[calc(100vh-102px)] lg:grid-cols-[minmax(330px,0.58fr)_minmax(0,1.42fr)] lg:gap-4 lg:overflow-hidden lg:p-4 2xl:grid-cols-[440px_minmax(0,1fr)] 2xl:gap-5 2xl:p-5">
-        <section className="order-2 min-h-0 space-y-3 overflow-hidden lg:order-1">
-          <div className="flex items-center justify-between">
+      <main className="relative z-10 flex min-h-[calc(100vh-70px)] flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-102px)] lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:gap-4 2xl:p-4">
+        <section className="order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-96 lg:shrink-0">
+          <div className="flex items-start justify-between gap-3">
+            <span>
               <h2 className="text-lg font-bold text-white">Visión ejecutiva en vivo</h2>
+              <p className="text-[11px] text-slate-500">Basado en tenant, periodo y filtros activos del stream.</p>
+            </span>
             <span className="flex items-center gap-2 text-xs text-slate-400"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> {connected ? "En vivo" : "Sincronizando"}</span>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <MetricCard icon={<Radio className="h-5 w-5" />} label="Taps en vivo" value={formatNumber(metrics.total)} delta="↗ real" tone="cyan" data={velocitySeries} />
-            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Tasa válida" value={formatPercent(metrics.validRate)} delta="real" tone="green" data={velocitySeries} dataKey="valid" />
-            <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="Riesgo de fraude" value={formatPercent(metrics.fraudRate)} delta={metrics.risk ? "↗ revisar" : "0 alertas"} tone="red" data={velocitySeries} dataKey="risk" />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <MetricCard icon={<Radio className="h-5 w-5" />} label="Taps en vivo" value={formatNumber(metrics.total)} delta="real" tone="cyan" data={velocitySeries} />
+            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Tasa válida" value={formatPercent(metrics.validRate)} delta="autenticados" tone="green" data={velocitySeries} dataKey="valid" />
+            <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="Riesgo de fraude" value={formatPercent(metrics.fraudRate)} delta={metrics.risk ? "revisar" : "0 alertas"} tone="red" data={velocitySeries} dataKey="risk" />
             <MetricCard icon={<MapPin className="h-5 w-5" />} label="Cobertura GPS real" value={formatPercent(metrics.gpsCoverage)} delta="GPS" tone="green" data={velocitySeries} />
-            <MetricCard icon={<Users className="h-5 w-5" />} label="Leads capturados" value={formatNumber(metrics.actionable)} delta="CRM listo" tone="blue" data={velocitySeries} dataKey="valid" />
-            <MetricCard icon={<Filter className="h-5 w-5" />} label="Conversión a lead" value={formatPercent(metrics.leadConversion)} delta="post-tap" tone="green" data={velocitySeries} dataKey="valid" />
+            <MetricCard icon={<Users className="h-5 w-5" />} label="Contactos CRM" value={formatNumber(metrics.actionable)} delta="accionables" tone="blue" data={velocitySeries} dataKey="valid" />
+            <MetricCard icon={<Filter className="h-5 w-5" />} label="Conversión CRM" value={formatPercent(metrics.leadConversion)} delta="post-tap" tone="green" data={velocitySeries} dataKey="valid" />
           </div>
 
           <div className="rounded-lg border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
@@ -806,7 +912,7 @@ export function ExecutiveRealtimeCrm({
               <p className="text-sm font-semibold text-white">Velocidad de taps <span className="font-normal text-slate-400">(taps por minuto)</span></p>
               <button type="button" title="Cambiar ventana temporal del CRM" onClick={cycleTimeRange} className="rounded-lg border border-white/8 bg-slate-950/60 px-3 py-1 text-xs text-slate-300">{timeRangeLabel(timeRange)}</button>
             </div>
-            <div className="mt-3 h-[118px]">
+            <div className="mt-2 h-[92px] 2xl:h-[112px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={velocitySeries} margin={{ top: 8, right: 12, left: -22, bottom: 0 }}>
                   <defs>
@@ -827,25 +933,28 @@ export function ExecutiveRealtimeCrm({
 
           <div className="rounded-lg border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-bold text-white">Funnel post-tap</p>
-              <span className="text-xs text-slate-500">CRM-ready: {metrics.actionable ? `${metrics.actionable} taps accionables` : "sin leads accionables"}</span>
+              <span>
+                <p className="text-sm font-bold text-white">Funnel post-tap</p>
+                <p className="text-[11px] text-slate-500">De lectura física a acción comercial.</p>
+              </span>
+              <span className="text-xs text-slate-500">{metrics.actionable ? `${metrics.actionable} contactos accionables` : "sin contactos aún"}</span>
             </div>
-            <div className="mt-4 flex items-start gap-2 overflow-x-auto pb-1">
-              <FunnelNode icon={<MousePointerClick className="h-6 w-6" />} label="Tap" value={metrics.total} pct={100} tone="#22d3ee" />
+            <div className="mt-3 flex items-start gap-1 overflow-x-auto pb-1">
+              <FunnelNode icon={<MousePointerClick className="h-5 w-5" />} label="Lecturas" value={metrics.total} pct={100} tone="#22d3ee" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<ShieldCheck className="h-6 w-6" />} label="Válido" value={metrics.valid} pct={metrics.validRate} tone="#22c55e" />
+              <FunnelNode icon={<ShieldCheck className="h-5 w-5" />} label="Válidas" value={metrics.valid} pct={metrics.validRate} tone="#22c55e" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<BadgeCheck className="h-6 w-6" />} label="Claim" value={metrics.gps} pct={metrics.gpsCoverage} tone="#facc15" />
+              <FunnelNode icon={<BadgeCheck className="h-5 w-5" />} label="GPS real" value={metrics.gps} pct={metrics.gpsCoverage} tone="#facc15" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<Users className="h-6 w-6" />} label="Lead" value={metrics.actionable} pct={metrics.leadConversion} tone="#a855f7" />
+              <FunnelNode icon={<Users className="h-5 w-5" />} label="Contacto" value={metrics.actionable} pct={metrics.leadConversion} tone="#a855f7" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<Tags className="h-6 w-6" />} label="Oferta" value={metrics.offerReady} pct={metrics.total ? (metrics.offerReady / metrics.total) * 100 : 0} tone="#38bdf8" />
+              <FunnelNode icon={<Tags className="h-5 w-5" />} label="Zonas" value={metrics.offerReady} pct={metrics.total ? (metrics.offerReady / metrics.total) * 100 : 0} tone="#38bdf8" />
             </div>
           </div>
         </section>
 
-        <section className="order-1 grid min-h-0 grid-rows-none gap-4 lg:order-2 lg:grid-rows-[minmax(430px,1fr)_minmax(245px,0.42fr)] 2xl:grid-rows-[minmax(0,1fr)_340px]">
-          <div className="grid min-h-0 grid-rows-none lg:grid-rows-[auto_minmax(0,1fr)]">
+        <section className="order-1 flex min-h-0 flex-col gap-4 lg:order-2 lg:min-w-0 lg:flex-1">
+          <div className="flex min-h-0 flex-col lg:flex-1">
             <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-bold text-white">Mapa vivo de taps</h2>
@@ -866,7 +975,7 @@ export function ExecutiveRealtimeCrm({
               </div>
             </div>
 
-            <div ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "min-h-[560px] rounded-xl sm:min-h-[620px] lg:min-h-0"}`}>
+            <div id="live-tap-map" ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "min-h-[520px] rounded-xl sm:min-h-[560px] lg:min-h-0"}`}>
               <div className="absolute left-4 top-4 z-20 grid gap-2">
                 <button type="button" title="Acercar mapa sin agrandar artificialmente los taps" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
                 <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">-</button>
@@ -939,13 +1048,13 @@ export function ExecutiveRealtimeCrm({
             </div>
           </div>
 
-          <div className="grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_392px]">
-            <div className="rounded-xl border border-cyan-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_36%),linear-gradient(180deg,rgba(10,24,43,.98),rgba(4,10,20,.95))] p-4">
+          <div className="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_330px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
+            <div id="commercial-ai-panel" className="rounded-xl border border-cyan-300/15 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_36%),linear-gradient(180deg,rgba(10,24,43,.98),rgba(4,10,20,.95))] p-3 2xl:p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="flex min-w-0 flex-wrap items-center gap-2 text-base font-bold text-white">
                   <Megaphone className="h-4 w-4 text-cyan-300" />
-                  <span className="truncate">IA de cercanía comercial</span>
-                  <span className="hidden text-sm font-normal text-slate-400 sm:inline">(dónde vender más, promos, stock y logística)</span>
+                  <span className="truncate">{commercialContext.panelTitle}</span>
+                  <span className="hidden text-sm font-normal text-slate-400 sm:inline">({commercialContext.panelSubtitle})</span>
                 </p>
                 <button type="button" title="Abrir Growth & BotIA para crear campañas con estas señales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Growth & BotIA</button>
               </div>
@@ -953,9 +1062,9 @@ export function ExecutiveRealtimeCrm({
               {topOpportunity ? (
                 <div className="mb-3 grid gap-3 rounded-xl border border-cyan-300/20 bg-cyan-400/8 p-3 text-xs text-slate-300 sm:grid-cols-[minmax(0,1fr)_260px]">
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 font-bold uppercase tracking-[0.08em] text-cyan-200"><Sparkles className="h-3.5 w-3.5" /> Dónde vender más ahora</p>
+                    <p className="flex items-center gap-2 font-bold uppercase tracking-[0.08em] text-cyan-200"><Sparkles className="h-3.5 w-3.5" /> {commercialContext.headline}</p>
                     <p className="mt-1 text-sm leading-5">
-                      Activar <b className="text-white">{topOpportunity.offer}</b> en <b className="text-white">{topOpportunity.city}</b> por {topOpportunity.channel}. Priorizar stock, QR/NFC activos, puntos de canje y pauta local donde ya hay <b className="text-white">{topOpportunity.taps}</b> taps.
+                      {commercialRecommendation(commercialContext, topOpportunity)}
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
@@ -967,9 +1076,9 @@ export function ExecutiveRealtimeCrm({
               ) : null}
 
               <div className="mb-3 grid gap-2 md:grid-cols-3">
-                {AGRO_ENTERPRISE_PLAYBOOK.map((item, index) => (
+                {commercialContext.playbooks.map((item) => (
                   <div key={item.title} className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3 text-xs text-slate-300">
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">Agro {index + 1}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">{item.eyebrow}</p>
                     <p className="mt-1 font-bold text-white">{item.title}</p>
                     <p className="mt-1 leading-4 text-slate-400">{item.body}</p>
                   </div>
@@ -982,7 +1091,7 @@ export function ExecutiveRealtimeCrm({
                 </div>
               ) : null}
 
-              <div className="max-h-[190px] space-y-2 overflow-y-auto pr-1 2xl:max-h-[220px]">
+              <div className="max-h-[150px] space-y-2 overflow-y-auto pr-1 2xl:max-h-[210px]">
                 {marketOpportunities.length ? marketOpportunities.map((opportunity) => (
                   <div key={opportunity.key} className="rounded-xl border border-white/8 bg-slate-950/55 p-3">
                     <div className="flex items-start justify-between gap-3">
@@ -1009,7 +1118,7 @@ export function ExecutiveRealtimeCrm({
                   </div>
                 )) : (
                   <div className="rounded-lg border border-white/8 bg-slate-950/48 px-3 py-5 text-sm text-slate-400">
-                    Sin zonas accionables todavía. Apenas entren taps válidos, la IA prioriza ciudad, canal, promo y logística.
+                    {commercialContext.noData}
                   </div>
                 )}
               </div>

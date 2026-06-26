@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BadgeCheck, Boxes, ClipboardCheck, PackageCheck, QrCode, Radar, ShieldCheck, ShoppingBag, Store, UserCog } from "lucide-react";
+import { BadgeCheck, Boxes, ClipboardCheck, Database, MapPin, PackageCheck, QrCode, Radar, Send, ShieldCheck, ShoppingBag, Sprout, Store, UserCog } from "lucide-react";
 import { Card, StatusChip } from "@product/ui";
 
 export type OpsCommandMetric = {
@@ -49,7 +49,7 @@ const roles = {
     action: "Decidís qué cuenta escalar, cuál pausar, qué lote auditar y dónde hay oportunidad real de revenue.",
   },
   tenant: {
-    label: "Owner tenant",
+    label: "Admin tenant",
     icon: Store,
     headline: "Convertir tags físicos en productos vendibles sin perder control.",
     action: "La marca ve qué lote está listo, qué bloqueo impide vender y qué equipo debe resolverlo hoy.",
@@ -89,6 +89,11 @@ function riskTone(value: number): "good" | "warn" | "risk" | "neutral" {
   if (value >= 30) return "warn";
   if (value > 0) return "good";
   return "neutral";
+}
+
+function ownerDisplayLabel(owner: OpsCommandStep["owner"]) {
+  if (owner === "Owner") return "Admin tenant";
+  return owner;
 }
 
 function MiniIconRail() {
@@ -215,6 +220,41 @@ export function OpsCommandCenter({
     },
   ];
 
+  const enterpriseLanes = [
+    {
+      icon: Sprout,
+      title: "Agro / producto crítico",
+      body: "Bidón, bolsa de semillas, biológico o kit técnico unido a NFC/QR, lote, canal y política de carrier por riesgo.",
+      metric: "424 DNA / TT",
+      href: "/sdk-vision?vertical=agro",
+      cta: "Ver stack agro",
+    },
+    {
+      icon: MapPin,
+      title: "Canal y territorio",
+      body: "Detecta taps fuera de zona, concentración por ciudad, GPS bajo y posibles desvíos de distribuidor.",
+      metric: "mapa + riesgo",
+      href: "/events",
+      cta: "Auditar eventos",
+    },
+    {
+      icon: Database,
+      title: "Dato para sistemas externos",
+      body: "Cada tap produce SKU, lote, estado, geografía, score y acción para CRM, data lake, ERP o Cropwise vía webhook.",
+      metric: "API / webhook",
+      href: "/api-keys",
+      cta: "Abrir APIs",
+    },
+    {
+      icon: Send,
+      title: "Uso responsable post-tap",
+      body: "Ficha técnica, uso responsable, soporte, reclamo o beneficio aparecen después de validar el producto real.",
+      metric: "contenido + opt-in",
+      href: "/loyalty/campaigns",
+      cta: "Crear acción",
+    },
+  ];
+
   return (
     <Card className="relative overflow-hidden p-0">
       {actionAlert && (
@@ -302,6 +342,37 @@ export function OpsCommandCenter({
         </div>
       </div>
 
+      <div className="border-b border-white/10 bg-slate-950/35 p-5 sm:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Playbook enterprise agro</p>
+            <h3 className="mt-2 text-xl font-black tracking-tight text-white">De producto físico a señal operativa para Syngenta, agro y pharma.</h3>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-400">
+              Esta zona explica para qué existe Rollout NFC: no es un tablero decorativo, es la cadena de trabajo para transformar cada unidad en evidencia verificable, auditable y accionable por sistemas externos.
+            </p>
+          </div>
+          <StatusChip label="Cropwise-ready" tone="good" />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {enterpriseLanes.map((lane) => {
+            const Icon = lane.icon;
+            return (
+              <Link key={lane.title} href={lane.href} className="group rounded-2xl border border-emerald-300/15 bg-[linear-gradient(135deg,rgba(6,78,59,.18),rgba(15,23,42,.72))] p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/35">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-500/10 text-emerald-100">
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100">{lane.metric}</span>
+                </div>
+                <h4 className="mt-4 text-base font-black text-white">{lane.title}</h4>
+                <p className="mt-2 min-h-[72px] text-xs leading-5 text-slate-400">{lane.body}</p>
+                <span className="mt-3 inline-flex rounded-lg border border-emerald-300/25 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-100 group-hover:bg-emerald-300 group-hover:text-slate-950">{lane.cta}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid gap-5 p-5 sm:p-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -321,7 +392,7 @@ export function OpsCommandCenter({
                 </div>
                 <div className="flex flex-wrap gap-2 sm:justify-end">
                   <StatusChip label={step.status} tone={statusTone[step.status]} />
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-300">{step.owner}</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-300">{ownerDisplayLabel(step.owner)}</span>
                 </div>
               </div>
             ))}
@@ -332,7 +403,7 @@ export function OpsCommandCenter({
           <div className="grid gap-5 lg:grid-cols-2">
             <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
               <h3 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Embudo de confianza</h3>
-              <p className="mt-1 text-xs text-slate-400">De lote cargado a tap real, ownership y tokenizacion.</p>
+              <p className="mt-1 text-xs text-slate-400">De lote cargado a tap real, ownership y tokenización.</p>
               <div className="mt-4 h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={normalizedFunnel} margin={{ left: 0, right: 8, top: 16, bottom: 0 }}>

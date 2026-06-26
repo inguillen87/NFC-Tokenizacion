@@ -11,6 +11,24 @@ type DemoSummary = {
   events?: Array<{ id: string; created_at: string; result: string; uid_hex: string; city: string }>;
 };
 
+const DEMO_SCENARIOS = [
+  {
+    id: "agro-secure",
+    title: "Agro secure",
+    body: "Bidón o bolsa crítica con NFC seguro, tamper, canal y evento para CRM/Cropwise.",
+  },
+  {
+    id: "wine-secure",
+    title: "Bodega premium",
+    body: "Botella con passport, voucher y ownership listo para canje.",
+  },
+  {
+    id: "pharma-secure",
+    title: "Pharma recall",
+    body: "Unidad con lote, autenticidad y alerta de recall por trazabilidad.",
+  },
+];
+
 async function call(endpoint: string, method = "GET", payload?: unknown) {
   const res = await fetch(`/api/internal/demo/${endpoint}`, {
     method,
@@ -68,17 +86,17 @@ export function DemoLabControlCenter() {
       <header className="relative z-10 mb-8 border-b border-white/10 pb-6 flex items-center justify-between">
          <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
-               Demo Mission Control
-               <span className="px-2 py-1 rounded bg-cyan-500/20 text-cyan-300 text-[10px] uppercase tracking-widest font-bold border border-cyan-500/30">Live Environment</span>
+               Demo Lab operativo
+               <span className="px-2 py-1 rounded bg-cyan-500/20 text-cyan-300 text-[10px] uppercase tracking-widest font-bold border border-cyan-500/30">Ambiente vivo</span>
             </h1>
-            <p className="text-sm text-slate-400 mt-2">NFC Interaction Engine. Simulate taps, replay attacks, and tamper events globally.</p>
+            <p className="text-sm text-slate-400 mt-2">Motor de interacción NFC para mostrar taps válidos, replay, tamper, CRM y campañas por vertical.</p>
          </div>
          <div className="flex gap-3">
             <button suppressHydrationWarning onClick={() => runAction(() => call("reset", "POST"))} disabled={pending} className="px-4 py-2 bg-slate-900 border border-white/10 hover:border-white/30 text-white text-xs font-semibold rounded-xl transition-all shadow-sm">
-               Factory Reset
+               Reset controlado
             </button>
             <a href="/analytics" className="px-4 py-2 bg-white text-slate-900 hover:bg-slate-200 text-xs font-bold rounded-xl transition-all shadow-md">
-               View Live Analytics
+               Ver analítica
             </a>
          </div>
       </header>
@@ -91,30 +109,45 @@ export function DemoLabControlCenter() {
             {/* Core Scenarios */}
             <Card className="p-6 md:p-8 bg-slate-900/60 backdrop-blur-xl border-white/5 shadow-2xl rounded-3xl">
                <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">Tap Scenarios</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">Escenarios de tap</h2>
                   <span className="text-xs text-slate-500 font-mono">Pack: {pack}</span>
+               </div>
+
+               <div className="mb-5 grid gap-3 md:grid-cols-3">
+                  {DEMO_SCENARIOS.map((scenario) => (
+                     <button
+                        suppressHydrationWarning
+                        key={scenario.id}
+                        type="button"
+                        onClick={() => setPack(scenario.id)}
+                        className={`rounded-2xl border p-4 text-left transition ${pack === scenario.id ? "border-cyan-300 bg-cyan-500/10 text-cyan-50" : "border-white/10 bg-slate-950/45 text-slate-300 hover:border-cyan-300/30"}`}
+                     >
+                        <span className="text-xs font-black uppercase tracking-[0.14em]">{scenario.title}</span>
+                        <span className="mt-2 block text-[11px] leading-5 text-slate-400">{scenario.body}</span>
+                     </button>
+                  ))}
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button suppressHydrationWarning onClick={() => triggerScenario("valid")} disabled={pending} className={`relative group p-5 rounded-2xl border transition-all duration-300 text-left overflow-hidden ${pulseScenario === "valid" ? "border-emerald-400 bg-emerald-500/10 scale-95" : "border-emerald-500/20 bg-slate-950/50 hover:border-emerald-400/50 hover:bg-emerald-950/40"}`}>
                      {pulseScenario === "valid" && <div className="absolute inset-0 bg-emerald-400/20 animate-ping" />}
                      <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 group-hover:scale-110 transition-transform">✓</div>
-                     <p className="text-sm font-bold text-white mb-1">Valid Authentication</p>
-                     <p className="text-[11px] text-slate-400 leading-relaxed">Simulate a perfect factory-sealed NFC tap in Mendoza.</p>
+                     <p className="text-sm font-bold text-white mb-1">Tap válido</p>
+                     <p className="text-[11px] text-slate-400 leading-relaxed">Simula una unidad auténtica, cerrada y lista para activar post-tap.</p>
                   </button>
 
                   <button suppressHydrationWarning onClick={() => triggerScenario("replay")} disabled={pending} className={`relative group p-5 rounded-2xl border transition-all duration-300 text-left overflow-hidden ${pulseScenario === "replay" ? "border-amber-400 bg-amber-500/10 scale-95" : "border-amber-500/20 bg-slate-950/50 hover:border-amber-400/50 hover:bg-amber-950/40"}`}>
                      {pulseScenario === "replay" && <div className="absolute inset-0 bg-amber-400/20 animate-ping" />}
                      <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-4 group-hover:scale-110 transition-transform">⚠️</div>
-                     <p className="text-sm font-bold text-white mb-1">Replay Attack</p>
-                     <p className="text-[11px] text-slate-400 leading-relaxed">Trigger a cloned URL scan from a suspect IP address.</p>
+                     <p className="text-sm font-bold text-white mb-1">Replay sospechoso</p>
+                     <p className="text-[11px] text-slate-400 leading-relaxed">Dispara una lectura repetida o copiada para mostrar alerta de canal gris.</p>
                   </button>
 
                   <button suppressHydrationWarning onClick={() => triggerScenario("tamper")} disabled={pending} className={`relative group p-5 rounded-2xl border transition-all duration-300 text-left overflow-hidden ${pulseScenario === "tamper" ? "border-rose-400 bg-rose-500/10 scale-95" : "border-rose-500/20 bg-slate-950/50 hover:border-rose-400/50 hover:bg-rose-950/40"}`}>
                      {pulseScenario === "tamper" && <div className="absolute inset-0 bg-rose-400/20 animate-ping" />}
                      <div className="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4 group-hover:scale-110 transition-transform">❌</div>
-                     <p className="text-sm font-bold text-white mb-1">Tamper Alert</p>
-                     <p className="text-[11px] text-slate-400 leading-relaxed">Simulate an opened seal or physically broken tag.</p>
+                     <p className="text-sm font-bold text-white mb-1">Tamper físico</p>
+                     <p className="text-[11px] text-slate-400 leading-relaxed">Simula sello abierto o tag intervenido antes de entregar beneficio.</p>
                   </button>
                </div>
             </Card>
@@ -124,12 +157,12 @@ export function DemoLabControlCenter() {
                <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/5">
                   <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                     Live Stream Pipeline
+                     Pipeline vivo de eventos
                   </h2>
                </div>
                <div className="flex-1 overflow-y-auto space-y-2 font-mono text-xs pr-2">
                   {(summary.events || []).length === 0 ? (
-                     <p className="text-slate-600 italic">Awaiting NFC interactions...</p>
+                     <p className="text-slate-600 italic">Esperando interacciones NFC...</p>
                   ) : (
                      (summary.events || []).slice(0, 20).map((ev) => (
                         <div key={ev.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">

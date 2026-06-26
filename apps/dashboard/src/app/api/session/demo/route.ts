@@ -22,7 +22,7 @@ function demoAccountForRole(role: DemoRole) {
     };
   }
   if (role === "super-admin") return { email: "guillen.marce@gmail.com", label: "Super Admin", permissions: ["*"] };
-  return { email: "demobodega@nexid.lat", label: "Owner Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
+  return { email: "demobodega@nexid.lat", label: "Admin tenant Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
 }
 
 function demoTenantScope(role: DemoRole) {

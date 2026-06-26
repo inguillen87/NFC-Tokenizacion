@@ -14,8 +14,8 @@ const visibleRoleCards = [
     description: "Control global de tenants, seguridad, permisos, infraestructura, CRM, leads y analytics cross-tenant.",
   },
   {
-    label: "Owner del tenant",
-    description: "Dueño operativo de la empresa: lotes, tags, taps, marketplace, rewards, empleados y reportes del tenant.",
+    label: "Admin tenant",
+    description: "Administrador de la empresa: lotes, tags, taps, marketplace, rewards, empleados y reportes del tenant.",
   },
   {
     label: "Empleado Operaciones NFC",
@@ -65,7 +65,7 @@ export default async function LoginPage() {
               </p>
 
               <div className="mt-5 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-sm text-cyan-100">
-                Consola lista para venta: ingreso controlado, metricas en vivo, exportacion de reportes y flujo completo para operar
+                Consola lista para venta: ingreso controlado, métricas en vivo, exportación de reportes y flujo completo para operar
                 tenants, tags y clientes sin mezclar el portal consumidor.
               </div>
 
