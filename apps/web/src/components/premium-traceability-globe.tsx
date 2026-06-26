@@ -199,8 +199,8 @@ export function PremiumTraceabilityGlobe({
               tone: r.tone === "warn" ? ("warn" as const) : ("info" as const),
               label: r.label,
             }))}
-            width={compact ? 540 : 660}
-            height={compact ? 390 : 480}
+            width={450}
+            height={350}
             className="border-0 bg-transparent shadow-none"
           />
         </div>

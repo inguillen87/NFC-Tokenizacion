@@ -1504,12 +1504,12 @@ button.traceability-globe__node {
 }
 
 .traceability-globe--compact {
-  min-height: 520px;
+  min-height: 430px;
   border-radius: 24px;
 }
 
 .traceability-globe--compact .traceability-globe__stage {
-  min-height: 380px;
+  min-height: 292px;
 }
 
 .traceability-globe--compact .traceability-globe__header h2 {
@@ -1518,10 +1518,6 @@ button.traceability-globe__node {
 
 .traceability-globe--compact .traceability-globe__floating {
   display: none;
-}
-
-.landing-global-trust-globe {
-  min-height: 560px;
 }
 
 .sdk-global-hero-globe {
@@ -1557,11 +1553,6 @@ button.traceability-globe__node {
     min-height: 640px;
   }
 
-  .traceability-globe--compact,
-  .landing-global-trust-globe {
-    min-height: 620px;
-  }
-
   .traceability-globe__header {
     display: grid;
   }
@@ -1573,10 +1564,6 @@ button.traceability-globe__node {
 
   .traceability-globe__stage {
     min-height: 420px;
-  }
-
-  .traceability-globe--compact .traceability-globe__stage {
-    min-height: 430px;
   }
 
   .traceability-globe__orb {
@@ -1592,11 +1579,6 @@ button.traceability-globe__node {
   .traceability-globe {
     min-height: 680px;
     border-radius: 22px;
-  }
-
-  .traceability-globe--compact,
-  .landing-global-trust-globe {
-    min-height: 660px;
   }
 
   .traceability-globe__header,
