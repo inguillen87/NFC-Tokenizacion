@@ -6468,7 +6468,8 @@ html.theme-light #fresh-tap-required p {
   pointer-events: none;
 }
 
-.hero-trace-map--globe {
+.hero-trace-map--globe,
+.hero-trace-map--atlas {
   pointer-events: auto;
   background:
     radial-gradient(circle at 38% 34%, rgba(34, 211, 238, 0.2), transparent 32%),
@@ -6476,7 +6477,8 @@ html.theme-light #fresh-tap-required p {
     linear-gradient(145deg, rgba(2, 6, 23, 0.86), rgba(8, 47, 73, 0.64));
 }
 
-.hero-trace-map--globe::before {
+.hero-trace-map--globe::before,
+.hero-trace-map--atlas::before {
   opacity: 0.16;
 }
 
@@ -6501,6 +6503,7 @@ html.theme-light #fresh-tap-required p {
   z-index: 5;
   width: 100%;
   height: 100%;
+  pointer-events: auto;
   filter: saturate(1.12) contrast(1.08);
 }
 
@@ -6616,8 +6619,14 @@ html.theme-light #fresh-tap-required p {
 }
 
 .hero-trace-map--globe .hero-map-intel,
-.hero-trace-map--globe .hero-route-summary-card {
+.hero-trace-map--globe .hero-route-summary-card,
+.hero-trace-map--atlas .hero-map-intel,
+.hero-trace-map--atlas .hero-route-summary-card {
   z-index: 12;
+}
+
+.landing-hero-section .hero-trace-map.hero-trace-map--atlas {
+  pointer-events: auto;
 }
 
 .hero-trace-map::before {
@@ -22671,22 +22680,13 @@ html.theme-light .landing-hero-section .hero-object-map-pane .hero-trace-map {
 }
 
 .landing-hero-section .hero-trace-map--clear .hero-trace-map__globe {
-  position: absolute;
-  inset: -0.35rem;
-  z-index: 5;
-  display: grid;
-  place-items: center;
-  pointer-events: auto;
-}
-
-.landing-hero-section .hero-trace-map--clear .hero-trace-map__globe > div {
-  max-width: none !important;
+  display: none;
 }
 
 .landing-hero-section .hero-trace-map--clear > svg {
-  opacity: 0.08;
-  pointer-events: none;
-  filter: blur(0.2px);
+  opacity: 1;
+  pointer-events: auto;
+  filter: saturate(1.22) contrast(1.08) drop-shadow(0 18px 44px rgba(8, 47, 73, 0.34));
 }
 
 .landing-hero-section .hero-trace-map--clear .hero-map-intel {
@@ -23135,6 +23135,27 @@ html.theme-light .landing-hero-section .hero-trace-map--clear [data-nexid-map="p
 .landing-hero-section .hero-trace-map--clear .hero-map-intel {
   background: rgba(2, 12, 27, 0.66);
   box-shadow: 0 0.8rem 1.8rem rgba(2, 6, 23, 0.18);
+}
+
+/* Landing trace atlas final: this compact proof panel must never fall back to a
+   globe canvas or look like a rough globe behind the copy. */
+.landing-hero-section .hero-object-map-pane .hero-trace-map.hero-trace-map--atlas {
+  pointer-events: auto !important;
+  background:
+    radial-gradient(circle at 26% 68%, rgba(45, 212, 191, 0.16), transparent 28%),
+    radial-gradient(circle at 74% 34%, rgba(56, 189, 248, 0.13), transparent 30%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.78), rgba(2, 6, 23, 0.72)) !important;
+}
+
+.landing-hero-section .hero-object-map-pane .hero-trace-map.hero-trace-map--atlas .scene-container,
+.landing-hero-section .hero-object-map-pane .hero-trace-map.hero-trace-map--atlas .hero-trace-map__globe {
+  display: none !important;
+}
+
+.landing-hero-section .hero-object-map-pane .hero-trace-map.hero-trace-map--atlas .hero-premium-atlas {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  filter: saturate(1.2) contrast(1.08) drop-shadow(0 18px 44px rgba(8, 47, 73, 0.34)) !important;
 }
 
 html.theme-light .landing-hero-section .hero-scene {

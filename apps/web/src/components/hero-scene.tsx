@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
-import { Globe3dMap } from "@product/ui";
 import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 
 type Vertical = PlatformDemoVertical;
@@ -831,43 +830,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-const HERO_MAP_WIDTH = 1200;
-const HERO_MAP_HEIGHT = 620;
-
-function projectMercator(point: LocationPoint) {
-  const x = ((point.lng + 180) / 360) * HERO_MAP_WIDTH;
-  const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, point.lat));
-  const sin = Math.sin((clippedLat * Math.PI) / 180);
-  const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * HERO_MAP_HEIGHT;
-  return { x, y };
-}
-
-function traceViewBox(origin: LocationPoint, tap: LocationPoint) {
-  const coords = [projectMercator(origin), projectMercator(tap)];
-  const minX = Math.min(...coords.map((coord) => coord.x));
-  const maxX = Math.max(...coords.map((coord) => coord.x));
-  const minY = Math.min(...coords.map((coord) => coord.y));
-  const maxY = Math.max(...coords.map((coord) => coord.y));
-  const width = Math.min(HERO_MAP_WIDTH, Math.max(150, Math.max(1, maxX - minX) * 4.2));
-  const height = Math.min(HERO_MAP_HEIGHT, Math.max(116, Math.max(1, maxY - minY) * 4.8));
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
-  return {
-    x: clamp(centerX - width / 2, 0, HERO_MAP_WIDTH - width),
-    y: clamp(centerY - height / 2, 0, HERO_MAP_HEIGHT - height),
-    width,
-    height,
-  };
-}
-
-function projectMapPoint(point: LocationPoint, origin: LocationPoint, tap: LocationPoint) {
-  const box = traceViewBox(origin, tap);
-  const projected = projectMercator(point);
-  const x = ((projected.x - box.x) / box.width) * 100;
-  const y = ((projected.y - box.y) / box.height) * 100;
-  return { x: clamp(x, 8, 92), y: clamp(y, 13, 84) };
-}
-
 function mapsHref(point: LocationPoint) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.lat},${point.lng}`)}`;
 }
@@ -894,8 +856,8 @@ function HeroPremiumAtlas({
 }) {
   const routeStops = [
     { id: "origin", label: "Origen verificado", x: 286, y: 288, color: "#34d399" },
-    { id: "sun", label: "SUN dinamico", x: 350, y: 212, color: "#67e8f9" },
-    { id: "tap", label: "Tap fisico", x: 430, y: 205, color: "#22d3ee" },
+    { id: "sun", label: "SUN dinámico", x: 350, y: 212, color: "#67e8f9" },
+    { id: "tap", label: "Tap físico", x: 430, y: 205, color: "#22d3ee" },
     { id: "crm", label: "CRM / beneficio", x: 506, y: 252, color: "#a78bfa" },
   ];
 
@@ -925,42 +887,44 @@ function HeroPremiumAtlas({
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
-        <clipPath id="hero-atlas-sphere">
-          <circle cx="360" cy="216" r="166" />
-        </clipPath>
       </defs>
 
       <rect width="720" height="430" rx="30" fill="rgba(2,6,23,.18)" />
+      <rect x="54" y="56" width="612" height="288" rx="32" fill="rgba(2,6,23,.42)" stroke="rgba(103,232,249,.26)" strokeWidth="2" />
       <g opacity="0.28" stroke="#67e8f9" strokeWidth="1" fill="none">
-        {[140, 206, 272, 338, 404, 470, 536].map((x) => <path key={`atlas-meridian-${x}`} d={`M${x} 54 C${310 + (x - 360) * 0.22} 142 ${310 + (x - 360) * 0.22} 288 ${x} 378`} />)}
-        {[86, 132, 178, 224, 270, 316, 362].map((y) => <ellipse key={`atlas-parallel-${y}`} cx="360" cy="216" rx="166" ry={Math.max(12, Math.abs(216 - y) * 0.82)} />)}
+        {[118, 190, 262, 334, 406, 478, 550, 622].map((x) => <path key={`atlas-grid-v-${x}`} d={`M${x} 70 V330`} />)}
+        {[98, 142, 186, 230, 274, 318].map((y) => <path key={`atlas-grid-h-${y}`} d={`M70 ${y} H650`} />)}
       </g>
-      <circle cx="360" cy="216" r="173" fill="rgba(34,211,238,.08)" filter="url(#hero-atlas-glow)" />
-      <circle cx="360" cy="216" r="166" fill="url(#hero-atlas-ocean)" />
-
-      <g clipPath="url(#hero-atlas-sphere)">
-        <path
+      <g>
+        <path d="M96 260 C176 196 248 190 330 220 C404 247 486 206 614 148" fill="none" stroke="rgba(125,245,255,.18)" strokeWidth="44" strokeLinecap="round" />
+        <path d="M96 260 C176 196 248 190 330 220 C404 247 486 206 614 148" fill="none" stroke="rgba(103,232,249,.26)" strokeWidth="2" strokeDasharray="10 14" />
+        <circle cx="250" cy="278" r="94" fill="rgba(52,211,153,.12)" />
+        <circle cx="514" cy="154" r="104" fill="rgba(167,139,250,.12)" />
+        <circle cx="430" cy="210" r="58" fill="rgba(34,211,238,.12)" />
+        <rect
           className="hero-premium-atlas__country-hit"
-          d="M204 156 C232 108 302 88 350 112 C385 130 396 168 374 196 C350 226 306 218 284 244 C258 274 290 318 252 348 C214 377 158 346 148 294 C139 246 174 207 204 156 Z"
-          fill="url(#hero-atlas-land)"
-          stroke="rgba(186,230,253,.34)"
-          strokeWidth="2"
-          onMouseEnter={() => onHover({ eyebrow: "Pais de origen", title: origin.country, detail: `${origin.city} - lote y UID nacen aca`, tone: "country" })}
+          x="78"
+          y="110"
+          width="260"
+          height="210"
+          rx="26"
+          fill="rgba(52,211,153,.03)"
+          stroke="rgba(52,211,153,.16)"
+          onMouseEnter={() => onHover({ eyebrow: "País de origen", title: origin.country, detail: `${origin.city} - lote y UID nacen acá`, tone: "country" })}
           onMouseLeave={() => onHover(null)}
         />
-        <path d="M294 254 C338 270 368 318 356 360 C344 402 298 420 260 398 C224 377 232 332 248 300 C260 276 272 260 294 254 Z" fill="url(#hero-atlas-land)" stroke="rgba(186,230,253,.34)" strokeWidth="2" />
-        <path
+        <rect
           className="hero-premium-atlas__country-hit"
-          d="M392 118 C462 82 562 104 604 164 C636 210 598 252 540 242 C502 236 482 256 452 286 C420 318 370 292 364 246 C358 198 348 144 392 118 Z"
-          fill="url(#hero-atlas-land)"
-          stroke="rgba(186,230,253,.24)"
-          strokeWidth="2"
-          opacity="0.84"
-          onMouseEnter={() => onHover({ eyebrow: "Pais de destino", title: tap.country, detail: `${tap.city} - tap fisico del comprador`, tone: "country" })}
+          x="382"
+          y="94"
+          width="260"
+          height="218"
+          rx="26"
+          fill="rgba(167,139,250,.035)"
+          stroke="rgba(167,139,250,.16)"
+          onMouseEnter={() => onHover({ eyebrow: "País de destino", title: tap.country, detail: `${tap.city} - tap físico del comprador`, tone: "country" })}
           onMouseLeave={() => onHover(null)}
         />
-        <path d="M180 314 C260 250 346 246 428 286 C494 318 568 296 632 232" fill="none" stroke="rgba(125,245,255,.28)" strokeWidth="2" strokeDasharray="8 12" />
-        <path d="M218 196 C318 170 422 188 540 162" fill="none" stroke="rgba(94,234,212,.22)" strokeWidth="1.5" strokeDasharray="4 10" />
       </g>
 
       <path className="hero-premium-atlas__route-shadow" d="M286 288 C332 188 430 174 506 252" />
@@ -968,7 +932,7 @@ function HeroPremiumAtlas({
       <path
         className="hero-premium-atlas__route-hit"
         d="M286 288 C332 188 430 174 506 252"
-        onMouseEnter={() => onHover({ eyebrow: "Trazabilidad viva", title: `${origin.city} -> ${tap.city}`, detail: `${formattedDistance} km - UID, SUN, tap fisico y CRM`, tone: "route" })}
+        onMouseEnter={() => onHover({ eyebrow: "Trazabilidad viva", title: `${origin.city} -> ${tap.city}`, detail: `${formattedDistance} km - UID, SUN, tap físico y CRM`, tone: "route" })}
         onMouseLeave={() => onHover(null)}
       />
       {routeStops.map((stop, index) => (
@@ -998,7 +962,7 @@ function HeroPremiumAtlas({
         cx="506"
         cy="252"
         r="9"
-        onMouseEnter={() => onHover({ eyebrow: "Ciudad de tap", title: tap.city, detail: `${tap.country} - lectura fisica del consumidor`, tone: "tap" })}
+        onMouseEnter={() => onHover({ eyebrow: "Ciudad de tap", title: tap.city, detail: `${tap.country} - lectura física del consumidor`, tone: "tap" })}
         onMouseLeave={() => onHover(null)}
       />
       <g className="hero-premium-atlas__label" transform="translate(156 136)">
@@ -1034,29 +998,10 @@ function HeroTraceMap({
   numberLocale: string;
   txt: Pick<(typeof labels)["es-AR"], "routeTitle" | "originMap" | "tapMap" | "openOriginMap" | "custody">;
 }) {
-  const originPoint = projectMapPoint(origin, origin, tap);
-  const tapPoint = projectMapPoint(tap, origin, tap);
-  const pinDistance = Math.hypot(originPoint.x - tapPoint.x, originPoint.y - tapPoint.y);
-  const pinsOverlap = pinDistance < 18;
-  const originPinPoint = pinsOverlap
-    ? { x: clamp(originPoint.x - 14, 14, 74), y: clamp(originPoint.y + 12, 26, 76) }
-    : originPoint;
-  const tapPinPoint = pinsOverlap
-    ? { x: clamp(tapPoint.x + 14, 26, 86), y: clamp(tapPoint.y - 12, 22, 72) }
-    : tapPoint;
   const formattedDistance = distance.toLocaleString(numberLocale);
   const routeHeadline = txt.routeTitle === "Trust route" ? "Live route" : txt.routeTitle.startsWith("Rota") ? "Rota viva" : "Ruta viva";
   const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque físico" : "Tap físico";
   const distanceCopy = txt.routeTitle === "Trust route" ? "Distance" : txt.routeTitle.startsWith("Rota") ? "Distancia" : "Distancia";
-  const routeMidX = (originPoint.x + tapPoint.x) / 2;
-  const routeMidY = Math.max(16, Math.min(originPoint.y, tapPoint.y) - 16);
-  const cityDots = [
-    { x: 18, y: 24, label: origin.country },
-    { x: 38, y: 38, label: origin.city },
-    { x: 65, y: 34, label: tap.country },
-    { x: 78, y: 62, label: tap.city },
-    { x: 28, y: 74, label: "CRM" },
-  ];
   const evidenceCopy = txt.routeTitle === "Trust route"
     ? `${formattedDistance} km with physical tap, SUN and channel evidence.`
     : txt.routeTitle.startsWith("Rota")
@@ -1066,133 +1011,12 @@ function HeroTraceMap({
   const [atlasHover, setAtlasHover] = useState<HeroAtlasHover | null>(null);
 
   return (
-    <div className="hero-trace-map hero-trace-map--clear hero-trace-map--globe flex items-center justify-center" aria-label={txt.routeTitle}>
+    <div className="hero-trace-map hero-trace-map--clear hero-trace-map--atlas flex items-center justify-center" aria-label={txt.routeTitle}>
       <HeroPremiumAtlas origin={origin} tap={tap} routeHeadline={routeHeadline} formattedDistance={formattedDistance} onHover={setAtlasHover} />
-      <div className="hero-trace-map__globe" aria-label={`${origin.city} a ${tap.city}`}>
-        <Globe3dMap
-          theme="dark"
-          points={[
-            { city: origin.city, country: origin.country, lat: origin.lat, lng: origin.lng, scans: 1, status: "origin", vertical: "origen" },
-            { city: tap.city, country: tap.country, lat: tap.lat, lng: tap.lng, scans: 1, status: "tap", vertical: "cliente" },
-          ]}
-          routes={[{
-            fromLat: origin.lat,
-            fromLng: origin.lng,
-            toLat: tap.lat,
-            toLng: tap.lng,
-            tone: "success",
-            label: `${origin.city} -> ${tap.city} / ${formattedDistance} km`,
-          }]}
-          width={640}
-          height={430}
-          className="border-0 bg-transparent shadow-none"
-        />
-      </div>
       <div className="hero-map-intel">
         <p>{atlasHover?.eyebrow || routeHeadline}</p>
         <strong>{atlasHover?.title || `${origin.city} / ${tap.city}`}</strong>
         <span>{atlasHover?.detail || evidenceCopy}</span>
-      </div>
-      <div className="hero-route-summary-card">
-        <div className="hero-route-summary-grid">
-          <span>
-            <small>{txt.originMap}</small>
-            <strong>{origin.city}</strong>
-          </span>
-          <span>
-            <small>{tapCopy}</small>
-            <strong>{tap.city}</strong>
-          </span>
-          <span>
-            <small>{distanceCopy}</small>
-            <strong>{formattedDistance} km</strong>
-          </span>
-        </div>
-        <a className="hero-route-map-link" href={mapsHref(origin)} target="_blank" rel="noreferrer">
-          {txt.openOriginMap}
-        </a>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="hero-trace-map hero-trace-map--clear flex items-center justify-center" aria-label={txt.routeTitle}>
-      <div className="hero-trace-map__globe" aria-label={`${origin.city} a ${tap.city}`}>
-        <Globe3dMap
-          theme="dark"
-          points={[
-            { city: origin.city, country: origin.country, lat: origin.lat, lng: origin.lng, scans: 1, status: "origin", vertical: "origen" },
-            { city: tap.city, country: tap.country, lat: tap.lat, lng: tap.lng, scans: 1, status: "tap", vertical: "cliente" },
-          ]}
-          routes={[{
-            fromLat: origin.lat,
-            fromLng: origin.lng,
-            toLat: tap.lat,
-            toLng: tap.lng,
-            tone: "success",
-            label: `${origin.city} -> ${tap.city} / ${formattedDistance} km`,
-          }]}
-          width={480}
-          height={330}
-          className="border-0 bg-transparent shadow-none"
-        />
-      </div>
-      <svg viewBox="0 0 100 100" role="img" aria-label={`${origin.city} a ${tap.city}`}>
-        <defs>
-          <linearGradient id="hero-route-gradient" x1="0" x2="1">
-            <stop offset="0%" stopColor="#22d3ee" stopOpacity=".18" />
-            <stop offset="45%" stopColor="#67e8f9" stopOpacity=".96" />
-            <stop offset="100%" stopColor="#34d399" stopOpacity=".22" />
-          </linearGradient>
-          <radialGradient id="hero-node-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#67e8f9" stopOpacity=".75" />
-            <stop offset="55%" stopColor="#22d3ee" stopOpacity=".2" />
-            <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
-          </radialGradient>
-          <filter id="hero-route-soft-glow">
-            <feGaussianBlur stdDeviation="1.8" />
-          </filter>
-        </defs>
-        <rect className="hero-trace-map__water" x="0" y="0" width="100" height="100" rx="4" />
-        <g className="hero-trace-map__grid">
-          {[14, 28, 42, 56, 70, 84].map((value) => (
-            <path key={`grid-v-${value}`} d={`M${value} 6 V94`} />
-          ))}
-          {[16, 32, 48, 64, 80].map((value) => (
-            <path key={`grid-h-${value}`} d={`M6 ${value} H94`} />
-          ))}
-        </g>
-        <g>
-          <path className="hero-trace-map__land" d="M8 72 C18 58 28 54 43 58 C58 62 68 51 82 45 C91 41 96 48 91 58 C82 76 64 85 43 82 C27 80 18 83 8 72Z" />
-          <path className="hero-trace-map__land hero-trace-map__land--europe" d="M48 21 C58 14 75 16 86 25 C94 32 88 43 76 40 C66 38 63 47 54 45 C43 42 38 29 48 21Z" />
-          <path className="hero-trace-map__coast" d="M10 68 C24 58 34 59 50 62 C66 65 72 52 91 50" />
-          <path className="hero-trace-map__road" d="M12 38 C26 29 42 31 55 38 C68 45 78 43 91 34" />
-          <path className="hero-trace-map__road hero-trace-map__road--secondary" d="M16 84 C32 68 49 67 66 72 C78 75 86 70 94 61" />
-        </g>
-        {cityDots.map((dot, index) => (
-          <g key={`${dot.label}-${index}`}>
-            <circle className="hero-trace-map__city" cx={dot.x} cy={dot.y} r="0.85" />
-            <text className="hero-trace-map__label" x={dot.x + 2.2} y={dot.y + 1.4}>{dot.label}</text>
-          </g>
-        ))}
-        <path
-          className="hero-trace-map__route-shadow"
-          d={`M${originPoint.x.toFixed(1)} ${originPoint.y.toFixed(1)} Q${routeMidX.toFixed(1)} ${routeMidY.toFixed(1)} ${tapPoint.x.toFixed(1)} ${tapPoint.y.toFixed(1)}`}
-        />
-        <path
-          className="hero-trace-map__route"
-          d={`M${originPoint.x.toFixed(1)} ${originPoint.y.toFixed(1)} Q${routeMidX.toFixed(1)} ${routeMidY.toFixed(1)} ${tapPoint.x.toFixed(1)} ${tapPoint.y.toFixed(1)}`}
-        />
-        <circle cx={originPoint.x} cy={originPoint.y} r="7.4" fill="url(#hero-node-glow)" filter="url(#hero-route-soft-glow)" />
-        <circle cx={tapPoint.x} cy={tapPoint.y} r="8.6" fill="#34d399" opacity=".12" filter="url(#hero-route-soft-glow)" />
-        <circle className="hero-trace-map__origin" cx={originPoint.x} cy={originPoint.y} r="1.7" />
-        <circle className="hero-trace-map__tap" cx={tapPoint.x} cy={tapPoint.y} r="2.05" />
-        <circle cx={tapPoint.x} cy={tapPoint.y} r="5.6" fill="none" stroke="#34d399" strokeWidth=".45" opacity=".42" />
-      </svg>
-      <div className="hero-map-intel">
-        <p>{routeHeadline}</p>
-        <strong>{origin.city} / {tap.city}</strong>
-        <span>{evidenceCopy}</span>
       </div>
       <div className="hero-route-summary-card">
         <div className="hero-route-summary-grid">
