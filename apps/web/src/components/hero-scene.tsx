@@ -856,31 +856,42 @@ function HeroPremiumAtlas({
 }) {
   const rawId = useId().replace(/:/g, "");
   const routeGradientId = `${rawId}-hero-atlas-route`;
+  const corridorGradientId = `${rawId}-hero-atlas-corridor`;
+  const panelGradientId = `${rawId}-hero-panel`;
+  const gridId = `${rawId}-hero-grid`;
   const glowId = `${rawId}-hero-atlas-glow`;
-  const originCountry = origin.country.toUpperCase();
-  const tapCountry = tap.country.toUpperCase();
+  const routePath = "M106 238 C212 98 430 98 614 238";
+  const corridorPath = "M74 266 C200 78 456 72 646 268";
   const routeStops = [
     { id: "origin", label: "Origen verificado", sub: origin.city, x: 150, y: 288, color: "#34d399" },
-    { id: "sun", label: "SUN dinámico", sub: "anti-replay", x: 294, y: 186, color: "#67e8f9" },
-    { id: "tap", label: "Tap físico", sub: tap.city, x: 458, y: 206, color: "#22d3ee" },
     { id: "crm", label: "CRM + beneficio", sub: "lead listo", x: 586, y: 288, color: "#a78bfa" },
+    { id: "origin", label: "Origen verificado", sub: origin.city, x: 106, y: 238, color: "#34d399" },
+    { id: "tap", label: "Tap físico", sub: tap.city, x: 448, y: 132, color: "#22d3ee" },
   ];
 
   return (
     <svg className="hero-premium-atlas" viewBox="0 0 720 430" role="img" aria-label={`${routeHeadline}: ${origin.city} a ${tap.city}`}>
       <defs>
+        <pattern id={gridId} width="44" height="44" patternUnits="userSpaceOnUse">
+          <path d="M44 0H0V44" fill="none" stroke="rgba(125,211,252,.16)" strokeWidth="1" />
+        </pattern>
         <linearGradient id={routeGradientId} x1="0%" x2="100%">
-          <stop offset="0%" stopColor="#34d399" stopOpacity="0.2" />
-          <stop offset="42%" stopColor="#67e8f9" stopOpacity="1" />
-          <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.86" />
+          <stop offset="0%" stopColor="#34d399" stopOpacity="0.35" />
+          <stop offset="48%" stopColor="#67e8f9" stopOpacity="1" />
+          <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.92" />
         </linearGradient>
-        <linearGradient id={`${rawId}-hero-panel`} x1="0%" x2="100%">
+        <linearGradient id={corridorGradientId} x1="0%" x2="100%">
+          <stop offset="0%" stopColor="#34d399" stopOpacity="0.04" />
+          <stop offset="45%" stopColor="#22d3ee" stopOpacity="0.2" />
+          <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.06" />
+        </linearGradient>
+        <linearGradient id={panelGradientId} x1="0%" x2="100%">
           <stop offset="0%" stopColor="#062033" stopOpacity="0.96" />
-          <stop offset="55%" stopColor="#082f49" stopOpacity="0.72" />
+          <stop offset="55%" stopColor="#082f49" stopOpacity="0.78" />
           <stop offset="100%" stopColor="#111827" stopOpacity="0.92" />
         </linearGradient>
         <filter id={glowId}>
-          <feGaussianBlur stdDeviation="5" result="blur" />
+          <feGaussianBlur stdDeviation="4" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
@@ -889,66 +900,21 @@ function HeroPremiumAtlas({
       </defs>
 
       <rect width="720" height="430" rx="30" fill="rgba(2,6,23,.18)" />
-      <rect x="48" y="52" width="624" height="300" rx="32" fill={`url(#${rawId}-hero-panel)`} stroke="rgba(103,232,249,.26)" strokeWidth="2" />
-      <g className="hero-premium-atlas__grid" stroke="#67e8f9" strokeWidth="1" fill="none">
-        {[108, 168, 228, 288, 348, 408, 468, 528, 588, 648].map((x) => <path key={`atlas-grid-v-${x}`} d={`M${x} 70 V334`} />)}
-        {[92, 132, 172, 212, 252, 292, 332].map((y) => <path key={`atlas-grid-h-${y}`} d={`M66 ${y} H654`} />)}
-      </g>
-      <g>
-        <g className="hero-premium-atlas__regions">
-          <rect x="72" y="116" width="186" height="182" rx="24" />
-          <rect x="276" y="98" width="174" height="148" rx="24" />
-          <rect x="468" y="132" width="178" height="168" rx="24" />
-        </g>
-        <g className="hero-premium-atlas__region-lines">
-          <path d="M88 190 H242 M88 236 H242 M112 130 V288 M170 130 V288 M226 130 V288" />
-          <path d="M294 144 H430 M294 190 H430 M316 112 V236 M372 112 V236 M420 112 V236" />
-          <path d="M486 178 H628 M486 224 H628 M508 146 V288 M566 146 V288 M616 146 V288" />
-        </g>
-        <g className="hero-premium-atlas__country-code" transform="translate(88 110)">
-          <text>{originCountry}</text>
-        </g>
-        <g className="hero-premium-atlas__country-code hero-premium-atlas__country-code--tap" transform="translate(500 122)">
-          <text>{tapCountry}</text>
-        </g>
-        <g className="hero-premium-atlas__signal-band">
-          <path d="M92 288 C158 224 236 202 294 186 C364 166 416 188 458 206 C510 228 548 254 586 288" />
-          <path d="M92 288 C158 224 236 202 294 186 C364 166 416 188 458 206 C510 228 548 254 586 288" />
-        </g>
-        <rect
-          className="hero-premium-atlas__country-hit"
-          x="72"
-          y="116"
-          width="186"
-          height="182"
-          rx="26"
-          fill="transparent"
-          stroke="rgba(52,211,153,.16)"
-          onMouseEnter={() => onHover({ eyebrow: "País de origen", title: origin.country, detail: `${origin.city} - lote, UID y certificado nacen acá`, tone: "country" })}
-          onMouseLeave={() => onHover(null)}
-        />
-        <rect
-          className="hero-premium-atlas__country-hit"
-          x="468"
-          y="132"
-          width="178"
-          height="168"
-          rx="26"
-          fill="transparent"
-          stroke="rgba(167,139,250,.16)"
-          onMouseEnter={() => onHover({ eyebrow: "País de destino", title: tap.country, detail: `${tap.city} - tap físico del comprador`, tone: "country" })}
-          onMouseLeave={() => onHover(null)}
-        />
+      <rect x="46" y="50" width="628" height="304" rx="34" fill={`url(#${panelGradientId})`} stroke="rgba(103,232,249,.24)" strokeWidth="2" />
+      <rect x="58" y="62" width="604" height="280" rx="28" fill={`url(#${gridId})`} className="hero-premium-atlas__grid-fill" />
+      <g className="hero-premium-atlas__corridor">
+        <path d={corridorPath} style={{ stroke: `url(#${corridorGradientId})` }} />
+        <path d={routePath} />
       </g>
 
-      <path className="hero-premium-atlas__route-shadow" d="M150 288 C236 178 386 168 586 288" />
-      <path className="hero-premium-atlas__route" d="M150 288 C236 178 386 168 586 288" style={{ stroke: `url(#${routeGradientId})`, filter: `url(#${glowId})` }} />
+      <path className="hero-premium-atlas__route-shadow" d={routePath} />
+      <path className="hero-premium-atlas__route" d={routePath} style={{ stroke: `url(#${routeGradientId})`, filter: `url(#${glowId})` }} />
       <circle className="hero-premium-atlas__packet" r="7" fill="#67e8f9" filter={`url(#${glowId})`}>
-        <animateMotion dur="3.8s" repeatCount="indefinite" path="M150 288 C236 178 386 168 586 288" />
+        <animateMotion dur="3.8s" repeatCount="indefinite" path={routePath} />
       </circle>
       <path
         className="hero-premium-atlas__route-hit"
-        d="M150 288 C236 178 386 168 586 288"
+        d={routePath}
         onMouseEnter={() => onHover({ eyebrow: "Trazabilidad viva", title: `${origin.city} → ${tap.city}`, detail: `${formattedDistance} km - UID, SUN, tap físico y CRM`, tone: "route" })}
         onMouseLeave={() => onHover(null)}
       />
@@ -960,37 +926,33 @@ function HeroPremiumAtlas({
           onMouseEnter={() => onHover({ eyebrow: `Paso ${index + 1}`, title: stop.label, detail: index === 0 ? origin.city : index === routeStops.length - 1 ? tap.city : "Evidencia firmada en la ruta", tone: "route" })}
           onMouseLeave={() => onHover(null)}
         >
-          <circle r="15" fill={stop.color} opacity="0.13" />
-          <circle r="4.2" fill={stop.color} />
+          <circle className="hero-premium-atlas__node-halo" r="24" fill={stop.color} />
+          <circle className="hero-premium-atlas__node-ring" r="12" fill="none" stroke={stop.color} />
+          <circle className="hero-premium-atlas__node-core" r="5.5" fill={stop.color} />
         </g>
       ))}
-      <circle className="hero-premium-atlas__pulse hero-premium-atlas__pulse--origin" cx="150" cy="288" r="28" />
-      <circle className="hero-premium-atlas__pulse hero-premium-atlas__pulse--tap" cx="586" cy="288" r="34" />
+      <circle className="hero-premium-atlas__pulse hero-premium-atlas__pulse--origin" cx="106" cy="238" r="30" />
+      <circle className="hero-premium-atlas__pulse hero-premium-atlas__pulse--tap" cx="614" cy="238" r="36" />
       <circle
         className="hero-premium-atlas__dot hero-premium-atlas__dot--origin"
-        cx="150"
-        cy="288"
+        cx="106"
+        cy="238"
         r="8"
         onMouseEnter={() => onHover({ eyebrow: "Ciudad de origen", title: origin.city, detail: `${origin.country} - producto, UID y lote`, tone: "origin" })}
         onMouseLeave={() => onHover(null)}
       />
       <circle
         className="hero-premium-atlas__dot hero-premium-atlas__dot--tap"
-        cx="586"
-        cy="288"
+        cx="614"
+        cy="238"
         r="9"
         onMouseEnter={() => onHover({ eyebrow: "Ciudad de tap", title: tap.city, detail: `${tap.country} - lectura física del consumidor`, tone: "tap" })}
         onMouseLeave={() => onHover(null)}
       />
-      <g className="hero-premium-atlas__city" transform="translate(112 310)">
-        <rect width="160" height="48" rx="14" />
-        <text x="14" y="20">{origin.city}</text>
-        <text x="14" y="36">{origin.country}</text>
-      </g>
-      <g className="hero-premium-atlas__city hero-premium-atlas__city--tap" transform="translate(472 310)">
-        <rect width="164" height="48" rx="14" />
-        <text x="14" y="20">{tap.city}</text>
-        <text x="14" y="36">{formattedDistance} km</text>
+      <g className="hero-premium-atlas__radar" transform="translate(614 238)">
+        <circle r="54" />
+        <circle r="78" />
+        <path d="M-72 0H72M0 -72V72" />
       </g>
     </svg>
   );

@@ -6513,61 +6513,33 @@ html.theme-light #fresh-tap-required p {
   opacity: 0.22;
 }
 
-.hero-premium-atlas__regions rect {
-  fill: rgba(8, 47, 73, 0.38);
-  stroke: rgba(125, 211, 252, 0.16);
-  stroke-width: 1.2;
+.hero-premium-atlas__grid-fill {
+  opacity: 0.42;
 }
 
-.hero-premium-atlas__regions rect:first-child {
-  fill: rgba(20, 83, 45, 0.16);
-  stroke: rgba(52, 211, 153, 0.24);
-}
-
-.hero-premium-atlas__regions rect:last-child {
-  fill: rgba(88, 28, 135, 0.12);
-  stroke: rgba(167, 139, 250, 0.24);
-}
-
-.hero-premium-atlas__region-lines {
-  fill: none;
-  stroke: rgba(186, 230, 253, 0.22);
-  stroke-width: 0.8;
-}
-
-.hero-premium-atlas__country-code text {
-  fill: rgba(125, 211, 252, 0.66);
-  font-size: 10px;
-  font-weight: 950;
-  letter-spacing: 0.18em;
-}
-
-.hero-premium-atlas__country-code--tap text {
-  fill: rgba(196, 181, 253, 0.66);
-}
-
-.hero-premium-atlas__signal-band {
+.hero-premium-atlas__corridor path {
   fill: none;
   stroke-linecap: round;
 }
 
-.hero-premium-atlas__signal-band path:first-child {
-  stroke: rgba(125, 245, 255, 0.1);
-  stroke-width: 32;
+.hero-premium-atlas__corridor path:first-child {
+  stroke-width: 38;
+  opacity: 0.52;
+  mix-blend-mode: screen;
 }
 
-.hero-premium-atlas__signal-band path:last-child {
-  stroke: rgba(103, 232, 249, 0.28);
-  stroke-width: 1.8;
-  stroke-dasharray: 9 13;
+.hero-premium-atlas__corridor path:last-child {
+  stroke: rgba(186, 230, 253, 0.28);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 12;
 }
 
 .hero-premium-atlas__route-shadow {
   fill: none;
-  stroke: rgba(2, 6, 23, 0.74);
-  stroke-width: 14;
+  stroke: rgba(2, 6, 23, 0);
+  stroke-width: 0;
   stroke-linecap: round;
-  opacity: 0.78;
+  opacity: 0;
 }
 
 .hero-premium-atlas__route {
@@ -6603,31 +6575,23 @@ html.theme-light #fresh-tap-required p {
 .hero-premium-atlas__country-hit:hover,
 .hero-premium-atlas__dot:hover,
 .hero-premium-atlas__stop:hover {
-  filter: url("#hero-atlas-glow");
+  filter: drop-shadow(0 0 0.8rem rgba(103, 232, 249, 0.48));
   opacity: 1;
 }
 
-.hero-premium-atlas__stop circle:last-child {
+.hero-premium-atlas__node-halo {
+  opacity: 0.12;
+}
+
+.hero-premium-atlas__node-ring {
+  opacity: 0.46;
+  stroke-width: 1.6;
+  animation: heroAtlasPulse 2.6s ease-in-out infinite;
+}
+
+.hero-premium-atlas__node-core {
   stroke: rgba(255, 255, 255, 0.9);
   stroke-width: 1.4;
-}
-
-.hero-premium-atlas__step-label rect {
-  fill: rgba(2, 6, 23, 0.76);
-  stroke: rgba(125, 211, 252, 0.18);
-}
-
-.hero-premium-atlas__step-label text {
-  fill: #e0f2fe;
-  font-size: 8.5px;
-  font-weight: 900;
-  letter-spacing: 0.01em;
-}
-
-.hero-premium-atlas__step-label text:last-child {
-  fill: #93c5fd;
-  font-size: 7.2px;
-  font-weight: 800;
 }
 
 .hero-premium-atlas__pulse {
@@ -6651,7 +6615,7 @@ html.theme-light #fresh-tap-required p {
 .hero-premium-atlas__dot {
   stroke: rgba(255, 255, 255, 0.92);
   stroke-width: 3;
-  filter: url("#hero-atlas-glow");
+  filter: drop-shadow(0 0 0.75rem rgba(103, 232, 249, 0.58));
 }
 
 .hero-premium-atlas__dot--origin {
@@ -6662,37 +6626,12 @@ html.theme-light #fresh-tap-required p {
   fill: #a78bfa;
 }
 
-.hero-premium-atlas__label text {
-  fill: rgba(186, 230, 253, 0.48);
-  font-size: 18px;
-  font-weight: 950;
-  letter-spacing: 0.18em;
-}
-
-.hero-premium-atlas__label--tap text {
-  fill: rgba(221, 214, 254, 0.46);
-}
-
-.hero-premium-atlas__city rect {
-  fill: rgba(2, 6, 23, 0.72);
-  stroke: rgba(52, 211, 153, 0.36);
-  stroke-width: 1.5;
-}
-
-.hero-premium-atlas__city--tap rect {
-  stroke: rgba(167, 139, 250, 0.42);
-}
-
-.hero-premium-atlas__city text {
-  fill: #ffffff;
-  font-size: 14px;
-  font-weight: 900;
-}
-
-.hero-premium-atlas__city text + text {
-  fill: rgba(186, 230, 253, 0.72);
-  font-size: 11px;
-  font-weight: 750;
+.hero-premium-atlas__radar {
+  fill: none;
+  stroke: rgba(34, 211, 238, 0.16);
+  stroke-width: 1.4;
+  stroke-dasharray: 10 12;
+  animation: heroRouteDash 8s linear infinite;
 }
 
 .hero-trace-map--globe .hero-map-intel,
