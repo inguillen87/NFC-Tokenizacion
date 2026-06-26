@@ -659,11 +659,11 @@ export function Globe3dMap({
         polygonAltitude={(feature: any) => (activeCountryNames.has(normalizeCountryName(featureCountryName(feature))) ? 0.012 : 0.002)}
         polygonCapColor={(feature: any) =>
           activeCountryNames.has(normalizeCountryName(featureCountryName(feature)))
-            ? (isLightTheme ? "rgba(20,184,166,.42)" : "rgba(34,211,238,.34)")
-            : (isLightTheme ? "rgba(15,23,42,.06)" : "rgba(14,165,233,.045)")
+            ? (isLightTheme ? "rgba(20,184,166,.56)" : "rgba(34,211,238,.42)")
+            : (isLightTheme ? "rgba(15,23,42,.14)" : "rgba(14,165,233,.13)")
         }
-        polygonSideColor={() => (isLightTheme ? "rgba(14,116,144,.18)" : "rgba(34,211,238,.12)")}
-        polygonStrokeColor={() => (isLightTheme ? "rgba(15,23,42,.24)" : "rgba(186,230,253,.22)")}
+        polygonSideColor={() => (isLightTheme ? "rgba(14,116,144,.2)" : "rgba(34,211,238,.16)")}
+        polygonStrokeColor={() => (isLightTheme ? "rgba(15,23,42,.34)" : "rgba(186,230,253,.38)")}
         polygonCapCurvatureResolution={5}
         polygonLabel={(feature: any) => featureCountryName(feature)}
         onPolygonHover={(feature: any) => setCountryHover(feature || null)}
@@ -722,6 +722,7 @@ export function Globe3dMap({
         arcAltitudeAutoScale={0.4}
         arcCurveResolution={96}
         arcCircularResolution={10}
+        onArcHover={(route: any) => setRouteHover(route || null)}
         arcsTransitionDuration={900}
 
         // Native globe.gl pulse layer for live taps.
