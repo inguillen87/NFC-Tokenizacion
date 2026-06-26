@@ -21,6 +21,25 @@ const CITY_COUNTRY_HINTS: Record<string, string> = {
   shanghai: "China",
 };
 
+const COUNTRY_NAME_ALIASES: Record<string, string> = {
+  argentina: "argentina",
+  brasil: "brazil",
+  brazil: "brazil",
+  usa: "united states of america",
+  "united states": "united states of america",
+  "united states of america": "united states of america",
+  suiza: "switzerland",
+  switzerland: "switzerland",
+  espana: "spain",
+  spain: "spain",
+  chile: "chile",
+  france: "france",
+  francia: "france",
+  "united kingdom": "united kingdom",
+  uk: "united kingdom",
+  china: "china",
+};
+
 export type GlobePoint = {
   city: string;
   country?: string;
@@ -64,18 +83,20 @@ function encodeSvg(svg: string) {
 }
 
 function localGlobeTexture(isLightTheme: boolean) {
-  const oceanTop = isLightTheme ? "#b9e6ff" : "#021125";
-  const oceanMid = isLightTheme ? "#317bd3" : "#07375d";
-  const oceanDeep = isLightTheme ? "#102d75" : "#020817";
-  const land = isLightTheme ? "#6ad09a" : "#12a98f";
-  const landDark = isLightTheme ? "#2f8a69" : "#0a705f";
-  const landAlt = isLightTheme ? "#ecd07c" : "#60e6b5";
-  const coast = isLightTheme ? "rgba(15,23,42,.34)" : "rgba(185,255,246,.38)";
-  const grid = isLightTheme ? "rgba(15, 23, 42, .2)" : "rgba(103, 232, 249, .24)";
-  const glow = isLightTheme ? "rgba(37, 99, 235, .3)" : "rgba(34, 211, 238, .36)";
+  const oceanTop = isLightTheme ? "#d8f4ff" : "#031326";
+  const oceanMid = isLightTheme ? "#5ab7e9" : "#062e52";
+  const oceanDeep = isLightTheme ? "#164293" : "#020714";
+  const grid = isLightTheme ? "rgba(15, 23, 42, .16)" : "rgba(103, 232, 249, .14)";
+  const glow = isLightTheme ? "rgba(37, 99, 235, .26)" : "rgba(34, 211, 238, .28)";
   const city = isLightTheme ? "#fef3c7" : "#a7f3d0";
   const horizontalLines = Array.from({ length: 13 }, (_, i) => `<path d="M0 ${80 + i * 72} H2048"/>`).join("");
   const verticalLines = Array.from({ length: 25 }, (_, i) => `<path d="M${64 + i * 80} 0 V1024"/>`).join("");
+  const lanes = [
+    "M120 590 C420 410 760 395 1060 500 C1340 598 1660 526 1920 356",
+    "M80 410 C374 352 642 394 920 456 C1220 522 1530 474 1988 274",
+    "M418 768 C698 624 982 610 1254 690 C1478 754 1692 730 1960 642",
+    "M704 196 C884 310 980 448 1094 594 C1220 754 1390 844 1666 858",
+  ].map((d) => `<path d="${d}"/>`).join("");
   const cityLights = [
     [300, 330, 2.2], [390, 284, 1.5], [505, 375, 1.8], [474, 608, 1.6], [496, 714, 2.4],
     [575, 820, 1.6], [932, 317, 2.2], [1018, 286, 1.6], [1036, 360, 2.4], [1104, 405, 1.5],
@@ -98,35 +119,13 @@ function localGlobeTexture(isLightTheme: boolean) {
           <stop offset=".36" stop-color="${glow}" stop-opacity=".46"/>
           <stop offset="1" stop-color="black" stop-opacity=".18"/>
         </radialGradient>
-        <linearGradient id="ridge" x1="0" x2="1">
-          <stop offset="0" stop-color="${landAlt}" stop-opacity=".18"/>
-          <stop offset=".5" stop-color="${landAlt}" stop-opacity=".58"/>
-          <stop offset="1" stop-color="${landDark}" stop-opacity=".26"/>
-        </linearGradient>
         <filter id="soft"><feGaussianBlur stdDeviation="4"/></filter>
         <filter id="city-glow"><feGaussianBlur stdDeviation="3"/></filter>
       </defs>
       <rect width="2048" height="1024" fill="url(#ocean)"/>
       <g opacity=".42" stroke="${grid}" stroke-width="2" fill="none">${horizontalLines}${verticalLines}</g>
-      <g fill="${land}" stroke="${coast}" stroke-width="3" stroke-linejoin="round" opacity=".86">
-        <path d="M196 231c33-46 95-74 153-70 38 3 58-20 91-30 49-14 106 2 136 44 20 28 15 72-16 92-25 16-66 4-89 25-31 29 0 75-30 104-24 23-72 18-98 42-34 31 20 90-25 131-42 39-125 21-166-34-45-61-40-166 11-218 15-16 18-50 33-86Z"/>
-        <path d="M377 575c34-21 86-10 112 22 31 39 25 93 47 139 19 39 60 70 55 117-5 49-55 85-103 70-57-18-72-92-91-143-18-47-63-73-71-126-5-34 15-60 51-79Z"/>
-        <path d="M682 206c58-54 150-60 220-26 44 22 70 59 128 57 61-2 107-38 171-19 42 12 76 43 84 85 11 58-50 71-86 101-49 41-32 112-81 153-56 47-151 21-200-31-35-37-63-75-117-80-59-5-120 13-165-31-54-52-24-148 46-209Z"/>
-        <path d="M946 477c44-17 103-4 132 31 31 38 17 92-18 120-39 31-97 23-139 51-43 29-47 94-96 111-55 20-118-29-118-86 0-47 45-68 77-93 60-46 84-103 162-134Z"/>
-        <path d="M1222 212c76-44 180-46 253-2 63 38 81 103 41 151-41 50-122 29-163 78-42 50 20 117-29 162-58 53-183 27-242-42-74-87-38-242 140-347Z"/>
-        <path d="M1516 317c52-35 134-29 177 17 42 44 31 114-24 136-35 14-81 5-108 34-32 34 5 86-26 116-47 45-153 18-197-39-63-82 19-196 178-264Z"/>
-        <path d="M1708 656c54-14 116 6 145 46 33 46 13 114-38 138-66 31-158-7-174-72-11-45 18-94 67-112Z"/>
-        <path d="M780 150c28-24 72-31 108-17 32 13 51 45 39 76-16 41-76 42-115 31-42-12-67-54-32-90Z"/>
-      </g>
-      <g fill="url(#ridge)" opacity=".86" filter="url(#soft)">
-        <path d="M246 321c88-34 177-14 254 29"/>
-        <path d="M456 675c34 60 52 133 27 205"/>
-        <path d="M780 303c82-50 223-53 338-8"/>
-        <path d="M999 533c-70 26-139 87-175 157"/>
-        <path d="M1268 338c111-45 237-31 335 44"/>
-        <path d="M1445 532c60-15 119 8 164 56"/>
-        <ellipse cx="1700" cy="738" rx="86" ry="46"/>
-      </g>
+      <g fill="none" stroke="${isLightTheme ? "rgba(255,255,255,.28)" : "rgba(125,245,255,.22)"}" stroke-width="3" stroke-linecap="round" opacity=".42" filter="url(#soft)">${lanes}</g>
+      <g fill="none" stroke="${isLightTheme ? "rgba(20,184,166,.28)" : "rgba(45,212,191,.2)"}" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="12 18" opacity=".72">${lanes}</g>
       <g opacity=".5" filter="url(#city-glow)">
         ${cityLights}
       </g>
@@ -191,11 +190,12 @@ function hexHeatColor(weight: number, alpha = 0.88) {
 }
 
 function normalizeCountryName(value?: string) {
-  return (value || "")
+  const normalized = (value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase();
+  return COUNTRY_NAME_ALIASES[normalized] || normalized;
 }
 
 function inferCountryName(point: GlobePoint) {
