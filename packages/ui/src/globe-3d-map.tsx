@@ -404,6 +404,7 @@ export function Globe3dMap({
   const mediumRequested = height <= 360;
   const minRenderHeight = compactRequested ? 220 : mediumRequested ? 300 : 360;
   const renderHeight = Math.max(minRenderHeight, Math.round(renderWidth * (height / Math.max(width, 1))));
+  const compactHud = renderWidth < 500 || height <= 360;
   const globeImageUrl = useMemo(() => localGlobeTexture(isLightTheme), [isLightTheme]);
   const globeBumpUrl = useMemo(() => localGlobeBumpTexture(isLightTheme), [isLightTheme]);
   const activeCountryNames = useMemo(
@@ -582,12 +583,14 @@ export function Globe3dMap({
         points={points}
         routes={routes}
         isLightTheme={isLightTheme}
-        className={globeReady ? "opacity-45 transition-opacity duration-700" : "opacity-100 transition-opacity duration-700"}
+        className={globeReady ? "opacity-10 transition-opacity duration-700" : "opacity-100 transition-opacity duration-700"}
       />
 
-      <div className="absolute bottom-4 right-4 z-20 text-[9px] text-slate-500 font-mono pointer-events-none bg-slate-950/80 px-2 py-1 rounded border border-white/5 backdrop-blur">
-        Arrastra para rotar
-      </div>
+      {!compactHud ? (
+        <div className="absolute bottom-4 right-4 z-20 text-[9px] text-slate-500 font-mono pointer-events-none bg-slate-950/80 px-2 py-1 rounded border border-white/5 backdrop-blur">
+          Arrastra para rotar
+        </div>
+      ) : null}
 
       {hoverCard ? (
         <div
@@ -607,14 +610,14 @@ export function Globe3dMap({
             {hoverCard.meta}
           </small>
         </div>
-      ) : (
+      ) : !compactHud ? (
         <div
           className="absolute left-4 top-4 z-20 max-w-[min(88%,17rem)] rounded-full border bg-slate-950/54 px-3 py-1.5 text-left text-[0.66rem] font-bold text-cyan-50 shadow-[0_12px_40px_rgba(0,0,0,.28)] backdrop-blur-xl pointer-events-none"
           style={{ borderColor: `${defaultHoverCard.tone}44` }}
         >
           {defaultHoverCard.meta}
         </div>
-      )}
+      ) : null}
 
       <Globe
         ref={globeRef}
