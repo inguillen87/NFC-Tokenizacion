@@ -80,7 +80,7 @@ test("demobodega tap can resolve from production SUN tenant field without UID", 
   assert.equal(result.ok, true);
   assert.equal(result.profile.tenantId, "demobodega");
   assert.equal(result.profile.tenantSlug, "demobodega");
-  assert.equal(result.profile.tenantName, "Demo Bodega");
+  assert.equal(result.profile.tenantName, "Bodega Balmec");
   assert.equal(result.profile.product.name, "Gran Reserva Malbec");
 });
 

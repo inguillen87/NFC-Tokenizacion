@@ -1,9 +1,10 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 import { ensureCarrierProfileSchema } from "../../../lib/commercial-runtime-schema";
 import { ensureSunTenantProfilesSchema } from "../../../lib/sun-tenant-profile-schema";
 import { buildProductAssetProfile, readProductAssetMedia, summarizeAssetReadiness } from "../../../lib/product-asset-profile";
@@ -62,7 +63,9 @@ export async function GET(req: Request) {
   await Promise.all([ensureSunTenantProfilesSchema(), ensureCarrierProfileSchema()]);
 
   const url = new URL(req.url);
-  const tenant = cleanText(url.searchParams.get("tenant") || url.searchParams.get("tenantSlug"));
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const rawTenant = cleanText(url.searchParams.get("tenant") || url.searchParams.get("tenantSlug"));
+  const tenant = effectiveTenantFilter({ forcedTenantSlug, requestedTenantSlug: rawTenant });
   const bid = cleanText(url.searchParams.get("bid"));
   const uid = cleanUid(url.searchParams.get("uid") || url.searchParams.get("uidHex"));
   const limit = Math.max(1, Math.min(100, Number(url.searchParams.get("limit") || 50)));
@@ -160,7 +163,8 @@ export async function POST(req: Request) {
   await Promise.all([ensureSunTenantProfilesSchema(), ensureCarrierProfileSchema()]);
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const tenantSlug = cleanText(body.tenantSlug || body.tenant || "demobodega");
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const tenantSlug = forcedTenantSlug || cleanText(body.tenantSlug || body.tenant || "demobodega");
   const bid = cleanText(body.bid || body.batchId);
   const uidHex = cleanUid(body.uidHex || body.uid);
   if (!bid) return json({ ok: false, error: "bid_required" }, 400);

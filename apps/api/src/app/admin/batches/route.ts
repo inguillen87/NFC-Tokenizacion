@@ -2,12 +2,13 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../lib/db";
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { encryptKey16 } from "../../../lib/keys";
 import { json } from "../../../lib/http";
 import { requireTenantSunProfile } from "../../../lib/tenant-onboarding";
 import { ensureCarrierProfileSchema } from "../../../lib/commercial-runtime-schema";
 import { getCarrierProfile, inferCarrierProfileFromPayload } from "../../../lib/carrier-profiles";
+import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 
 function normalizeHexKey(value: unknown, field: string) {
   if (value == null || value === "") return null;
@@ -43,7 +44,8 @@ export async function GET(req: Request) {
   await ensureCarrierProfileSchema();
 
   const { searchParams } = new URL(req.url);
-  const tenantSlug = searchParams.get("tenant") || "";
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const tenantSlug = effectiveTenantFilter({ forcedTenantSlug, requestedTenantSlug: searchParams.get("tenant") });
 
   const rows = tenantSlug
     ? await sql/*sql*/`
@@ -195,7 +197,8 @@ export async function POST(req: Request) {
   await ensureCarrierProfileSchema();
 
   const body: Record<string, unknown> = await req.json().catch(() => ({}));
-  const tenantInput = String(body.tenant_slug || body.tenantId || "").trim();
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const tenantInput = forcedTenantSlug || String(body.tenant_slug || body.tenantId || "").trim();
   const bid = String(body.bid || body.batchId || "").trim();
   if (!tenantInput || !bid) return json({ ok: false, reason: "tenant_slug and bid required" }, 400);
 

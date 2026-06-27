@@ -63,7 +63,9 @@ function toMs(value?: string) {
 
 function project(lat: number, lng: number, width = 1200, height = 620) {
   const x = ((lng + 180) / 360) * width;
-  const y = ((90 - lat) / 180) * height;
+  const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, lat));
+  const sin = Math.sin((clippedLat * Math.PI) / 180);
+  const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * height;
   return { x, y };
 }
 

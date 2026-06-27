@@ -1,17 +1,20 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { parseAnalyticsFilters } from "../../../lib/analytics";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
-  const { tenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const { tenant: rawTenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const tenant = effectiveTenantFilter({ forcedTenantSlug, requestedTenantSlug: rawTenant });
   const query = (searchParams.get("q") || "").trim();
   const format = (searchParams.get("format") || "json").toLowerCase();
   const offset = Math.max(Number(searchParams.get("offset") || 0), 0);

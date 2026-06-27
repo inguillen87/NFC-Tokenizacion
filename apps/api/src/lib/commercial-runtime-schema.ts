@@ -11,6 +11,7 @@ let alertsSchemaReady: Promise<void> | null = null;
 let enterpriseIamSchemaReady: Promise<void> | null = null;
 let carrierProfilesSchemaReady: Promise<void> | null = null;
 let sdkSchemaReady: Promise<void> | null = null;
+let auditLogsSchemaReady: Promise<void> | null = null;
 
 async function ensureUuidExtensions() {
   await sql/*sql*/`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
@@ -633,6 +634,7 @@ export async function ensureEnterpriseIamSchema() {
   if (!enterpriseIamSchemaReady) {
     enterpriseIamSchemaReady = cacheSchemaInit(async () => {
       await ensureUuidExtensions();
+      await ensureAuditLogsSchema();
       await sql/*sql*/`DO $$ BEGIN CREATE TYPE membership_role AS ENUM ('super_admin', 'tenant_admin', 'reseller', 'viewer'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`;
       await sql/*sql*/`DO $$ BEGIN CREATE TYPE admin_user_status AS ENUM ('invited', 'pending_activation', 'active', 'disabled'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`;
 
@@ -1558,4 +1560,35 @@ async function seedBalmecMarketplaceRows() {
     WHERE o.id = c.id
       AND c.keep_rank > 1
   `;
+}
+
+export async function ensureAuditLogsSchema() {
+  if (!auditLogsSchemaReady) {
+    auditLogsSchemaReady = cacheSchemaInit(async () => {
+      await ensureUuidExtensions();
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS audit_logs (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          actor_id uuid REFERENCES users(id) ON DELETE SET NULL,
+          tenant_id uuid REFERENCES tenants(id) ON DELETE CASCADE,
+          action text NOT NULL,
+          resource_type text NOT NULL,
+          resource_id text,
+          before_hash text,
+          after_hash text,
+          ip_address inet,
+          user_agent text,
+          request_id text,
+          created_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_created ON audit_logs(tenant_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_created ON audit_logs(actor_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_audit_logs_action_created ON audit_logs(action, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource_type, resource_id)`;
+    }, () => {
+      auditLogsSchemaReady = null;
+    });
+  }
+  return auditLogsSchemaReady;
 }

@@ -1,11 +1,12 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters } from "../../../lib/analytics";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { resolveEventLocalTime } from "@product/core";
+import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 
 let eventLocationContextSchemaReady: Promise<void> | null = null;
 
@@ -29,7 +30,9 @@ export async function GET(req: Request) {
   await ensureEventLocationContextSchema().catch(() => null);
 
   const { searchParams } = new URL(req.url);
-  const { tenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const { tenant: rawTenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const tenant = effectiveTenantFilter({ forcedTenantSlug, requestedTenantSlug: rawTenant });
   const eventSource = source === "real" || source === "demo" || source === "imported" ? source : "";
   const bid = searchParams.get("bid") || "";
   const uid = (searchParams.get("uid") || "").toUpperCase();

@@ -74,6 +74,7 @@ export function TapPrecisionTelemetry({
         if (!cancelled && response.ok) {
           window.sessionStorage.setItem(storageKey, "sent");
           setState("updated");
+          window.location.reload();
         } else if (!cancelled) {
           setState("error");
         }

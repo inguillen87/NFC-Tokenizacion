@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../../lib/db";
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 
 function normalizeUid(value: unknown) {
@@ -28,9 +28,33 @@ export async function POST(req: Request) {
     return json({ ok: false, reason: "bid and either uids, quantity/count, or all=true required" }, 400);
   }
 
-  const batchRows = await sql/*sql*/`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const batchRows = forcedTenantSlug
+    ? await sql/*sql*/`
+      SELECT b.id, b.status
+      FROM batches b
+      JOIN tenants t ON t.id = b.tenant_id
+      WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
+      LIMIT 1
+    `
+    : await sql/*sql*/`
+      SELECT id, status
+      FROM batches
+      WHERE bid = ${bid}
+      LIMIT 1
+    `;
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
+
+  // Validate batch status
+  const allowedStatuses = ['production_registered', 'active_in_market', 'active'];
+  if (!allowedStatuses.includes(batch.status)) {
+    return json({
+      ok: false,
+      reason: 'invalid_batch_state',
+      message: `Cannot activate tags while batch status is '${batch.status}'. Batch status must be 'production_registered' or 'active_in_market'.`
+    }, 400);
+  }
 
   let targetUids = Array.from(new Set(uids));
   if (!targetUids.length && (count > 0 || activateAll)) {

@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { checkAdmin } from '../../../../../lib/auth';
+import { checkAdmin, getAdminTenantScope } from '../../../../../lib/auth';
 import { json } from '../../../../../lib/http';
 import { sql } from '../../../../../lib/db';
 
@@ -13,12 +13,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const limit = Math.max(0, Math.trunc(Number(body.limit || 0)));
 
-  const batchRows = await sql`
-    SELECT id, status, created_at
-    FROM batches
-    WHERE bid = ${bid}
-    ORDER BY created_at ASC, id ASC
-  `;
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const batchRows = forcedTenantSlug
+    ? await sql`
+      SELECT b.id, b.status, b.created_at
+      FROM batches b
+      JOIN tenants t ON t.id = b.tenant_id
+      WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
+      ORDER BY b.created_at ASC, b.id ASC
+    `
+    : await sql`
+      SELECT id, status, created_at
+      FROM batches
+      WHERE bid = ${bid}
+      ORDER BY created_at ASC, id ASC
+    `;
   if (batchRows.length > 1) {
     return json({
       ok: false,
@@ -29,6 +38,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   }
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: 'batch not found' }, 404);
+
+  // Validate batch status
+  const allowedStatuses = ['production_registered', 'active_in_market', 'active'];
+  if (!allowedStatuses.includes(batch.status)) {
+    return json({
+      ok: false,
+      reason: 'invalid_batch_state',
+      message: `Cannot activate tags while batch status is '${batch.status}'. Batch status must be 'production_registered' or 'active_in_market'.`
+    }, 400);
+  }
 
   const target = limit > 0
     ? await sql`
