@@ -1,6 +1,8 @@
-# nexID Tokenizacion Polygon Amoy - Runbook paso a paso
+# nexID Polygon ownership - Runbook paso a paso
 
-Esta guia es para activar tokenizacion real en Polygon Amoy para los taps SUN/NTAG 424 DNA TT de nexID, usando las 10 etiquetas fisicas actuales como piloto. La meta es que cada tap valido pueda generar o disparar un certificado/token verificable, sin exponer el UID crudo del chip en blockchain.
+Esta guia es para activar tokenizacion real en Polygon Amoy para taps SUN/NTAG 424 DNA TT de nexID, usando las 10 etiquetas fisicas actuales como piloto. La meta es que un tap valido y fresco pueda habilitar un certificado/token verificable cuando la politica del tenant lo permita, sin exponer el UID crudo del chip en blockchain.
+
+Polygon es la capa de ownership/NFT/claim. No es el ledger de todos los taps. Los taps se validan y registran en nexID; solo claims, mints o eventos seleccionados deben terminar on-chain.
 
 Si manana queres ir directo a la ejecucion, usa tambien el checklist corto:
 
@@ -22,7 +24,7 @@ Activar este flujo:
 
 1. El cliente tapea una etiqueta NFC/SUN.
 2. La API valida autenticidad, anti-replay y estado tamper.
-3. Si el tap es valido, nexID crea o procesa una solicitud de tokenizacion.
+3. Si el tap es valido, fresco y elegible por politica, nexID crea o procesa una solicitud de tokenizacion.
 4. El backend firma una transaccion en Polygon Amoy.
 5. El producto queda asociado a un token/certificado con `tx_hash`, `token_id`, red, contrato y metadata.
 6. El usuario ve el estado en `/sun`, portal consumidor, admin tenant y superadmin.
@@ -556,11 +558,13 @@ El modelo correcto para NTAG 424 DNA TT es:
 - Validar SUN/CMAC server-side.
 - Detectar replay.
 - Guardar evento operativo en la base.
-- Anclar en blockchain solo datos no sensibles.
+- Anclar en blockchain solo datos no sensibles y solo cuando haya claim/certificado/evento elegible.
 - Usar hash del UID con salt secreto.
 - No publicar UID crudo.
 - No publicar claves SUN.
 - No publicar private keys.
+- No publicar PII ni datos crudos de negocio.
+- No escribir todos los taps en blockchain.
 
 Ejemplo conceptual:
 
@@ -691,7 +695,7 @@ Para el piloto actual:
 ```txt
 Red: Polygon Amoy
 Modo: TOKENIZATION_MODE=polygon
-Auto tokenizacion: true
+Auto tokenizacion: solo para lote piloto/allowlist; produccion debe usar politica de claim
 Minter: wallet dedicada con gas testnet
 Privacidad: UID hash + salt
 Metadata: prefix sandbox primero, IPFS despues

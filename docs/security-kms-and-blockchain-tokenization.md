@@ -52,12 +52,13 @@ Dashboard no recibe K_META/K_FILE salvo en flujos controlados de alta/registro
 
 ## 3. Que agrega blockchain
 
-Blockchain no reemplaza la validacion SUN. Blockchain solo registra una prueba posterior:
+Blockchain no reemplaza la validacion SUN. Blockchain solo registra una prueba posterior cuando la politica de producto lo requiere:
 
 ```txt
 Tap valido y fresco
   -> backend confirma SUN/CMAC/replay/tamper
-  -> se crea tokenization_request
+  -> policy engine decide si corresponde claim/tokenizacion/proof
+  -> si corresponde, se crea tokenization_request
   -> se calcula chip_uid_hash = sha256(UID + TOKENIZATION_UID_SALT)
   -> se minta/ancla certificado en Polygon Amoy
   -> se guarda tx_hash/token_id
@@ -78,6 +79,8 @@ La cadena recibe:
 - `token_uri` sin UID crudo
 - tx hash / token id
 
+La cadena no recibe todos los taps. Los eventos DPP completos quedan en backend; solo claims, certificados o pruebas seleccionadas se publican o anclan.
+
 ## 4. Diferencia entre ambos KMS
 
 | Capa | Secreto | Para que sirve | Donde vive |
@@ -96,10 +99,10 @@ Para los 10 tags reales de China:
 2. Tap real llega a /sun.
 3. API descifra keys solo en memoria.
 4. API valida CMAC, UID, counter, replay y tamper.
-5. Si es valido y fresco, API crea request de tokenizacion.
+5. Si es valido, fresco y elegible por politica de piloto, API crea request de tokenizacion.
 6. API calcula chip_uid_hash con TOKENIZATION_UID_SALT.
 7. API llama executor.
-8. Executor firma tx en Polygon Amoy con gas gratis testnet.
+8. Executor firma tx en Polygon Amoy con gas de testnet.
 9. API guarda tx_hash/token_id y lo muestra en /sun + portal + admin.
 ```
 

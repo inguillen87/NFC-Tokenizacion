@@ -68,7 +68,7 @@ POLYGON_CONTRACT_ADDRESS=0xCONTRATO
 POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA
 ```
 
-Para el piloto Amoy, esta private key queda fuera de la API principal y solo en el executor. Sigue siendo gas gratis de testnet. La API manda `chip_uid_hash`; el executor no necesita `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX` ni UID crudo en operacion normal.
+Para el piloto Amoy, esta private key queda fuera de la API principal y solo en el executor. Usa gas de testnet sin valor real de produccion. La API manda `chip_uid_hash`; el executor no necesita `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX` ni UID crudo en operacion normal.
 
 ## KMS real
 
@@ -92,7 +92,7 @@ Frontend: nada sensible
 ## Prueba recomendada manana
 
 1. Levantar executor local o desplegarlo aparte.
-2. Poner gas Amoy gratis en `nexID Amoy Minter`.
+2. Poner gas Amoy de testnet en `nexID Amoy Minter`.
 3. Configurar API en modo executor.
 4. Ejecutar `npm run tokenization:check`.
 5. Probar un mint manual.

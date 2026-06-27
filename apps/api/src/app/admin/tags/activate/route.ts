@@ -4,14 +4,18 @@ export const dynamic = 'force-dynamic';
 import { sql } from "../../../../lib/db";
 import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
+import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
+import { canActivateSupplierSubBatch } from "../../../../lib/supplier-ops";
+import { hashEvidencePayload } from "../../../../lib/proof-layer";
 
 function normalizeUid(value: unknown) {
   return String(value || "").trim().toUpperCase();
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
+  await ensureSupplierOpsSchema();
 
   const body: Record<string, unknown> = await req.json().catch(() => ({}));
   const bid = String(body.bid || body.batchId || "").trim();
@@ -31,14 +35,14 @@ export async function POST(req: Request) {
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const batchRows = forcedTenantSlug
     ? await sql/*sql*/`
-      SELECT b.id, b.status
+      SELECT b.id, b.tenant_id, b.status
       FROM batches b
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
       LIMIT 1
     `
     : await sql/*sql*/`
-      SELECT id, status
+      SELECT id, tenant_id, status
       FROM batches
       WHERE bid = ${bid}
       LIMIT 1
@@ -54,6 +58,32 @@ export async function POST(req: Request) {
       reason: 'invalid_batch_state',
       message: `Cannot activate tags while batch status is '${batch.status}'. Batch status must be 'production_registered' or 'active_in_market'.`
     }, 400);
+  }
+
+  const supplierRows = await sql/*sql*/`
+    SELECT id, supplier_order_id, bid, expected_quantity, manifest_status, manifest_count, qa_status
+    FROM supplier_sub_batches
+    WHERE batch_id = ${batch.id} OR bid = ${bid}
+    LIMIT 1
+  `;
+  const supplierSubBatch = supplierRows[0] || null;
+  if (supplierSubBatch) {
+    const gate = canActivateSupplierSubBatch({
+      manifestStatus: supplierSubBatch.manifest_status,
+      qaStatus: supplierSubBatch.qa_status,
+      expectedQuantity: supplierSubBatch.expected_quantity,
+      manifestCount: supplierSubBatch.manifest_count,
+    });
+    if (!gate.ok) {
+      return json({
+        ok: false,
+        reason: gate.reason,
+        message: "Industrial supplier tags cannot be activated until manifest import, quantity match and QA approval are complete.",
+        bid,
+        expected: "expected" in gate ? gate.expected : undefined,
+        received: "received" in gate ? gate.received : undefined,
+      }, 409);
+    }
   }
 
   let targetUids = Array.from(new Set(uids));
@@ -92,6 +122,28 @@ export async function POST(req: Request) {
     WHERE batch_id = ${batch.id} AND status = 'inactive'
   `;
 
+  if (supplierSubBatch && updated.length) {
+    const eventPayload = {
+      supplier_order_id: supplierSubBatch.supplier_order_id,
+      supplier_sub_batch_id: supplierSubBatch.id,
+      bid,
+      activated_tags: updated.length,
+      uid_count: updated.length,
+    };
+    const eventHash = hashEvidencePayload({
+      tenantId: String(batch.tenant_id),
+      resourceType: "supplier_sub_batch",
+      resourceId: String(supplierSubBatch.id),
+      eventType: "tag_activated",
+      payload: eventPayload,
+    });
+    await sql/*sql*/`
+      INSERT INTO evidence_events (tenant_id, resource_type, resource_id, event_type, payload_json, payload_hash)
+      VALUES (${batch.tenant_id}, 'supplier_sub_batch', ${supplierSubBatch.id}, 'tag_activated', ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
+      ON CONFLICT (payload_hash) DO NOTHING
+    `;
+  }
+
   return json({
     ok: true,
     batch: bid,
@@ -99,5 +151,11 @@ export async function POST(req: Request) {
     activated: updated.length,
     uids: updated.map((row) => row.uid_hex),
     remainingInactive: Number(remaining[0]?.count || 0),
+    supplier_gate: supplierSubBatch ? {
+      manifest_status: supplierSubBatch.manifest_status,
+      qa_status: supplierSubBatch.qa_status,
+      expected_quantity: Number(supplierSubBatch.expected_quantity || 0),
+      manifest_count: Number(supplierSubBatch.manifest_count || 0),
+    } : null,
   });
 }

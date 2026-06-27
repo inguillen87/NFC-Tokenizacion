@@ -288,7 +288,7 @@ Para probar el boton real de tokenizacion:
 4. Revisar `/admin/tokenization/requests`.
 5. Abrir `https://amoy.polygonscan.com/tx/0xTX_HASH`.
 
-Si aparece `anchor.ok=false`, mirar logs de `api.nexid.lat` y revisar: private key, gas, contrato, RPC o secreto de handoff.
+Si aparece `anchor.ok=false`, mirar logs de `api.nexid.lat` y revisar: private key, gas, contrato, RPC o secreto de handoff. No mostrar ese intento como tokenizacion exitosa hasta tener una transaccion real.
 
 ## 10. Prueba con las 10 etiquetas
 

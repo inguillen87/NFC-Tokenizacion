@@ -558,7 +558,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   const [activeStep, setActiveStep] = useState<WizardStep>(1);
   const [pending, setPending] = useState(false);
-  const [status, setStatus] = useState("Arranca con un tenant vacio o carga el piloto demobodega de forma explicita.");
+  const [status, setStatus] = useState("Arranca con un tenant vacio o carga el preset Bodega Balmec de forma explicita. Para pedidos industriales nuevos usa Supplier Order.");
   const [responseText, setResponseText] = useState("{}");
 
   const [tenantSlug, setTenantSlug] = useState("");
@@ -603,7 +603,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const [manifestMode, setManifestMode] = useState<ManifestMode>("paste");
   const [manifestText, setManifestText] = useState("");
   const [manifestFileName, setManifestFileName] = useState("");
-  const [manifestActivated, setManifestActivated] = useState(true);
+  const [manifestActivated, setManifestActivated] = useState(false);
 
   const [adminEnabled, setAdminEnabled] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
@@ -650,11 +650,12 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     "SUN pretest",
     "Handoff",
   ];
+  const supplierQaGateRequired = batchMode === "supplier";
   const stepReady = {
     1: tenantProfileReady,
     2: batchIdentityReady && keysReady,
     3: manifestReady,
-    4: tenantReady && batchReady && importedCount > 0 && (manifestActivated ? activeCount > 0 : true),
+    4: tenantReady && batchReady && importedCount > 0 && (supplierQaGateRequired || !manifestActivated || activeCount > 0),
     5: validationCode !== "PENDING",
     6: Boolean(batchSummary),
   } as const;
@@ -668,14 +669,14 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
   const nextAction = !stepReady[1]
     ? "Completa identidad, origen y politica de ownership del tenant."
     : !stepReady[2]
-      ? "Carga BID, carrier, perfil, SKU, chip y llaves de proveedor."
+      ? "Pedido industrial: usa Supplier Order. Recepcion manual: carga BID, carrier, perfil, SKU, chip y llaves ya entregadas."
       : !stepReady[3]
         ? "Pega TXT/CSV o sube archivo y corrige conflictos antes de importar."
         : !stepReady[4]
-          ? "Ejecuta Provision: tenant, batch, manifest y activacion."
+          ? "Ejecuta Provision: tenant, batch y manifest. Supplier queda pendiente de QA antes de activar."
           : !stepReady[5]
             ? "Valida una URL SUN real para confirmar keys y estado."
-            : "Carga resumen y entrega el acceso operativo al tenant/reseller.";
+            : "Carga resumen y entrega el acceso operativo al tenant admin o empleado autorizado.";
 
   useEffect(() => {
     try {
@@ -794,9 +795,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setSecurityProfile("NTAG424_DNA_TT_WINE");
     setSku("wine-secure");
     setQuantity(String(DEMO_SUPPLIER_UIDS.length));
-    setNotes("Piloto fisico demobodega: proveedor China, tags NTAG 424 DNA TT, manifest auditado.");
-    setKMeta("c2a462e6ab434828153d73ce440704ac");
-    setKFile("bfce6c576540c04c840f1cfd457bf213");
+    setNotes("Preset Bodega Balmec: recepcion manual de proveedor, tags NTAG 424 DNA TT, manifest auditado.");
+    setKMeta("");
+    setKFile("");
+    setManifestActivated(false);
     setManifestText(manifestRowsToCsv(DEMO_SUPPLIER_UIDS.map((uid, index) => ({
       uidHex: uid,
       batchId: DEMO_SUPPLIER_BATCH_ID,
@@ -804,29 +806,29 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       productName: "",
       sku: "",
       lot: "MZA-2026-0424",
-      serial: `DEMO-${String(index + 1).padStart(3, "0")}`,
+      serial: `BALMEC-${String(index + 1).padStart(3, "0")}`,
       expiresAt: "",
-      externalUnitId: `DEMO-UNIT-${String(index + 1).padStart(3, "0")}`,
+      externalUnitId: `BALMEC-UNIT-${String(index + 1).padStart(3, "0")}`,
       bottleNumber: String(index + 1).padStart(4, "0"),
       labelNumber: `LBL-${String(index + 1).padStart(4, "0")}`,
-      caseId: "CASE-DEMO-01",
+      caseId: "CASE-BALMEC-01",
       palletId: "PALLET-SAMPLE",
       imageUrl: "",
       labelImageUrl: "",
       modelUrl: "",
       galleryUrls: "",
-      sensorJson: index === 0 ? "{\"deviceId\":\"logger-demo-7\",\"lightExposure\":\"Low\"}" : "",
+      sensorJson: index === 0 ? "{\"deviceId\":\"logger-balmec-7\",\"lightExposure\":\"Low\"}" : "",
       sensorAt: index === 0 ? new Date().toISOString() : "",
-      sensorId: index === 0 ? "logger-demo-7" : "",
+      sensorId: index === 0 ? "logger-balmec-7" : "",
       temperatureC: index === 0 ? "12.4" : "",
       humidityPct: index === 0 ? "67" : "",
       lightExposure: index === 0 ? "Low" : "",
       transitShock: "",
       storageZone: "cellar-samples",
     }))));
-    setManifestFileName("demobodega-pilot-manifest.csv");
+    setManifestFileName("bodega-balmec-manifest.csv");
     setAdminEnabled(false);
-    setStatus("Piloto demobodega cargado de forma explicita. Revisalo y ejecuta provision si corresponde.");
+    setStatus("Preset Bodega Balmec cargado. Este wizard no genera llaves; para pedido industrial nuevo usa Supplier Order.");
   }
 
   function resetRealIntake() {
@@ -849,6 +851,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     setKFile("");
     setManifestText("");
     setManifestFileName("");
+    setManifestActivated(false);
     setTenantReady(false);
     setBatchReady(false);
     setImportedCount(0);
@@ -917,7 +920,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   async function registerBatch() {
     if (!batchIdentityReady) throw new Error("Completa BID, carrier, perfil, SKU y chip.");
-    if (!keysReady) throw new Error("K_META y K_FILE deben ser hex de 32 caracteres para supplier mode.");
+    if (!keysReady) throw new Error("Recepcion manual supplier exige K_META y K_FILE reales de 32 hex. Para generar llaves seguras usa Supplier Order.");
     const data = await run("/api/admin/batches/register", {
       method: "POST",
       body: JSON.stringify({
@@ -957,12 +960,17 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
 
   async function importManifest() {
     if (!manifestReady) throw new Error("Manifest con errores. Corregilo antes de importar.");
+    const shouldActivateImported = batchMode !== "supplier" && manifestActivated;
     const data = await run(`/api/admin/batches/${encodeURIComponent(bid.trim())}/import-manifest`, {
       method: "POST",
-      body: JSON.stringify({ csv: manifestCsvForServer, activateImported: manifestActivated }),
+      body: JSON.stringify({ csv: manifestCsvForServer, activateImported: shouldActivateImported }),
     });
     setImportedCount(Number(data.importedRows || data.inserted || manifest.rows.length));
-    if (manifestActivated) setActiveCount(Number(data.importedRows || data.inserted || manifest.rows.length));
+    if (shouldActivateImported) {
+      setActiveCount(Number(data.importedRows || data.inserted || manifest.rows.length));
+    } else {
+      setActiveCount(0);
+    }
     return data;
   }
 
@@ -1009,10 +1017,14 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       await createTenantIfMissing();
       await registerBatch();
       await importManifest();
-      if (!manifestActivated) await activateAll();
       if (adminEnabled) await createTenantAdmin();
       await refreshBatchSummary();
-      setStatus("READY TO SCAN: tenant, perfil SUN, batch, manifest y tags activadas.");
+      setStatus(batchMode === "supplier"
+        ? "Manifest importado. Falta QA aprobado y activacion controlada antes de entregar tags."
+        : manifestActivated
+          ? "READY TO SCAN: tenant, perfil SUN, batch, manifest y tags activadas."
+          : "Manifest importado. Activacion manual pendiente."
+      );
       setActiveStep(5);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Provision failed");
@@ -1072,7 +1084,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
     {
       label: "Llaves / carrier",
       status: keysReady ? "listo" : "bloquea",
-      body: keysReady ? "K_META/K_FILE presentes cuando el carrier lo exige." : "Sin llaves no se debe vender como SUN/anti-replay.",
+      body: batchMode === "supplier"
+        ? (keysReady ? "Llaves batch reales cargadas para recepcion manual." : "Sin llaves batch reales no se debe vender como SUN/anti-replay.")
+        : "Batch interno sin supplier pack.",
       ready: keysReady,
     },
     {
@@ -1100,7 +1114,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={resetRealIntake}>Nuevo intake limpio</Button>
-            <Button variant="secondary" onClick={applyDemobodegaPilot}>Cargar piloto demobodega</Button>
+            <Button variant="secondary" onClick={applyDemobodegaPilot}>Cargar preset Bodega Balmec</Button>
           </div>
         </div>
 
@@ -1108,7 +1122,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-semibold text-cyan-100">Fast lane con control previo</p>
-              <p className="mt-1 text-xs leading-5 text-cyan-100/85">El boton final solo se habilita cuando tenant, batch, keys y manifest estan completos. Asi un reseller o empleado puede operar sin tocar consola.</p>
+              <p className="mt-1 text-xs leading-5 text-cyan-100/85">El boton final solo se habilita cuando tenant, batch, keys y manifest estan completos. Asi un empleado autorizado puede operar sin tocar consola.</p>
             </div>
             <Button disabled={pending || !provisionReady} onClick={() => void runAll()}>{pending ? "Procesando..." : copy.quickAction}</Button>
           </div>
@@ -1147,7 +1161,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">Semaforo para reseller / operador</p>
+              <p className="text-sm font-semibold text-white">Semaforo para operador autorizado</p>
               <p className="mt-1 text-xs leading-5 text-slate-400">La pantalla tiene que explicar si el lote se puede pegar, probar y vender sin pedir ayuda tecnica.</p>
             </div>
             <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-3 py-1 text-xs font-black text-cyan-100">
@@ -1228,10 +1242,10 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
           <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Modo de batch</p>
             <div className="mt-3 grid gap-2">
-              <ChoiceButton active={batchMode === "supplier"} title="Supplier batch" body="Tags programadas por proveedor. Llaves obligatorias." onClick={() => setBatchMode("supplier")} />
+              <ChoiceButton active={batchMode === "supplier"} title="Supplier manual" body="Recepcion legacy con llaves ya entregadas. Pedidos nuevos van por Supplier Order." onClick={() => setBatchMode("supplier")} />
               <ChoiceButton active={batchMode === "internal"} title="Internal batch" body="nexID genera llaves. Usar solo para emision interna." onClick={() => setBatchMode("internal")} />
             </div>
-            <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">Para tags que llegan de China, usar supplier batch y pegar exactamente las llaves del proveedor.</p>
+            <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">Pedido industrial nuevo: usa Supplier Order. Este wizard queda para recepcion manual cuando el proveedor ya entrego manifest y llaves batch.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-cyan-300/20 bg-slate-900/60 p-4 md:col-span-2">
@@ -1250,8 +1264,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
                     setSku("wine-secure-tt");
                     setTokenizationMode("valid_and_opened");
                     setRequireAntiReplay(true);
-                    setKMeta("c2a462e6ab434828153d73ce440704ac");
-                    setKFile("bfce6c576540c04c840f1cfd457bf213");
+                    setKMeta("");
+                    setKFile("");
+                    setManifestActivated(false);
                     setStatus("Preset: Bodega/Lujo Premium (NTAG 424 DNA TT) cargado.");
                   }}
                 >
@@ -1270,8 +1285,9 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
                     setSku("luxury-basic-secure");
                     setTokenizationMode("valid_only");
                     setRequireAntiReplay(true);
-                    setKMeta("c2a462e6ab434828153d73ce440704ac");
-                    setKFile("bfce6c576540c04c840f1cfd457bf213");
+                    setKMeta("");
+                    setKFile("");
+                    setManifestActivated(false);
                     setStatus("Preset: Autenticidad Criptográfica (NTAG 424 DNA) cargado.");
                   }}
                 >
@@ -1412,8 +1428,14 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
               <Metric label="Fotos reales" value={String(manifestPhotoCount)} tone={manifestPhotoCount ? "good" : "neutral"} />
             </div>
             <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-xs text-slate-200">
-              <input suppressHydrationWarning type="checkbox" checked={manifestActivated} onChange={(event) => setManifestActivated(event.target.checked)} />
-              Activar tags importadas automaticamente
+              <input
+                suppressHydrationWarning
+                type="checkbox"
+                checked={batchMode !== "supplier" && manifestActivated}
+                disabled={batchMode === "supplier"}
+                onChange={(event) => setManifestActivated(event.target.checked)}
+              />
+              Activacion automatica solo para lotes internos. Supplier exige QA antes de activar.
             </label>
             {manifest.issues.length ? (
               <div className="max-h-56 overflow-auto rounded-2xl border border-rose-300/25 bg-rose-500/10 p-3">
@@ -1463,14 +1485,14 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
         <StepHeader step="4" title="Provision controlado" description="Ejecuta paso por paso o todo junto. Si algo falla, queda claro que campo falta y no se importan datos incompletos." />
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <ActionCard title="1. Tenant" body="Crea o actualiza SUN profile, origen, claim policy y manifest policy." ready={tenantReady} action={<Button disabled={pending || !tenantProfileReady} onClick={() => void createTenantIfMissing().then(() => setStatus("Tenant listo.")).catch((error) => setStatus(error instanceof Error ? error.message : "tenant failed"))}>Crear tenant</Button>} />
-          <ActionCard title="2. Batch" body="Registra BID, carrier, chip, perfil, SKU y llaves." ready={batchReady} action={<Button disabled={pending || !tenantProfileReady || !stepReady[2]} onClick={() => void registerBatch().then(() => setStatus("Batch listo.")).catch((error) => setStatus(error instanceof Error ? error.message : "batch failed"))}>Registrar batch</Button>} />
+          <ActionCard title="2. Batch" body={batchMode === "supplier" ? "Recepcion manual con BID, carrier, chip, perfil, SKU y llaves ya entregadas." : "Registra BID, carrier, chip, perfil y SKU."} ready={batchReady} action={<Button disabled={pending || !tenantProfileReady || !stepReady[2]} onClick={() => void registerBatch().then(() => setStatus("Batch listo.")).catch((error) => setStatus(error instanceof Error ? error.message : "batch failed"))}>Registrar batch</Button>} />
           <ActionCard title="3. Manifest" body="Importa CSV auditado con UID, unidad, sensores y overrides opcionales." ready={importedCount > 0} action={<Button disabled={pending || !batchReady || !manifestReady} onClick={() => void importManifest().then(() => setStatus("Manifest importado.")).catch((error) => setStatus(error instanceof Error ? error.message : "manifest failed"))}>Importar manifest</Button>} />
-          <ActionCard title="4. Activacion" body="Activa tags importadas para taps reales." ready={activeCount > 0} action={<Button disabled={pending || !importedCount} onClick={() => void activateAll().then(() => setStatus("Tags activadas.")).catch((error) => setStatus(error instanceof Error ? error.message : "activation failed"))}>Activar tags</Button>} />
+          <ActionCard title="4. Activacion" body={batchMode === "supplier" ? "Supplier requiere QA aprobado desde Supplier Order antes de activar." : "Activa tags importadas para taps reales."} ready={activeCount > 0} action={<Button disabled={pending || !importedCount || batchMode === "supplier"} onClick={() => void activateAll().then(() => setStatus("Tags activadas.")).catch((error) => setStatus(error instanceof Error ? error.message : "activation failed"))}>{batchMode === "supplier" ? "Bloqueado por QA" : "Activar tags"}</Button>} />
         </div>
         <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/55 p-4">
           <label className="flex items-center gap-2 text-sm font-semibold text-white">
             <input suppressHydrationWarning type="checkbox" checked={adminEnabled} onChange={(event) => setAdminEnabled(event.target.checked)} />
-            Crear usuario operador para tenant/reseller
+            Crear usuario operador para tenant
           </label>
           {adminEnabled ? (
             <div className="mt-3 grid gap-3 md:grid-cols-3">
@@ -1505,7 +1527,7 @@ export function SupplierBatchWizard({ locale }: { locale: AppLocale }) {
       </Card>
 
       <Card className={`p-5 sm:p-6 ${activeStep === 6 ? "" : "hidden"}`}>
-        <StepHeader step="6" title="Handoff operativo" description="Resumen para entregar a tenant admin, reseller o empleado: batch, portal, eventos, tags y auditoria." />
+        <StepHeader step="6" title="Handoff operativo" description="Resumen para entregar a tenant admin o empleado autorizado: batch, portal, eventos, tags y auditoria." />
         <div className="mt-4 flex flex-wrap gap-2">
           <Button disabled={pending || !bid.trim()} onClick={() => void refreshBatchSummary()}>Cargar resumen</Button>
           <a href={`/batches/${encodeURIComponent(bid.trim())}`} className="rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-slate-200">Detalle batch</a>

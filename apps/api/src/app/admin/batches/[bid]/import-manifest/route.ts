@@ -9,6 +9,9 @@ import { requireTenantSunProfile } from "../../../../../lib/tenant-onboarding";
 import { ensureCarrierProfileSchema } from "../../../../../lib/commercial-runtime-schema";
 import { getCarrierProfile, normalizeCarrierProfileCode } from "../../../../../lib/carrier-profiles";
 import { upsertTagSunPayload } from "../../../../../lib/sun-payload-registry.ts";
+import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
+import { validateSupplierManifestQuantity } from "../../../../../lib/supplier-ops";
+import { hashEvidencePayload } from "../../../../../lib/proof-layer";
 
 type ManifestPayload = {
   csv?: string;
@@ -31,19 +34,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const auth = checkAdmin(req);
   if (auth) return auth;
   await ensureCarrierProfileSchema();
+  await ensureSupplierOpsSchema();
 
   const { bid } = await params;
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const batchRows = forcedTenantSlug
     ? await sql/*sql*/`
-      SELECT b.id, b.tenant_id, b.carrier_profile_code, b.sdm_config, b.status, b.created_at
+      SELECT
+        b.id, b.tenant_id, b.carrier_profile_code, b.sdm_config, b.status, b.created_at,
+        b.supplier_order_id, b.supplier_sub_batch_id, b.expected_quantity, b.manifest_status, b.qa_status
       FROM batches b
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
       ORDER BY b.created_at ASC, b.id ASC
     `
     : await sql/*sql*/`
-      SELECT id, tenant_id, carrier_profile_code, sdm_config, status, created_at
+      SELECT
+        id, tenant_id, carrier_profile_code, sdm_config, status, created_at,
+        supplier_order_id, supplier_sub_batch_id, expected_quantity, manifest_status, qa_status
       FROM batches
       WHERE bid = ${bid}
       ORDER BY created_at ASC, id ASC
@@ -93,13 +101,51 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
 
   const manifest = parseTagManifest(payload.csv, bid);
   if (!manifest.rows.length && !manifest.rejectedRows.length) return json({ ok: false, reason: "manifest has no rows" }, 400);
+
+  const supplierSubBatchRows = await sql/*sql*/`
+    SELECT
+      id, supplier_order_id, tenant_id, batch_id, bid, expected_quantity,
+      manifest_status, manifest_count, qa_status
+    FROM supplier_sub_batches
+    WHERE batch_id = ${batch.id} OR bid = ${bid}
+    LIMIT 1
+  `;
+  const supplierSubBatch = supplierSubBatchRows[0] || null;
+  const supplierQuantityGate = supplierSubBatch
+    ? validateSupplierManifestQuantity(manifest, Number(supplierSubBatch.expected_quantity || 0))
+    : { ok: true as const };
+  if (!supplierQuantityGate.ok) {
+    return json({
+      ok: false,
+      reason: supplierQuantityGate.reason,
+      message: "Supplier manifest quantity must match the planned sub-batch quantity.",
+      expected: supplierQuantityGate.expected,
+      received: supplierQuantityGate.received,
+      bid,
+    }, 409);
+  }
+  if (supplierSubBatch && payload.activateImported) {
+    return json({
+      ok: false,
+      reason: "supplier_activation_requires_qa",
+      message: "Industrial supplier batches must be imported first, QA-approved, then activated from the activation endpoint.",
+      bid,
+    }, 409);
+  }
+
   if (manifest.rejectedRows.length > 0) {
     if (!payload.dryRun) {
       await sql/*sql*/`
         INSERT INTO tenant_manifests (
-          tenant_id, batch_id, bid, manifest_type, row_count, duplicate_count, rejected_count, content_hash, import_status, errors_json, carrier_profile_code
+          tenant_id, batch_id, bid, manifest_type, row_count, duplicate_count, rejected_count,
+          content_hash, import_status, errors_json, carrier_profile_code,
+          supplier_order_id, supplier_sub_batch_id, expected_quantity
         ) VALUES (
-          ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length}, ${manifest.duplicateUids.length}, ${manifest.rejectedRows.length}, ${manifest.contentHash}, 'rejected', ${JSON.stringify(manifest.rejectedRows)}::jsonb, ${batchCarrierCode}
+          ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length},
+          ${manifest.duplicateUids.length}, ${manifest.rejectedRows.length}, ${manifest.contentHash},
+          'rejected', ${JSON.stringify(manifest.rejectedRows)}::jsonb, ${batchCarrierCode},
+          ${supplierSubBatch?.supplier_order_id || null}, ${supplierSubBatch?.id || null},
+          ${supplierSubBatch?.expected_quantity || null}
         )
       `;
     }
@@ -143,6 +189,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       duplicateUids: manifest.duplicateUids,
       activated: payload.activateImported,
       carrier: batchCarrier,
+      supplier_gate: supplierSubBatch ? {
+        expected_quantity: Number(supplierSubBatch.expected_quantity || 0),
+        manifest_status: "would_import",
+        qa_status: supplierSubBatch.qa_status || "pending",
+        activation_requires_qa: true,
+      } : null,
     });
   }
 
@@ -247,11 +299,67 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
 
   await sql/*sql*/`
     INSERT INTO tenant_manifests (
-      tenant_id, batch_id, bid, manifest_type, row_count, inserted_count, reactivated_count, duplicate_count, rejected_count, content_hash, import_status, errors_json, carrier_profile_code
+      tenant_id, batch_id, bid, manifest_type, row_count, inserted_count, reactivated_count,
+      duplicate_count, rejected_count, content_hash, import_status, errors_json, carrier_profile_code,
+      supplier_order_id, supplier_sub_batch_id, expected_quantity
     ) VALUES (
-      ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length}, ${inserted}, ${reactivated}, 0, 0, ${manifest.contentHash}, 'imported', ${JSON.stringify({ registeredSunPayloads })}::jsonb, ${batchCarrierCode}
+      ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length},
+      ${inserted}, ${reactivated}, 0, 0, ${manifest.contentHash}, 'imported',
+      ${JSON.stringify({ registeredSunPayloads })}::jsonb, ${batchCarrierCode},
+      ${supplierSubBatch?.supplier_order_id || null}, ${supplierSubBatch?.id || null},
+      ${supplierSubBatch?.expected_quantity || null}
     )
   `;
+
+  if (supplierSubBatch) {
+    await sql/*sql*/`
+      UPDATE supplier_sub_batches
+      SET
+        manifest_status = 'imported',
+        manifest_count = ${manifest.rows.length},
+        manifest_hash = ${manifest.contentHash},
+        manifest_imported_at = now(),
+        updated_at = now()
+      WHERE id = ${supplierSubBatch.id}
+    `;
+    await sql/*sql*/`
+      UPDATE batches
+      SET manifest_status = 'imported'
+      WHERE id = ${batch.id}
+    `;
+    await sql/*sql*/`
+      INSERT INTO vault_artifacts (
+        tenant_id, supplier_order_id, supplier_sub_batch_id, resource_type, resource_id,
+        artifact_type, content_hash, mime_type, metadata_json
+      ) VALUES (
+        ${batch.tenant_id}, ${supplierSubBatch.supplier_order_id}, ${supplierSubBatch.id},
+        'supplier_sub_batch', ${supplierSubBatch.id}, 'uid_manifest', ${manifest.contentHash},
+        'text/csv', ${JSON.stringify({ bid, row_count: manifest.rows.length, manifest_type: manifest.manifestType })}::jsonb
+      )
+    `;
+    for (const eventType of ["manifest_imported", "manifest_validated"]) {
+      const eventPayload = {
+        supplier_order_id: supplierSubBatch.supplier_order_id,
+        supplier_sub_batch_id: supplierSubBatch.id,
+        bid,
+        row_count: manifest.rows.length,
+        content_hash: manifest.contentHash,
+        carrier_profile_code: batchCarrierCode,
+      };
+      const eventHash = hashEvidencePayload({
+        tenantId: String(batch.tenant_id),
+        resourceType: "supplier_sub_batch",
+        resourceId: String(supplierSubBatch.id),
+        eventType,
+        payload: eventPayload,
+      });
+      await sql/*sql*/`
+        INSERT INTO evidence_events (tenant_id, resource_type, resource_id, event_type, payload_json, payload_hash)
+        VALUES (${batch.tenant_id}, 'supplier_sub_batch', ${supplierSubBatch.id}, ${eventType}, ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
+        ON CONFLICT (payload_hash) DO NOTHING
+      `;
+    }
+  }
 
   return json({
     ok: true,
@@ -265,5 +373,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     duplicateUids: [],
     activated: payload.activateImported,
     carrier: batchCarrier,
+    supplier_gate: supplierSubBatch ? {
+      expected_quantity: Number(supplierSubBatch.expected_quantity || 0),
+      manifest_status: "imported",
+      qa_status: supplierSubBatch.qa_status || "pending",
+      activation_requires_qa: true,
+    } : null,
   });
 }
