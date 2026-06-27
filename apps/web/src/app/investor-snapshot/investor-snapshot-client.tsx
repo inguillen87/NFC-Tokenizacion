@@ -1192,7 +1192,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
       }
       
       if (userQuestion.includes("blockchain") || userQuestion.includes("web3") || userQuestion.includes("nft") || userQuestion.includes("seguridad") || userQuestion.includes("seguro") || userQuestion.includes("nube")) {
-        return `La arquitectura de nexID utiliza un modelo híbrido en el que la firma digital de los chips NFC se valida contra nuestro servidor seguro en la nube. Opcionalmente, para marcas que exportan y requieren certificar de forma pública el lote, se genera un pasaporte digital (NFT) en la red Polygon. Esto garantiza que ningún actor de la cadena logística o de distribución pueda alterar el historial del producto, ya que cada toque del consumidor se registra de forma inmutable, dando control completo e inmediato al propietario de la marca.`;
+        return `La arquitectura de nexID utiliza un modelo híbrido: el chip NFC se valida contra nuestro backend seguro, el CRM conserva la operación en tiempo real y Polygon se usa cuando la marca necesita ownership, certificado transferible, NFT o claim público. No escribimos todos los taps en blockchain ni publicamos datos sensibles. Para auditoría avanzada, se pueden anclar hashes agregados en Polygon/IOTA, manteniendo trazabilidad verificable sin exponer al consumidor ni encarecer cada lectura.`;
       }
 
       if (userQuestion.includes("ayuda") || userQuestion.includes("como") || userQuestion.includes("plataforma") || userQuestion.includes("que es") || userQuestion.includes("explic")) {
@@ -1922,7 +1922,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-b2",
       query: "¿Tienen convenios o alianzas con otras bodegas como Catena Zapata o Rutini para visitas guiadas en Luján de Cuyo?",
-      answer: "Sí, formamos parte de la Alianza de Cavas Premium de Mendoza. Al presentar tu ticket NFT de nexID, accedés a un 20% de descuento en el tour enológico de Bodega Catena Zapata.",
+      answer: "Sin un convenio cargado por contrato, nexID no afirma alianzas con terceros. La marca puede ofrecer beneficios propios o habilitar una red autorizada donde cada bodega aprueba descuento, cupo y vigencia antes de publicarlo.",
       timestamp: "19:15:30",
       tag: "Alianza B2B",
       status: "respondido"
@@ -1948,7 +1948,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-c2",
       query: "¿Tienen convenios de distribución o alianzas exclusivas con cadenas como Sephora o Juleriaque en Latam?",
-      answer: "¡Exacto! Juleriaque es nuestro distribuidor oficial en Latam. Escaneando el chip en cualquier sucursal física, podés acumular el doble de puntos de fidelidad en tu pasaporte digital nexID.",
+      answer: "Sin contrato cargado, nexID no presenta a ninguna cadena como distribuidor oficial. El tenant puede cargar retailers autorizados y beneficios por sucursal; el CRM valida stock, puntos y permisos antes de mostrarlos al consumidor.",
       timestamp: "18:22:12",
       tag: "Distribución",
       status: "respondido"
@@ -1974,7 +1974,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-a2",
       query: "¿Tienen convenios con cooperativas locales en Pergamino o Santa Fe para compras a granel de este lote?",
-      answer: "Sí, tenemos convenios de distribución directa con la Cooperativa Agrícola de Pergamino y la AFA en Santa Fe. Podes transferir tu token de lote digital directamente a sus cuentas para retirar mercadería.",
+      answer: "Las compras a granel y convenios cooperativos se publican solo si el tenant los carga como canales autorizados. nexID valida lote, zona, stock y condiciones antes de mostrar la oferta al productor.",
       timestamp: "19:10:15",
       tag: "B2B Lead",
       status: "respondido"
@@ -2000,7 +2000,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-p2",
       query: "¿Tienen alianza o convenio con laboratorios internacionales para asegurar la entrega si hay falta de stock local?",
-      answer: "Sí, formamos parte de la red de suministro de emergencia con laboratorios de Frankfurt y Basilea. Al verificar la autenticidad con tu chip nexID, el sistema reserva stock prioritario en aduana en caso de quiebre de inventario.",
+      answer: "La red de suministro se muestra solo si el tenant cargó laboratorios, distribuidores y stock autorizado. nexID puede reservar prioridad operativa cuando la política del tenant y la validación del lote lo permitan.",
       timestamp: "19:05:32",
       tag: "Cadena de Suministro",
       status: "respondido"
@@ -2367,7 +2367,7 @@ export function InvestorSnapshotClient() {
               </div>
               
               <div className="bg-cyan-500/5 border border-cyan-500/10 rounded-lg p-2 text-[7.5px] text-slate-400 leading-normal mt-2 shrink-0">
-                💡 <strong>CRM B2B Telemetry:</strong> Almacena al instante lo que tus clientes preguntan al escanear, cruzando convenios de recompra y alianzas de marca en vivo.
+                💡 <strong>CRM B2B Telemetry:</strong> Almacena al instante lo que tus clientes preguntan al escanear, cruzando recompra, canales autorizados y beneficios aprobados por contrato.
               </div>
             </div>
           )}
@@ -2603,9 +2603,9 @@ export function InvestorSnapshotClient() {
           } else if (q.includes("origen") || q.includes("grasse") || q.includes("donde")) {
             reply = "La esencia se produce en Grasse, Francia, y se fracciona bajo estrictos estándares en laboratorios locales acreditados.";
           } else if (q.includes("parecido") || q.includes("crema") || q.includes("otro") || q.includes("rutina") || q.includes("combinar")) {
-            reply = "Para piel extremadamente seca, recomendamos complementar tu rutina con nuestra crema regeneradora Aura. Sephora (nuestro aliado de distribución) tiene stock disponible y obtienes 15% off.";
+            reply = "Para piel extremadamente seca, recomendamos complementar tu rutina con la crema regeneradora Aura del tenant. Si la marca carga retailers autorizados, nexID muestra stock y beneficios por sucursal sin afirmar alianzas no verificadas.";
           } else if (q.includes("convenio") || q.includes("distrib") || q.includes("sephora") || q.includes("juleriaque") || q.includes("tienda")) {
-            reply = "Contamos con convenios exclusivos de distribución con Juleriaque y Sephora en toda la región. Podrás canjear puntos de fidelidad en cualquiera de sus locales.";
+            reply = "Los convenios se muestran solo si están cargados y aprobados por contrato. El tenant puede habilitar retailers autorizados, puntos y beneficios por sucursal desde el CRM.";
           }
         } else if (selectedIndustry === "agro") {
           reply = "Como tu Inspector Técnico BioGuard, confirmo que este lote fitosanitario es original. ¿Quieres consultar dosis o el origen?";
@@ -2618,7 +2618,7 @@ export function InvestorSnapshotClient() {
           } else if (q.includes("lluvia") || q.includes("viento") || q.includes("clima") || q.includes("lavado")) {
             reply = "BioGuard Max 500 incluye polímeros adherentes que resisten el lavado por lluvia transcurridos 45 minutos de la aplicación foliar.";
           } else if (q.includes("convenio") || q.includes("cooperativa") || q.includes("pergamino") || q.includes("compras") || q.includes("granel")) {
-            reply = "Tenemos convenios vigentes con la Cooperativa Agrícola de Pergamino y la AFA para entregas a granel con facturación unificada.";
+            reply = "Las entregas a granel y convenios cooperativos deben cargarse como canales autorizados del tenant. nexID valida lote, zona, stock y condiciones antes de mostrar una oferta al productor.";
           }
         } else if (selectedIndustry === "pharma") {
           reply = "Como tu Asistente Validante, confirmo la autenticidad y cadena de frío de OncoCure. ¿Quieres auditar la temperatura o el lote?";
@@ -2655,9 +2655,9 @@ export function InvestorSnapshotClient() {
           } else if (q.includes("blockchain") || q.includes("token") || q.includes("nft") || q.includes("web3")) {
             reply = "Cada botella posee un gemelo digital registrado en Polygon Amoy. Esto certifica que el lote es original y te permite reclamar beneficios y airdrops.";
           } else if (q.includes("cena") || q.includes("quedar bien") || q.includes("llevar") || q.includes("impresionar")) {
-            reply = "Para una cena especial, este Gran Blend 2026 es la elección perfecta para quedar bien. Si buscas complementar, tenemos convenio con Catena Zapata para su Malbec premium.";
+            reply = "Para una cena especial, este Gran Blend 2026 es una opción fuerte. Si el tenant carga una red de bodegas autorizadas, nexID puede sugerir alternativas y beneficios aprobados por contrato.";
           } else if (q.includes("convenio") || q.includes("alianza") || q.includes("catena") || q.includes("rutini")) {
-            reply = "Contamos con una alianza con la red de bodegas de Luján de Cuyo, incluyendo preventas exclusivas cruzadas con Catena Zapata y Rutini.";
+            reply = "nexID no afirma alianzas sin contrato cargado. La red de bodegas autorizadas puede configurarse desde el CRM con beneficios, cupos, vigencia y trazabilidad de cada canje.";
           }
         }
         

@@ -110,7 +110,7 @@ const DEFAULT_AI_QUERIES = [
     vertical: "wine",
     company: "Distribuidora Los Andes",
     query: "¿Tienen convenios o alianzas con otras bodegas como Catena Zapata o Rutini para visitas guiadas en Luján de Cuyo?",
-    answer: "Sí, formamos parte de la Alianza de Cavas Premium de Mendoza. Al presentar tu ticket NFT de nexID, accedés a un 20% de descuento en el tour enológico de Bodega Catena Zapata.",
+    answer: "Sin un convenio cargado por contrato, nexID no afirma alianzas con terceros. La marca puede ofrecer beneficios propios o habilitar una red autorizada donde cada bodega aprueba descuento, cupo y vigencia antes de publicarlo.",
     tag: "Alianza B2B",
     created_at: "2026-06-13",
     status: "RESPONDIDO"
@@ -132,7 +132,7 @@ const DEFAULT_AI_QUERIES = [
     vertical: "cosmetics",
     company: "Perfumerías Juleriaque",
     query: "¿Tienen convenios de distribución o alianzas exclusivas con cadenas como Sephora o Juleriaque en Latam?",
-    answer: "¡Exacto! Juleriaque es nuestro distribuidor oficial en Latam. Escaneando el chip en cualquier sucursal física, podés acumular el doble de puntos de fidelidad en tu pasaporte digital nexID.",
+    answer: "Sin contrato cargado, nexID no presenta a ninguna cadena como distribuidor oficial. El tenant puede cargar retailers autorizados y beneficios por sucursal; el CRM valida stock, puntos y permisos antes de mostrarlos al consumidor.",
     tag: "Distribución",
     created_at: "2026-06-13",
     status: "RESPONDIDO"
@@ -154,7 +154,7 @@ const DEFAULT_AI_QUERIES = [
     vertical: "agro",
     company: "Cooperativa Agrícola Pergamino",
     query: "¿Tienen convenios con cooperativas locales en Pergamino o Santa Fe para compras a granel de este lote?",
-    answer: "Sí, tenemos convenios de distribución directa con la Cooperativa Agrícola de Pergamino y la AFA en Santa Fe. Podes transferir tu token de lote digital directamente a sus cuentas para retirar mercadería.",
+    answer: "Las compras a granel y convenios cooperativos se publican solo si el tenant los carga como canales autorizados. nexID valida lote, zona, stock y condiciones antes de mostrar la oferta al productor.",
     tag: "B2B Lead",
     created_at: "2026-06-13",
     status: "RESPONDIDO"

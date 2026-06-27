@@ -119,7 +119,7 @@ def build_playbook_pdf():
     pdf.set_xy(tx + 4, 156)
     pdf.set_font("helvetica", "I", 8)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(172, 4.2, '"Mire, un QR es una fotocopia que cualquiera puede duplicar en diez mil botellas falsas. Con nexID, insertamos un microchip criptográfico. Cada toque genera una firma única en la blockchain. Su código QR es publicidad; nuestro chip es procedencia inmutable y seguridad."', border=0)
+    pdf.multi_cell(172, 4.2, '"Mire, un QR es una fotocopia que cualquiera puede duplicar en diez mil botellas falsas. Con nexID, insertamos un microchip criptográfico: cada toque genera evidencia SUN única en nexID, y solo los claims de ownership o auditoría que aportan valor se anclan en Polygon/IOTA sin publicar datos sensibles. Su QR es publicidad; nuestro chip es procedencia, control y seguridad operacional."', border=0)
 
     # ----------------------------------------------------
     # ----------------------------------------------------
@@ -142,7 +142,7 @@ def build_playbook_pdf():
     pdf.set_xy(15, y_qa + 4.5)
     pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(156, 163, 175)
-    pdf.multi_cell(180, 4, "Representa centavos de dólar por unidad (<1.5% en gama alta). Además, al operar sobre base SQL segura en servidores premium de Render/AWS por defecto, no hay gas fees ni transacciones on-chain obligatorias para tu línea estándar.", border=0)
+    pdf.multi_cell(180, 4, "Representa centavos de dólar por unidad (<1.5% en gama alta). Además, la línea estándar opera sobre backend seguro nexID sin transacciones on-chain obligatorias para cada tap. Polygon/IOTA se activan por política enterprise cuando hay ownership, auditoría, DPP o mercado secundario que justifiquen gas, RPC y custodia.", border=0)
 
     # QA 2
     y_qa = 56

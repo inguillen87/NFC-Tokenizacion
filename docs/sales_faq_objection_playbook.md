@@ -55,7 +55,7 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
 
 ### Pregunta B: *"¿Por qué usan Blockchain (Web3) en lugar de una base de datos tradicional?"*
 * **Respuesta:**
-  > *"Una base de datos tradicional (como SQL) está controlada por una sola parte (nosotros o la bodega). Si un empleado infiel altera la base de datos, puede cambiar el dueño de una botella valiosa o certificar botellas falsas. Al registrar la propiedad de la botella en una blockchain (Polygon Ledger) mediante un contrato inteligente, el registro de autenticidad y propiedad se vuelve inmutable y públicamente auditable. Esto es crucial para el mercado secundario (subastas, reventa de botellas de colección) porque el comprador de la botella puede auditar on-chain la procedencia de la botella sin tener que confiar ciegamente en una base de datos privada."*
+  > *"La base operativa vive en nexID porque ahí se validan el chip, el tenant, el canal, el riesgo, la geolocalización y el CRM en tiempo real. Blockchain no reemplaza esa operación ni recibe todos los taps. Polygon se activa cuando hay propiedad digital, certificado transferible, NFT o claim de ownership; IOTA puede actuar como capa opcional de prueba para hashes de auditoría, DPP o logística. Así mantenemos velocidad, privacidad y costos bajo control, pero dejamos evidencia pública cuando realmente aporta valor probatorio o de mercado secundario."*
 
 ### Pregunta C: *"¿Cómo escalan el modelo de negocio? (SaaS vs. Hardware)"*
 * **Respuesta:**

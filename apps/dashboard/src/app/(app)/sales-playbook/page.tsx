@@ -48,7 +48,7 @@ export default function SalesPlaybookPage() {
       items: [
         {
           question: "¿Esto me va a encarecer mucho el costo por botella o empaque premium?",
-          answer: "El microchip criptográfico representa centavos de dólar por unidad (menos del 1.5% en botellas o perfumes premium). Además, al operar sobre una base de datos SQL híbrida en servidores premium de Render y AWS por defecto, no hay costos de gas fees ni transacciones de blockchain obligatorias para tu línea estándar.",
+          answer: "El microchip criptográfico representa centavos de dólar por unidad (menos del 1.5% en botellas o perfumes premium). La línea estándar opera en backend seguro nexID sin transacciones on-chain por cada tap; Polygon o IOTA se activan solo cuando hay ownership, auditoría, DPP o mercado secundario que justifican gas, RPC y custodia.",
           context: "A cambio de este mínimo costo, eliminas el fraude y adquieres un canal de datos directo al consumidor final (DTC) que te ahorra miles de dólares en intermediarios de marketing."
         },
         {

@@ -158,8 +158,8 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     identity: {
       eyebrow: "Capa premium",
       title: "Certificado digital, wallet y NFT cuando la marca lo necesita",
-      description: "El NFT no es el punto de partida: primero se prueba producto real, compra, ownership y confianza. Despues se puede guardar o transferir como certificado digital.",
-      bullets: ["Certificado por producto premium", "Wallet custodial nexID o MetaMask", "Garantia, lifecycle events y procedencia verificable", "Anclaje blockchain para auditoria, antifraude y mercado secundario"],
+      description: "El NFT no es el punto de partida: primero se prueba producto real, compra, ownership y confianza. Después se puede guardar o transferir como certificado digital.",
+      bullets: ["Certificado por producto premium", "Wallet custodial nexID o MetaMask", "Garantía, lifecycle events y procedencia verificable", "Polygon para ownership; hashes opcionales para auditoría cuando aplica"],
     },
     calculator: {
       eyebrow: "Calculadora",
