@@ -536,6 +536,7 @@ export async function processSunScan(input: {
   const cryptographicVerification = Boolean(res.ok);
   const cryptoErrorReason = res.ok ? null : res.reason;
   const supplierPayloadMatch = Boolean(registeredPayloadMatch);
+  const supplierPayloadOnly = supplierPayloadMatch && !cryptographicVerification;
   const payloadVerified = cryptographicVerification || supplierPayloadMatch;
 
   let allowlisted = false;
@@ -666,7 +667,9 @@ export async function processSunScan(input: {
     }
     return "UNKNOWN" as const;
   })();
-  const authStatus = !payloadVerified
+  const authStatus = supplierPayloadOnly
+    ? 'SUPPLIER_PAYLOAD_ONLY'
+    : !payloadVerified
     ? 'SUN_PROFILE_MISMATCH'
     : replaySuspect
       ? 'REPLAY_SUSPECT'
@@ -713,9 +716,9 @@ export async function processSunScan(input: {
     || ttStateRaw === "VALID_UNKNOWN_TAMPER"
       ? ttStateRaw
       : null;
-  const authValid = payloadVerified && authStatus === "VALID";
+  const authValid = cryptographicVerification && authStatus === "VALID";
   const productState: ProductState = (() => {
-    if (!payloadVerified || authStatus === "SUN_PROFILE_MISMATCH") return "SUN_PROFILE_MISMATCH";
+    if (!cryptographicVerification || supplierPayloadOnly || authStatus === "SUN_PROFILE_MISMATCH") return "SUN_PROFILE_MISMATCH";
     if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT";
     if (ttState === "VALID_OPENED" || ttState === "VALID_OPENED_PREVIOUSLY") return ttState;
     if (ttState === "VALID_CLOSED") return "VALID_CLOSED";

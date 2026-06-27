@@ -67,6 +67,17 @@ export async function POST(req: Request) {
   if (!tenantSlug || !bid) return json({ ok: false, reason: 'tenant_slug and bid required' }, 400);
   if (!mode) return json({ ok: false, reason: 'mode required', allowed: ['supplier', 'internal'] }, 400);
   if (!['supplier', 'internal'].includes(mode)) return json({ ok: false, reason: 'invalid mode', allowed: ['supplier', 'internal'] }, 400);
+  if (mode === 'supplier' && String(process.env.ALLOW_LEGACY_SUPPLIER_BATCH_REGISTER || '').toLowerCase() !== 'true') {
+    return json({
+      ok: false,
+      reason: 'legacy_supplier_registration_disabled',
+      message: 'Use /admin/supplier-orders. Legacy supplier registration does not satisfy encrypted key vault, manifest and QA gates.',
+    }, 410);
+  }
+  if (mode === 'supplier') {
+    const supplierAuth = checkAdmin(req, ['super_admin']);
+    if (supplierAuth) return supplierAuth;
+  }
 
   const tenant = await resolveTenant(tenantSlug);
   if (!tenant) return json({ ok: false, reason: 'tenant not found' }, 404);

@@ -30,6 +30,9 @@ export function evaluateAdminAccess({
   tenantSlug?: string | null;
   requiredScopes?: AdminScope[];
 }) {
+  const tokenMatches = Boolean(expectedToken && providedToken === expectedToken);
+  if (!tokenMatches) return { ok: false, status: 401 as const };
+
   if (scope) {
     if (!requiredScopes.includes(scope)) return { ok: false, status: 403 as const };
     if ((scope === "tenant_admin" || scope === "reseller") && !String(tenantSlug || "").trim()) {
@@ -39,7 +42,6 @@ export function evaluateAdminAccess({
   }
 
   if (requireScoped) return { ok: false, status: 401 as const };
-  if (!expectedToken || providedToken !== expectedToken) return { ok: false, status: 401 as const };
   return { ok: true, status: 200 as const };
 }
 

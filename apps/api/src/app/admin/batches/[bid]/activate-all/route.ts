@@ -130,34 +130,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   `;
 
   if (supplierSubBatch) {
+    const remainingInactive = Number(remaining[0]?.count || 0);
+    const activationComplete = remainingInactive === 0;
+    const supplierStatus = activationComplete ? 'activated' : 'partially_activated';
     await sql/*sql*/`
       UPDATE supplier_sub_batches
-      SET status = 'activated', activated_at = COALESCE(activated_at, now()), updated_at = now()
+      SET status = ${supplierStatus}, activated_at = CASE WHEN ${activationComplete} THEN COALESCE(activated_at, now()) ELSE activated_at END, updated_at = now()
       WHERE id = ${supplierSubBatch.id}
     `;
-    await sql/*sql*/`
-      UPDATE batches
-      SET status = 'active_in_market'
-      WHERE id = ${batch.id}
-    `;
+    if (activationComplete) {
+      await sql/*sql*/`
+        UPDATE batches
+        SET status = 'active_in_market'
+        WHERE id = ${batch.id}
+      `;
+    }
     const eventPayload = {
       supplier_order_id: supplierSubBatch.supplier_order_id,
       supplier_sub_batch_id: supplierSubBatch.id,
       bid,
       activated_tags: updated.length,
-      remaining_inactive: Number(remaining[0]?.count || 0),
+      remaining_inactive: remainingInactive,
+      activation_complete: activationComplete,
       override: Boolean(overrideReason),
     };
     const eventHash = hashEvidencePayload({
       tenantId: String(batch.tenant_id),
       resourceType: 'supplier_sub_batch',
       resourceId: String(supplierSubBatch.id),
-      eventType: 'batch_activated',
+      eventType: activationComplete ? 'batch_activated' : 'batch_partially_activated',
       payload: eventPayload,
     });
     await sql/*sql*/`
       INSERT INTO evidence_events (tenant_id, resource_type, resource_id, event_type, payload_json, payload_hash)
-      VALUES (${batch.tenant_id}, 'supplier_sub_batch', ${supplierSubBatch.id}, 'batch_activated', ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
+      VALUES (${batch.tenant_id}, 'supplier_sub_batch', ${supplierSubBatch.id}, ${activationComplete ? 'batch_activated' : 'batch_partially_activated'}, ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
       ON CONFLICT (payload_hash) DO NOTHING
     `;
   }
@@ -167,6 +173,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     batch: bid,
     activated: updated.length,
     remainingInactive: Number(remaining[0]?.count || 0),
+    activationComplete: Number(remaining[0]?.count || 0) === 0,
     supplier_gate: supplierSubBatch ? {
       manifest_status: supplierSubBatch.manifest_status,
       qa_status: supplierSubBatch.qa_status,
