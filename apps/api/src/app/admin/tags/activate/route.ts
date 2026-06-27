@@ -35,18 +35,26 @@ export async function POST(req: Request) {
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const batchRows = forcedTenantSlug
     ? await sql/*sql*/`
-      SELECT b.id, b.tenant_id, b.status
+      SELECT b.id, b.tenant_id, b.status, b.created_at
       FROM batches b
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
-      LIMIT 1
+      ORDER BY b.created_at ASC, b.id ASC
     `
     : await sql/*sql*/`
-      SELECT id, tenant_id, status
+      SELECT id, tenant_id, status, created_at
       FROM batches
       WHERE bid = ${bid}
-      LIMIT 1
+      ORDER BY created_at ASC, id ASC
     `;
+  if (batchRows.length > 1) {
+    return json({
+      ok: false,
+      reason: "DUPLICATE_BID",
+      message: "BID must be globally unique before activating individual tags.",
+      batches: batchRows.map((row) => ({ id: row.id, status: row.status || null, created_at: row.created_at || null })),
+    }, 409);
+  }
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
 

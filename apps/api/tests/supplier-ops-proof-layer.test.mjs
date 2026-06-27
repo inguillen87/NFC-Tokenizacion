@@ -11,6 +11,7 @@ const {
   decryptSupplierEncryptedZipForTest,
   validateSupplierManifestQuantity,
   canActivateSupplierSubBatch,
+  validateSupplierQaEvidence,
 } = await import("../src/lib/supplier-ops.ts");
 const {
   buildMerkleRoot,
@@ -120,6 +121,14 @@ test("supplier activation gate requires imported manifest, QA and matching count
   assert.equal(canActivateSupplierSubBatch({ manifestStatus: "imported", qaStatus: "pending", expectedQuantity: 1000, manifestCount: 1000 }).reason, "qa_not_passed");
   assert.equal(canActivateSupplierSubBatch({ manifestStatus: "imported", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 999 }).reason, "manifest_quantity_mismatch");
   assert.equal(canActivateSupplierSubBatch({ manifestStatus: "imported", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 1000 }).ok, true);
+});
+
+test("supplier QA gate rejects empty pass declarations", () => {
+  assert.equal(validateSupplierQaEvidence({ passed: false }).ok, true);
+  assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: [], replayChecked: true, ttstatusChecked: true }).reason, "qa_sample_evidence_required");
+  assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: ["https://qa.nexid.lat/sample/1"], replayChecked: false, ttstatusChecked: true }).reason, "qa_replay_check_required");
+  assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: ["https://qa.nexid.lat/sample/1"], replayChecked: true, ttstatusChecked: false }).reason, "qa_ttstatus_check_required");
+  assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: ["https://qa.nexid.lat/sample/1"], replayChecked: true, ttstatusChecked: true }).ok, true);
 });
 
 test("proof layer builds a verifiable Merkle root without exposing raw events", () => {

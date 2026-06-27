@@ -482,3 +482,25 @@ export function canActivateSupplierSubBatch(input: {
   }
   return { ok: true as const, override: false as const };
 }
+
+export function validateSupplierQaEvidence(input: {
+  passed: boolean;
+  sampleUrls?: unknown[] | null;
+  replayChecked?: boolean | null;
+  ttstatusChecked?: boolean | null;
+}) {
+  if (!input.passed) return { ok: true as const };
+  const sampleCount = Array.isArray(input.sampleUrls)
+    ? input.sampleUrls.map((item) => String(item || "").trim()).filter(Boolean).length
+    : 0;
+  if (sampleCount <= 0) {
+    return { ok: false as const, reason: "qa_sample_evidence_required", sampleCount };
+  }
+  if (!input.replayChecked) {
+    return { ok: false as const, reason: "qa_replay_check_required", sampleCount };
+  }
+  if (!input.ttstatusChecked) {
+    return { ok: false as const, reason: "qa_ttstatus_check_required", sampleCount };
+  }
+  return { ok: true as const, sampleCount };
+}

@@ -7,6 +7,7 @@ import { sql } from "../../../../../lib/db";
 import { logAuditEvent } from "../../../../../lib/audit-logger";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
 import { hashEvidencePayload } from "../../../../../lib/proof-layer";
+import { validateSupplierQaEvidence } from "../../../../../lib/supplier-ops";
 
 function safeString(value: unknown) {
   return String(value || "").trim();
@@ -86,6 +87,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       : [];
   const replayChecked = Boolean(body.replay_checked ?? body.replayChecked);
   const ttstatusChecked = Boolean(body.ttstatus_checked ?? body.ttstatusChecked);
+  const evidenceGate = validateSupplierQaEvidence({
+    passed,
+    sampleUrls,
+    replayChecked,
+    ttstatusChecked,
+  });
+  if (!evidenceGate.ok) {
+    return json({
+      ok: false,
+      reason: evidenceGate.reason,
+      message: "QA passed requires at least one sample URL plus replay and TTStatus checks.",
+      bid: subBatch.bid,
+      sample_count: evidenceGate.sampleCount,
+    }, 409);
+  }
   const notes = safeString(body.notes) || null;
   const status = passed ? "passed" : "failed";
   const actor = safeActor(req);

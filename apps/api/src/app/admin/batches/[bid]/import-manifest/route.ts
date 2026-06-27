@@ -124,6 +124,50 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       bid,
     }, 409);
   }
+
+  const manifestUids = Array.from(new Set(manifest.rows.map((row) => row.uidHex.toUpperCase()).filter(Boolean)));
+  const duplicateGlobalRows = manifestUids.length
+    ? await sql/*sql*/`
+        SELECT DISTINCT tg.uid_hex, b.bid, t.slug AS tenant_slug
+        FROM tags tg
+        JOIN batches b ON b.id = tg.batch_id
+        JOIN tenants t ON t.id = b.tenant_id
+        WHERE UPPER(tg.uid_hex) = ANY(${manifestUids})
+          AND tg.batch_id <> ${batch.id}
+        ORDER BY tg.uid_hex ASC
+        LIMIT 50
+      `
+    : [];
+  if (duplicateGlobalRows.length > 0) {
+    if (!payload.dryRun) {
+      await sql/*sql*/`
+        INSERT INTO tenant_manifests (
+          tenant_id, batch_id, bid, manifest_type, row_count, duplicate_count, rejected_count,
+          content_hash, import_status, errors_json, carrier_profile_code,
+          supplier_order_id, supplier_sub_batch_id, expected_quantity
+        ) VALUES (
+          ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length},
+          ${duplicateGlobalRows.length}, ${duplicateGlobalRows.length}, ${manifest.contentHash},
+          'rejected', ${JSON.stringify(duplicateGlobalRows.map((row) => ({
+            reason: "global_uid_duplicate",
+            uid_hex: row.uid_hex,
+            existing_bid: row.bid,
+            tenant_slug: row.tenant_slug,
+          })))}::jsonb, ${batchCarrierCode},
+          ${supplierSubBatch?.supplier_order_id || null}, ${supplierSubBatch?.id || null},
+          ${supplierSubBatch?.expected_quantity || null}
+        )
+      `;
+    }
+    return json({
+      ok: false,
+      reason: "global_uid_duplicate",
+      message: "Manifest contains UIDs already registered in another batch. Supplier UIDs must be globally unique.",
+      duplicateUids: duplicateGlobalRows.map((row) => row.uid_hex),
+      duplicates: duplicateGlobalRows,
+      bid,
+    }, 409);
+  }
   if (supplierSubBatch && payload.activateImported) {
     return json({
       ok: false,
@@ -154,7 +198,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
 
   // Dry run simulation
   if (payload.dryRun) {
-    const manifestUids = manifest.rows.map((row) => row.uidHex).filter(Boolean);
     const existingTags = manifestUids.length > 0
       ? await sql/*sql*/`
         SELECT uid_hex
