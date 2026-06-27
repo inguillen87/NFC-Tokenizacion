@@ -2,8 +2,14 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 import type { AppLocale } from "@product/config";
+import {
+  PremiumVectorMap,
+  type VectorMapEvidenceStep,
+  type VectorMapLedgerItem,
+  type VectorMapPoint,
+  type VectorMapRoute,
+} from "@product/ui";
 import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 
 type Vertical = PlatformDemoVertical;
@@ -831,166 +837,12 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function mapsHref(point: LocationPoint) {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.lat},${point.lng}`)}`;
-}
-
 type HeroRouteHover = {
   eyebrow: string;
   title: string;
   detail: string;
   tone: "origin" | "tap" | "route" | "crm";
 };
-
-const heroRouteSignalInline = {
-  root: {
-    position: "relative",
-    overflow: "hidden",
-    pointerEvents: "auto",
-  },
-  signal: {
-    position: "absolute",
-    inset: "0.78rem 0.78rem 5.7rem",
-    zIndex: 5,
-    overflow: "hidden",
-    border: "1px solid rgba(125, 211, 252, 0.18)",
-    borderRadius: "1.15rem",
-    background:
-      "radial-gradient(circle at 18% 62%, rgba(52, 211, 153, 0.18), transparent 28%), radial-gradient(circle at 74% 34%, rgba(34, 211, 238, 0.22), transparent 30%), linear-gradient(135deg, rgba(8, 47, 73, 0.52), rgba(2, 6, 23, 0.68))",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -3rem 4.6rem rgba(2,6,23,0.22)",
-    pointerEvents: "none",
-  },
-  grid: {
-    position: "absolute",
-    inset: 0,
-    backgroundImage:
-      "linear-gradient(90deg, rgba(125, 211, 252, 0.07) 1px, transparent 1px), linear-gradient(rgba(125, 211, 252, 0.07) 1px, transparent 1px)",
-    backgroundSize: "2.6rem 2.6rem",
-    WebkitMaskImage: "linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.18))",
-    maskImage: "linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.18))",
-  },
-  corridor: {
-    position: "absolute",
-    left: "12%",
-    right: "12%",
-    top: "50%",
-    height: "4.2rem",
-    marginTop: "-2.1rem",
-    borderRadius: 999,
-    transform: "rotate(-8deg)",
-    transformOrigin: "center",
-    background:
-      "linear-gradient(90deg, rgba(52, 211, 153, 0.03), rgba(34, 211, 238, 0.18), rgba(167, 139, 250, 0.08)), repeating-linear-gradient(90deg, transparent 0 1.1rem, rgba(226, 232, 240, 0.08) 1.1rem 1.18rem)",
-  },
-  rail: {
-    position: "absolute",
-    left: "12%",
-    right: "12%",
-    top: "50%",
-    height: "0.32rem",
-    borderRadius: 999,
-    transform: "rotate(-8deg)",
-    transformOrigin: "center",
-    background: "linear-gradient(90deg, #34d399, #22d3ee 52%, #a78bfa)",
-    boxShadow: "0 0 1.8rem rgba(34,211,238,0.4), 0 0 0 1px rgba(255,255,255,0.18)",
-  },
-  railGuide: {
-    position: "absolute",
-    inset: "-0.42rem 0",
-    borderTop: "1px dashed rgba(186,230,253,0.22)",
-    borderBottom: "1px dashed rgba(186,230,253,0.22)",
-  },
-  railGlow: {
-    position: "absolute",
-    inset: "-0.62rem 18%",
-    borderRadius: 999,
-    background: "radial-gradient(ellipse at center, rgba(34,211,238,0.2), transparent 72%)",
-    opacity: 0.7,
-  },
-  packet: {
-    position: "absolute",
-    left: "12%",
-    top: "calc(50% - 0.5rem)",
-    width: "1rem",
-    height: "1rem",
-    border: "2px solid rgba(240,253,250,0.9)",
-    borderRadius: 999,
-    background: "#67e8f9",
-    boxShadow: "0 0 0 0.42rem rgba(34,211,238,0.16), 0 0 1.6rem rgba(34,211,238,0.6)",
-    animation: "heroSignalPacket 3.8s cubic-bezier(0.45, 0, 0.2, 1) infinite",
-  },
-  originScan: {
-    position: "absolute",
-    left: "14%",
-    top: "56%",
-    zIndex: 2,
-    width: "1.18rem",
-    height: "1.18rem",
-    border: "2px solid rgba(240,253,250,0.86)",
-    borderRadius: 999,
-    background: "#34d399",
-    boxShadow: "0 0 1.5rem rgba(34,211,238,0.58)",
-    transform: "translate(-50%, -50%)",
-  },
-  tapScan: {
-    position: "absolute",
-    left: "85%",
-    top: "38%",
-    zIndex: 2,
-    width: "1.18rem",
-    height: "1.18rem",
-    border: "2px solid rgba(240,253,250,0.86)",
-    borderRadius: 999,
-    background: "#a78bfa",
-    boxShadow: "0 0 1.5rem rgba(34,211,238,0.58)",
-    transform: "translate(-50%, -50%)",
-  },
-  proofSteps: {
-    position: "absolute",
-    zIndex: 11,
-    left: "clamp(1.15rem, 2vw, 1.35rem)",
-    right: "clamp(1.15rem, 2vw, 1.35rem)",
-    bottom: "5.05rem",
-    display: "flex",
-    justifyContent: "center",
-    width: "auto",
-    gap: "0.58rem",
-  },
-  proofLine: {
-    position: "absolute",
-    left: "1.25rem",
-    right: "1.25rem",
-    top: "50%",
-    height: 1,
-    background: "linear-gradient(90deg, rgba(52,211,153,0.18), rgba(34,211,238,0.48), rgba(167,139,250,0.2))",
-    transform: "translateY(-50%)",
-  },
-  proofStep: {
-    position: "relative",
-    zIndex: 1,
-    display: "grid",
-    placeItems: "center",
-    width: "2.05rem",
-    height: "2.05rem",
-    minHeight: 0,
-    border: "1px solid rgba(125,211,252,0.18)",
-    borderRadius: 999,
-    padding: 0,
-    background: "rgba(2, 12, 27, 0.74)",
-    color: "#e0f2fe",
-    textAlign: "center",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 0.9rem 1.6rem rgba(2,6,23,0.18)",
-  },
-  proofStepNumber: {
-    color: "#67e8f9",
-    fontSize: "0.58rem",
-    fontWeight: 950,
-    letterSpacing: 0,
-  },
-  visuallyHiddenStepCopy: {
-    display: "none",
-  },
-} satisfies Record<string, CSSProperties>;
 
 function HeroTraceMap({
   origin,
@@ -1029,65 +881,119 @@ function HeroTraceMap({
   ];
 
   const [routeHover, setRouteHover] = useState<HeroRouteHover | null>(null);
+  const routeDistanceLabel = `${formattedDistance} km`;
+  const selectedProof = routeHover || proofSteps[0];
+  const mapPoints: VectorMapPoint[] = [
+    {
+      id: "origin",
+      label: origin.city,
+      sublabel: origin.country,
+      lat: origin.lat,
+      lng: origin.lng,
+      scans: 6,
+      risk: 0,
+      tone: "origin",
+      stageLabel: txt.originMap,
+      evidence: `${origin.label} verificado por lote, SUN y certificado.`,
+      lastSeen: "Origen certificado",
+    },
+    {
+      id: "tap",
+      label: tap.city,
+      sublabel: `${tap.country} - ${tap.label}`,
+      lat: tap.lat,
+      lng: tap.lng,
+      scans: 14,
+      risk: 0,
+      tone: "tap",
+      stageLabel: tapCopy,
+      evidence: `${routeDistanceLabel} con tap fisico y canal post-tap.`,
+      lastSeen: new Date().toISOString(),
+    },
+  ];
+  const mapRoutes: VectorMapRoute[] = [
+    {
+      id: "origin-to-tap",
+      fromLat: origin.lat,
+      fromLng: origin.lng,
+      toLat: tap.lat,
+      toLng: tap.lng,
+      label: `${origin.city} -> ${tap.city}`,
+      tone: "success",
+      distanceLabel: routeDistanceLabel,
+      evidence: evidenceCopy,
+    },
+  ];
+  const evidenceSteps: VectorMapEvidenceStep[] = proofSteps.map((step) => ({
+    id: step.eyebrow,
+    label: step.title,
+    value: step.detail,
+    detail: step.tone === "crm" ? crmDetailCopy : undefined,
+    tone:
+      step.tone === "origin"
+        ? "origin"
+        : step.tone === "tap"
+          ? "tap"
+          : step.tone === "crm"
+            ? "marketplace"
+            : "token",
+  }));
+  const ledgerItems: VectorMapLedgerItem[] = [
+    {
+      id: "distance",
+      label: distanceCopy,
+      value: routeDistanceLabel,
+      detail: evidenceCopy,
+      tone: "origin",
+    },
+    {
+      id: "crm",
+      label: crmCopy,
+      value: crmDetailCopy,
+      detail: "Dato listo para campana, garantia, recompra o marketplace.",
+      tone: "marketplace",
+    },
+  ];
 
   return (
-    <div id="trace-signal-atlas" className="hero-trace-map hero-trace-map--clear hero-trace-map--signal flex items-center justify-center" aria-label={txt.routeTitle} style={heroRouteSignalInline.root}>
-      <div className="hero-route-signal" aria-hidden="true" style={heroRouteSignalInline.signal}>
-        <div className="hero-route-signal__grid" style={heroRouteSignalInline.grid} />
-        <div className="hero-route-signal__corridor" style={heroRouteSignalInline.corridor} />
-        <div className="hero-route-signal__rail" style={heroRouteSignalInline.rail}>
-          <span style={heroRouteSignalInline.railGuide} />
-          <em style={heroRouteSignalInline.railGlow} />
-        </div>
-        <div className="hero-route-signal__scan hero-route-signal__scan--origin" style={heroRouteSignalInline.originScan} />
-        <div className="hero-route-signal__scan hero-route-signal__scan--tap" style={heroRouteSignalInline.tapScan} />
-        <div className="hero-route-signal__packet" style={heroRouteSignalInline.packet} />
-        <div className="hero-route-signal__halo hero-route-signal__halo--origin" />
-        <div className="hero-route-signal__halo hero-route-signal__halo--tap" />
+    <div id="trace-signal-atlas" className="hero-trace-map hero-trace-map--atlas" aria-label={txt.routeTitle}>
+      <PremiumVectorMap
+        points={mapPoints}
+        routes={mapRoutes}
+        selectedPointId="tap"
+        title={routeHeadline}
+        subtitle={`${origin.city} -> ${tap.city} - ${routeDistanceLabel}`}
+        caption={evidenceCopy}
+        className="hero-route-vector-atlas"
+        heightClassName="h-full min-h-[inherit]"
+        density="route"
+        chrome="minimal"
+        maxPoints={6}
+        maxRoutes={3}
+        evidenceSteps={evidenceSteps}
+        ledgerItems={ledgerItems}
+      />
+      <div className="hero-map-intel hero-map-intel--atlas">
+        <p>{selectedProof.eyebrow}</p>
+        <strong>{selectedProof.title}</strong>
+        <span>{selectedProof.detail}</span>
       </div>
-      <div className="hero-map-intel">
-        <p>{routeHover?.eyebrow || routeHeadline}</p>
-        <strong>{routeHover?.title || `${origin.city} / ${tap.city}`}</strong>
-        <span>{routeHover?.detail || evidenceCopy}</span>
-      </div>
-      <div className="hero-route-proof-steps" style={heroRouteSignalInline.proofSteps}>
-        <span aria-hidden="true" style={heroRouteSignalInline.proofLine} />
+      <div className="hero-route-proof-steps hero-route-proof-steps--atlas" aria-label="Evidencia de ruta">
         {proofSteps.map((step) => (
           <button
             key={step.eyebrow}
             className={`hero-route-proof-step hero-route-proof-step--${step.tone}`}
             type="button"
             aria-label={`${step.title}: ${step.detail}`}
-            style={heroRouteSignalInline.proofStep}
+            title={`${step.title}: ${step.detail}`}
             onMouseEnter={() => setRouteHover(step)}
             onFocus={() => setRouteHover(step)}
             onMouseLeave={() => setRouteHover(null)}
             onBlur={() => setRouteHover(null)}
           >
-            <small style={heroRouteSignalInline.proofStepNumber}>{step.eyebrow}</small>
-            <strong style={heroRouteSignalInline.visuallyHiddenStepCopy}>{step.title}</strong>
-            <span style={heroRouteSignalInline.visuallyHiddenStepCopy}>{step.detail}</span>
+            <small>{step.eyebrow}</small>
           </button>
         ))}
-      </div>
-      <div className="hero-route-summary-card">
-        <div className="hero-route-summary-grid">
-          <span>
-            <small>{txt.originMap}</small>
-            <strong>{origin.city}</strong>
-          </span>
-          <span>
-            <small>{tapCopy}</small>
-            <strong>{tap.city}</strong>
-          </span>
-          <span>
-            <small>{distanceCopy}</small>
-            <strong>{formattedDistance} km</strong>
-          </span>
-        </div>
-        <a className="hero-route-map-link" href={mapsHref(origin)} target="_blank" rel="noreferrer">
-          {txt.openOriginMap}
-        </a>
       </div>
     </div>
   );

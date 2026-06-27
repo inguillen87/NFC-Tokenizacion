@@ -1315,6 +1315,7 @@ function DemoLiveOpsMap({
         <div className="absolute inset-0 flex justify-center items-center pointer-events-auto">
           <Globe3dMap
             theme="dark"
+            mode="preview"
             points={globePoints}
             routes={globeRoutes}
             width={340}

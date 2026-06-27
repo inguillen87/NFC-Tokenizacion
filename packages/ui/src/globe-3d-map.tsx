@@ -763,7 +763,7 @@ export function Globe3dMap({
   const minRenderHeight = compactRequested ? 220 : mediumRequested ? 300 : 360;
   const renderHeight = Math.max(minRenderHeight, Math.round(renderWidth * (height / Math.max(width, 1))));
   const compactHud = renderWidth < 500 || height <= 360;
-  const routePreviewOnly = mode === "preview" || (mode === "auto" && renderWidth < 220 && height < 180);
+  const routePreviewOnly = mode === "preview" || (mode === "auto" && (renderWidth < 360 || height <= 240));
   const globeImageUrl = useMemo(() => PROFESSIONAL_GLOBE_IMAGE_URL || localGlobeTexture(isLightTheme), [isLightTheme]);
   const globeBumpUrl = useMemo(() => PROFESSIONAL_GLOBE_BUMP_URL || localGlobeBumpTexture(isLightTheme), [isLightTheme]);
   const activeCountryNames = useMemo(
