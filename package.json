@@ -36,6 +36,7 @@
   "packageManager": "npm@10.9.0",
   "overrides": {
     "postcss": "8.5.15",
+    "three": "0.184.0",
     "next@16.2.9": {
       "postcss": "8.5.15"
     }

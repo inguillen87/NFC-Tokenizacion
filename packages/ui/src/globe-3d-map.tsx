@@ -2,8 +2,28 @@
 
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
+import * as THREE from "three";
 
-const Globe = dynamic(() => import("react-globe.gl"), { ssr: false });
+function ensureThreeRendererCompatibility() {
+  const matrix4Prototype = (THREE.Matrix4 as unknown as { prototype?: Record<string, unknown> }).prototype;
+  if (!matrix4Prototype || typeof matrix4Prototype.determinantAffine === "function") return;
+
+  try {
+    Object.defineProperty(matrix4Prototype, "determinantAffine", {
+      configurable: true,
+      value: THREE.Matrix4.prototype.determinant,
+    });
+  } catch {
+    matrix4Prototype.determinantAffine = THREE.Matrix4.prototype.determinant;
+  }
+}
+
+ensureThreeRendererCompatibility();
+
+const Globe = dynamic(async () => {
+  ensureThreeRendererCompatibility();
+  return import("react-globe.gl");
+}, { ssr: false });
 const COUNTRY_GEOJSON_URL = "/assets/geo/ne_110m_admin_0_countries.geojson";
 const THREE_GLOBE_ASSET_BASE = "https://cdn.jsdelivr.net/npm/three-globe/example/img";
 const PROFESSIONAL_GLOBE_IMAGE_URL = `${THREE_GLOBE_ASSET_BASE}/earth-blue-marble.jpg`;
