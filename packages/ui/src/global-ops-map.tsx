@@ -1004,7 +1004,7 @@ export function GlobalOpsMap({
             <PremiumVectorMap
               title={isDemoMode ? "Ruta de confianza" : "Mapa operativo premium"}
               subtitle={isDemoMode ? `${shortOriginLabel} -> ${shortTapLabel} con evidencia SUN y tap fisico.` : "Rutas de confianza, taps y clusters renderizados con motor propio."}
-              caption={isDemoMode ? "Origen, tap, estado del sello, claim de dueno y capa comercial en una sola historia." : "Origen, tap, riesgo y evidencia comercial en una vista limpia de trazabilidad."}
+              caption={isDemoMode ? "Origen, tap, estado del sello, claim de dueño y capa comercial en una sola historia." : "Origen, tap, riesgo y evidencia comercial en una vista limpia de trazabilidad."}
               points={vectorPoints}
               routes={vectorRoutes}
               selectedPointId={selectedPoint?.id}
@@ -1122,7 +1122,7 @@ export function GlobalOpsMap({
             <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 p-3">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-violet-200">Despues del tap</p>
               <p className="mt-1 text-sm font-semibold text-white">Ownership + NFT + marketplace</p>
-              <p className="mt-2 text-slate-300">El usuario entiende que puede reclamar dueno, crear wallet, guardar NFT, activar garantia, club y reventa.</p>
+              <p className="mt-2 text-slate-300">El usuario entiende que puede reclamar dueño, crear wallet, guardar NFT, activar garantia, club y reventa.</p>
               <p className="mt-3 rounded-lg border border-white/10 bg-slate-950/50 px-2 py-1 text-[11px] text-slate-200">Riesgo: <b>{demoRiskLabel}</b></p>
             </div>
           </aside>

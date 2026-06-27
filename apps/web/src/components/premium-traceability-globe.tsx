@@ -231,6 +231,7 @@ export function PremiumTraceabilityGlobe({
         <div className="absolute inset-0 flex justify-center items-center z-10 pointer-events-auto">
           <Globe3dMap
             theme="dark"
+            mode="globe"
             points={safePoints.map((p) => ({
               city: p.city,
               country: p.country,

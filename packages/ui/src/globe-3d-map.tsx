@@ -792,7 +792,7 @@ export function Globe3dMap({
       eyebrow: "nexID Global Trust Mesh",
       title: "Red global de producto",
       subtitle: "Pasá el mouse por un país, ciudad, ruta o hotspot.",
-      meta: `${points.length} nodos - ${routes.length} rutas - ${scans.toLocaleString("es-AR")} taps - ${regions} regiones`,
+      meta: `${points.length} nodos · ${routes.length} rutas · ${scans.toLocaleString("es-AR")} taps · ${regions} regiones`,
       tone: "#22d3ee",
     };
   }, [points, routes]);
@@ -824,7 +824,7 @@ export function Globe3dMap({
       eyebrow: risk ? "Riesgo operativo" : point.status === "origin" ? "Origen verificado" : "Tap en vivo",
       title: point.city,
       subtitle: country || "Ubicación verificada",
-      meta: `${point.scans || 1} taps${risk ? ` - riesgo ${point.risk || 1}` : ""}${point.vertical ? ` - ${point.vertical}` : ""}`,
+      meta: `${point.scans || 1} taps${risk ? ` · riesgo ${point.risk || 1}` : ""}${point.vertical ? ` · ${point.vertical}` : ""}`,
       tone: pointTone(point),
     });
   }, []);
@@ -847,7 +847,7 @@ export function Globe3dMap({
       title: displayCountryName(canonicalCountry) || "País",
       subtitle: displayContinentName(feature.properties?.CONTINENT),
       meta: active
-        ? `${activePoints.length} nodos - ${scans.toLocaleString("es-AR")} taps verificados`
+        ? `${activePoints.length} nodos · ${scans.toLocaleString("es-AR")} taps verificados`
         : "Sin taps visibles en la ventana actual",
       tone: active ? "#34d399" : "#67e8f9",
     });

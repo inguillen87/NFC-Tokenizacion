@@ -24185,6 +24185,20 @@ html.theme-light .landing-hero-section .hero-trace-map--signal .hero-route-proof
   box-shadow: none !important;
 }
 
+.landing-hero-section .hero-trace-map.hero-trace-map--trust-globe [data-globe-ready],
+.landing-hero-section .hero-trace-map.hero-trace-map--trust-globe [data-globe-mode],
+.landing-hero-section .hero-trace-map.hero-trace-map--trust-globe .scene-container,
+.landing-hero-section .hero-trace-map.hero-trace-map--trust-globe canvas,
+.hero-scene .hero-trace-map.hero-trace-map--trust-globe [data-globe-ready],
+.hero-scene .hero-trace-map.hero-trace-map--trust-globe [data-globe-mode],
+.hero-scene .hero-trace-map.hero-trace-map--trust-globe .scene-container,
+.hero-scene .hero-trace-map.hero-trace-map--trust-globe canvas {
+  display: block !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
 .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__stage,
 .hero-scene .hero-trace-map--trust-globe .traceability-globe__stage {
   min-height: 0 !important;
@@ -24223,6 +24237,72 @@ html.theme-light .landing-hero-section .hero-trace-map--signal .hero-route-proof
 .demo-lab-tech-map .traceability-globe__stage,
 .demo-lab-premium-globe .traceability-globe__stage {
   min-height: clamp(24rem, 42vw, 34rem);
+}
+
+/* Demo Lab live map must use the same real atlas engine as SDK, not the compact route card. */
+.demo-lab-studio-live-map {
+  padding: clamp(0.92rem, 1.6vw, 1.15rem);
+}
+
+.demo-lab-studio-live-map .demo-lab-mini-map {
+  display: grid;
+  min-height: clamp(21rem, 34vw, 28rem);
+  place-items: center;
+  border-color: rgba(103, 232, 249, 0.34);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(34, 211, 238, 0.16), transparent 34%),
+    radial-gradient(circle at 78% 22%, rgba(52, 211, 153, 0.1), transparent 26%),
+    linear-gradient(rgba(125, 211, 252, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.06) 1px, transparent 1px),
+    rgba(2, 10, 23, 0.9);
+  background-size: auto, auto, 2.8rem 2.8rem, 2.8rem 2.8rem, auto;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1.35rem 4.6rem rgba(8, 47, 73, 0.24);
+}
+
+.demo-lab-studio-live-map .demo-lab-mini-map > .absolute {
+  inset: 0.45rem;
+}
+
+.demo-lab-studio-live-map .demo-lab-mini-map__globe,
+.demo-lab-studio-live-map .demo-lab-mini-map [data-globe-ready],
+.demo-lab-studio-live-map .demo-lab-mini-map [data-globe-mode] {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
+.demo-lab-studio-live-map .demo-lab-mini-map .scene-container,
+.demo-lab-studio-live-map .demo-lab-mini-map canvas {
+  display: block !important;
+  max-width: 100% !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.demo-lab-studio-live-map .demo-lab-mini-map__legend {
+  bottom: 0.8rem;
+  z-index: 24;
+  border-color: rgba(103, 232, 249, 0.18);
+  background: rgba(2, 6, 23, 0.74);
+}
+
+@media (min-width: 1181px) {
+  .demo-lab-studio-grid {
+    grid-template-columns: minmax(16.5rem, 0.62fr) minmax(27rem, 1fr) minmax(34rem, 1.26fr);
+  }
+
+  .demo-lab-studio-right {
+    padding: clamp(1.1rem, 1.8vw, 1.65rem);
+  }
+
+  .demo-lab-studio-live-map .demo-lab-mini-map {
+    min-height: clamp(26rem, 38vw, 32rem);
+  }
 }
 
 @media (max-width: 1100px) {

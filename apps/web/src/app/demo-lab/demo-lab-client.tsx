@@ -1281,7 +1281,7 @@ function DemoLiveOpsMap({
   const totalScans = visiblePoints.reduce((acc, point) => acc + (point.scans || 1), 0);
   const risks = visiblePoints.reduce((acc, point) => acc + (point.risk || 0), 0);
   const title = locale === "en" ? "Live taps map" : locale === "pt-BR" ? "Mapa de taps ao vivo" : "Mapa de taps en vivo";
-  const feedTitle = locale === "en" ? "Latest taps" : locale === "pt-BR" ? "Ultimos taps" : "Ultimos taps";
+  const feedTitle = locale === "en" ? "Latest taps" : locale === "pt-BR" ? "Ultimos taps" : "Últimos taps";
   const fallbackText = locale === "en" ? "Waiting for live feed; showing route simulation." : locale === "pt-BR" ? "Aguardando feed real; mostrando rota simulada." : "Esperando feed real; mostrando ruta simulada.";
 
   const globePoints = visiblePoints.map((p, index) => ({
@@ -1317,12 +1317,12 @@ function DemoLiveOpsMap({
         <div className="absolute inset-0 flex justify-center items-center pointer-events-auto">
           <Globe3dMap
             theme="dark"
-            mode="preview"
+            mode="globe"
             points={globePoints}
             routes={globeRoutes}
-            width={340}
-            height={200}
-            className="border-0 bg-transparent shadow-none"
+            width={680}
+            height={420}
+            className="demo-lab-mini-map__globe border-0 bg-transparent shadow-none"
           />
         </div>
         <div className="demo-lab-mini-map__legend z-10 pointer-events-none">
@@ -1334,7 +1334,7 @@ function DemoLiveOpsMap({
       <div className="demo-lab-mini-map__stats">
         <span><strong>{visiblePoints.length}</strong> nodos</span>
         <span><strong>{risks}</strong> riesgo</span>
-        <span><strong>{formatDemoTapTime(visiblePoints[1]?.lastSeen, locale)}</strong> ultimo</span>
+        <span><strong>{formatDemoTapTime(visiblePoints[1]?.lastSeen, locale)}</strong> último</span>
       </div>
       <div className="demo-lab-live-feed-mini">
         <p>{feedTitle}</p>
@@ -1695,7 +1695,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
     tone === "risk"
       ? "Repetir tap fisico"
       : tone === "open"
-        ? "Reclamar dueno"
+        ? "Reclamar dueño"
         : tone === "ok"
           ? "Compra confiable"
           : "Acercar telefono";
@@ -1706,7 +1706,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
     tone === "risk"
       ? "Acciones bloqueadas hasta nuevo tap fisico."
       : tone === "open"
-        ? "Postventa, dueno y beneficios habilitados."
+        ? "Postventa, dueño y beneficios habilitados."
         : "Producto, UID y canal validados.";
 
   const base = {
@@ -1735,7 +1735,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
     return {
       ...base,
       family: "Zapatilla coleccionable real",
-      evidence: "UID, rareza, dueno y beneficio vinculados",
+      evidence: "UID, rareza, dueño y beneficio vinculados",
       proofTitle: "Lengueta NFC + owner",
       tagTitle: "Drop verificado",
       crop: "wide",
