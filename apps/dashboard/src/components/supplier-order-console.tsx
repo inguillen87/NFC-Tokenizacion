@@ -20,6 +20,8 @@ type SupplierOrder = {
   tenant_slug?: string;
   customer_slug?: string;
   order_name?: string;
+  carrier_profile_code?: string;
+  chip_model?: string;
   total_quantity?: number;
   sub_batch_size?: number;
   status?: string;
@@ -151,10 +153,23 @@ export function SupplierOrderConsole() {
   const [pack, setPack] = useState<SupplierPackResponse | null>(null);
   const [qaBid, setQaBid] = useState("");
   const [qaSampleCount, setQaSampleCount] = useState("5");
+  const [qaSampleUrls, setQaSampleUrls] = useState("");
+  const [qaReplayChecked, setQaReplayChecked] = useState(false);
+  const [qaTtstatusChecked, setQaTtstatusChecked] = useState(false);
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
 
   const subBatches = useMemo(() => created?.sub_batches || [], [created]);
   const selectedOrderId = created?.order?.id || "";
+  const activeCarrierProfile = created?.order?.carrier_profile_code || carrierProfileCode;
+  const requiresTtstatus = activeCarrierProfile === "ntag424_dna_tt";
+  const qaUrls = useMemo(
+    () => qaSampleUrls
+      .split(/[\n,]+/)
+      .map((value) => value.trim())
+      .filter((value) => /^https?:\/\//i.test(value) && !/[<>]/.test(value)),
+    [qaSampleUrls],
+  );
+  const qaReadyToPass = Boolean(selectedOrderId && qaBid.trim() && qaUrls.length && qaReplayChecked && (!requiresTtstatus || qaTtstatusChecked));
 
   async function run(path: string, init?: RequestInit) {
     const result = await fetch(path, {
@@ -200,6 +215,9 @@ export function SupplierOrderConsole() {
       setPack(null);
       const firstBid = data.sub_batches?.[0]?.bid || "";
       setQaBid(firstBid);
+      setQaSampleUrls("");
+      setQaReplayChecked(false);
+      setQaTtstatusChecked(false);
       setStatus(`Pedido creado: ${data.sub_batches?.length || 0} sub-batches con fingerprints, llaves cifradas y sin KMS expuesta.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo crear el pedido.");
@@ -246,8 +264,14 @@ export function SupplierOrderConsole() {
       setStatus("Falta order y BID para QA.");
       return;
     }
+    if (passed && !qaReadyToPass) {
+      setStatus(requiresTtstatus
+        ? "Para aprobar QA hace falta URL SUN real, replay verificado y TTStatus validado."
+        : "Para aprobar QA hace falta URL SUN real y replay verificado.");
+      return;
+    }
     setPending(true);
-    setStatus(passed ? "Marcando QA aprobado..." : "Marcando QA rechazado...");
+    setStatus(passed ? "Marcando QA aprobado con evidencia..." : "Marcando QA rechazado...");
     try {
       await run(`/api/admin/supplier-orders/${encodeURIComponent(selectedOrderId)}/qa`, {
         method: "POST",
@@ -255,12 +279,16 @@ export function SupplierOrderConsole() {
           bid: qaBid.trim(),
           passed,
           sample_count: Number(qaSampleCount || 0),
-          replay_checked: true,
-          ttstatus_checked: carrierProfileCode === "ntag424_dna_tt",
-          notes: passed ? "QA sample passed from supplier console." : "QA failed from supplier console.",
+          sample_urls: passed ? qaUrls : [],
+          replay_checked: passed ? qaReplayChecked : false,
+          ttstatus_checked: passed ? qaTtstatusChecked : false,
+          requires_ttstatus: requiresTtstatus,
+          notes: passed
+            ? "QA aprobado desde consola supplier con muestra SUN real y replay verificado."
+            : "QA rechazado desde consola supplier. No activar este sub-batch.",
         }),
       });
-      setStatus(passed ? "QA aprobado. El sub-batch ya puede pasar a activacion controlada." : "QA rechazado. No activar este sub-batch.");
+      setStatus(passed ? "QA aprobado. El sub-batch ya puede pasar a activación controlada." : "QA rechazado. No activar este sub-batch.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo actualizar QA.");
     } finally {
@@ -284,6 +312,9 @@ export function SupplierOrderConsole() {
     setCreated({ ok: true, order, sub_batches: subBatchesFromOrder });
     setPack(null);
     setQaBid(subBatchesFromOrder[0]?.bid || "");
+    setQaSampleUrls("");
+    setQaReplayChecked(false);
+    setQaTtstatusChecked(false);
     setStatus(`Pedido seleccionado: ${order.order_name || order.id}. ${subBatchesFromOrder.length} sub-batches disponibles.`);
   }
 
@@ -292,9 +323,9 @@ export function SupplierOrderConsole() {
       <div className="grid gap-6 p-5 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Supplier Order industrial</p>
-          <h2 className="mt-2 text-2xl font-black text-white">Pedido de tags listo para fabrica</h2>
+          <h2 className="mt-2 text-2xl font-black text-white">Pedido de tags listo para fábrica</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Crea sub-batches, genera llaves por lote, las guarda cifradas, exporta pack de encoding solo para superadmin y bloquea activacion hasta manifest + QA.
+            Crea sub-batches, genera llaves por lote, las guarda cifradas, exporta pack de encoding solo para superadmin y bloquea activación hasta manifest + QA.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Tenant slug" value={tenantSlug} onChange={setTenantSlug} placeholder="bodega-balmec o syngenta-ar" />
@@ -406,14 +437,51 @@ export function SupplierOrderConsole() {
 
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100">QA gate</p>
+            <p className="mt-2 text-sm leading-6 text-emerald-50">
+              Para aprobar un sub-batch no alcanza con declarar “ok”. Pegá una URL SUN escaneada, confirmá que una URL vieja cae como replay y, si es TagTamper, validá TTStatus cerrado/abierto.
+            </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_0.5fr]">
               <Field label="BID para QA" value={qaBid} onChange={setQaBid} placeholder="SYN-AR-2026-001-A" />
               <Field label="Muestra" value={qaSampleCount} onChange={setQaSampleCount} placeholder="5" />
             </div>
+            <label className="mt-3 block">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">URLs SUN reales escaneadas</span>
+              <textarea
+                className="mt-1 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-500"
+                value={qaSampleUrls}
+                onChange={(event) => setQaSampleUrls(event.target.value)}
+                placeholder="https://api.nexid.lat/sun?v=1&bid=...&picc_data=...&enc=...&cmac=..."
+              />
+              <span className="mt-1 block text-xs text-slate-400">{qaUrls.length} URL válida lista para adjuntar como evidencia.</span>
+            </label>
+            <div className="mt-3 grid gap-2 text-sm text-slate-200 sm:grid-cols-2">
+              <label className="flex items-start gap-2 rounded-xl border border-white/10 bg-slate-950/50 p-3">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={qaReplayChecked}
+                  onChange={(event) => setQaReplayChecked(event.target.checked)}
+                />
+                <span><b className="text-white">Replay verificado</b><span className="block text-xs text-slate-400">Una URL vieja o repetida fue rechazada como sospechosa.</span></span>
+              </label>
+              <label className={`flex items-start gap-2 rounded-xl border p-3 ${requiresTtstatus ? "border-cyan-300/30 bg-cyan-500/10" : "border-white/10 bg-slate-950/50 text-slate-400"}`}>
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={qaTtstatusChecked}
+                  disabled={!requiresTtstatus}
+                  onChange={(event) => setQaTtstatusChecked(event.target.checked)}
+                />
+                <span><b className="text-white">TTStatus validado</b><span className="block text-xs text-slate-400">{requiresTtstatus ? "Obligatorio para TagTamper." : "No aplica para este carrier."}</span></span>
+              </label>
+            </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button disabled={pending || !selectedOrderId || !qaBid.trim()} onClick={() => void markQa(true)}>Aprobar QA</Button>
+              <Button disabled={pending || !qaReadyToPass} onClick={() => void markQa(true)}>Aprobar QA</Button>
               <Button variant="secondary" disabled={pending || !selectedOrderId || !qaBid.trim()} onClick={() => void markQa(false)}>Rechazar QA</Button>
             </div>
+            <p className="mt-3 text-xs leading-5 text-slate-400">
+              Carrier activo: <span className="font-mono text-cyan-100">{activeCarrierProfile}</span>. {requiresTtstatus ? "El backend exigirá TTStatus además de replay." : "El backend exigirá muestra SUN y replay."}
+            </p>
           </div>
 
           <pre className="max-h-72 overflow-auto rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-slate-200">{response}</pre>

@@ -5,6 +5,7 @@ import { Badge, Sidebar } from "@product/ui";
 const navItems = [
   { href: "/", label: "Overview", description: "KPIs, mission control y contexto rápido para dirección.", badge: "core" },
   { href: "/batches", label: "Batches & Activation", description: "Alta, activación y lifecycle de lotes y tags.", badge: "ops" },
+  { href: "/batches/supplier", label: "Factory Trust Room", description: "Supplier packs cifrados, manifest, QA, bóveda y Proof Layer.", badge: "factory" },
   { href: "/analytics", label: "Analytics", description: "Fraude, scans, geo y performance operacional/comercial.", badge: "insight" },
   { href: "/resellers", label: "White-label", description: "Canal, partners y operación reseller / enterprise.", badge: "gtm" },
   { href: "/billing", label: "Plans", description: "Planes, suscripciones y expansión monetizable.", badge: "rev" },

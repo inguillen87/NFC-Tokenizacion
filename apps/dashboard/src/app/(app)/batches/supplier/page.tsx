@@ -15,6 +15,73 @@ export default async function SupplierBatchPage() {
         description="Flujo seguro para crear tenants completos, registrar batches de proveedor, importar manifests auditables y validar URLs SUN antes de entregar el rollout."
       />
       <SupplierOrderConsole />
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="border-cyan-300/20 bg-slate-950/75 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Factory Trust Room</p>
+              <h2 className="mt-2 text-2xl font-black text-white">De orden industrial a tags activos sin exponer secretos</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                Esta consola separa producción física, seguridad de llaves, recepción de manifest, QA y activación comercial. El proveedor recibe solo lo necesario para codificar; nexID conserva KMS, auditoría y activación.
+              </p>
+            </div>
+            <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-emerald-100">
+              Enterprise-ready
+            </span>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {[
+              ["Superadmin", "Crea pedidos, genera llaves batch, exporta ZIP cifrado y ve auditoría completa."],
+              ["Tenant admin", "Importa manifest, ejecuta QA con evidencia, activa lotes y opera CRM/marketplace."],
+              ["Proveedor", "Recibe BATCH_ID, K_META/K_FILE por sub-batch, URL template y formato manifest. Nunca recibe KMS."],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-2xl border border-white/10 bg-slate-900/55 p-4">
+                <h3 className="text-sm font-black text-white">{title}</h3>
+                <p className="mt-2 text-xs leading-5 text-slate-400">{body}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card className="border-emerald-300/20 bg-emerald-500/10 p-5">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-100">Gates obligatorios</p>
+          <div className="mt-4 space-y-3">
+            {[
+              ["Pack cifrado", "ZIP .enc con TXT/JSON/PDF/checksums. Password por canal separado."],
+              ["Manifest único", "Rechaza BID cruzado, UID duplicado global y cantidad distinta al sub-batch."],
+              ["QA con evidencia", "URL SUN real, replay probado y TTStatus solo si el carrier es TagTamper."],
+              ["Activación bloqueada", "Ningún supplier batch entra a mercado sin manifest importado, cantidad correcta y QA aprobado."],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-2xl border border-emerald-300/15 bg-slate-950/55 p-3">
+                <h3 className="text-sm font-black text-white">{title}</h3>
+                <p className="mt-1 text-xs leading-5 text-emerald-50/80">{body}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </section>
+      <section className="grid gap-4 lg:grid-cols-3">
+        <Card className="border-violet-300/20 bg-violet-500/10 p-5">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-100">Polygon ownership</p>
+          <h2 className="mt-2 text-xl font-black text-white">Certificados, claims y NFTs transferibles</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Polygon queda para propiedad digital: ownership_claimed, certificate_issued, nft_minted, garantía transferible y compraventa futura.
+          </p>
+        </Card>
+        <Card className="border-cyan-300/20 bg-cyan-500/10 p-5">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-100">IOTA audit opcional</p>
+          <h2 className="mt-2 text-xl font-black text-white">Evidencia, DPP y logística por hashes</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            IOTA se presenta como Proof Layer opcional para hashes agregados: manifest_imported, qa_passed, batch_activated, shipment y reportes DPP. No subimos cada tap on-chain.
+          </p>
+        </Card>
+        <Card className="border-amber-300/20 bg-amber-500/10 p-5">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-100">nexID operational DB</p>
+          <h2 className="mt-2 text-xl font-black text-white">Fuente viva del CRM y antifraude</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Taps, riesgo, GPS, leads, campañas y logística quedan en la base operativa. La blockchain recibe pruebas agregadas cuando aporta auditoría real.
+          </p>
+        </Card>
+      </section>
       <section className="grid gap-3 lg:grid-cols-4">
         {[
           {
@@ -59,7 +126,7 @@ export default async function SupplierBatchPage() {
           <li>Pedido industrial nuevo: usa Supplier Order. El sistema genera sub-batches, llaves por lote, fingerprints y evidencia batch_created.</li>
           <li>Export pack: solo superadmin, una respuesta con llaves plaintext para ZIP cifrado y password por canal separado.</li>
           <li>Manifest: se importa TXT/CSV por BID y se rechaza cantidad incorrecta, batch_id cruzado o UID duplicado.</li>
-          <li>Activacion: queda bloqueada hasta manifest importado, cantidad esperada y QA aprobado.</li>
+          <li>Activación: queda bloqueada hasta manifest importado, cantidad esperada y QA aprobado.</li>
         </ul>
         <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
           No se expone KMS. No se guardan llaves plaintext en frontend. No se ancla cada tap on-chain; la prueba externa se hace por hashes agregados.

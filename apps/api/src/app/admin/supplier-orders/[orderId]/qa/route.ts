@@ -43,6 +43,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           ssb.manifest_status,
           ssb.manifest_count,
           ssb.qa_status,
+          so.carrier_profile_code,
           t.slug AS tenant_slug
         FROM supplier_orders so
         JOIN tenants t ON t.id = so.tenant_id
@@ -61,6 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           ssb.manifest_status,
           ssb.manifest_count,
           ssb.qa_status,
+          so.carrier_profile_code,
           t.slug AS tenant_slug
         FROM supplier_orders so
         JOIN tenants t ON t.id = so.tenant_id
@@ -87,19 +89,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       : [];
   const replayChecked = Boolean(body.replay_checked ?? body.replayChecked);
   const ttstatusChecked = Boolean(body.ttstatus_checked ?? body.ttstatusChecked);
+  const requiresTtstatus = String(subBatch.carrier_profile_code || "").trim() === "ntag424_dna_tt";
   const evidenceGate = validateSupplierQaEvidence({
     passed,
     sampleUrls,
     replayChecked,
     ttstatusChecked,
+    requiresTtstatus,
   });
   if (!evidenceGate.ok) {
     return json({
       ok: false,
       reason: evidenceGate.reason,
-      message: "QA passed requires at least one sample URL plus replay and TTStatus checks.",
+      message: requiresTtstatus
+        ? "QA passed requires at least one sample URL plus replay and TTStatus checks."
+        : "QA passed requires at least one sample URL plus replay check.",
       bid: subBatch.bid,
       sample_count: evidenceGate.sampleCount,
+      carrier_profile_code: subBatch.carrier_profile_code,
     }, 409);
   }
   const notes = safeString(body.notes) || null;
@@ -142,6 +149,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     sample_count: sampleUrls.length,
     replay_checked: replayChecked,
     ttstatus_checked: ttstatusChecked,
+    requires_ttstatus: requiresTtstatus,
   };
   const eventHash = hashEvidencePayload({
     tenantId: String(subBatch.tenant_id),
@@ -173,5 +181,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     qa_status: status,
     activation_gate: passed ? "manifest_imported_and_qa_passed" : "blocked_until_qa_passed",
     evidence_hash: eventHash,
+    requires_ttstatus: requiresTtstatus,
   });
 }

@@ -488,6 +488,7 @@ export function validateSupplierQaEvidence(input: {
   sampleUrls?: unknown[] | null;
   replayChecked?: boolean | null;
   ttstatusChecked?: boolean | null;
+  requiresTtstatus?: boolean | null;
 }) {
   if (!input.passed) return { ok: true as const };
   const sampleCount = Array.isArray(input.sampleUrls)
@@ -499,7 +500,7 @@ export function validateSupplierQaEvidence(input: {
   if (!input.replayChecked) {
     return { ok: false as const, reason: "qa_replay_check_required", sampleCount };
   }
-  if (!input.ttstatusChecked) {
+  if (input.requiresTtstatus && !input.ttstatusChecked) {
     return { ok: false as const, reason: "qa_ttstatus_check_required", sampleCount };
   }
   return { ok: true as const, sampleCount };
