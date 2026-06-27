@@ -3,14 +3,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
-import {
-  PremiumVectorMap,
-  type VectorMapEvidenceStep,
-  type VectorMapLedgerItem,
-  type VectorMapPoint,
-  type VectorMapRoute,
-} from "@product/ui";
 import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
+import { PremiumTraceabilityGlobe, type TraceabilityGlobePoint, type TraceabilityGlobeRoute } from "./premium-traceability-globe";
 
 type Vertical = PlatformDemoVertical;
 type HeroSelectorKey = PlatformDemoVertical;
@@ -860,7 +854,6 @@ function HeroTraceMap({
   const formattedDistance = distance.toLocaleString(numberLocale);
   const routeHeadline = txt.routeTitle === "Trust route" ? "Live route" : txt.routeTitle.startsWith("Rota") ? "Rota viva" : "Ruta viva";
   const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque físico" : "Tap físico";
-  const distanceCopy = txt.routeTitle === "Trust route" ? "Distance" : txt.routeTitle.startsWith("Rota") ? "Distancia" : "Distancia";
   const evidenceCopy = txt.routeTitle === "Trust route"
     ? `${formattedDistance} km with physical tap, SUN and channel evidence.`
     : txt.routeTitle.startsWith("Rota")
@@ -883,95 +876,51 @@ function HeroTraceMap({
   const [routeHover, setRouteHover] = useState<HeroRouteHover | null>(null);
   const routeDistanceLabel = `${formattedDistance} km`;
   const selectedProof = routeHover || proofSteps[0];
-  const mapPoints: VectorMapPoint[] = [
+  const globePoints: TraceabilityGlobePoint[] = [
     {
-      id: "origin",
-      label: origin.city,
-      sublabel: origin.country,
+      city: origin.city,
+      country: origin.country,
       lat: origin.lat,
       lng: origin.lng,
       scans: 6,
       risk: 0,
-      tone: "origin",
-      stageLabel: txt.originMap,
-      evidence: `${origin.label} verificado por lote, SUN y certificado.`,
-      lastSeen: "Origen certificado",
+      status: "origin",
+      vertical: "wine",
     },
     {
-      id: "tap",
-      label: tap.city,
-      sublabel: `${tap.country} - ${tap.label}`,
+      city: tap.city,
+      country: tap.country,
       lat: tap.lat,
       lng: tap.lng,
       scans: 14,
       risk: 0,
-      tone: "tap",
-      stageLabel: tapCopy,
-      evidence: `${routeDistanceLabel} con tap fisico y canal post-tap.`,
+      status: "tap",
+      vertical: "wine",
       lastSeen: new Date().toISOString(),
     },
   ];
-  const mapRoutes: VectorMapRoute[] = [
+  const globeRoutes: TraceabilityGlobeRoute[] = [
     {
-      id: "origin-to-tap",
       fromLat: origin.lat,
       fromLng: origin.lng,
       toLat: tap.lat,
       toLng: tap.lng,
-      label: `${origin.city} -> ${tap.city}`,
-      tone: "success",
-      distanceLabel: routeDistanceLabel,
-      evidence: evidenceCopy,
-    },
-  ];
-  const evidenceSteps: VectorMapEvidenceStep[] = proofSteps.map((step) => ({
-    id: step.eyebrow,
-    label: step.title,
-    value: step.detail,
-    detail: step.tone === "crm" ? crmDetailCopy : undefined,
-    tone:
-      step.tone === "origin"
-        ? "origin"
-        : step.tone === "tap"
-          ? "tap"
-          : step.tone === "crm"
-            ? "marketplace"
-            : "token",
-  }));
-  const ledgerItems: VectorMapLedgerItem[] = [
-    {
-      id: "distance",
-      label: distanceCopy,
-      value: routeDistanceLabel,
-      detail: evidenceCopy,
-      tone: "origin",
-    },
-    {
-      id: "crm",
-      label: crmCopy,
-      value: crmDetailCopy,
-      detail: "Dato listo para campana, garantia, recompra o marketplace.",
-      tone: "marketplace",
+      label: `${origin.city} → ${tap.city}`,
+      tone: "info",
     },
   ];
 
   return (
-    <div id="trace-signal-atlas" className="hero-trace-map hero-trace-map--atlas" aria-label={txt.routeTitle}>
-      <PremiumVectorMap
-        points={mapPoints}
-        routes={mapRoutes}
-        selectedPointId="tap"
+    <div id="trace-signal-atlas" className="hero-trace-map hero-trace-map--atlas hero-trace-map--trust-globe" aria-label={txt.routeTitle}>
+      <PremiumTraceabilityGlobe
         title={routeHeadline}
-        subtitle={`${origin.city} -> ${tap.city} - ${routeDistanceLabel}`}
+        subtitle={`${origin.city} → ${tap.city} · ${routeDistanceLabel}`}
         caption={evidenceCopy}
-        className="hero-route-vector-atlas"
-        heightClassName="h-full min-h-[inherit]"
-        density="route"
-        chrome="minimal"
-        maxPoints={6}
-        maxRoutes={3}
-        evidenceSteps={evidenceSteps}
-        ledgerItems={ledgerItems}
+        points={globePoints}
+        routes={globeRoutes}
+        compact
+        variant="hero"
+        className="hero-traceability-globe"
       />
       <div className="hero-map-intel hero-map-intel--atlas">
         <p>{selectedProof.eyebrow}</p>

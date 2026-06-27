@@ -36,6 +36,7 @@ type TraceabilityGlobeProps = {
   ctaLabel?: string;
   className?: string;
   compact?: boolean;
+  variant?: "default" | "hero" | "panel";
   onPointSelect?: (point: TraceabilityGlobePoint) => void;
 };
 
@@ -97,6 +98,7 @@ export function PremiumTraceabilityGlobe({
   ctaLabel,
   className = "",
   compact = false,
+  variant = "default",
 }: TraceabilityGlobeProps) {
   const [liveData, setLiveData] = useState<{
     points: TraceabilityGlobePoint[];
@@ -198,9 +200,20 @@ export function PremiumTraceabilityGlobe({
   const primaryFrom = primaryRoute ? nearestTracePoint(safePoints, primaryRoute.fromLat, primaryRoute.fromLng) : null;
   const primaryTo = primaryRoute ? nearestTracePoint(safePoints, primaryRoute.toLat, primaryRoute.toLng) : null;
   const primaryDistance = primaryRoute ? Math.round(routeDistanceKm(primaryRoute)).toLocaleString("es-AR") : "";
+  const globeSize =
+    variant === "hero"
+      ? { width: 660, height: 420 }
+      : variant === "panel"
+        ? { width: 620, height: 390 }
+        : compact
+          ? { width: 420, height: 300 }
+          : { width: 720, height: 440 };
 
   return (
-    <section className={`traceability-globe ${compact ? "traceability-globe--compact" : ""} ${className}`} aria-label={title}>
+    <section
+      className={`traceability-globe ${compact ? "traceability-globe--compact" : ""} traceability-globe--${variant} ${className}`}
+      aria-label={title}
+    >
       <div className="traceability-globe__header">
         <div>
           <p>nexID Global Trust Mesh</p>
@@ -236,8 +249,8 @@ export function PremiumTraceabilityGlobe({
               tone: r.tone === "warn" ? ("warn" as const) : ("info" as const),
               label: r.label,
             }))}
-            width={compact ? 420 : 720}
-            height={compact ? 300 : 440}
+            width={globeSize.width}
+            height={globeSize.height}
             className="border-0 bg-transparent shadow-none"
           />
         </div>

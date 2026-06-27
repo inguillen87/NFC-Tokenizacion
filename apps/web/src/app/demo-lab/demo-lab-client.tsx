@@ -279,7 +279,7 @@ const copy: Record<AppLocale, {
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta pasaporte textil", visual: "textile-dpp-demo", proof: ["Origen y composicion", "Cuidado conectado", "Sustentabilidad", "Reventa verificable"] },
     },
     controls: {
-      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto fisico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque valido en Zurich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Linea animada, distancia y enlaces de ubicacion para construir confianza.", realFeed: "Registro publico real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavia no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantia", tokenize: "Crear NFT", syncing: "Conectando con Bodega Balmec...", synced: "Bodega Balmec sincronizada con servidor.", unavailable: "Bodega Balmec no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en Bodega Balmec.", failedScan: "No se pudo simular el toque.", configs: [
+      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto físico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque válido en Zúrich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Línea animada, distancia y enlaces de ubicación para construir confianza.", realFeed: "Registro público real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavía no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantía", tokenize: "Crear NFT", syncing: "Conectando con Bodega Balmec...", synced: "Bodega Balmec sincronizada con servidor.", unavailable: "Bodega Balmec no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en Bodega Balmec.", failedScan: "No se pudo simular el toque.", configs: [
         { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueño por si solo." },
         { title: "NTAG213 / NTAG215", body: "UID fisico serializado para entradas, pulseras, garantias simples y activaciones masivas. Sube la friccion contra capturas de pantalla y permite reglas por lote desde el servidor." },
         { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
@@ -431,7 +431,7 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
       headline: "Producto activado en origen",
       body: "La marca programa lote, UID, origen y politica comercial antes de entregar el producto al canal.",
       stateLabel: "ORIGEN ACTIVO",
-      allowed: ["Auditar lote", "Abrir ubicacion", "Preparar QR/NFC"],
+      allowed: ["Auditar lote", "Abrir ubicación", "Preparar QR/NFC"],
       blocked: ["Reclamo de dueño", "Token de valor", "Garantia postventa"],
       chain: "Sin NFT: producto todavia no fue comprado ni reclamado.",
       primaryAction: "origin",
@@ -900,9 +900,11 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
                 subtitle={`${LOCATIONS.origin.city} -> ${destination.city}. ${txt.controls.distance}: ${routeKm.toLocaleString(locale)} km.`}
                 points={mapPoints}
                 routes={[{ fromLat: LOCATIONS.origin.lat, fromLng: LOCATIONS.origin.lng, toLat: destination.lat, toLng: destination.lng, tone: activeBeat.mode === "replay" ? "warn" : "info" }]}
-                caption="Vista ejecutiva: origen, destino, distancia, estado y senales de riesgo. Las coordenadas finas se conservan en el evento y el CRM."
+                caption="Vista ejecutiva: origen, destino, distancia, estado y señales de riesgo. Las coordenadas finas se conservan en el evento y el CRM."
                 ctaHref={mapsLink(destination)}
-                ctaLabel="Abrir ubicacion"
+                ctaLabel="Abrir ubicación"
+                variant="panel"
+                className="demo-lab-premium-globe"
               />
             </div>
           </div>
@@ -1365,7 +1367,7 @@ function DemoFirstRunGuide({
 }) {
   const guideSteps = [
     { beat: 0, kicker: "01", title: "Producto cerrado", body: "La etiqueta NFC esta intacta. Todavia no libera beneficios ni reclamo de dueño." },
-    { beat: 1, kicker: "02", title: "Toque valido", body: "El SUN dinamico valida el producto y une origen, ubicacion y consumidor." },
+    { beat: 1, kicker: "02", title: "Toque válido", body: "El SUN dinámico valida el producto y une origen, ubicación y consumidor." },
     { beat: 2, kicker: "03", title: "Copia bloqueada", body: "Una URL repetida o copiada no habilita club, tienda ni NFT." },
     { beat: 3, kicker: "04", title: "Apertura + reclamo", body: "El sello abierto dispara postventa, certificado y reclamo de dueño." },
   ];
@@ -3372,6 +3374,8 @@ function DemoCrmDashboard({
               points={mapPoints}
               routes={routes}
               caption="Los toques sospechosos (alertas de copia) se proyectan en color naranja/rojo."
+              variant="panel"
+              className="demo-lab-premium-globe demo-lab-premium-globe--live"
             />
           </div>
         </div>

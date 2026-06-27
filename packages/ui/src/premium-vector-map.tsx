@@ -49,7 +49,7 @@ export type VectorMapLedgerItem = {
 };
 
 type MapDensity = "balanced" | "heat" | "route";
-type MapChrome = "full" | "compact" | "minimal";
+type MapChrome = "full" | "compact" | "minimal" | "enterprise-atlas";
 
 const WIDTH = 1200;
 const HEIGHT = 620;
@@ -349,6 +349,187 @@ function formatMetric(value: number) {
   return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(value);
 }
 
+function EnterpriseTrustAtlasScene({
+  idPrefix,
+  points,
+  routes,
+  selectedPoint,
+  title,
+  subtitle,
+  caption,
+  isLightTheme,
+  totalEvents,
+  riskCount,
+  routeCount,
+}: {
+  idPrefix: string;
+  points: VectorMapPoint[];
+  routes: VectorMapRoute[];
+  selectedPoint: VectorMapPoint | null;
+  title: string;
+  subtitle: string;
+  caption?: string;
+  isLightTheme: boolean;
+  totalEvents: number;
+  riskCount: number;
+  routeCount: number;
+}) {
+  const originPoint = points.find((point) => toneFor(point) === "origin") || points[0] || null;
+  const tapPoint = selectedPoint || points.find((point) => toneFor(point) === "tap") || points[1] || originPoint;
+  const activeRoute = routes[0] || null;
+  const originLabel = originPoint?.label || "Origen";
+  const tapLabel = tapPoint?.label || "Tap";
+  const originSub = originPoint?.sublabel || "lote certificado";
+  const tapSub = tapPoint?.sublabel || "lectura fisica";
+  const distanceLabel = activeRoute?.distanceLabel || subtitle.split("-").pop()?.trim() || "ruta activa";
+  const routeD = "M 132 456 C 205 340 296 334 350 238 S 414 152 392 202";
+  const returnD = "M 102 494 C 198 446 288 464 370 420 C 432 386 468 392 500 428";
+  const glow = isLightTheme ? "rgba(14, 165, 233, 0.24)" : "rgba(34, 211, 238, 0.42)";
+  const panelFill = isLightTheme ? "rgba(255,255,255,0.82)" : "rgba(3,10,23,0.74)";
+  const text = isLightTheme ? "#0f172a" : "#f8fafc";
+  const muted = isLightTheme ? "#475569" : "#a7bdd6";
+
+  return (
+    <svg
+      viewBox="0 0 520 640"
+      preserveAspectRatio="xMidYMid slice"
+      className="absolute inset-0 h-full w-full"
+      aria-hidden="true"
+      data-nexid-map="premium-vector-map"
+      data-nexid-map-engine="nexid-trust-atlas"
+      data-nexid-map-source="nexid-private-atlas"
+      data-nexid-map-theme={isLightTheme ? "light" : "dark"}
+    >
+      <defs>
+        <linearGradient id={`${idPrefix}-enterprise-bg`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor={isLightTheme ? "#eefcff" : "#061b32"} />
+          <stop offset="48%" stopColor={isLightTheme ? "#f8fbff" : "#050d1b"} />
+          <stop offset="100%" stopColor={isLightTheme ? "#eef2ff" : "#080719"} />
+        </linearGradient>
+        <radialGradient id={`${idPrefix}-enterprise-aurora`} cx="50%" cy="44%" r="62%">
+          <stop offset="0%" stopColor="#22d3ee" stopOpacity={isLightTheme ? "0.24" : "0.36"} />
+          <stop offset="46%" stopColor="#14b8a6" stopOpacity={isLightTheme ? "0.12" : "0.16"} />
+          <stop offset="100%" stopColor="#020617" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={`${idPrefix}-enterprise-heat`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.96" />
+          <stop offset="28%" stopColor="#67e8f9" stopOpacity="0.7" />
+          <stop offset="64%" stopColor="#14b8a6" stopOpacity="0.24" />
+          <stop offset="100%" stopColor="#14b8a6" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={`${idPrefix}-enterprise-route`} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#34d399" stopOpacity="0.28" />
+          <stop offset="46%" stopColor="#22d3ee" stopOpacity="1" />
+          <stop offset="76%" stopColor="#a78bfa" stopOpacity="0.88" />
+          <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.7" />
+        </linearGradient>
+        <linearGradient id={`${idPrefix}-enterprise-terrain`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0f766e" stopOpacity={isLightTheme ? "0.16" : "0.36"} />
+          <stop offset="54%" stopColor="#0e7490" stopOpacity={isLightTheme ? "0.18" : "0.3"} />
+          <stop offset="100%" stopColor="#1d4ed8" stopOpacity={isLightTheme ? "0.12" : "0.22"} />
+        </linearGradient>
+        <filter id={`${idPrefix}-enterprise-glow`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="7" result="blur" />
+          <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.12 0 0 0 0 0.82 0 0 0 0 0.92 0 0 0 .7 0" result="glow" />
+          <feMerge>
+            <feMergeNode in="glow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id={`${idPrefix}-enterprise-noise`}>
+          <feTurbulence type="fractalNoise" baseFrequency="0.016 0.022" numOctaves="2" seed="17" />
+          <feColorMatrix type="matrix" values="0 0 0 0 0.08 0 0 0 0 0.78 0 0 0 0 0.9 0 0 0 .16 0" />
+        </filter>
+        <pattern id={`${idPrefix}-enterprise-grid`} width="38" height="38" patternUnits="userSpaceOnUse">
+          <path d="M 38 0 H 0 V 38" fill="none" stroke={isLightTheme ? "rgba(14,116,144,.08)" : "rgba(125,211,252,.075)"} strokeWidth="1" />
+        </pattern>
+      </defs>
+
+      <rect width="520" height="640" fill={`url(#${idPrefix}-enterprise-bg)`} />
+      <rect width="520" height="640" fill={`url(#${idPrefix}-enterprise-aurora)`} />
+      <rect width="520" height="640" fill={`url(#${idPrefix}-enterprise-grid)`} opacity="0.72" />
+      <rect width="520" height="640" filter={`url(#${idPrefix}-enterprise-noise)`} opacity="0.2" />
+
+      <g className="nexid-enterprise-atlas-depth" opacity={isLightTheme ? "0.48" : "0.78"}>
+        <path d="M 0 522 C 58 448 92 352 172 310 C 262 263 312 307 380 254 C 438 208 479 180 520 192 L 520 640 L 0 640 Z" fill={`url(#${idPrefix}-enterprise-terrain)`} opacity="0.58" />
+        <path d="M 28 500 C 92 430 164 414 240 378 C 340 330 386 252 496 292" fill="none" stroke="rgba(125,211,252,.18)" strokeWidth="1.3" strokeDasharray="6 16" />
+        <path d="M 32 560 C 112 520 212 530 302 494 C 388 460 444 454 506 474" fill="none" stroke="rgba(52,211,153,.16)" strokeWidth="1.2" strokeDasharray="2 12" />
+        <path d="M 70 364 C 145 332 198 352 260 306 C 332 254 376 176 476 206" fill="none" stroke="rgba(167,139,250,.16)" strokeWidth="1.2" strokeDasharray="3 14" />
+      </g>
+
+      <g opacity="0.48">
+        {[56, 132, 208, 284, 360, 436].map((x) => (
+          <line key={`atlas-meridian-${x}`} x1={x} x2={x + 32} y1="42" y2="604" stroke="rgba(125,211,252,.1)" strokeWidth="1" strokeDasharray="3 12" />
+        ))}
+        {[112, 208, 304, 400, 496].map((y) => (
+          <path key={`atlas-parallel-${y}`} d={`M 24 ${y} C 132 ${y - 24} 280 ${y + 20} 500 ${y - 10}`} fill="none" stroke="rgba(125,211,252,.08)" strokeWidth="1" strokeDasharray="7 18" />
+        ))}
+      </g>
+
+      <g filter={`url(#${idPrefix}-enterprise-glow)`}>
+        <path d={returnD} fill="none" stroke="rgba(14,165,233,.22)" strokeWidth="23" strokeLinecap="round" opacity="0.18" />
+        <path d={routeD} fill="none" stroke={glow} strokeWidth="34" strokeLinecap="round" opacity="0.28" />
+        <path d={routeD} fill="none" stroke={`url(#${idPrefix}-enterprise-route)`} strokeWidth="4.2" strokeLinecap="round" strokeDasharray="14 18" opacity="0.98">
+          <animate attributeName="stroke-dashoffset" values="0;-96" dur="3.6s" repeatCount="indefinite" />
+        </path>
+        <path d={returnD} fill="none" stroke="rgba(52,211,153,.5)" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="3 14" opacity="0.68">
+          <animate attributeName="stroke-dashoffset" values="0;74" dur="5.8s" repeatCount="indefinite" />
+        </path>
+        <circle r="7" fill={`url(#${idPrefix}-enterprise-heat)`} opacity="0.95">
+          <animateMotion dur="5.2s" repeatCount="indefinite" path={routeD} />
+        </circle>
+      </g>
+
+      <g className="nexid-enterprise-node" transform="translate(132 456)">
+        <circle r="50" fill="none" stroke="#34d399" strokeWidth="1" strokeDasharray="4 10" opacity="0.5" />
+        <circle r="22" fill="rgba(52,211,153,.22)" stroke="#34d399" strokeWidth="1.7" />
+        <circle r="8" fill="#34d399" stroke="#f8fafc" strokeWidth="2" />
+      </g>
+      <g className="nexid-enterprise-node nexid-enterprise-node--tap" transform="translate(392 202)">
+        <circle r="68" fill="none" stroke="#22d3ee" strokeWidth="1" strokeDasharray="3 11" opacity="0.58" />
+        <circle r="32" fill="rgba(34,211,238,.24)" stroke="#67e8f9" strokeWidth="1.8" />
+        <circle r="11" fill="#22d3ee" stroke="#f8fafc" strokeWidth="2.4" />
+      </g>
+
+      <g transform="translate(304 24)">
+        <rect width="188" height="56" rx="16" fill={panelFill} stroke="rgba(125,211,252,.26)" />
+        <text x="16" y="22" fill="#67e8f9" fontSize="9" fontWeight="950" letterSpacing="2.4">NEXID TRUST ATLAS</text>
+        <text x="16" y="42" fill={text} fontSize="15" fontWeight="950">{title}</text>
+      </g>
+
+      <g transform="translate(30 502)">
+        <rect width="218" height="76" rx="17" fill={panelFill} stroke="rgba(52,211,153,.28)" />
+        <text x="16" y="24" fill="#86efac" fontSize="9" fontWeight="950" letterSpacing="2.2">ORIGEN</text>
+        <text x="16" y="47" fill={text} fontSize="18" fontWeight="950">{originLabel}</text>
+        <text x="16" y="64" fill={muted} fontSize="10" fontWeight="700">{originSub}</text>
+      </g>
+
+      <g transform="translate(286 106)">
+        <rect width="206" height="86" rx="17" fill={panelFill} stroke="rgba(34,211,238,.3)" />
+        <text x="16" y="25" fill="#67e8f9" fontSize="9" fontWeight="950" letterSpacing="2.2">TAP FÍSICO</text>
+        <text x="16" y="49" fill={text} fontSize="18" fontWeight="950">{tapLabel}</text>
+        <text x="16" y="66" fill={muted} fontSize="10" fontWeight="750">{tapSub}</text>
+      </g>
+
+      <g transform="translate(278 498)">
+        <rect width="214" height="80" rx="17" fill={panelFill} stroke="rgba(251,191,36,.24)" />
+        <text x="16" y="25" fill="#fde68a" fontSize="9" fontWeight="950" letterSpacing="2.2">RUTA Y CAPAS</text>
+        <text x="16" y="48" fill={text} fontSize="16" fontWeight="950">{distanceLabel}</text>
+        <text x="16" y="64" fill={muted} fontSize="10" fontWeight="700">{formatMetric(totalEvents || points.length)} taps - {routeCount} ruta - {riskCount} riesgo</text>
+      </g>
+
+      <g transform="translate(36 588)">
+        {["Relieve", "Riesgo", "Canal", "CRM"].map((item, index) => (
+          <g key={item} transform={`translate(${index * 116} 0)`}>
+            <rect width="96" height="28" rx="14" fill={index === 0 ? "rgba(34,211,238,.16)" : "rgba(15,23,42,.62)"} stroke="rgba(125,211,252,.22)" />
+            <text x="48" y="18" textAnchor="middle" fill={index === 0 ? "#cffafe" : muted} fontSize="9" fontWeight="900">{item}</text>
+          </g>
+        ))}
+      </g>
+    </svg>
+  );
+}
+
 export function PremiumVectorMap({
   points,
   routes = [],
@@ -402,6 +583,8 @@ export function PremiumVectorMap({
   const pointCenterFill = isLightTheme ? "rgba(255,255,255,0.88)" : "rgba(2,6,23,0.7)";
   const atlasLabelFill = isLightTheme ? "#155e75" : "#bae6fd";
   const atlasHaloColor = isLightTheme ? "rgba(255,255,255,0.92)" : "rgba(2,6,23,0.7)";
+  const isEnterpriseAtlas = chrome === "enterprise-atlas";
+  const isMinimalChrome = chrome === "minimal" || isEnterpriseAtlas;
   useEffect(() => {
     const root = document.documentElement;
     const syncTheme = () => {
@@ -424,7 +607,7 @@ export function PremiumVectorMap({
     }
     return resolved;
   }, [isLightTheme, mapSource]);
-  const mapTiles = mapTilesForViewBox(viewBox, density, trustMapSource.rasterTileTemplate);
+  const mapTiles = isEnterpriseAtlas ? [] : mapTilesForViewBox(viewBox, density, trustMapSource.rasterTileTemplate);
   const maxScan = Math.max(1, ...visiblePoints.map((point) => point.scans || 1));
   const selectedPoint = visiblePoints.find((point) => point.id === selectedPointId) || visiblePoints[0] || null;
   const riskCount = visiblePoints.filter((point) => (point.risk || 0) > 0 || toneFor(point) === "risk").length;
@@ -477,6 +660,32 @@ export function PremiumVectorMap({
     }
   }
 
+  if (isEnterpriseAtlas) {
+    return (
+      <div
+        className={[
+          "relative isolate overflow-hidden rounded-xl border border-cyan-300/15 bg-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(2,6,23,0.38)]",
+          heightClassName,
+          className,
+        ].join(" ")}
+      >
+        <EnterpriseTrustAtlasScene
+          idPrefix={idPrefix}
+          points={visiblePoints}
+          routes={visibleRoutes}
+          selectedPoint={selectedPoint}
+          title={title}
+          subtitle={subtitle}
+          caption={caption}
+          isLightTheme={isLightTheme}
+          totalEvents={totalEvents}
+          riskCount={riskCount}
+          routeCount={routeCount}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={[
@@ -489,7 +698,7 @@ export function PremiumVectorMap({
         viewBox={viewBox}
         preserveAspectRatio={density === "route" ? "xMidYMid meet" : "xMidYMid slice"}
         className="absolute inset-0 h-full w-full"
-        aria-hidden={chrome === "minimal"}
+        aria-hidden={isMinimalChrome}
         data-nexid-map="premium-vector-map"
         data-nexid-map-engine={trustMapSource.mode}
         data-nexid-map-source={trustMapSource.id}
@@ -667,7 +876,7 @@ export function PremiumVectorMap({
         </g>
 
         {!mapTiles.length ? (
-        <g opacity={density === "route" ? "0.92" : chrome === "minimal" ? "0.28" : "0.42"}>
+        <g opacity={density === "route" ? "0.92" : isMinimalChrome ? "0.28" : "0.42"}>
           {ATLAS_REGIONS.map((region) => (
             <g key={region.id}>
               <path d={region.d} fill={`url(#${idPrefix}-land)`} opacity={density === "route" ? region.opacity : region.opacity * 0.62} />
@@ -675,7 +884,7 @@ export function PremiumVectorMap({
               <path d={region.d} fill="none" stroke="rgba(226,232,240,0.22)" strokeWidth="0.8" strokeDasharray={density === "route" ? "9 14" : "4 14"} opacity={density === "route" ? "0.34" : "0.24"} />
             </g>
           ))}
-          <g opacity={chrome === "minimal" ? "0.18" : density === "route" ? "0.36" : "0.36"}>
+          <g opacity={isMinimalChrome ? "0.18" : density === "route" ? "0.36" : "0.36"}>
             {TERRAIN_LINES.map((path, index) => (
               <path
                 key={`terrain-${index}`}
@@ -691,7 +900,7 @@ export function PremiumVectorMap({
         </g>
         ) : null}
 
-        {!mapTiles.length ? <g opacity={density === "route" ? "0.48" : chrome === "minimal" ? "0.18" : "0.28"}>
+        {!mapTiles.length ? <g opacity={density === "route" ? "0.48" : isMinimalChrome ? "0.18" : "0.28"}>
           {ATLAS_LABELS.map((item) => (
             <text
               key={item.label}
@@ -753,7 +962,7 @@ export function PremiumVectorMap({
           </text>
         ) : null}
 
-        <g opacity={chrome === "minimal" ? "0.03" : density === "route" ? "0.08" : "0.42"}>
+        <g opacity={isMinimalChrome ? "0.03" : density === "route" ? "0.08" : "0.42"}>
           {CITY_LIGHTS.map((light, index) => {
             const dot = project(light.lat, light.lng);
             return (
@@ -770,7 +979,7 @@ export function PremiumVectorMap({
           })}
         </g>
 
-        <g opacity={chrome === "minimal" ? "0.16" : density === "route" ? "0.52" : "0.7"}>
+        <g opacity={isMinimalChrome ? "0.16" : density === "route" ? "0.52" : "0.7"}>
           {NETWORK_TELEMETRY_PARTICLES.map((particle, index) => {
             const dot = project(particle.lat, particle.lng);
             const color = telemetryColor(particle.tone);
@@ -874,7 +1083,7 @@ export function PremiumVectorMap({
                     />
                   </circle>
                 </g>
-                {label && chrome !== "minimal" ? (
+                {label && !isMinimalChrome ? (
                   <g transform={`translate(${labelX.toFixed(1)} ${labelY.toFixed(1)})`} opacity={index > 6 ? "0.68" : "0.92"}>
                     <rect x="-58" y="-14" width="116" height="27" rx="13.5" fill={labelPanelFill} stroke={color} strokeOpacity={labelPanelStrokeOpacity} />
                     <text x="0" y="4" textAnchor="middle" fill={labelTextFill} fontSize="12" fontWeight="850" letterSpacing="1.4" paintOrder="stroke" stroke={labelHaloColor} strokeWidth="2">
@@ -894,7 +1103,7 @@ export function PremiumVectorMap({
             const color = pointColor(tone);
             const selected = selectedPoint?.id === point.id;
             const radius = selected ? 10 : tone === "origin" || tone === "tap" ? 8 : 6.2;
-            const shouldLabel = chrome !== "minimal" && !isTightRouteView && (selected || tone === "origin" || tone === "tap" || tone === "risk");
+            const shouldLabel = !isMinimalChrome && !isTightRouteView && (selected || tone === "origin" || tone === "tap" || tone === "risk");
             const isFresh = point.lastSeen ? Math.abs(Date.now() - Date.parse(point.lastSeen)) < 20000 : false;
 
             return (
@@ -1008,7 +1217,7 @@ export function PremiumVectorMap({
         </g>
       </svg>
 
-      {chrome !== "minimal" ? (
+      {!isMinimalChrome ? (
         <div className="absolute left-3 right-3 top-3 z-10 flex flex-wrap items-start justify-between gap-2">
           <div className="rounded-xl border border-white/10 bg-slate-950/76 px-3 py-2 text-xs text-slate-200 shadow-xl backdrop-blur-md">
             <p className="font-black uppercase tracking-[0.14em] text-cyan-200">{title}</p>

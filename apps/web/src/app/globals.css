@@ -1582,6 +1582,55 @@ button.traceability-globe__node {
   font-size: 0.9rem;
 }
 
+.traceability-globe--hero {
+  min-height: clamp(28rem, 40vw, 36rem);
+  border-radius: 1.1rem;
+}
+
+.traceability-globe--hero .traceability-globe__header {
+  padding: 0.95rem 1rem 0;
+}
+
+.traceability-globe--hero .traceability-globe__header h2 {
+  font-size: clamp(1rem, 1.45vw, 1.42rem);
+}
+
+.traceability-globe--hero .traceability-globe__header span {
+  max-width: 30rem;
+  font-size: 0.72rem;
+}
+
+.traceability-globe--hero .traceability-globe__kpis {
+  gap: 0.42rem;
+}
+
+.traceability-globe--hero .traceability-globe__kpis strong {
+  min-width: 4.4rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.86rem;
+}
+
+.traceability-globe--hero .traceability-globe__stage {
+  min-height: clamp(22rem, 31vw, 29rem);
+  margin: 0.25rem 0.55rem 0.45rem;
+}
+
+.traceability-globe--hero .traceability-globe__floating {
+  display: none;
+}
+
+.traceability-globe--hero .traceability-globe__footer {
+  display: none;
+}
+
+.traceability-globe--panel {
+  min-height: clamp(34rem, 54vw, 44rem);
+}
+
+.traceability-globe--panel .traceability-globe__stage {
+  min-height: clamp(24rem, 40vw, 33rem);
+}
+
 .sdk-global-hero-globe {
   min-height: 610px;
 }
@@ -24054,6 +24103,192 @@ html.theme-light .landing-hero-section .hero-trace-map--signal .hero-route-proof
   min-width: 100% !important;
   height: 100% !important;
   min-height: 100% !important;
+}
+
+.landing-hero-section .hero-route-vector-atlas [data-nexid-map-engine="nexid-trust-atlas"],
+.hero-scene .hero-route-vector-atlas [data-nexid-map-engine="nexid-trust-atlas"] {
+  filter: saturate(1.32) contrast(1.08) drop-shadow(0 1.8rem 3.5rem rgba(8, 47, 73, 0.28));
+}
+
+.landing-hero-section .hero-route-vector-atlas:has([data-nexid-map-engine="nexid-trust-atlas"])::after,
+.hero-scene .hero-route-vector-atlas:has([data-nexid-map-engine="nexid-trust-atlas"])::after {
+  background:
+    radial-gradient(circle at 72% 35%, rgba(34, 211, 238, 0.16), transparent 22%),
+    radial-gradient(circle at 22% 66%, rgba(52, 211, 153, 0.12), transparent 24%),
+    linear-gradient(180deg, transparent 54%, rgba(2, 6, 23, 0.18));
+}
+
+[data-nexid-map-engine="nexid-trust-atlas"] .nexid-enterprise-atlas-depth {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nexid-atlas-depth-drift 14s ease-in-out infinite alternate;
+}
+
+[data-nexid-map-engine="nexid-trust-atlas"] .nexid-enterprise-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nexid-atlas-node-pulse 3.4s ease-in-out infinite;
+}
+
+[data-nexid-map-engine="nexid-trust-atlas"] .nexid-enterprise-node--tap {
+  animation-duration: 2.35s;
+}
+
+.landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+  grid-template-columns: minmax(36rem, 1.35fr) minmax(17rem, 0.65fr);
+  min-height: clamp(32rem, 43vw, 40rem);
+}
+
+.landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+  grid-column: 1 / -1;
+}
+
+.landing-hero-section .hero-product-stage:has(.hero-trace-map--trust-globe) {
+  width: 100%;
+}
+
+.landing-hero-section .hero-object-map-pane:has(.hero-trace-map--trust-globe) {
+  min-height: clamp(30rem, 39vw, 38rem);
+}
+
+.landing-hero-section #trace-signal-atlas.hero-trace-map--trust-globe,
+.hero-scene #trace-signal-atlas.hero-trace-map--trust-globe {
+  inset: 0.35rem !important;
+  min-height: clamp(30rem, 39vw, 38rem) !important;
+  border-color: rgba(103, 232, 249, 0.32) !important;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(34, 211, 238, 0.14), transparent 36%),
+    radial-gradient(circle at 78% 18%, rgba(45, 212, 191, 0.1), transparent 24%),
+    linear-gradient(145deg, rgba(2, 6, 23, 0.98), rgba(6, 23, 42, 0.94)) !important;
+}
+
+.landing-hero-section #trace-signal-atlas.hero-trace-map--trust-globe > .hero-traceability-globe,
+.hero-scene #trace-signal-atlas.hero-trace-map--trust-globe > .hero-traceability-globe {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(14, 165, 233, 0.12), transparent 36%),
+    linear-gradient(145deg, rgba(2, 6, 23, 0.18), rgba(8, 47, 73, 0.08)) !important;
+  box-shadow: none !important;
+}
+
+.landing-hero-section .hero-trace-map--trust-globe .traceability-globe__stage,
+.hero-scene .hero-trace-map--trust-globe .traceability-globe__stage {
+  min-height: 0 !important;
+  height: 100% !important;
+  margin: 0.2rem 0.5rem 0.45rem !important;
+}
+
+.landing-hero-section .hero-trace-map--trust-globe .traceability-globe__routebar,
+.hero-scene .hero-trace-map--trust-globe .traceability-globe__routebar {
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: 3.55rem;
+  max-width: none;
+  padding: 0.66rem 0.78rem;
+}
+
+.landing-hero-section .hero-trace-map--trust-globe .hero-map-intel--atlas,
+.hero-scene .hero-trace-map--trust-globe .hero-map-intel--atlas {
+  top: 5.35rem !important;
+  left: 0.9rem !important;
+  width: min(12.5rem, calc(100% - 1.8rem)) !important;
+  padding: 0.56rem 0.66rem !important;
+}
+
+.landing-hero-section .hero-trace-map--trust-globe .hero-route-proof-steps--atlas,
+.hero-scene .hero-trace-map--trust-globe .hero-route-proof-steps--atlas {
+  bottom: 0.74rem !important;
+  left: 0.9rem !important;
+}
+
+.demo-lab-tech-map .traceability-globe,
+.demo-lab-premium-globe {
+  min-height: clamp(34rem, 56vw, 46rem);
+}
+
+.demo-lab-tech-map .traceability-globe__stage,
+.demo-lab-premium-globe .traceability-globe__stage {
+  min-height: clamp(24rem, 42vw, 34rem);
+}
+
+@media (max-width: 1100px) {
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-hero-section .hero-object-map-pane:has(.hero-trace-map--trust-globe),
+  .landing-hero-section #trace-signal-atlas.hero-trace-map--trust-globe,
+  .hero-scene #trace-signal-atlas.hero-trace-map--trust-globe {
+    min-height: clamp(28rem, 62vw, 38rem) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .landing-hero-section .hero-object-map-pane:has(.hero-trace-map--trust-globe),
+  .landing-hero-section #trace-signal-atlas.hero-trace-map--trust-globe,
+  .hero-scene #trace-signal-atlas.hero-trace-map--trust-globe {
+    min-height: 29rem !important;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__header,
+  .hero-scene .hero-trace-map--trust-globe .traceability-globe__header {
+    display: grid;
+    padding: 0.72rem 0.78rem 0 !important;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__kpis,
+  .hero-scene .hero-trace-map--trust-globe .traceability-globe__kpis {
+    display: none;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .hero-map-intel--atlas,
+  .hero-scene .hero-trace-map--trust-globe .hero-map-intel--atlas {
+    display: none !important;
+  }
+}
+
+@keyframes nexid-atlas-depth-drift {
+  from {
+    opacity: 0.64;
+    transform: translate3d(-0.4%, 0.2%, 0) scale(1);
+  }
+
+  to {
+    opacity: 0.82;
+    transform: translate3d(0.6%, -0.4%, 0) scale(1.012);
+  }
+}
+
+@keyframes nexid-atlas-node-pulse {
+  0%,
+  100% {
+    opacity: 0.82;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-nexid-map-engine="nexid-trust-atlas"] .nexid-enterprise-atlas-depth,
+  [data-nexid-map-engine="nexid-trust-atlas"] .nexid-enterprise-node {
+    animation: none;
+  }
 }
 
 .docs-faq-video {
