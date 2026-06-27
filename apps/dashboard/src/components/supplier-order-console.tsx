@@ -38,7 +38,18 @@ type SupplierPackResponse = {
   ok?: boolean;
   order?: SupplierOrder;
   zip_layout?: string;
-  password_recommendation?: string;
+  encrypted_pack?: {
+    filename: string;
+    mime_type: string;
+    encoding: "base64";
+    base64: string;
+    envelope_sha256: string;
+    plaintext_zip_sha256: string;
+    ciphertext_sha256: string;
+    password: string;
+    password_warning: string;
+    encryption?: Record<string, unknown>;
+  };
   warning?: string;
   packs?: Array<{
     bid: string;
@@ -46,9 +57,10 @@ type SupplierPackResponse = {
     key_fingerprint: string;
     text_filename: string;
     json_filename: string;
-    text: string;
-    json: Record<string, unknown>;
+    pdf_summary_filename: string;
     content_hash: string;
+    json_hash: string;
+    pdf_hash: string;
   }>;
 };
 
@@ -74,6 +86,41 @@ function downloadText(filename: string, text: string, type: string) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+function downloadBase64(filename: string, base64: string, type: string) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  const blob = new Blob([bytes], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function safePackSummary(data: SupplierPackResponse) {
+  return {
+    ok: data.ok,
+    order: data.order,
+    zip_layout: data.zip_layout,
+    warning: data.warning,
+    encrypted_pack: data.encrypted_pack
+      ? {
+          filename: data.encrypted_pack.filename,
+          envelope_sha256: data.encrypted_pack.envelope_sha256,
+          plaintext_zip_sha256: data.encrypted_pack.plaintext_zip_sha256,
+          ciphertext_sha256: data.encrypted_pack.ciphertext_sha256,
+          password_warning: data.encrypted_pack.password_warning,
+          encryption: data.encrypted_pack.encryption,
+        }
+      : null,
+    packs: data.packs,
+  };
 }
 
 function formatError(data: unknown, fallback: string) {
@@ -181,11 +228,12 @@ export function SupplierOrderConsole() {
       return;
     }
     setPending(true);
-    setStatus("Exportando Supplier Encoding Pack. Esta respuesta contiene llaves plaintext una sola vez.");
+    setStatus("Generando ZIP cifrado con TXT/JSON/PDF/checksums por sub-batch. Las llaves no quedan visibles en el navegador.");
     try {
       const data = await run(`/api/admin/supplier-orders/${encodeURIComponent(selectedOrderId)}/export-pack`, { method: "POST" }) as SupplierPackResponse;
       setPack(data);
-      setStatus(`Pack exportado: ${data.packs?.length || 0} carpetas. Guardar ZIP cifrado y enviar password por canal separado.`);
+      setResponse(asJson(safePackSummary(data)));
+      setStatus(`Pack cifrado listo: ${data.packs?.length || 0} carpetas. Descarga el .zip.enc y envia el password por canal separado.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo exportar el pack.");
     } finally {
@@ -220,15 +268,15 @@ export function SupplierOrderConsole() {
     }
   }
 
-  function downloadPackJson() {
-    if (!pack) return;
-    downloadText(`supplier-pack-${selectedOrderId}.json`, asJson(pack), "application/json;charset=utf-8");
+  function downloadEncryptedPack() {
+    const encrypted = pack?.encrypted_pack;
+    if (!encrypted) return;
+    downloadBase64(encrypted.filename, encrypted.base64, encrypted.mime_type || "application/octet-stream");
   }
 
-  function downloadPackTxt() {
-    if (!pack?.packs?.length) return;
-    const body = pack.packs.map((item) => `# ${item.bid}\n${item.text}`).join("\n\n");
-    downloadText(`supplier-pack-${selectedOrderId}.txt`, body, "text/plain;charset=utf-8");
+  function downloadSafeSummary() {
+    if (!pack) return;
+    downloadText(`supplier-pack-summary-${selectedOrderId}.json`, asJson(safePackSummary(pack)), "application/json;charset=utf-8");
   }
 
   function selectExistingOrder(order: SupplierOrder) {
@@ -336,17 +384,23 @@ export function SupplierOrderConsole() {
           <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">Export pack</p>
             <p className="mt-2 text-sm leading-6 text-amber-50">
-              Solo superadmin. La respuesta contiene llaves plaintext para el proveedor. No se debe pegar en chat ni tickets; descargar y comprimir con password separado.
+              Solo superadmin. Genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se muestra una vez y se manda por canal separado.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button disabled={pending || !selectedOrderId} onClick={() => void exportPack()}>Exportar pack</Button>
-              <Button variant="secondary" disabled={!pack} onClick={downloadPackJson}>Descargar JSON</Button>
-              <Button variant="secondary" disabled={!pack} onClick={downloadPackTxt}>Descargar TXT</Button>
+              <Button variant="secondary" disabled={!pack?.encrypted_pack} onClick={downloadEncryptedPack}>Descargar ZIP cifrado</Button>
+              <Button variant="secondary" disabled={!pack} onClick={downloadSafeSummary}>Resumen seguro</Button>
             </div>
-            {pack?.password_recommendation ? (
+            {pack?.encrypted_pack?.password ? (
               <p className="mt-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 font-mono text-xs text-white">
-                Password sugerido: {pack.password_recommendation}
+                Password one-time: {pack.encrypted_pack.password}
               </p>
+            ) : null}
+            {pack?.encrypted_pack?.envelope_sha256 ? (
+              <div className="mt-3 space-y-1 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-300">
+                <p>Envelope: <span className="font-mono text-cyan-100">{pack.encrypted_pack.envelope_sha256}</span></p>
+                <p>ZIP interno: <span className="font-mono text-cyan-100">{pack.encrypted_pack.plaintext_zip_sha256}</span></p>
+              </div>
             ) : null}
           </div>
 

@@ -5,6 +5,10 @@ const {
   buildSupplierSubBatchPlan,
   generateSupplierBatchKeys,
   buildSupplierEncodingPack,
+  buildSupplierPackPdfSummary,
+  buildZipArchive,
+  encryptSupplierZipArchive,
+  decryptSupplierEncryptedZipForTest,
   validateSupplierManifestQuantity,
   canActivateSupplierSubBatch,
 } = await import("../src/lib/supplier-ops.ts");
@@ -53,6 +57,53 @@ test("supplier keys are random 16-byte hex pairs and pack includes TagTamper con
   assert.match(pack.contentHash, /^sha256:[0-9a-f]{64}$/);
   assert.equal(pack.json.TTSTATUS.closed, "4343");
   assert.match(pack.text, /MANIFEST_FORMAT=batch_id,uid_hex/);
+});
+
+test("supplier pack export can be delivered as encrypted ZIP without plaintext keys in the envelope", () => {
+  const keys = generateSupplierBatchKeys();
+  const pack = buildSupplierEncodingPack({
+    clientSlug: "syngenta",
+    batchId: "SYN-AR-2026-001-A",
+    quantity: 1000,
+    chipModel: "NTAG 424 DNA",
+    carrierProfile: "ntag424_dna",
+    kMetaHex: keys.kMetaHex,
+    kFileHex: keys.kFileHex,
+    urlTemplate: "https://api.nexid.lat/sun?v=1&bid=SYN-AR-2026-001-A&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+  });
+  const jsonBody = JSON.stringify(pack.json, null, 2);
+  const pdf = buildSupplierPackPdfSummary({
+    clientSlug: "syngenta",
+    batchId: "SYN-AR-2026-001-A",
+    quantity: 1000,
+    chipModel: "NTAG 424 DNA",
+    carrierProfile: "ntag424_dna",
+    keyFingerprint: keys.fingerprint,
+    contentHash: pack.contentHash,
+    jsonHash: "sha256:" + "a".repeat(64),
+    urlTemplate: "https://api.nexid.lat/sun?v=1&bid=SYN-AR-2026-001-A&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+  });
+  assert.equal(pdf.subarray(0, 8).toString("utf8"), "%PDF-1.4");
+
+  const zip = buildZipArchive([
+    { path: "README_FIRST.txt", data: "nexID supplier pack\n" },
+    { path: "SYN-AR-2026-001-A/SYN-AR-2026-001-A_supplier_encoding_pack.txt", data: pack.text },
+    { path: "SYN-AR-2026-001-A/SYN-AR-2026-001-A_supplier_encoding_pack.json", data: jsonBody },
+    { path: "SYN-AR-2026-001-A/SYN-AR-2026-001-A_supplier_encoding_summary.pdf", data: pdf },
+  ]);
+  assert.equal(zip.subarray(0, 2).toString("utf8"), "PK");
+  assert.match(zip.toString("utf8"), /README_FIRST\.txt/);
+  assert.match(zip.toString("utf8"), new RegExp(keys.kMetaHex));
+
+  const encrypted = encryptSupplierZipArchive(zip, "nexID-SYN-AR-2026-001-A-TEST", { bid: "SYN-AR-2026-001-A" });
+  const envelope = encrypted.envelopeBuffer.toString("utf8");
+  assert.doesNotMatch(envelope, new RegExp(keys.kMetaHex));
+  assert.doesNotMatch(envelope, new RegExp(keys.kFileHex));
+  assert.match(encrypted.envelopeHash, /^sha256:[0-9a-f]{64}$/);
+
+  const decrypted = decryptSupplierEncryptedZipForTest(encrypted.envelopeBuffer, "nexID-SYN-AR-2026-001-A-TEST");
+  assert.equal(decrypted.subarray(0, 2).toString("utf8"), "PK");
+  assert.equal(decrypted.equals(zip), true);
 });
 
 test("supplier manifest gate rejects quantity mismatch before activation", () => {
