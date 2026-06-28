@@ -5,16 +5,25 @@ import dynamic from "next/dynamic";
 import * as THREE from "three";
 
 function ensureThreeRendererCompatibility() {
-  const matrix4Prototype = (THREE.Matrix4 as unknown as { prototype?: Record<string, unknown> }).prototype;
-  if (!matrix4Prototype || typeof matrix4Prototype.determinantAffine === "function") return;
+  const patchMatrixPrototype = (matrix4Prototype?: Record<string, unknown>) => {
+    if (!matrix4Prototype || typeof matrix4Prototype.determinantAffine === "function") return;
 
-  try {
-    Object.defineProperty(matrix4Prototype, "determinantAffine", {
-      configurable: true,
-      value: THREE.Matrix4.prototype.determinant,
-    });
-  } catch {
-    matrix4Prototype.determinantAffine = THREE.Matrix4.prototype.determinant;
+    try {
+      Object.defineProperty(matrix4Prototype, "determinantAffine", {
+        configurable: true,
+        value: THREE.Matrix4.prototype.determinant,
+      });
+    } catch {
+      matrix4Prototype.determinantAffine = THREE.Matrix4.prototype.determinant;
+    }
+  };
+
+  patchMatrixPrototype((THREE.Matrix4 as unknown as { prototype?: Record<string, unknown> }).prototype);
+
+  if (typeof window !== "undefined") {
+    const win = window as typeof window & { THREE?: typeof THREE };
+    patchMatrixPrototype((win.THREE?.Matrix4 as unknown as { prototype?: Record<string, unknown> } | undefined)?.prototype);
+    win.THREE = THREE;
   }
 }
 

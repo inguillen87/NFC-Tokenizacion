@@ -27485,3 +27485,104 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     bottom: 0.7rem !important;
   }
 }
+
+/* Production landing fix: keep the atlas premium, but never hide the product proof on desktop. */
+@media (min-width: 1180px) {
+  .landing-hero-section .hero-demo-shell {
+    width: min(86rem, calc(100vw - 2rem)) !important;
+  }
+
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe),
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    grid-column: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    display: grid !important;
+    grid-template-columns: minmax(24rem, 1fr) minmax(18.5rem, 0.72fr) !important;
+    gap: clamp(0.72rem, 1vw, 1rem) !important;
+    min-height: clamp(30rem, 35vw, 35rem) !important;
+    align-items: stretch !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-map-pane,
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane {
+    min-width: 0 !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
+    display: grid !important;
+    align-content: stretch !important;
+  }
+
+  .landing-hero-section .hero-object-map-pane:has(.hero-trace-map--trust-globe),
+  .landing-hero-section #trace-signal-atlas.hero-trace-map--trust-globe,
+  .hero-scene #trace-signal-atlas.hero-trace-map--trust-globe {
+    min-height: clamp(27rem, 31vw, 32rem) !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-asset-showcase {
+    display: grid !important;
+    min-height: 100% !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-asset-media {
+    grid-template-columns: minmax(0, 1fr) minmax(5.6rem, 0.38fr) !important;
+    min-height: clamp(15rem, 17vw, 18.5rem) !important;
+    height: auto !important;
+    gap: 0.62rem !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-passport-phone {
+    width: min(100%, 6.35rem) !important;
+    min-width: 0 !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    display: grid !important;
+    grid-template-columns: minmax(18rem, 0.82fr) minmax(22rem, 1.18fr) !important;
+    gap: 0.85rem !important;
+  }
+}
+
+@media (min-width: 1540px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(43rem, 1.12fr) minmax(31rem, 0.88fr) !important;
+    align-items: stretch !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 31rem !important;
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1539px) {
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(22rem, 1fr) minmax(17rem, 0.72fr) !important;
+  }
+}
+
+@media (max-width: 1179px) {
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
+    display: grid !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
+    display: none !important;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__routebar,
+  .hero-scene .hero-trace-map--trust-globe .traceability-globe__routebar {
+    bottom: 3.15rem !important;
+  }
+}

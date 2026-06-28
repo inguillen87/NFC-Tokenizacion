@@ -1,6 +1,6 @@
 # Polygon ownership layer
 
-Polygon es la capa de propiedad digital de nexID. Su rol es representar claims, certificados y transferencias controladas, no auditar cada interaccion del producto.
+Polygon es la capa de propiedad digital del Enterprise Trust Layer de nexID. Su rol es representar claims, certificados, warranty transfer y transferencias controladas, no auditar cada interaccion del producto.
 
 ## Que resuelve
 
@@ -8,6 +8,7 @@ Polygon aporta un registro publico verificable para:
 
 - Certificado NFT o token de trazabilidad.
 - Claim de producto por consumidor, tenant o wallet custodial.
+- Transferencia controlada de garantia o titularidad digital.
 - Evidencia publica de mint/transferencia/revocacion si el contrato lo soporta.
 - Link verificable desde passport, portal consumidor, dashboard o marketplace.
 
@@ -48,6 +49,7 @@ La politica recomendada para produccion es **claim-driven**, no **every-tap-on-c
 | Tap valido anonimo sin claim | No por defecto |
 | Tap replay/snapshot/link copiado | No |
 | Producto abierto o tamper observado | Depende de politica del tenant; nunca automatico sin regla |
+| Transferencia de garantia/titularidad digital | Si hay owner actual, comprador/recipient validado y regla del tenant |
 | Reemision por disputa o reemplazo | Solo con aprobacion y registro interno |
 | Evento logistico | No en Polygon; usar DPP/IOTA proof si aplica |
 
@@ -66,6 +68,8 @@ Los datos on-chain deben ser minimizados y publicos por diseno.
 | `batch_ref` | Identificador de lote publico o derivado |
 | `event_digest` | Hash opcional de evento canonico, no evento completo |
 
+Los Merkle roots y checkpoints agregados pertenecen por defecto a la capa IOTA proof/audit, no al contrato Polygon de ownership.
+
 Ejemplo conceptual:
 
 ```txt
@@ -79,7 +83,7 @@ public_asset_id -> asset_ref/token_uri
 | Rol | Responsabilidad |
 | --- | --- |
 | Owner del contrato | Administracion del contrato, roles y upgrades si existen |
-| Minter | Firma mints o anchors autorizados |
+| Minter | Firma mints autorizados |
 | Executor | Servicio backend que valida solicitud y firma transaccion |
 | API nexID | Crea requests, valida policy y registra resultado |
 | Tenant admin | Aprueba reglas de claim, revocacion y visibilidad |
@@ -111,8 +115,8 @@ Para piloto puede usarse una wallet minter dedicada con gas testnet. Para produc
 
 ## Relacion con IOTA
 
-Polygon responde: **quien tiene el certificado o claim digital**.
+Polygon responde: **quien tiene el certificado, claim o garantia digital transferible**.
 
-IOTA responde: **que evidencia o checkpoint fue anclado para auditoria**.
+IOTA responde: **que hash, Merkle root o checkpoint fue anclado para auditoria**.
 
 Un producto puede tener Polygon sin IOTA. Un tenant puede usar IOTA para pruebas de logistica sin tokenizar propiedad. En enterprise, ambas capas se activan por politica y no por promesa generica de "todo en blockchain".

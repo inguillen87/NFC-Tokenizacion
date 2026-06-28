@@ -7,7 +7,7 @@ El Digital Product Passport de nexID se construye sobre eventos. Cada evento des
 - Tener una fuente de verdad privada, consultable y auditable.
 - Separar evento completo interno de metadata publica.
 - Permitir Polygon para ownership/claim cuando corresponde.
-- Permitir IOTA proof opcional para hashes o checkpoints.
+- Permitir IOTA proof opcional para hashes, Merkle roots o checkpoints.
 - Evitar PII y datos crudos de negocio en cualquier cadena publica.
 
 ## Entidad canonica
@@ -59,7 +59,7 @@ El formato exacto puede vivir en codigo o base de datos. Este documento fija el 
 | `logistics_handoff` | Cambio de custodia o etapa logistica | No | Si |
 | `quality_check_completed` | Inspeccion o QC | No | Si |
 | `dispute_opened` | Reclamo, falsificacion o conflicto | No directo | Si |
-| `proof_anchor_created` | Registro de anchor IOTA | No | Si |
+| `proof_anchor_created` | Registro de anchor IOTA, digest o Merkle root | No | Si |
 
 ## Estados de confianza
 
@@ -127,7 +127,7 @@ Luego:
 canonical_json -> sha256 -> event_digest -> IOTA proof envelope
 ```
 
-Si el evento contiene datos no publicos, esos campos no entran al JSON canonico usado para on-chain.
+Si el evento contiene datos no publicos, esos campos no entran al JSON canonico usado para on-chain. Para volumen alto, cada `event_digest` puede convertirse en una hoja de Merkle tree y solo se ancla el Merkle root del conjunto autorizado.
 
 ## Reglas de negocio
 
@@ -136,4 +136,5 @@ Si el evento contiene datos no publicos, esos campos no entran al JSON canonico 
 - Un producto puede tener DPP sin Polygon si el tenant no vende propiedad digital.
 - Un producto puede tener Polygon sin IOTA si no requiere proof layer adicional.
 - Un producto puede tener IOTA proof sin Polygon si solo se audita logistica o calidad.
+- Una ventana con muchos taps no debe generar una transaccion por tap; debe agregarse con hashes/Merkle root si compliance requiere prueba publica.
 - Todo estado visible al cliente debe distinguir entre "registrado internamente", "minted en Polygon" y "proof anclado en IOTA".

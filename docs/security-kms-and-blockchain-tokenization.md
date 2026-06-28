@@ -60,7 +60,8 @@ Tap valido y fresco
   -> policy engine decide si corresponde claim/tokenizacion/proof
   -> si corresponde, se crea tokenization_request
   -> se calcula chip_uid_hash = sha256(UID + TOKENIZATION_UID_SALT)
-  -> se minta/ancla certificado en Polygon Amoy
+  -> se mintea certificado en Polygon Amoy si hay ownership/claim
+  -> si compliance lo requiere, se ancla hash o Merkle root en proof layer opcional
   -> se guarda tx_hash/token_id
 ```
 
@@ -72,12 +73,13 @@ La cadena nunca debe recibir:
 - UID crudo
 - CMAC/ENC/PICC completos como secreto operativo
 
-La cadena recibe:
+Las capas publicas pueden recibir:
 
 - `chip_uid_hash`
 - `asset_ref` publico sin UID crudo
 - `token_uri` sin UID crudo
 - tx hash / token id
+- hash, digest o Merkle root si la proof policy lo habilita
 
 La cadena no recibe todos los taps. Los eventos DPP completos quedan en backend; solo claims, certificados o pruebas seleccionadas se publican o anclan.
 
@@ -87,7 +89,7 @@ La cadena no recibe todos los taps. Los eventos DPP completos quedan en backend;
 | --- | --- | --- | --- |
 | SUN validation | `KMS_MASTER_KEY_HEX` | Descifrar K_META/K_FILE y validar tags | API backend |
 | Per batch | `K_META`, `K_FILE` cifradas | Validar CMAC/SDM de cada lote | DB cifrada + API |
-| Blockchain pilot | `POLYGON_MINTER_PRIVATE_KEY` | Firmar mint/anclaje Amoy | Executor o API local minter |
+| Blockchain pilot | `POLYGON_MINTER_PRIVATE_KEY` | Firmar mint Polygon Amoy | Executor o API local minter |
 | Blockchain premium | KMS/HSM/custody signer | Firmar tx sin private key exportable | Executor/KMS |
 
 ## 5. Arquitectura recomendada para nexID

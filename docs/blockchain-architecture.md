@@ -1,15 +1,15 @@
 # Arquitectura blockchain enterprise nexID
 
-Este documento define la arquitectura de confianza para nexID cuando se combinan NFC criptografico, Digital Product Passport, Polygon e IOTA. Esta pensado para clientes enterprise, equipos tecnicos, operaciones y compliance.
+Este documento define la arquitectura Enterprise Trust Layer de nexID cuando se combinan NFC criptografico, Digital Product Passport, Polygon e IOTA. Esta pensado para clientes enterprise, equipos tecnicos, operaciones y compliance.
 
 ## Resumen ejecutivo
 
 nexID no usa blockchain como base de datos principal ni como destino de todos los taps. La fuente de verdad operativa es el backend de nexID: valida el chip, aplica politicas del tenant, registra eventos DPP y expone auditoria interna.
 
-Blockchain se usa en dos capas separadas:
+Blockchain se usa en dos capas separadas y gobernadas por policy:
 
-- **Polygon ownership layer**: propiedad digital, NFT/certificado, claim del producto y transferencias controladas.
-- **IOTA proof layer opcional**: pruebas de auditoria, evidencia logistica, checkpoints DPP y hashes verificables de eventos seleccionados.
+- **Polygon ownership layer**: propiedad digital, NFT/certificado, claim del producto, warranty transfer y transferencias controladas.
+- **IOTA proof layer opcional**: pruebas de auditoria, evidencia logistica, checkpoints DPP, hashes y Merkle roots verificables de eventos seleccionados.
 
 IOTA puede estar completamente deshabilitado sin romper autenticacion NFC, passport, claim ni tokenizacion Polygon. Polygon e IOTA no cumplen el mismo rol y no deben mezclarse en el discurso comercial.
 
@@ -22,6 +22,7 @@ IOTA puede estar completamente deshabilitado sin romper autenticacion NFC, passp
 5. **No se publica UID crudo ni secretos SUN**. La cadena nunca recibe UID real, `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, payload SUN completo, CMAC completo como secreto operativo ni private keys.
 6. **No todos los taps van on-chain**. Los taps se registran en el backend. Solo eventos seleccionados por politica se anclan o tokenizan.
 7. **Sin claims falsos de alianzas o costo cero**. La documentacion no debe afirmar alianzas formales con Polygon/IOTA ni gratuidad operativa. Costos, limites y disponibilidad dependen de red, RPC, proveedor y volumen.
+8. **Hashes y Merkle roots antes que datos crudos**. Cuando se necesita prueba publica, publicar digests o Merkle roots minimizados. El evento completo queda off-chain con acceso controlado.
 
 ## Capas de confianza
 
@@ -68,7 +69,7 @@ Polygon se usa cuando la plataforma necesita un registro publico de propiedad di
 
 - Claim de producto por un consumidor o tenant.
 - NFT/certificado de autenticidad.
-- Transferencia de titularidad digital.
+- Transferencia de garantia o titularidad digital cuando el tenant lo habilita.
 - Token URI con metadata publica sanitizada.
 
 Polygon no debe recibir cada tap, cada ubicacion ni cada interaccion del consumidor.
@@ -79,6 +80,7 @@ IOTA se usa solo si el tenant o la vertical necesita evidencia adicional:
 
 - Hash de un evento DPP seleccionado.
 - Checkpoint periodico de varios eventos.
+- Merkle root de eventos de una ventana temporal o lote.
 - Prueba de recepcion de manifest.
 - Evidencia de handoff logistico.
 - Digest de certificado de calidad o inspeccion.
@@ -92,7 +94,7 @@ La regla por defecto es **off-chain first, on-chain when useful**.
 | Evento | Registro backend | Polygon | IOTA opcional |
 | --- | --- | --- | --- |
 | Tap valido comun | Si | No por defecto | No por defecto |
-| Replay o tap riesgoso | Si | No | Solo checkpoint agregado si compliance lo pide |
+| Replay o tap riesgoso | Si | No | Solo checkpoint agregado o Merkle root si compliance lo pide |
 | Claim de producto | Si | Si | Puede anclar digest del claim |
 | Mint de certificado | Si | Si | Puede anclar proof envelope |
 | Alta de lote | Si | No | Puede anclar hash de manifest sanitizado |
@@ -125,14 +127,15 @@ La arquitectura debe degradar por capas:
 Usar:
 
 - "nexID registra propiedad digital en Polygon cuando hay un claim o certificado aplicable."
-- "nexID puede anclar hashes verificables en IOTA para auditoria y evidencia logistica."
+- "nexID puede anclar hashes y Merkle roots verificables en IOTA para auditoria y evidencia logistica."
 - "Los datos sensibles permanecen off-chain."
 - "No todos los taps se escriben en blockchain; se registran en nexID y solo algunos eventos se anclan segun politica."
+- "Enterprise Trust Layer separa autenticidad fisica, DPP privado, ownership Polygon y proof IOTA opcional."
 
 Evitar:
 
 - "Anclaje publico de cada tap."
 - "Costo operativo cero de red, RPC o custodia."
-- "Alianza formal con IOTA/Polygon" salvo que exista contrato publico verificable.
+- "Alianza formal" o "partner oficial" con IOTA/Polygon salvo que exista contrato publico verificable.
 - "El NFT reemplaza automaticamente la propiedad legal del producto."
 - "La cadena contiene la informacion completa del cliente o del envio."

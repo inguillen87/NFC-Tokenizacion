@@ -59,7 +59,7 @@ Esperado:
 
 - `/mobile/loyalty/overview` deja de devolver 500.
 - `/admin/tokenization/requests` deja de devolver 500.
-- Un tap SUN valido puede crear request y anclar token en Polygon Amoy si `SUN_AUTO_TOKENIZE_ON_VALID_TAP=true`.
+- Un tap SUN valido puede crear request y mintear token en Polygon Amoy solo si `SUN_AUTO_TOKENIZE_ON_VALID_TAP=true` y la policy/allowlist del tenant lo permite. No es modelo para escribir cada tap on-chain.
 
 ## Nota operativa
 

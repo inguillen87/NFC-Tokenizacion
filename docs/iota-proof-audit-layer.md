@@ -1,6 +1,6 @@
 # IOTA proof and audit layer
 
-IOTA es una capa opcional de pruebas para nexID. Su uso recomendado es anclar evidencia verificable de DPP, auditoria y logistica sin publicar datos sensibles.
+IOTA es una capa opcional de pruebas dentro del Enterprise Trust Layer de nexID. Su uso recomendado es anclar evidencia verificable de DPP, auditoria y logistica mediante hashes, Merkle roots y checkpoints sin publicar datos sensibles.
 
 ## Rol de IOTA en nexID
 
@@ -9,7 +9,7 @@ IOTA no es la capa de ownership de nexID. No reemplaza a Polygon para NFT, certi
 Casos adecuados:
 
 - Hash de un evento DPP canonico.
-- Merkle root de un conjunto de eventos.
+- Merkle root de un conjunto de eventos, por lote o por ventana temporal.
 - Digest de manifest recibido del proveedor.
 - Evidencia de handoff logistico.
 - Checkpoint de control de calidad.
@@ -56,6 +56,8 @@ La cadena solo recibe un sobre de prueba minimizado. El evento completo queda of
   "batch_ref": "batch_public_ref",
   "event_type": "logistics_handoff",
   "event_digest": "sha256:...",
+  "merkle_root": null,
+  "event_count": 1,
   "canonicalization": "nexid-dpp-v1",
   "created_at": "2026-06-27T00:00:00Z"
 }
@@ -75,12 +77,20 @@ Campos internos que no deben ir al proof envelope:
 
 Para enterprise, la estrategia recomendada es checkpoint por lote o ventana temporal, no anclaje de cada tap.
 
+Si hay muchos taps o eventos de bajo valor probatorio individual, nexID debe calcular hashes por evento, construir un Merkle tree y anclar solo el Merkle root. El auditor puede verificar inclusion de un evento autorizado sin revelar el resto del conjunto.
+
 | Estrategia | Cuando usarla | Riesgo/costo |
 | --- | --- | --- |
 | Evento individual seleccionado | Claim, disputa, inspeccion, handoff critico | Mas granular, mas operaciones |
 | Checkpoint por lote | Alta de batch, cierre de produccion, recepcion de manifest | Buen balance de costo y auditoria |
 | Checkpoint periodico | Auditoria diaria/semanal/mensual | Menos granular, mas eficiente |
 | Sin IOTA | Tenants que no requieren prueba publica adicional | Menor complejidad |
+
+## Veracidad comercial
+
+- IOTA no debe presentarse como partner oficial salvo que exista un acuerdo publico y verificable.
+- IOTA no debe venderse como capa de costo operativo cero; aun si una red o testnet no cobra valor real, existen costos de integracion, RPC, monitoreo, custodia, soporte y operacion.
+- IOTA no debe describirse como la capa de NFT, ownership o warranty transfer de nexID. Ese rol corresponde a Polygon cuando la politica lo habilita.
 
 ## Verificacion de evidencia
 

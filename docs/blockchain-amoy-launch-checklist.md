@@ -1,6 +1,6 @@
-# nexID Polygon Amoy launch checklist
+# nexID Polygon Amoy ownership launch checklist
 
-Este documento es el checklist corto para activar blockchain manana sin tocar UX/UI ni rehacer la plataforma. El codigo queda listo; lo unico que falta es crear credenciales, pegar variables y redeployar API.
+Este documento es el checklist corto para activar la capa Polygon ownership manana sin tocar UX/UI ni rehacer la plataforma. El codigo queda listo; lo unico que falta es crear credenciales, pegar variables y redeployar API.
 
 ## 0. Estado del producto
 
@@ -8,10 +8,10 @@ Estado actual del piloto Amoy:
 
 - Tap SUN/NTAG 424 DNA TT valida autenticidad, anti-replay y tamper server-side.
 - Replay bloquea ownership, rewards y tokenizacion hasta un tap fisico fresco.
-- `/sun` muestra passport, trazabilidad, portal, marketplace y estado blockchain.
+- `/sun` muestra passport, trazabilidad, portal, marketplace y estado Polygon/tokenizacion.
 - Portal consumidor guarda producto, historial, tenant, promos y certificado si existe.
 - Admin/superadmin ven cola de tokenizacion y readiness de Polygon Amoy.
-- La blockchain usa hash de UID + salt. No publica UID crudo.
+- Polygon usa hash de UID + salt. No publica UID crudo ni recibe todos los taps.
 - El contrato Amoy ya fue desplegado y un mint manual ya funciono.
 - La API puede mintear directo con `ethers` cuando `TOKENIZATION_USE_LOCAL_MINTER=true`.
 - `tsc` API/web, `qa-static` y tests SUN pasan.
@@ -62,7 +62,7 @@ Faucets:
 - https://thirdweb.com/polygon-amoy-testnet
 - https://ghostchain.io/faucet/polygon-amoy/
 
-Nota: algunos faucets piden saldo minimo en Ethereum/Polygon mainnet para evitar abuso. Eso no significa que Amoy tenga costo real. Si un faucet bloquea la wallet por no tener balance mainnet, probar otro faucet o usar una wallet dev con historial. No comprar fondos solo para el piloto sin revisar antes.
+Nota: algunos faucets piden saldo minimo en Ethereum/Polygon mainnet para evitar abuso. Eso no implica que debas comprar fondos mainnet para el piloto; si un faucet bloquea la wallet, probar otro faucet o usar una wallet dev con historial. Igual hay dependencias operativas de gas testnet, RPC, rate limits y disponibilidad del proveedor.
 
 ## 3. Crear RPC
 

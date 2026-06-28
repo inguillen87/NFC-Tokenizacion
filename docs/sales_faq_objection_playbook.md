@@ -12,23 +12,23 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
 
 | Característica | Código QR Tradicional | nexID NFC Criptográfico (NTAG 424 DNA) |
 | :--- | :--- | :--- |
-| **Copiabilidad / Fraude** | **Crítica.** Cualquier persona le saca una foto y puede imprimir 10,000 etiquetas iguales. | **Imposible.** Cada toque genera una firma criptográfica única de un solo uso (NFC SUN). |
-| **Experiencia de Usuario** | **Fricción.** Requiere abrir la cámara, enfocar, buena luz y presionar un enlace flotante. | **Instantánea.** Solo requiere acercar el teléfono a la botella (Tap). Funciona en 0.5 segundos de forma nativa. |
-| **Detección de Apertura** | **Nula.** El QR no cambia si la botella ya fue abierta, rellenada o adulterada. | **Física.** El circuito TagTamper se rompe al girar la cápsula, informando al ledger que ya fue abierta. |
-| **Geolocalización Antifraude** | **Fácil de engañar.** Solo reporta la IP de red del navegador del usuario de forma estática. | **Activa.** Valida dinámicamente firmas geográficas cruzadas, levantando alertas si hay taps simultáneos lejanos. |
+| **Copiabilidad / Fraude** | **Crítica.** Cualquier persona le saca una foto y puede imprimir 10,000 etiquetas iguales. | **Alta resistencia.** Cada toque genera una firma criptográfica dinámica de un solo uso (NFC SUN), validada server-side. |
+| **Experiencia de Usuario** | **Fricción.** Requiere abrir la cámara, enfocar, buena luz y presionar un enlace flotante. | **Rápida.** Solo requiere acercar el teléfono a la botella (tap); no necesita app y la velocidad depende del teléfono/red. |
+| **Detección de Apertura** | **Nula.** El QR no cambia si la botella ya fue abierta, rellenada o adulterada. | **Física.** El circuito TagTamper permite registrar en nexID/DPP que el sello fue abierto o alterado. |
+| **Geolocalización Antifraude** | **Fácil de engañar.** Solo reporta la IP de red del navegador del usuario de forma estática. | **Señales de riesgo.** Cruza tap físico, replay, región aproximada, timing y patrón de lecturas para levantar alertas. |
 | **Estatus y Valor de Lujo** | **Bajo.** Asociado a cartas de restaurantes baratos, menús digitales y folletos de supermercado. | **Premium.** Asociado a tarjetas de crédito de metal black, pasaportes biométricos y llaves de vehículos de alta gama. |
 
 ### Cómo responder en vivo:
-> *"Mire, don [Nombre del dueño], un código QR en su etiqueta es el equivalente a poner un cartel en la puerta que dice 'Esto es original'. Cualquiera puede fotocopiar ese cartel y pegarlo en una botella falsa. Con nexID, lo que ponemos en su botella no es un cartel, es un microchip de seguridad similar al que tiene su tarjeta de crédito. Cada vez que alguien lo toca con el celular, el chip genera un código matemático que sirve para esa milésima de segundo y nunca más. Si alguien intenta copiar el chip, el sistema lo detecta al instante. Su QR es publicidad; nuestro chip es seguridad y propiedad digital."*
+  > *"Mire, don [Nombre del dueño], un código QR en su etiqueta es el equivalente a poner un cartel en la puerta que dice 'Esto es original'. Cualquiera puede fotografiar ese cartel y pegarlo en una botella falsa. Con nexID, lo que ponemos en su botella no es solo un cartel: es un microchip de seguridad similar al que tiene una tarjeta contactless. Cada vez que alguien lo toca con el celular, el chip genera una prueba criptográfica dinámica. Si alguien intenta reutilizar una lectura o copiar la URL, el backend lo marca como replay o riesgo. Su QR es comunicación; nuestro chip suma seguridad física, DPP y propiedad digital cuando corresponde."*
 
 ---
 
 ## 2. Objeciones del Bodeguero (Dueño / Enólogo / Gerente de Planta)
 
 ### Objeción A: *"Esto me va a encarecer mucho el costo por botella (Unit Economics)"*
-* **La Realidad:** El costo de un chip NTAG 424 DNA ronda los centavos de dólar según el volumen de compra. Para una botella de vino premium que se vende al público a $30 USD, $50 USD o más de $100 USD, el costo porcentual es inferior al 1.5%.
+* **La Realidad:** El costo de un chip NTAG 424 DNA depende de volumen, proveedor, formato y encoding. Para una botella premium, el caso se evalúa contra reducción de falsificación, postventa, DTC, garantía y datos propios, no como un adorno unitario.
 * **Respuesta:**
-  > *"Entiendo perfectamente que cada centavo cuenta en la estructura de costos. Pero analicémoslo así: el costo del chip representa menos del 1.5% del valor de su botella de gama media-alta. A cambio de ese porcentaje, usted está logrando dos cosas que hoy no tiene: primero, erradica el riesgo de que falsifiquen su vino de autor (cuyo daño reputacional cuesta millones); y segundo, abre un canal Direct-to-Consumer. Hoy gasta más en intermediarios y distribuidores para obtener datos que con este chip obtiene directamente en su CRM. No es un costo, es una inversión en canal de venta directa."*
+  > *"Entiendo perfectamente que cada centavo cuenta en la estructura de costos. Lo correcto es mirarlo por línea y por riesgo: en vinos premium, el chip no compite contra una etiqueta común, compite contra falsificación, daño reputacional, soporte posventa y falta de datos propios. nexID reduce ese riesgo y abre un canal Direct-to-Consumer medible. Si el producto no tiene margen ni riesgo de falsificación, no lo fuerzo; si es premium, exportación o edición limitada, el retorno suele estar en seguridad, garantía y CRM."*
 
 ### Objeción B: *"Me va a ralentizar la línea de embotellado y etiquetado"*
 * **La Realidad:** Los chips NFC vienen integrados en rollos autoadhesivos estándar (inlays) que las máquinas etiquetadoras industriales pueden aplicar de manera automática en el mismo proceso de etiquetado frontal, contra-etiquetado o debajo de la cápsula.
@@ -41,9 +41,9 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
   > *"Es un excelente punto. Por eso diseñamos la plataforma para que **no requiera descargar ninguna aplicación**. El comprador solo tiene que acercar el celular y la pantalla se enciende sola con su botella digital en 3D. Hoy en día, la gente mayor ya paga el supermercado o el taxi apoyando el celular en el posnet; el gesto es exactamente el mismo. Además, para los coleccionistas de vinos finos, el hecho de tener su 'cava digital' e influir en votaciones de la bodega mediante la gobernanza les otorga un estatus exclusivo que les encanta presumir."*
 
 ### Objeción D: *"¿Qué pasa en las bodegas o restaurantes subterráneos donde no hay señal de internet?"*
-* **La Realidad:** Los celulares modernos pueden leer chips NFC sin conexión a internet activa y guardar la firma criptográfica localmente en el navegador (offline cache) para validarla en cuanto el teléfono recupere señal.
+* **La Realidad:** El teléfono puede detectar el chip sin app, pero la validación SUN, el claim y cualquier tokenización requieren backend. Si no hay señal, la experiencia debe degradar claro y validar cuando vuelva la conectividad.
 * **Respuesta:**
-  > *"Nuestra tecnología contempla este escenario. Si el cliente está en una cava subterránea sin señal, el celular lee la firma criptográfica dinámica del chip y la guarda de forma segura. En cuanto el teléfono detecta datos móviles o Wi-Fi, la firma se envía al ledger para certificar la propiedad y actualizar su cava digital. El cliente no pierde la experiencia y usted no pierde el dato."*
+  > *"Nuestra tecnología contempla este escenario, pero sin vender magia. Si el cliente está en una cava sin señal, el celular puede detectar el chip y abrir o reintentar la experiencia cuando vuelva internet. La validación criptográfica ocurre en el backend; recién después, si el tap es fresco y la política lo permite, se habilitan garantía, claim o certificado Polygon. No mandamos cada tap a blockchain ni inventamos propiedad offline."*
 
 ---
 
@@ -51,11 +51,15 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
 
 ### Pregunta A: *"¿Cuál es la barrera de entrada (Moat)? ¿Qué evita que un competidor compre chips NFC y haga lo mismo?"*
 * **Respuesta:**
-  > *"Cualquiera puede comprar chips NFC en el mercado, pero el valor de nexID no está en el chip físico (hardware comoditizado). Está en el software y la integración criptográfica propietaria. Tenemos un motor de descifrado SUN (Secure Unique NFC) que interactúa con claves criptográficas rotativas almacenadas en un módulo seguro (KMS). Si un competidor copia los chips, no tiene las llaves criptográficas maestras para validarlos en nuestra blockchain, por lo que el sistema los rechazará. Además, la suite de marketing inteligente (nexID Cognitive AI Engine) y el sistema de gobernanza y fidelización VIP integrados al CRM del productor son imposibles de replicar con hardware genérico."*
+  > *"Cualquiera puede comprar chips NFC en el mercado, pero el valor de nexID no está en el chip físico (hardware comoditizado). Está en el software, la custodia de claves, el motor SUN server-side y la política de claim. Si un competidor copia una URL o compra chips genéricos, no tiene las claves de lote ni el backend para validar CMAC, replay, tamper y tenant. Polygon entra después, para ownership o certificado cuando corresponde; IOTA puede entrar como proof opcional con hashes o Merkle roots. La ventaja está en integrar seguridad, CRM, warranty transfer y auditoría sin poner todos los taps on-chain."*
 
 ### Pregunta B: *"¿Por qué usan Blockchain (Web3) en lugar de una base de datos tradicional?"*
 * **Respuesta:**
-  > *"La base operativa vive en nexID porque ahí se validan el chip, el tenant, el canal, el riesgo, la geolocalización y el CRM en tiempo real. Blockchain no reemplaza esa operación ni recibe todos los taps. Polygon se activa cuando hay propiedad digital, certificado transferible, NFT o claim de ownership; IOTA puede actuar como capa opcional de prueba para hashes de auditoría, DPP o logística. Así mantenemos velocidad, privacidad y costos bajo control, pero dejamos evidencia pública cuando realmente aporta valor probatorio o de mercado secundario."*
+  > *"La base operativa vive en nexID porque ahí se validan el chip, el tenant, el canal, el riesgo, la geolocalización aproximada y el CRM en tiempo real. Blockchain no reemplaza esa operación ni recibe todos los taps. Polygon se activa cuando hay propiedad digital, certificado transferible, NFT, garantía o claim de ownership; IOTA puede actuar como capa opcional de prueba para hashes, Merkle roots, DPP o logística. Así mantenemos velocidad, privacidad y costos bajo control, pero dejamos evidencia pública cuando realmente aporta valor probatorio o de mercado secundario."*
+
+### Regla de veracidad para Web3
+* **Respuesta corta para ventas:**
+  > *"No somos partner oficial de Polygon ni IOTA salvo que exista un acuerdo público verificable. Integramos Polygon como capa de ownership y podemos integrar IOTA como proof layer opcional. Tampoco prometemos costo cero ni una transacción por tap: usamos hashes, Merkle roots y políticas por tenant para publicar solo lo que aporta valor."*
 
 ### Pregunta C: *"¿Cómo escalan el modelo de negocio? (SaaS vs. Hardware)"*
 * **Respuesta:**
@@ -75,7 +79,7 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
 
 ### Pregunta C: *"¿Mi información personal y de ubicación está protegida?"*
 * **Respuesta:**
-  > *"Sí, cumplimos con los estándares más estrictos de privacidad. La geolocalización solo se solicita para validar que la firma criptográfica se haya realizado en un lugar geográficamente coherente y evitar copias del chip. No rastreamos tus movimientos diarios y tu identidad digital está resguardada de forma anónima on-chain."*
+  > *"Sí. La información personal queda off-chain y bajo control de acceso. Podemos usar región aproximada o señales técnicas para detectar fraude, pero no publicamos tu ubicación exacta, email, teléfono ni historial de compra en redes públicas. Si existe certificado o proof, la parte pública usa metadata sanitizada, hashes o referencias derivadas."*
 
 ---
 
