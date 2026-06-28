@@ -911,7 +911,7 @@ function HeroTraceMap({
   ];
 
   return (
-    <div id="trace-signal-atlas" className="hero-trace-map hero-trace-map--atlas hero-trace-map--trust-globe" aria-label={txt.routeTitle}>
+    <div id="trace-signal-atlas" className="hero-trace-map hero-trace-map--trust-globe" aria-label={txt.routeTitle}>
       <PremiumTraceabilityGlobe
         title={routeHeadline}
         subtitle={`${origin.city} → ${tap.city} · ${routeDistanceLabel}`}

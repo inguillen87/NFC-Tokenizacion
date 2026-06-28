@@ -27374,6 +27374,21 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.75rem), 1fr)) !important;
 }
 
+@media (min-width: 1180px) {
+  .landing-hero-section .hero-demo-shell {
+    position: relative;
+    left: 50%;
+    width: min(80rem, calc(100vw - 2rem));
+    max-width: none !important;
+    transform: translateX(-50%);
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__routebar,
+  .hero-scene .hero-trace-map--trust-globe .traceability-globe__routebar {
+    bottom: 3.75rem !important;
+  }
+}
+
 @media (min-width: 1180px) and (max-width: 1599px) {
   .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
     grid-template-columns: minmax(0, 1fr) !important;
@@ -27401,7 +27416,27 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   }
 }
 
-@media (min-width: 1600px) {
+@media (min-width: 1600px) and (max-width: 1799px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) minmax(29rem, 0.82fr) !important;
+    align-items: stretch !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    min-width: 29rem !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: clamp(25rem, 28vw, 31rem) !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1800px) {
   .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
     grid-template-columns: minmax(0, 1.04fr) minmax(29rem, 0.78fr) !important;
     align-items: stretch !important;

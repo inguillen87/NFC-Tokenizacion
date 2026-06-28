@@ -27,14 +27,14 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
     ? ["Physical product", "Fresh tap", "Safe claim", "Portal + benefits"]
     : isBr
     ? ["Produto fisico", "Toque fresco", "Claim seguro", "Portal + beneficios"]
-    : ["Producto fisico", "Tap fresco", "Reclamo seguro", "Portal + beneficios"];
+    : ["Producto físico", "Tap fresco", "Reclamo seguro", "Portal + beneficios"];
   const heroAssurance = isEn
     ? "No app download for the buyer. No crypto knowledge required. The tap explains authenticity, origin and next step."
     : isBr
     ? "Sem app para o comprador. Sem exigir cripto. O toque explica autenticidade, origem e proximo passo."
-    : "Sin app para el comprador. Sin explicar cripto. El tap muestra autenticidad, origen y proximo paso.";
+    : "Sin app para el comprador. Sin explicar cripto. El tap muestra autenticidad, origen y próximo paso.";
   const demoCta = isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir laboratorio";
-  const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reuniao" : "Agendar reunion";
+  const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reunião" : "Agendar reunión";
 
   return (
     <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-16 pt-16 lg:pb-24 lg:pt-24">
