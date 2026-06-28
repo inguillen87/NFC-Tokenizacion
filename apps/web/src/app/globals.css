@@ -24341,6 +24341,114 @@ html.theme-light .landing-hero-section .hero-trace-map--signal .hero-route-proof
   }
 }
 
+/* Enterprise landing balance: the atlas proves traceability; the product remains the hero. */
+@media (min-width: 1180px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(38rem, 1.08fr) minmax(24rem, 0.92fr) !important;
+    align-items: stretch;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe),
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    grid-column: auto !important;
+    width: auto !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) {
+    padding: clamp(0.75rem, 1vw, 0.95rem) !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(18rem, 0.94fr) minmax(18rem, 1.06fr) !important;
+    gap: clamp(0.68rem, 1vw, 0.95rem) !important;
+    min-height: clamp(24rem, 30vw, 29.5rem) !important;
+    max-height: none !important;
+    padding: clamp(0.65rem, 0.95vw, 0.85rem) !important;
+  }
+
+  .landing-hero-section .hero-object-map-pane:has(.hero-trace-map--trust-globe) {
+    min-height: clamp(21rem, 26vw, 25.5rem) !important;
+  }
+
+  .landing-hero-section #trace-signal-atlas.hero-trace-map--trust-globe,
+  .hero-scene #trace-signal-atlas.hero-trace-map--trust-globe {
+    min-height: clamp(21rem, 26vw, 25.5rem) !important;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__stage,
+  .hero-scene .hero-trace-map--trust-globe .traceability-globe__stage {
+    min-height: 0 !important;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__routebar,
+  .hero-scene .hero-trace-map--trust-globe .traceability-globe__routebar {
+    bottom: 1.05rem;
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+  }
+
+  .landing-hero-section .hero-object-product-pane:has(.hero-asset-showcase) {
+    min-height: clamp(21rem, 26vw, 25.5rem);
+  }
+
+  .landing-hero-section .hero-object-product-pane .hero-asset-media {
+    min-height: clamp(13.8rem, 18vw, 17rem) !important;
+    height: clamp(13.8rem, 18vw, 17rem) !important;
+  }
+
+  .landing-hero-section .hero-object-product-pane .hero-asset-copy p {
+    display: block;
+  }
+
+  .landing-hero-section .hero-object-product-pane .hero-evidence-chart svg {
+    height: 2.9rem;
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1360px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 1179px) {
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe),
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    grid-column: auto !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  .landing-hero-section .hero-object-map-pane:has(.hero-trace-map--trust-globe),
+  .landing-hero-section #trace-signal-atlas.hero-trace-map--trust-globe,
+  .hero-scene #trace-signal-atlas.hero-trace-map--trust-globe {
+    min-height: clamp(21rem, 52vw, 29rem) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .landing-hero-section .hero-object-map-pane:has(.hero-trace-map--trust-globe),
+  .landing-hero-section #trace-signal-atlas.hero-trace-map--trust-globe,
+  .hero-scene #trace-signal-atlas.hero-trace-map--trust-globe {
+    min-height: clamp(18.5rem, 78vw, 23rem) !important;
+  }
+
+  .landing-hero-section .hero-object-product-pane:has(.hero-asset-showcase) {
+    min-height: auto;
+  }
+}
+
 @keyframes nexid-atlas-depth-drift {
   from {
     opacity: 0.64;
