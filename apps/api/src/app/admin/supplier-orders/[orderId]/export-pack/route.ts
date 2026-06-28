@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { createHash } from "node:crypto";
-import { checkAdmin } from "../../../../../lib/auth";
+import { checkAdmin, getAdminTenantScope, type AdminScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 import { decryptKey16 } from "../../../../../lib/keys";
@@ -34,10 +34,38 @@ function safeFilename(value: unknown, fallback: string) {
 function safeActor(req: Request) {
   return (
     req.headers.get("x-nexid-actor")
+    || req.headers.get("x-nexid-actor-id")
     || req.headers.get("x-dashboard-user")
     || req.headers.get("x-forwarded-user")
-    || "super_admin"
+    || "unknown_admin"
   );
+}
+
+function parsePermissionHeader(value: string | null) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function hasScopedPermission(grants: string[], permission: string) {
+  const current = permission.trim();
+  for (const rawGrant of grants) {
+    const grant = String(rawGrant || "").trim();
+    if (!grant || grant === "*") continue;
+    if (grant === current) return true;
+    if (grant.endsWith(":*")) {
+      const prefix = grant.slice(0, -2);
+      if (current === prefix || current.startsWith(`${prefix}:`)) return true;
+    }
+  }
+  return false;
+}
+
+function canExportFactoryPack(scope: AdminScope | null, permissions: string[]) {
+  return scope === "super_admin"
+    || scope === "security_operator"
+    || hasScopedPermission(permissions, "supplier:export_pack");
 }
 
 function normalizePackPassword(value: unknown) {
@@ -64,8 +92,17 @@ function validatePackPassword(password: string) {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ orderId: string }> }) {
-  const auth = checkAdmin(req, ["super_admin"]);
+  const auth = checkAdmin(req, ["super_admin", "security_operator", "tenant_admin"]);
   if (auth) return auth;
+  const adminTenantScope = getAdminTenantScope(req);
+  const permissionGrants = parsePermissionHeader(req.headers.get("x-nexid-permissions"));
+  if (!canExportFactoryPack(adminTenantScope.scope, permissionGrants)) {
+    return json({
+      ok: false,
+      reason: "supplier_pack_export_forbidden",
+      message: "Supplier factory packs require superadmin, security-operator scope, or explicit supplier:export_pack permission.",
+    }, 403);
+  }
   await ensureSupplierOpsSchema();
 
   const { orderId } = await params;
@@ -85,6 +122,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   `;
   const order = orderRows[0];
   if (!order) return json({ ok: false, reason: "supplier_order_not_found" }, 404);
+  if (adminTenantScope.forcedTenantSlug && String(order.tenant_slug || "").toLowerCase() !== adminTenantScope.forcedTenantSlug) {
+    return json({
+      ok: false,
+      reason: "supplier_order_forbidden_for_tenant",
+      message: "Supplier order belongs to a different tenant scope.",
+    }, 403);
+  }
 
   const rows = requestedBid
     ? await sql/*sql*/`

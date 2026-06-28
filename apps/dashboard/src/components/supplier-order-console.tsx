@@ -82,6 +82,12 @@ type SupplierVaultArtifact = {
   metadata?: Record<string, unknown>;
 };
 
+type SupplierOrderConsoleProps = {
+  currentRole?: string;
+  currentPermissions?: string[];
+  tenantSlug?: string | null;
+};
+
 const carrierProfiles = [
   { value: "ntag424_dna", label: "NTAG 424 DNA - SUN seguro" },
   { value: "ntag424_dna_tt", label: "NTAG 424 DNA TagTamper - sello fisico" },
@@ -163,8 +169,40 @@ function makeLocalPackPassword(customerSlug: string, tenantSlug: string) {
   return `nexID-${prefix}-${secret}`;
 }
 
-export function SupplierOrderConsole() {
-  const [tenantSlug, setTenantSlug] = useState("");
+function hasPermission(grants: string[], permission: string) {
+  return grants.some((grant) => {
+    if (grant === "*" || grant === permission) return true;
+    if (grant.endsWith(":*")) return permission.startsWith(grant.slice(0, -1));
+    return false;
+  });
+}
+
+function hasScopedPermission(grants: string[], permission: string) {
+  return grants.some((grant) => {
+    if (grant === permission) return true;
+    if (grant.endsWith(":*")) return permission.startsWith(grant.slice(0, -1));
+    return false;
+  });
+}
+
+export function SupplierOrderConsole({
+  currentRole = "tenant-admin",
+  currentPermissions = [],
+  tenantSlug: sessionTenantSlug = null,
+}: SupplierOrderConsoleProps) {
+  const normalizedRole = currentRole.replace(/_/g, "-");
+  const isSuperAdmin = normalizedRole === "super-admin";
+  const isSecurityOperator = normalizedRole === "security-operator";
+  const canCreateOrder = isSuperAdmin
+    || hasPermission(currentPermissions, "supplier:write")
+    || hasPermission(currentPermissions, "batches:write");
+  const canRunQa = isSuperAdmin
+    || hasPermission(currentPermissions, "supplier:qa")
+    || hasPermission(currentPermissions, "batches:qa")
+    || hasPermission(currentPermissions, "batches:write");
+  const canExportPack = isSuperAdmin || isSecurityOperator || hasScopedPermission(currentPermissions, "supplier:export_pack");
+
+  const [tenantSlug, setTenantSlug] = useState(sessionTenantSlug || "");
   const [customerSlug, setCustomerSlug] = useState("");
   const [orderName, setOrderName] = useState("");
   const [baseBatchId, setBaseBatchId] = useState("");
@@ -223,6 +261,10 @@ export function SupplierOrderConsole() {
   }
 
   async function createOrder() {
+    if (!canCreateOrder) {
+      setStatus("Tu perfil no puede crear pedidos de fábrica. Pedí a un superadmin o a un operador con permiso de lotes.");
+      return;
+    }
     setPending(true);
     setStatus("Creando pedido, sub-batches, llaves cifradas y evidencia batch_created...");
     try {
@@ -286,6 +328,10 @@ export function SupplierOrderConsole() {
   }
 
   async function exportPack() {
+    if (!canExportPack) {
+      setStatus("Pack de fábrica bloqueado para este perfil. El tenant puede ver Vault, manifiestos y QA, pero las llaves/export quedan bajo superadmin.");
+      return;
+    }
     if (!selectedOrderId) {
       setStatus("Primero crea o selecciona un Supplier Order.");
       return;
@@ -303,7 +349,7 @@ export function SupplierOrderConsole() {
       setPack(data);
       setResponse(asJson(safePackSummary(data)));
       await loadVaultArtifacts(selectedOrderId);
-      setStatus(`Pack cifrado listo: ${data.packs?.length || 0} carpetas. Descarga el .zip.enc y envia el password generado localmente por canal separado.`);
+      setStatus(`Pack cifrado listo: ${data.packs?.length || 0} carpetas. Descarga el .zip.enc y envía el password generado localmente por canal separado.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo exportar el pack.");
     } finally {
@@ -312,6 +358,10 @@ export function SupplierOrderConsole() {
   }
 
   async function markQa(passed: boolean) {
+    if (!canRunQa) {
+      setStatus("Tu perfil no puede aprobar QA. Necesitás permiso de lotes o supplier QA.");
+      return;
+    }
     if (!selectedOrderId || !qaBid.trim()) {
       setStatus("Falta order y BID para QA.");
       return;
@@ -380,9 +430,9 @@ export function SupplierOrderConsole() {
       <div className="grid gap-6 p-5 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Supplier Order industrial</p>
-          <h2 className="mt-2 text-2xl font-black text-white">Pedido de tags listo para fabrica</h2>
+          <h2 className="mt-2 text-2xl font-black text-white">Pedido de tags listo para fábrica</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Crea sub-batches, genera credenciales por lote, las guarda cifradas, exporta pack de encoding solo para superadmin y bloquea activacion hasta manifest + QA.
+            Crea sub-batches, genera credenciales por lote, las guarda cifradas, exporta pack de fábrica solo para superadmin y bloquea activación hasta manifest + QA.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Tenant slug" value={tenantSlug} onChange={setTenantSlug} placeholder="bodega-balmec o syngenta-ar" />
@@ -412,7 +462,7 @@ export function SupplierOrderConsole() {
             placeholder="Notas: region piloto, proveedor, empaque, requisitos de QC..."
           />
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button disabled={pending} onClick={() => void createOrder()}>{pending ? "Procesando..." : "Crear Supplier Order"}</Button>
+            <Button disabled={pending || !canCreateOrder} onClick={() => void createOrder()}>{pending ? "Procesando..." : "Crear Supplier Order"}</Button>
             <Button variant="secondary" disabled={pending} onClick={() => void refreshOrders()}>Ver pedidos</Button>
           </div>
           <p className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-sm leading-6 text-cyan-50">{status}</p>
@@ -465,28 +515,34 @@ export function SupplierOrderConsole() {
             </div>
           ) : (
             <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
-              Todavia no hay un pedido en esta sesion. Crea uno o carga la lista de pedidos existentes.
+              Todavía no hay un pedido en esta sesión. Crea uno o carga la lista de pedidos existentes.
             </div>
           )}
 
           <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">Export pack</p>
             <p className="mt-2 text-sm leading-6 text-amber-50">
-              Solo superadmin. Genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se genera en esta consola, no vuelve desde la API y debe enviarse por canal separado.
+              {canExportPack
+                ? isSecurityOperator
+                  ? "Operador de seguridad activo: puede emitir el pack cifrado de fábrica bajo auditoría, sin exponer claves crudas al tenant."
+                  : "Superadmin activo: genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se genera en esta consola, no vuelve desde la API y debe enviarse por canal separado."
+                : "Bloqueado para tenant admin: el tenant opera manifiestos, QA y Vault, pero el pack cifrado de fábrica queda bajo superadmin, security operator o permiso explícito."}
             </p>
             <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
               <label className="block">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Password de fabrica</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Password de fábrica</span>
                 <div className="mt-1 flex flex-col gap-2 sm:flex-row">
                   <input
                     className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
                     value={packPassword}
+                    disabled={!canExportPack}
                     onChange={(event) => setPackPassword(event.target.value)}
                     placeholder="Generar antes de exportar"
                   />
                   <Button
                     variant="secondary"
                     type="button"
+                    disabled={!canExportPack}
                     onClick={() => setPackPassword(makeLocalPackPassword(created?.order?.customer_slug || customerSlug, created?.order?.tenant_slug || tenantSlug))}
                   >
                     Generar
@@ -494,13 +550,13 @@ export function SupplierOrderConsole() {
                 </div>
               </label>
               <p className="mt-2 text-xs leading-5 text-amber-50/85">
-                Guardalo en el gestor seguro del operador y compartilo con fabrica por otro canal. nexID no lo devuelve en la respuesta del export.
+                Guardalo en el gestor seguro del operador y compartilo con fábrica por otro canal. nexID no lo devuelve en la respuesta del export.
               </p>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button disabled={pending || !selectedOrderId} onClick={() => void exportPack()}>Exportar pack</Button>
-              <Button variant="secondary" disabled={!pack?.encrypted_pack} onClick={downloadEncryptedPack}>Descargar ZIP cifrado</Button>
-              <Button variant="secondary" disabled={!pack} onClick={downloadSafeSummary}>Resumen seguro</Button>
+              <Button disabled={pending || !selectedOrderId || !canExportPack} onClick={() => void exportPack()}>Exportar pack</Button>
+              <Button variant="secondary" disabled={!pack?.encrypted_pack || !canExportPack} onClick={downloadEncryptedPack}>Descargar ZIP cifrado</Button>
+              <Button variant="secondary" disabled={!pack || !canExportPack} onClick={downloadSafeSummary}>Resumen seguro</Button>
               <Button variant="secondary" disabled={pending || !selectedOrderId} onClick={() => void loadVaultArtifacts(selectedOrderId).catch((error) => setStatus(error instanceof Error ? error.message : "No se pudo cargar Tenant Vault."))}>Ver Tenant Vault</Button>
             </div>
             {packPassword ? (
@@ -568,7 +624,7 @@ export function SupplierOrderConsole() {
                 onChange={(event) => setQaSampleUrls(event.target.value)}
                 placeholder="https://api.nexid.lat/sun?v=1&bid=... o https://nexid.lat/01/... o muestra real del carrier"
               />
-              <span className="mt-1 block text-xs text-slate-400">{qaUrls.length} muestra valida lista para adjuntar como evidencia.</span>
+              <span className="mt-1 block text-xs text-slate-400">{qaUrls.length} muestra válida lista para adjuntar como evidencia.</span>
             </label>
             <div className="mt-3 grid gap-2 text-sm text-slate-200 sm:grid-cols-2">
               <label className="flex items-start gap-2 rounded-xl border border-white/10 bg-slate-950/50 p-3">
@@ -592,11 +648,11 @@ export function SupplierOrderConsole() {
               </label>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button disabled={pending || !qaReadyToPass} onClick={() => void markQa(true)}>Aprobar QA</Button>
-              <Button variant="secondary" disabled={pending || !selectedOrderId || !qaBid.trim()} onClick={() => void markQa(false)}>Rechazar QA</Button>
+              <Button disabled={pending || !qaReadyToPass || !canRunQa} onClick={() => void markQa(true)}>Aprobar QA</Button>
+              <Button variant="secondary" disabled={pending || !selectedOrderId || !qaBid.trim() || !canRunQa} onClick={() => void markQa(false)}>Rechazar QA</Button>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-400">
-              Carrier activo: <span className="font-mono text-cyan-100">{activeCarrierProfile}</span>. {requiresTtstatus ? "El backend exige TTStatus ademas de replay." : "El backend exige muestra real y replay/control equivalente."}
+              Carrier activo: <span className="font-mono text-cyan-100">{activeCarrierProfile}</span>. {requiresTtstatus ? "El backend exige TTStatus además de replay." : "El backend exige muestra real y replay/control equivalente."}
             </p>
           </div>
 

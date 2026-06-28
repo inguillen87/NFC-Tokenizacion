@@ -1,5 +1,6 @@
 export const ROLE_TO_SCOPE = {
   "super-admin": "super_admin",
+  "security-operator": "security_operator",
   "tenant-admin": "tenant_admin",
   reseller: "reseller",
   viewer: "readonly_demo",
@@ -7,7 +8,7 @@ export const ROLE_TO_SCOPE = {
 
 export function normalizeScope(scope, role) {
   const explicit = String(scope || "").trim();
-  if (["super_admin", "tenant_admin", "reseller", "readonly_demo"].includes(explicit)) return explicit;
+  if (["super_admin", "security_operator", "tenant_admin", "reseller", "readonly_demo"].includes(explicit)) return explicit;
   return ROLE_TO_SCOPE[String(role || "").trim().toLowerCase()] || null;
 }
 
@@ -17,7 +18,7 @@ export function evaluateAdminAccess({
   requireScoped,
   scope,
   tenantSlug,
-  requiredScopes = ["super_admin", "tenant_admin", "reseller", "readonly_demo"],
+  requiredScopes = ["super_admin", "security_operator", "tenant_admin", "reseller", "readonly_demo"],
 }) {
   const tokenMatches = Boolean(expectedToken && providedToken === expectedToken);
   if (!tokenMatches) return { ok: false, status: 401 };

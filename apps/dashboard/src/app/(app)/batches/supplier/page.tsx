@@ -2,8 +2,11 @@ import Link from "next/link";
 import { SectionHeading, Card } from "@product/ui";
 import { SupplierOrderConsole } from "../../../../components/supplier-order-console";
 import { SupplierLegacyIntakeBlocked } from "../../../../components/supplier-legacy-intake-blocked";
+import { requireDashboardSession } from "../../../../lib/session";
 
 export default async function SupplierBatchPage() {
+  const session = await requireDashboardSession("batches:*");
+
   return (
     <main className="space-y-8">
       <SectionHeading
@@ -13,7 +16,11 @@ export default async function SupplierBatchPage() {
       />
 
       <div id="supplier-order-console">
-        <SupplierOrderConsole />
+        <SupplierOrderConsole
+          currentRole={session.role}
+          currentPermissions={session.permissions}
+          tenantSlug={session.tenantSlug}
+        />
       </div>
 
       <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">

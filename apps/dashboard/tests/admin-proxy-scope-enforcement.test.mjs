@@ -17,5 +17,7 @@ test('production admin proxy requires a dashboard session before forwarding serv
 test('proxy forwards scoped role so super_admin path is available', async () => {
   const src = await readFile(new URL('../src/app/api/admin/[...path]/route.ts', import.meta.url), 'utf8');
   assert.match(src, /x-nexid-admin-scope/);
+  assert.match(src, /x-nexid-permissions/);
+  assert.match(src, /x-nexid-actor/);
   assert.match(src, /dashboardRoleToScope/);
 });

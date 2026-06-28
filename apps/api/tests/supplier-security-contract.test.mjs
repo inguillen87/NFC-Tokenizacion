@@ -13,6 +13,10 @@ function readWorkspaceFile(...parts) {
 test("supplier export requires operator password and never returns it", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/export-pack/route.ts");
 
+  assert.match(source, /supplier_pack_export_forbidden/);
+  assert.match(source, /security_operator/);
+  assert.match(source, /supplier:export_pack/);
+  assert.match(source, /forcedTenantSlug/);
   assert.match(source, /supplier_pack_password_required/);
   assert.match(source, /encryptSupplierZipArchive\(zipBuffer,\s*packPassword/);
   assert.match(source, /returned:\s*false/);
@@ -26,6 +30,13 @@ test("dashboard supplier console keeps pack password client-side only", () => {
 
   assert.match(source, /crypto\.getRandomValues/);
   assert.match(source, /body:\s*JSON\.stringify\(\{\s*password:\s*effectivePassword\s*\}\)/);
+  assert.match(source, /currentRole/);
+  assert.match(source, /supplier:export_pack/);
+  assert.match(source, /hasScopedPermission/);
+  assert.match(source, /security-operator/);
+  assert.match(source, /Operador de seguridad activo/);
+  assert.match(source, /canExportPack/);
+  assert.match(source, /Bloqueado para tenant admin/);
   assert.doesNotMatch(source, /encrypted_pack\?\.password/);
   assert.doesNotMatch(source, /pack\.encrypted_pack\.password/);
 });

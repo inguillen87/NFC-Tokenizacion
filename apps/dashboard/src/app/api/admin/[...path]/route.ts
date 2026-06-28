@@ -71,9 +71,11 @@ function isDemoSession(req: Request) {
 }
 
 function dashboardRoleToScope(role: string | undefined) {
-  if (role === "super-admin") return "super_admin";
-  if (role === "tenant-admin") return "tenant_admin";
-  if (role === "reseller") return "reseller";
+  const normalizedRole = String(role || "");
+  if (normalizedRole === "super-admin") return "super_admin";
+  if (normalizedRole === "security-operator") return "security_operator";
+  if (normalizedRole === "tenant-admin") return "tenant_admin";
+  if (normalizedRole === "reseller") return "reseller";
   return "readonly_demo";
 }
 
@@ -895,6 +897,9 @@ async function forward(req: Request, path: string[]) {
         ...(hasAdminKey ? { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` } : {}),
         ...(scopedRole ? { "x-nexid-admin-scope": scopedRole } : {}),
         ...(dashboardSession?.tenantSlug ? { "x-nexid-tenant-slug": dashboardSession.tenantSlug } : {}),
+        ...(dashboardSession?.email ? { "x-nexid-actor": dashboardSession.email } : {}),
+        ...(dashboardSession?.id ? { "x-nexid-actor-id": dashboardSession.id } : {}),
+        ...(dashboardSession?.permissions?.length ? { "x-nexid-permissions": dashboardSession.permissions.join(",") } : {}),
       },
       body,
       cache: "no-store",

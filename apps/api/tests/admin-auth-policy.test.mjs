@@ -63,6 +63,18 @@ test("readonly_demo con token y scope correcto -> 200", () => {
   assert.equal(result.status, 200);
 });
 
+test("security_operator con token y scope correcto -> 200", () => {
+  const result = evaluateAdminAccess({
+    providedToken: "secret",
+    expectedToken: "secret",
+    requireScoped: true,
+    scope: "security_operator",
+    requiredScopes: ["super_admin", "security_operator"],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 200);
+});
+
 test("token valido sin scope pasa cuando scope no es obligatorio", () => {
   const result = evaluateAdminAccess({
     providedToken: "secret",

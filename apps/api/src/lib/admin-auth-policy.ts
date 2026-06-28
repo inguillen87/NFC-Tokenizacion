@@ -2,6 +2,7 @@ import type { AdminScope } from "./auth";
 
 export const ROLE_TO_SCOPE: Record<string, AdminScope> = {
   "super-admin": "super_admin",
+  "security-operator": "security_operator",
   "tenant-admin": "tenant_admin",
   reseller: "reseller",
   viewer: "readonly_demo",
@@ -9,7 +10,7 @@ export const ROLE_TO_SCOPE: Record<string, AdminScope> = {
 
 export function normalizeScope(scope: string | null | undefined, role: string | null | undefined): AdminScope | null {
   const explicit = String(scope || "").trim();
-  if (explicit === "super_admin" || explicit === "tenant_admin" || explicit === "reseller" || explicit === "readonly_demo") {
+  if (explicit === "super_admin" || explicit === "security_operator" || explicit === "tenant_admin" || explicit === "reseller" || explicit === "readonly_demo") {
     return explicit;
   }
   return ROLE_TO_SCOPE[String(role || "").trim().toLowerCase()] || null;
@@ -21,7 +22,7 @@ export function evaluateAdminAccess({
   requireScoped,
   scope,
   tenantSlug,
-  requiredScopes = ["super_admin", "tenant_admin", "reseller", "readonly_demo"],
+  requiredScopes = ["super_admin", "security_operator", "tenant_admin", "reseller", "readonly_demo"],
 }: {
   providedToken: string;
   expectedToken: string;

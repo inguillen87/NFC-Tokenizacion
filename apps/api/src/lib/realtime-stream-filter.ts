@@ -1,7 +1,7 @@
-type Scope = "super_admin" | "tenant_admin" | "reseller" | "readonly_demo" | null;
+import type { AdminScope } from "./auth";
 
 export function allowRealtimeEventForScope(input: {
-  scope: Scope;
+  scope: AdminScope | null;
   forcedTenantSlug?: string;
   requestedTenant?: string;
   eventTenantSlug?: string | null;
