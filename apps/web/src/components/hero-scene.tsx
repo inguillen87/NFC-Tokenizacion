@@ -1381,7 +1381,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
 
   return (
     <div>
-      <div className="hero-scene rounded-2xl border border-white/10 p-4 md:p-5">
+      <div className="hero-scene hero-scene--product-proof rounded-2xl border border-white/10 p-4 md:p-5">
         <div className="hero-scene-topline flex flex-wrap items-center justify-between gap-3">
           <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-300">{txt.selectorTitle}</p>
           <button suppressHydrationWarning type="button" onClick={() => setTapIndex((current) => current + 1)} className="hero-scene-swap">
@@ -1403,8 +1403,8 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
           ))}
         </div>
 
-        <div className="mt-4 grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
-          <div className="hero-scene-stage-card rounded-xl border border-white/10 bg-slate-950/70 p-3">
+        <div className="hero-scene-proof-grid mt-4 grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="hero-scene-stage-card hero-scene-stage-card--product-proof rounded-xl border border-white/10 bg-slate-950/70 p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="hero-scene-action text-xs font-semibold text-slate-200">{data.action}</p>
@@ -1413,11 +1413,11 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
               <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100">{data.profile}</span>
             </div>
             <div className={`hero-product-stage hero-product-stage--${active} mt-3`}>
-              <div className="hero-object-frame hero-object-frame--split">
-                <div className="hero-object-map-pane">
+              <div className="hero-object-frame hero-object-frame--split hero-object-frame--product-proof">
+                <div className="hero-object-map-pane hero-object-map-pane--product-proof">
                   <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
                 </div>
-                <div className="hero-object-product-pane">
+                <div className="hero-object-product-pane hero-object-product-pane--product-proof">
                   <HeroProductShowcase active={active} data={data} distance={distance} numberLocale={numberLocale} txt={txt} />
                 </div>
               </div>
@@ -1446,7 +1446,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
             </div>
           </div>
 
-          <div className="hero-scene-result-card rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+          <div className="hero-scene-result-card hero-scene-result-card--product-proof rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
             <p className="hero-scene-result-label text-[11px] uppercase tracking-[0.14em] text-cyan-200">{txt.phoneLabel}</p>
             <p className="hero-scene-result-state mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-300">{data.result}</p>
             <div className="hero-passport-summary mt-3">

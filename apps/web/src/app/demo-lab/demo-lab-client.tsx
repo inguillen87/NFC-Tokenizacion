@@ -271,7 +271,7 @@ const copy: Record<AppLocale, {
       creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "Garantia", "Recompra"] },
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
-      sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "Dueno/token"] },
+      sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "Dueño/token"] },
       luxury: { label: "Lujo", profile: "NTAG 424 DNA", product: "Reloj Cronógrafo Premium", visual: "luxury-demo", proof: ["Toque en tarjeta", "UID + SUN", "Certificado de autenticidad", "Owner/club"] },
       bottle: { label: "Botellas", profile: "NFC + QR", product: "Bebida Gaseosa Orgánica", visual: "bottle-demo", proof: ["Envase con tag", "UID + QR de retorno", "impacto verde", "Recompensa activa"] },
       logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caja cadena fria", visual: "logistics-pack-demo", proof: ["Pallet/caja trazable", "Sensor temperatura", "Ruta auditada", "Entrega verificada"] },
@@ -1062,7 +1062,7 @@ function DemoLabStudioHero({
     : [
       { n: "1", title: "Toca", body: "Prueba fisica del producto" },
       { n: "2", title: "Entende", body: "Origen, lote y sello" },
-      { n: "3", title: "Reclama", body: "Dueno validado" },
+      { n: "3", title: "Reclama", body: "Dueño validado" },
       { n: "4", title: "Activa", body: "Garantia, club o NFT" },
     ];
   const topActions = locale === "en"

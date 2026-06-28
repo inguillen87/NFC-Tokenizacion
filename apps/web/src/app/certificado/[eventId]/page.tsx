@@ -311,7 +311,7 @@ export default async function PublicCertificatePage({ params }: { params: Promis
                 {[
                   ["Origen", cert.origin?.label || "Origen registrado", "La marca cargo lote, producto y reglas antes del canal."],
                   ["Tap", `${tap.city || "Ciudad"}${tap.country ? `, ${tap.country}` : ""}`, fmtDate(tap.at)],
-                  ["Dueno", ownership.ownerLabel || "Estado de ownership disponible", ownership.claimedAt ? fmtDate(ownership.claimedAt) : "Validacion por email/celular + tap fresco."],
+                  ["Dueño", ownership.ownerLabel || "Estado de ownership disponible", ownership.claimedAt ? fmtDate(ownership.claimedAt) : "Validacion por email/celular + tap fresco."],
                   ["Blockchain", token.tokenId ? `Token ${token.tokenId}` : chainLabel(token.status), token.processedAt ? fmtDate(token.processedAt) : "Se muestra tx/hash cuando el tenant ancla en Polygon."],
                 ].map(([label, title, body]) => (
                   <li key={label} className="grid grid-cols-[auto_1fr] gap-3">
