@@ -18,21 +18,20 @@ Usage:
     --tokenization-mode=valid_and_opened|valid_only|manual \\
     --claim-policy=purchase_proof_required|retailer_attested|inside_pack_secret|admin_approved \\
     --batch-bid=<supplier BID> \\
-    --mode=supplier|internal \\
+    --mode=internal \\
     --security-profile=ntag424dna_tt \\
     --sku=<sku> \\
     --chip-model=NTAG424_DNA_TT \\
     --manifest=C:\\path\\manifest.csv \\
     --activate-imported=true \\
-    --k-meta-hex=<32 hex chars for supplier mode> \\
-    --k-file-hex=<32 hex chars for supplier mode>
 
 Required env:
   ADMIN_API_KEY=<super-admin API key>
 
 Notes:
   - This script never creates demo tenants by default.
-  - Supplier mode requires explicit K_META and K_FILE values.
+  - Physical supplier orders must be created through /admin/supplier-orders.
+  - Internal mode generates SUN keys server-side and stores them encrypted.
   - TXT manifests are converted to CSV with product label and SKU before import.
 `;
 
@@ -65,14 +64,6 @@ function parseBooleanArg(name) {
   if (value === "true") return true;
   if (value === "false") return false;
   throw new Error(`--${name} must be true or false`);
-}
-
-function requireHex32(name) {
-  const value = requireArg(name).toUpperCase();
-  if (!/^[0-9A-F]{32}$/.test(value)) {
-    throw new Error(`--${name} must be exactly 32 hex characters`);
-  }
-  return value;
 }
 
 function normalizeApiUrl(value) {
@@ -169,7 +160,7 @@ const chipModel = requireArg("chip-model");
 const manifestPath = path.resolve(requireArg("manifest"));
 const activateImported = parseBooleanArg("activate-imported");
 
-if (!["supplier", "internal"].includes(mode)) throw new Error("--mode must be supplier or internal");
+if (mode !== "internal") throw new Error("--mode must be internal. Use /admin/supplier-orders for physical supplier production.");
 if (!fs.existsSync(manifestPath)) throw new Error(`Manifest file not found: ${manifestPath}`);
 
 const batchPayload = {
@@ -182,11 +173,6 @@ const batchPayload = {
   quantity: Number(arg("quantity") || 0) || undefined,
   notes: arg("notes") || undefined,
 };
-
-if (mode === "supplier") {
-  batchPayload.k_meta_hex = requireHex32("k-meta-hex");
-  batchPayload.k_file_hex = requireHex32("k-file-hex");
-}
 
 const tenantPayload = {
   slug: tenant,

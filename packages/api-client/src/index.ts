@@ -59,6 +59,7 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     adminCreateTenant: (payload: { slug: string; name: string }) => request(opts, "/admin/tenants", { method: "POST", body: JSON.stringify(payload) }, tenantSchema),
     adminListTenants: () => request(opts, "/admin/tenants", undefined, z.array(tenantSchema)),
     adminCreateBatch: (payload: { tenant_slug: string; bid: string }) => request(opts, "/admin/batches", { method: "POST", body: JSON.stringify(payload) }),
+    adminCreateSupplierOrder: (payload: Record<string, unknown>) => request(opts, "/admin/supplier-orders", { method: "POST", body: JSON.stringify(payload) }),
     adminListBatches: (tenant_slug?: string) => request(opts, withQuery("/admin/batches", { tenant: tenant_slug }), undefined, z.array(batchSchema)),
     adminImportManifest: (bid: string, csvText: string) => request(opts, `/admin/batches/${bid}/import-manifest`, { method: "POST", body: JSON.stringify({ csv: csvText }) }),
     adminActivateTags: (payload: { batchId: string; count: number }) => request(opts, "/admin/tags/activate", { method: "POST", body: JSON.stringify(payload) }),

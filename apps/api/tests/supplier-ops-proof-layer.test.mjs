@@ -10,6 +10,8 @@ const {
   encryptSupplierZipArchive,
   decryptSupplierEncryptedZipForTest,
   validateSupplierManifestQuantity,
+  canExportSupplierPack,
+  canImportSupplierManifest,
   canActivateSupplierSubBatch,
   validateSupplierQaEvidence,
 } = await import("../src/lib/supplier-ops.ts");
@@ -121,6 +123,33 @@ test("supplier activation gate requires imported manifest, QA and matching count
   assert.equal(canActivateSupplierSubBatch({ manifestStatus: "imported", qaStatus: "pending", expectedQuantity: 1000, manifestCount: 1000 }).reason, "qa_not_passed");
   assert.equal(canActivateSupplierSubBatch({ manifestStatus: "imported", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 999 }).reason, "manifest_quantity_mismatch");
   assert.equal(canActivateSupplierSubBatch({ manifestStatus: "imported", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 1000 }).ok, true);
+});
+
+test("supplier pack and manifest gates are one-time production controls", () => {
+  assert.equal(canExportSupplierPack({ exportCount: 0, keyExportCount: 0, bid: "SYN-AR-2026-001-A" }).ok, true);
+  const exportedByBatchKeys = canExportSupplierPack({ exportCount: 1, keyExportCount: 0, bid: "SYN-AR-2026-001-A" });
+  assert.equal(exportedByBatchKeys.ok, false);
+  assert.equal(exportedByBatchKeys.reason, "supplier_pack_already_exported");
+  assert.equal(exportedByBatchKeys.bid, "SYN-AR-2026-001-A");
+
+  const exportedBySubBatch = canExportSupplierPack({ exportCount: 0, keyExportCount: 1, bid: "SYN-AR-2026-001-B" });
+  assert.equal(exportedBySubBatch.ok, false);
+  assert.equal(exportedBySubBatch.reason, "supplier_pack_already_exported");
+
+  assert.equal(canImportSupplierManifest({ manifestStatus: "pending" }).ok, true);
+  assert.equal(canImportSupplierManifest({ manifestStatus: "imported" }).reason, "supplier_manifest_already_imported");
+});
+
+test("supplier activation override is disabled for production sub-batches", () => {
+  const gate = canActivateSupplierSubBatch({
+    manifestStatus: "pending",
+    qaStatus: "pending",
+    expectedQuantity: 1000,
+    manifestCount: 0,
+    overrideReason: "urgent shipment",
+  });
+  assert.equal(gate.ok, false);
+  assert.equal(gate.reason, "supplier_activation_override_disabled");
 });
 
 test("supplier QA gate rejects empty pass declarations", () => {

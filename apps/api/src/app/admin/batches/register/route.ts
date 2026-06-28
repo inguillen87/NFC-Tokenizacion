@@ -5,7 +5,7 @@ import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 import { sql } from '../../../../lib/db';
 import { encryptKey16 } from '../../../../lib/keys';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { requireTenantSunProfile } from '../../../../lib/tenant-onboarding';
 import { ensureCarrierProfileSchema } from '../../../../lib/commercial-runtime-schema';
 import { getCarrierProfile, inferCarrierProfileFromPayload } from '../../../../lib/carrier-profiles';
@@ -18,23 +18,6 @@ function firstString(...values: unknown[]) {
   return '';
 }
 
-function requiredHex32(value: unknown, field: string) {
-  const normalized = String(value || '').trim().toUpperCase();
-  if (!/^[0-9A-F]{32}$/.test(normalized)) {
-    throw new Error(`${field} must be a 32-char hex string`);
-  }
-  return normalized;
-}
-
-function optionalHex32(value: unknown) {
-  const normalized = String(value || '').trim().toUpperCase();
-  if (!normalized) return null;
-  if (!/^[0-9A-F]{32}$/.test(normalized)) {
-    throw new Error('hex keys must be 32-char hex strings');
-  }
-  return normalized;
-}
-
 async function resolveTenant(input: string) {
   const normalized = input.trim();
   if (!normalized) return null;
@@ -42,6 +25,10 @@ async function resolveTenant(input: string) {
     ? await sql`SELECT id, slug FROM tenants WHERE id = ${normalized}::uuid LIMIT 1`
     : await sql`SELECT id, slug FROM tenants WHERE slug = ${normalized.toLowerCase()} LIMIT 1`;
   return rows[0] || null;
+}
+
+function keyFingerprint(kMetaHex: string, kFileHex: string) {
+  return `sha256:${createHash('sha256').update(`${kMetaHex}:${kFileHex}`).digest('hex')}`;
 }
 
 function resolveApiOrigin(req: Request) {
@@ -67,16 +54,12 @@ export async function POST(req: Request) {
   if (!tenantSlug || !bid) return json({ ok: false, reason: 'tenant_slug and bid required' }, 400);
   if (!mode) return json({ ok: false, reason: 'mode required', allowed: ['supplier', 'internal'] }, 400);
   if (!['supplier', 'internal'].includes(mode)) return json({ ok: false, reason: 'invalid mode', allowed: ['supplier', 'internal'] }, 400);
-  if (mode === 'supplier' && String(process.env.ALLOW_LEGACY_SUPPLIER_BATCH_REGISTER || '').toLowerCase() !== 'true') {
+  if (mode === 'supplier') {
     return json({
       ok: false,
       reason: 'legacy_supplier_registration_disabled',
-      message: 'Use /admin/supplier-orders. Legacy supplier registration does not satisfy encrypted key vault, manifest and QA gates.',
+      message: 'Use /admin/supplier-orders. Supplier batches require server-side key generation, encrypted one-time supplier packs, immutable manifests and QA gates.',
     }, 410);
-  }
-  if (mode === 'supplier') {
-    const supplierAuth = checkAdmin(req, ['super_admin']);
-    if (supplierAuth) return supplierAuth;
   }
 
   const tenant = await resolveTenant(tenantSlug);
@@ -107,12 +90,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const metaInput = firstString(body.k_meta_hex, body.k_meta_batch, body.kMetaHex);
-    const fileInput = firstString(body.k_file_hex, body.k_file_batch, body.kFileHex);
-    const maybeMeta = optionalHex32(metaInput);
-    const maybeFile = optionalHex32(fileInput);
-    const kMetaHex = mode === 'internal' ? maybeMeta || randomBytes(16).toString('hex').toUpperCase() : requiredHex32(metaInput, 'k_meta_hex');
-    const kFileHex = mode === 'internal' ? maybeFile || randomBytes(16).toString('hex').toUpperCase() : requiredHex32(fileInput, 'k_file_hex');
+    const kMetaHex = randomBytes(16).toString('hex').toUpperCase();
+    const kFileHex = randomBytes(16).toString('hex').toUpperCase();
+    const fingerprint = keyFingerprint(kMetaHex, kFileHex);
     const metaCt = encryptKey16(Buffer.from(kMetaHex, 'hex'));
     const fileCt = encryptKey16(Buffer.from(kFileHex, 'hex'));
 
@@ -144,7 +124,7 @@ export async function POST(req: Request) {
       carrier_capabilities: carrierProfile.capabilities,
       requested_quantity: Math.max(0, Math.trunc(Number(body.quantity || body.qty || body.requested_quantity || 0))) || undefined,
       notes: String(body.notes || '').trim() || undefined,
-      source: 'supplier_wizard',
+      source: 'server_generated_internal',
       mode,
       url_template: `${apiOrigin}/sun?v=1&bid=${encodeURIComponent(bid)}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`,
       mac_input: 'enc_plus_cmac_literal',
@@ -178,7 +158,11 @@ export async function POST(req: Request) {
       ok: true,
       batch: { ...rows[0], tenant_slug: tenant.slug, carrier_profile_code: carrierProfileCode, carrier_label: carrierProfile.label },
       carrier: carrierProfile,
-      keys: { k_meta_hex: kMetaHex, k_file_hex: kFileHex },
+      key_custody: {
+        status: 'tenant_vault_encrypted',
+        exposed: false,
+        fingerprint,
+      },
       ndef_url_template: sdmConfig.url_template,
     });
   } catch (error) {

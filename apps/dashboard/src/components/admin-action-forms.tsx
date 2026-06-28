@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Button, Card } from "@product/ui";
 import { postAdmin } from "../lib/api";
-import { DEMO_SUPPLIER_BATCH_ID, DEMO_SUPPLIER_UID_TEXT } from "../lib/demo-uids";
+import { DEMO_SUPPLIER_UID_TEXT } from "../lib/demo-uids";
 
 type Role = "super-admin" | "tenant-admin" | "reseller" | "viewer";
 
@@ -50,7 +51,11 @@ type CopyAction = { label: string; value: string };
 
 function stringifyValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
-  if (value && typeof value === "object") return JSON.stringify(value);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (Object.keys(record).some((key) => /^k_.*_hex$/i.test(key) || /^k[A-Z].*Hex$/.test(key))) return "[custodiado en Tenant Vault]";
+    return JSON.stringify(value);
+  }
   return String(value ?? "-");
 }
 
@@ -72,7 +77,7 @@ function buildSummary(data: unknown): ApiSummaryItem[] {
     "requested",
     "uids",
     "reason",
-    "keys",
+    "key_custody",
   ];
 
   const entries = preferredKeys
@@ -90,12 +95,6 @@ function buildCopyActions(data: ActionPayload | null): CopyAction[] {
   if (typeof data.batch === "object" && data.batch && "bid" in data.batch) {
     actions.push({ label: "Copy batch ID", value: String((data.batch as ActionPayload).bid || "") });
   }
-  if (typeof data.keys === "object" && data.keys && "k_meta_hex" in data.keys) {
-    actions.push({ label: "Copy meta key", value: String((data.keys as ActionPayload).k_meta_hex || "") });
-  }
-  if (typeof data.keys === "object" && data.keys && "k_file_hex" in data.keys) {
-    actions.push({ label: "Copy file key", value: String((data.keys as ActionPayload).k_file_hex || "") });
-  }
   if (typeof data.ndef_url_template === "string") {
     actions.push({ label: "Copy SUN URL template", value: String(data.ndef_url_template || "") });
   }
@@ -103,14 +102,6 @@ function buildCopyActions(data: ActionPayload | null): CopyAction[] {
     actions.unshift({ label: "Copy supplier handoff", value: actions.map((item) => `${item.label.replace("Copy ", "")}:: ${item.value}`).join("\n") });
   }
   return actions.filter((item) => item.value);
-}
-
-function safeParseJson(text: string) {
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return null;
-  }
 }
 
 function parseManifestPreview(input: string) {
@@ -158,15 +149,6 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
   const [pending, setPending] = useState(false);
 
   const [tenant, setTenant] = useState({ name: "", slug: "", plan: "secure" });
-  const [batch, setBatch] = useState({
-    tenantId: "",
-    batchId: "",
-    sku: "",
-    quantity: "",
-    chipModel: "NTAG 424 DNA TT",
-    kMetaHex: "",
-    kFileHex: "",
-  });
   const [manifest, setManifest] = useState({ batchId: "", csv: "", activateImported: false });
   const [activation, setActivation] = useState({ batchId: "", count: "", uids: "" });
   const [revoke, setRevoke] = useState({ batchId: "", reason: "suspicious duplicates" });
@@ -199,8 +181,8 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
   const onboardingSteps = useMemo(() => [
     {
       label: "1) Register supplier batch",
-      done: Boolean(batch.tenantId.trim() && batch.batchId.trim()),
-      detail: "Tenant + batch + keys + chip model",
+      done: Boolean(pilot.tenantSlug.trim() && pilot.batchId.trim()),
+      detail: "Tenant + batch + Vault + chip model",
     },
     {
       label: "2) Import supplier manifest",
@@ -217,11 +199,11 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
       done: urlValidation.sampleUrl.trim().length > 0,
       detail: "Paste one /sun?... URL to verify trust state",
     },
-  ], [activation.batchId, batch.batchId, batch.tenantId, manifestPreview.unique, urlValidation.sampleUrl]);
+  ], [activation.batchId, manifestPreview.unique, pilot.batchId, pilot.tenantSlug, urlValidation.sampleUrl]);
 
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
-    createBatch: "Creates a batch under an existing tenant slug or UUID, stores requested volume/SKU/profile metadata, and returns batch keys for supplier coordination.",
+    createBatch: "Creates a protected supplier order, stores requested volume/SKU/profile metadata, and keeps SUN secrets under Tenant Vault custody.",
     importManifest: "Imports supplier UID manifests into an existing batch (CSV with columns or plain UID text list), verifies batch_id alignment when provided, and can leave tags active on arrival when supplier-coded tags arrive ready to use.",
     activateRevoke: "Activate tags for issuance by count or explicit UID list, or revoke a batch when risk is detected.",
     validateSampleUrl: "Validates a supplier SUN URL and returns trust/auth + replay + tamper fields (when configured).",
@@ -266,7 +248,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
       setLastResponse(payload);
       setSummary(buildSummary(payload));
       const recommendation = String(payload.recommendation || "");
-      setStatus(recommendation.includes("Need more samples") ? "Tamper compare complete · Need more samples" : "Tamper compare complete");
+      setStatus(recommendation.includes("Need more samples") ? "Tamper compare complete - Need more samples" : "Tamper compare complete");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Tamper compare failed");
       setSummary([]);
@@ -282,115 +264,14 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     setLastResponse(null);
     setStatus("El alta profesional de tenant + batch + manifest ahora vive en Supplier batches. Redirigiendo...");
     window.location.assign("/batches/supplier");
-    return;
-    /*
-    setPending(true);
-    setSummary([]);
-    setLastResponse(null);
-    setStatus("Provisioning wine pilot: tenant → batch → 10 tags → user...");
-    try {
-      const tenantsRes = await fetch("/api/admin/tenants", { cache: "no-store" });
-      const tenantsRaw = await tenantsRes.text();
-      const tenantsData = safeParseJson(tenantsRaw) as ActionPayload[] | null;
-      const existingTenant = Array.isArray(tenantsData)
-        ? tenantsData.find((item: ActionPayload) => String(item.slug || "").toLowerCase() === pilot.tenantSlug.toLowerCase())
-        : null;
-
-      const tenant = existingTenant
-        ? existingTenant
-        : await postAdmin<unknown>("/admin/tenants", { slug: pilot.tenantSlug, name: pilot.tenantName });
-
-      const register = await postAdmin<unknown>("/admin/batches/register", {
-        mode: "supplier",
-        tenant_slug: pilot.tenantSlug,
-        bid: pilot.batchId,
-        chip_model: "NTAG 424 DNA TT",
-        quantity: 10,
-        profile: "wine-secure",
-      });
-
-      const imported = await postAdmin<unknown>(`/admin/batches/${pilot.batchId}/import-manifest`, {
-        csv: DEMO_SUPPLIER_UID_TEXT,
-        activateImported: true,
-      });
-
-      const activated = await postAdmin<unknown>(`/admin/batches/${pilot.batchId}/activate-all`, { limit: 10 });
-
-      const userResponse = await fetch("/api/iam/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: pilot.userEmail,
-          fullName: pilot.userName,
-          password: pilot.userPassword,
-          role: "tenant-admin",
-          tenantSlug: pilot.tenantSlug,
-          permissions: ["batches:write", "events:read", "analytics:read", "users:manage"],
-        }),
-      });
-      const userText = await userResponse.text();
-      const user = safeParseJson(userText);
-      if (!userResponse.ok) throw new Error(`User provisioning failed: ${userText}`);
-
-      const finalPayload = { tenant, register, imported, activated, user };
-      setLastResponse(finalPayload as ActionPayload);
-      setSummary(buildSummary(finalPayload));
-      setStatus("Wine pilot provisioned successfully (tenant + batch + tags + tenant-admin).");
-      setBatch((current) => ({ ...current, tenantId: pilot.tenantSlug, batchId: pilot.batchId, quantity: "10" }));
-      setManifest((current) => ({ ...current, batchId: pilot.batchId, csv: DEMO_SUPPLIER_UID_TEXT, activateImported: true }));
-      setActivation((current) => ({ ...current, batchId: pilot.batchId, count: "10" }));
-    } catch (error: unknown) {
-      setLastResponse(null);
-      setSummary([]);
-      const message = error instanceof Error ? error.message : "Provisioning flow failed";
-      setStatus(message);
-    } finally {
-      setPending(false);
-    }
-    */
   }
 
   async function runSupplierFlow() {
     if (!canEdit) return;
-    setPending(true);
     setSummary([]);
     setLastResponse(null);
-    setStatus("Running supplier flow: register → import → activate → validate...");
-    try {
-      const register = await postAdmin<unknown>("/admin/batches", {
-        tenantId: batch.tenantId,
-        batchId: batch.batchId,
-        sku: batch.sku,
-        quantity: Number(batch.quantity || 0),
-        profile: "secure",
-        k_meta_hex: batch.kMetaHex || undefined,
-        k_file_hex: batch.kFileHex || undefined,
-        sdm_config: {
-          ic_type: batch.chipModel,
-          tag_type: batch.chipModel,
-          security_profile: "secure",
-        },
-      });
-      const imported = await postAdmin<unknown>(`/admin/batches/${manifest.batchId}/import-manifest`, { csv: manifest.csv, activateImported: manifest.activateImported });
-      const activated = await postAdmin<unknown>("/admin/tags/activate", {
-        bid: activation.batchId || manifest.batchId,
-        count: Number(activation.count || manifestPreview.unique || 0),
-        uids: activation.uids || "",
-      });
-      const validated = urlValidation.sampleUrl.trim()
-        ? await postAdmin<unknown>("/admin/sun/validate", { url: urlValidation.sampleUrl })
-        : null;
-      const finalPayload = { register, imported, activated, validated };
-      setLastResponse(finalPayload as ActionPayload);
-      setSummary(buildSummary(finalPayload));
-      setStatus("Supplier flow completed");
-    } catch (error) {
-      setLastResponse(null);
-      setSummary([]);
-      setStatus(error instanceof Error ? error.message : "Supplier flow failed");
-    } finally {
-      setPending(false);
-    }
+    setStatus("El runner legacy quedo bloqueado: usa Supplier Order para generar llaves en servidor y exportar el pack cifrado.");
+    window.location.href = "/batches/supplier#supplier-order-console";
   }
 
   async function onManifestFile(file: File) {
@@ -417,10 +298,13 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
       </Card>
 
       <Card className="p-5">
-        <h3 className="text-base font-semibold text-white">Supplier flow runner</h3>
-        <p className="mt-1 text-xs text-slate-400">Run end-to-end without CLI: register batch, import manifest, activate tags and validate sample URL.</p>
-        <Button className="mt-3" disabled={pending || !canEdit || !batch.batchId || !manifest.batchId} onClick={() => void runSupplierFlow()}>
-          Run full supplier flow
+        <h3 className="text-base font-semibold text-white">Supplier Order protegido</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-400">
+          El runner legacy queda bloqueado para produccion: ya no registra batches con K_META/K_FILE desde el navegador.
+          El flujo correcto genera llaves en servidor, exporta pack cifrado de un solo uso y deja evidencia en Tenant Vault.
+        </p>
+        <Button className="mt-3" disabled={pending || !canEdit} onClick={() => void runSupplierFlow()}>
+          Abrir Supplier Order
         </Button>
       </Card>
 
@@ -446,11 +330,11 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
 
       <Card className="p-5">
         <h3 className="text-base font-semibold text-white">Supplier flow checklist</h3>
-        <p className="mt-1 text-xs text-slate-400">Guided no-CLI onboarding to avoid operator mistakes during supplier handoff.</p>
+        <p className="mt-1 text-xs text-slate-400">Checklist operativo sin exponer llaves en navegador ni copiar secretos por error.</p>
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {onboardingSteps.map((step) => (
             <div key={step.label} className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-xs">
-              <p className={step.done ? "font-semibold text-emerald-300" : "font-semibold text-amber-300"}>{step.done ? "✓" : "•"} {step.label}</p>
+              <p className={step.done ? "font-semibold text-emerald-300" : "font-semibold text-amber-300"}>{step.done ? "OK" : "PEND"} {step.label}</p>
               <p className="mt-1 text-slate-400">{step.detail}</p>
             </div>
           ))}
@@ -459,7 +343,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="p-5">
-          <h3 className="text-base font-semibold text-white">{copy.createTenant} <span className="ml-1 text-cyan-300" title={hints.createTenant}>ⓘ</span></h3>
+          <h3 className="text-base font-semibold text-white">{copy.createTenant} <span className="ml-1 text-cyan-300" title={hints.createTenant}>(i)</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.createTenant}</p>
           <div className="mt-4 grid gap-3">
             <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantName} value={tenant.name} onChange={(event) => setTenant({ ...tenant, name: event.target.value })} />
@@ -474,42 +358,24 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
         </Card>
 
         <Card className="p-5">
-          <h3 className="text-base font-semibold text-white">{copy.createBatch} <span className="ml-1 text-cyan-300" title={hints.createBatch}>ⓘ</span></h3>
-          <p className="mt-1 text-xs text-slate-400">{hints.createBatch}</p>
-          <div className="mt-4 grid gap-3">
-            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.tenantId} value={batch.tenantId} onChange={(event) => setBatch({ ...batch, tenantId: event.target.value })} />
-            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={batch.batchId} onChange={(event) => setBatch({ ...batch, batchId: event.target.value })} />
-            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Chip model (e.g. NTAG 424 DNA TT)" value={batch.chipModel} onChange={(event) => setBatch({ ...batch, chipModel: event.target.value })} />
-            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.sku} value={batch.sku} onChange={(event) => setBatch({ ...batch, sku: event.target.value })} />
-            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.quantity} value={batch.quantity} onChange={(event) => setBatch({ ...batch, quantity: event.target.value })} />
-            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_META_BATCH (32 hex, optional)" value={batch.kMetaHex} onChange={(event) => setBatch({ ...batch, kMetaHex: event.target.value })} />
-            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="K_FILE_BATCH (32 hex, optional)" value={batch.kFileHex} onChange={(event) => setBatch({ ...batch, kFileHex: event.target.value })} />
-            <p className="text-[11px] text-slate-500">Supplier batch registration (no CLI): tenant + batch + chip + keys + quantity. Use tenant slug or tenant UUID.</p>
-            <Button
-              disabled={pending || !canEdit || !batch.tenantId || !batch.batchId}
-              onClick={() =>
-                submit("/admin/batches", {
-                  tenantId: batch.tenantId,
-                  batchId: batch.batchId,
-                  sku: batch.sku,
-                  quantity: Number(batch.quantity || 0),
-                  profile: "secure",
-                  k_meta_hex: batch.kMetaHex || undefined,
-                  k_file_hex: batch.kFileHex || undefined,
-                  sdm_config: {
-                    ic_type: batch.chipModel,
-                    tag_type: batch.chipModel,
-                    security_profile: "secure",
-                  },
-                })}
-            >
-              {copy.actions.createBatch}
-            </Button>
+          <h3 className="text-base font-semibold text-white">Registro de batch protegido</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-400">
+            Esta superficie legacy ya no acepta llaves SUN manuales. Para proveedor externo, crea una Supplier Order:
+            nexID genera K_META/K_FILE en servidor, cifra el pack y registra auditoria.
+          </p>
+          <div className="mt-4 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4 text-xs leading-5 text-amber-100">
+            Bloqueado por seguridad: no se copian ni se pegan secretos de fabricacion en formularios de dashboard.
           </div>
+          <Link
+            href="/batches/supplier#supplier-order-console"
+            className="mt-4 inline-flex rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100"
+          >
+            Abrir Supplier Order
+          </Link>
         </Card>
 
         <Card className="p-5">
-          <h3 className="text-base font-semibold text-white">{copy.importManifest} <span className="ml-1 text-cyan-300" title={hints.importManifest}>ⓘ</span></h3>
+          <h3 className="text-base font-semibold text-white">{copy.importManifest} <span className="ml-1 text-cyan-300" title={hints.importManifest}>(i)</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.importManifest}</p>
           <div className="mt-4 grid gap-3">
             <button suppressHydrationWarning
@@ -542,7 +408,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             <textarea suppressHydrationWarning disabled={!canEdit} className="min-h-28 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder={copy.fields.csv} value={manifest.csv} onChange={(event) => setManifest({ ...manifest, csv: event.target.value })} />
             <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Accepted formats: (1) CSV with uid_hex (+ optional batch_id, product_name, sku, lot, serial, image_url, label_image_url, model_url, gallery_urls) or (2) plain text UID list, one UID per line (optional first line: uid_hex).</div>
             <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-100">
-              <p>Preview: format <b>{manifestPreview.format.toUpperCase()}</b> · rows <b>{manifestPreview.rows}</b> · unique UIDs <b>{manifestPreview.unique}</b> · duplicates <b>{manifestPreview.duplicates}</b></p>
+              <p>Preview: format <b>{manifestPreview.format.toUpperCase()}</b> - rows <b>{manifestPreview.rows}</b> - unique UIDs <b>{manifestPreview.unique}</b> - duplicates <b>{manifestPreview.duplicates}</b></p>
               {manifestPreview.batchIds.length ? <p className="mt-1">Detected batch_id values: {manifestPreview.batchIds.join(", ")}</p> : null}
               {manifestPreview.sample.length ? <p className="mt-1">Sample UIDs: {manifestPreview.sample.join(", ")}</p> : null}
             </div>
@@ -555,7 +421,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
         </Card>
 
         <Card className="p-5">
-          <h3 className="text-base font-semibold text-white">{copy.activateRevoke} <span className="ml-1 text-cyan-300" title={hints.activateRevoke}>ⓘ</span></h3>
+          <h3 className="text-base font-semibold text-white">{copy.activateRevoke} <span className="ml-1 text-cyan-300" title={hints.activateRevoke}>(i)</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.activateRevoke}</p>
           <div className="mt-4 grid gap-3">
             <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={activation.batchId} onChange={(event) => setActivation({ ...activation, batchId: event.target.value })} />
@@ -570,18 +436,18 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
         </Card>
 
         <Card className="p-5">
-          <h3 className="text-base font-semibold text-white">Validate Supplier Sample URL <span className="ml-1 text-cyan-300" title={hints.validateSampleUrl}>ⓘ</span></h3>
+          <h3 className="text-base font-semibold text-white">Validate Supplier Sample URL <span className="ml-1 text-cyan-300" title={hints.validateSampleUrl}>(i)</span></h3>
           <p className="mt-1 text-xs text-slate-400">{hints.validateSampleUrl}</p>
           <div className="mt-4 grid gap-3">
             <textarea suppressHydrationWarning
               disabled={!canEdit}
               className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs"
-              placeholder="Pegá una URL /sun recién escaneada desde una tag física"
+              placeholder="Pega una URL /sun recien escaneada desde una tag fisica"
               value={urlValidation.sampleUrl}
               onChange={(event) => setUrlValidation({ sampleUrl: event.target.value })}
             />
             <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">
-              Expected trust/product states: VALID_CLOSED · VALID_OPENED · TAMPER_RISK · TAMPER_UNVERIFIED · REPLAY_SUSPECT · INVALID
+              Expected trust/product states: VALID_CLOSED - VALID_OPENED - TAMPER_RISK - TAMPER_UNVERIFIED - REPLAY_SUSPECT - INVALID
             </div>
             <Button
               disabled={pending || !canEdit || !urlValidation.sampleUrl.trim()}

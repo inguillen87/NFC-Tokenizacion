@@ -7,7 +7,6 @@ import { sql } from '../../../../../lib/db';
 import { ensureSupplierOpsSchema } from '../../../../../lib/supplier-ops-schema';
 import { canActivateSupplierSubBatch } from '../../../../../lib/supplier-ops';
 import { hashEvidencePayload } from '../../../../../lib/proof-layer';
-import { logAuditEvent } from '../../../../../lib/audit-logger';
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
   const auth = checkAdmin(req, ['super_admin', 'tenant_admin']);
@@ -19,8 +18,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const limit = Math.max(0, Math.trunc(Number(body.limit || 0)));
   const overrideReason = String(body.override_reason || body.overrideReason || '').trim();
   if (overrideReason) {
-    const overrideAuth = checkAdmin(req, ['super_admin']);
-    if (overrideAuth) return overrideAuth;
+    return json({
+      ok: false,
+      reason: 'supplier_activation_override_disabled',
+      message: 'Industrial supplier batches cannot bypass manifest and QA gates. Fix the manifest, quantity or QA evidence instead of using override.',
+      bid,
+    }, 409);
   }
 
   const { forcedTenantSlug } = getAdminTenantScope(req);
@@ -72,7 +75,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       qaStatus: supplierSubBatch.qa_status,
       expectedQuantity: supplierSubBatch.expected_quantity,
       manifestCount: supplierSubBatch.manifest_count,
-      overrideReason,
     });
     if (!gate.ok) {
       return json({
@@ -83,18 +85,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         expected: 'expected' in gate ? gate.expected : undefined,
         received: 'received' in gate ? gate.received : undefined,
       }, 409);
-    }
-    if (gate.override) {
-      await logAuditEvent({
-        actorId: null,
-        tenantId: String(batch.tenant_id),
-        action: 'supplier_activation_override',
-        resourceType: 'supplier_sub_batch',
-        resourceId: String(supplierSubBatch.id),
-        afterData: { bid, override_reason: overrideReason },
-        userAgent: req.headers.get('user-agent'),
-        requestId: req.headers.get('x-request-id'),
-      });
     }
   }
 
@@ -152,7 +142,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       activated_tags: updated.length,
       remaining_inactive: remainingInactive,
       activation_complete: activationComplete,
-      override: Boolean(overrideReason),
+      override: false,
     };
     const eventHash = hashEvidencePayload({
       tenantId: String(batch.tenant_id),
@@ -179,7 +169,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       qa_status: supplierSubBatch.qa_status,
       expected_quantity: Number(supplierSubBatch.expected_quantity || 0),
       manifest_count: Number(supplierSubBatch.manifest_count || 0),
-      override: Boolean(overrideReason),
+      override: false,
     } : null,
   });
 }

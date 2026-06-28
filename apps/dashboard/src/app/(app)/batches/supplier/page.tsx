@@ -1,20 +1,21 @@
 import Link from "next/link";
 import { SectionHeading, Card } from "@product/ui";
 import { SupplierOrderConsole } from "../../../../components/supplier-order-console";
-import { SupplierBatchWizard } from "../../../../components/supplier-batch-wizard";
-import { getDashboardI18n } from "../../../../lib/locale";
+import { SupplierLegacyIntakeBlocked } from "../../../../components/supplier-legacy-intake-blocked";
 
 export default async function SupplierBatchPage() {
-  const { locale } = await getDashboardI18n();
-
   return (
     <main className="space-y-8">
       <SectionHeading
         eyebrow="Supplier batches"
         title="Registro profesional de lotes reales"
-        description="Flujo seguro para crear tenants completos, registrar batches de proveedor, importar manifests auditables y validar URLs SUN antes de entregar el rollout."
+        description="Flujo seguro para crear pedidos industriales, registrar sub-batches de proveedor, importar manifiestos auditables y validar URLs SUN antes de activar el rollout."
       />
-      <SupplierOrderConsole />
+
+      <div id="supplier-order-console">
+        <SupplierOrderConsole />
+      </div>
+
       <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="border-cyan-300/20 bg-slate-950/75 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -22,7 +23,7 @@ export default async function SupplierBatchPage() {
               <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Factory Trust Room</p>
               <h2 className="mt-2 text-2xl font-black text-white">De orden industrial a tags activos sin exponer secretos</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                Esta consola separa producción física, seguridad de llaves, recepción de manifest, QA y activación comercial. El proveedor recibe solo lo necesario para codificar; nexID conserva KMS, auditoría y activación.
+                Esta consola separa producción física, seguridad de llaves, recepción de manifiesto, QA y activación comercial. El proveedor recibe solo lo necesario para codificar; nexID conserva KMS, auditoría y activación.
               </p>
             </div>
             <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-emerald-100">
@@ -32,8 +33,8 @@ export default async function SupplierBatchPage() {
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             {[
               ["Superadmin", "Crea pedidos, genera llaves batch, exporta ZIP cifrado y ve auditoría completa."],
-              ["Tenant admin", "Importa manifest, ejecuta QA con evidencia, activa lotes y opera CRM/marketplace."],
-              ["Proveedor", "Recibe BATCH_ID, K_META/K_FILE por sub-batch, URL template y formato manifest. Nunca recibe KMS."],
+              ["Tenant admin", "Importa manifiesto, ejecuta QA con evidencia, activa lotes y opera CRM/marketplace."],
+              ["Proveedor", "Recibe BATCH_ID, pack cifrado de un solo uso, URL template y formato manifest. Nunca recibe KMS ni secretos en claro."],
             ].map(([title, body]) => (
               <div key={title} className="rounded-2xl border border-white/10 bg-slate-900/55 p-4">
                 <h3 className="text-sm font-black text-white">{title}</h3>
@@ -42,14 +43,15 @@ export default async function SupplierBatchPage() {
             ))}
           </div>
         </Card>
+
         <Card className="border-emerald-300/20 bg-emerald-500/10 p-5">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-100">Gates obligatorios</p>
           <div className="mt-4 space-y-3">
             {[
               ["Pack cifrado", "ZIP .enc con TXT/JSON/PDF/checksums. Password por canal separado."],
-              ["Manifest único", "Rechaza BID cruzado, UID duplicado global y cantidad distinta al sub-batch."],
+              ["Manifiesto único", "Rechaza BID cruzado, UID duplicado global y cantidad distinta al sub-batch."],
               ["QA con evidencia", "URL SUN real, replay probado y TTStatus solo si el carrier es TagTamper."],
-              ["Activación bloqueada", "Ningún supplier batch entra a mercado sin manifest importado, cantidad correcta y QA aprobado."],
+              ["Activación bloqueada", "Ningún supplier batch entra a mercado sin manifiesto importado, cantidad correcta y QA aprobado."],
             ].map(([title, body]) => (
               <div key={title} className="rounded-2xl border border-emerald-300/15 bg-slate-950/55 p-3">
                 <h3 className="text-sm font-black text-white">{title}</h3>
@@ -59,6 +61,7 @@ export default async function SupplierBatchPage() {
           </div>
         </Card>
       </section>
+
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="border-violet-300/20 bg-violet-500/10 p-5">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-100">Polygon ownership</p>
@@ -82,19 +85,20 @@ export default async function SupplierBatchPage() {
           </p>
         </Card>
       </section>
+
       <section className="grid gap-3 lg:grid-cols-4">
         {[
           {
             step: "01",
-            title: "Crear tenant",
-            body: "Nombre, rubro, origen, reglas de claim y marca white-label.",
-            href: "#supplier-wizard",
+            title: "Crear pedido",
+            body: "Tenant, rubro, chip, carrier, cantidad, origen y reglas de fabricación.",
+            href: "#supplier-order-console",
           },
           {
             step: "02",
-            title: "Pedido industrial",
-            body: "Sub-batches, llaves cifradas, pack one-time y manifest esperado.",
-            href: "#supplier-wizard",
+            title: "Pack industrial",
+            body: "Sub-batches, llaves cifradas, pack one-time y manifiesto esperado.",
+            href: "#supplier-order-console",
           },
           {
             step: "03",
@@ -105,7 +109,7 @@ export default async function SupplierBatchPage() {
           {
             step: "04",
             title: "Publicar experiencia",
-            body: "Portal, marketplace, club, garantia, reviews y NFT opcional.",
+            body: "Portal, marketplace, club, garantía, experiencias verificadas y NFT opcional.",
             href: "/superadmin-network",
           },
         ].map((item) => (
@@ -120,20 +124,22 @@ export default async function SupplierBatchPage() {
           </Link>
         ))}
       </section>
+
       <Card className="p-5 text-sm text-slate-300">
         <p className="font-semibold text-white">Uso recomendado</p>
         <ul className="mt-3 list-disc space-y-2 pl-5">
           <li>Pedido industrial nuevo: usa Supplier Order. El sistema genera sub-batches, llaves por lote, fingerprints y evidencia batch_created.</li>
-          <li>Export pack: solo superadmin, una respuesta con llaves plaintext para ZIP cifrado y password por canal separado.</li>
-          <li>Manifest: se importa TXT/CSV por BID y se rechaza cantidad incorrecta, batch_id cruzado o UID duplicado.</li>
-          <li>Activación: queda bloqueada hasta manifest importado, cantidad esperada y QA aprobado.</li>
+          <li>Export pack: solo superadmin, una respuesta con llaves plaintext dentro del ZIP cifrado y password por canal separado.</li>
+          <li>Manifiesto: se importa TXT/CSV por BID y se rechaza cantidad incorrecta, batch_id cruzado o UID duplicado.</li>
+          <li>Activación: queda bloqueada hasta manifiesto importado, cantidad esperada y QA aprobado.</li>
         </ul>
         <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
           No se expone KMS. No se guardan llaves plaintext en frontend. No se ancla cada tap on-chain; la prueba externa se hace por hashes agregados.
         </p>
       </Card>
+
       <div id="supplier-wizard">
-        <SupplierBatchWizard locale={locale} />
+        <SupplierLegacyIntakeBlocked />
       </div>
     </main>
   );

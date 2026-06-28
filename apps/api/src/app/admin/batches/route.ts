@@ -3,40 +3,9 @@ export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../lib/db";
 import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
-import { encryptKey16 } from "../../../lib/keys";
 import { json } from "../../../lib/http";
-import { requireTenantSunProfile } from "../../../lib/tenant-onboarding";
 import { ensureCarrierProfileSchema } from "../../../lib/commercial-runtime-schema";
-import { getCarrierProfile, inferCarrierProfileFromPayload } from "../../../lib/carrier-profiles";
 import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
-
-function normalizeHexKey(value: unknown, field: string) {
-  if (value == null || value === "") return null;
-  const normalized = String(value).trim().toUpperCase();
-  if (!/^[0-9A-F]{32}$/.test(normalized)) {
-    throw new Error(`${field} must be a 32-char hex string`);
-  }
-  return normalized;
-}
-
-async function resolveTenant(input: string) {
-  const normalized = String(input || "").trim();
-  if (!normalized) return null;
-
-  const rows = /^[0-9a-f-]{36}$/i.test(normalized)
-    ? await sql/*sql*/`SELECT id, slug FROM tenants WHERE id = ${normalized}::uuid LIMIT 1`
-    : await sql/*sql*/`SELECT id, slug FROM tenants WHERE slug = ${normalized.toLowerCase()} LIMIT 1`;
-  return rows[0] || null;
-}
-
-function inferBatchProfile(config: Record<string, unknown>) {
-  const explicit = String(config.profile || config.security_profile || "").trim();
-  if (explicit) return explicit;
-  const icType = String(config.ic_type || config.tag_type || "").toUpperCase();
-  if (icType.includes("424")) return "secure";
-  if (icType.includes("215") || icType.includes("216") || icType.includes("213")) return "basic";
-  return null;
-}
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
@@ -194,106 +163,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
-  await ensureCarrierProfileSchema();
-
-  const body: Record<string, unknown> = await req.json().catch(() => ({}));
-  const { forcedTenantSlug } = getAdminTenantScope(req);
-  const tenantInput = forcedTenantSlug || String(body.tenant_slug || body.tenantId || "").trim();
-  const bid = String(body.bid || body.batchId || "").trim();
-  if (!tenantInput || !bid) return json({ ok: false, reason: "tenant_slug and bid required" }, 400);
-
-  const tenant = await resolveTenant(tenantInput);
-  if (!tenant) return json({ ok: false, reason: "tenant not found" }, 404);
-  const readiness = await requireTenantSunProfile(String(tenant.id)).catch((error) => ({ ok: false, missing: (error as Error & { missing?: string[] }).missing || ["tenant_sun_profiles"] }));
-  if (!readiness.ok) {
-    return json({
-      ok: false,
-      reason: "tenant_sun_profile_incomplete",
-      message: "Create or complete the tenant SUN profile before creating batches. This prevents generic future-tenant fallbacks.",
-      missing: readiness.missing,
-    }, 409);
-  }
-  const existingRows = await sql/*sql*/`
-    SELECT id, bid, status, created_at
-    FROM batches
-    WHERE bid = ${bid}
-    LIMIT 1
-  `;
-  if (existingRows[0]) {
-    return json({
-      ok: false,
-      reason: "batch_bid_already_exists",
-      message: "BID already exists. Batch creation never overwrites encrypted keys or sdm_config; use an explicit migration/update action.",
-      batch: existingRows[0],
-    }, 409);
-  }
-
-  try {
-    const kMetaHex = normalizeHexKey(body.k_meta_hex, "k_meta_hex");
-    const kFileHex = normalizeHexKey(body.k_file_hex, "k_file_hex");
-    if (!kMetaHex || !kFileHex) {
-      return json({ ok: false, reason: "k_meta_hex and k_file_hex are required (32 hex chars each)" }, 400);
-    }
-    const metaCt = encryptKey16(Buffer.from(kMetaHex, "hex"));
-    const fileCt = encryptKey16(Buffer.from(kFileHex, "hex"));
-
-    const incomingConfig = typeof body.sdm_config === "object" && body.sdm_config ? { ...(body.sdm_config as Record<string, unknown>) } : {};
-    const carrierProfileCode = inferCarrierProfileFromPayload({ ...incomingConfig, ...body });
-    const carrierProfile = getCarrierProfile(carrierProfileCode);
-    if (!carrierProfileCode || !carrierProfile) {
-      return json({
-        ok: false,
-        reason: "carrier_profile_required",
-        message: "Set carrier_profile_code (qr_basic, gs1_digital_link, ntag213, ntag215, ntag216, ntag424_dna, ntag424_dna_tt) before creating a batch.",
-      }, 400);
-    }
-    const requestedQuantity = Math.max(0, Math.trunc(Number(body.quantity || incomingConfig.requested_quantity || 0)));
-    const sku = String(body.sku || incomingConfig.sku || "").trim();
-    const profile = inferBatchProfile({ ...incomingConfig, profile: body.profile || incomingConfig.profile }) || carrierProfile.label;
-    if (!profile) {
-      return json({ ok: false, reason: "batch_profile_required", message: "Set profile/security_profile or chip type before creating a batch." }, 400);
-    }
-
-    const sdmConfig = {
-      mac_input: "enc_plus_cmac_literal",
-      mac_input_candidates: ["enc_plus_cmac_literal", "enc_only_ascii", "query_from_enc_to_cmac", "query_from_picc_data_to_cmac"],
-      url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`,
-      ttstatus_enabled: true,
-      ttstatus_source: "enc_decrypted",
-      ttstatus_offset: 0,
-      ttstatus_length: 2,
-      ttstatus_closed_values: ["4343"],
-      ttstatus_opened_values: ["4F4F", "4F43"],
-      ttstatus_invalid_values: ["4949"],
-      requested_quantity: requestedQuantity || undefined,
-      sku: sku || undefined,
-      profile,
-      carrier_profile_code: carrierProfileCode,
-      carrier_label: carrierProfile.label,
-      carrier_capabilities: carrierProfile.capabilities,
-      ...incomingConfig,
-    };
-
-    const rows = await sql/*sql*/`
-      INSERT INTO batches (tenant_id, bid, meta_key_ct, file_key_ct, sdm_config, carrier_profile_code)
-      VALUES (${tenant.id}, ${bid}, ${metaCt}, ${fileCt}, ${JSON.stringify(sdmConfig)}::jsonb, ${carrierProfileCode})
-      RETURNING id, bid, status, created_at
-    `;
-
-    return json({
-      batch: { ...rows[0], tenant_slug: tenant.slug, profile, requested_quantity: requestedQuantity, sku, carrier_profile_code: carrierProfileCode, carrier_label: carrierProfile.label },
-      carrier: carrierProfile,
-      keys: { k_meta_hex: kMetaHex, k_file_hex: kFileHex },
-      ndef_url_template: `https://api.nexid.lat/sun/?v=1&bid=${bid}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`
-    }, 201);
-  } catch (error) {
-    if (typeof error === "object" && error && (error as { code?: string }).code === "23505") {
-      return json({
-        ok: false,
-        reason: "batch_bid_already_exists",
-        message: "BID already exists. Batch creation never overwrites encrypted keys or sdm_config; use an explicit migration/update action.",
-      }, 409);
-    }
-    return json({ ok: false, reason: error instanceof Error ? error.message : "invalid batch payload" }, 400);
-  }
+  return json({
+    ok: false,
+    reason: "manual_batch_creation_disabled",
+    message: "Manual batch creation with plaintext SUN keys is disabled. Create batches through Supplier Orders so K_META_BATCH and K_FILE_BATCH are generated server-side, stored in Tenant Vault and exported only through an encrypted one-time supplier pack.",
+    next: "/admin/supplier-orders",
+  }, 410);
 }

@@ -10,7 +10,7 @@ import { ensureCarrierProfileSchema } from "../../../../../lib/commercial-runtim
 import { getCarrierProfile, normalizeCarrierProfileCode } from "../../../../../lib/carrier-profiles";
 import { upsertTagSunPayload } from "../../../../../lib/sun-payload-registry.ts";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
-import { validateSupplierManifestQuantity } from "../../../../../lib/supplier-ops";
+import { canImportSupplierManifest, validateSupplierManifestQuantity } from "../../../../../lib/supplier-ops";
 import { hashEvidencePayload } from "../../../../../lib/proof-layer";
 
 type ManifestPayload = {
@@ -105,12 +105,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const supplierSubBatchRows = await sql/*sql*/`
     SELECT
       id, supplier_order_id, tenant_id, batch_id, bid, expected_quantity,
-      manifest_status, manifest_count, qa_status
+      manifest_status, manifest_count, manifest_hash, qa_status
     FROM supplier_sub_batches
     WHERE batch_id = ${batch.id} OR bid = ${bid}
     LIMIT 1
   `;
   const supplierSubBatch = supplierSubBatchRows[0] || null;
+  const supplierImportGate = supplierSubBatch
+    ? canImportSupplierManifest({ manifestStatus: supplierSubBatch.manifest_status })
+    : { ok: true as const };
+  if (!supplierImportGate.ok && !payload.dryRun) {
+    return json({
+      ok: false,
+      reason: supplierImportGate.reason,
+      message: "Supplier manifest is immutable after import. Create a corrective sub-batch or new supplier order instead of overwriting UID evidence.",
+      bid,
+      manifest_status: supplierSubBatch.manifest_status,
+      manifest_count: Number(supplierSubBatch.manifest_count || 0),
+      manifest_hash: supplierSubBatch.manifest_hash || null,
+    }, 409);
+  }
   const supplierQuantityGate = supplierSubBatch
     ? validateSupplierManifestQuantity(manifest, Number(supplierSubBatch.expected_quantity || 0))
     : { ok: true as const };
@@ -234,7 +248,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       carrier: batchCarrier,
       supplier_gate: supplierSubBatch ? {
         expected_quantity: Number(supplierSubBatch.expected_quantity || 0),
-        manifest_status: "would_import",
+        manifest_status: supplierImportGate.ok ? "would_import" : "already_imported",
+        manifest_count: Number(supplierSubBatch.manifest_count || 0),
+        manifest_hash: supplierSubBatch.manifest_hash || null,
         qa_status: supplierSubBatch.qa_status || "pending",
         activation_requires_qa: true,
       } : null,

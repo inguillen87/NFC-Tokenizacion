@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { SectionHeading } from "@product/ui";
 import { BadgeCheck, Boxes, ClipboardCheck, ImagePlus, Store, WandSparkles } from "lucide-react";
-import { SupplierBatchWizard } from "../../../components/supplier-batch-wizard";
-import { getDashboardI18n } from "../../../lib/locale";
+import { SupplierLegacyIntakeBlocked } from "../../../components/supplier-legacy-intake-blocked";
 import { requireDashboardSession } from "../../../lib/session";
 
 const rolloutSteps = [
@@ -29,7 +28,6 @@ const rolloutSteps = [
 ];
 
 export default async function OnboardingPage() {
-  const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
   const isTenantAdmin = session.role === "tenant-admin";
@@ -105,7 +103,7 @@ export default async function OnboardingPage() {
           </div>
         </div>
       </section>
-      <SupplierBatchWizard locale={locale} />
+      <SupplierLegacyIntakeBlocked context="onboarding" />
     </main>
   );
 }

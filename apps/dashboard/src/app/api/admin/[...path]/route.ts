@@ -671,26 +671,19 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   }
   if (method === "POST" && normalized === "batches") {
     return NextResponse.json({
-      ok: true,
-      batch: demoBatch,
-      requested_quantity: Number(payload?.qty || demoBatch.qty),
-      ndef_url_template: "https://api.nexid.lat/sun?v=1&bid=<BATCH_ID>&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
-      keys: {
-        k_meta_hex: String(payload?.k_meta_hex || "0123456789ABCDEF0123456789ABCDEF"),
-        k_file_hex: String(payload?.k_file_hex || "ABCDEF0123456789ABCDEF0123456789"),
-      },
-    });
+      ok: false,
+      reason: "manual_key_registration_blocked",
+      message: "Supplier batches must be created from Supplier Order so keys are generated server-side and exported as encrypted one-time packs.",
+      next: "/batches/supplier#supplier-order-console",
+    }, { status: 409 });
   }
   if (method === "POST" && normalized === "batches/register") {
     return NextResponse.json({
-      ok: true,
-      batch: { ...demoBatch, bid: String(payload?.bid || demoBatch.bid), tenant_id: resolveDemoTenant(payload?.tenant_slug || tenantFilter).slug },
-      ndef_url_template: `https://api.nexid.lat/sun?v=1&bid=${encodeURIComponent(String(payload?.bid || demoBatch.bid))}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`,
-      keys: {
-        k_meta_hex: String(payload?.k_meta_hex || "0123456789ABCDEF0123456789ABCDEF"),
-        k_file_hex: String(payload?.k_file_hex || "ABCDEF0123456789ABCDEF0123456789"),
-      },
-    });
+      ok: false,
+      reason: "manual_key_registration_blocked",
+      message: "Legacy batch registration with plaintext keys is disabled. Use Supplier Order and Tenant Vault.",
+      next: "/batches/supplier#supplier-order-console",
+    }, { status: 409 });
   }
   if (method === "POST" && normalized.endsWith("/import-uids")) {
     const uids = Array.isArray(payload?.uids) ? payload?.uids : [];

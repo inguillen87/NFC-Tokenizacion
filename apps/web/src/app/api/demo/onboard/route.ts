@@ -52,15 +52,13 @@ export async function POST(req: Request) {
   try {
     await apiCall("/admin/tenants", { slug: tenantSlug, name: tenantName }).catch(() => null);
     await apiCall("/admin/batches/register", {
-      mode: "supplier",
+      mode: "internal",
       tenant_slug: tenantSlug,
       bid,
       chip_model: "NTAG 424 DNA TagTamper",
       sku: "wine-secure",
       quantity: DEMO_UIDS.length,
       notes: "Auto-onboarded from /sun validation center",
-      k_meta_hex: "C2A462E6AB434828153D73CE440704AC",
-      k_file_hex: "BFCE6C576540C04C840F1CFD457BF213",
     });
     const imported = await apiCall(`/admin/batches/${encodeURIComponent(bid)}/import-uids`, { uids: DEMO_UIDS, sourceType: "auto" });
     const activated = await apiCall(`/admin/batches/${encodeURIComponent(bid)}/activate-all`, { limit: DEMO_UIDS.length });

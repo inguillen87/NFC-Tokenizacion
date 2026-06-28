@@ -45,7 +45,7 @@ export function QuickOnboardingPanel({ context = "dashboard" }: Props) {
           <h2 className="mt-2 text-xl font-semibold text-white">Alta profesional de tenants, batches y manifiestos</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
             Desde {source}, el camino recomendado es guiado: primero tenant passport, despues batch security,
-            luego TXT/CSV validado y recien ahi activacion. Sin defaults escondidos ni datos demo para clientes reales.
+            luego TXT/CSV validado y recien ahi activacion. Sin defaults escondidos ni datos de muestra para clientes reales.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -65,7 +65,7 @@ export function QuickOnboardingPanel({ context = "dashboard" }: Props) {
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
           <p className="text-sm font-semibold text-white">2. Batch seguro</p>
-          <p className="mt-2 text-xs leading-5 text-slate-300">BID, chip, SKU, perfil de seguridad y llaves K_META/K_FILE reales.</p>
+          <p className="mt-2 text-xs leading-5 text-slate-300">BID, chip, SKU, perfil de seguridad y pack cifrado generado por servidor.</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
           <p className="text-sm font-semibold text-white">3. Manifest auditado</p>

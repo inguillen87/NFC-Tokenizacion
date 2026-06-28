@@ -12,6 +12,7 @@ import {
   buildSupplierEncodingPack,
   buildSupplierPackPdfSummary,
   buildZipArchive,
+  canExportSupplierPack,
   encryptSupplierZipArchive,
   sha256Buffer,
   type SupplierZipEntry,
@@ -65,6 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           ssb.id AS supplier_sub_batch_id,
           ssb.bid,
           ssb.expected_quantity,
+          ssb.key_export_count,
           ssb.metadata_json,
           b.id AS batch_id,
           b.sdm_config,
@@ -83,6 +85,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           ssb.id AS supplier_sub_batch_id,
           ssb.bid,
           ssb.expected_quantity,
+          ssb.key_export_count,
           ssb.metadata_json,
           b.id AS batch_id,
           b.sdm_config,
@@ -97,6 +100,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
         ORDER BY ssb.sequence_index ASC
       `;
   if (!rows.length) return json({ ok: false, reason: "supplier_sub_batch_not_found" }, 404);
+
+  const alreadyExported = rows
+    .map((row) => canExportSupplierPack({
+      bid: String(row.bid || ""),
+      exportCount: Number(row.export_count || 0),
+      keyExportCount: Number(row.key_export_count || 0),
+    }))
+    .filter((gate) => !gate.ok);
+  if (alreadyExported.length > 0) {
+    return json({
+      ok: false,
+      reason: "supplier_pack_already_exported",
+      message: "Supplier encoding packs are one-time artifacts. Rotate sub-batch keys or create a new supplier order instead of re-exporting plaintext factory material.",
+      blocked: alreadyExported,
+    }, 409);
+  }
 
   const passwordRecommendation = `nexID-${String(order.customer_slug || order.tenant_slug).toUpperCase()}-${randomBytes(8).toString("hex").toUpperCase()}`;
   const packs = [];

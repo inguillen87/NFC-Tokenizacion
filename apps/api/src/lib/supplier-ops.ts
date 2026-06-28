@@ -407,6 +407,34 @@ export function validateSupplierManifestQuantity(manifest: ManifestParseResult, 
   return { ok: true as const };
 }
 
+export function canExportSupplierPack(input: {
+  exportCount?: number | null;
+  keyExportCount?: number | null;
+  bid?: string | null;
+}) {
+  const exportCount = Math.trunc(Number(input.exportCount || 0));
+  const keyExportCount = Math.trunc(Number(input.keyExportCount || 0));
+  if (exportCount > 0 || keyExportCount > 0) {
+    return {
+      ok: false as const,
+      reason: "supplier_pack_already_exported",
+      bid: input.bid || null,
+      exportCount,
+      keyExportCount,
+    };
+  }
+  return { ok: true as const };
+}
+
+export function canImportSupplierManifest(input: {
+  manifestStatus?: string | null;
+}) {
+  if (input.manifestStatus === "imported") {
+    return { ok: false as const, reason: "supplier_manifest_already_imported" };
+  }
+  return { ok: true as const };
+}
+
 export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPack {
   const kMetaHex = assertHex32(input.kMetaHex, "K_META_BATCH");
   const kFileHex = assertHex32(input.kFileHex, "K_FILE_BATCH");
@@ -468,7 +496,7 @@ export function canActivateSupplierSubBatch(input: {
   overrideReason?: string | null;
 }) {
   const overrideReason = String(input.overrideReason || "").trim();
-  if (overrideReason) return { ok: true as const, override: true as const };
+  if (overrideReason) return { ok: false as const, reason: "supplier_activation_override_disabled" };
   if (input.manifestStatus !== "imported") {
     return { ok: false as const, reason: "manifest_not_imported" };
   }

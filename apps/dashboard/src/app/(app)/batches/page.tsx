@@ -356,7 +356,7 @@ export default async function BatchesPage() {
             <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-amber-200">Modo 2</p>
               <p className="mt-1 text-base font-semibold text-white">Register supplier batch</p>
-              <p className="mt-2 text-xs text-slate-300">Para tags programadas por proveedor. Carrier profile + K_META_BATCH y K_FILE_BATCH obligatorias.</p>
+              <p className="mt-2 text-xs text-slate-300">Para tags programadas por proveedor. Carrier profile, pack cifrado, manifiesto y QA obligatorios.</p>
               <Link href="/batches/supplier" className="mt-3 inline-block rounded-lg border border-amber-300/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">Open supplier wizard</Link>
             </div>
           </div>
@@ -404,7 +404,7 @@ export default async function BatchesPage() {
           {[
             "1) Crear tenant passport completo",
             "2) Elegir carrier profile y registrar batch proveedor",
-            "3) Cargar llaves K_META/K_FILE",
+            "3) Generar pack cifrado en servidor",
             "4) Importar TXT/CSV con preflight",
             "5) Activar tags importadas",
             "6) Validar URL /sun real",
