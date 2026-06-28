@@ -53,40 +53,42 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
           <p className="hero-subtitle mx-auto mt-5 max-w-xl text-sm leading-7 text-slate-400">
             {heroSubtitle}
           </p>
+        </div>
 
-          <div className="hero-demo-shell mx-auto mt-10 max-w-7xl text-left">
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>
-                <p className="mt-1 max-w-2xl text-sm text-slate-300">{demoBody}</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  {heroFlow.map((item, index) => (
-                    <span key={item} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-xs font-black text-slate-100">
-                      <strong className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-500/15 text-[10px] text-cyan-100">{index + 1}</strong>
-                      {item}
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-3 max-w-2xl rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold leading-5 text-emerald-100">
-                  {heroAssurance}
-                </p>
+        <div className="hero-demo-shell mx-auto mt-10 max-w-7xl text-left">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>
+              <p className="mt-1 max-w-2xl text-sm text-slate-300">{demoBody}</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {heroFlow.map((item, index) => (
+                  <span key={item} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-xs font-black text-slate-100">
+                    <strong className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-500/15 text-[10px] text-cyan-100">{index + 1}</strong>
+                    {item}
+                  </span>
+                ))}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
-                  {meetingCta}
-                </a>
-                <Link href="/demo-lab?vertical=wine" className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
-                  {demoCta}
-                </Link>
-                <Link href="/login?next=/me" className="rounded-xl border border-purple-500/35 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-300 transition hover:bg-purple-500/20">
-                  {isEn ? "Consumer Portal" : isBr ? "Portal do Consumidor" : "Portal Consumidor"}
-                </Link>
-              </div>
+              <p className="mt-3 max-w-2xl rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold leading-5 text-emerald-100">
+                {heroAssurance}
+              </p>
             </div>
-            <HeroScene locale={locale as any} />
-            <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" />
+            <div className="flex flex-wrap gap-2">
+              <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
+                {meetingCta}
+              </a>
+              <Link href="/demo-lab?vertical=wine" className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
+                {demoCta}
+              </Link>
+              <Link href="/login?next=/me" className="rounded-xl border border-purple-500/35 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-300 transition hover:bg-purple-500/20">
+                {isEn ? "Consumer Portal" : isBr ? "Portal do Consumidor" : "Portal Consumidor"}
+              </Link>
+            </div>
           </div>
+          <HeroScene locale={locale as any} />
+          <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" />
+        </div>
 
+        <div className="mx-auto mt-10 max-w-6xl text-center">
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-6 py-3.5 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
               {primaryCta}
