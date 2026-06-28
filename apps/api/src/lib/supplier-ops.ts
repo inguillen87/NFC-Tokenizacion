@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
+import { getCarrierProfile, normalizeCarrierProfileCode } from "./carrier-profiles.ts";
 import type { ManifestParseResult } from "./tag-manifest.ts";
 
 export type SupplierSubBatchPlan = {
@@ -100,6 +101,92 @@ function sha256(value: string | Buffer | Uint8Array) {
 
 export function sha256Buffer(value: string | Buffer | Uint8Array) {
   return sha256(value);
+}
+
+const SECURE_SUN_CARRIER_PROFILES = new Set(["ntag424_dna", "ntag424_dna_tt"]);
+
+function canonicalCarrierProfile(input: unknown) {
+  return normalizeCarrierProfileCode(input) || String(input || "").trim().toLowerCase() || "unknown";
+}
+
+export function requiresSecureSunEncoding(input: unknown) {
+  return SECURE_SUN_CARRIER_PROFILES.has(canonicalCarrierProfile(input));
+}
+
+function manifestFormatForCarrier(carrierProfile: string) {
+  switch (carrierProfile) {
+    case "gs1_digital_link":
+      return "batch_id,uid_hex,gtin,lot,serial,expiry";
+    case "uhf_rfid":
+      return "batch_id,uid_hex,epc,pallet_id,case_id,warehouse_zone";
+    case "iot_tracker_placeholder":
+      return "batch_id,uid_hex,device_id,sensor_json,telemetry_at";
+    case "event_wristband":
+      return "batch_id,uid_hex,attendee_ref,zone,valid_from,valid_until";
+    case "hotel_keycard":
+      return "batch_id,uid_hex,guest_ref,room_or_zone,valid_from,valid_until";
+    default:
+      return "batch_id,uid_hex";
+  }
+}
+
+function supplierRequirementsForCarrier(carrierProfile: string) {
+  if (requiresSecureSunEncoding(carrierProfile)) {
+    return [
+      "SUN/SDM enabled",
+      "dynamic UID",
+      "dynamic read counter",
+      "encrypted enc",
+      "CMAC validation",
+      "anti-replay",
+      "UID manifest per sub-batch",
+      "roll/carton labeled with BATCH_ID",
+    ];
+  }
+  switch (carrierProfile) {
+    case "gs1_digital_link":
+      return [
+        "GS1 Digital Link URL encoded",
+        "GTIN, lot and serial in manifest",
+        "UID or serial mapping per unit",
+        "roll/carton labeled with BATCH_ID",
+      ];
+    case "uhf_rfid":
+      return [
+        "EPC/UID encoded per unit",
+        "pallet/case mapping in manifest",
+        "warehouse or channel zone optional",
+        "roll/carton labeled with BATCH_ID",
+      ];
+    case "iot_tracker_placeholder":
+      return [
+        "device ID mapped to unit or shipment",
+        "sensor payload hash captured in manifest",
+        "telemetry timestamp required when available",
+        "no consumer tap URL required",
+      ];
+    case "event_wristband":
+      return [
+        "UID encoded per wristband",
+        "attendee or ticket reference in manifest",
+        "access zone and validity window optional",
+        "activation requires CRM/event policy",
+      ];
+    case "hotel_keycard":
+      return [
+        "UID encoded per card",
+        "guest/member reference in manifest",
+        "room or zone validity optional",
+        "activation requires tenant approval",
+      ];
+    default:
+      return [
+        "UID or QR serial per unit",
+        "batch_id and uid_hex in manifest",
+        "roll/carton labeled with BATCH_ID",
+        "server-side risk rules apply after scan",
+      ];
+  }
 }
 
 const crc32Table = new Uint32Array(256);
@@ -228,19 +315,23 @@ function escapePdfText(value: unknown) {
 }
 
 export function buildSupplierPackPdfSummary(input: SupplierPackPdfInput) {
+  const carrierProfile = canonicalCarrierProfile(input.carrierProfile);
+  const secureSun = requiresSecureSunEncoding(carrierProfile);
   const rows = [
     "nexID Supplier Encoding Pack",
     `Client: ${input.clientSlug}`,
     `Batch ID: ${input.batchId}`,
     `Quantity: ${input.quantity}`,
     `Chip model: ${input.chipModel}`,
-    `Carrier profile: ${input.carrierProfile}`,
-    `Key fingerprint: ${input.keyFingerprint}`,
+    `Carrier profile: ${carrierProfile}`,
+    secureSun ? `Key fingerprint: ${input.keyFingerprint}` : "Key fingerprint: not applicable for this profile",
     `TXT hash: ${input.contentHash}`,
     `JSON hash: ${input.jsonHash}`,
-    "Raw K_META_BATCH and K_FILE_BATCH are only in the encrypted TXT/JSON files.",
+    secureSun
+      ? "Raw K_META_BATCH and K_FILE_BATCH are only in the encrypted TXT/JSON files."
+      : "This profile does not require K_META_BATCH or K_FILE_BATCH in the supplier pack.",
     "Never share KMS, database URLs, admin keys, private keys or webhook secrets.",
-    "Manifest required: batch_id,uid_hex. Roll/carton labels must include BATCH_ID.",
+    `Manifest required: ${manifestFormatForCarrier(carrierProfile)}.`,
     `URL template: ${input.urlTemplate}`,
   ];
   const stream = [
@@ -436,9 +527,11 @@ export function canImportSupplierManifest(input: {
 }
 
 export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPack {
-  const kMetaHex = assertHex32(input.kMetaHex, "K_META_BATCH");
-  const kFileHex = assertHex32(input.kFileHex, "K_FILE_BATCH");
-  const carrierProfile = String(input.carrierProfile || "").trim();
+  const carrierProfile = canonicalCarrierProfile(input.carrierProfile);
+  const profile = getCarrierProfile(carrierProfile);
+  const secureSun = requiresSecureSunEncoding(carrierProfile);
+  const kMetaHex = secureSun ? assertHex32(input.kMetaHex, "K_META_BATCH") : null;
+  const kFileHex = secureSun ? assertHex32(input.kFileHex, "K_FILE_BATCH") : null;
   const isTagTamper = carrierProfile === "ntag424_dna_tt";
   const payload = {
     CLIENT_SLUG: String(input.clientSlug || "").trim(),
@@ -446,22 +539,16 @@ export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPac
     QUANTITY: Math.max(0, Math.trunc(Number(input.quantity || 0))),
     CHIP_MODEL: String(input.chipModel || "").trim(),
     CARRIER_PROFILE: carrierProfile,
+    CARRIER_FAMILY: profile?.family || "unknown",
+    TRUST_POLICY: profile?.defaultPolicy?.riskPolicy || "supplier_declared",
     MATERIAL_TYPE: String(input.materialType || "").trim() || null,
+    KEY_MATERIAL: secureSun ? "ENCRYPTED_IN_THIS_PACK" : "NO_BATCH_KEYS_REQUIRED_FOR_THIS_PROFILE",
     K_META_BATCH: kMetaHex,
     K_FILE_BATCH: kFileHex,
     URL_TEMPLATE: String(input.urlTemplate || "").trim(),
-    MANIFEST_FORMAT: "batch_id,uid_hex",
+    MANIFEST_FORMAT: manifestFormatForCarrier(carrierProfile),
     PACKAGING_LABEL: `${String(input.clientSlug || "").trim()} / ${String(input.batchId || "").trim()}`,
-    REQUIREMENTS: [
-      "SUN/SDM enabled",
-      "dynamic UID",
-      "dynamic read counter",
-      "encrypted enc",
-      "CMAC validation",
-      "anti-replay",
-      "UID manifest per sub-batch",
-      "roll/carton labeled with BATCH_ID",
-    ],
+    REQUIREMENTS: supplierRequirementsForCarrier(carrierProfile),
     TTSTATUS: isTagTamper
       ? {
           source: "enc_decrypted",

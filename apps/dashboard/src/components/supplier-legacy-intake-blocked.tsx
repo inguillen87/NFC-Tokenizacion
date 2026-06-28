@@ -47,7 +47,7 @@ export function SupplierLegacyIntakeBlocked({ context = "supplier" }: SupplierLe
           },
           {
             Icon: LockKeyhole,
-            title: "Manifest inmutable",
+            title: "Manifest verificable",
             body: "Una vez importado, el manifiesto no se pisa. Las correcciones se auditan como nuevo sub-batch.",
           },
         ].map(({ Icon, title, body }) => (

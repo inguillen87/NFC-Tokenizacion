@@ -12,6 +12,7 @@ import { getCarrierProfile, inferCarrierProfileFromPayload } from "../../../lib/
 import {
   buildSupplierSubBatchPlan,
   generateSupplierBatchKeys,
+  requiresSecureSunEncoding,
 } from "../../../lib/supplier-ops";
 import { requireTenantSunProfile } from "../../../lib/tenant-onboarding";
 import { hashEvidencePayload } from "../../../lib/proof-layer";
@@ -48,6 +49,27 @@ function resolveApiOrigin(req: Request) {
   }
   const fallback = (process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || "").trim();
   return fallback ? fallback.replace(/\/$/, "") : "https://api.nexid.lat";
+}
+
+function buildSupplierUrlTemplate(apiOrigin: string, carrierProfileCode: string, bid: string) {
+  const encodedBid = encodeURIComponent(bid);
+  if (requiresSecureSunEncoding(carrierProfileCode)) {
+    return `${apiOrigin}/sun?v=1&bid=${encodedBid}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`;
+  }
+  switch (carrierProfileCode) {
+    case "gs1_digital_link":
+      return `${apiOrigin}/01/<GTIN>/10/<LOT>/21/<SERIAL>?bid=${encodedBid}`;
+    case "uhf_rfid":
+      return `${apiOrigin}/ops/rfid/${encodedBid}/<EPC_OR_UID>`;
+    case "event_wristband":
+      return `${apiOrigin}/event/${encodedBid}/<UID_HEX>`;
+    case "hotel_keycard":
+      return `${apiOrigin}/credential/${encodedBid}/<UID_HEX>`;
+    case "iot_tracker_placeholder":
+      return `${apiOrigin}/telemetry/${encodedBid}/<DEVICE_ID>`;
+    default:
+      return `${apiOrigin}/t/${encodedBid}/<UID_HEX>`;
+  }
 }
 
 export async function GET(req: Request) {
@@ -141,19 +163,6 @@ export async function POST(req: Request) {
     return json({ ok: false, reason: "tenant_scope_forbidden" }, 403);
   }
 
-  const readiness = await requireTenantSunProfile(String(tenant.id)).catch((error) => ({
-    ok: false,
-    missing: (error as Error & { missing?: string[] }).missing || ["tenant_sun_profiles"],
-  }));
-  if (!readiness.ok) {
-    return json({
-      ok: false,
-      reason: "tenant_sun_profile_incomplete",
-      message: "Complete SUN tenant profile before creating supplier orders.",
-      missing: readiness.missing,
-    }, 409);
-  }
-
   try {
     const customerSlug = firstString(body.customer_slug, body.customerSlug, tenant.slug);
     const orderName = firstString(body.order_name, body.orderName);
@@ -173,6 +182,21 @@ export async function POST(req: Request) {
           !carrierProfileCode ? "carrier_profile_code" : "",
         ].filter(Boolean),
       }, 400);
+    }
+
+    if (requiresSecureSunEncoding(carrierProfileCode)) {
+      const readiness = await requireTenantSunProfile(String(tenant.id)).catch((error) => ({
+        ok: false,
+        missing: (error as Error & { missing?: string[] }).missing || ["tenant_sun_profiles"],
+      }));
+      if (!readiness.ok) {
+        return json({
+          ok: false,
+          reason: "tenant_sun_profile_incomplete",
+          message: "Complete SUN tenant profile before creating NTAG 424 DNA supplier orders.",
+          missing: readiness.missing,
+        }, 409);
+      }
     }
 
     const plan = buildSupplierSubBatchPlan({
@@ -218,9 +242,10 @@ export async function POST(req: Request) {
       const keys = generateSupplierBatchKeys();
       const metaCt = encryptKey16(Buffer.from(keys.kMetaHex, "hex"));
       const fileCt = encryptKey16(Buffer.from(keys.kFileHex, "hex"));
-      const urlTemplate = `${apiOrigin}/sun?v=1&bid=${encodeURIComponent(subBatch.bid)}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`;
+      const secureSunProfile = requiresSecureSunEncoding(carrierProfileCode);
+      const urlTemplate = buildSupplierUrlTemplate(apiOrigin, carrierProfileCode, subBatch.bid);
       const sdmConfig = {
-        profile: "enterprise_supplier",
+        profile: secureSunProfile ? "enterprise_supplier_sun" : "enterprise_supplier_declared",
         sku: firstString(body.sku) || orderName,
         chip_model: chipModel,
         carrier_profile_code: carrierProfileCode,
@@ -231,7 +256,7 @@ export async function POST(req: Request) {
         source: "supplier_order",
         mode: "supplier",
         url_template: urlTemplate,
-        mac_input: "enc_plus_cmac_literal",
+        mac_input: secureSunProfile ? "enc_plus_cmac_literal" : "not_applicable",
         tagtamper_enabled: carrierProfileCode === "ntag424_dna_tt",
         ttstatus_enabled: carrierProfileCode === "ntag424_dna_tt",
         ttstatus_source: "enc_decrypted",

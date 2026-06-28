@@ -82,7 +82,7 @@ const socialProof = [
   "Marketplace con estrellas verificadas por dueños reales.",
   "Passport con historia del producto y experiencias de usuarios.",
   "Club VIP con reputación, países, lotes y feedback por segmento.",
-  "NFT/certificado con eventos verificables, sin comentarios completos on-chain.",
+  "NFT/certificado con eventos verificables, sin exponer comentarios completos fuera del CRM.",
 ];
 
 function readBadges(value: unknown) {

@@ -15,6 +15,7 @@ const {
   canActivateSupplierSubBatch,
   validateSupplierQaEvidence,
 } = await import("../src/lib/supplier-ops.ts");
+const { normalizeCarrierProfileCode } = await import("../src/lib/carrier-profiles.ts");
 const {
   buildMerkleRoot,
   hashEvidencePayload,
@@ -60,6 +61,46 @@ test("supplier keys are random 16-byte hex pairs and pack includes TagTamper con
   assert.match(pack.contentHash, /^sha256:[0-9a-f]{64}$/);
   assert.equal(pack.json.TTSTATUS.closed, "4343");
   assert.match(pack.text, /MANIFEST_FORMAT=batch_id,uid_hex/);
+});
+
+test("non-cryptographic supplier profiles never expose 424 batch keys", () => {
+  const keys = generateSupplierBatchKeys();
+  const ntagPack = buildSupplierEncodingPack({
+    clientSlug: "balmec",
+    batchId: "BALMEC-EVENT-A",
+    quantity: 500,
+    chipModel: "NTAG215 wristband",
+    carrierProfile: "event_wristband",
+    kMetaHex: keys.kMetaHex,
+    kFileHex: keys.kFileHex,
+    urlTemplate: "https://nexid.lat/t/BALMEC-EVENT-A/<UID_HEX>",
+  });
+  assert.doesNotMatch(ntagPack.text, /K_META_BATCH=/);
+  assert.doesNotMatch(ntagPack.text, /K_FILE_BATCH=/);
+  assert.match(ntagPack.text, /KEY_MATERIAL=NO_BATCH_KEYS_REQUIRED_FOR_THIS_PROFILE/);
+  assert.match(ntagPack.text, /MANIFEST_FORMAT=batch_id,uid_hex,attendee_ref,zone,valid_from,valid_until/);
+
+  const gs1Pack = buildSupplierEncodingPack({
+    clientSlug: "syngenta",
+    batchId: "SYN-GS1-A",
+    quantity: 1000,
+    chipModel: "GS1 Digital Link label",
+    carrierProfile: "gs1_digital_link",
+    kMetaHex: keys.kMetaHex,
+    kFileHex: keys.kFileHex,
+    urlTemplate: "https://nexid.lat/01/<GTIN>/10/<LOT>/21/<SERIAL>",
+  });
+  assert.doesNotMatch(gs1Pack.text, /K_META_BATCH=/);
+  assert.doesNotMatch(gs1Pack.text, /K_FILE_BATCH=/);
+  assert.match(gs1Pack.text, /GTIN, lot and serial in manifest/);
+  assert.equal(gs1Pack.json.KEY_MATERIAL, "NO_BATCH_KEYS_REQUIRED_FOR_THIS_PROFILE");
+});
+
+test("carrier profile normalization supports logistics, events and IoT profiles", () => {
+  assert.equal(normalizeCarrierProfileCode("UHF EPC RFID"), "uhf_rfid");
+  assert.equal(normalizeCarrierProfileCode("Pulsera festival NFC"), "event_wristband");
+  assert.equal(normalizeCarrierProfileCode("hotel keycard"), "hotel_keycard");
+  assert.equal(normalizeCarrierProfileCode("temperature sensor logger"), "iot_tracker_placeholder");
 });
 
 test("supplier pack export can be delivered as encrypted ZIP without plaintext keys in the envelope", () => {

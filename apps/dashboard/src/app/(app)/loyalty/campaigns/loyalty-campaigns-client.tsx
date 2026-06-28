@@ -588,7 +588,7 @@ export default function LoyaltyCampaignsClient() {
       "distinguido", "seda", "terciopelo", "complejo", "sofisticado", "vip", 
       "gran reserva", "legado", "colección", "edición", "mística", "tesoro",
       "tasting", "varietal", "caldo", "elixir", "maridaje", "trazabilidad", "tokenizado",
-      "inmutable", "digital", "on-chain", "cofradía", "miembro", "cupo", "asignación"
+      "verificable", "digital", "wallet", "cofradía", "miembro", "cupo", "asignación"
     ];
     
     const cheapKeywords = [
@@ -618,8 +618,8 @@ export default function LoyaltyCampaignsClient() {
 
     // Emotions distribution
     const exclWords = ["exclusivo", "único", "limitado", "vip", "reserva", "selección", "autor", "terroir", "cofradía", "miembro", "privada", "asignación"];
-    const trustWords = ["certificado", "garantizado", "origen", "historia", "auténtico", "bodega", "familia", "noble", "calidad", "sello", "trazabilidad", "inmutable"];
-    const curWords = ["descubrir", "secreto", "revelar", "misterio", "explorar", "edición", "catar", "mística", "experiencia", "tasting", "on-chain"];
+    const trustWords = ["certificado", "garantizado", "origen", "historia", "auténtico", "bodega", "familia", "noble", "calidad", "sello", "trazabilidad", "verificable"];
+    const curWords = ["descubrir", "secreto", "revelar", "misterio", "explorar", "edición", "catar", "mística", "experiencia", "tasting", "wallet"];
     const urgWords = ["ahora", "hoy", "último", "pocas", "cupo", "adquirir", "lanzamiento", "inmediato", "solo por", "preferencial", "reclamar"];
 
     let exclCount = 0; exclWords.forEach(w => { if (clean.includes(w)) exclCount++; });
@@ -737,17 +737,17 @@ export default function LoyaltyCampaignsClient() {
       "escaneá": ["autenticá tu botella nexID", "verificá tu sello digital de miembro"],
     },
     "modern-web3": {
-      "vino": ["activo físico tokenizado on-chain", "botella respaldada criptográficamente", "gemelo digital de colección"],
-      "vinos": ["activos líquidos tokenizados", "coleccionables Web3 auditables", "botellas con pasaporte criptográfico"],
-      "rico": ["con trazabilidad inmutable y huella sensorial verificable en la blockchain"],
+      "vino": ["activo físico con certificado transferible", "botella respaldada criptográficamente", "gemelo digital de colección"],
+      "vinos": ["activos físicos con certificado", "coleccionables con pasaporte auditable", "botellas con respaldo criptográfico"],
+      "rico": ["con trazabilidad verificable y huella sensorial auditada"],
       "ricos": ["de alto valor de coleccionabilidad y procedencia certificada"],
-      "bueno": ["con firma criptográfica inalterable", "certificado on-chain"],
+      "bueno": ["con firma criptográfica verificable", "certificado transferible"],
       "barato": ["un valor preferencial de acuñación (minting rate)"],
       "baratos": ["asignaciones inteligentes con fee reducido"],
       "comprar": ["reclamar la propiedad digital (claim)", "transferir al ledger privado", "acuñar el certificado de procedencia"],
       "compra": ["tokenización de propiedad"],
       "club": ["red descentralizada de coleccionistas", "Cofradía Cripto-Sommelier nexID", "DAO de beneficios Web3"],
-      "degustar": ["catar y validar on-chain", "desbloquear la experiencia interactiva"],
+      "degustar": ["catar y validar certificado", "desbloquear la experiencia interactiva"],
       "botella": ["activo digital tokenizado", "botella con microchip nexID NFC"],
       "botellas": ["lote digitalizado de etiquetas"],
       "olor": ["perfil aromático verificado y registrado en el smart contract"],
@@ -838,7 +838,7 @@ export default function LoyaltyCampaignsClient() {
         const hasPremiumHook = clean.includes("vip") || clean.includes("exclusiv") || clean.includes("colección") || clean.includes("terroir") || clean.includes("cofradía") || clean.includes("chain") || clean.includes("token");
         if (!hasPremiumHook) {
           if (selectedTone === "modern-web3") {
-            optimized = `Gemelo digital verificado nexID: ${optimized} — Registrado inmutablemente on-chain.`;
+            optimized = `Gemelo digital verificado nexID: ${optimized} — Certificado transferible bajo política del tenant.`;
           } else {
             optimized = `Una propuesta de valor exclusivo nexID: ${optimized} — Reservado para miembros de nuestra Cofradía Privada.`;
           }
@@ -847,7 +847,7 @@ export default function LoyaltyCampaignsClient() {
         const hasCTA = clean.includes("autentic") || clean.includes("escan") || clean.includes("sumar") || clean.includes("adquirir") || clean.includes("particip") || clean.includes("claim") || clean.includes("reclamar");
         if (!hasCTA) {
           if (selectedTone === "modern-web3") {
-            optimized += " Escaneá el chip criptográfico NFC nexID para reclamar la propiedad de tu activo líquido.";
+            optimized += " Escaneá el chip NFC nexID para reclamar el certificado de propiedad de tu activo físico.";
           } else {
             optimized += " Escaneá el chip NFC nexID para activar este beneficio único.";
           }
@@ -1022,7 +1022,7 @@ export default function LoyaltyCampaignsClient() {
         action = {
           label: "Usar Borrador Web3",
           title: "Tokenización de Lote Exclusivo",
-          prompt: "Asegurá tu botella tokenizada on-chain. Escaneá el chip NFC para reclamar la propiedad digital y recibir airdrops de membresía."
+          prompt: "Asegurá tu botella con certificado transferible. Escaneá el chip NFC para reclamar propiedad digital, beneficios de club y trazabilidad verificable."
         };
       }
 
@@ -1854,7 +1854,7 @@ export default function LoyaltyCampaignsClient() {
                         {[
                           { id: "sommelier", label: "Sommelier", icon: Sparkles, desc: "Aromas, cata y terruño" },
                           { id: "vip-club", label: "Club Privado", icon: BookmarkCheck, desc: "Exclusividad y cupo VIP" },
-                          { id: "modern-web3", label: "Modern Web3", icon: Cpu, desc: "Tokenización on-chain" }
+                          { id: "modern-web3", label: "Modern Web3", icon: Cpu, desc: "Tokenización segura" }
                         ].map((t) => (
                           <button
                             key={t.id}

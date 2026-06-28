@@ -70,10 +70,27 @@ type SupplierPackResponse = {
   }>;
 };
 
+type SupplierVaultArtifact = {
+  id: string;
+  bid?: string | null;
+  resource_type?: string;
+  artifact_type?: string;
+  content_hash?: string;
+  mime_type?: string | null;
+  status?: string;
+  created_at?: string;
+  metadata?: Record<string, unknown>;
+};
+
 const carrierProfiles = [
   { value: "ntag424_dna", label: "NTAG 424 DNA - SUN seguro" },
   { value: "ntag424_dna_tt", label: "NTAG 424 DNA TagTamper - sello fisico" },
   { value: "gs1_digital_link", label: "QR GS1 Digital Link" },
+  { value: "qr_basic", label: "QR seguro - experiencia web" },
+  { value: "uhf_rfid", label: "UHF / EPC - logistica y agro" },
+  { value: "event_wristband", label: "Pulsera NFC - eventos/acceso" },
+  { value: "hotel_keycard", label: "Credencial / keycard hotel" },
+  { value: "iot_tracker_placeholder", label: "IoT tracker - telemetria" },
   { value: "ntag216", label: "NTAG216 - UX extendida" },
   { value: "ntag215", label: "NTAG215 - eventos/acceso" },
 ];
@@ -170,6 +187,7 @@ export function SupplierOrderConsole() {
   const [qaTtstatusChecked, setQaTtstatusChecked] = useState(false);
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [packPassword, setPackPassword] = useState("");
+  const [vaultArtifacts, setVaultArtifacts] = useState<SupplierVaultArtifact[]>([]);
 
   const subBatches = useMemo(() => created?.sub_batches || [], [created]);
   const selectedOrderId = created?.order?.id || "";
@@ -226,6 +244,7 @@ export function SupplierOrderConsole() {
       }) as SupplierOrderResponse;
       setCreated(data);
       setPack(null);
+      setVaultArtifacts([]);
       const firstBid = data.sub_batches?.[0]?.bid || "";
       setQaBid(firstBid);
       setQaSampleUrls("");
@@ -254,6 +273,18 @@ export function SupplierOrderConsole() {
     }
   }
 
+  async function loadVaultArtifacts(orderId: string) {
+    if (!orderId) return;
+    const result = await fetch(`/api/admin/supplier-orders/${encodeURIComponent(orderId)}/vault`, { cache: "no-store" });
+    const data = await result.json().catch(() => ({}));
+    setResponse(asJson(data));
+    if (!result.ok || (data && typeof data === "object" && (data as { ok?: unknown }).ok === false)) {
+      throw new Error(formatError(data, result.statusText || "No se pudo cargar Tenant Vault."));
+    }
+    const record = data as { artifacts?: SupplierVaultArtifact[] };
+    setVaultArtifacts(Array.isArray(record.artifacts) ? record.artifacts : []);
+  }
+
   async function exportPack() {
     if (!selectedOrderId) {
       setStatus("Primero crea o selecciona un Supplier Order.");
@@ -271,7 +302,8 @@ export function SupplierOrderConsole() {
       }) as SupplierPackResponse;
       setPack(data);
       setResponse(asJson(safePackSummary(data)));
-      setStatus(`Pack cifrado listo: ${data.packs?.length || 0} carpetas. Descarga el .zip.enc y envía el password generado localmente por canal separado.`);
+      await loadVaultArtifacts(selectedOrderId);
+      setStatus(`Pack cifrado listo: ${data.packs?.length || 0} carpetas. Descarga el .zip.enc y envia el password generado localmente por canal separado.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo exportar el pack.");
     } finally {
@@ -286,8 +318,8 @@ export function SupplierOrderConsole() {
     }
     if (passed && !qaReadyToPass) {
       setStatus(requiresTtstatus
-        ? "Para aprobar QA hace falta URL SUN real, replay verificado y TTStatus validado."
-        : "Para aprobar QA hace falta URL SUN real y replay verificado.");
+        ? "Para aprobar QA hace falta una muestra real del carrier, replay verificado y TTStatus validado."
+        : "Para aprobar QA hace falta una muestra real del carrier y replay verificado.");
       return;
     }
     setPending(true);
@@ -331,12 +363,16 @@ export function SupplierOrderConsole() {
     const subBatchesFromOrder = Array.isArray(order.sub_batches) ? order.sub_batches : [];
     setCreated({ ok: true, order, sub_batches: subBatchesFromOrder });
     setPack(null);
+    setVaultArtifacts([]);
     setQaBid(subBatchesFromOrder[0]?.bid || "");
     setQaSampleUrls("");
     setQaReplayChecked(false);
     setQaTtstatusChecked(false);
     setPackPassword("");
     setStatus(`Pedido seleccionado: ${order.order_name || order.id}. ${subBatchesFromOrder.length} sub-batches disponibles.`);
+    void loadVaultArtifacts(order.id).catch((error) => {
+      setStatus(error instanceof Error ? error.message : "No se pudo cargar Tenant Vault.");
+    });
   }
 
   return (
@@ -344,9 +380,9 @@ export function SupplierOrderConsole() {
       <div className="grid gap-6 p-5 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Supplier Order industrial</p>
-          <h2 className="mt-2 text-2xl font-black text-white">Pedido de tags listo para fábrica</h2>
+          <h2 className="mt-2 text-2xl font-black text-white">Pedido de tags listo para fabrica</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Crea sub-batches, genera llaves por lote, las guarda cifradas, exporta pack de encoding solo para superadmin y bloquea activación hasta manifest + QA.
+            Crea sub-batches, genera credenciales por lote, las guarda cifradas, exporta pack de encoding solo para superadmin y bloquea activacion hasta manifest + QA.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Tenant slug" value={tenantSlug} onChange={setTenantSlug} placeholder="bodega-balmec o syngenta-ar" />
@@ -354,7 +390,7 @@ export function SupplierOrderConsole() {
             <Field label="Order name" value={orderName} onChange={setOrderName} placeholder="SYN-AR-2026-001" />
             <Field label="Base batch ID" value={baseBatchId} onChange={setBaseBatchId} placeholder="SYN-AR-2026-001" />
             <Field label="Cantidad total" value={totalQuantity} onChange={setTotalQuantity} placeholder="5000" />
-            <Field label="Tamano sub-batch" value={subBatchSize} onChange={setSubBatchSize} placeholder="1000" />
+            <Field label="Tamaño sub-batch" value={subBatchSize} onChange={setSubBatchSize} placeholder="1000" />
             <Field label="Chip model" value={chipModel} onChange={setChipModel} placeholder="NTAG 424 DNA" />
             <label className="block">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Carrier profile</span>
@@ -440,7 +476,7 @@ export function SupplierOrderConsole() {
             </p>
             <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
               <label className="block">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Password de fábrica</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Password de fabrica</span>
                 <div className="mt-1 flex flex-col gap-2 sm:flex-row">
                   <input
                     className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
@@ -458,13 +494,14 @@ export function SupplierOrderConsole() {
                 </div>
               </label>
               <p className="mt-2 text-xs leading-5 text-amber-50/85">
-                Guardalo en el gestor seguro del operador y compartilo con fábrica por otro canal. nexID no lo devuelve en la respuesta del export.
+                Guardalo en el gestor seguro del operador y compartilo con fabrica por otro canal. nexID no lo devuelve en la respuesta del export.
               </p>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button disabled={pending || !selectedOrderId} onClick={() => void exportPack()}>Exportar pack</Button>
               <Button variant="secondary" disabled={!pack?.encrypted_pack} onClick={downloadEncryptedPack}>Descargar ZIP cifrado</Button>
               <Button variant="secondary" disabled={!pack} onClick={downloadSafeSummary}>Resumen seguro</Button>
+              <Button variant="secondary" disabled={pending || !selectedOrderId} onClick={() => void loadVaultArtifacts(selectedOrderId).catch((error) => setStatus(error instanceof Error ? error.message : "No se pudo cargar Tenant Vault."))}>Ver Tenant Vault</Button>
             </div>
             {packPassword ? (
               <p className="mt-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 font-mono text-xs text-white">
@@ -479,24 +516,59 @@ export function SupplierOrderConsole() {
             ) : null}
           </div>
 
+          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-100">Tenant Vault</p>
+                <p className="mt-2 text-sm leading-6 text-cyan-50">
+                  Evidencia operativa visible para el tenant: hashes, PDF, JSON, ZIP cifrado y estado. No expone storage interno, llaves ni passwords.
+                </p>
+              </div>
+              <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-xs font-black text-cyan-100">
+                {vaultArtifacts.length} artefactos
+              </span>
+            </div>
+            {vaultArtifacts.length ? (
+              <div className="mt-3 max-h-56 space-y-2 overflow-auto">
+                {vaultArtifacts.map((artifact) => (
+                  <div key={artifact.id} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-300">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <b className="text-white">{artifact.artifact_type || "artifact"}</b>
+                      <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[10px] text-cyan-100">{artifact.bid || artifact.resource_type || "order"}</span>
+                    </div>
+                    <p className="mt-1 font-mono text-[11px] text-cyan-100">{artifact.content_hash || "hash pendiente"}</p>
+                    <p className="mt-1 text-slate-400">{artifact.mime_type || "mime n/a"} / {artifact.status || "active"} / {artifact.created_at ? new Date(artifact.created_at).toLocaleString("es-AR") : "sin fecha"}</p>
+                    {artifact.metadata ? (
+                      <p className="mt-1 truncate text-slate-500">{Object.entries(artifact.metadata).map(([key, value]) => `${key}: ${String(value)}`).join(" · ")}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-xs leading-5 text-slate-300">
+                Sin artefactos visibles todavia. Exporta el pack o importa el manifest para poblar el Vault.
+              </p>
+            )}
+          </div>
+
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100">QA gate</p>
             <p className="mt-2 text-sm leading-6 text-emerald-50">
-              Para aprobar un sub-batch no alcanza con declarar “ok”. Pegá una URL SUN escaneada, confirmá que una URL vieja cae como replay y, si es TagTamper, validá TTStatus cerrado/abierto.
+              Para aprobar un sub-batch no alcanza con declarar "ok". Pega una muestra real del carrier escaneada, confirma que una muestra vieja cae como replay y, si es TagTamper, valida TTStatus cerrado/abierto.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_0.5fr]">
               <Field label="BID para QA" value={qaBid} onChange={setQaBid} placeholder="SYN-AR-2026-001-A" />
               <Field label="Muestra" value={qaSampleCount} onChange={setQaSampleCount} placeholder="5" />
             </div>
             <label className="mt-3 block">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">URLs SUN reales escaneadas</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Muestras reales escaneadas</span>
               <textarea
                 className="mt-1 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-500"
                 value={qaSampleUrls}
                 onChange={(event) => setQaSampleUrls(event.target.value)}
-                placeholder="https://api.nexid.lat/sun?v=1&bid=...&picc_data=...&enc=...&cmac=..."
+                placeholder="https://api.nexid.lat/sun?v=1&bid=... o https://nexid.lat/01/... o muestra real del carrier"
               />
-              <span className="mt-1 block text-xs text-slate-400">{qaUrls.length} URL válida lista para adjuntar como evidencia.</span>
+              <span className="mt-1 block text-xs text-slate-400">{qaUrls.length} muestra valida lista para adjuntar como evidencia.</span>
             </label>
             <div className="mt-3 grid gap-2 text-sm text-slate-200 sm:grid-cols-2">
               <label className="flex items-start gap-2 rounded-xl border border-white/10 bg-slate-950/50 p-3">
@@ -524,7 +596,7 @@ export function SupplierOrderConsole() {
               <Button variant="secondary" disabled={pending || !selectedOrderId || !qaBid.trim()} onClick={() => void markQa(false)}>Rechazar QA</Button>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-400">
-              Carrier activo: <span className="font-mono text-cyan-100">{activeCarrierProfile}</span>. {requiresTtstatus ? "El backend exigirá TTStatus además de replay." : "El backend exigirá muestra SUN y replay."}
+              Carrier activo: <span className="font-mono text-cyan-100">{activeCarrierProfile}</span>. {requiresTtstatus ? "El backend exige TTStatus ademas de replay." : "El backend exige muestra real y replay/control equivalente."}
             </p>
           </div>
 

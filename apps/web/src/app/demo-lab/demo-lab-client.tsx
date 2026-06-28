@@ -471,7 +471,7 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
     stateLabel: "AUTENTICADO",
     allowed: ["Unirse al club", "Guardar pasaporte", "Tokenizacion Amoy", "Voucher o recompra"],
     blocked: ["Transferir dueño sin ingreso/reclamo"],
-    chain: "Auto-tokenizacion activa: el toque valido crea solicitud y puede cerrar con tx_hash/token_id en Polygon Amoy.",
+    chain: "Tokenizacion bajo politica: el toque valido crea una solicitud y solo cierra con tx_hash/token_id si el tenant aprueba la operacion.",
     primaryAction: "join",
     primaryLabel: txt.controls.joinClub,
   };
@@ -1035,13 +1035,13 @@ function DemoLabStudioHero({
   const productFacts = [
     { icon: PackageCheck, label: "Producto", value: activeVertical.product },
     { icon: MapPin, label: "Origen", value: "Valle de Uco, Argentina" },
-    { icon: UserRound, label: "Productor", value: "Bodega Demo" },
+    { icon: UserRound, label: "Productor", value: "Bodega Balmec" },
     { icon: CalendarDays, label: "Cosecha", value: vertical === "wine" ? "2022" : "Lote vigente" },
     { icon: Fingerprint, label: "Perfil", value: activeVertical.profile },
     { icon: ShieldCheck, label: "Estado", value: scenario.stateLabel },
   ];
   const trustItems = [
-    { icon: ShieldCheck, title: "Infraestructura segura", body: "Datos inmutables en blockchain" },
+    { icon: ShieldCheck, title: "Infraestructura segura", body: "Hashes verificables bajo politica" },
     { icon: BadgeCheck, title: "Privacidad por diseno", body: "Solo compartis lo que necesitas" },
     { icon: CheckCircle2, title: "Verifica siempre", body: "Un toque. Cero dudas." },
   ];
@@ -1511,7 +1511,7 @@ function DemoCinematicShowcase({
       proofLabels: { claim: "Claim", market: "Store" },
       passport: "Digital passport",
       tokenTitle: beat === 2 ? "Risk blocked" : beat === 0 ? "Waiting tap" : beat === 3 ? "Owner + NFT" : "NFT ready",
-      tokenBody: beat === 2 ? "Replay does not unlock benefits." : "Hashed UID, access rules and on-chain evidence.",
+      tokenBody: beat === 2 ? "Replay does not unlock benefits." : "Hashed UID, access rules and proof-layer evidence.",
       graph: "demand / risk / claim / repurchase",
     }
     : locale === "pt-BR"
@@ -2895,7 +2895,7 @@ function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoSce
     <div className="demo-lab-modal-story">
       <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
         <span>{scenario.stateLabel}</span>
-        <strong>{blocked ? "Tokenizacion bloqueada por seguridad" : "Auto-tokenizacion lista para toque valido"}</strong>
+        <strong>{blocked ? "Tokenizacion bloqueada por seguridad" : "Solicitud de tokenizacion lista para revisar"}</strong>
         <p>{scenario.chain}</p>
       </div>
       <div className="demo-lab-modal-step-grid">

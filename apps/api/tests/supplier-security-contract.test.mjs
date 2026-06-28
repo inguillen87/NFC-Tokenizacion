@@ -38,3 +38,15 @@ test("legacy uid import cannot bypass supplier manifest and QA gates", () => {
   assert.match(source, /legacy_import_disabled_for_supplier_batch/);
   assert.match(source, /import-manifest/);
 });
+
+test("tenant vault endpoint returns only safe supplier artifact metadata", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/vault/route.ts");
+
+  assert.match(source, /SAFE_METADATA_KEYS/);
+  assert.match(source, /sanitizeMetadata/);
+  assert.match(source, /getAdminTenantScope/);
+  assert.match(source, /forcedTenantSlug/);
+  assert.doesNotMatch(source, /SELECT[\s\S]*storage_ref/i);
+  assert.doesNotMatch(source, /raw_key|K_META_BATCH|K_FILE_BATCH|pack_password/i);
+  assert.doesNotMatch(source, /metadata:\s*row\.metadata_json/);
+});

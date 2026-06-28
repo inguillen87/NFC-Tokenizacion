@@ -251,7 +251,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     "",
     "Contents:",
     "- One folder per sub-batch.",
-    "- TXT and JSON contain supplier encoding keys for that sub-batch only.",
+    "- TXT and JSON contain profile-specific encoding instructions for that sub-batch.",
+    "- K_META_BATCH and K_FILE_BATCH appear only for NTAG 424 DNA / TagTamper profiles.",
     "- PDF contains human-readable instructions and hashes.",
     "- CHECKSUMS.sha256 verifies every file before factory handoff.",
     "",
@@ -352,7 +353,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
         separate_channel_required: true,
       },
     },
-    warning: "Encrypted supplier ZIP generated. The response does not include raw K_META_BATCH, K_FILE_BATCH or the pack password outside the encrypted package.",
+    warning: "Encrypted supplier ZIP generated. The response does not include the pack password. Raw K_META_BATCH/K_FILE_BATCH are present only inside encrypted 424 DNA supplier folders.",
     packs,
   });
 }

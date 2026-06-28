@@ -15,7 +15,11 @@ export type CarrierProfileCode =
   | "ntag215"
   | "ntag216"
   | "ntag424_dna"
-  | "ntag424_dna_tt";
+  | "ntag424_dna_tt"
+  | "uhf_rfid"
+  | "event_wristband"
+  | "hotel_keycard"
+  | "iot_tracker_placeholder";
 
 const CARRIER_PROFILE_CODES = new Set<CarrierProfileCode>([
   "qr_basic",
@@ -25,6 +29,10 @@ const CARRIER_PROFILE_CODES = new Set<CarrierProfileCode>([
   "ntag216",
   "ntag424_dna",
   "ntag424_dna_tt",
+  "uhf_rfid",
+  "event_wristband",
+  "hotel_keycard",
+  "iot_tracker_placeholder",
 ]);
 
 function normalizeCarrierProfileCode(input: unknown): CarrierProfileCode | null {
@@ -33,6 +41,10 @@ function normalizeCarrierProfileCode(input: unknown): CarrierProfileCode | null 
   if (CARRIER_PROFILE_CODES.has(value as CarrierProfileCode)) return value as CarrierProfileCode;
   if (value.includes("424") && value.includes("tt")) return "ntag424_dna_tt";
   if (value.includes("424")) return "ntag424_dna";
+  if (value.includes("uhf") || value.includes("rfid") || value.includes("epc")) return "uhf_rfid";
+  if (value.includes("wristband") || value.includes("pulsera") || value.includes("bracelet") || value.includes("festival")) return "event_wristband";
+  if (value.includes("hotel") || value.includes("keycard") || value.includes("credential") || value.includes("credencial")) return "hotel_keycard";
+  if (value.includes("iot") || value.includes("tracker") || value.includes("sensor") || value.includes("logger")) return "iot_tracker_placeholder";
   if (value.includes("216")) return "ntag216";
   if (value.includes("215")) return "ntag215";
   if (value.includes("213")) return "ntag213";

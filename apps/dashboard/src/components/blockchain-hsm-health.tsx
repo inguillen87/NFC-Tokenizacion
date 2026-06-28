@@ -127,7 +127,7 @@ export function BlockchainHsmHealth() {
         <div className="text-xs text-slate-400">
           <span className="font-bold text-white">¿Qué significa esto para el bodeguero?</span>
           <p className="mt-0.5">
-            nexID se encarga de pagar el costo de red por cada tap. No necesitas comprar Polygon ni tener conocimientos criptográficos.
+            nexID ancla evidencia y ownership solo cuando aporta valor de auditoría. Los taps operativos quedan en el CRM; no hace falta comprar Polygon ni saber cripto.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row shrink-0">
