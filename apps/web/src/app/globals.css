@@ -27586,3 +27586,116 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     bottom: 3.15rem !important;
   }
 }
+
+/* Final landing hero balance: the atlas is evidence, the product proof must stay visible. */
+@media (min-width: 821px) {
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) {
+    overflow: visible !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    display: grid !important;
+    align-items: stretch !important;
+    min-width: 0 !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-map-pane,
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-asset-showcase {
+    display: grid !important;
+    min-height: 100% !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-asset-media {
+    grid-template-columns: minmax(0, 1fr) minmax(5.25rem, 0.34fr) !important;
+    min-height: clamp(13.5rem, 15vw, 17rem) !important;
+    gap: 0.56rem !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-passport-phone {
+    width: min(100%, 5.9rem) !important;
+    min-width: 0 !important;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__stage {
+    min-height: clamp(18rem, 23vw, 25rem) !important;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__routebar {
+    left: clamp(0.7rem, 2vw, 1.2rem) !important;
+    right: clamp(0.7rem, 2vw, 1.2rem) !important;
+    bottom: clamp(2.7rem, 4.8vw, 3.4rem) !important;
+    max-width: none !important;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .scene-container,
+  .landing-hero-section .hero-trace-map--trust-globe canvas {
+    max-width: 100% !important;
+  }
+}
+
+@media (min-width: 1180px) {
+  .landing-hero-section .hero-demo-shell {
+    width: min(96rem, calc(100vw - 2rem)) !important;
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1499px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(21rem, 0.98fr) minmax(17rem, 0.74fr) !important;
+    min-height: clamp(26rem, 34vw, 31rem) !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    display: grid !important;
+    grid-template-columns: minmax(18rem, 0.84fr) minmax(22rem, 1.16fr) !important;
+    gap: 0.85rem !important;
+  }
+}
+
+@media (min-width: 1500px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(44rem, 1.05fr) minmax(30rem, 0.85fr) !important;
+    align-items: stretch !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(22rem, 0.96fr) minmax(19rem, 0.78fr) !important;
+    min-height: clamp(25rem, 28vw, 32rem) !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 30rem !important;
+  }
+}
+
+@media (min-width: 1800px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(46rem, 0.98fr) minmax(32rem, 0.86fr) !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(23rem, 0.92fr) minmax(20rem, 0.8fr) !important;
+    min-height: clamp(25rem, 25vw, 30rem) !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-trace-map--trust-globe .traceability-globe__stage {
+    min-height: clamp(18rem, 20vw, 23.5rem) !important;
+  }
+}

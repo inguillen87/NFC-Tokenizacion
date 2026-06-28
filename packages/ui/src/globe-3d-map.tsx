@@ -20,6 +20,10 @@ function ensureThreeRendererCompatibility() {
 
   patchMatrixPrototype((THREE.Matrix4 as unknown as { prototype?: Record<string, unknown> }).prototype);
 
+  const globalScope = globalThis as typeof globalThis & { THREE?: typeof THREE };
+  patchMatrixPrototype((globalScope.THREE?.Matrix4 as unknown as { prototype?: Record<string, unknown> } | undefined)?.prototype);
+  globalScope.THREE = THREE;
+
   if (typeof window !== "undefined") {
     const win = window as typeof window & { THREE?: typeof THREE };
     patchMatrixPrototype((win.THREE?.Matrix4 as unknown as { prototype?: Record<string, unknown> } | undefined)?.prototype);
@@ -31,7 +35,8 @@ ensureThreeRendererCompatibility();
 
 const Globe = dynamic(async () => {
   ensureThreeRendererCompatibility();
-  return import("react-globe.gl");
+  const module = await import("react-globe.gl");
+  return module.default;
 }, { ssr: false });
 const COUNTRY_GEOJSON_URL = "/assets/geo/ne_110m_admin_0_countries.geojson";
 const THREE_GLOBE_ASSET_BASE = "https://cdn.jsdelivr.net/npm/three-globe/example/img";

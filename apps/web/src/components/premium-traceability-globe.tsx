@@ -202,7 +202,9 @@ export function PremiumTraceabilityGlobe({
   const primaryDistance = primaryRoute ? Math.round(routeDistanceKm(primaryRoute)).toLocaleString("es-AR") : "";
   const globeSize =
     variant === "hero"
-      ? { width: 660, height: 420 }
+      ? compact
+        ? { width: 560, height: 360 }
+        : { width: 660, height: 420 }
       : variant === "panel"
         ? { width: 620, height: 390 }
         : compact
