@@ -27347,3 +27347,106 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 .animate-stagger-step {
   animation: slide-in-fade 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Final responsive guard for the landing atlas/product demo.
+   The atlas can grow, but the commercial product details must never collapse. */
+.landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe),
+.landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe),
+.landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card,
+.landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe),
+.landing-hero-section .hero-object-map-pane:has(.hero-trace-map--trust-globe),
+.landing-hero-section .hero-object-product-pane:has(.hero-asset-showcase) {
+  min-width: 0 !important;
+}
+
+.landing-hero-section .hero-scene-result-card:has(.hero-passport-summary) {
+  overflow: visible !important;
+}
+
+.landing-hero-section .hero-scene-result-card:has(.hero-passport-summary) strong,
+.landing-hero-section .hero-scene-result-card:has(.hero-passport-summary) p,
+.landing-hero-section .hero-scene-result-card:has(.hero-passport-summary) em,
+.landing-hero-section .hero-scene-result-card:has(.hero-passport-summary) span {
+  overflow-wrap: anywhere;
+}
+
+.landing-hero-section .hero-scene-result-card:has(.hero-passport-summary) .hero-output-grid--proof {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.75rem), 1fr)) !important;
+}
+
+@media (min-width: 1180px) and (max-width: 1599px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe),
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    grid-column: auto !important;
+    width: 100% !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: clamp(27rem, 40vw, 34rem) !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
+    display: none !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: 0.85rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1.04fr) minmax(29rem, 0.78fr) !important;
+    align-items: stretch !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    min-width: 29rem !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 0.98fr) minmax(18rem, 0.62fr) !important;
+    min-height: clamp(26rem, 30vw, 33rem) !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
+    display: grid !important;
+  }
+}
+
+@media (max-width: 1179px) {
+  .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe),
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe),
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
+    display: grid !important;
+  }
+
+  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
+    display: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .landing-hero-section .hero-scene-result-card:has(.hero-passport-summary) .hero-output-grid--proof,
+  .landing-hero-section .hero-scene-result-card:has(.hero-passport-summary) .hero-commerce-stack {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-trace-map--trust-globe .traceability-globe__routebar,
+  .hero-scene .hero-trace-map--trust-globe .traceability-globe__routebar {
+    left: 0.68rem !important;
+    right: 0.68rem !important;
+    bottom: 0.7rem !important;
+  }
+}
