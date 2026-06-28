@@ -83,6 +83,23 @@ function parseSnapshot(raw?: string): DashboardSession | null {
   }
 }
 
+function permissionMatches(granted: string[], requested?: string | null) {
+  const current = String(requested || "").trim();
+  if (!current) return true;
+
+  for (const rawGrant of Array.isArray(granted) ? granted : []) {
+    const grant = String(rawGrant || "").trim();
+    if (!grant) continue;
+    if (grant === "*" || grant === current) return true;
+    if (grant.endsWith(":*")) {
+      const scope = grant.slice(0, -2);
+      if (current === scope || current.startsWith(`${scope}:`)) return true;
+    }
+  }
+
+  return false;
+}
+
 export async function getDashboardSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
@@ -182,6 +199,6 @@ export async function getDashboardSession() {
 export async function requireDashboardSession(permission?: string) {
   const session = await getDashboardSession();
   if (!session) redirect("/login");
-  if (permission && !session.permissions.includes(permission) && !session.permissions.includes("*") && session.role !== "super-admin") redirect("/");
+  if (permission && session.role !== "super-admin" && !permissionMatches(session.permissions, permission)) redirect("/");
   return session;
 }

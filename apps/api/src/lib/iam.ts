@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { ensureEnterpriseIamSchema } from "./commercial-runtime-schema";
+import { permissionMatches } from "./permission-matcher.js";
 
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 export const SESSION_IDLE_MS = 1000 * 60 * 30;
@@ -147,8 +148,9 @@ export function parsePermissions(value: unknown) {
 
 export function hasPermission(session: { role: string; permissions: string[] }, permission?: string | null) {
   if (!permission) return true;
-  if (session.role === "super-admin") return true;
-  return session.permissions.includes(permission);
+  const role = String(session.role || "").replaceAll("_", "-");
+  if (role === "super-admin") return true;
+  return permissionMatches(session.permissions, permission);
 }
 
 export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthUser | null> {
