@@ -27553,14 +27553,14 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 
 @media (min-width: 1540px) {
   .landing-hero-section .hero-scene > .mt-4.grid:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(43rem, 1.12fr) minmax(31rem, 0.88fr) !important;
+    grid-template-columns: minmax(49rem, 1.2fr) minmax(28rem, 0.8fr) !important;
     align-items: stretch !important;
   }
 
   .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
     display: flex !important;
     flex-direction: column !important;
-    min-width: 31rem !important;
+    min-width: 28rem !important;
   }
 }
 
