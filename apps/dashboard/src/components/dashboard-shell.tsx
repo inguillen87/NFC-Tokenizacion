@@ -143,6 +143,7 @@ export function DashboardShellInner({
   const items = [
     { href: "/", label: nav.overview },
     { href: "/batches", label: nav.batches },
+    { href: "/batches/supplier", label: "Pedidos proveedor" },
     { href: "/tags", label: nav.tags },
     { href: "/events", label: nav.events },
     { href: "/tokenization", label: "Tokenization" },
@@ -198,6 +199,7 @@ export function DashboardShellInner({
   const searchableLinks = [
     { href: "/onboarding", label: "Onboarding Setup" },
     ...items,
+    { href: "/batches/supplier", label: "Pedidos proveedor y packs fábrica" },
     { href: "/tokenization", label: "Tokenization Queue" },
     { href: "/superadmin-network", label: "Consumer Network", role: "super-admin" },
     { href: "/loyalty/overview", label: "Loyalty Studio" },
@@ -223,6 +225,7 @@ export function DashboardShellInner({
     { href: "/onboarding", label: "Onboarding Setup", icon: Compass },
     { href: "/", label: nav.overview, icon: LayoutDashboard },
     { href: "/batches", label: nav.batches, icon: Layers },
+    { href: "/batches/supplier", label: "Pedidos proveedor", icon: FileCheck2 },
     { href: "/tags", label: nav.tags, icon: Cpu },
     { href: "/events", label: nav.events, icon: Activity },
     { href: "/tokenization", label: "Tokenization", icon: Coins },

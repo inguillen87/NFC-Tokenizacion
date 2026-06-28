@@ -48,8 +48,12 @@ type SupplierPackResponse = {
     envelope_sha256: string;
     plaintext_zip_sha256: string;
     ciphertext_sha256: string;
-    password: string;
     password_warning: string;
+    password_delivery?: {
+      mode?: string;
+      returned?: boolean;
+      separate_channel_required?: boolean;
+    };
     encryption?: Record<string, unknown>;
   };
   warning?: string;
@@ -134,6 +138,14 @@ function formatError(data: unknown, fallback: string) {
   return `${String(reason)}${missing}`;
 }
 
+function makeLocalPackPassword(customerSlug: string, tenantSlug: string) {
+  const prefix = (customerSlug || tenantSlug || "NEXID").trim().replace(/[^a-zA-Z0-9_-]+/g, "-").toUpperCase();
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  const secret = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+  return `nexID-${prefix}-${secret}`;
+}
+
 export function SupplierOrderConsole() {
   const [tenantSlug, setTenantSlug] = useState("");
   const [customerSlug, setCustomerSlug] = useState("");
@@ -157,6 +169,7 @@ export function SupplierOrderConsole() {
   const [qaReplayChecked, setQaReplayChecked] = useState(false);
   const [qaTtstatusChecked, setQaTtstatusChecked] = useState(false);
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
+  const [packPassword, setPackPassword] = useState("");
 
   const subBatches = useMemo(() => created?.sub_batches || [], [created]);
   const selectedOrderId = created?.order?.id || "";
@@ -218,6 +231,7 @@ export function SupplierOrderConsole() {
       setQaSampleUrls("");
       setQaReplayChecked(false);
       setQaTtstatusChecked(false);
+      setPackPassword("");
       setStatus(`Pedido creado: ${data.sub_batches?.length || 0} sub-batches con fingerprints, llaves cifradas y sin KMS expuesta.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo crear el pedido.");
@@ -245,13 +259,19 @@ export function SupplierOrderConsole() {
       setStatus("Primero crea o selecciona un Supplier Order.");
       return;
     }
+    const effectivePassword = packPassword.trim()
+      || makeLocalPackPassword(created?.order?.customer_slug || customerSlug, created?.order?.tenant_slug || tenantSlug);
+    setPackPassword(effectivePassword);
     setPending(true);
-    setStatus("Generando ZIP cifrado con TXT/JSON/PDF/checksums por sub-batch. Las llaves no quedan visibles en el navegador.");
+    setStatus("Generando ZIP cifrado con TXT/JSON/PDF/checksums por sub-batch. La API no devuelve el password.");
     try {
-      const data = await run(`/api/admin/supplier-orders/${encodeURIComponent(selectedOrderId)}/export-pack`, { method: "POST" }) as SupplierPackResponse;
+      const data = await run(`/api/admin/supplier-orders/${encodeURIComponent(selectedOrderId)}/export-pack`, {
+        method: "POST",
+        body: JSON.stringify({ password: effectivePassword }),
+      }) as SupplierPackResponse;
       setPack(data);
       setResponse(asJson(safePackSummary(data)));
-      setStatus(`Pack cifrado listo: ${data.packs?.length || 0} carpetas. Descarga el .zip.enc y envia el password por canal separado.`);
+      setStatus(`Pack cifrado listo: ${data.packs?.length || 0} carpetas. Descarga el .zip.enc y envía el password generado localmente por canal separado.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo exportar el pack.");
     } finally {
@@ -315,6 +335,7 @@ export function SupplierOrderConsole() {
     setQaSampleUrls("");
     setQaReplayChecked(false);
     setQaTtstatusChecked(false);
+    setPackPassword("");
     setStatus(`Pedido seleccionado: ${order.order_name || order.id}. ${subBatchesFromOrder.length} sub-batches disponibles.`);
   }
 
@@ -415,16 +436,39 @@ export function SupplierOrderConsole() {
           <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">Export pack</p>
             <p className="mt-2 text-sm leading-6 text-amber-50">
-              Solo superadmin. Genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se muestra una vez y se manda por canal separado.
+              Solo superadmin. Genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se genera en esta consola, no vuelve desde la API y debe enviarse por canal separado.
             </p>
+            <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+              <label className="block">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Password de fábrica</span>
+                <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
+                    value={packPassword}
+                    onChange={(event) => setPackPassword(event.target.value)}
+                    placeholder="Generar antes de exportar"
+                  />
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => setPackPassword(makeLocalPackPassword(created?.order?.customer_slug || customerSlug, created?.order?.tenant_slug || tenantSlug))}
+                  >
+                    Generar
+                  </Button>
+                </div>
+              </label>
+              <p className="mt-2 text-xs leading-5 text-amber-50/85">
+                Guardalo en el gestor seguro del operador y compartilo con fábrica por otro canal. nexID no lo devuelve en la respuesta del export.
+              </p>
+            </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button disabled={pending || !selectedOrderId} onClick={() => void exportPack()}>Exportar pack</Button>
               <Button variant="secondary" disabled={!pack?.encrypted_pack} onClick={downloadEncryptedPack}>Descargar ZIP cifrado</Button>
               <Button variant="secondary" disabled={!pack} onClick={downloadSafeSummary}>Resumen seguro</Button>
             </div>
-            {pack?.encrypted_pack?.password ? (
+            {packPassword ? (
               <p className="mt-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 font-mono text-xs text-white">
-                Password one-time: {pack.encrypted_pack.password}
+                Password local: {packPassword}
               </p>
             ) : null}
             {pack?.encrypted_pack?.envelope_sha256 ? (
