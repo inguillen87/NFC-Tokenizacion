@@ -604,13 +604,27 @@ export function validateSupplierQaEvidence(input: {
   replayChecked?: boolean | null;
   ttstatusChecked?: boolean | null;
   requiresTtstatus?: boolean | null;
+  requiresSecureSun?: boolean | null;
+  expectedBid?: string | null;
 }) {
   if (!input.passed) return { ok: true as const };
-  const sampleCount = Array.isArray(input.sampleUrls)
-    ? input.sampleUrls.map((item) => String(item || "").trim()).filter(Boolean).length
-    : 0;
+  const sampleUrls = normalizeSupplierQaSampleUrls(input.sampleUrls);
+  const sampleCount = sampleUrls.length;
   if (sampleCount <= 0) {
     return { ok: false as const, reason: "qa_sample_evidence_required", sampleCount };
+  }
+  const expectedBid = String(input.expectedBid || "").trim();
+  for (const sampleUrl of sampleUrls) {
+    const parsed = parseQaSampleUrl(sampleUrl);
+    if (!parsed.ok) {
+      return { ok: false as const, reason: parsed.reason, sampleCount, sampleUrl };
+    }
+    if (expectedBid && !qaSampleMatchesBid(parsed.url, expectedBid)) {
+      return { ok: false as const, reason: "qa_sample_bid_mismatch", sampleCount, sampleUrl, expectedBid };
+    }
+  }
+  if (input.requiresSecureSun && !sampleUrls.some(hasSecureSunSampleParams)) {
+    return { ok: false as const, reason: "qa_secure_sun_sample_required", sampleCount };
   }
   if (!input.replayChecked) {
     return { ok: false as const, reason: "qa_replay_check_required", sampleCount };
@@ -618,5 +632,66 @@ export function validateSupplierQaEvidence(input: {
   if (input.requiresTtstatus && !input.ttstatusChecked) {
     return { ok: false as const, reason: "qa_ttstatus_check_required", sampleCount };
   }
-  return { ok: true as const, sampleCount };
+  return { ok: true as const, sampleCount, sampleUrls, evidenceDigest: buildSupplierQaEvidenceDigest({
+    sampleUrls,
+    replayChecked: Boolean(input.replayChecked),
+    ttstatusChecked: Boolean(input.ttstatusChecked),
+    requiresTtstatus: Boolean(input.requiresTtstatus),
+    requiresSecureSun: Boolean(input.requiresSecureSun),
+    expectedBid: expectedBid || null,
+  }) };
+}
+
+export function normalizeSupplierQaSampleUrls(sampleUrls?: unknown[] | null) {
+  if (!Array.isArray(sampleUrls)) return [];
+  return Array.from(new Set(
+    sampleUrls
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+      .slice(0, 25),
+  ));
+}
+
+export function buildSupplierQaEvidenceDigest(payload: Record<string, unknown>) {
+  return sha256(JSON.stringify(payload, Object.keys(payload).sort()));
+}
+
+function parseQaSampleUrl(sampleUrl: string):
+  | { ok: true; url: URL }
+  | { ok: false; reason: "qa_sample_url_invalid" | "qa_sample_url_scheme_invalid" } {
+  let url: URL;
+  try {
+    url = new URL(sampleUrl);
+  } catch {
+    return { ok: false, reason: "qa_sample_url_invalid" };
+  }
+  if (!["https:", "http:"].includes(url.protocol)) {
+    return { ok: false, reason: "qa_sample_url_scheme_invalid" };
+  }
+  if (url.protocol === "http:" && !["localhost", "127.0.0.1", "::1"].includes(url.hostname)) {
+    return { ok: false, reason: "qa_sample_url_scheme_invalid" };
+  }
+  return { ok: true, url };
+}
+
+function qaSampleMatchesBid(url: URL, expectedBid: string) {
+  const expected = expectedBid.toUpperCase();
+  const candidates = [
+    url.searchParams.get("bid"),
+    url.searchParams.get("batch"),
+    url.searchParams.get("batch_id"),
+    url.searchParams.get("b"),
+    decodeURIComponent(url.pathname),
+  ].map((item) => String(item || "").toUpperCase());
+  return candidates.some((item) => item === expected || item.includes(expected));
+}
+
+function hasSecureSunSampleParams(sampleUrl: string) {
+  const parsed = parseQaSampleUrl(sampleUrl);
+  if (!parsed.ok) return false;
+  const params = parsed.url.searchParams;
+  const hasPicc = Boolean(params.get("picc_data") || params.get("picc"));
+  const hasEnc = Boolean(params.get("enc"));
+  const hasCmac = Boolean(params.get("cmac") || params.get("mac"));
+  return hasPicc && hasEnc && hasCmac;
 }

@@ -202,6 +202,41 @@ test("supplier QA gate rejects empty pass declarations", () => {
   assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: ["https://qa.nexid.lat/sample/1"], replayChecked: true, ttstatusChecked: true, requiresTtstatus: true }).ok, true);
 });
 
+test("supplier QA gate ties production evidence to the expected BID and SUN sample", () => {
+  const validSample = "https://api.nexid.lat/sun?v=1&bid=SYN-AR-2026-001-A&picc_data=0011223344556677&enc=AABBCCDDEEFF0011&cmac=0102030405060708";
+  const gate = validateSupplierQaEvidence({
+    passed: true,
+    sampleUrls: [validSample],
+    replayChecked: true,
+    ttstatusChecked: true,
+    requiresTtstatus: true,
+    requiresSecureSun: true,
+    expectedBid: "SYN-AR-2026-001-A",
+  });
+  assert.equal(gate.ok, true);
+  assert.match(gate.evidenceDigest, /^sha256:[0-9a-f]{64}$/);
+
+  assert.equal(validateSupplierQaEvidence({
+    passed: true,
+    sampleUrls: [validSample.replace("SYN-AR-2026-001-A", "SYN-AR-2026-001-B")],
+    replayChecked: true,
+    ttstatusChecked: true,
+    requiresTtstatus: true,
+    requiresSecureSun: true,
+    expectedBid: "SYN-AR-2026-001-A",
+  }).reason, "qa_sample_bid_mismatch");
+
+  assert.equal(validateSupplierQaEvidence({
+    passed: true,
+    sampleUrls: ["https://api.nexid.lat/sun?v=1&bid=SYN-AR-2026-001-A"],
+    replayChecked: true,
+    ttstatusChecked: true,
+    requiresTtstatus: true,
+    requiresSecureSun: true,
+    expectedBid: "SYN-AR-2026-001-A",
+  }).reason, "qa_secure_sun_sample_required");
+});
+
 test("proof layer builds a verifiable Merkle root without exposing raw events", () => {
   const eventA = hashEvidencePayload({
     tenantId: "tenant-1",

@@ -7,7 +7,7 @@ import { sql } from "../../../../../lib/db";
 import { logAuditEvent } from "../../../../../lib/audit-logger";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
 import { hashEvidencePayload } from "../../../../../lib/proof-layer";
-import { validateSupplierQaEvidence } from "../../../../../lib/supplier-ops";
+import { requiresSecureSunEncoding, validateSupplierQaEvidence } from "../../../../../lib/supplier-ops";
 
 function safeString(value: unknown) {
   return String(value || "").trim();
@@ -90,12 +90,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   const replayChecked = Boolean(body.replay_checked ?? body.replayChecked);
   const ttstatusChecked = Boolean(body.ttstatus_checked ?? body.ttstatusChecked);
   const requiresTtstatus = String(subBatch.carrier_profile_code || "").trim() === "ntag424_dna_tt";
+  const requiresSecureSun = requiresSecureSunEncoding(subBatch.carrier_profile_code);
   const evidenceGate = validateSupplierQaEvidence({
     passed,
     sampleUrls,
     replayChecked,
     ttstatusChecked,
     requiresTtstatus,
+    requiresSecureSun,
+    expectedBid: subBatch.bid,
   });
   if (!evidenceGate.ok) {
     return json({
@@ -109,13 +112,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       carrier_profile_code: subBatch.carrier_profile_code,
     }, 409);
   }
+  const normalizedSampleUrls = evidenceGate.ok ? evidenceGate.sampleUrls ?? sampleUrls : sampleUrls;
   const notes = safeString(body.notes) || null;
   const status = passed ? "passed" : "failed";
   const actor = safeActor(req);
   const evidence = {
-    sample_urls: sampleUrls,
+    sample_urls: normalizedSampleUrls,
     replay_checked: replayChecked,
     ttstatus_checked: ttstatusChecked,
+    evidence_digest: evidenceGate.ok ? evidenceGate.evidenceDigest : null,
+    requires_secure_sun: requiresSecureSun,
     notes,
     checked_by: actor,
   };
@@ -126,7 +132,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       sample_count, replay_checked, ttstatus_checked, notes, evidence_json, checked_by
     ) VALUES (
       ${subBatch.tenant_id}, ${subBatch.supplier_order_id}, ${subBatch.supplier_sub_batch_id},
-      ${subBatch.batch_id}, ${subBatch.bid}, ${status}, ${sampleUrls.length}, ${replayChecked},
+      ${subBatch.batch_id}, ${subBatch.bid}, ${status}, ${normalizedSampleUrls.length}, ${replayChecked},
       ${ttstatusChecked}, ${notes}, ${JSON.stringify(evidence)}::jsonb, ${actor}
     )
   `;
@@ -146,10 +152,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     supplier_sub_batch_id: subBatch.supplier_sub_batch_id,
     bid: subBatch.bid,
     status,
-    sample_count: sampleUrls.length,
+    sample_count: normalizedSampleUrls.length,
     replay_checked: replayChecked,
     ttstatus_checked: ttstatusChecked,
     requires_ttstatus: requiresTtstatus,
+    requires_secure_sun: requiresSecureSun,
+    evidence_digest: evidenceGate.ok ? evidenceGate.evidenceDigest : null,
   };
   const eventHash = hashEvidencePayload({
     tenantId: String(subBatch.tenant_id),
