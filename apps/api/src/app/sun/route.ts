@@ -2820,8 +2820,6 @@ export async function GET(req: Request): Promise<Response> {
     configuredMacInputModes: sunDiagnostics.configured_mac_input_modes || null,
     piccCandidateCount: sunDiagnostics.picc_candidate_count ?? null,
     cmacCandidateCount: sunDiagnostics.cmac_candidate_count ?? null,
-    piccPlainHexPrefix: sunDiagnostics.picc_plain_hex_prefix || null,
-    encPlainHexPrefix: sunDiagnostics.enc_plain_hex_prefix || null,
     encPlainHexLength: sunDiagnostics.enc_plain_hex_length ?? null,
     ttRaw: sunDiagnostics.tt_raw || null,
     ttPermHex: sunDiagnostics.tt_perm_hex || null,

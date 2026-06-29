@@ -31,6 +31,16 @@ const OPENED_SCAN_RESULTS = new Set([
   "VALID_MANUAL_OPENED",
 ]);
 
+const PUBLIC_SUN_REDACTED_FIELDS = [
+  "picc_data_decrypted",
+  "sdm_enc_decrypted",
+  "uid_candidate",
+  "picc_candidates",
+  "cmac_candidates",
+  "expected_cmac",
+  "actual_cmac",
+] as const;
+
 export type ScanContext = {
   ip?: string | null;
   userAgent?: string | null;
@@ -823,13 +833,14 @@ export async function processSunScan(input: {
     bid: input.bid,
     result,
     status: responseStatus,
+    sensitive_redacted: true,
+    redacted_fields: PUBLIC_SUN_REDACTED_FIELDS,
     crypto_error_reason: cryptoErrorReason || null,
     verification_method: verificationMethod,
     cmac_valid: typeof res.cmacValid === "boolean" ? res.cmacValid : null,
     sdm_decryption_ok: Boolean(res.ok && res.encPlainHex),
     uid_decoded: Boolean(res.ok && res.uidDecoded),
     uid_hex: res.ok ? res.uidHex || resolvedUidHex || null : resolvedUidHex || null,
-    uid_candidate_hex: !res.ok ? res.uidCandidateHex || null : null,
     uid_candidate_count: Array.isArray(res.piccCandidates) ? res.piccCandidates.length : 0,
     read_counter: resolvedCtr ?? null,
     picc_layout: res.ok ? res.piccLayout || null : null,
