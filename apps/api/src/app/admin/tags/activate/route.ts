@@ -7,9 +7,18 @@ import { json } from "../../../../lib/http";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import { canActivateSupplierSubBatch } from "../../../../lib/supplier-ops";
 import { hashEvidencePayload } from "../../../../lib/proof-layer";
+import { logAuditEvent } from "../../../../lib/audit-logger";
 
 function normalizeUid(value: unknown) {
   return String(value || "").trim().toUpperCase();
+}
+
+function safeActor(req: Request) {
+  return req.headers.get("x-nexid-actor")
+    || req.headers.get("x-nexid-actor-id")
+    || req.headers.get("x-dashboard-user")
+    || req.headers.get("x-forwarded-user")
+    || "unknown_admin";
 }
 
 export async function POST(req: Request) {
@@ -150,6 +159,19 @@ export async function POST(req: Request) {
       VALUES (${batch.tenant_id}, 'supplier_sub_batch', ${supplierSubBatch.id}, 'tag_activated', ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
       ON CONFLICT (payload_hash) DO NOTHING
     `;
+    await logAuditEvent({
+      actorId: null,
+      tenantId: String(batch.tenant_id),
+      action: "supplier_tags_activated",
+      resourceType: "supplier_sub_batch",
+      resourceId: String(supplierSubBatch.id),
+      afterData: {
+        ...eventPayload,
+        activated_by: safeActor(req),
+      },
+      userAgent: req.headers.get("user-agent"),
+      requestId: req.headers.get("x-request-id"),
+    });
   }
 
   return json({

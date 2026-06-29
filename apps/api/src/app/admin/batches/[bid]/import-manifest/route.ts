@@ -12,12 +12,21 @@ import { upsertTagSunPayload } from "../../../../../lib/sun-payload-registry.ts"
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
 import { canImportSupplierManifest, validateSupplierManifestQuantity } from "../../../../../lib/supplier-ops";
 import { hashEvidencePayload } from "../../../../../lib/proof-layer";
+import { logAuditEvent } from "../../../../../lib/audit-logger";
 
 type ManifestPayload = {
   csv?: string;
   activateImported?: boolean;
   dryRun?: boolean;
 };
+
+function safeActor(req: Request) {
+  return req.headers.get("x-nexid-actor")
+    || req.headers.get("x-nexid-actor-id")
+    || req.headers.get("x-dashboard-user")
+    || req.headers.get("x-forwarded-user")
+    || "unknown_admin";
+}
 
 async function readPayload(req: Request): Promise<ManifestPayload & { csv: string }> {
   const contentType = req.headers.get("content-type") || "";
@@ -418,6 +427,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         ON CONFLICT (payload_hash) DO NOTHING
       `;
     }
+    await logAuditEvent({
+      actorId: null,
+      tenantId: String(batch.tenant_id),
+      action: "supplier_manifest_imported",
+      resourceType: "supplier_sub_batch",
+      resourceId: String(supplierSubBatch.id),
+      afterData: {
+        supplier_order_id: supplierSubBatch.supplier_order_id,
+        supplier_sub_batch_id: supplierSubBatch.id,
+        bid,
+        row_count: manifest.rows.length,
+        content_hash: manifest.contentHash,
+        carrier_profile_code: batchCarrierCode,
+        imported_by: safeActor(req),
+      },
+      userAgent: req.headers.get("user-agent"),
+      requestId: req.headers.get("x-request-id"),
+    });
   }
 
   return json({

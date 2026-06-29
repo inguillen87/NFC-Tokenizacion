@@ -61,3 +61,29 @@ test("tenant vault endpoint returns only safe supplier artifact metadata", () =>
   assert.doesNotMatch(source, /raw_key|K_META_BATCH|K_FILE_BATCH|pack_password/i);
   assert.doesNotMatch(source, /metadata:\s*row\.metadata_json/);
 });
+
+test("SUN debug diagnostics are redacted unless an explicit lab gate is enabled", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/sun/debug-verify/route.ts");
+
+  assert.match(source, /ALLOW_SENSITIVE_SUN_DEBUG/);
+  assert.match(source, /includeSensitiveDiagnostics/);
+  assert.match(source, /x-nexid-debug-sensitive/);
+  assert.match(source, /sensitive_redacted:\s*true/);
+  assert.match(source, /picc_plain_hex:\s*null/);
+  assert.match(source, /enc_plain_hex:\s*null/);
+  assert.match(source, /cmac_candidates:\s*\[\]/);
+});
+
+test("supplier manifest import and activation write audit events without raw UID lists", () => {
+  const manifestSource = readWorkspaceFile("apps/api/src/app/admin/batches/[bid]/import-manifest/route.ts");
+  const activateSource = readWorkspaceFile("apps/api/src/app/admin/tags/activate/route.ts");
+
+  assert.match(manifestSource, /logAuditEvent/);
+  assert.match(manifestSource, /supplier_manifest_imported/);
+  assert.match(manifestSource, /imported_by:\s*safeActor\(req\)/);
+
+  assert.match(activateSource, /logAuditEvent/);
+  assert.match(activateSource, /supplier_tags_activated/);
+  assert.match(activateSource, /activated_by:\s*safeActor\(req\)/);
+  assert.doesNotMatch(activateSource, /afterData:\s*{\s*uids/);
+});

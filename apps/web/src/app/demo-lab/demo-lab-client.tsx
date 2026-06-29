@@ -691,7 +691,7 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
       return;
     }
     if (action === "tokenize") {
-      setActionMessage(beat === 3 ? "Tokenizacion de valor preparada: requiere compra/reclamo validado antes de transferir dueño." : beat === 1 ? "Tokenizacion automatica lista: un toque valido crea solicitud y registra tx_hash/token_id en Polygon Amoy." : "Tokenizacion bloqueada por politica de seguridad para este estado.");
+      setActionMessage(beat === 3 ? "Tokenizacion de valor preparada: requiere compra o reclamo validado antes de transferir propiedad." : beat === 1 ? "Solicitud de tokenizacion lista: Polygon registra tx_hash/token_id solo si el tenant aprueba la operacion." : "Tokenizacion bloqueada por politica de seguridad para este estado.");
       return;
     }
     setActionMessage(beat === 2 ? "Club bloqueado por copia. Repeti el toque fisico para continuar." : "Club/tienda listo: el consumidor puede asociarse y recibir beneficios de la marca.");
@@ -2797,8 +2797,8 @@ function DemoFlowRail({ scenario, beat, onOpen }: { scenario: DemoScenario; beat
   const riskCopy = beat === 2 ? "Bloqueado por copia" : "Listo para continuar";
   const items: Array<{ view: Exclude<DemoModalView, null>; eyebrow: string; title: string; body: string; tone: string }> = [
     { view: "mobile", eyebrow: scenario.stateLabel, title: "Resultado en celular", body: riskCopy, tone: scenario.tone },
-    { view: "nft", eyebrow: "Polygon Amoy", title: "NFT / certificado", body: beat === 2 ? "No crea NFT si hay copia" : "Solicitud + tx_hash + token_id", tone: "nft" },
-    { view: "claim", eyebrow: "Portal usuario", title: "Reclamar dueño", body: "Ingreso, marca y dueño", tone: "claim" },
+    { view: "nft", eyebrow: "Polygon Amoy", title: "NFT / certificado", body: beat === 2 ? "No crea NFT si hay copia" : "Solicitud con aprobacion", tone: "nft" },
+    { view: "claim", eyebrow: "Portal usuario", title: "Reclamar propiedad", body: "Ingreso, marca y titular", tone: "claim" },
   ];
 
   return (
@@ -2847,7 +2847,7 @@ function DemoFlowModal({
 }) {
   if (!view) return null;
 
-  const title = view === "mobile" ? "Resultado en celular" : view === "nft" ? "NFT / certificado Polygon" : "Reclamar dueño";
+  const title = view === "mobile" ? "Resultado en celular" : view === "nft" ? "NFT / certificado Polygon" : "Reclamar propiedad";
   const subtitle = view === "mobile"
     ? "Lo que ve el consumidor despues del toque."
     : view === "nft"
@@ -2889,7 +2889,7 @@ function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoSce
     { label: "01", title: "Toque valido", body: blocked ? "Copia detectada: no se firma en cadena." : "SUN fresco confirma autenticidad y crea evento." },
     { label: "02", title: "UID hasheado", body: "El UID no se expone crudo; se usa hash con salt para el certificado." },
     { label: "03", title: "Solicitud", body: blocked ? "La solicitud queda bloqueada por politica." : "Se prepara solicitud idempotente de tokenizacion." },
-    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo toque valido." : "La creacion del NFT devuelve tx_hash y token_id para trazabilidad." },
+    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo toque valido." : "Si la politica aprueba el reclamo, el minter registra tx_hash y token_id." },
   ];
   return (
     <div className="demo-lab-modal-story">

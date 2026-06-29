@@ -12,6 +12,7 @@ import { resolveConfiguredMacInputModes, resolveSelectedMacInputModes, resolveTa
 
 type DebugVerifyBody = {
   url?: string;
+  includeSensitiveDiagnostics?: boolean;
 };
 
 function readSunParams(rawUrl: string) {
@@ -27,6 +28,12 @@ function readSunParams(rawUrl: string) {
 
 function keyFingerprint(hex: string) {
   return createHash("sha256").update(Buffer.from(hex, "hex")).digest("hex").slice(0, 16).toUpperCase();
+}
+
+function canReturnSensitiveDiagnostics(req: Request, body: DebugVerifyBody) {
+  return body.includeSensitiveDiagnostics === true
+    && req.headers.get("x-nexid-debug-sensitive") === "allow"
+    && process.env.ALLOW_SENSITIVE_SUN_DEBUG === "true";
 }
 
 function batchSummary(row: Record<string, unknown>) {
@@ -188,6 +195,7 @@ export async function POST(req: Request) {
   const configuredCandidateModes = resolveConfiguredMacInputModes(batch.sdm_config);
   const debugMacInputModes = Array.from(new Set([...configuredCandidateModes, ...SUN_MAC_INPUT_MODES]));
   const verification = verifySun({ kMetaHex, kFileHex, piccDataHex, encHex, cmacHex, macInputModes: debugMacInputModes });
+  const includeSensitiveDiagnostics = canReturnSensitiveDiagnostics(req, body);
   const manifestRows = await sql/*sql*/`
     SELECT UPPER(uid_hex) AS uid_hex
     FROM tags
@@ -211,6 +219,39 @@ export async function POST(req: Request) {
   const uidDecoded = verification.ok && (verification.uidDecoded === true || Boolean(verification.uidHex));
   const reason = verification.ok ? null : verification.reason;
   const cmacMatched = Boolean(verification.cmacCandidates?.some((candidate) => candidate.match));
+  const sensitiveDiagnostics = includeSensitiveDiagnostics
+    ? {
+      sensitive_redacted: false,
+      picc_plain_hex: verification.piccPlainHex || null,
+      picc_plain_hex_prefix: verification.piccPlainHex ? verification.piccPlainHex.slice(0, 32) : null,
+      enc_plain_hex: verification.encPlainHex || null,
+      enc_plain_hex_prefix: verification.encPlainHex ? verification.encPlainHex.slice(0, 32) : null,
+      expected_cmac_hex: verification.expectedCmacHex || null,
+      actual_cmac_hex: verification.actualCmacHex || null,
+      uid_candidate_hex: !verification.ok ? verification.uidCandidateHex || null : null,
+      picc_candidates: piccCandidates,
+      cmac_candidates: verification.cmacCandidates || [],
+    }
+    : {
+      sensitive_redacted: true,
+      sensitive_fields: [
+        "picc_plain_hex",
+        "enc_plain_hex",
+        "expected_cmac_hex",
+        "actual_cmac_hex",
+        "picc_candidates",
+        "cmac_candidates",
+      ],
+      picc_plain_hex: null,
+      picc_plain_hex_prefix: null,
+      enc_plain_hex: null,
+      enc_plain_hex_prefix: null,
+      expected_cmac_hex: null,
+      actual_cmac_hex: null,
+      uid_candidate_hex: null,
+      picc_candidates: [],
+      cmac_candidates: [],
+    };
 
   return json({
     ok: true,
@@ -230,16 +271,9 @@ export async function POST(req: Request) {
       sdm_decryption_ok: verification.sdmDecryptionOk ?? null,
       uid_decoded: uidDecoded,
       uid_hex: verification.ok ? verification.uidHex || null : null,
-      uid_candidate_hex: !verification.ok ? verification.uidCandidateHex || null : null,
       uid_candidate_count: verification.piccCandidates?.length || 0,
       read_counter: verification.ok ? verification.ctr ?? null : null,
-      picc_plain_hex: verification.piccPlainHex || null,
-      picc_plain_hex_prefix: verification.piccPlainHex ? verification.piccPlainHex.slice(0, 32) : null,
-      enc_plain_hex: verification.encPlainHex || null,
-      enc_plain_hex_prefix: verification.encPlainHex ? verification.encPlainHex.slice(0, 32) : null,
       enc_plain_hex_length: verification.encPlainHex ? verification.encPlainHex.length / 2 : null,
-      expected_cmac_hex: verification.expectedCmacHex || null,
-      actual_cmac_hex: verification.actualCmacHex || null,
       picc_layout: verification.ok ? verification.piccLayout || null : null,
       selected_mac_input: verification.ok ? verification.macInputMode || null : null,
       selected_configured_mac_input_modes: selectedMacInputModes,
@@ -247,8 +281,7 @@ export async function POST(req: Request) {
       debug_mac_input_modes: debugMacInputModes,
       manifest_uid_count: manifestUids.size,
       uid_candidate_manifest_match: uidCandidateManifestMatch,
-      picc_candidates: piccCandidates,
-      cmac_candidates: verification.cmacCandidates || [],
+      ...sensitiveDiagnostics,
       tt_raw: ttStatus?.raw || null,
       tt_perm_status: ttStatus?.perm || null,
       tt_curr_status: ttStatus?.current || null,
